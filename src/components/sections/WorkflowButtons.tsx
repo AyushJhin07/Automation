@@ -25,7 +25,7 @@ const workflows: WorkflowItem[] = [
   {
     title: "Sales Automation",
     icon: TrendingUp, 
-    description: "Lead intake, follow‑ups, proposals, reminders.",
+    description: "Lead intake, follow-ups, proposals, reminders.",
     gradient: "tint-c"
   },
   {
@@ -57,7 +57,7 @@ export const WorkflowButtons = () => {
         {workflows.map((workflow, index) => (
           <Card 
             key={workflow.title}
-            className={`relative p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
+            className={`relative overflow-visible p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
           >
@@ -69,7 +69,7 @@ export const WorkflowButtons = () => {
                 <h3 className="font-semibold text-lg">{workflow.title}</h3>
               </div>
               
-              <div className="relative">
+              <div className="relative overflow-visible">
                 <div className={`size-8 rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-200 ${
                   hoveredIndex === index ? 'rotate-180' : ''
                 }`}>
