@@ -301,9 +301,6 @@ const Index = () => {
       {/* AI Automation Showcase */}
       <AIShowcase />
 
-      {/* App Integrations */}
-      <AppIntegrations />
-
       {/* Interactive Demos */}
       <section id="demos" className="container mx-auto py-12 md:py-16">
         <div className="mb-8">
@@ -370,6 +367,9 @@ const Index = () => {
           ))}
         </div>
       </section>
+
+      {/* App Integrations */}
+      <AppIntegrations />
 
       {/* CTA */}
       <section className="container mx-auto py-12 md:py-16">
