@@ -10,8 +10,6 @@ const navItems = [
   { to: "/contact", label: "Contact" },
   { to: "/about", label: "About" },
   { to: "/faq", label: "FAQ" },
-  { to: "/blog", label: "Blog" },
-  { to: "/resources", label: "Resources" },
 ];
 
 export const Navbar = () => {

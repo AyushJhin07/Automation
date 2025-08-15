@@ -78,9 +78,14 @@ export const WorkflowButtons = () => {
                 
                 {/* Tooltip Description */}
                 {hoveredIndex === index && (
-                  <div className="absolute top-full right-0 mt-2 w-64 p-3 glass-card rounded-lg border border-border/50 shadow-lg animate-fade-in z-50 bg-background/95 backdrop-blur-sm">
+                  <div className="fixed mt-2 w-64 p-3 glass-card rounded-lg border border-border/50 shadow-xl animate-fade-in bg-background backdrop-blur-sm" 
+                       style={{
+                         zIndex: 9999,
+                         left: `${Math.min(window.innerWidth - 280, Math.max(20, window.innerWidth / 2 - 128))}px`,
+                         top: `${window.scrollY + 200}px`
+                       }}>
                     <p className="text-sm text-muted-foreground">{workflow.description}</p>
-                    <div className="absolute -top-1 right-4 w-2 h-2 bg-background border-l border-t border-border/50 rotate-45"></div>
+                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-background border-l border-t border-border/50 rotate-45"></div>
                   </div>
                 )}
               </div>

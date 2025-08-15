@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import heroImage from "@/assets/hero-automation-dynamic.jpg";
+import heroImage from "@/assets/hero-automation-interconnected.jpg";
 import { Link } from "react-router-dom";
 import {
   Mail, CalendarRange, FileSpreadsheet, FileText, BarChart3, FolderCog,
@@ -18,6 +18,7 @@ import {
 } from "@/components/demos/AutomationAnimations";
 import { WorkflowButtons } from "@/components/sections/WorkflowButtons";
 import { AIShowcase } from "@/components/sections/AIShowcase";
+import { AppIntegrations } from "@/components/sections/AppIntegrations";
 
 // Demo preview assets
 import imgFormsSheets from "@/assets/demos/forms-sheets-gmail.jpg";
@@ -299,6 +300,9 @@ const Index = () => {
 
       {/* AI Automation Showcase */}
       <AIShowcase />
+
+      {/* App Integrations */}
+      <AppIntegrations />
 
       {/* Interactive Demos */}
       <section id="demos" className="container mx-auto py-12 md:py-16">
