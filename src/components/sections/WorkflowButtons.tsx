@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+// components/WorkflowButtons.tsx
+import { useState } from "react"
+import { Card } from "@/components/ui/card"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   ChevronDown,
   Users,
@@ -9,13 +10,13 @@ import {
   Settings,
   UserCheck,
   Clipboard,
-} from "lucide-react";
+} from "lucide-react"
 
 interface WorkflowItem {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  description: string;
-  gradient: string;
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+  description: string
+  gradient: string
 }
 
 const workflows: WorkflowItem[] = [
@@ -46,29 +47,27 @@ const workflows: WorkflowItem[] = [
   {
     title: "Recruiter",
     icon: UserCheck,
-    description:
-      "Candidate tracking, interview scheduling, automated communications.",
+    description: "Candidate tracking, interview scheduling, automated communications.",
     gradient: "tint-b",
   },
   {
     title: "Project Managers",
     icon: Clipboard,
-    description:
-      "Task automation, progress tracking, team coordination workflows.",
+    description: "Task automation, progress tracking, team coordination workflows.",
     gradient: "tint-c",
   },
-];
+]
 
 export const WorkflowButtons = () => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   return (
-    <section className="container mx-auto py-12 md:py-16 relative">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+    <section className="container mx-auto py-12 md:py-16 relative overflow-visible">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10 overflow-visible">
         {workflows.map((workflow, index) => (
           <Card
             key={workflow.title}
-            className={`relative overflow-visible p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
+            className={`relative p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
           >
@@ -80,7 +79,7 @@ export const WorkflowButtons = () => {
                 <h3 className="font-semibold text-lg">{workflow.title}</h3>
               </div>
 
-              {/* Popover-based dropdown (not clipped) */}
+              {/* Popover-based dropdown (rendered in a portal; cannot be clipped) */}
               <Popover open={hoveredIndex === index}>
                 <PopoverTrigger asChild>
                   <div
@@ -97,9 +96,7 @@ export const WorkflowButtons = () => {
                   align="center"
                   className="w-64 p-3 glass-card rounded-lg border border-border/50 shadow-xl bg-background backdrop-blur-sm"
                 >
-                  <p className="text-sm text-muted-foreground">
-                    {workflow.description}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{workflow.description}</p>
                 </PopoverContent>
               </Popover>
             </div>
@@ -107,5 +104,5 @@ export const WorkflowButtons = () => {
         ))}
       </div>
     </section>
-  );
-};
+  )
+}
