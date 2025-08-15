@@ -1,6 +1,10 @@
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "@/components/ui/hover-card"
 import {
   ChevronDown,
   Users,
@@ -28,17 +32,15 @@ const workflows: WorkflowItem[] = [
 ]
 
 export const WorkflowButtons = () => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
-    <section className="container mx-auto py-12 md:py-16 relative overflow-visible">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10 overflow-visible">
+    <section className="container mx-auto py-12 md:py-16 relative">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {workflows.map((workflow, index) => (
           <Card
             key={workflow.title}
             className={`relative p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex(null)}
           >
             <div className="flex items-center justify-between h-full">
               <div className="flex items-center gap-3">
@@ -48,26 +50,29 @@ export const WorkflowButtons = () => {
                 <h3 className="font-semibold text-lg">{workflow.title}</h3>
               </div>
 
-              {/* Popover renders to <body> (via portal) so it cannot be clipped by parent overflow */}
-              <Popover open={hoveredIndex === index}>
-                <PopoverTrigger asChild>
+              {/* Use HoverCard so the panel stays open while hovering content */}
+              <HoverCard
+                open={openIndex === index}
+                onOpenChange={(open) => setOpenIndex(open ? index : (openIndex === index ? null : openIndex))}
+              >
+                <HoverCardTrigger asChild>
                   <div
                     className={`relative size-8 rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-200 ${
-                      hoveredIndex === index ? "rotate-180" : ""
+                      openIndex === index ? "rotate-180" : ""
                     }`}
                   >
                     <ChevronDown className="size-4 text-primary" />
                   </div>
-                </PopoverTrigger>
+                </HoverCardTrigger>
 
-                <PopoverContent
+                <HoverCardContent
                   side="bottom"
                   align="center"
-                  className="w-64 p-3 glass-card rounded-lg border border-border/50 shadow-xl bg-background backdrop-blur-sm"
+                  className="w-64 p-3 glass-card rounded-lg border border-border/50 shadow-xl bg-background backdrop-blur-sm z-[9999]"
                 >
                   <p className="text-sm text-muted-foreground">{workflow.description}</p>
-                </PopoverContent>
-              </Popover>
+                </HoverCardContent>
+              </HoverCard>
             </div>
           </Card>
         ))}
@@ -76,5 +81,5 @@ export const WorkflowButtons = () => {
   )
 }
 
-// If your pages import a default export, uncomment the next line:
+// If your pages import a default export, uncomment:
 // export default WorkflowButtons
