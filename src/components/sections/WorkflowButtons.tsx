@@ -1,46 +1,65 @@
-import { useState } from "react"
-import { Card } from "@/components/ui/card"
-import {
-  HoverCard,
-  HoverCardTrigger,
-  HoverCardContent,
-} from "@/components/ui/hover-card"
-import {
-  ChevronDown,
-  Users,
-  Briefcase,
-  TrendingUp,
-  Settings,
-  UserCheck,
-  Clipboard,
-} from "lucide-react"
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { ChevronDown, Users, Briefcase, TrendingUp, Settings, UserCheck, Clipboard } from "lucide-react";
 
 interface WorkflowItem {
-  title: string
-  icon: React.ComponentType<{ className?: string }>
-  description: string
-  gradient: string
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  gradient: string;
 }
 
 const workflows: WorkflowItem[] = [
-  { title: "HR Workflows", icon: Users, description: "Onboarding, leave requests, emails & approvals.", gradient: "tint-a" },
-  { title: "Finance Ops", icon: Briefcase, description: "Quotes, invoices, reconciliations, monthly reports.", gradient: "tint-b" },
-  { title: "Sales Automation", icon: TrendingUp, description: "Lead intake, follow-ups, proposals, reminders.", gradient: "tint-c" },
-  { title: "Operations", icon: Settings, description: "Docs, Drive, and calendar workflows at scale.", gradient: "tint-a" },
-  { title: "Recruiter", icon: UserCheck, description: "Candidate tracking, interview scheduling, automated communications.", gradient: "tint-b" },
-  { title: "Project Managers", icon: Clipboard, description: "Task automation, progress tracking, team coordination workflows.", gradient: "tint-c" },
-]
+  {
+    title: "HR Workflows",
+    icon: Users,
+    description: "Onboarding, leave requests, emails & approvals.",
+    gradient: "tint-a"
+  },
+  {
+    title: "Finance Ops", 
+    icon: Briefcase,
+    description: "Quotes, invoices, reconciliations, monthly reports.",
+    gradient: "tint-b"
+  },
+  {
+    title: "Sales Automation",
+    icon: TrendingUp, 
+    description: "Lead intake, follow-ups, proposals, reminders.",
+    gradient: "tint-c"
+  },
+  {
+    title: "Operations",
+    icon: Settings,
+    description: "Docs, Drive, and calendar workflows at scale.",
+    gradient: "tint-a"
+  },
+  {
+    title: "Recruiter",
+    icon: UserCheck,
+    description: "Candidate tracking, interview scheduling, automated communications.",
+    gradient: "tint-b"
+  },
+  {
+    title: "Project Managers", 
+    icon: Clipboard,
+    description: "Task automation, progress tracking, team coordination workflows.",
+    gradient: "tint-c"
+  }
+];
 
 export const WorkflowButtons = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
     <section className="container mx-auto py-12 md:py-16 relative">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
         {workflows.map((workflow, index) => (
-          <Card
+          <Card 
             key={workflow.title}
-            className={`relative p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
+            className={`relative overflow-visible p-6 button-3d hover-scale ${workflow.gradient} rounded-xl cursor-pointer h-24`}
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
           >
             <div className="flex items-center justify-between h-full">
               <div className="flex items-center gap-3">
@@ -49,37 +68,26 @@ export const WorkflowButtons = () => {
                 </div>
                 <h3 className="font-semibold text-lg">{workflow.title}</h3>
               </div>
-
-              {/* Use HoverCard so the panel stays open while hovering content */}
-              <HoverCard
-                open={openIndex === index}
-                onOpenChange={(open) => setOpenIndex(open ? index : (openIndex === index ? null : openIndex))}
-              >
-                <HoverCardTrigger asChild>
-                  <div
-                    className={`relative size-8 rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-200 ${
-                      openIndex === index ? "rotate-180" : ""
-                    }`}
-                  >
-                    <ChevronDown className="size-4 text-primary" />
+              
+              <div className="relative overflow-visible">
+                <div className={`size-8 rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-200 ${
+                  hoveredIndex === index ? 'rotate-180' : ''
+                }`}>
+                  <ChevronDown className="size-4 text-primary" />
+                </div>
+                
+                {/* Tooltip Description */}
+                {hoveredIndex === index && (
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 p-3 glass-card rounded-lg border border-border/50 shadow-xl animate-fade-in z-[9999] bg-background backdrop-blur-sm">
+                    <p className="text-sm text-muted-foreground">{workflow.description}</p>
+                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-background border-l border-t border-border/50 rotate-45"></div>
                   </div>
-                </HoverCardTrigger>
-
-                <HoverCardContent
-                  side="bottom"
-                  align="center"
-                  className="w-64 p-3 glass-card rounded-lg border border-border/50 shadow-xl bg-background backdrop-blur-sm z-[9999]"
-                >
-                  <p className="text-sm text-muted-foreground">{workflow.description}</p>
-                </HoverCardContent>
-              </HoverCard>
+                )}
+              </div>
             </div>
           </Card>
         ))}
       </div>
     </section>
-  )
-}
-
-// If your pages import a default export, uncomment:
-// export default WorkflowButtons
+  );
+};
