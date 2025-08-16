@@ -6,7 +6,7 @@ import heroImage from "@/assets/hero-automation-interconnected.jpg";
 import { Link } from "react-router-dom";
 import {
   Mail, CalendarRange, FileSpreadsheet, FileText, BarChart3, FolderCog,
-  Inbox, CheckCircle2, Workflow
+  Inbox, CheckCircle2, Workflow, Code2, Download, Play
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { AutomationDialog } from "@/components/demos/AutomationDialog";
@@ -300,6 +300,63 @@ const Index = () => {
 
       {/* AI Automation Showcase */}
       <AIShowcase />
+
+      {/* Pre-Built Apps Callout */}
+      <section className="container mx-auto py-16">
+        <Card className="glass-card border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+          <CardContent className="p-8 md:p-12">
+            <div className="grid md:grid-cols-2 gap-8 items-center">
+              <div>
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+                  <Code2 className="size-4 mr-2" />
+                  New: Ready-to-Use Scripts
+                </Badge>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                  Skip the Wait. Get
+                  <br />
+                  <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                    Pre-Built Solutions
+                  </span>
+                </h2>
+                <p className="text-muted-foreground text-lg mb-6">
+                  Download working Google Apps Script prototypes that you can implement in minutes. 
+                  Perfect for teams who need automation NOW, not in weeks.
+                </p>
+                <div className="flex gap-4">
+                  <Button asChild size="lg" className="hover-glow">
+                    <Link to="/pre-built-apps">
+                      <Download className="size-5 mr-2" />
+                      Browse Pre-Built Apps
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="lg" className="glass-card">
+                    <Play className="size-5 mr-2" />
+                    See Live Demos
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="p-4 text-center">
+                  <div className="text-2xl font-bold text-primary mb-1">6</div>
+                  <div className="text-sm text-muted-foreground">Ready Scripts</div>
+                </Card>
+                <Card className="p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600 mb-1">15min</div>
+                  <div className="text-sm text-muted-foreground">Setup Time</div>
+                </Card>
+                <Card className="p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">$0</div>
+                  <div className="text-sm text-muted-foreground">Monthly Fees</div>
+                </Card>
+                <Card className="p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-600 mb-1">100%</div>
+                  <div className="text-sm text-muted-foreground">Customizable</div>
+                </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Interactive Demos */}
       <section id="demos" className="container mx-auto py-12 md:py-16">
