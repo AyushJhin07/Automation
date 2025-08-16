@@ -97,114 +97,164 @@ const AnimatedCursor = ({ x, y, isClicking }: { x: number; y: number; isClicking
 );
 
 // Gmail Interface
-const GmailInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => (
-  <div className="h-full bg-white">
-    {/* Gmail Header */}
-    <div className="bg-red-500 text-white px-6 py-3 flex items-center gap-4">
-      <MessageSquare className="size-6" />
-      <span className="font-semibold text-lg">Gmail</span>
-      <div className="flex-1 max-w-md">
-        <div className="bg-white/20 rounded-lg px-4 py-2 flex items-center gap-2">
-          <Search className="size-4" />
-          <input 
-            type="text" 
-            placeholder="Search mail" 
-            className="bg-transparent text-white placeholder-white/70 flex-1 outline-none"
-            defaultValue={currentAction?.type === 'type' ? currentAction.data : ''}
-          />
+const GmailInterface = ({ isActive, currentAction, stepData }: { isActive: boolean; currentAction?: TutorialAction; stepData?: any }) => {
+  const [searchText, setSearchText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [extractedData, setExtractedData] = useState<any>(null);
+
+  useEffect(() => {
+    if (currentAction?.type === 'type' && currentAction.data) {
+      // Simulate typing animation
+      let currentText = '';
+      const typeInterval = setInterval(() => {
+        if (currentText.length < currentAction.data!.length) {
+          currentText += currentAction.data![currentText.length];
+          setSearchText(currentText);
+        } else {
+          clearInterval(typeInterval);
+        }
+      }, 50);
+    }
+  }, [currentAction]);
+
+  useEffect(() => {
+    if (currentAction?.target === 'email-1' && currentAction.type === 'highlight') {
+      setIsProcessing(true);
+      // Simulate data extraction
+      setTimeout(() => {
+        setExtractedData({
+          company: 'Tech Corp',
+          phone: '+1-555-0123',
+          amount: '$2,500',
+          dueDate: '2024-04-15'
+        });
+      }, 1000);
+    }
+  }, [currentAction]);
+
+  return (
+    <div className="h-full bg-white">
+      {/* Gmail Header */}
+      <div className="bg-red-500 text-white px-6 py-3 flex items-center gap-4">
+        <MessageSquare className="size-6" />
+        <span className="font-semibold text-lg">Gmail</span>
+        <div className="flex-1 max-w-md">
+          <div className="bg-white/20 rounded-lg px-4 py-2 flex items-center gap-2">
+            <Search className="size-4" />
+            <input 
+              type="text" 
+              placeholder="Search mail" 
+              className="bg-transparent text-white placeholder-white/70 flex-1 outline-none"
+              value={searchText}
+              readOnly
+            />
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <Filter className="size-5" />
-        <Settings className="size-5" />
-        <div className="size-8 rounded-full bg-white/20"></div>
-      </div>
-    </div>
-    
-    {/* Gmail Content */}
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-50 border-r p-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-red-100 text-red-700">
-            <Mail className="size-5" />
-            <span className="font-medium">Inbox</span>
-            <Badge className="ml-auto bg-red-500 text-white">3</Badge>
-          </div>
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
-            <Mail className="size-5 text-gray-500" />
-            <span className="text-gray-700">Sent</span>
-          </div>
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
-            <Mail className="size-5 text-gray-500" />
-            <span className="text-gray-700">Drafts</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <Filter className="size-5" />
+          <Settings className="size-5" />
+          <div className="size-8 rounded-full bg-white/20"></div>
         </div>
       </div>
       
-      {/* Email List */}
-      <div className="flex-1">
-        <div className="border-b p-4">
-          <div className="flex items-center gap-4">
-            <input type="checkbox" className="size-4" />
-            <span className="text-sm text-gray-600">Select all</span>
-            <span className="text-sm text-gray-600">•</span>
-            <span className="text-sm text-gray-600">3 of 3</span>
+      {/* Gmail Content */}
+      <div className="flex h-full">
+        {/* Sidebar */}
+        <div className="w-64 bg-gray-50 border-r p-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-red-100 text-red-700">
+              <Mail className="size-5" />
+              <span className="font-medium">Inbox</span>
+              <Badge className="ml-auto bg-red-500 text-white">3</Badge>
+            </div>
+            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+              <Mail className="size-5 text-gray-500" />
+              <span className="text-gray-700">Sent</span>
+            </div>
+            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+              <Mail className="size-5 text-gray-500" />
+              <span className="text-gray-700">Drafts</span>
+            </div>
           </div>
         </div>
         
-        <div className="divide-y">
-          <div className={`p-4 hover:bg-gray-50 transition-all duration-300 ${
-            currentAction?.target === 'email-1' ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-          }`}>
+        {/* Email List */}
+        <div className="flex-1">
+          <div className="border-b p-4">
             <div className="flex items-center gap-4">
               <input type="checkbox" className="size-4" />
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-                  C
+              <span className="text-sm text-gray-600">Select all</span>
+              <span className="text-sm text-gray-600">•</span>
+              <span className="text-sm text-gray-600">3 of 3</span>
+            </div>
+          </div>
+          
+          <div className="divide-y">
+            <div className={`p-4 hover:bg-gray-50 transition-all duration-300 ${
+              currentAction?.target === 'email-1' ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+            }`}>
+              <div className="flex items-center gap-4">
+                <input type="checkbox" className="size-4" />
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                    C
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Client Company</div>
+                    <div className="text-sm text-gray-600">Invoice Request</div>
+                    <div className="text-xs text-gray-500">2 minutes ago</div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-medium">Client Company</div>
-                  <div className="text-sm text-gray-600">Invoice Request</div>
-                  <div className="text-xs text-gray-500">2 minutes ago</div>
-                </div>
+                {isProcessing && (
+                  <Badge className="bg-green-500 text-white animate-pulse">
+                    <Eye className="size-3 mr-1" />
+                    Processing...
+                  </Badge>
+                )}
               </div>
-              {currentAction?.target === 'email-1' && (
-                <Badge className="bg-green-500 text-white">
-                  <Eye className="size-3 mr-1" />
-                  Processing
-                </Badge>
+              
+              {/* Data Extraction Animation */}
+              {extractedData && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg animate-in slide-in-from-top-2">
+                  <div className="text-sm font-medium text-green-800 mb-2">Extracted Data:</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="font-medium">Company:</span> {extractedData.company}</div>
+                    <div><span className="font-medium">Phone:</span> {extractedData.phone}</div>
+                    <div><span className="font-medium">Amount:</span> {extractedData.amount}</div>
+                    <div><span className="font-medium">Due Date:</span> {extractedData.dueDate}</div>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-          
-          <div className="p-4 hover:bg-gray-50">
-            <div className="flex items-center gap-4">
-              <input type="checkbox" className="size-4" />
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold">
-                  S
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium">Supplier Vendor</div>
-                  <div className="text-sm text-gray-600">Quote #12345</div>
-                  <div className="text-xs text-gray-500">5 minutes ago</div>
+            
+            <div className="p-4 hover:bg-gray-50">
+              <div className="flex items-center gap-4">
+                <input type="checkbox" className="size-4" />
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold">
+                    S
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Supplier Vendor</div>
+                    <div className="text-sm text-gray-600">Quote #12345</div>
+                    <div className="text-xs text-gray-500">5 minutes ago</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <div className="p-4 hover:bg-gray-50">
-            <div className="flex items-center gap-4">
-              <input type="checkbox" className="size-4" />
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">
-                  T
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium">Team Startup</div>
-                  <div className="text-sm text-gray-600">Project Update</div>
-                  <div className="text-xs text-gray-500">8 minutes ago</div>
+            
+            <div className="p-4 hover:bg-gray-50">
+              <div className="flex items-center gap-4">
+                <input type="checkbox" className="size-4" />
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">
+                    T
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Team Startup</div>
+                    <div className="text-sm text-gray-600">Project Update</div>
+                    <div className="text-xs text-gray-500">8 minutes ago</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -212,134 +262,218 @@ const GmailInterface = ({ isActive, currentAction }: { isActive: boolean; curren
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Google Sheets Interface
-const SheetsInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => (
-  <div className="h-full bg-white">
-    {/* Sheets Header */}
-    <div className="bg-green-600 text-white px-6 py-3 flex items-center gap-4">
-      <FileSpreadsheet className="size-6" />
-      <span className="font-semibold text-lg">Google Sheets</span>
-      <span className="text-sm">Automation_Data</span>
-      <div className="flex-1"></div>
-      <div className="flex items-center gap-3">
-        <div className="bg-white/20 rounded px-3 py-1 text-sm">Share</div>
-        <Settings className="size-5" />
+const SheetsInterface = ({ isActive, currentAction, stepData }: { isActive: boolean; currentAction?: TutorialAction; stepData?: any }) => {
+  const [newRowData, setNewRowData] = useState<any>(null);
+  const [isAddingRow, setIsAddingRow] = useState(false);
+
+  useEffect(() => {
+    if (currentAction?.target === 'new-row' && currentAction.type === 'highlight') {
+      setIsAddingRow(true);
+      // Simulate row being added
+      setTimeout(() => {
+        setNewRowData({
+          date: new Date().toLocaleDateString(),
+          subject: 'Invoice Request',
+          from: 'client@company.com',
+          phone: '+1-555-0123',
+          company: 'Tech Corp'
+        });
+      }, 800);
+    }
+  }, [currentAction]);
+
+  return (
+    <div className="h-full bg-white">
+      {/* Sheets Header */}
+      <div className="bg-green-600 text-white px-6 py-3 flex items-center gap-4">
+        <FileSpreadsheet className="size-6" />
+        <span className="font-semibold text-lg">Google Sheets</span>
+        <span className="text-sm">Automation_Data</span>
+        <div className="flex-1"></div>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 rounded px-3 py-1 text-sm">Share</div>
+          <Settings className="size-5" />
+        </div>
       </div>
-    </div>
-    
-    {/* Sheets Toolbar */}
-    <div className="border-b p-2 flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        <span className="text-sm font-medium">A1</span>
+      
+      {/* Sheets Toolbar */}
+      <div className="border-b p-2 flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-medium">A1</span>
+        </div>
+        <div className="flex-1"></div>
+        <div className="flex items-center gap-1 text-sm">
+          <span>{isAddingRow ? 'Adding row...' : 'Ready'}</span>
+        </div>
       </div>
-      <div className="flex-1"></div>
-      <div className="flex items-center gap-1 text-sm">
-        <span>Ready</span>
-      </div>
-    </div>
-    
-    {/* Sheets Grid */}
-    <div className="overflow-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 text-left text-sm font-medium min-w-[100px]">A</th>
-            <th className="border p-2 text-left text-sm font-medium min-w-[150px]">B</th>
-            <th className="border p-2 text-left text-sm font-medium min-w-[200px]">C</th>
-            <th className="border p-2 text-left text-sm font-medium min-w-[150px]">D</th>
-            <th className="border p-2 text-left text-sm font-medium min-w-[100px]">E</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="border p-2 text-sm font-medium bg-gray-50">1</td>
-            <td className="border p-2 text-sm font-medium bg-gray-50">Date</td>
-            <td className="border p-2 text-sm font-medium bg-gray-50">Subject</td>
-            <td className="border p-2 text-sm font-medium bg-gray-50">From</td>
-            <td className="border p-2 text-sm font-medium bg-gray-50">Phone</td>
-            <td className="border p-2 text-sm font-medium bg-gray-50">Company</td>
-          </tr>
-          <tr>
-            <td className="border p-2 text-sm font-medium bg-gray-50">2</td>
-            <td className="border p-2 text-sm">2024-03-14</td>
-            <td className="border p-2 text-sm">Quote #12345</td>
-            <td className="border p-2 text-sm">supplier@vendor.com</td>
-            <td className="border p-2 text-sm">+1-555-0456</td>
-            <td className="border p-2 text-sm">Vendor Inc</td>
-          </tr>
-          {isActive && (
-            <tr className="bg-blue-50 animate-pulse">
-              <td className="border p-2 text-sm font-medium bg-gray-50">3</td>
-              <td className="border p-2 text-sm">{new Date().toLocaleDateString()}</td>
-              <td className="border p-2 text-sm">Invoice Request</td>
-              <td className="border p-2 text-sm">client@company.com</td>
-              <td className="border p-2 text-sm">+1-555-0123</td>
-              <td className="border p-2 text-sm">Tech Corp</td>
+      
+      {/* Sheets Grid */}
+      <div className="overflow-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border p-2 text-left text-sm font-medium min-w-[100px]">A</th>
+              <th className="border p-2 text-left text-sm font-medium min-w-[150px]">B</th>
+              <th className="border p-2 text-left text-sm font-medium min-w-[200px]">C</th>
+              <th className="border p-2 text-left text-sm font-medium min-w-[150px]">D</th>
+              <th className="border p-2 text-left text-sm font-medium min-w-[100px]">E</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border p-2 text-sm font-medium bg-gray-50">1</td>
+              <td className="border p-2 text-sm font-medium bg-gray-50">Date</td>
+              <td className="border p-2 text-sm font-medium bg-gray-50">Subject</td>
+              <td className="border p-2 text-sm font-medium bg-gray-50">From</td>
+              <td className="border p-2 text-sm font-medium bg-gray-50">Phone</td>
+              <td className="border p-2 text-sm font-medium bg-gray-50">Company</td>
+            </tr>
+            <tr>
+              <td className="border p-2 text-sm font-medium bg-gray-50">2</td>
+              <td className="border p-2 text-sm">2024-03-14</td>
+              <td className="border p-2 text-sm">Quote #12345</td>
+              <td className="border p-2 text-sm">supplier@vendor.com</td>
+              <td className="border p-2 text-sm">+1-555-0456</td>
+              <td className="border p-2 text-sm">Vendor Inc</td>
+            </tr>
+            {newRowData && (
+              <tr className="bg-green-50 animate-in slide-in-from-top-2">
+                <td className="border p-2 text-sm font-medium bg-gray-50">3</td>
+                <td className="border p-2 text-sm">{newRowData.date}</td>
+                <td className="border p-2 text-sm">{newRowData.subject}</td>
+                <td className="border p-2 text-sm">{newRowData.from}</td>
+                <td className="border p-2 text-sm">{newRowData.phone}</td>
+                <td className="border p-2 text-sm">{newRowData.company}</td>
+              </tr>
+            )}
+            {isAddingRow && !newRowData && (
+              <tr className="bg-blue-50 animate-pulse">
+                <td className="border p-2 text-sm font-medium bg-gray-50">3</td>
+                <td className="border p-2 text-sm">Loading...</td>
+                <td className="border p-2 text-sm">Loading...</td>
+                <td className="border p-2 text-sm">Loading...</td>
+                <td className="border p-2 text-sm">Loading...</td>
+                <td className="border p-2 text-sm">Loading...</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Success Message */}
+      {newRowData && (
+        <div className="p-3 bg-green-50 border-t border-green-200">
+          <div className="flex items-center gap-2 text-green-800">
+            <CheckCircle2 className="size-4" />
+            <span className="text-sm font-medium">Row added successfully!</span>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // Google Calendar Interface
-const CalendarInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => (
-  <div className="h-full bg-white">
-    {/* Calendar Header */}
-    <div className="bg-blue-600 text-white px-6 py-3 flex items-center gap-4">
-      <Calendar className="size-6" />
-      <span className="font-semibold text-lg">Google Calendar</span>
-      <div className="flex-1"></div>
-      <div className="flex items-center gap-3">
-        <div className="bg-white/20 rounded px-3 py-1 text-sm">Today</div>
-        <div className="bg-white/20 rounded px-3 py-1 text-sm">+</div>
-        <Settings className="size-5" />
+const CalendarInterface = ({ isActive, currentAction, stepData }: { isActive: boolean; currentAction?: TutorialAction; stepData?: any }) => {
+  const [eventCreated, setEventCreated] = useState(false);
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+
+  useEffect(() => {
+    if (currentAction?.target === 'date-15' && currentAction.type === 'click') {
+      setIsCreatingEvent(true);
+      // Simulate event creation
+      setTimeout(() => {
+        setEventCreated(true);
+        setIsCreatingEvent(false);
+      }, 1200);
+    }
+  }, [currentAction]);
+
+  return (
+    <div className="h-full bg-white">
+      {/* Calendar Header */}
+      <div className="bg-blue-600 text-white px-6 py-3 flex items-center gap-4">
+        <Calendar className="size-6" />
+        <span className="font-semibold text-lg">Google Calendar</span>
+        <div className="flex-1"></div>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 rounded px-3 py-1 text-sm">Today</div>
+          <div className="bg-white/20 rounded px-3 py-1 text-sm">+</div>
+          <Settings className="size-5" />
+        </div>
       </div>
-    </div>
-    
-    {/* Calendar Navigation */}
-    <div className="border-b p-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <button className="p-2 hover:bg-gray-100 rounded">‹</button>
-        <h2 className="text-lg font-semibold">March 2024</h2>
-        <button className="p-2 hover:bg-gray-100 rounded">›</button>
+      
+      {/* Calendar Navigation */}
+      <div className="border-b p-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button className="p-2 hover:bg-gray-100 rounded">‹</button>
+          <h2 className="text-lg font-semibold">March 2024</h2>
+          <button className="p-2 hover:bg-gray-100 rounded">›</button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded">Month</button>
+          <button className="px-3 py-1 text-sm hover:bg-gray-100 rounded">Week</button>
+          <button className="px-3 py-1 text-sm hover:bg-gray-100 rounded">Day</button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded">Month</button>
-        <button className="px-3 py-1 text-sm hover:bg-gray-100 rounded">Week</button>
-        <button className="px-3 py-1 text-sm hover:bg-gray-100 rounded">Day</button>
-      </div>
-    </div>
-    
-    {/* Calendar Grid */}
-    <div className="p-4">
-      <div className="grid grid-cols-7 gap-1 text-sm">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="p-2 text-center font-medium bg-gray-100">{day}</div>
-        ))}
-        {Array.from({ length: 31 }, (_, i) => (
-          <div key={i} className={`p-2 text-center border min-h-[80px] ${
-            i === 14 && isActive ? 'bg-blue-50 border-blue-300' : ''
-          }`}>
-            <div className="text-sm">{i + 1}</div>
-            {i === 14 && isActive && (
-              <div className="mt-1">
-                <div className="bg-blue-500 text-white text-xs p-1 rounded">
-                  Consultation Call
+      
+      {/* Calendar Grid */}
+      <div className="p-4">
+        <div className="grid grid-cols-7 gap-1 text-sm">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <div key={day} className="p-2 text-center font-medium bg-gray-100">{day}</div>
+          ))}
+          {Array.from({ length: 31 }, (_, i) => (
+            <div key={i} className={`p-2 text-center border min-h-[80px] ${
+              i === 14 && (isCreatingEvent || eventCreated) ? 'bg-blue-50 border-blue-300' : ''
+            }`}>
+              <div className="text-sm">{i + 1}</div>
+              {i === 14 && isCreatingEvent && (
+                <div className="mt-1">
+                  <div className="bg-yellow-500 text-white text-xs p-1 rounded animate-pulse">
+                    Creating...
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500 mt-1">10:00 AM</div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+              {i === 14 && eventCreated && (
+                <div className="mt-1">
+                  <div className="bg-blue-500 text-white text-xs p-1 rounded animate-in slide-in-from-top-2">
+                    Consultation Call
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">10:00 AM</div>
+                  <div className="text-xs text-green-600 mt-1">✓ Meet Link</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
+      
+      {/* Event Creation Status */}
+      {isCreatingEvent && (
+        <div className="p-3 bg-blue-50 border-t border-blue-200">
+          <div className="flex items-center gap-2 text-blue-800">
+            <div className="size-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium">Creating calendar event...</span>
+          </div>
+        </div>
+      )}
+      
+      {eventCreated && (
+        <div className="p-3 bg-green-50 border-t border-green-200">
+          <div className="flex items-center gap-2 text-green-800">
+            <CheckCircle2 className="size-4" />
+            <span className="text-sm font-medium">Event created successfully!</span>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // Google Drive Interface
 const DriveInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => (
@@ -916,37 +1050,37 @@ export function TutorialDemo({ scriptId, scriptTitle, onClose }: TutorialDemoPro
       case 'gmail':
         return (
           <BrowserChrome title="Gmail - client@company.com">
-            <GmailInterface isActive={isRunning} currentAction={currentAction} />
+            <GmailInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
           </BrowserChrome>
         );
       case 'sheets':
         return (
           <BrowserChrome title="Automation_Data - Google Sheets">
-            <SheetsInterface isActive={isRunning} currentAction={currentAction} />
+            <SheetsInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
           </BrowserChrome>
         );
       case 'calendar':
         return (
           <BrowserChrome title="Google Calendar">
-            <CalendarInterface isActive={isRunning} currentAction={currentAction} />
+            <CalendarInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
           </BrowserChrome>
         );
       case 'drive':
         return (
           <BrowserChrome title="Google Drive - Inbox Folder">
-            <DriveInterface isActive={isRunning} currentAction={currentAction} />
+            <DriveInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
           </BrowserChrome>
         );
       case 'expense':
         return (
           <BrowserChrome title="Expense Tracker - Pending Approvals">
-            <ExpenseInterface isActive={isRunning} currentAction={currentAction} />
+            <ExpenseInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
           </BrowserChrome>
         );
       case 'task':
         return (
           <BrowserChrome title="Project Tasks - Due Today">
-            <TaskInterface isActive={isRunning} currentAction={currentAction} />
+            <TaskInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
           </BrowserChrome>
         );
       default:
