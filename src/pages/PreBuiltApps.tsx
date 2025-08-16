@@ -479,7 +479,7 @@ export default function PreBuiltApps() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <currentApp.icon className="size-12 text-primary" />
+                  {currentApp && <currentApp.icon className="size-12 text-primary" />}
                   <div>
                     <CardTitle className="text-2xl">
                       {currentApp?.title}
