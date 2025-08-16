@@ -477,6 +477,20 @@ export default function PreBuiltApps() {
     setShowDemo(true);
   };
 
+  const handleCopyCode = () => {
+    if (currentApp?.codePreview) {
+      navigator.clipboard.writeText(currentApp.codePreview)
+        .then(() => {
+          // You could add a toast notification here
+          alert('Code copied to clipboard!');
+        })
+        .catch((err) => {
+          console.error('Failed to copy code: ', err);
+          alert('Failed to copy code to clipboard');
+        });
+    }
+  };
+
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
       case "Beginner": return "bg-green-500";
