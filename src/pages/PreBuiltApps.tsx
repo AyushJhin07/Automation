@@ -19,10 +19,12 @@ import {
   Clock,
   DollarSign,
   Settings,
-  Brain
+  Brain,
+  Chrome
 } from "lucide-react";
 import { ScriptCustomizer } from "@/components/demos/ScriptCustomizer";
 import { InteractiveScriptDemo } from "@/components/demos/InteractiveScriptDemo";
+import { TutorialDemo } from "@/components/demos/TutorialDemo";
 
 const preBuiltApps = [
   {
@@ -740,6 +742,7 @@ export default function PreBuiltApps() {
   const [showCode, setShowCode] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
+  const [showTutorialDemo, setShowTutorialDemo] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const currentApp = preBuiltApps.find(app => app.id === activeApp);
@@ -1041,12 +1044,58 @@ export default function PreBuiltApps() {
                 </TabsContent>
 
                 <TabsContent value="demo" className="mt-6">
-                  {currentApp?.demoSteps && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Play className="size-5" />
+                        Live Demo
+                      </CardTitle>
+                      <CardDescription>
+                        Experience how this automation works in real-time with realistic Google Apps interfaces
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="text-center py-6 border rounded-lg">
+                          <Play className="size-12 mx-auto text-primary/50 mb-3" />
+                          <h3 className="text-lg font-semibold mb-2">Interactive Demo</h3>
+                          <p className="text-muted-foreground mb-4 text-sm">
+                            Watch step-by-step how this automation processes data
+                          </p>
+                          <Button onClick={() => setShowDemo(true)} className="hover-glow">
+                            <Play className="size-4 mr-2" />
+                            Start Demo
+                          </Button>
+                        </div>
+                        <div className="text-center py-6 border rounded-lg">
+                          <Chrome className="size-12 mx-auto text-blue-500 mb-3" />
+                          <h3 className="text-lg font-semibold mb-2">Tutorial Demo</h3>
+                          <p className="text-muted-foreground mb-4 text-sm">
+                            Realistic screen recording style demo with Google Apps
+                          </p>
+                          <Button onClick={() => setShowTutorialDemo(true)} className="hover-glow">
+                            <Play className="size-4 mr-2" />
+                            Start Tutorial
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {showDemo && currentApp?.demoSteps && (
                     <InteractiveScriptDemo
                       scriptId={currentApp.id}
                       scriptTitle={currentApp.title}
                       demoSteps={currentApp.demoSteps}
                       finalOutput={{}}
+                    />
+                  )}
+                  
+                  {showTutorialDemo && (
+                    <TutorialDemo
+                      scriptId={currentApp?.id || ""}
+                      scriptTitle={currentApp?.title || ""}
+                      onClose={() => setShowTutorialDemo(false)}
                     />
                   )}
                 </TabsContent>
