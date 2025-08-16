@@ -57,13 +57,13 @@ export function InteractiveScriptDemo({
   };
 
   const runDemo = async () => {
-    for (let i = 0; i < demoSteps.length; i++) {
+    for (let i = 0; i < actualDemoSteps.length; i++) {
       setCurrentStep(i);
-      const step = demoSteps[i];
+      const step = actualDemoSteps[i];
       
       // Simulate step execution
       for (let j = 0; j <= 100; j += 10) {
-        setProgress((i * 100 + j) / demoSteps.length);
+        setProgress((i * 100 + j) / actualDemoSteps.length);
         await new Promise(resolve => setTimeout(resolve, step.duration / 10));
       }
       
@@ -73,7 +73,7 @@ export function InteractiveScriptDemo({
     }
     
     setIsRunning(false);
-    setCurrentStep(demoSteps.length);
+    setCurrentStep(actualDemoSteps.length);
   };
 
   const resetDemo = () => {
@@ -118,6 +118,9 @@ export function InteractiveScriptDemo({
         return { status: "completed" };
     }
   };
+
+  // Use the provided demo steps or generate default ones
+  const actualDemoSteps = demoSteps.length > 0 ? demoSteps : getDemoStepsForScript(scriptId);
 
   const getDemoStepsForScript = (scriptId: string): DemoStep[] => {
     switch (scriptId) {
@@ -248,9 +251,9 @@ export function InteractiveScriptDemo({
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Steps Visualization */}
-        <div className="space-y-4">
-          {demoSteps.map((step, index) => (
+                 {/* Steps Visualization */}
+         <div className="space-y-4">
+           {actualDemoSteps.map((step, index) => (
             <div key={step.id} className="flex items-start gap-4">
               <div className={`
                 size-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all
@@ -332,7 +335,7 @@ export function InteractiveScriptDemo({
                 )}
               </div>
               
-              {index < demoSteps.length - 1 && (
+                             {index < actualDemoSteps.length - 1 && (
                 <ArrowRight className={`size-4 mt-3 ${
                   completedSteps.has(index) ? 'text-green-500' : 'text-muted-foreground'
                 }`} />
@@ -341,8 +344,8 @@ export function InteractiveScriptDemo({
           ))}
         </div>
 
-        {/* Final Output */}
-        {currentStep >= demoSteps.length && !isRunning && (
+                 {/* Final Output */}
+         {currentStep >= actualDemoSteps.length && !isRunning && (
           <Card className="border-green-200 bg-green-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-700">
@@ -364,7 +367,7 @@ export function InteractiveScriptDemo({
                 <div>
                   <h4 className="font-semibold">Performance:</h4>
                   <ul className="text-muted-foreground space-y-1">
-                    <li>• Execution time: {(demoSteps.reduce((sum, step) => sum + step.duration, 0) / 1000).toFixed(1)}s</li>
+                                         <li>• Execution time: {(actualDemoSteps.reduce((sum, step) => sum + step.duration, 0) / 1000).toFixed(1)}s</li>
                     <li>• Success rate: 100%</li>
                     <li>• Data accuracy: 95%+</li>
                     <li>• Time saved: ~45 minutes</li>

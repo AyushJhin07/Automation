@@ -453,6 +453,9 @@ function getOrCreateFolder(type, date) {
 export default function PreBuiltApps() {
   const [activeApp, setActiveApp] = useState("email-automation");
   const [showCode, setShowCode] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const currentApp = preBuiltApps.find(app => app.id === activeApp);
   const categories = Array.from(new Set(preBuiltApps.map(app => app.category)));
@@ -462,9 +465,16 @@ export default function PreBuiltApps() {
     alert(`Downloading ${currentApp?.title}. This would provide the complete Google Apps Script code and setup instructions.`);
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(currentApp?.codePreview || '');
-    alert('Code copied to clipboard!');
+  const handleCustomize = (appId: string) => {
+    setActiveApp(appId);
+    setActiveTab("customize");
+    setShowCustomizer(true);
+  };
+
+  const handleTryDemo = (appId: string) => {
+    setActiveApp(appId);
+    setActiveTab("demo");
+    setShowDemo(true);
   };
 
   const getComplexityColor = (complexity: string) => {
@@ -544,73 +554,85 @@ export default function PreBuiltApps() {
 
         {/* Apps Grid */}
         <section className="container mx-auto py-12">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             {preBuiltApps.map((app) => (
               <Card 
                 key={app.id}
-                className={`glass-card hover-glow cursor-pointer transition-all ${
-                  activeApp === app.id ? 'ring-2 ring-primary' : ''
-                }`}
+                className={`
+                  relative glass-card hover-glow cursor-pointer transition-all duration-300 
+                  transform hover:scale-105 hover:shadow-2xl
+                  bg-gradient-to-br from-white via-gray-50 to-gray-100
+                  border-2 rounded-2xl overflow-hidden
+                  ${activeApp === app.id ? 'ring-2 ring-primary shadow-lg scale-105' : 'hover:shadow-xl'}
+                  before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/20 before:to-transparent before:pointer-events-none
+                `}
                 onClick={() => setActiveApp(app.id)}
               >
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <app.icon className="size-8 text-primary" />
+                <CardHeader className="relative z-10 pb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="size-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shadow-inner">
+                      <app.icon className="size-6 text-primary" />
+                    </div>
                     <div className="flex gap-1">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs bg-white/80 backdrop-blur">
                         <Clock className="size-3 mr-1" />
                         {app.setupTime}
                       </Badge>
                     </div>
                   </div>
-                  <CardTitle className="text-lg">{app.title}</CardTitle>
-                  <CardDescription>{app.description}</CardDescription>
+                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    {app.title}
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 mt-2 leading-relaxed">
+                    {app.description}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="relative z-10">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge 
-                        className={`${getComplexityColor(app.complexity)} text-white text-xs`}
+                        className={`${getComplexityColor(app.complexity)} text-white text-xs px-3 py-1 rounded-full shadow-sm`}
                       >
                         {app.complexity}
                       </Badge>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs px-3 py-1 rounded-full bg-white/80 backdrop-blur">
                         {app.category}
                       </Badge>
                       {app.customizationOptions?.some(opt => opt.aiEnhanced) && (
-                        <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs">
+                        <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-3 py-1 rounded-full shadow-lg">
                           <Brain className="size-3 mr-1" />
                           AI Enhanced
                         </Badge>
                       )}
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-3 py-1 rounded-full shadow-lg">
                         <Play className="size-3 mr-1" />
                         Live Demo
                       </Badge>
                     </div>
                     
-                    <div className="text-sm font-semibold text-green-600">
-                      Value: {app.monthlyValue}/month saved
+                                        <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                      <div className="text-sm font-bold text-green-700">
+                        💰 Value: {app.monthlyValue}/month saved
+                      </div>
                     </div>
                     
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {app.features.slice(0, 3).map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="size-1.5 rounded-full bg-primary" />
+                        <div key={idx} className="flex items-center gap-3 text-sm text-gray-700">
+                          <div className="size-2 rounded-full bg-gradient-to-r from-primary to-blue-500 shadow-sm" />
                           {feature}
                         </div>
                       ))}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-2 mt-4">
+                    <div className="grid grid-cols-2 gap-3 mt-6">
                       <Button 
                         size="sm" 
                         variant="outline"
+                        className="rounded-xl border-2 hover:border-primary hover:bg-primary/5 transition-all duration-200 shadow-sm hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setActiveApp(app.id);
-                          // Auto-navigate to demo tab
-                          setTimeout(() => setShowCode(false), 100);
+                          handleTryDemo(app.id);
                         }}
                       >
                         <Play className="size-3 mr-1" />
@@ -618,12 +640,13 @@ export default function PreBuiltApps() {
                       </Button>
                       <Button 
                         size="sm"
+                        className="rounded-xl bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDownload(app.id);
+                          handleCustomize(app.id);
                         }}
                       >
-                        <Download className="size-3 mr-1" />
+                        <Settings className="size-3 mr-1" />
                         Customize
                       </Button>
                     </div>
@@ -636,32 +659,36 @@ export default function PreBuiltApps() {
 
         {/* Detailed View */}
         <section className="container mx-auto py-12">
-          <Card className="glass-card">
-            <CardHeader>
+          <Card className="glass-card border-2 rounded-3xl overflow-hidden bg-gradient-to-br from-white via-gray-50 to-blue-50 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {currentApp && <currentApp.icon className="size-12 text-primary" />}
+                <div className="flex items-center gap-6">
+                  {currentApp && (
+                    <div className="size-16 rounded-2xl bg-gradient-to-br from-primary/10 to-blue-500/10 flex items-center justify-center shadow-lg">
+                      <currentApp.icon className="size-8 text-primary" />
+                    </div>
+                  )}
                   <div>
-                    <CardTitle className="text-2xl">
+                    <CardTitle className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-primary bg-clip-text text-transparent">
                       {currentApp?.title}
                     </CardTitle>
-                    <CardDescription className="text-lg mt-2">
+                    <CardDescription className="text-lg mt-2 text-gray-600">
                       {currentApp?.description}
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Badge variant="outline" className="text-lg px-4 py-2">
+                <div className="flex gap-3">
+                  <Badge variant="outline" className="text-lg px-6 py-3 rounded-full bg-white/80 backdrop-blur border-2">
                     {currentApp?.complexity}
                   </Badge>
-                  <Badge className="text-lg px-4 py-2 bg-green-600">
-                    {currentApp?.monthlyValue} Value
+                  <Badge className="text-lg px-6 py-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
+                    💰 {currentApp?.monthlyValue} Value
                   </Badge>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Tabs value={showCode ? "code" : "overview"} onValueChange={(v) => setShowCode(v === "code")}>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="demo">Live Demo</TabsTrigger>

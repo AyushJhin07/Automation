@@ -7,188 +7,551 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { 
   Settings, 
   Brain, 
   Download, 
-  Play, 
   Copy,
   Wand2,
   Code,
   Zap,
-  CheckCircle
+  CheckCircle,
+  Mail,
+  FileSpreadsheet,
+  Calendar,
+  FolderCog,
+  Users,
+  Bell,
+  Filter,
+  Database
 } from "lucide-react";
 
-interface CustomizationOption {
+interface GoogleFunction {
   id: string;
-  label: string;
+  name: string;
   description: string;
-  type: "text" | "select" | "textarea" | "prompt";
-  defaultValue: string;
-  options?: string[];
-  aiEnhanced?: boolean;
+  enabled: boolean;
+  options?: { [key: string]: any };
+  category: "gmail" | "sheets" | "calendar" | "drive" | "notifications";
 }
 
 interface ScriptCustomizerProps {
   scriptId: string;
   scriptTitle: string;
   baseCode: string;
-  customizationOptions: CustomizationOption[];
-  onDownload: (customizedCode: string, config: Record<string, string>) => void;
+  onDownload: (customizedCode: string, config: Record<string, any>) => void;
 }
 
 export function ScriptCustomizer({ 
   scriptId, 
   scriptTitle, 
   baseCode, 
-  customizationOptions,
   onDownload 
 }: ScriptCustomizerProps) {
-  const [config, setConfig] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState("functions");
   const [aiPrompt, setAiPrompt] = useState("");
-  const [customizedCode, setCustomizedCode] = useState(baseCode);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState("config");
+  
+  // Initialize Google Workspace functions based on script type
+  const [googleFunctions, setGoogleFunctions] = useState<GoogleFunction[]>(() => 
+    getAvailableFunctions(scriptId)
+  );
+  
+  const [basicConfig, setBasicConfig] = useState({
+    sheetId: "",
+    emailLabel: "leads",
+    triggerFrequency: "5 minutes",
+    notificationEmail: ""
+  });
 
-  const updateConfig = (optionId: string, value: string) => {
-    setConfig(prev => ({
-      ...prev,
-      [optionId]: value
-    }));
+  function getAvailableFunctions(scriptType: string): GoogleFunction[] {
+    const baseFunctions = [
+      // Gmail Functions
+      {
+        id: "gmail-search",
+        name: "Gmail Search & Filter",
+        description: "Search emails by labels, subject, sender, or content",
+        enabled: true,
+        category: "gmail" as const,
+        options: {
+          searchQuery: "is:unread label:leads",
+          maxResults: 50,
+          includeSpam: false
+        }
+      },
+      {
+        id: "gmail-extract-data",
+        name: "Email Data Extraction",
+        description: "Extract structured data from email content",
+        enabled: true,
+        category: "gmail" as const,
+        options: {
+          extractNames: true,
+          extractEmails: true,
+          extractPhones: true,
+          extractCompanies: true,
+          customPatterns: ""
+        }
+      },
+      {
+        id: "gmail-auto-reply",
+        name: "Auto Reply & Labels",
+        description: "Automatically reply to emails and apply labels",
+        enabled: false,
+        category: "gmail" as const,
+        options: {
+          replyTemplate: "Thank you for your email. We'll get back to you soon!",
+          applyLabel: "processed",
+          markAsRead: true
+        }
+      },
+      
+      // Google Sheets Functions
+      {
+        id: "sheets-append-row",
+        name: "Add New Rows",
+        description: "Append data to the end of a spreadsheet",
+        enabled: true,
+        category: "sheets" as const,
+        options: {
+          sheetName: "Sheet1",
+          includeTimestamp: true,
+          headerRow: 1
+        }
+      },
+      {
+        id: "sheets-update-cell",
+        name: "Update Specific Cells",
+        description: "Update data in specific cells or ranges",
+        enabled: false,
+        category: "sheets" as const,
+        options: {
+          updateMode: "overwrite",
+          findAndReplace: false
+        }
+      },
+      {
+        id: "sheets-create-charts",
+        name: "Auto-Create Charts",
+        description: "Generate charts and graphs from data",
+        enabled: false,
+        category: "sheets" as const,
+        options: {
+          chartType: "column",
+          dataRange: "A1:C10",
+          includeTitle: true
+        }
+      },
+      
+      // Calendar Functions
+      {
+        id: "calendar-create-event",
+        name: "Create Calendar Events",
+        description: "Automatically create calendar events",
+        enabled: false,
+        category: "calendar" as const,
+        options: {
+          defaultDuration: 60,
+          sendInvites: true,
+          location: ""
+        }
+      },
+      
+      // Drive Functions
+      {
+        id: "drive-organize",
+        name: "File Organization",
+        description: "Automatically organize files in Google Drive",
+        enabled: false,
+        category: "drive" as const,
+        options: {
+          sortBy: "date",
+          createFolders: true,
+          moveFiles: true
+        }
+      },
+      
+      // Notification Functions
+      {
+        id: "email-notifications",
+        name: "Email Notifications",
+        description: "Send email notifications to team members",
+        enabled: true,
+        category: "notifications" as const,
+        options: {
+          recipients: "",
+          subject: "Automation Update",
+          includeData: true
+        }
+      },
+      {
+        id: "slack-notifications",
+        name: "Slack Integration",
+        description: "Send notifications to Slack channels",
+        enabled: false,
+        category: "notifications" as const,
+        options: {
+          webhookUrl: "",
+          channel: "#general",
+          username: "Automation Bot"
+        }
+      }
+    ];
+
+    // Filter functions based on script type
+    if (scriptType === "email-automation") {
+      return baseFunctions.filter(f => 
+        f.category === "gmail" || f.category === "sheets" || f.category === "notifications"
+      );
+    } else if (scriptType === "report-generator") {
+      return baseFunctions.filter(f => 
+        f.category === "sheets" || f.category === "notifications" || f.category === "drive"
+      );
+    }
+    
+    return baseFunctions;
+  }
+
+  const updateFunctionEnabled = (functionId: string, enabled: boolean) => {
+    setGoogleFunctions(prev => 
+      prev.map(f => f.id === functionId ? { ...f, enabled } : f)
+    );
   };
 
-  const generateAICustomization = async () => {
+  const updateFunctionOption = (functionId: string, optionKey: string, value: any) => {
+    setGoogleFunctions(prev => 
+      prev.map(f => 
+        f.id === functionId 
+          ? { ...f, options: { ...f.options, [optionKey]: value } }
+          : f
+      )
+    );
+  };
+
+  const generateCustomScript = () => {
     setIsGenerating(true);
     
-    // Simulate AI customization
     setTimeout(() => {
-      const enhancedCode = enhanceCodeWithAI(baseCode, config, aiPrompt);
-      setCustomizedCode(enhancedCode);
+      const enabledFunctions = googleFunctions.filter(f => f.enabled);
+      const customCode = generateCodeFromFunctions(enabledFunctions, basicConfig, aiPrompt);
+      onDownload(customCode, { functions: enabledFunctions, config: basicConfig, aiPrompt });
       setIsGenerating(false);
-      setActiveTab("preview");
     }, 2000);
   };
 
-  const enhanceCodeWithAI = (code: string, userConfig: Record<string, string>, prompt: string) => {
-    // This would integrate with actual LLM in production
-    let enhanced = code;
-    
-    // Apply user configurations
-    Object.entries(userConfig).forEach(([key, value]) => {
-      if (value) {
-        enhanced = enhanced.replace(
-          new RegExp(`\\b${key.toUpperCase()}_PLACEHOLDER\\b`, 'g'), 
-          value
-        );
+  const generateCodeFromFunctions = (functions: GoogleFunction[], config: any, prompt: string) => {
+    let code = `// Auto-generated Google Apps Script
+// Script: ${scriptTitle}
+// Generated on: ${new Date().toLocaleString()}
+
+`;
+
+    // Add configuration constants
+    code += `// Configuration
+const CONFIG = {
+  SHEET_ID: '${config.sheetId || 'YOUR_SHEET_ID'}',
+  EMAIL_LABEL: '${config.emailLabel || 'leads'}',
+  NOTIFICATION_EMAIL: '${config.notificationEmail || 'your-email@company.com'}',
+  TRIGGER_FREQUENCY: '${config.triggerFrequency || '5 minutes'}'
+};
+
+`;
+
+    // Add main function
+    code += `function main() {
+  try {
+    Logger.log('Starting automation...');
+`;
+
+    functions.forEach(func => {
+      switch (func.id) {
+        case "gmail-search":
+          code += `
+    // Gmail Search & Filter
+    const emails = GmailApp.search('${func.options?.searchQuery || 'is:unread'}', 0, ${func.options?.maxResults || 50});
+    Logger.log(\`Found \${emails.length} emails\`);
+`;
+          break;
+        case "gmail-extract-data":
+          code += `
+    // Extract data from emails
+    const extractedData = [];
+    emails.forEach(thread => {
+      const messages = thread.getMessages();
+      messages.forEach(message => {
+        const data = {
+          from: message.getFrom(),
+          subject: message.getSubject(),
+          date: message.getDate(),
+          ${func.options?.extractNames ? 'name: extractName(message.getBody()),' : ''}
+          ${func.options?.extractEmails ? 'email: extractEmail(message.getBody()),' : ''}
+          ${func.options?.extractPhones ? 'phone: extractPhone(message.getBody()),' : ''}
+          body: message.getPlainBody()
+        };
+        extractedData.push(data);
+      });
+    });
+`;
+          break;
+        case "sheets-append-row":
+          code += `
+    // Add data to Google Sheets
+    const sheet = SpreadsheetApp.openById(CONFIG.SHEET_ID).getSheetByName('${func.options?.sheetName || 'Sheet1'}');
+    extractedData.forEach(data => {
+      const row = [
+        ${func.options?.includeTimestamp ? 'new Date(),' : ''}
+        data.from,
+        data.subject,
+        data.name || '',
+        data.email || '',
+        data.phone || ''
+      ];
+      sheet.appendRow(row);
+    });
+`;
+          break;
+        case "email-notifications":
+          code += `
+    // Send email notifications
+    if (extractedData.length > 0) {
+      const subject = '${func.options?.subject || 'Automation Update'}';
+      const body = \`Processing complete. \${extractedData.length} items processed.\`;
+      GmailApp.sendEmail(CONFIG.NOTIFICATION_EMAIL, subject, body);
+    }
+`;
+          break;
       }
     });
 
-    // Add AI-generated enhancements based on prompt
-    if (prompt) {
-      enhanced += `
+    code += `
+    Logger.log('Automation completed successfully');
+  } catch (error) {
+    Logger.log('Error: ' + error.toString());
+    // Send error notification
+    GmailApp.sendEmail(CONFIG.NOTIFICATION_EMAIL, 'Automation Error', error.toString());
+  }
+}
 
-// AI-Enhanced Features based on: "${prompt}"
-function aiEnhancedProcessor() {
-  // AI-generated code would be inserted here
-  // This could include:
-  // - Custom email filtering logic
-  // - Advanced data processing
-  // - Integration with external APIs
-  // - Custom notification systems
-  
-  Logger.log('AI Enhancement: ${prompt}');
-}`;
+`;
+
+    // Add helper functions if needed
+    if (functions.some(f => f.id === "gmail-extract-data" && f.options?.extractNames)) {
+      code += `// Helper function to extract names from email content
+function extractName(emailBody) {
+  // Simple name extraction logic
+  const nameMatch = emailBody.match(/name[:\\s]+(\\w+\\s+\\w+)/i);
+  return nameMatch ? nameMatch[1] : '';
+}
+
+`;
     }
 
-    return enhanced;
+    if (functions.some(f => f.id === "gmail-extract-data" && f.options?.extractEmails)) {
+      code += `// Helper function to extract email addresses
+function extractEmail(emailBody) {
+  const emailMatch = emailBody.match(/\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b/);
+  return emailMatch ? emailMatch[0] : '';
+}
+
+`;
+    }
+
+    // Add AI-generated enhancements
+    if (prompt) {
+      code += `
+// AI-Enhanced Features based on: "${prompt}"
+function aiEnhancedProcessor() {
+  // Custom logic would be generated here based on your requirements
+  // This could include:
+  // - Advanced data processing
+  // - Custom integrations
+  // - Specialized filtering logic
+  // - Advanced notifications
+  
+  Logger.log('AI Enhancement: ${prompt}');
+}
+`;
+    }
+
+    return code;
   };
 
-  const handleDownload = () => {
-    onDownload(customizedCode, config);
+  const getFunctionsByCategory = (category: string) => {
+    return googleFunctions.filter(f => f.category === category);
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(customizedCode);
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "gmail": return Mail;
+      case "sheets": return FileSpreadsheet;
+      case "calendar": return Calendar;
+      case "drive": return FolderCog;
+      case "notifications": return Bell;
+      default: return Settings;
+    }
   };
 
   return (
     <div className="space-y-6">
-      <Card className="glass-card">
+      <Card className="glass-card border-2 border-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="size-5" />
+            <Settings className="size-5 text-primary" />
             Customize Your {scriptTitle}
           </CardTitle>
           <CardDescription>
-            Configure the script for your specific needs and enhance it with AI-powered features
+            Configure Google Workspace functions and add AI-powered enhancements
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="config">Basic Config</TabsTrigger>
+              <TabsTrigger value="functions">Google Functions</TabsTrigger>
+              <TabsTrigger value="config">Basic Settings</TabsTrigger>
               <TabsTrigger value="ai-enhance">AI Enhancement</TabsTrigger>
-              <TabsTrigger value="preview">Code Preview</TabsTrigger>
-              <TabsTrigger value="download">Download</TabsTrigger>
+              <TabsTrigger value="generate">Generate & Download</TabsTrigger>
             </TabsList>
             
+            <TabsContent value="functions" className="space-y-6 mt-6">
+              <div className="space-y-6">
+                {["gmail", "sheets", "calendar", "drive", "notifications"].map(category => {
+                  const categoryFunctions = getFunctionsByCategory(category);
+                  if (categoryFunctions.length === 0) return null;
+                  
+                  const CategoryIcon = getCategoryIcon(category);
+                  
+                  return (
+                    <Card key={category} className="border border-gray-200">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-lg capitalize">
+                          <CategoryIcon className="size-5" />
+                          Google {category}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {categoryFunctions.map(func => (
+                          <div key={func.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Switch
+                                  checked={func.enabled}
+                                  onCheckedChange={(enabled) => updateFunctionEnabled(func.id, enabled)}
+                                />
+                                <div>
+                                  <h4 className="font-semibold">{func.name}</h4>
+                                  <p className="text-sm text-gray-600">{func.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {func.enabled && func.options && (
+                              <div className="ml-8 space-y-3 pt-3 border-t">
+                                {Object.entries(func.options).map(([key, value]) => (
+                                  <div key={key} className="grid grid-cols-3 gap-3 items-center">
+                                    <Label className="text-sm capitalize">
+                                      {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                                    </Label>
+                                    {typeof value === "boolean" ? (
+                                      <Switch
+                                        checked={value}
+                                        onCheckedChange={(newValue) => updateFunctionOption(func.id, key, newValue)}
+                                      />
+                                    ) : typeof value === "string" && key.includes("Template") ? (
+                                      <Textarea
+                                        value={value}
+                                        onChange={(e) => updateFunctionOption(func.id, key, e.target.value)}
+                                        rows={2}
+                                        className="col-span-2"
+                                      />
+                                    ) : (
+                                      <Input
+                                        value={value.toString()}
+                                        onChange={(e) => updateFunctionOption(func.id, key, e.target.value)}
+                                        className="col-span-2"
+                                      />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+            
             <TabsContent value="config" className="space-y-4 mt-6">
-              <div className="grid gap-4">
-                {customizationOptions.map((option) => (
-                  <div key={option.id} className="space-y-2">
-                    <Label htmlFor={option.id} className="flex items-center gap-2">
-                      {option.label}
-                      {option.aiEnhanced && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Brain className="size-3 mr-1" />
-                          AI Enhanced
-                        </Badge>
-                      )}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">{option.description}</p>
-                    
-                    {option.type === "text" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Configuration</CardTitle>
+                  <CardDescription>Set up basic parameters for your automation</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sheetId">Google Sheet ID</Label>
                       <Input
-                        id={option.id}
-                        placeholder={option.defaultValue}
-                        value={config[option.id] || ""}
-                        onChange={(e) => updateConfig(option.id, e.target.value)}
+                        id="sheetId"
+                        value={basicConfig.sheetId}
+                        onChange={(e) => setBasicConfig(prev => ({...prev, sheetId: e.target.value}))}
+                        placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
                       />
-                    )}
+                      <p className="text-xs text-gray-500">
+                        Found in the URL of your Google Sheet
+                      </p>
+                    </div>
                     
-                    {option.type === "textarea" && (
-                      <Textarea
-                        id={option.id}
-                        placeholder={option.defaultValue}
-                        value={config[option.id] || ""}
-                        onChange={(e) => updateConfig(option.id, e.target.value)}
-                        rows={3}
+                    <div className="space-y-2">
+                      <Label htmlFor="emailLabel">Gmail Label to Monitor</Label>
+                      <Input
+                        id="emailLabel"
+                        value={basicConfig.emailLabel}
+                        onChange={(e) => setBasicConfig(prev => ({...prev, emailLabel: e.target.value}))}
+                        placeholder="leads"
                       />
-                    )}
+                    </div>
                     
-                    {option.type === "select" && option.options && (
+                    <div className="space-y-2">
+                      <Label htmlFor="triggerFrequency">Automation Frequency</Label>
                       <select
-                        id={option.id}
-                        value={config[option.id] || option.defaultValue}
-                        onChange={(e) => updateConfig(option.id, e.target.value)}
+                        id="triggerFrequency"
+                        value={basicConfig.triggerFrequency}
+                        onChange={(e) => setBasicConfig(prev => ({...prev, triggerFrequency: e.target.value}))}
                         className="w-full p-2 border rounded-md"
                       >
-                        {option.options.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
+                        <option value="1 minute">Every minute</option>
+                        <option value="5 minutes">Every 5 minutes</option>
+                        <option value="15 minutes">Every 15 minutes</option>
+                        <option value="1 hour">Every hour</option>
+                        <option value="daily">Daily</option>
                       </select>
-                    )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="notificationEmail">Notification Email</Label>
+                      <Input
+                        id="notificationEmail"
+                        type="email"
+                        value={basicConfig.notificationEmail}
+                        onChange={(e) => setBasicConfig(prev => ({...prev, notificationEmail: e.target.value}))}
+                        placeholder="your-email@company.com"
+                      />
+                    </div>
                   </div>
-                ))}
-              </div>
+                </CardContent>
+              </Card>
             </TabsContent>
             
             <TabsContent value="ai-enhance" className="space-y-4 mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Brain className="size-5" />
-                    AI-Powered Customization
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="size-5 text-purple-500" />
+                    AI-Powered Enhancement
                   </CardTitle>
                   <CardDescription>
                     Describe additional features you need and AI will enhance your script
@@ -199,139 +562,92 @@ function aiEnhancedProcessor() {
                     <Label htmlFor="ai-prompt">Describe your specific requirements:</Label>
                     <Textarea
                       id="ai-prompt"
-                      placeholder="Example: I want to filter emails by sender domain, extract specific data patterns, send custom notifications to Slack, and create summary reports with charts..."
+                      placeholder="Example: I want to categorize emails by priority, send different notifications based on sender domain, create weekly summary reports with charts, and integrate with our CRM system..."
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
-                      rows={4}
+                      rows={6}
                     />
                   </div>
                   
                   <div className="grid md:grid-cols-2 gap-4">
-                    <Card className="p-4">
+                    <Card className="p-4 bg-blue-50">
                       <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <Zap className="size-4" />
+                        <Zap className="size-4 text-blue-500" />
                         AI Capabilities
                       </h4>
-                      <ul className="text-sm space-y-1 text-muted-foreground">
-                        <li>• Custom email filtering logic</li>
-                        <li>• Advanced data processing</li>
+                      <ul className="text-sm space-y-1 text-gray-600">
+                        <li>• Advanced email categorization</li>
+                        <li>• Smart data validation</li>
+                        <li>• Custom notification logic</li>
                         <li>• External API integrations</li>
-                        <li>• Smart notification systems</li>
-                        <li>• Custom report generation</li>
+                        <li>• Intelligent error handling</li>
+                        <li>• Performance optimization</li>
                       </ul>
                     </Card>
                     
-                    <Card className="p-4">
+                    <Card className="p-4 bg-green-50">
                       <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <Code className="size-4" />
+                        <Code className="size-4 text-green-500" />
                         Enhancement Examples
                       </h4>
-                      <ul className="text-sm space-y-1 text-muted-foreground">
-                        <li>• "Add expense categorization"</li>
-                        <li>• "Include approval workflows"</li>
-                        <li>• "Connect to CRM system"</li>
-                        <li>• "Generate PDF summaries"</li>
+                      <ul className="text-sm space-y-1 text-gray-600">
+                        <li>• "Prioritize VIP customer emails"</li>
+                        <li>• "Create charts in Google Sheets"</li>
+                        <li>• "Integrate with Salesforce"</li>
                         <li>• "Send Slack notifications"</li>
+                        <li>• "Generate PDF reports"</li>
+                        <li>• "Add approval workflows"</li>
                       </ul>
                     </Card>
                   </div>
-                  
-                  <Button 
-                    onClick={generateAICustomization}
-                    disabled={!aiPrompt.trim() || isGenerating}
-                    className="w-full hover-glow"
-                    size="lg"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                        Generating AI Enhancements...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="size-4 mr-2" />
-                        Generate AI-Enhanced Script
-                      </>
-                    )}
-                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
             
-            <TabsContent value="preview" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Code className="size-5" />
-                      Your Customized Script
-                    </CardTitle>
-                    <Button variant="outline" size="sm" onClick={copyCode}>
-                      <Copy className="size-4 mr-2" />
-                      Copy Code
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm max-h-96">
-                    <code>{customizedCode}</code>
-                  </pre>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="download" className="mt-6">
+            <TabsContent value="generate" className="mt-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Download className="size-5" />
-                    Download Your Script
+                    Generate Your Custom Script
                   </CardTitle>
                   <CardDescription>
-                    Get your customized Google Apps Script with setup instructions
+                    Review your configuration and download your customized Google Apps Script
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
                     <Card className="p-4">
-                      <h4 className="font-semibold mb-2">What's included:</h4>
-                      <ul className="text-sm space-y-1 text-muted-foreground">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="size-3 text-green-500" />
-                          Customized Google Apps Script code
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="size-3 text-green-500" />
-                          Step-by-step setup instructions
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="size-3 text-green-500" />
-                          Configuration guide
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="size-3 text-green-500" />
-                          AI-enhanced features
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="size-3 text-green-500" />
-                          Testing and troubleshooting guide
-                        </li>
-                      </ul>
+                      <h4 className="font-semibold mb-3">Enabled Functions:</h4>
+                      <div className="space-y-2">
+                        {googleFunctions.filter(f => f.enabled).map(func => (
+                          <div key={func.id} className="flex items-center gap-2 text-sm">
+                            <CheckCircle className="size-4 text-green-500" />
+                            {func.name}
+                          </div>
+                        ))}
+                      </div>
                     </Card>
                     
                     <Card className="p-4">
-                      <h4 className="font-semibold mb-2">Your Configuration:</h4>
-                      <div className="space-y-2 text-sm">
-                        {Object.entries(config).map(([key, value]) => (
-                          <div key={key} className="flex justify-between">
-                            <span className="text-muted-foreground">{key}:</span>
-                            <span className="font-mono">{value || "default"}</span>
-                          </div>
-                        ))}
+                      <h4 className="font-semibold mb-3">Configuration:</h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Sheet ID:</span>
+                          <span className="font-mono text-xs">{basicConfig.sheetId || "Not set"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Email Label:</span>
+                          <span>{basicConfig.emailLabel}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Frequency:</span>
+                          <span>{basicConfig.triggerFrequency}</span>
+                        </div>
                         {aiPrompt && (
-                          <div className="mt-2 p-2 bg-muted rounded">
-                            <span className="text-xs font-semibold">AI Enhancement:</span>
-                            <p className="text-xs mt-1">{aiPrompt}</p>
+                          <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
+                            <span className="font-semibold">AI Enhancement:</span>
+                            <p className="mt-1">{aiPrompt.substring(0, 100)}...</p>
                           </div>
                         )}
                       </div>
@@ -340,15 +656,31 @@ function aiEnhancedProcessor() {
                   
                   <Separator />
                   
-                  <div className="flex gap-4">
-                    <Button onClick={handleDownload} size="lg" className="flex-1 hover-glow">
-                      <Download className="size-4 mr-2" />
-                      Download Complete Package
+                  <div className="text-center">
+                    <Button 
+                      onClick={generateCustomScript} 
+                      disabled={isGenerating || googleFunctions.filter(f => f.enabled).length === 0}
+                      size="lg" 
+                      className="px-8 py-3 hover-glow"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
+                          Generating Custom Script...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="size-5 mr-2" />
+                          Generate & Download Script
+                        </>
+                      )}
                     </Button>
-                    <Button variant="outline" size="lg" className="flex-1">
-                      <Play className="size-4 mr-2" />
-                      Test in Sandbox
-                    </Button>
+                    
+                    {googleFunctions.filter(f => f.enabled).length === 0 && (
+                      <p className="text-sm text-red-500 mt-2">
+                        Please enable at least one Google function to generate your script
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
