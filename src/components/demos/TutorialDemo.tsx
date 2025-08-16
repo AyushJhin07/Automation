@@ -97,7 +97,7 @@ const AnimatedCursor = ({ x, y, isClicking }: { x: number; y: number; isClicking
 );
 
 // Gmail Interface
-const GmailInterface = ({ isActive, currentAction, stepData }: { isActive: boolean; currentAction?: TutorialAction; stepData?: any }) => {
+const GmailInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => {
   const [searchText, setSearchText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
@@ -266,7 +266,7 @@ const GmailInterface = ({ isActive, currentAction, stepData }: { isActive: boole
 };
 
 // Google Sheets Interface
-const SheetsInterface = ({ isActive, currentAction, stepData }: { isActive: boolean; currentAction?: TutorialAction; stepData?: any }) => {
+const SheetsInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => {
   const [newRowData, setNewRowData] = useState<any>(null);
   const [isAddingRow, setIsAddingRow] = useState(false);
 
@@ -378,7 +378,7 @@ const SheetsInterface = ({ isActive, currentAction, stepData }: { isActive: bool
 };
 
 // Google Calendar Interface
-const CalendarInterface = ({ isActive, currentAction, stepData }: { isActive: boolean; currentAction?: TutorialAction; stepData?: any }) => {
+const CalendarInterface = ({ isActive, currentAction }: { isActive: boolean; currentAction?: TutorialAction }) => {
   const [eventCreated, setEventCreated] = useState(false);
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
@@ -1050,37 +1050,37 @@ export function TutorialDemo({ scriptId, scriptTitle, onClose }: TutorialDemoPro
       case 'gmail':
         return (
           <BrowserChrome title="Gmail - client@company.com">
-            <GmailInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
+            <GmailInterface isActive={isRunning} currentAction={currentAction} />
           </BrowserChrome>
         );
       case 'sheets':
         return (
           <BrowserChrome title="Automation_Data - Google Sheets">
-            <SheetsInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
+            <SheetsInterface isActive={isRunning} currentAction={currentAction} />
           </BrowserChrome>
         );
       case 'calendar':
         return (
           <BrowserChrome title="Google Calendar">
-            <CalendarInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
+            <CalendarInterface isActive={isRunning} currentAction={currentAction} />
           </BrowserChrome>
         );
       case 'drive':
         return (
           <BrowserChrome title="Google Drive - Inbox Folder">
-            <DriveInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
+            <DriveInterface isActive={isRunning} currentAction={currentAction} />
           </BrowserChrome>
         );
       case 'expense':
         return (
           <BrowserChrome title="Expense Tracker - Pending Approvals">
-            <ExpenseInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
+            <ExpenseInterface isActive={isRunning} currentAction={currentAction} />
           </BrowserChrome>
         );
       case 'task':
         return (
           <BrowserChrome title="Project Tasks - Due Today">
-            <TaskInterface isActive={isRunning} currentAction={currentAction} stepData={stepData} />
+            <TaskInterface isActive={isRunning} currentAction={currentAction} />
           </BrowserChrome>
         );
       default:
