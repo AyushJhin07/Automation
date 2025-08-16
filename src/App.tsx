@@ -17,7 +17,6 @@ import Blog from "./pages/Blog";
 import Resources from "./pages/Resources";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
-import AIPlatform from "./pages/AIPlatform";
 import PreBuiltApps from "./pages/PreBuiltApps";
 
 const queryClient = new QueryClient();
@@ -33,7 +32,6 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/pre-built-apps" element={<PreBuiltApps />} />
-            <Route path="/ai-platform" element={<AIPlatform />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />

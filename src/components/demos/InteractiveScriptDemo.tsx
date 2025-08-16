@@ -16,7 +16,8 @@ import {
   Clock,
   ArrowRight,
   Database,
-  Send
+  Send,
+  DollarSign
 } from "lucide-react";
 
 interface DemoStep {
@@ -114,6 +115,57 @@ export function InteractiveScriptDemo({
           recipients: ["manager@company.com", "team@company.com"],
           channel: "email"
         };
+      case "check-availability":
+        return {
+          availableSlots: [
+            { time: "10:00 AM", date: "2024-03-15" },
+            { time: "2:00 PM", date: "2024-03-15" },
+            { time: "4:30 PM", date: "2024-03-16" }
+          ]
+        };
+      case "create-booking":
+        return {
+          eventCreated: true,
+          eventId: "event_12345",
+          meetingLink: "https://meet.google.com/abc-defg-hij"
+        };
+      case "scan-files":
+        return {
+          filesFound: 15,
+          types: ["PDF", "DOCX", "JPG", "XLSX"],
+          totalSize: "45.2 MB"
+        };
+      case "categorize":
+        return {
+          categories: ["Documents", "Images", "Spreadsheets", "Presentations"],
+          filesProcessed: 15
+        };
+      case "receive-receipt":
+        return {
+          receiptCount: 3,
+          totalAmount: "$1,250.00",
+          vendors: ["Office Supplies Co", "Travel Agency", "Software License"]
+        };
+      case "extract-data":
+        return {
+          extracted: [
+            { field: "Amount", value: "$450.00", confidence: 96 },
+            { field: "Vendor", value: "Office Supplies Co", confidence: 94 },
+            { field: "Date", value: "2024-03-14", confidence: 98 }
+          ]
+        };
+      case "scan-tasks":
+        return {
+          totalTasks: 25,
+          overdue: 3,
+          dueToday: 5,
+          completed: 17
+        };
+      case "check-deadlines":
+        return {
+          remindersSent: 5,
+          recipients: ["john@company.com", "sarah@company.com", "mike@company.com"]
+        };
       default:
         return { status: "completed" };
     }
@@ -184,6 +236,130 @@ export function InteractiveScriptDemo({
             description: "Emailing report to stakeholders",
             icon: Send,
             duration: 1000
+          }
+        ];
+      case "calendar-booking":
+        return [
+          {
+            id: "check-availability",
+            title: "Check Availability",
+            description: "Scanning calendar for available slots",
+            icon: Calendar,
+            duration: 1200
+          },
+          {
+            id: "create-booking",
+            title: "Create Booking",
+            description: "Creating calendar event and sending confirmation",
+            icon: CheckCircle2,
+            duration: 1500
+          },
+          {
+            id: "send-reminders",
+            title: "Schedule Reminders",
+            description: "Setting up automated reminder sequence",
+            icon: Clock,
+            duration: 1000
+          },
+          {
+            id: "meet-integration",
+            title: "Google Meet Setup",
+            description: "Adding video call link to event",
+            icon: Play,
+            duration: 800
+          }
+        ];
+      case "file-organizer":
+        return [
+          {
+            id: "scan-files",
+            title: "Scan Files",
+            description: "Analyzing files in source folder",
+            icon: FolderCog,
+            duration: 1500
+          },
+          {
+            id: "categorize",
+            title: "Categorize Files",
+            description: "Sorting files by type and content",
+            icon: Database,
+            duration: 2000
+          },
+          {
+            id: "create-folders",
+            title: "Create Folders",
+            description: "Setting up organized folder structure",
+            icon: FolderCog,
+            duration: 1200
+          },
+          {
+            id: "move-files",
+            title: "Move Files",
+            description: "Moving files to appropriate folders",
+            icon: Send,
+            duration: 1000
+          }
+        ];
+      case "expense-tracker":
+        return [
+          {
+            id: "receive-receipt",
+            title: "Receive Receipt",
+            description: "Email with receipt attachment received",
+            icon: Mail,
+            duration: 1000
+          },
+          {
+            id: "extract-data",
+            title: "Extract Data",
+            description: "Using AI to extract expense details",
+            icon: Database,
+            duration: 2000
+          },
+          {
+            id: "categorize",
+            title: "Categorize Expense",
+            description: "Automatically categorizing expense type",
+            icon: DollarSign,
+            duration: 1200
+          },
+          {
+            id: "approval-workflow",
+            title: "Approval Workflow",
+            description: "Sending for manager approval",
+            icon: CheckCircle2,
+            duration: 1500
+          }
+        ];
+      case "task-automation":
+        return [
+          {
+            id: "scan-tasks",
+            title: "Scan Tasks",
+            description: "Analyzing project tasks and deadlines",
+            icon: CheckCircle2,
+            duration: 1200
+          },
+          {
+            id: "check-deadlines",
+            title: "Check Deadlines",
+            description: "Identifying tasks approaching deadlines",
+            icon: Clock,
+            duration: 1000
+          },
+          {
+            id: "send-reminders",
+            title: "Send Reminders",
+            description: "Sending automated deadline reminders",
+            icon: Mail,
+            duration: 1500
+          },
+          {
+            id: "update-status",
+            title: "Update Status",
+            description: "Updating task status and generating reports",
+            icon: BarChart3,
+            duration: 1200
           }
         ];
       default:

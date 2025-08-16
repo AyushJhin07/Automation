@@ -295,6 +295,78 @@ const preBuiltApps = [
       "Service appointment scheduling",
       "Team meeting coordination", 
       "Event registration management"
+    ],
+    customizationOptions: [
+      {
+        id: "calendarId",
+        label: "Calendar ID",
+        description: "Google Calendar ID to manage bookings",
+        type: "text" as const,
+        defaultValue: "primary"
+      },
+      {
+        id: "meetingDuration",
+        label: "Meeting Duration (minutes)",
+        description: "Default duration for booking slots",
+        type: "select" as const,
+        defaultValue: "60",
+        options: ["30", "45", "60", "90", "120"]
+      },
+      {
+        id: "bookingWindow",
+        label: "Booking Window",
+        description: "How far in advance users can book",
+        type: "select" as const,
+        defaultValue: "7",
+        options: ["1", "3", "7", "14", "30"],
+        aiEnhanced: true
+      },
+      {
+        id: "reminderSchedule",
+        label: "Reminder Schedule",
+        description: "When to send reminder emails",
+        type: "textarea" as const,
+        defaultValue: "24 hours, 1 hour",
+        aiEnhanced: true
+      },
+      {
+        id: "meetingTitle",
+        label: "Meeting Title Template",
+        description: "Template for meeting titles",
+        type: "text" as const,
+        defaultValue: "Consultation with {client_name}",
+        aiEnhanced: true
+      }
+    ],
+    demoSteps: [
+      {
+        id: "check-availability",
+        title: "Check Availability",
+        description: "Scanning calendar for available slots",
+        icon: Calendar,
+        duration: 1200
+      },
+      {
+        id: "create-booking",
+        title: "Create Booking",
+        description: "Creating calendar event and sending confirmation",
+        icon: CheckCircle2,
+        duration: 1500
+      },
+      {
+        id: "send-reminders",
+        title: "Schedule Reminders",
+        description: "Setting up automated reminder sequence",
+        icon: Clock,
+        duration: 1000
+      },
+      {
+        id: "meet-integration",
+        title: "Google Meet Setup",
+        description: "Adding video call link to event",
+        icon: Play,
+        duration: 800
+      }
     ]
   },
   {
@@ -346,6 +418,77 @@ function getOrCreateFolder(type, date) {
       "Project file organization",
       "Client deliverable sorting",
       "Archive and backup automation"
+    ],
+    customizationOptions: [
+      {
+        id: "sourceFolderId",
+        label: "Source Folder ID",
+        description: "Google Drive folder to organize",
+        type: "text" as const,
+        defaultValue: "INBOX_FOLDER_ID"
+      },
+      {
+        id: "organizationType",
+        label: "Organization Type",
+        description: "How to organize files",
+        type: "select" as const,
+        defaultValue: "type-date",
+        options: ["type-date", "date-type", "project-based", "client-based"],
+        aiEnhanced: true
+      },
+      {
+        id: "fileTypes",
+        label: "File Type Categories",
+        description: "Custom file type categories",
+        type: "textarea" as const,
+        defaultValue: "documents: .doc,.docx,.pdf\nimages: .jpg,.png,.gif\nspreadsheets: .xls,.xlsx,.csv",
+        aiEnhanced: true
+      },
+      {
+        id: "permissionLevel",
+        label: "Permission Level",
+        description: "Default permission for organized files",
+        type: "select" as const,
+        defaultValue: "view",
+        options: ["view", "comment", "edit", "owner"]
+      },
+      {
+        id: "archiveAge",
+        label: "Archive Age (days)",
+        description: "Move files older than this to archive",
+        type: "text" as const,
+        defaultValue: "365"
+      }
+    ],
+    demoSteps: [
+      {
+        id: "scan-files",
+        title: "Scan Files",
+        description: "Analyzing files in source folder",
+        icon: FolderCog,
+        duration: 1500
+      },
+      {
+        id: "categorize",
+        title: "Categorize Files",
+        description: "Sorting files by type and content",
+        icon: Brain,
+        duration: 2000
+      },
+      {
+        id: "create-folders",
+        title: "Create Folders",
+        description: "Setting up organized folder structure",
+        icon: FolderCog,
+        duration: 1200
+      },
+      {
+        id: "move-files",
+        title: "Move Files",
+        description: "Moving files to appropriate folders",
+        icon: Download,
+        duration: 1000
+      }
     ]
   },
   {
@@ -399,6 +542,77 @@ function getOrCreateFolder(type, date) {
       "Vendor invoice processing", 
       "Travel expense tracking",
       "Project cost monitoring"
+    ],
+    customizationOptions: [
+      {
+        id: "expenseSheetId",
+        label: "Expense Sheet ID",
+        description: "Google Sheet to store expense data",
+        type: "text" as const,
+        defaultValue: "EXPENSE_SHEET_ID"
+      },
+      {
+        id: "approvalWorkflow",
+        label: "Approval Workflow",
+        description: "Approval levels and thresholds",
+        type: "select" as const,
+        defaultValue: "manager-finance",
+        options: ["manager-only", "manager-finance", "multi-level", "auto-approve"],
+        aiEnhanced: true
+      },
+      {
+        id: "expenseCategories",
+        label: "Expense Categories",
+        description: "Custom expense categories",
+        type: "textarea" as const,
+        defaultValue: "travel, meals, office supplies, software, training",
+        aiEnhanced: true
+      },
+      {
+        id: "approvalThresholds",
+        label: "Approval Thresholds",
+        description: "Amount thresholds for different approval levels",
+        type: "textarea" as const,
+        defaultValue: "0-100: auto\n100-500: manager\n500+: finance"
+      },
+      {
+        id: "receiptKeywords",
+        label: "Receipt Email Keywords",
+        description: "Keywords to identify receipt emails",
+        type: "textarea" as const,
+        defaultValue: "receipt, invoice, expense, bill",
+        aiEnhanced: true
+      }
+    ],
+    demoSteps: [
+      {
+        id: "receive-receipt",
+        title: "Receive Receipt",
+        description: "Email with receipt attachment received",
+        icon: Mail,
+        duration: 1000
+      },
+      {
+        id: "extract-data",
+        title: "Extract Data",
+        description: "Using AI to extract expense details",
+        icon: Brain,
+        duration: 2000
+      },
+      {
+        id: "categorize",
+        title: "Categorize Expense",
+        description: "Automatically categorizing expense type",
+        icon: DollarSign,
+        duration: 1200
+      },
+      {
+        id: "approval-workflow",
+        title: "Approval Workflow",
+        description: "Sending for manager approval",
+        icon: CheckCircle2,
+        duration: 1500
+      }
     ]
   },
   {
@@ -446,6 +660,77 @@ function getOrCreateFolder(type, date) {
       "Team task coordination",
       "Client project updates", 
       "Resource allocation management"
+    ],
+    customizationOptions: [
+      {
+        id: "projectSheetId",
+        label: "Project Sheet ID",
+        description: "Google Sheet containing project tasks",
+        type: "text" as const,
+        defaultValue: "PROJECT_SHEET_ID"
+      },
+      {
+        id: "reminderSchedule",
+        label: "Reminder Schedule",
+        description: "When to send deadline reminders",
+        type: "select" as const,
+        defaultValue: "3",
+        options: ["1", "2", "3", "5", "7"],
+        aiEnhanced: true
+      },
+      {
+        id: "notificationTypes",
+        label: "Notification Types",
+        description: "Types of notifications to send",
+        type: "textarea" as const,
+        defaultValue: "deadline-reminder, overdue-alert, completion-notice",
+        aiEnhanced: true
+      },
+      {
+        id: "priorityLevels",
+        label: "Priority Levels",
+        description: "Task priority categories",
+        type: "textarea" as const,
+        defaultValue: "low, medium, high, urgent"
+      },
+      {
+        id: "reportFrequency",
+        label: "Report Frequency",
+        description: "How often to generate progress reports",
+        type: "select" as const,
+        defaultValue: "weekly",
+        options: ["daily", "weekly", "bi-weekly", "monthly"]
+      }
+    ],
+    demoSteps: [
+      {
+        id: "scan-tasks",
+        title: "Scan Tasks",
+        description: "Analyzing project tasks and deadlines",
+        icon: CheckCircle2,
+        duration: 1200
+      },
+      {
+        id: "check-deadlines",
+        title: "Check Deadlines",
+        description: "Identifying tasks approaching deadlines",
+        icon: Clock,
+        duration: 1000
+      },
+      {
+        id: "send-reminders",
+        title: "Send Reminders",
+        description: "Sending automated deadline reminders",
+        icon: Mail,
+        duration: 1500
+      },
+      {
+        id: "update-status",
+        title: "Update Status",
+        description: "Updating task status and generating reports",
+        icon: BarChart3,
+        duration: 1200
+      }
     ]
   }
 ];
