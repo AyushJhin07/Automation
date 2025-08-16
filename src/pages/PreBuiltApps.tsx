@@ -17,8 +17,12 @@ import {
   CheckCircle2,
   Zap,
   Clock,
-  DollarSign
+  DollarSign,
+  Settings,
+  Brain
 } from "lucide-react";
+import { ScriptCustomizer } from "@/components/demos/ScriptCustomizer";
+import { InteractiveScriptDemo } from "@/components/demos/InteractiveScriptDemo";
 
 const preBuiltApps = [
   {
@@ -36,9 +40,9 @@ const preBuiltApps = [
       "Automated follow-up sequences",
       "Attachment processing and filing"
     ],
-    codePreview: `function processIncomingEmails() {
-  const threads = GmailApp.search('is:unread label:leads');
-  const sheet = SpreadsheetApp.openById('YOUR_SHEET_ID').getActiveSheet();
+         codePreview: `function processIncomingEmails() {
+  const threads = GmailApp.search('is:unread label:EMAILLABEL_PLACEHOLDER');
+  const sheet = SpreadsheetApp.openById('SHEETID_PLACEHOLDER').getActiveSheet();
   
   threads.forEach(thread => {
     const messages = thread.getMessages();
@@ -65,6 +69,70 @@ const preBuiltApps = [
       "Customer support ticket processing", 
       "Invoice and receipt management",
       "Event registration handling"
+    ],
+    customizationOptions: [
+      {
+        id: "emailLabel",
+        label: "Email Label Filter",
+        description: "Gmail label to monitor for new emails",
+        type: "text" as const,
+        defaultValue: "leads",
+        aiEnhanced: true
+      },
+      {
+        id: "sheetId",
+        label: "Google Sheet ID", 
+        description: "ID of the Google Sheet to update",
+        type: "text" as const,
+        defaultValue: "YOUR_SHEET_ID"
+      },
+      {
+        id: "subjectFilter",
+        label: "Subject Filter",
+        description: "Filter emails by subject keywords",
+        type: "textarea" as const,
+        defaultValue: "inquiry, lead, contact",
+        aiEnhanced: true
+      },
+      {
+        id: "extractionType",
+        label: "Data Extraction Type",
+        description: "Type of data to extract from emails",
+        type: "select" as const,
+        defaultValue: "contact-info",
+        options: ["contact-info", "invoice-data", "custom"],
+        aiEnhanced: true
+      }
+    ],
+    demoSteps: [
+      {
+        id: "email-fetch",
+        title: "Fetch New Emails",
+        description: "Scanning Gmail for unread emails with specified criteria",
+        icon: Mail,
+        duration: 1500
+      },
+      {
+        id: "data-extract", 
+        title: "Extract Data",
+        description: "Using AI to parse and extract structured data from emails",
+        icon: Brain,
+        duration: 2000
+      },
+      {
+        id: "sheet-update",
+        title: "Update Spreadsheet", 
+        description: "Adding extracted data to Google Sheets",
+        icon: FileSpreadsheet,
+        duration: 1000
+      },
+      {
+        id: "notification",
+        title: "Send Notifications",
+        description: "Notifying team members about new data", 
+        icon: Mail,
+        duration: 800
+      }
     ]
   },
   {
@@ -109,6 +177,75 @@ const preBuiltApps = [
       "Monthly financial summaries", 
       "Project status updates",
       "KPI dashboard distributions"
+    ],
+    customizationOptions: [
+      {
+        id: "dataSheetId",
+        label: "Data Source Sheet ID",
+        description: "Google Sheet containing the data to analyze",
+        type: "text" as const,
+        defaultValue: "DATA_SHEET_ID"
+      },
+      {
+        id: "templateDocId", 
+        label: "Report Template ID",
+        description: "Google Doc template for the report",
+        type: "text" as const,
+        defaultValue: "TEMPLATE_DOC_ID"
+      },
+      {
+        id: "reportFrequency",
+        label: "Report Frequency",
+        description: "How often to generate the report",
+        type: "select" as const,
+        defaultValue: "weekly",
+        options: ["daily", "weekly", "monthly", "custom"]
+      },
+      {
+        id: "chartTypes",
+        label: "Chart Types to Include",
+        description: "Types of charts to generate automatically",
+        type: "textarea" as const,
+        defaultValue: "bar chart, line chart, pie chart",
+        aiEnhanced: true
+      },
+      {
+        id: "recipients",
+        label: "Email Recipients",
+        description: "Comma-separated list of email addresses",
+        type: "textarea" as const,
+        defaultValue: "team@company.com, manager@company.com"
+      }
+    ],
+    demoSteps: [
+      {
+        id: "data-collect",
+        title: "Collect Data",
+        description: "Gathering data from multiple Google Sheets",
+        icon: FileSpreadsheet,
+        duration: 1200
+      },
+      {
+        id: "analyze",
+        title: "Analyze & Calculate", 
+        description: "Processing data and generating insights",
+        icon: BarChart3,
+        duration: 1800
+      },
+      {
+        id: "create-doc",
+        title: "Create Document",
+        description: "Generating PDF report from template",
+        icon: Download,
+        duration: 1500
+      },
+      {
+        id: "distribute",
+        title: "Distribute Report",
+        description: "Emailing report to stakeholders",
+        icon: Mail,
+        duration: 1000
+      }
     ]
   },
   {
@@ -431,7 +568,7 @@ export default function PreBuiltApps() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge 
                         className={`${getComplexityColor(app.complexity)} text-white text-xs`}
                       >
@@ -439,6 +576,16 @@ export default function PreBuiltApps() {
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         {app.category}
+                      </Badge>
+                      {app.customizationOptions?.some(opt => opt.aiEnhanced) && (
+                        <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs">
+                          <Brain className="size-3 mr-1" />
+                          AI Enhanced
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-xs">
+                        <Play className="size-3 mr-1" />
+                        Live Demo
                       </Badge>
                     </div>
                     
@@ -455,17 +602,31 @@ export default function PreBuiltApps() {
                       ))}
                     </div>
                     
-                    <Button 
-                      size="sm" 
-                      className="w-full mt-4"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(app.id);
-                      }}
-                    >
-                      <Download className="size-3 mr-1" />
-                      Get This Script
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveApp(app.id);
+                          // Auto-navigate to demo tab
+                          setTimeout(() => setShowCode(false), 100);
+                        }}
+                      >
+                        <Play className="size-3 mr-1" />
+                        Try Demo
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(app.id);
+                        }}
+                      >
+                        <Download className="size-3 mr-1" />
+                        Customize
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -501,8 +662,10 @@ export default function PreBuiltApps() {
             </CardHeader>
             <CardContent>
               <Tabs value={showCode ? "code" : "overview"} onValueChange={(v) => setShowCode(v === "code")}>
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="demo">Live Demo</TabsTrigger>
+                  <TabsTrigger value="customize">Customize</TabsTrigger>
                   <TabsTrigger value="features">Features</TabsTrigger>
                   <TabsTrigger value="code">Code Preview</TabsTrigger>
                   <TabsTrigger value="use-cases">Use Cases</TabsTrigger>
@@ -549,6 +712,33 @@ export default function PreBuiltApps() {
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="demo" className="mt-6">
+                  {currentApp?.demoSteps && (
+                    <InteractiveScriptDemo
+                      scriptId={currentApp.id}
+                      scriptTitle={currentApp.title}
+                      demoSteps={currentApp.demoSteps}
+                      finalOutput={{}}
+                    />
+                  )}
+                </TabsContent>
+
+                <TabsContent value="customize" className="mt-6">
+                  {currentApp?.customizationOptions && (
+                    <ScriptCustomizer
+                      scriptId={currentApp.id}
+                      scriptTitle={currentApp.title}
+                      baseCode={currentApp.codePreview}
+                      customizationOptions={currentApp.customizationOptions}
+                      onDownload={(customizedCode, config) => {
+                        // This would handle the download with customizations
+                        console.log("Downloading customized script:", { customizedCode, config });
+                        alert("Custom script download would start here with your AI enhancements!");
+                      }}
+                    />
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="features" className="mt-6">
