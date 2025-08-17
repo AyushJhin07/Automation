@@ -1105,196 +1105,957 @@ export function TutorialDemo({ scriptId, scriptTitle, onClose }: TutorialDemoPro
       case "calendar-booking":
         return [
           {
-            id: "check-availability",
-            title: "Checking Calendar Availability",
-            description: "Scanning for available time slots",
-            duration: 2000,
+            id: "open-calendar",
+            title: "Opening Google Calendar",
+            description: "Navigating to Google Calendar interface",
+            duration: 1500,
             app: 'calendar',
             actions: [
-              { type: 'click', target: 'date-15', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'available-slots', delay: 300, duration: 1200 },
-              { type: 'move', target: 'create-event', delay: 300, duration: 300 }
+              { type: 'move', target: 'calendar-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'calendar-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'calendar-view', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'calendar-grid', delay: 200, duration: 500 }
             ]
           },
           {
-            id: "create-booking",
-            title: "Creating Calendar Event",
-            description: "Setting up meeting with Google Meet link",
+            id: "navigate-to-date",
+            title: "Navigating to Target Date",
+            description: "Moving to the specific date for booking",
             duration: 2000,
             app: 'calendar',
             actions: [
-              { type: 'click', target: 'create-event', delay: 200, duration: 100 },
-              { type: 'type', target: 'event-title', data: 'Consultation Call', delay: 300, duration: 600 },
-              { type: 'highlight', target: 'meet-link', delay: 300, duration: 600 }
+              { type: 'move', target: 'date-navigation', delay: 200, duration: 400 },
+              { type: 'click', target: 'date-navigation', delay: 200, duration: 100 },
+              { type: 'move', target: 'target-date', delay: 300, duration: 500 },
+              { type: 'click', target: 'target-date', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'selected-date', delay: 300, duration: 800 }
+            ]
+          },
+          {
+            id: "check-availability",
+            title: "Checking Available Time Slots",
+            description: "Scanning calendar for available booking slots",
+            duration: 2500,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'time-slot-10am', delay: 200, duration: 400 },
+              { type: 'highlight', target: 'available-slots', delay: 200, duration: 1500 },
+              { type: 'move', target: 'time-slot-2pm', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'alternative-slots', delay: 200, duration: 600 }
+            ]
+          },
+          {
+            id: "open-booking-form",
+            title: "Opening Booking Form",
+            description: "Accessing the Google Forms booking form",
+            duration: 2000,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'booking-form-link', delay: 200, duration: 400 },
+              { type: 'click', target: 'booking-form-link', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'form-interface', delay: 300, duration: 1200 },
+              { type: 'move', target: 'form-fields', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "fill-booking-form",
+            title: "Filling Out Booking Form",
+            description: "Completing the booking form with client details",
+            duration: 4000,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'name-field', delay: 200, duration: 400 },
+              { type: 'click', target: 'name-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'name-field', data: 'John Smith', delay: 200, duration: 800 },
+              { type: 'move', target: 'email-field', delay: 300, duration: 400 },
+              { type: 'click', target: 'email-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'email-field', data: 'john.smith@company.com', delay: 200, duration: 1000 },
+              { type: 'move', target: 'service-dropdown', delay: 300, duration: 400 },
+              { type: 'click', target: 'service-dropdown', delay: 200, duration: 100 },
+              { type: 'move', target: 'consultation-option', delay: 300, duration: 400 },
+              { type: 'click', target: 'consultation-option', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "submit-booking",
+            title: "Submitting Booking Request",
+            description: "Submitting the completed booking form",
+            duration: 1500,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'submit-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'submit-button', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'submission-success', delay: 300, duration: 800 }
+            ]
+          },
+          {
+            id: "open-script-editor",
+            title: "Opening Google Apps Script Editor",
+            description: "Accessing the script editor to process booking",
+            duration: 2000,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'script-menu', delay: 200, duration: 400 },
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'move', target: 'script-editor', delay: 300, duration: 500 },
+              { type: 'click', target: 'script-editor', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "run-booking-script",
+            title: "Running Booking Processing Script",
+            description: "Executing the script to process the booking request",
+            duration: 3000,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'run-function', delay: 200, duration: 400 },
+              { type: 'click', target: 'run-function', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'script-execution', delay: 300, duration: 2000 },
+              { type: 'move', target: 'execution-complete', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "create-calendar-event",
+            title: "Creating Calendar Event",
+            description: "Automatically creating the calendar event",
+            duration: 2500,
+            app: 'calendar',
+            actions: [
+              { type: 'highlight', target: 'event-creation', delay: 200, duration: 1500 },
+              { type: 'move', target: 'event-details', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'event-created', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "add-google-meet",
+            title: "Adding Google Meet Link",
+            description: "Automatically adding video call link to event",
+            duration: 2000,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'meet-settings', delay: 200, duration: 400 },
+              { type: 'click', target: 'meet-settings', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'meet-link-added', delay: 300, duration: 1200 },
+              { type: 'move', target: 'meet-link', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "open-gmail",
+            title: "Opening Gmail for Confirmation",
+            description: "Navigating to Gmail to send confirmation",
+            duration: 1500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'gmail-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'gmail-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'compose-button', delay: 300, duration: 500 }
+            ]
+          },
+          {
+            id: "compose-confirmation",
+            title: "Composing Confirmation Email",
+            description: "Creating the booking confirmation email",
+            duration: 3500,
+            app: 'gmail',
+            actions: [
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'move', target: 'to-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'to-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'john.smith@company.com', delay: 200, duration: 1000 },
+              { type: 'move', target: 'subject-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'subject-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'subject-field', data: 'Your Consultation Call is Confirmed', delay: 200, duration: 1200 }
+            ]
+          },
+          {
+            id: "write-confirmation-body",
+            title: "Writing Confirmation Email Body",
+            description: "Composing the confirmation email content",
+            duration: 4000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'body-field', delay: 200, duration: 300 },
+              { type: 'click', target: 'body-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'body-field', data: 'Hi John,\n\nYour consultation call has been confirmed for March 15, 2024 at 10:00 AM.\n\nGoogle Meet link: meet.google.com/abc-defg-hij\n\nWe look forward to meeting with you!\n\nBest regards,\nConsultation Team', delay: 200, duration: 3000 }
             ]
           },
           {
             id: "send-confirmation",
             title: "Sending Confirmation Email",
-            description: "Emailing confirmation to participant",
+            description: "Sending the confirmation email to client",
             duration: 1500,
             app: 'gmail',
             actions: [
-              { type: 'click', target: 'compose', delay: 200, duration: 100 },
-              { type: 'type', target: 'email-body', data: 'Your meeting is confirmed', delay: 300, duration: 600 }
+              { type: 'move', target: 'send-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'send-button', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'email-sent', delay: 300, duration: 800 }
             ]
           },
           {
             id: "schedule-reminders",
-            title: "Setting Up Reminders",
-            description: "Scheduling automated reminder sequence",
-            duration: 1500,
+            title: "Setting Up Reminder Sequence",
+            description: "Scheduling automated reminder emails",
+            duration: 2500,
             app: 'calendar',
             actions: [
+              { type: 'move', target: 'reminder-settings', delay: 200, duration: 400 },
               { type: 'click', target: 'reminder-settings', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'reminder-list', delay: 300, duration: 800 }
+              { type: 'highlight', target: 'reminder-list', delay: 300, duration: 1500 },
+              { type: 'move', target: 'reminder-complete', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "completion-summary",
+            title: "Booking Process Complete",
+            description: "Reviewing the completed booking process",
+            duration: 2000,
+            app: 'calendar',
+            actions: [
+              { type: 'highlight', target: 'completion-status', delay: 200, duration: 1500 },
+              { type: 'move', target: 'summary-details', delay: 300, duration: 300 }
             ]
           }
         ];
       case "file-organizer":
         return [
           {
-            id: "scan-files",
-            title: "Scanning Google Drive",
-            description: "Analyzing files in source folder",
-            duration: 2000,
-            app: 'drive',
-            actions: [
-              { type: 'click', target: 'inbox-folder', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'file-list', delay: 300, duration: 1200 },
-              { type: 'move', target: 'organize-button', delay: 300, duration: 300 }
-            ]
-          },
-          {
-            id: "categorize-files",
-            title: "Categorizing Files by Type",
-            description: "AI-powered file categorization",
-            duration: 2000,
-            app: 'drive',
-            actions: [
-              { type: 'click', target: 'organize-button', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'category-groups', delay: 300, duration: 1200 },
-              { type: 'move', target: 'create-folders', delay: 300, duration: 300 }
-            ]
-          },
-          {
-            id: "create-folders",
-            title: "Creating Organized Folders",
-            description: "Setting up folder structure",
-            duration: 2000,
-            app: 'drive',
-            actions: [
-              { type: 'click', target: 'create-folders', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'folder-structure', delay: 300, duration: 1200 },
-              { type: 'move', target: 'move-files', delay: 300, duration: 300 }
-            ]
-          },
-          {
-            id: "move-files",
-            title: "Moving Files to Folders",
-            description: "Automatically organizing files",
+            id: "open-drive",
+            title: "Opening Google Drive",
+            description: "Navigating to Google Drive interface",
             duration: 1500,
             app: 'drive',
             actions: [
-              { type: 'click', target: 'move-files', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'moving-files', delay: 300, duration: 800 }
+              { type: 'move', target: 'drive-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'drive-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'drive-interface', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'drive-content', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "navigate-to-inbox",
+            title: "Navigating to Inbox Folder",
+            description: "Accessing the source folder to organize",
+            duration: 2000,
+            app: 'drive',
+            actions: [
+              { type: 'move', target: 'inbox-folder', delay: 200, duration: 400 },
+              { type: 'click', target: 'inbox-folder', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'inbox-content', delay: 300, duration: 1200 },
+              { type: 'move', target: 'file-list', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "scan-files",
+            title: "Scanning Files in Folder",
+            description: "Analyzing files for organization",
+            duration: 2500,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'file-scanning', delay: 200, duration: 1500 },
+              { type: 'move', target: 'file-count', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'file-types', delay: 200, duration: 600 }
+            ]
+          },
+          {
+            id: "open-script-editor",
+            title: "Opening Google Apps Script Editor",
+            description: "Accessing the script editor to run organization",
+            duration: 2000,
+            app: 'drive',
+            actions: [
+              { type: 'move', target: 'script-menu', delay: 200, duration: 400 },
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'move', target: 'script-editor', delay: 300, duration: 500 },
+              { type: 'click', target: 'script-editor', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "run-organization-script",
+            title: "Running File Organization Script",
+            description: "Executing the script to organize files",
+            duration: 3000,
+            app: 'drive',
+            actions: [
+              { type: 'move', target: 'run-function', delay: 200, duration: 400 },
+              { type: 'click', target: 'run-function', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'script-execution', delay: 300, duration: 2000 },
+              { type: 'move', target: 'execution-complete', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "ai-categorization",
+            title: "AI File Categorization",
+            description: "AI analyzing and categorizing files by type",
+            duration: 3500,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'ai-processing', delay: 200, duration: 2000 },
+              { type: 'move', target: 'category-results', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'categorized-files', delay: 200, duration: 800 }
+            ]
+          },
+          {
+            id: "create-folder-structure",
+            title: "Creating Folder Structure",
+            description: "Automatically creating organized folder hierarchy",
+            duration: 3000,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'folder-creation', delay: 200, duration: 2000 },
+              { type: 'move', target: 'folder-structure', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'folders-created', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "move-documents",
+            title: "Moving Document Files",
+            description: "Moving document files to appropriate folders",
+            duration: 2500,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'document-movement', delay: 200, duration: 1500 },
+              { type: 'move', target: 'documents-folder', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'documents-moved', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "move-images",
+            title: "Moving Image Files",
+            description: "Moving image files to images folder",
+            duration: 2000,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'image-movement', delay: 200, duration: 1200 },
+              { type: 'move', target: 'images-folder', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'images-moved', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "move-spreadsheets",
+            title: "Moving Spreadsheet Files",
+            description: "Moving spreadsheet files to data folder",
+            duration: 2000,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'spreadsheet-movement', delay: 200, duration: 1200 },
+              { type: 'move', target: 'data-folder', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'spreadsheets-moved', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "set-permissions",
+            title: "Setting File Permissions",
+            description: "Applying appropriate permissions to organized files",
+            duration: 2500,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'permission-setting', delay: 200, duration: 1500 },
+              { type: 'move', target: 'permission-results', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'permissions-applied', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "handle-duplicates",
+            title: "Handling Duplicate Files",
+            description: "Processing duplicate files according to rules",
+            duration: 2000,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'duplicate-detection', delay: 200, duration: 1200 },
+              { type: 'move', target: 'duplicate-handling', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'duplicates-processed', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "open-sheets-log",
+            title: "Opening Activity Log Sheet",
+            description: "Accessing the log sheet to record activities",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'move', target: 'sheets-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'activity-log', delay: 300, duration: 500 },
+              { type: 'click', target: 'activity-log', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "log-activities",
+            title: "Logging Organization Activities",
+            description: "Recording all file organization activities",
+            duration: 2500,
+            app: 'sheets',
+            actions: [
+              { type: 'highlight', target: 'activity-logging', delay: 200, duration: 1500 },
+              { type: 'move', target: 'log-entries', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'activities-logged', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "send-notification",
+            title: "Sending Organization Notification",
+            description: "Sending notification about completed organization",
+            duration: 2000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'gmail-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'gmail-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'compose-button', delay: 300, duration: 500 },
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'move', target: 'to-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'to-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'admin@company.com', delay: 200, duration: 800 }
+            ]
+          },
+          {
+            id: "write-notification",
+            title: "Writing Notification Email",
+            description: "Composing the organization completion notification",
+            duration: 3000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'subject-field', delay: 200, duration: 300 },
+              { type: 'click', target: 'subject-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'subject-field', data: 'File Organization Complete - 15 files processed', delay: 200, duration: 1200 },
+              { type: 'move', target: 'body-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'body-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'body-field', data: 'File organization has been completed successfully.\n\nFiles processed: 15\nFiles moved: 12\nDuplicates found: 3\n\nAll files have been organized into appropriate folders with proper permissions.', delay: 200, duration: 1200 }
+            ]
+          },
+          {
+            id: "send-notification-email",
+            title: "Sending Notification Email",
+            description: "Sending the completion notification",
+            duration: 1500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'send-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'send-button', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'email-sent', delay: 300, duration: 800 }
+            ]
+          },
+          {
+            id: "completion-summary",
+            title: "File Organization Complete",
+            description: "Reviewing the completed file organization process",
+            duration: 2000,
+            app: 'drive',
+            actions: [
+              { type: 'highlight', target: 'completion-status', delay: 200, duration: 1500 },
+              { type: 'move', target: 'summary-details', delay: 300, duration: 300 }
             ]
           }
         ];
       case "expense-tracker":
         return [
           {
-            id: "receive-receipt",
-            title: "Receiving Receipt Email",
-            description: "Email with receipt attachment received",
+            id: "open-gmail",
+            title: "Opening Gmail for Receipts",
+            description: "Navigating to Gmail to check for receipt emails",
             duration: 1500,
             app: 'gmail',
             actions: [
-              { type: 'click', target: 'receipt-email', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'attachment', delay: 300, duration: 800 }
+              { type: 'move', target: 'gmail-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'gmail-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'gmail-interface', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'gmail-content', delay: 200, duration: 500 }
             ]
           },
           {
-            id: "extract-data",
-            title: "Extracting Expense Data",
-            description: "AI extracting details from receipt image",
+            id: "search-receipts",
+            title: "Searching for Receipt Emails",
+            description: "Searching Gmail for receipt emails with attachments",
             duration: 2000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'search-bar', delay: 200, duration: 400 },
+              { type: 'click', target: 'search-bar', delay: 200, duration: 100 },
+              { type: 'type', target: 'search-bar', data: 'has:attachment subject:(receipt OR invoice OR expense)', delay: 200, duration: 1000 },
+              { type: 'move', target: 'search-button', delay: 300, duration: 300 },
+              { type: 'click', target: 'search-button', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "find-receipt-email",
+            title: "Finding Receipt Email",
+            description: "Locating the receipt email in search results",
+            duration: 1500,
+            app: 'gmail',
+            actions: [
+              { type: 'highlight', target: 'receipt-email', delay: 200, duration: 1000 },
+              { type: 'move', target: 'receipt-email', delay: 300, duration: 300 },
+              { type: 'click', target: 'receipt-email', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "download-attachment",
+            title: "Downloading Receipt Attachment",
+            description: "Downloading the receipt image for processing",
+            duration: 2000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'attachment', delay: 200, duration: 400 },
+              { type: 'highlight', target: 'attachment', delay: 200, duration: 800 },
+              { type: 'click', target: 'attachment', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'download-progress', delay: 300, duration: 600 }
+            ]
+          },
+          {
+            id: "open-script-editor",
+            title: "Opening Google Apps Script Editor",
+            description: "Accessing the script editor to process receipt",
+            duration: 2000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'script-menu', delay: 200, duration: 400 },
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'move', target: 'script-editor', delay: 300, duration: 500 },
+              { type: 'click', target: 'script-editor', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "run-expense-script",
+            title: "Running Expense Processing Script",
+            description: "Executing the script to process the receipt",
+            duration: 3000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'run-function', delay: 200, duration: 400 },
+              { type: 'click', target: 'run-function', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'script-execution', delay: 300, duration: 2000 },
+              { type: 'move', target: 'execution-complete', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "ocr-processing",
+            title: "OCR Receipt Processing",
+            description: "Using OCR to extract text from receipt image",
+            duration: 3500,
             app: 'expense',
             actions: [
-              { type: 'click', target: 'extract-button', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'extracted-data', delay: 300, duration: 1200 },
-              { type: 'move', target: 'categorize', delay: 300, duration: 300 }
+              { type: 'highlight', target: 'ocr-processing', delay: 200, duration: 2000 },
+              { type: 'move', target: 'ocr-results', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'extracted-text', delay: 200, duration: 800 }
+            ]
+          },
+          {
+            id: "extract-expense-data",
+            title: "Extracting Expense Data",
+            description: "AI extracting structured data from receipt",
+            duration: 3000,
+            app: 'expense',
+            actions: [
+              { type: 'highlight', target: 'data-extraction', delay: 200, duration: 2000 },
+              { type: 'move', target: 'extracted-data', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'expense-details', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "open-expense-sheet",
+            title: "Opening Expense Tracking Sheet",
+            description: "Accessing the expense tracking spreadsheet",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'move', target: 'sheets-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'expense-sheet', delay: 300, duration: 500 },
+              { type: 'click', target: 'expense-sheet', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "validate-expense-data",
+            title: "Validating Expense Data",
+            description: "Validating extracted data before adding to sheet",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'highlight', target: 'data-validation', delay: 200, duration: 1500 },
+              { type: 'move', target: 'validation-results', delay: 300, duration: 300 },
+              { type: 'highlight', target: 'validation-pass', delay: 200, duration: 200 }
+            ]
+          },
+          {
+            id: "add-to-expense-sheet",
+            title: "Adding Expense to Sheet",
+            description: "Adding the validated expense to tracking sheet",
+            duration: 2500,
+            app: 'sheets',
+            actions: [
+              { type: 'move', target: 'new-row', delay: 200, duration: 400 },
+              { type: 'highlight', target: 'new-row', delay: 200, duration: 1500 },
+              { type: 'move', target: 'save-changes', delay: 300, duration: 300 },
+              { type: 'click', target: 'save-changes', delay: 200, duration: 100 }
             ]
           },
           {
             id: "categorize-expense",
-            title: "Categorizing Expense",
-            description: "Auto-categorizing expense type",
-            duration: 1500,
-            app: 'expense',
+            title: "Auto-Categorizing Expense",
+            description: "Automatically categorizing the expense type",
+            duration: 2000,
+            app: 'sheets',
             actions: [
-              { type: 'click', target: 'categorize', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'category-result', delay: 300, duration: 800 }
+              { type: 'highlight', target: 'category-determination', delay: 200, duration: 1200 },
+              { type: 'move', target: 'category-result', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'category-applied', delay: 200, duration: 400 }
             ]
           },
           {
-            id: "approval-workflow",
-            title: "Sending for Approval",
-            description: "Initiating approval workflow",
-            duration: 1500,
-            app: 'expense',
+            id: "check-approval-threshold",
+            title: "Checking Approval Threshold",
+            description: "Checking if expense requires approval",
+            duration: 2000,
+            app: 'sheets',
             actions: [
-              { type: 'click', target: 'approve-button', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'approval-status', delay: 300, duration: 800 }
+              { type: 'highlight', target: 'threshold-check', delay: 200, duration: 1200 },
+              { type: 'move', target: 'approval-required', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'approval-triggered', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "open-approval-sheet",
+            title: "Opening Approval Log Sheet",
+            description: "Accessing the approval tracking sheet",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'move', target: 'approval-sheet', delay: 200, duration: 400 },
+              { type: 'click', target: 'approval-sheet', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'approval-log', delay: 300, duration: 1200 },
+              { type: 'move', target: 'approval-entry', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "log-approval-request",
+            title: "Logging Approval Request",
+            description: "Adding approval request to the log",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'highlight', target: 'approval-logging', delay: 200, duration: 1200 },
+              { type: 'move', target: 'approval-entry', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'approval-logged', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "send-approval-email",
+            title: "Sending Approval Email",
+            description: "Sending approval request to manager",
+            duration: 2500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'compose-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'move', target: 'to-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'to-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'manager@company.com', delay: 200, duration: 800 }
+            ]
+          },
+          {
+            id: "write-approval-email",
+            title: "Writing Approval Email",
+            description: "Composing the approval request email",
+            duration: 3500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'subject-field', delay: 200, duration: 300 },
+              { type: 'click', target: 'subject-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'subject-field', data: 'Expense Approval Required - $450.00', delay: 200, duration: 1200 },
+              { type: 'move', target: 'body-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'body-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'body-field', data: 'Hi Manager,\n\nAn expense of $450.00 for Office Supplies Co requires your approval.\n\nVendor: Office Supplies Co\nCategory: Office Supplies\nDate: 2024-03-14\n\nPlease review and approve/reject.\n\nBest regards,\nExpense System', delay: 200, duration: 1500 }
+            ]
+          },
+          {
+            id: "send-approval-request",
+            title: "Sending Approval Request",
+            description: "Sending the approval request email",
+            duration: 1500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'send-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'send-button', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'email-sent', delay: 300, duration: 800 }
+            ]
+          },
+          {
+            id: "update-expense-status",
+            title: "Updating Expense Status",
+            description: "Updating expense status to pending approval",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'highlight', target: 'status-update', delay: 200, duration: 1200 },
+              { type: 'move', target: 'status-field', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'status-changed', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "completion-summary",
+            title: "Expense Processing Complete",
+            description: "Reviewing the completed expense processing",
+            duration: 2000,
+            app: 'sheets',
+            actions: [
+              { type: 'highlight', target: 'completion-status', delay: 200, duration: 1500 },
+              { type: 'move', target: 'summary-details', delay: 300, duration: 300 }
             ]
           }
         ];
       case "task-automation":
         return [
           {
-            id: "scan-tasks",
+            id: "open-project-sheet",
+            title: "Opening Project Task Sheet",
+            description: "Navigating to the project task tracking spreadsheet",
+            duration: 1500,
+            app: 'task',
+            actions: [
+              { type: 'move', target: 'sheets-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'project-sheet', delay: 300, duration: 500 },
+              { type: 'click', target: 'project-sheet', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "scan-project-tasks",
             title: "Scanning Project Tasks",
-            description: "Analyzing tasks and deadlines",
-            duration: 2000,
+            description: "Analyzing all tasks and their current status",
+            duration: 2500,
             app: 'task',
             actions: [
-              { type: 'click', target: 'project-sheet', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'task-list', delay: 300, duration: 1200 },
-              { type: 'move', target: 'check-deadlines', delay: 300, duration: 300 }
+              { type: 'highlight', target: 'task-scanning', delay: 200, duration: 1500 },
+              { type: 'move', target: 'task-list', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'task-overview', delay: 200, duration: 600 }
             ]
           },
           {
-            id: "check-deadlines",
+            id: "check-task-deadlines",
             title: "Checking Task Deadlines",
-            description: "Identifying overdue and due tasks",
-            duration: 2000,
+            description: "Identifying tasks approaching deadlines",
+            duration: 3000,
             app: 'task',
             actions: [
-              { type: 'click', target: 'check-deadlines', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'overdue-tasks', delay: 300, duration: 1200 },
-              { type: 'move', target: 'send-reminders', delay: 300, duration: 300 }
+              { type: 'highlight', target: 'deadline-check', delay: 200, duration: 2000 },
+              { type: 'move', target: 'overdue-tasks', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'due-soon-tasks', delay: 200, duration: 600 }
             ]
           },
           {
-            id: "send-reminders",
-            title: "Sending Deadline Reminders",
-            description: "Automated reminder emails",
+            id: "open-script-editor",
+            title: "Opening Google Apps Script Editor",
+            description: "Accessing the script editor to run task automation",
+            duration: 2000,
+            app: 'task',
+            actions: [
+              { type: 'move', target: 'script-menu', delay: 200, duration: 400 },
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'move', target: 'script-editor', delay: 300, duration: 500 },
+              { type: 'click', target: 'script-editor', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "run-task-script",
+            title: "Running Task Automation Script",
+            description: "Executing the script to process tasks",
+            duration: 3000,
+            app: 'task',
+            actions: [
+              { type: 'move', target: 'run-function', delay: 200, duration: 400 },
+              { type: 'click', target: 'run-function', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'script-execution', delay: 300, duration: 2000 },
+              { type: 'move', target: 'execution-complete', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "identify-overdue-tasks",
+            title: "Identifying Overdue Tasks",
+            description: "Finding tasks that are past their deadline",
+            duration: 2500,
+            app: 'task',
+            actions: [
+              { type: 'highlight', target: 'overdue-identification', delay: 200, duration: 1500 },
+              { type: 'move', target: 'overdue-list', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'overdue-tasks-found', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "update-task-status",
+            title: "Updating Task Status",
+            description: "Automatically updating status of overdue tasks",
+            duration: 2000,
+            app: 'task',
+            actions: [
+              { type: 'highlight', target: 'status-update', delay: 200, duration: 1200 },
+              { type: 'move', target: 'status-field', delay: 300, duration: 400 },
+              { type: 'highlight', target: 'status-changed', delay: 200, duration: 400 }
+            ]
+          },
+          {
+            id: "open-calendar",
+            title: "Opening Google Calendar",
+            description: "Accessing calendar to create task events",
+            duration: 2000,
+            app: 'calendar',
+            actions: [
+              { type: 'move', target: 'calendar-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'calendar-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'calendar-interface', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'calendar-view', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "create-task-events",
+            title: "Creating Calendar Events",
+            description: "Creating calendar events for task deadlines",
+            duration: 3000,
+            app: 'calendar',
+            actions: [
+              { type: 'highlight', target: 'event-creation', delay: 200, duration: 2000 },
+              { type: 'move', target: 'task-events', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'events-created', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "open-gmail",
+            title: "Opening Gmail for Notifications",
+            description: "Navigating to Gmail to send task notifications",
             duration: 1500,
             app: 'gmail',
             actions: [
-              { type: 'click', target: 'compose', delay: 200, duration: 100 },
-              { type: 'type', target: 'email-body', data: 'Task deadline reminder', delay: 300, duration: 600 }
+              { type: 'move', target: 'gmail-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'gmail-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'compose-button', delay: 300, duration: 500 }
             ]
           },
           {
-            id: "update-status",
-            title: "Updating Task Status",
-            description: "Updating progress and generating reports",
+            id: "compose-reminder-email",
+            title: "Composing Reminder Email",
+            description: "Creating reminder email for overdue tasks",
+            duration: 3500,
+            app: 'gmail',
+            actions: [
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'move', target: 'to-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'to-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'john.doe@company.com', delay: 200, duration: 1000 },
+              { type: 'move', target: 'subject-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'subject-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'subject-field', data: 'Task Deadline Reminder - Project Proposal', delay: 200, duration: 1200 }
+            ]
+          },
+          {
+            id: "write-reminder-body",
+            title: "Writing Reminder Email Body",
+            description: "Composing the reminder email content",
+            duration: 4000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'body-field', delay: 200, duration: 300 },
+              { type: 'click', target: 'body-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'body-field', data: 'Hi John,\n\nThis is a reminder that the following task is overdue:\n\nTask: Complete Project Proposal\nDue Date: March 15, 2024\nStatus: Overdue\n\nPlease update the task status or request an extension.\n\nBest regards,\nProject Management System', delay: 200, duration: 3000 }
+            ]
+          },
+          {
+            id: "send-reminder",
+            title: "Sending Reminder Email",
+            description: "Sending the deadline reminder email",
             duration: 1500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'send-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'send-button', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'email-sent', delay: 300, duration: 800 }
+            ]
+          },
+          {
+            id: "open-docs",
+            title: "Opening Google Docs",
+            description: "Accessing Google Docs to generate status report",
+            duration: 2000,
+            app: 'docs',
+            actions: [
+              { type: 'move', target: 'docs-icon', delay: 200, duration: 400 },
+              { type: 'click', target: 'docs-icon', delay: 200, duration: 100 },
+              { type: 'move', target: 'status-report-template', delay: 300, duration: 500 },
+              { type: 'click', target: 'status-report-template', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: "generate-status-report",
+            title: "Generating Status Report",
+            description: "Creating automated project status report",
+            duration: 3000,
+            app: 'docs',
+            actions: [
+              { type: 'highlight', target: 'report-generation', delay: 200, duration: 2000 },
+              { type: 'move', target: 'report-content', delay: 300, duration: 500 },
+              { type: 'highlight', target: 'report-complete', delay: 200, duration: 500 }
+            ]
+          },
+          {
+            id: "update-project-dashboard",
+            title: "Updating Project Dashboard",
+            description: "Updating the project dashboard with latest metrics",
+            duration: 2500,
+            app: 'sheets',
+            actions: [
+              { type: 'move', target: 'dashboard-sheet', delay: 200, duration: 400 },
+              { type: 'click', target: 'dashboard-sheet', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'dashboard-update', delay: 300, duration: 1500 },
+              { type: 'move', target: 'metrics-updated', delay: 300, duration: 300 }
+            ]
+          },
+          {
+            id: "send-team-digest",
+            title: "Sending Team Digest",
+            description: "Sending daily team digest with project updates",
+            duration: 3000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'compose-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'move', target: 'to-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'to-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'team@company.com', delay: 200, duration: 800 },
+              { type: 'move', target: 'subject-field', delay: 300, duration: 300 },
+              { type: 'click', target: 'subject-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'subject-field', data: 'Daily Project Digest - March 15, 2024', delay: 200, duration: 1200 }
+            ]
+          },
+          {
+            id: "write-digest-content",
+            title: "Writing Digest Content",
+            description: "Composing the daily team digest content",
+            duration: 4000,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'body-field', delay: 200, duration: 300 },
+              { type: 'click', target: 'body-field', delay: 200, duration: 100 },
+              { type: 'type', target: 'body-field', data: 'Hi Team,\n\nHere\'s your daily project digest:\n\n📊 Project Status:\n- Completed Tasks: 8\n- In Progress: 12\n- Overdue: 2\n- Total Progress: 65%\n\n⚠️ Attention Needed:\n- Project Proposal (John Doe) - Overdue\n- Code Review (Jane Smith) - Due Today\n\n📈 Key Metrics:\n- Team Velocity: 85%\n- Sprint Completion: 70%\n- Bug Count: 3 (↓ 2 from yesterday)\n\nKeep up the great work!\n\nBest regards,\nProject Management System', delay: 200, duration: 3000 }
+            ]
+          },
+          {
+            id: "send-digest",
+            title: "Sending Team Digest",
+            description: "Sending the daily digest to the team",
+            duration: 1500,
+            app: 'gmail',
+            actions: [
+              { type: 'move', target: 'send-button', delay: 200, duration: 400 },
+              { type: 'click', target: 'send-button', delay: 200, duration: 100 },
+              { type: 'highlight', target: 'email-sent', delay: 300, duration: 800 }
+            ]
+          },
+          {
+            id: "completion-summary",
+            title: "Task Automation Complete",
+            description: "Reviewing the completed task automation process",
+            duration: 2000,
             app: 'task',
             actions: [
-              { type: 'click', target: 'update-status', delay: 200, duration: 100 },
-              { type: 'highlight', target: 'status-updates', delay: 300, duration: 800 }
+              { type: 'highlight', target: 'completion-status', delay: 200, duration: 1500 },
+              { type: 'move', target: 'summary-details', delay: 300, duration: 300 }
             ]
           }
         ];
