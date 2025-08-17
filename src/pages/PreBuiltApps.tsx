@@ -1582,8 +1582,7 @@ export default function PreBuiltApps() {
 
   const handleTryDemo = (appId: string) => {
     setActiveApp(appId);
-    setActiveTab("demo");
-    setShowDemo(true);
+    setShowEnhancedTutorialDemo(true);
   };
 
   const handleTryEnhancedDemo = (appId: string) => {
@@ -1908,22 +1907,24 @@ export default function PreBuiltApps() {
                     </CardContent>
                   </Card>
                   
-                  {showDemo && currentApp?.demoSteps && (
-                    <InteractiveScriptDemo
-                      scriptId={currentApp.id}
-                      scriptTitle={currentApp.title}
-                      demoSteps={currentApp.demoSteps}
-                      finalOutput={{}}
-                    />
-                  )}
-                  
-                  {showTutorialDemo && (
-                    <TutorialDemo
-                      scriptId={currentApp?.id || ""}
-                      scriptTitle={currentApp?.title || ""}
-                      onClose={() => setShowTutorialDemo(false)}
-                    />
-                  )}
+                  <div className="text-center py-12">
+                    <div className="max-w-md mx-auto">
+                      <div className="size-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                        <Play className="size-8 text-primary" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">Interactive Demo</h3>
+                      <p className="text-muted-foreground mb-6">
+                        Click the "Try Demo" button above to see the enhanced tutorial demo with realistic visual progression.
+                      </p>
+                      <Button 
+                        onClick={() => setShowEnhancedTutorialDemo(true)}
+                        className="hover-glow"
+                      >
+                        <Play className="size-4 mr-2" />
+                        Launch Enhanced Demo
+                      </Button>
+                    </div>
+                  </div>
                   
 
                 </TabsContent>
