@@ -184,32 +184,60 @@ const preBuiltApps = [
     ],
     demoSteps: [
       {
-        id: "email-fetch",
-        title: "Fetch New Emails",
-        description: "Scanning Gmail for unread emails with specified criteria",
+        id: "gmail-search",
+        title: "Gmail Search & Filter",
+        description: "Searching Gmail with advanced query: 'is:unread label:leads has:attachment'",
         icon: Mail,
-        duration: 1500
-      },
-      {
-        id: "data-extract", 
-        title: "Extract Data",
-        description: "Using AI to parse and extract structured data from emails",
-        icon: Brain,
         duration: 2000
       },
       {
-        id: "sheet-update",
-        title: "Update Spreadsheet", 
-        description: "Adding extracted data to Google Sheets",
-        icon: FileSpreadsheet,
-        duration: 1000
+        id: "email-processing",
+        title: "Email Processing",
+        description: "Processing email content, extracting attachments, applying labels",
+        icon: Brain,
+        duration: 2500
       },
       {
-        id: "notification",
-        title: "Send Notifications",
-        description: "Notifying team members about new data", 
+        id: "data-extraction",
+        title: "AI Data Extraction",
+        description: "Using AI to extract structured data: name, email, phone, company, message",
+        icon: Brain,
+        duration: 3000
+      },
+      {
+        id: "sheets-validation",
+        title: "Google Sheets Validation",
+        description: "Validating extracted data and formatting before adding to sheet",
+        icon: FileSpreadsheet,
+        duration: 1500
+      },
+      {
+        id: "sheets-update",
+        title: "Google Sheets Update",
+        description: "Adding new row to Leads sheet with extracted data and formatting",
+        icon: FileSpreadsheet,
+        duration: 2000
+      },
+      {
+        id: "gmail-labels",
+        title: "Gmail Label Management",
+        description: "Applying labels: 'Processed', 'Lead-Captured', 'Follow-Up-Needed'",
         icon: Mail,
-        duration: 800
+        duration: 1200
+      },
+      {
+        id: "auto-reply",
+        title: "Auto-Reply Generation",
+        description: "Sending automated confirmation email to lead",
+        icon: Mail,
+        duration: 1800
+      },
+      {
+        id: "team-notification",
+        title: "Team Notification",
+        description: "Sending notification to sales team about new lead",
+        icon: Mail,
+        duration: 1000
       }
     ]
   },
@@ -395,34 +423,69 @@ const preBuiltApps = [
         aiEnhanced: true
       }
     ],
-    demoSteps: [
+        demoSteps: [
       {
-        id: "data-collect",
-        title: "Collect Data",
-        description: "Gathering data from multiple Google Sheets",
+        id: "sheets-data-extraction",
+        title: "Google Sheets Data Extraction",
+        description: "Extracting data from multiple sheets: Sales, Customers, Metrics",
         icon: FileSpreadsheet,
-        duration: 1200
+        duration: 2500
       },
       {
-        id: "analyze",
-        title: "Analyze & Calculate", 
-        description: "Processing data and generating insights",
-        icon: BarChart3,
+        id: "sheets-calculations",
+        title: "Google Sheets Calculations",
+        description: "Running formulas: SUM, AVERAGE, COUNT, GROWTH_RATE",
+        icon: FileSpreadsheet,
+        duration: 2000
+      },
+      {
+        id: "data-filtering",
+        title: "Data Filtering & Processing",
+        description: "Filtering data by date range, status, region",
+        icon: Brain,
         duration: 1800
       },
       {
-        id: "create-doc",
-        title: "Create Document",
-        description: "Generating PDF report from template",
+        id: "charts-generation",
+        title: "Charts Generation",
+        description: "Creating visualizations: revenue trends, conversion funnels, regional data",
+        icon: BarChart3,
+        duration: 3000
+      },
+      {
+        id: "docs-template-loading",
+        title: "Google Docs Template Loading",
+        description: "Loading report template with placeholders",
         icon: Download,
         duration: 1500
       },
       {
-        id: "distribute",
-        title: "Distribute Report",
-        description: "Emailing report to stakeholders",
+        id: "docs-content-insertion",
+        title: "Google Docs Content Insertion",
+        description: "Inserting data, charts, and insights into document",
+        icon: Download,
+        duration: 2500
+      },
+      {
+        id: "docs-formatting",
+        title: "Google Docs Formatting",
+        description: "Applying professional styling and formatting",
+        icon: Download,
+        duration: 2000
+      },
+      {
+        id: "drive-file-creation",
+        title: "Google Drive File Creation",
+        description: "Saving report to Drive with proper naming and permissions",
+        icon: Download,
+        duration: 1500
+      },
+      {
+        id: "gmail-distribution",
+        title: "Gmail Distribution",
+        description: "Sending report to stakeholders with custom subject and body",
         icon: Mail,
-        duration: 1000
+        duration: 2000
       }
     ]
   },
