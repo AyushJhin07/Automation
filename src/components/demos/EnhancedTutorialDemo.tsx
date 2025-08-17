@@ -1323,7 +1323,7 @@ function ScriptEditorInterface({ data, highlights, loadingStates, completedActio
           <div className="text-gray-400 ml-4">const threads = GmailApp.search('subject:(lead OR inquiry)');</div>
           <div className="text-gray-400 ml-4"></div>
           <div className="text-gray-400 ml-4">// Extract data from emails</div>
-          <div className="text-gray-400 ml-4">threads.forEach(thread => {'{'}</div>
+          <div className="text-gray-400 ml-4">threads.forEach(thread =&gt; {'{'}</div>
           <div className="text-gray-400 ml-8">const messages = thread.getMessages();</div>
           <div className="text-gray-400 ml-8">// Process each message...</div>
           <div className="text-gray-400 ml-4">{'}'}</div>
