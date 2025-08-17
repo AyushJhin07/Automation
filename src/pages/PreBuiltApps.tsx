@@ -181,64 +181,6 @@ const preBuiltApps = [
         defaultValue: "remove-html-tags, trim-whitespace, validate-email-format",
         aiEnhanced: true
       }
-    ],
-    demoSteps: [
-      {
-        id: "gmail-search",
-        title: "Gmail Search & Filter",
-        description: "Searching Gmail with advanced query: 'is:unread label:leads has:attachment'",
-        icon: Mail,
-        duration: 2000
-      },
-      {
-        id: "email-processing",
-        title: "Email Processing",
-        description: "Processing email content, extracting attachments, applying labels",
-        icon: Brain,
-        duration: 2500
-      },
-      {
-        id: "data-extraction",
-        title: "AI Data Extraction",
-        description: "Using AI to extract structured data: name, email, phone, company, message",
-        icon: Brain,
-        duration: 3000
-      },
-      {
-        id: "sheets-validation",
-        title: "Google Sheets Validation",
-        description: "Validating extracted data and formatting before adding to sheet",
-        icon: FileSpreadsheet,
-        duration: 1500
-      },
-      {
-        id: "sheets-update",
-        title: "Google Sheets Update",
-        description: "Adding new row to Leads sheet with extracted data and formatting",
-        icon: FileSpreadsheet,
-        duration: 2000
-      },
-      {
-        id: "gmail-labels",
-        title: "Gmail Label Management",
-        description: "Applying labels: 'Processed', 'Lead-Captured', 'Follow-Up-Needed'",
-        icon: Mail,
-        duration: 1200
-      },
-      {
-        id: "auto-reply",
-        title: "Auto-Reply Generation",
-        description: "Sending automated confirmation email to lead",
-        icon: Mail,
-        duration: 1800
-      },
-      {
-        id: "team-notification",
-        title: "Team Notification",
-        description: "Sending notification to sales team about new lead",
-        icon: Mail,
-        duration: 1000
-      }
     ]
   },
   {
@@ -421,71 +363,6 @@ const preBuiltApps = [
         defaultValue: "monday-9am",
         options: ["monday-9am", "friday-5pm", "daily-8am", "custom"],
         aiEnhanced: true
-      }
-    ],
-        demoSteps: [
-      {
-        id: "sheets-data-extraction",
-        title: "Google Sheets Data Extraction",
-        description: "Extracting data from multiple sheets: Sales, Customers, Metrics",
-        icon: FileSpreadsheet,
-        duration: 2500
-      },
-      {
-        id: "sheets-calculations",
-        title: "Google Sheets Calculations",
-        description: "Running formulas: SUM, AVERAGE, COUNT, GROWTH_RATE",
-        icon: FileSpreadsheet,
-        duration: 2000
-      },
-      {
-        id: "data-filtering",
-        title: "Data Filtering & Processing",
-        description: "Filtering data by date range, status, region",
-        icon: Brain,
-        duration: 1800
-      },
-      {
-        id: "charts-generation",
-        title: "Charts Generation",
-        description: "Creating visualizations: revenue trends, conversion funnels, regional data",
-        icon: BarChart3,
-        duration: 3000
-      },
-      {
-        id: "docs-template-loading",
-        title: "Google Docs Template Loading",
-        description: "Loading report template with placeholders",
-        icon: Download,
-        duration: 1500
-      },
-      {
-        id: "docs-content-insertion",
-        title: "Google Docs Content Insertion",
-        description: "Inserting data, charts, and insights into document",
-        icon: Download,
-        duration: 2500
-      },
-      {
-        id: "docs-formatting",
-        title: "Google Docs Formatting",
-        description: "Applying professional styling and formatting",
-        icon: Download,
-        duration: 2000
-      },
-      {
-        id: "drive-file-creation",
-        title: "Google Drive File Creation",
-        description: "Saving report to Drive with proper naming and permissions",
-        icon: Download,
-        duration: 1500
-      },
-      {
-        id: "gmail-distribution",
-        title: "Gmail Distribution",
-        description: "Sending report to stakeholders with custom subject and body",
-        icon: Mail,
-        duration: 2000
       }
     ]
   },
@@ -702,36 +579,6 @@ const preBuiltApps = [
         aiEnhanced: true
       }
     ],
-    demoSteps: [
-      {
-        id: "check-availability",
-        title: "Check Availability",
-        description: "Scanning calendar for available slots",
-        icon: Calendar,
-        duration: 1200
-      },
-      {
-        id: "create-booking",
-        title: "Create Booking",
-        description: "Creating calendar event and sending confirmation",
-        icon: CheckCircle2,
-        duration: 1500
-      },
-      {
-        id: "send-reminders",
-        title: "Schedule Reminders",
-        description: "Setting up automated reminder sequence",
-        icon: Clock,
-        duration: 1000
-      },
-      {
-        id: "meet-integration",
-        title: "Google Meet Setup",
-        description: "Adding video call link to event",
-        icon: Play,
-        duration: 800
-      }
-    ]
   },
   {
     id: "file-organizer",
@@ -928,36 +775,6 @@ function getOrCreateFolder(type, date) {
         aiEnhanced: true
       }
     ],
-    demoSteps: [
-      {
-        id: "scan-files",
-        title: "Scan Files",
-        description: "Analyzing files in source folder",
-        icon: FolderCog,
-        duration: 1500
-      },
-      {
-        id: "categorize",
-        title: "Categorize Files",
-        description: "Sorting files by type and content",
-        icon: Brain,
-        duration: 2000
-      },
-      {
-        id: "create-folders",
-        title: "Create Folders",
-        description: "Setting up organized folder structure",
-        icon: FolderCog,
-        duration: 1200
-      },
-      {
-        id: "move-files",
-        title: "Move Files",
-        description: "Moving files to appropriate folders",
-        icon: Download,
-        duration: 1000
-      }
-    ]
   },
   {
     id: "expense-tracker",
@@ -1207,36 +1024,6 @@ function getOrCreateFolder(type, date) {
         aiEnhanced: true
       }
     ],
-    demoSteps: [
-      {
-        id: "receive-receipt",
-        title: "Receive Receipt",
-        description: "Email with receipt attachment received",
-        icon: Mail,
-        duration: 1000
-      },
-      {
-        id: "extract-data",
-        title: "Extract Data",
-        description: "Using AI to extract expense details",
-        icon: Brain,
-        duration: 2000
-      },
-      {
-        id: "categorize",
-        title: "Categorize Expense",
-        description: "Automatically categorizing expense type",
-        icon: DollarSign,
-        duration: 1200
-      },
-      {
-        id: "approval-workflow",
-        title: "Approval Workflow",
-        description: "Sending for manager approval",
-        icon: CheckCircle2,
-        duration: 1500
-      }
-    ]
   },
   {
     id: "task-automation",
@@ -1523,36 +1310,6 @@ function getOrCreateFolder(type, date) {
         aiEnhanced: true
       }
     ],
-    demoSteps: [
-      {
-        id: "scan-tasks",
-        title: "Scan Tasks",
-        description: "Analyzing project tasks and deadlines",
-        icon: CheckCircle2,
-        duration: 1200
-      },
-      {
-        id: "check-deadlines",
-        title: "Check Deadlines",
-        description: "Identifying tasks approaching deadlines",
-        icon: Clock,
-        duration: 1000
-      },
-      {
-        id: "send-reminders",
-        title: "Send Reminders",
-        description: "Sending automated deadline reminders",
-        icon: Mail,
-        duration: 1500
-      },
-      {
-        id: "update-status",
-        title: "Update Status",
-        description: "Updating task status and generating reports",
-        icon: BarChart3,
-        duration: 1200
-      }
-    ]
   }
 ];
 
@@ -1890,17 +1647,7 @@ export default function PreBuiltApps() {
                             Start Demo
                           </Button>
                         </div>
-                        <div className="text-center py-6 border rounded-lg">
-                          <Chrome className="size-12 mx-auto text-blue-500 mb-3" />
-                          <h3 className="text-lg font-semibold mb-2">Tutorial Demo</h3>
-                          <p className="text-muted-foreground mb-4 text-sm">
-                            Realistic screen recording style demo with Google Apps
-                          </p>
-                          <Button onClick={() => setShowTutorialDemo(true)} className="hover-glow">
-                            <Play className="size-4 mr-2" />
-                            Start Tutorial
-                          </Button>
-                        </div>
+
                       </div>
                     </CardContent>
                   </Card>
