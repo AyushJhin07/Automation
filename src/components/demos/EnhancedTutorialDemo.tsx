@@ -325,6 +325,490 @@ export default function EnhancedTutorialDemo({
           }
         ];
 
+      case 'report-generator':
+        return [
+          {
+            id: 'open-sheets',
+            title: 'Opening Google Sheets',
+            description: 'Accessing the data source spreadsheet',
+            duration: 2000,
+            interface: 'sheets',
+            cursorPosition: { x: 150, y: 80 },
+            actions: [
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'select-data-range',
+            title: 'Selecting Data Range',
+            description: 'Selecting the data range for report generation',
+            duration: 2500,
+            interface: 'sheets',
+            cursorPosition: { x: 300, y: 200 },
+            actions: [
+              { type: 'click', target: 'data-range', delay: 200, duration: 100 },
+              { type: 'drag', target: 'select-range', delay: 300, duration: 1000 }
+            ]
+          },
+          {
+            id: 'open-script-editor',
+            title: 'Opening Google Apps Script',
+            description: 'Accessing the script editor to run report generation',
+            duration: 2500,
+            interface: 'script-editor',
+            cursorPosition: { x: 100, y: 50 },
+            actions: [
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'click', target: 'script-editor', delay: 300, duration: 100 }
+            ]
+          },
+          {
+            id: 'run-report-script',
+            title: 'Running Report Generation Script',
+            description: 'Executing the script to generate the report',
+            duration: 4000,
+            interface: 'script-editor',
+            cursorPosition: { x: 500, y: 300 },
+            actions: [
+              { type: 'click', target: 'run-button', delay: 200, duration: 100 },
+              { type: 'process', target: 'script-execution', delay: 500, duration: 3000 }
+            ],
+            data: { 
+              reportData: {
+                totalRevenue: '$125,000',
+                growthRate: '15.2%',
+                topProducts: ['Product A', 'Product B', 'Product C'],
+                chartData: 'Revenue trends and growth metrics'
+              }
+            }
+          },
+          {
+            id: 'open-docs',
+            title: 'Opening Google Docs',
+            description: 'Accessing the report template document',
+            duration: 2000,
+            interface: 'docs',
+            cursorPosition: { x: 200, y: 100 },
+            actions: [
+              { type: 'click', target: 'docs-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'insert-report-data',
+            title: 'Inserting Report Data',
+            description: 'Adding generated data to the report document',
+            duration: 3000,
+            interface: 'docs',
+            cursorPosition: { x: 400, y: 250 },
+            actions: [
+              { type: 'click', target: 'insert-data', delay: 200, duration: 100 },
+              { type: 'type', target: 'revenue-cell', data: '$125,000', delay: 300, duration: 500 },
+              { type: 'type', target: 'growth-cell', data: '15.2%', delay: 300, duration: 500 }
+            ]
+          },
+          {
+            id: 'generate-charts',
+            title: 'Generating Charts',
+            description: 'Creating visual charts for the report',
+            duration: 3500,
+            interface: 'docs',
+            cursorPosition: { x: 350, y: 300 },
+            actions: [
+              { type: 'click', target: 'insert-chart', delay: 200, duration: 100 },
+              { type: 'process', target: 'chart-generation', delay: 500, duration: 2500 }
+            ]
+          },
+          {
+            id: 'save-to-drive',
+            title: 'Saving Report to Drive',
+            description: 'Saving the completed report to Google Drive',
+            duration: 2000,
+            interface: 'drive',
+            cursorPosition: { x: 450, y: 200 },
+            actions: [
+              { type: 'click', target: 'save-button', delay: 200, duration: 100 },
+              { type: 'type', target: 'filename', data: 'Monthly_Report_March_2024.pdf', delay: 300, duration: 800 }
+            ]
+          }
+        ];
+
+      case 'file-organizer':
+        return [
+          {
+            id: 'open-drive',
+            title: 'Opening Google Drive',
+            description: 'Navigating to Google Drive interface',
+            duration: 2000,
+            interface: 'drive',
+            cursorPosition: { x: 150, y: 80 },
+            actions: [
+              { type: 'click', target: 'drive-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'navigate-to-inbox',
+            title: 'Navigating to Inbox Folder',
+            description: 'Accessing the source folder to organize',
+            duration: 2500,
+            interface: 'drive',
+            cursorPosition: { x: 250, y: 150 },
+            actions: [
+              { type: 'click', target: 'inbox-folder', delay: 200, duration: 100 },
+              { type: 'click', target: 'folder-content', delay: 300, duration: 100 }
+            ]
+          },
+          {
+            id: 'scan-files',
+            title: 'Scanning Files in Folder',
+            description: 'Analyzing files for organization',
+            duration: 3000,
+            interface: 'drive',
+            cursorPosition: { x: 300, y: 200 },
+            actions: [
+              { type: 'process', target: 'file-scanning', delay: 500, duration: 2000 }
+            ],
+            data: { 
+              fileCount: 15,
+              fileTypes: ['documents', 'images', 'spreadsheets', 'presentations']
+            }
+          },
+          {
+            id: 'open-script-editor',
+            title: 'Opening Google Apps Script',
+            description: 'Accessing the script editor to run organization',
+            duration: 2500,
+            interface: 'script-editor',
+            cursorPosition: { x: 100, y: 50 },
+            actions: [
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'click', target: 'script-editor', delay: 300, duration: 100 }
+            ]
+          },
+          {
+            id: 'run-organization-script',
+            title: 'Running File Organization Script',
+            description: 'Executing the script to organize files',
+            duration: 4000,
+            interface: 'script-editor',
+            cursorPosition: { x: 500, y: 300 },
+            actions: [
+              { type: 'click', target: 'run-button', delay: 200, duration: 100 },
+              { type: 'process', target: 'script-execution', delay: 500, duration: 3000 }
+            ]
+          },
+          {
+            id: 'create-folders',
+            title: 'Creating Folder Structure',
+            description: 'Automatically creating organized folder hierarchy',
+            duration: 3000,
+            interface: 'drive',
+            cursorPosition: { x: 200, y: 250 },
+            actions: [
+              { type: 'process', target: 'folder-creation', delay: 500, duration: 2000 }
+            ]
+          },
+          {
+            id: 'move-files',
+            title: 'Moving Files to Folders',
+            description: 'Moving files to appropriate organized folders',
+            duration: 3500,
+            interface: 'drive',
+            cursorPosition: { x: 350, y: 300 },
+            actions: [
+              { type: 'process', target: 'file-movement', delay: 500, duration: 2500 }
+            ]
+          },
+          {
+            id: 'open-sheets-log',
+            title: 'Opening Activity Log Sheet',
+            description: 'Accessing the log sheet to record activities',
+            duration: 2000,
+            interface: 'sheets',
+            cursorPosition: { x: 200, y: 100 },
+            actions: [
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'log-activities',
+            title: 'Logging Organization Activities',
+            description: 'Recording all file organization activities',
+            duration: 2500,
+            interface: 'sheets',
+            cursorPosition: { x: 300, y: 250 },
+            actions: [
+              { type: 'click', target: 'new-row', delay: 200, duration: 100 },
+              { type: 'type', target: 'activity-cell', data: 'Files organized: 15 files moved to 4 folders', delay: 300, duration: 1000 }
+            ]
+          }
+        ];
+
+      case 'expense-tracker':
+        return [
+          {
+            id: 'open-gmail',
+            title: 'Opening Gmail for Receipts',
+            description: 'Navigating to Gmail to check for receipt emails',
+            duration: 2000,
+            interface: 'gmail',
+            cursorPosition: { x: 150, y: 80 },
+            actions: [
+              { type: 'click', target: 'gmail-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'search-receipts',
+            title: 'Searching for Receipt Emails',
+            description: 'Searching Gmail for receipt emails with attachments',
+            duration: 3000,
+            interface: 'gmail',
+            cursorPosition: { x: 400, y: 120 },
+            actions: [
+              { type: 'click', target: 'search-bar', delay: 200, duration: 100 },
+              { type: 'type', target: 'search-bar', data: 'has:attachment subject:(receipt OR invoice OR expense)', delay: 200, duration: 1500 }
+            ]
+          },
+          {
+            id: 'find-receipt-email',
+            title: 'Finding Receipt Email',
+            description: 'Locating the receipt email in search results',
+            duration: 2000,
+            interface: 'gmail',
+            cursorPosition: { x: 250, y: 200 },
+            actions: [
+              { type: 'click', target: 'receipt-email', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'download-attachment',
+            title: 'Downloading Receipt Attachment',
+            description: 'Downloading the receipt image for processing',
+            duration: 2500,
+            interface: 'gmail',
+            cursorPosition: { x: 300, y: 250 },
+            actions: [
+              { type: 'click', target: 'attachment', delay: 200, duration: 100 },
+              { type: 'process', target: 'download-progress', delay: 500, duration: 1500 }
+            ]
+          },
+          {
+            id: 'open-script-editor',
+            title: 'Opening Google Apps Script',
+            description: 'Accessing the script editor to process receipt',
+            duration: 2500,
+            interface: 'script-editor',
+            cursorPosition: { x: 100, y: 50 },
+            actions: [
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'click', target: 'script-editor', delay: 300, duration: 100 }
+            ]
+          },
+          {
+            id: 'run-expense-script',
+            title: 'Running Expense Processing Script',
+            description: 'Executing the script to process the receipt',
+            duration: 4000,
+            interface: 'script-editor',
+            cursorPosition: { x: 500, y: 300 },
+            actions: [
+              { type: 'click', target: 'run-button', delay: 200, duration: 100 },
+              { type: 'process', target: 'script-execution', delay: 500, duration: 3000 }
+            ],
+            data: { 
+              extractedData: {
+                amount: '$450.00',
+                vendor: 'Office Supplies Co',
+                date: '2024-03-14',
+                category: 'Office Supplies',
+                receiptNumber: 'INV-2024-001'
+              }
+            }
+          },
+          {
+            id: 'open-expense-sheet',
+            title: 'Opening Expense Tracking Sheet',
+            description: 'Accessing the expense tracking spreadsheet',
+            duration: 2000,
+            interface: 'sheets',
+            cursorPosition: { x: 200, y: 100 },
+            actions: [
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'add-expense-data',
+            title: 'Adding Expense to Sheet',
+            description: 'Adding the validated expense to tracking sheet',
+            duration: 3000,
+            interface: 'sheets',
+            cursorPosition: { x: 300, y: 250 },
+            actions: [
+              { type: 'click', target: 'new-row', delay: 200, duration: 100 },
+              { type: 'type', target: 'amount-cell', data: '$450.00', delay: 300, duration: 500 },
+              { type: 'type', target: 'vendor-cell', data: 'Office Supplies Co', delay: 300, duration: 500 },
+              { type: 'type', target: 'category-cell', data: 'Office Supplies', delay: 300, duration: 500 }
+            ]
+          },
+          {
+            id: 'check-approval-threshold',
+            title: 'Checking Approval Threshold',
+            description: 'Checking if expense requires approval',
+            duration: 2000,
+            interface: 'sheets',
+            cursorPosition: { x: 400, y: 300 },
+            actions: [
+              { type: 'process', target: 'threshold-check', delay: 500, duration: 1500 }
+            ]
+          },
+          {
+            id: 'send-approval-email',
+            title: 'Sending Approval Email',
+            description: 'Sending approval request to manager',
+            duration: 3000,
+            interface: 'gmail',
+            cursorPosition: { x: 350, y: 200 },
+            actions: [
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'manager@company.com', delay: 300, duration: 800 },
+              { type: 'type', target: 'subject-field', data: 'Expense Approval Required - $450.00', delay: 300, duration: 1000 }
+            ]
+          }
+        ];
+
+      case 'task-automation':
+        return [
+          {
+            id: 'open-project-sheet',
+            title: 'Opening Project Task Sheet',
+            description: 'Navigating to the project task tracking spreadsheet',
+            duration: 2000,
+            interface: 'sheets',
+            cursorPosition: { x: 150, y: 80 },
+            actions: [
+              { type: 'click', target: 'sheets-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'scan-project-tasks',
+            title: 'Scanning Project Tasks',
+            description: 'Analyzing all tasks and their current status',
+            duration: 3000,
+            interface: 'sheets',
+            cursorPosition: { x: 300, y: 200 },
+            actions: [
+              { type: 'process', target: 'task-scanning', delay: 500, duration: 2000 }
+            ],
+            data: { 
+              totalTasks: 25,
+              overdueTasks: 3,
+              dueToday: 5
+            }
+          },
+          {
+            id: 'check-task-deadlines',
+            title: 'Checking Task Deadlines',
+            description: 'Identifying tasks approaching deadlines',
+            duration: 2500,
+            interface: 'sheets',
+            cursorPosition: { x: 400, y: 250 },
+            actions: [
+              { type: 'process', target: 'deadline-check', delay: 500, duration: 1500 }
+            ]
+          },
+          {
+            id: 'open-script-editor',
+            title: 'Opening Google Apps Script',
+            description: 'Accessing the script editor to run task automation',
+            duration: 2500,
+            interface: 'script-editor',
+            cursorPosition: { x: 100, y: 50 },
+            actions: [
+              { type: 'click', target: 'script-menu', delay: 200, duration: 100 },
+              { type: 'click', target: 'script-editor', delay: 300, duration: 100 }
+            ]
+          },
+          {
+            id: 'run-task-script',
+            title: 'Running Task Automation Script',
+            description: 'Executing the script to process tasks',
+            duration: 4000,
+            interface: 'script-editor',
+            cursorPosition: { x: 500, y: 300 },
+            actions: [
+              { type: 'click', target: 'run-button', delay: 200, duration: 100 },
+              { type: 'process', target: 'script-execution', delay: 500, duration: 3000 }
+            ]
+          },
+          {
+            id: 'update-task-status',
+            title: 'Updating Task Status',
+            description: 'Automatically updating status of overdue tasks',
+            duration: 2500,
+            interface: 'sheets',
+            cursorPosition: { x: 350, y: 300 },
+            actions: [
+              { type: 'process', target: 'status-update', delay: 500, duration: 1500 }
+            ]
+          },
+          {
+            id: 'open-calendar',
+            title: 'Opening Google Calendar',
+            description: 'Accessing calendar to create task events',
+            duration: 2000,
+            interface: 'calendar',
+            cursorPosition: { x: 200, y: 100 },
+            actions: [
+              { type: 'click', target: 'calendar-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'create-task-events',
+            title: 'Creating Calendar Events',
+            description: 'Creating calendar events for task deadlines',
+            duration: 3000,
+            interface: 'calendar',
+            cursorPosition: { x: 300, y: 250 },
+            actions: [
+              { type: 'process', target: 'event-creation', delay: 500, duration: 2000 }
+            ]
+          },
+          {
+            id: 'send-reminder-email',
+            title: 'Sending Reminder Email',
+            description: 'Sending deadline reminder email',
+            duration: 3000,
+            interface: 'gmail',
+            cursorPosition: { x: 350, y: 200 },
+            actions: [
+              { type: 'click', target: 'compose-button', delay: 200, duration: 100 },
+              { type: 'type', target: 'to-field', data: 'john.doe@company.com', delay: 300, duration: 800 },
+              { type: 'type', target: 'subject-field', data: 'Task Deadline Reminder - Project Proposal', delay: 300, duration: 1000 }
+            ]
+          },
+          {
+            id: 'open-docs',
+            title: 'Opening Google Docs',
+            description: 'Accessing Google Docs to generate status report',
+            duration: 2000,
+            interface: 'docs',
+            cursorPosition: { x: 200, y: 100 },
+            actions: [
+              { type: 'click', target: 'docs-icon', delay: 200, duration: 100 }
+            ]
+          },
+          {
+            id: 'generate-status-report',
+            title: 'Generating Status Report',
+            description: 'Creating automated project status report',
+            duration: 3500,
+            interface: 'docs',
+            cursorPosition: { x: 400, y: 250 },
+            actions: [
+              { type: 'process', target: 'report-generation', delay: 500, duration: 2500 }
+            ]
+          }
+        ];
+
       default:
         return [];
     }
@@ -504,14 +988,32 @@ export default function EnhancedTutorialDemo({
                 />
               )}
               
-              {interfaceState.currentApp === 'script-editor' && (
-                <ScriptEditorInterface 
-                  data={interfaceState.data}
-                  highlights={interfaceState.highlights}
-                  loadingStates={interfaceState.loadingStates}
-                  completedActions={interfaceState.completedActions}
-                />
-              )}
+                             {interfaceState.currentApp === 'script-editor' && (
+                 <ScriptEditorInterface 
+                   data={interfaceState.data}
+                   highlights={interfaceState.highlights}
+                   loadingStates={interfaceState.loadingStates}
+                   completedActions={interfaceState.completedActions}
+                 />
+               )}
+               
+               {interfaceState.currentApp === 'drive' && (
+                 <DriveInterface 
+                   data={interfaceState.data}
+                   highlights={interfaceState.highlights}
+                   loadingStates={interfaceState.loadingStates}
+                   completedActions={interfaceState.completedActions}
+                 />
+               )}
+               
+               {interfaceState.currentApp === 'docs' && (
+                 <DocsInterface 
+                   data={interfaceState.data}
+                   highlights={interfaceState.highlights}
+                   loadingStates={interfaceState.loadingStates}
+                   completedActions={interfaceState.completedActions}
+                 />
+               )}
             </div>
 
             {/* Enhanced Animated Cursor */}
