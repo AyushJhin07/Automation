@@ -1925,13 +1925,7 @@ export default function PreBuiltApps() {
                     />
                   )}
                   
-                  {showEnhancedTutorialDemo && (
-                    <EnhancedTutorialDemo
-                      scriptId={currentApp?.id || ""}
-                      scriptTitle={currentApp?.title || ""}
-                      onClose={() => setShowEnhancedTutorialDemo(false)}
-                    />
-                  )}
+
                 </TabsContent>
 
                 <TabsContent value="customize" className="mt-6">
@@ -2062,6 +2056,15 @@ export default function PreBuiltApps() {
             </Button>
           </div>
         </section>
+
+        {/* Enhanced Tutorial Demo Modal */}
+        {showEnhancedTutorialDemo && (
+          <EnhancedTutorialDemo
+            scriptId={currentApp?.id || ""}
+            scriptTitle={currentApp?.title || ""}
+            onClose={() => setShowEnhancedTutorialDemo(false)}
+          />
+        )}
       </main>
     </>
   );

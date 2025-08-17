@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { 
   Play, 
-  Pause, 
+  Pause,
   RotateCcw, 
   X, 
   Mail, 
@@ -105,6 +105,7 @@ import {
   SignalLow,
   SignalZero
 } from "lucide-react";
+import { DriveInterface, DocsInterface } from "./AdditionalInterfaces";
 
 // Types
 interface TutorialStep {
