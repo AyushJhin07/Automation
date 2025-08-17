@@ -75,35 +75,49 @@ const preBuiltApps = [
     customizationOptions: [
       {
         id: "emailLabel",
-        label: "Email Label Filter",
-        description: "Gmail label to monitor for new emails",
+        label: "Gmail Label to Monitor",
+        description: "Specific Gmail label to watch for incoming emails",
         type: "text" as const,
         defaultValue: "leads",
         aiEnhanced: true
       },
       {
         id: "sheetId",
-        label: "Google Sheet ID", 
-        description: "ID of the Google Sheet to update",
+        label: "Lead Database Sheet ID", 
+        description: "Google Sheet where extracted lead data will be stored",
         type: "text" as const,
-        defaultValue: "YOUR_SHEET_ID"
+        defaultValue: "YOUR_LEADS_SHEET_ID"
       },
       {
-        id: "subjectFilter",
-        label: "Subject Filter",
-        description: "Filter emails by subject keywords",
+        id: "subjectKeywords",
+        label: "Email Subject Keywords",
+        description: "Keywords in email subjects to trigger processing",
         type: "textarea" as const,
-        defaultValue: "inquiry, lead, contact",
+        defaultValue: "inquiry, lead, contact, quote request",
         aiEnhanced: true
       },
       {
-        id: "extractionType",
-        label: "Data Extraction Type",
-        description: "Type of data to extract from emails",
-        type: "select" as const,
-        defaultValue: "contact-info",
-        options: ["contact-info", "invoice-data", "custom"],
+        id: "extractionFields",
+        label: "Data Fields to Extract",
+        description: "Specific data points to extract from emails",
+        type: "textarea" as const,
+        defaultValue: "name, email, phone, company, message",
         aiEnhanced: true
+      },
+      {
+        id: "autoReplyTemplate",
+        label: "Auto-Reply Template",
+        description: "Template for automatic response emails",
+        type: "textarea" as const,
+        defaultValue: "Thank you for your inquiry. We'll get back to you within 24 hours.",
+        aiEnhanced: true
+      },
+      {
+        id: "notificationEmails",
+        label: "Team Notification Emails",
+        description: "Email addresses to notify when new leads are captured",
+        type: "textarea" as const,
+        defaultValue: "sales@company.com, manager@company.com"
       }
     ],
     demoSteps: [
@@ -183,40 +197,56 @@ const preBuiltApps = [
     customizationOptions: [
       {
         id: "dataSheetId",
-        label: "Data Source Sheet ID",
-        description: "Google Sheet containing the data to analyze",
+        label: "Sales Data Sheet ID",
+        description: "Google Sheet containing sales performance data",
         type: "text" as const,
-        defaultValue: "DATA_SHEET_ID"
+        defaultValue: "SALES_DATA_SHEET_ID"
       },
       {
         id: "templateDocId", 
-        label: "Report Template ID",
-        description: "Google Doc template for the report",
+        label: "Report Template Document ID",
+        description: "Google Doc template with placeholders for data",
         type: "text" as const,
-        defaultValue: "TEMPLATE_DOC_ID"
+        defaultValue: "REPORT_TEMPLATE_DOC_ID"
       },
       {
         id: "reportFrequency",
-        label: "Report Frequency",
-        description: "How often to generate the report",
+        label: "Report Generation Schedule",
+        description: "How often to automatically generate reports",
         type: "select" as const,
         defaultValue: "weekly",
-        options: ["daily", "weekly", "monthly", "custom"]
+        options: ["daily", "weekly", "bi-weekly", "monthly", "quarterly"]
+      },
+      {
+        id: "kpiMetrics",
+        label: "KPI Metrics to Track",
+        description: "Key performance indicators to include in reports",
+        type: "textarea" as const,
+        defaultValue: "revenue, conversion rate, customer acquisition cost, sales velocity",
+        aiEnhanced: true
       },
       {
         id: "chartTypes",
-        label: "Chart Types to Include",
-        description: "Types of charts to generate automatically",
+        label: "Visualization Charts",
+        description: "Types of charts and graphs to include",
         type: "textarea" as const,
-        defaultValue: "bar chart, line chart, pie chart",
+        defaultValue: "revenue trend line chart, conversion funnel, sales by region pie chart",
         aiEnhanced: true
       },
       {
         id: "recipients",
-        label: "Email Recipients",
-        description: "Comma-separated list of email addresses",
+        label: "Stakeholder Email List",
+        description: "Email addresses for report distribution",
         type: "textarea" as const,
-        defaultValue: "team@company.com, manager@company.com"
+        defaultValue: "sales@company.com, management@company.com, stakeholders@company.com"
+      },
+      {
+        id: "reportTitle",
+        label: "Report Title Template",
+        description: "Template for report titles with date variables",
+        type: "text" as const,
+        defaultValue: "Sales Performance Report - {period}",
+        aiEnhanced: true
       }
     ],
     demoSteps: [
@@ -301,23 +331,31 @@ const preBuiltApps = [
     customizationOptions: [
       {
         id: "calendarId",
-        label: "Calendar ID",
-        description: "Google Calendar ID to manage bookings",
+        label: "Booking Calendar ID",
+        description: "Google Calendar where appointments will be scheduled",
         type: "text" as const,
         defaultValue: "primary"
       },
       {
         id: "meetingDuration",
-        label: "Meeting Duration (minutes)",
-        description: "Default duration for booking slots",
+        label: "Consultation Duration",
+        description: "Length of each consultation session",
         type: "select" as const,
         defaultValue: "60",
         options: ["30", "45", "60", "90", "120"]
       },
       {
+        id: "businessHours",
+        label: "Available Business Hours",
+        description: "Time slots available for bookings",
+        type: "textarea" as const,
+        defaultValue: "Monday-Friday: 9AM-5PM, Saturday: 10AM-2PM",
+        aiEnhanced: true
+      },
+      {
         id: "bookingWindow",
-        label: "Booking Window",
-        description: "How far in advance users can book",
+        label: "Advance Booking Period",
+        description: "How far in advance clients can book",
         type: "select" as const,
         defaultValue: "7",
         options: ["1", "3", "7", "14", "30"],
@@ -325,19 +363,35 @@ const preBuiltApps = [
       },
       {
         id: "reminderSchedule",
-        label: "Reminder Schedule",
-        description: "When to send reminder emails",
+        label: "Appointment Reminders",
+        description: "When to send reminder notifications",
         type: "textarea" as const,
-        defaultValue: "24 hours, 1 hour",
+        defaultValue: "24 hours before, 1 hour before, 15 minutes before",
         aiEnhanced: true
       },
       {
         id: "meetingTitle",
-        label: "Meeting Title Template",
-        description: "Template for meeting titles",
+        label: "Appointment Title Format",
+        description: "Template for calendar event titles",
         type: "text" as const,
-        defaultValue: "Consultation with {client_name}",
+        defaultValue: "Consultation: {client_name} - {service_type}",
         aiEnhanced: true
+      },
+      {
+        id: "confirmationEmail",
+        label: "Confirmation Email Template",
+        description: "Template for booking confirmation emails",
+        type: "textarea" as const,
+        defaultValue: "Your consultation has been confirmed for {date} at {time}. We'll send you a Google Meet link 15 minutes before.",
+        aiEnhanced: true
+      },
+      {
+        id: "googleMeet",
+        label: "Google Meet Integration",
+        description: "Automatically add video call links to appointments",
+        type: "select" as const,
+        defaultValue: "auto",
+        options: ["auto", "manual", "disabled"]
       }
     ],
     demoSteps: [
@@ -424,42 +478,65 @@ function getOrCreateFolder(type, date) {
     customizationOptions: [
       {
         id: "sourceFolderId",
-        label: "Source Folder ID",
-        description: "Google Drive folder to organize",
+        label: "Inbox Folder ID",
+        description: "Google Drive folder containing files to organize",
         type: "text" as const,
         defaultValue: "INBOX_FOLDER_ID"
       },
       {
         id: "organizationType",
-        label: "Organization Type",
-        description: "How to organize files",
+        label: "File Organization Strategy",
+        description: "How files should be categorized and sorted",
         type: "select" as const,
         defaultValue: "type-date",
-        options: ["type-date", "date-type", "project-based", "client-based"],
+        options: ["type-date", "date-type", "project-based", "client-based", "department-based"],
         aiEnhanced: true
       },
       {
-        id: "fileTypes",
-        label: "File Type Categories",
-        description: "Custom file type categories",
+        id: "fileCategories",
+        label: "File Category Definitions",
+        description: "Custom categories and their file extensions",
         type: "textarea" as const,
-        defaultValue: "documents: .doc,.docx,.pdf\nimages: .jpg,.png,.gif\nspreadsheets: .xls,.xlsx,.csv",
+        defaultValue: "documents: .doc,.docx,.pdf,.txt\nimages: .jpg,.png,.gif,.svg\nspreadsheets: .xls,.xlsx,.csv\npresentations: .ppt,.pptx\nvideos: .mp4,.mov,.avi",
+        aiEnhanced: true
+      },
+      {
+        id: "folderStructure",
+        label: "Folder Structure Template",
+        description: "Template for creating organized folder hierarchy",
+        type: "textarea" as const,
+        defaultValue: "{category}/{year}/{month}/{project_name}",
         aiEnhanced: true
       },
       {
         id: "permissionLevel",
-        label: "Permission Level",
-        description: "Default permission for organized files",
+        label: "File Access Permissions",
+        description: "Default sharing permissions for organized files",
         type: "select" as const,
         defaultValue: "view",
         options: ["view", "comment", "edit", "owner"]
       },
       {
         id: "archiveAge",
-        label: "Archive Age (days)",
-        description: "Move files older than this to archive",
+        label: "Auto-Archive Threshold",
+        description: "Move files older than this many days to archive",
         type: "text" as const,
         defaultValue: "365"
+      },
+      {
+        id: "duplicateHandling",
+        label: "Duplicate File Handling",
+        description: "How to handle duplicate files during organization",
+        type: "select" as const,
+        defaultValue: "rename",
+        options: ["rename", "skip", "overwrite", "move-to-duplicates"]
+      },
+      {
+        id: "notificationEmails",
+        label: "Organization Notifications",
+        description: "Email addresses to notify when files are organized",
+        type: "textarea" as const,
+        defaultValue: "admin@company.com, it@company.com"
       }
     ],
     demoSteps: [
@@ -548,42 +625,65 @@ function getOrCreateFolder(type, date) {
     customizationOptions: [
       {
         id: "expenseSheetId",
-        label: "Expense Sheet ID",
-        description: "Google Sheet to store expense data",
+        label: "Expense Tracking Sheet ID",
+        description: "Google Sheet for storing and tracking expense data",
         type: "text" as const,
-        defaultValue: "EXPENSE_SHEET_ID"
+        defaultValue: "EXPENSE_TRACKING_SHEET_ID"
       },
       {
         id: "approvalWorkflow",
-        label: "Approval Workflow",
-        description: "Approval levels and thresholds",
+        label: "Expense Approval Process",
+        description: "Multi-level approval workflow for expense processing",
         type: "select" as const,
         defaultValue: "manager-finance",
-        options: ["manager-only", "manager-finance", "multi-level", "auto-approve"],
+        options: ["manager-only", "manager-finance", "multi-level", "auto-approve", "department-head"],
         aiEnhanced: true
       },
       {
         id: "expenseCategories",
-        label: "Expense Categories",
-        description: "Custom expense categories",
+        label: "Expense Category Definitions",
+        description: "Custom categories for expense classification",
         type: "textarea" as const,
-        defaultValue: "travel, meals, office supplies, software, training",
+        defaultValue: "travel, meals, office supplies, software, training, marketing, utilities",
         aiEnhanced: true
       },
       {
         id: "approvalThresholds",
-        label: "Approval Thresholds",
-        description: "Amount thresholds for different approval levels",
+        label: "Approval Amount Thresholds",
+        description: "Dollar amounts that trigger different approval levels",
         type: "textarea" as const,
-        defaultValue: "0-100: auto\n100-500: manager\n500+: finance"
+        defaultValue: "$0-100: auto-approve\n$100-500: manager approval\n$500-1000: finance approval\n$1000+: executive approval"
       },
       {
         id: "receiptKeywords",
-        label: "Receipt Email Keywords",
-        description: "Keywords to identify receipt emails",
+        label: "Receipt Email Identifiers",
+        description: "Keywords to automatically identify receipt emails",
         type: "textarea" as const,
-        defaultValue: "receipt, invoice, expense, bill",
+        defaultValue: "receipt, invoice, expense, bill, payment confirmation",
         aiEnhanced: true
+      },
+      {
+        id: "reimbursementProcess",
+        label: "Reimbursement Workflow",
+        description: "Automated reimbursement processing steps",
+        type: "textarea" as const,
+        defaultValue: "approval → payment processing → confirmation email",
+        aiEnhanced: true
+      },
+      {
+        id: "expensePolicies",
+        label: "Expense Policy Rules",
+        description: "Company expense policy enforcement rules",
+        type: "textarea" as const,
+        defaultValue: "meals under $25 auto-approve, travel requires pre-approval, software needs IT review",
+        aiEnhanced: true
+      },
+      {
+        id: "notificationEmails",
+        label: "Finance Team Notifications",
+        description: "Email addresses for expense approval notifications",
+        type: "textarea" as const,
+        defaultValue: "finance@company.com, manager@company.com, hr@company.com"
       }
     ],
     demoSteps: [
@@ -666,15 +766,15 @@ function getOrCreateFolder(type, date) {
     customizationOptions: [
       {
         id: "projectSheetId",
-        label: "Project Sheet ID",
-        description: "Google Sheet containing project tasks",
+        label: "Project Task Sheet ID",
+        description: "Google Sheet containing project tasks and milestones",
         type: "text" as const,
-        defaultValue: "PROJECT_SHEET_ID"
+        defaultValue: "PROJECT_TASKS_SHEET_ID"
       },
       {
         id: "reminderSchedule",
-        label: "Reminder Schedule",
-        description: "When to send deadline reminders",
+        label: "Deadline Reminder Timing",
+        description: "Days before deadline to send reminder notifications",
         type: "select" as const,
         defaultValue: "3",
         options: ["1", "2", "3", "5", "7"],
@@ -682,26 +782,50 @@ function getOrCreateFolder(type, date) {
       },
       {
         id: "notificationTypes",
-        label: "Notification Types",
-        description: "Types of notifications to send",
+        label: "Project Notification Types",
+        description: "Types of automated notifications to send",
         type: "textarea" as const,
-        defaultValue: "deadline-reminder, overdue-alert, completion-notice",
+        defaultValue: "deadline-reminder, overdue-alert, completion-notice, milestone-reached",
         aiEnhanced: true
       },
       {
         id: "priorityLevels",
-        label: "Priority Levels",
-        description: "Task priority categories",
+        label: "Task Priority Categories",
+        description: "Priority levels for task classification",
         type: "textarea" as const,
-        defaultValue: "low, medium, high, urgent"
+        defaultValue: "low, medium, high, urgent, critical"
       },
       {
         id: "reportFrequency",
-        label: "Report Frequency",
-        description: "How often to generate progress reports",
+        label: "Progress Report Schedule",
+        description: "How often to generate project progress reports",
         type: "select" as const,
         defaultValue: "weekly",
         options: ["daily", "weekly", "bi-weekly", "monthly"]
+      },
+      {
+        id: "teamMembers",
+        label: "Project Team Members",
+        description: "Email addresses of project team members",
+        type: "textarea" as const,
+        defaultValue: "project-manager@company.com, team-lead@company.com, developer@company.com",
+        aiEnhanced: true
+      },
+      {
+        id: "milestoneTracking",
+        label: "Milestone Tracking",
+        description: "Key project milestones to track and report on",
+        type: "textarea" as const,
+        defaultValue: "project-kickoff, design-complete, development-start, testing-phase, launch-ready",
+        aiEnhanced: true
+      },
+      {
+        id: "escalationRules",
+        label: "Escalation Rules",
+        description: "Rules for escalating overdue or blocked tasks",
+        type: "textarea" as const,
+        defaultValue: "overdue 3 days → notify manager, overdue 7 days → escalate to director",
+        aiEnhanced: true
       }
     ],
     demoSteps: [
