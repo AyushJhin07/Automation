@@ -184,7 +184,7 @@ export default function EnhancedTutorialDemo({
             description: 'Navigating to Gmail interface',
             duration: 2000,
             interface: 'gmail',
-            cursorPosition: { x: 150, y: 80 },
+            cursorPosition: { x: 120, y: 60 },
             actions: [
               { type: 'click', target: 'gmail-icon', delay: 200, duration: 100 }
             ]
@@ -195,7 +195,7 @@ export default function EnhancedTutorialDemo({
             description: 'Typing search query to find lead emails',
             duration: 3000,
             interface: 'gmail',
-            cursorPosition: { x: 400, y: 120 },
+            cursorPosition: { x: 320, y: 90 },
             actions: [
               { type: 'click', target: 'search-bar', delay: 200, duration: 100 },
               { type: 'type', target: 'search-bar', data: 'subject:(lead OR inquiry OR quote)', delay: 300, duration: 1500 }
@@ -207,7 +207,7 @@ export default function EnhancedTutorialDemo({
             description: 'Clicking on the lead email to process',
             duration: 2000,
             interface: 'gmail',
-            cursorPosition: { x: 250, y: 200 },
+            cursorPosition: { x: 180, y: 160 },
             actions: [
               { type: 'click', target: 'email-item', delay: 200, duration: 100 }
             ],
@@ -959,81 +959,97 @@ export default function EnhancedTutorialDemo({
         {/* Demo Area */}
         <div className="flex-1 p-6 relative overflow-hidden">
           <div className="h-full relative bg-gray-50 rounded-lg border">
-            {/* Interface Container */}
-            <div className="h-full relative">
-              {/* Render current interface based on interfaceState.currentApp */}
-              {interfaceState.currentApp === 'gmail' && (
+            {/* Interface Container with Smooth Transitions */}
+            <div className="h-full relative overflow-hidden">
+              {/* Render current interface based on interfaceState.currentApp with smooth transitions */}
+              <div className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                interfaceState.currentApp === 'gmail' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+              }`}>
                 <GmailInterface 
                   data={interfaceState.data}
                   highlights={interfaceState.highlights}
                   loadingStates={interfaceState.loadingStates}
                   completedActions={interfaceState.completedActions}
                 />
-              )}
+              </div>
               
-              {interfaceState.currentApp === 'sheets' && (
+              <div className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                interfaceState.currentApp === 'sheets' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+              }`}>
                 <SheetsInterface 
                   data={interfaceState.data}
                   highlights={interfaceState.highlights}
                   loadingStates={interfaceState.loadingStates}
                   completedActions={interfaceState.completedActions}
                 />
-              )}
+              </div>
               
-              {interfaceState.currentApp === 'calendar' && (
+              <div className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                interfaceState.currentApp === 'calendar' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+              }`}>
                 <CalendarInterface 
                   data={interfaceState.data}
                   highlights={interfaceState.highlights}
                   loadingStates={interfaceState.loadingStates}
                   completedActions={interfaceState.completedActions}
                 />
-              )}
+              </div>
               
-                             {interfaceState.currentApp === 'script-editor' && (
-                 <ScriptEditorInterface 
-                   data={interfaceState.data}
-                   highlights={interfaceState.highlights}
-                   loadingStates={interfaceState.loadingStates}
-                   completedActions={interfaceState.completedActions}
-                 />
-               )}
-               
-               {interfaceState.currentApp === 'drive' && (
-                 <DriveInterface 
-                   data={interfaceState.data}
-                   highlights={interfaceState.highlights}
-                   loadingStates={interfaceState.loadingStates}
-                   completedActions={interfaceState.completedActions}
-                 />
-               )}
-               
-               {interfaceState.currentApp === 'docs' && (
-                 <DocsInterface 
-                   data={interfaceState.data}
-                   highlights={interfaceState.highlights}
-                   loadingStates={interfaceState.loadingStates}
-                   completedActions={interfaceState.completedActions}
-                 />
-               )}
+              <div className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                interfaceState.currentApp === 'script-editor' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+              }`}>
+                <ScriptEditorInterface 
+                  data={interfaceState.data}
+                  highlights={interfaceState.highlights}
+                  loadingStates={interfaceState.loadingStates}
+                  completedActions={interfaceState.completedActions}
+                />
+              </div>
+              
+              <div className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                interfaceState.currentApp === 'drive' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+              }`}>
+                <DriveInterface 
+                  data={interfaceState.data}
+                  highlights={interfaceState.highlights}
+                  loadingStates={interfaceState.loadingStates}
+                  completedActions={interfaceState.completedActions}
+                />
+              </div>
+              
+              <div className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                interfaceState.currentApp === 'docs' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+              }`}>
+                <DocsInterface 
+                  data={interfaceState.data}
+                  highlights={interfaceState.highlights}
+                  loadingStates={interfaceState.loadingStates}
+                  completedActions={interfaceState.completedActions}
+                />
+              </div>
             </div>
 
-            {/* Enhanced Animated Cursor */}
+            {/* Enhanced Animated Cursor with Realistic Movement */}
             <div 
-              className={`fixed pointer-events-none z-50 transition-all duration-300 ${
+              className={`fixed pointer-events-none z-50 transition-all duration-500 ease-out ${
                 cursor.effect === 'pulse' ? 'animate-pulse' : 
                 cursor.effect === 'shake' ? 'animate-shake' : ''
               }`}
-              style={{ left: cursor.x, top: cursor.y }}
+              style={{ 
+                left: cursor.x, 
+                top: cursor.y,
+                transform: `translate(-50%, -50%)`
+              }}
             >
-              <div className={`size-6 border-2 border-blue-500 rounded-full transition-all duration-150 ${
-                cursor.isClicking ? 'scale-75 bg-blue-500' : 
-                cursor.isTyping ? 'scale-90 bg-blue-400' :
-                cursor.isDragging ? 'scale-110 bg-blue-600' : 'scale-100'
+              <div className={`size-6 border-2 border-blue-500 rounded-full transition-all duration-200 ${
+                cursor.isClicking ? 'scale-75 bg-blue-500 shadow-lg' : 
+                cursor.isTyping ? 'scale-90 bg-blue-400 shadow-md' :
+                cursor.isDragging ? 'scale-110 bg-blue-600 shadow-xl' : 'scale-100 shadow-sm'
               }`}>
                 <div className="size-1 bg-blue-500 rounded-full absolute top-1 left-1"></div>
               </div>
               {cursor.target && (
-                <div className="absolute -top-8 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap shadow-lg">
                   {cursor.target}
                 </div>
               )}

@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { ScriptCustomizer } from "@/components/demos/ScriptCustomizer";
 import { InteractiveScriptDemo } from "@/components/demos/InteractiveScriptDemo";
-import { TutorialDemo } from "@/components/demos/TutorialDemo";
 import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
 
 const preBuiltApps = [
@@ -1562,7 +1561,6 @@ export default function PreBuiltApps() {
   const [showCode, setShowCode] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
-  const [showTutorialDemo, setShowTutorialDemo] = useState(false);
   const [showEnhancedTutorialDemo, setShowEnhancedTutorialDemo] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
