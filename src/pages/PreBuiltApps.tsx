@@ -23,7 +23,6 @@ import {
   Chrome
 } from "lucide-react";
 import { ScriptCustomizer } from "@/components/demos/ScriptCustomizer";
-import { InteractiveScriptDemo } from "@/components/demos/InteractiveScriptDemo";
 import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
 
 const preBuiltApps = [
@@ -1317,7 +1316,6 @@ export default function PreBuiltApps() {
   const [activeApp, setActiveApp] = useState("email-automation");
   const [showCode, setShowCode] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
   const [showEnhancedTutorialDemo, setShowEnhancedTutorialDemo] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -1340,10 +1338,7 @@ export default function PreBuiltApps() {
     setShowEnhancedTutorialDemo(true);
   };
 
-  const handleTryEnhancedDemo = (appId: string) => {
-    setActiveApp(appId);
-    setShowEnhancedTutorialDemo(true);
-  };
+
 
   const handleCopyCode = () => {
     if (currentApp?.codePreview) {
@@ -1635,41 +1630,26 @@ export default function PreBuiltApps() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="text-center py-6 border rounded-lg">
-                          <Play className="size-12 mx-auto text-primary/50 mb-3" />
-                          <h3 className="text-lg font-semibold mb-2">Interactive Demo</h3>
-                          <p className="text-muted-foreground mb-4 text-sm">
-                            Watch step-by-step how this automation processes data
+                      <div className="text-center py-12">
+                        <div className="max-w-md mx-auto">
+                          <div className="size-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                            <Play className="size-8 text-primary" />
+                          </div>
+                          <h3 className="text-xl font-semibold mb-2">Interactive Demo</h3>
+                          <p className="text-muted-foreground mb-6">
+                            Click the "Try Demo" button above to see the enhanced tutorial demo with realistic visual progression.
                           </p>
-                          <Button onClick={() => setShowDemo(true)} className="hover-glow">
+                          <Button 
+                            onClick={() => setShowEnhancedTutorialDemo(true)}
+                            className="hover-glow"
+                          >
                             <Play className="size-4 mr-2" />
-                            Start Demo
+                            Launch Enhanced Demo
                           </Button>
                         </div>
-
                       </div>
                     </CardContent>
                   </Card>
-                  
-                  <div className="text-center py-12">
-                    <div className="max-w-md mx-auto">
-                      <div className="size-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                        <Play className="size-8 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-semibold mb-2">Interactive Demo</h3>
-                      <p className="text-muted-foreground mb-6">
-                        Click the "Try Demo" button above to see the enhanced tutorial demo with realistic visual progression.
-                      </p>
-                      <Button 
-                        onClick={() => setShowEnhancedTutorialDemo(true)}
-                        className="hover-glow"
-                      >
-                        <Play className="size-4 mr-2" />
-                        Launch Enhanced Demo
-                      </Button>
-                    </div>
-                  </div>
                   
 
                 </TabsContent>
