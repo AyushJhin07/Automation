@@ -25,6 +25,7 @@ import {
 import { ScriptCustomizer } from "@/components/demos/ScriptCustomizer";
 import { InteractiveScriptDemo } from "@/components/demos/InteractiveScriptDemo";
 import { TutorialDemo } from "@/components/demos/TutorialDemo";
+import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
 
 const preBuiltApps = [
   {
@@ -1562,6 +1563,7 @@ export default function PreBuiltApps() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
   const [showTutorialDemo, setShowTutorialDemo] = useState(false);
+  const [showEnhancedTutorialDemo, setShowEnhancedTutorialDemo] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const currentApp = preBuiltApps.find(app => app.id === activeApp);
@@ -1582,6 +1584,11 @@ export default function PreBuiltApps() {
     setActiveApp(appId);
     setActiveTab("demo");
     setShowDemo(true);
+  };
+
+  const handleTryEnhancedDemo = (appId: string) => {
+    setActiveApp(appId);
+    setShowEnhancedTutorialDemo(true);
   };
 
   const handleCopyCode = () => {
@@ -1753,7 +1760,7 @@ export default function PreBuiltApps() {
                         className="rounded-xl border-2 hover:border-primary hover:bg-primary/5 transition-all duration-200 shadow-sm hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleTryDemo(app.id);
+                          handleTryEnhancedDemo(app.id);
                         }}
                       >
                         <Play className="size-3 mr-1" />
@@ -1915,6 +1922,14 @@ export default function PreBuiltApps() {
                       scriptId={currentApp?.id || ""}
                       scriptTitle={currentApp?.title || ""}
                       onClose={() => setShowTutorialDemo(false)}
+                    />
+                  )}
+                  
+                  {showEnhancedTutorialDemo && (
+                    <EnhancedTutorialDemo
+                      scriptId={currentApp?.id || ""}
+                      scriptTitle={currentApp?.title || ""}
+                      onClose={() => setShowEnhancedTutorialDemo(false)}
                     />
                   )}
                 </TabsContent>
