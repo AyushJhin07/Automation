@@ -388,8 +388,32 @@ export default function ProfessionalGraphCustomizer({
         isConnecting: false,
         connectingFrom: null
       }));
+    } else {
+      // Cancel connection if clicking same node or no connection started
+      setGraphState(prev => ({
+        ...prev,
+        isConnecting: false,
+        connectingFrom: null
+      }));
     }
   }, [graphState.connectingFrom]);
+
+  // Handle connection port click
+  const handlePortClick = useCallback((nodeId: string, portType: 'input' | 'output', e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (graphState.isConnecting) {
+      // Complete connection
+      if (portType === 'input' && graphState.connectingFrom !== nodeId) {
+        completeConnection(nodeId);
+      }
+    } else {
+      // Start connection from output port
+      if (portType === 'output') {
+        startConnection(nodeId);
+      }
+    }
+  }, [graphState.isConnecting, graphState.connectingFrom, startConnection, completeConnection]);
 
   // Handle mouse down on node (start dragging)
   const handleNodeMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
@@ -778,6 +802,9 @@ function validateInput(input, fieldName) {
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Workflow Graph</CardTitle>
+            <div className="text-sm text-muted-foreground">
+              <strong>How to connect nodes:</strong> Click the blue output port (right) of a node, then click the green input port (left) of another node to create a connection.
+            </div>
           </CardHeader>
           <CardContent>
             <div 
@@ -847,6 +874,18 @@ function validateInput(input, fieldName) {
                       </marker>
                     </defs>
                   </svg>
+
+                  {/* Connection Status Indicator */}
+                  {graphState.isConnecting && (
+                    <div className="absolute top-4 left-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg z-20">
+                      <div className="flex items-center gap-2">
+                        <Link className="size-4" />
+                        <span className="text-sm font-medium">
+                          Click on an input port to complete connection
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Render Nodes */}
                   {graphState.nodes.map((node) => {
@@ -939,8 +978,24 @@ function validateInput(input, fieldName) {
 
                           {/* Connection Ports */}
                           <div className="flex justify-between px-2 pb-2">
-                            <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white shadow-sm" title="Input Port" />
-                            <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white shadow-sm" title="Output Port" />
+                            <div 
+                              className={`w-4 h-4 rounded-full border-2 border-white shadow-sm cursor-pointer transition-all duration-200 ${
+                                graphState.isConnecting && graphState.connectingFrom !== node.id 
+                                  ? 'bg-green-500 hover:bg-green-600' 
+                                  : 'bg-gray-400 hover:bg-gray-500'
+                              }`}
+                              title="Input Port - Click to connect to this node"
+                              onClick={(e) => handlePortClick(node.id, 'input', e)}
+                            />
+                            <div 
+                              className={`w-4 h-4 rounded-full border-2 border-white shadow-sm cursor-pointer transition-all duration-200 ${
+                                graphState.connectingFrom === node.id 
+                                  ? 'bg-blue-500 hover:bg-blue-600' 
+                                  : 'bg-gray-400 hover:bg-gray-500'
+                              }`}
+                              title="Output Port - Click to start connection from this node"
+                              onClick={(e) => handlePortClick(node.id, 'output', e)}
+                            />
                           </div>
                         </div>
                       </div>
