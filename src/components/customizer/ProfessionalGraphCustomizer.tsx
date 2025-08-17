@@ -13,27 +13,25 @@ import {
   Calendar,
   Plus,
   Trash2,
-  Settings,
-  Play,
   Download,
   Code,
-  ArrowRight,
   Zap,
+  Link,
+  Move,
+  Settings,
+  Play,
+  ArrowRight,
   CheckCircle,
   AlertCircle,
-  Info,
-  Move,
-  Link,
-  Unlink
+  Info
 } from "lucide-react";
 
-// Types for the professional graph system
+// Professional Graph Types
 interface GraphNode {
   id: string;
   type: 'gmail' | 'sheets' | 'drive' | 'docs' | 'calendar';
   position: { x: number; y: number };
   config: any;
-  connections: string[];
   isSelected: boolean;
   isDragging: boolean;
 }
@@ -55,9 +53,11 @@ interface GraphState {
   isConnecting: boolean;
   connectingFrom: string | null;
   dragOffset: { x: number; y: number } | null;
+  canvasOffset: { x: number; y: number };
+  zoom: number;
 }
 
-// Professional Google Apps configuration
+// Professional Google Apps Configuration with Colors
 const GOOGLE_APPS_CONFIG = {
   gmail: {
     name: 'Gmail',
@@ -65,6 +65,7 @@ const GOOGLE_APPS_CONFIG = {
     color: '#EA4335',
     bgColor: '#FCE8E6',
     borderColor: '#EA4335',
+    gradient: 'linear-gradient(135deg, #FCE8E6 0%, #FADBD8 100%)',
     actions: {
       'search-emails': {
         name: 'Search Emails',
@@ -81,7 +82,24 @@ const GOOGLE_APPS_CONFIG = {
         config: {
           to: { type: 'text', label: 'To', placeholder: 'recipient@example.com' },
           subject: { type: 'text', label: 'Subject', placeholder: 'Email subject' },
-          body: { type: 'textarea', label: 'Body', placeholder: 'Email body content' }
+          body: { type: 'textarea', label: 'Body', placeholder: 'Email body content' },
+          htmlBody: { type: 'textarea', label: 'HTML Body (optional)', placeholder: '<p>HTML content</p>' }
+        }
+      },
+      'extract-data': {
+        name: 'Extract Data',
+        description: 'Extract specific fields from emails',
+        config: {
+          fields: { type: 'textarea', label: 'Fields to Extract', placeholder: 'from, subject, date, body, attachments' },
+          outputFormat: { type: 'select', label: 'Output Format', options: ['json', 'array', 'object'] }
+        }
+      },
+      'add-labels': {
+        name: 'Add Labels',
+        description: 'Add labels to emails or threads',
+        config: {
+          labels: { type: 'textarea', label: 'Labels', placeholder: 'Processed, Important, Follow-up' },
+          applyTo: { type: 'select', label: 'Apply To', options: ['thread', 'message'] }
         }
       }
     }
@@ -92,6 +110,7 @@ const GOOGLE_APPS_CONFIG = {
     color: '#0F9D58',
     bgColor: '#E6F4EA',
     borderColor: '#0F9D58',
+    gradient: 'linear-gradient(135deg, #E6F4EA 0%, #D4EDDA 100%)',
     actions: {
       'append-row': {
         name: 'Append Row',
@@ -109,6 +128,24 @@ const GOOGLE_APPS_CONFIG = {
           sheetId: { type: 'text', label: 'Sheet ID', placeholder: 'Enter Google Sheet ID' },
           range: { type: 'text', label: 'Range', placeholder: 'A1:D10 or Sheet1!A1:D10' }
         }
+      },
+      'update-range': {
+        name: 'Update Range',
+        description: 'Update values in specific range',
+        config: {
+          sheetId: { type: 'text', label: 'Sheet ID', placeholder: 'Enter Google Sheet ID' },
+          range: { type: 'text', label: 'Range', placeholder: 'A1:D10' },
+          values: { type: 'textarea', label: 'Values (JSON)', placeholder: '[["row1"], ["row2"]]' }
+        }
+      },
+      'find-rows': {
+        name: 'Find Rows',
+        description: 'Find rows matching criteria',
+        config: {
+          sheetId: { type: 'text', label: 'Sheet ID', placeholder: 'Enter Google Sheet ID' },
+          searchColumn: { type: 'text', label: 'Search Column', placeholder: 'A or column name' },
+          searchValue: { type: 'text', label: 'Search Value', placeholder: 'Value to find' }
+        }
       }
     }
   },
@@ -118,6 +155,7 @@ const GOOGLE_APPS_CONFIG = {
     color: '#4285F4',
     bgColor: '#E8F0FE',
     borderColor: '#4285F4',
+    gradient: 'linear-gradient(135deg, #E8F0FE 0%, #D1ECF1 100%)',
     actions: {
       'create-folder': {
         name: 'Create Folder',
@@ -135,6 +173,22 @@ const GOOGLE_APPS_CONFIG = {
           fileContent: { type: 'textarea', label: 'File Content (Base64)', placeholder: 'Base64 encoded content' },
           folderId: { type: 'text', label: 'Folder ID', placeholder: 'Target folder ID' }
         }
+      },
+      'move-file': {
+        name: 'Move File',
+        description: 'Move file to different folder',
+        config: {
+          fileId: { type: 'text', label: 'File ID', placeholder: 'File ID to move' },
+          targetFolderId: { type: 'text', label: 'Target Folder ID', placeholder: 'Destination folder ID' }
+        }
+      },
+      'search-files': {
+        name: 'Search Files',
+        description: 'Search files by criteria',
+        config: {
+          query: { type: 'text', label: 'Search Query', placeholder: 'name contains "report" and mimeType contains "pdf"' },
+          maxResults: { type: 'number', label: 'Max Results', defaultValue: 10 }
+        }
       }
     }
   },
@@ -144,6 +198,7 @@ const GOOGLE_APPS_CONFIG = {
     color: '#9C27B0',
     bgColor: '#F3E5F5',
     borderColor: '#9C27B0',
+    gradient: 'linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)',
     actions: {
       'create-document': {
         name: 'Create Document',
@@ -161,6 +216,25 @@ const GOOGLE_APPS_CONFIG = {
           text: { type: 'textarea', label: 'Text Content', placeholder: 'Text to insert' },
           position: { type: 'select', label: 'Position', options: ['start', 'end', 'specific'] }
         }
+      },
+      'replace-text': {
+        name: 'Replace Text',
+        description: 'Find and replace text in document',
+        config: {
+          documentId: { type: 'text', label: 'Document ID', placeholder: 'Google Doc ID' },
+          findText: { type: 'text', label: 'Find Text', placeholder: 'Text to find' },
+          replaceText: { type: 'text', label: 'Replace With', placeholder: 'Replacement text' }
+        }
+      },
+      'insert-table': {
+        name: 'Insert Table',
+        description: 'Insert table with data',
+        config: {
+          documentId: { type: 'text', label: 'Document ID', placeholder: 'Google Doc ID' },
+          rows: { type: 'number', label: 'Number of Rows', defaultValue: 3 },
+          columns: { type: 'number', label: 'Number of Columns', defaultValue: 3 },
+          data: { type: 'textarea', label: 'Table Data (JSON)', placeholder: '[["cell1", "cell2"], ["cell3", "cell4"]]' }
+        }
       }
     }
   },
@@ -170,6 +244,7 @@ const GOOGLE_APPS_CONFIG = {
     color: '#FF9800',
     bgColor: '#FFF3E0',
     borderColor: '#FF9800',
+    gradient: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
     actions: {
       'create-event': {
         name: 'Create Event',
@@ -188,6 +263,22 @@ const GOOGLE_APPS_CONFIG = {
           query: { type: 'text', label: 'Search Query', placeholder: 'meeting' },
           startDate: { type: 'text', label: 'Start Date', placeholder: '2024-03-01' },
           endDate: { type: 'text', label: 'End Date', placeholder: '2024-03-31' }
+        }
+      },
+      'update-event': {
+        name: 'Update Event',
+        description: 'Update existing event',
+        config: {
+          eventId: { type: 'text', label: 'Event ID', placeholder: 'Event ID to update' },
+          updates: { type: 'textarea', label: 'Updates (JSON)', placeholder: '{"summary": "New Title"}' }
+        }
+      },
+      'add-attendees': {
+        name: 'Add Attendees',
+        description: 'Add attendees to event',
+        config: {
+          eventId: { type: 'text', label: 'Event ID', placeholder: 'Event ID' },
+          attendees: { type: 'textarea', label: 'New Attendees', placeholder: 'newuser@example.com' }
         }
       }
     }
@@ -210,7 +301,9 @@ export default function ProfessionalGraphCustomizer({
     selectedConnection: null,
     isConnecting: false,
     connectingFrom: null,
-    dragOffset: null
+    dragOffset: null,
+    canvasOffset: { x: 0, y: 0 },
+    zoom: 1
   });
   const [selectedApp, setSelectedApp] = useState<string>('');
   const [selectedAction, setSelectedAction] = useState<string>('');
@@ -218,15 +311,15 @@ export default function ProfessionalGraphCustomizer({
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Calculate node position to avoid overlapping
+  // Calculate professional node position with proper spacing
   const calculateNodePosition = useCallback((index: number) => {
-    const baseX = 150;
+    const baseX = 200;
     const baseY = 150;
-    const spacingX = 300;
-    const spacingY = 200;
+    const spacingX = 350;
+    const spacingY = 250;
     
-    const row = Math.floor(index / 3);
-    const col = index % 3;
+    const row = Math.floor(index / 2);
+    const col = index % 2;
     
     return {
       x: baseX + col * spacingX,
@@ -242,7 +335,6 @@ export default function ProfessionalGraphCustomizer({
       type: appType as any,
       position,
       config: { action, ...nodeConfig },
-      connections: [],
       isSelected: false,
       isDragging: false
     };
@@ -417,6 +509,10 @@ ${generateHelperFunctions()}
         return `GmailApp.search('${config.query || 'is:unread'}').slice(0, ${config.maxResults || 10})`;
       case 'send-email':
         return `GmailApp.sendEmail('${config.to}', '${config.subject}', '${config.body}')`;
+      case 'extract-data':
+        return `extractEmailData(GmailApp.search('is:unread').slice(0, 5))`;
+      case 'add-labels':
+        return `addLabelsToThreads(GmailApp.search('is:unread'), ['${config.labels}'])`;
       default:
         return 'null';
     }
@@ -429,6 +525,10 @@ ${generateHelperFunctions()}
         return `SpreadsheetApp.openById('${config.sheetId}').getSheetByName('${config.sheetName}').appendRow(${config.data || '[]'})`;
       case 'read-range':
         return `SpreadsheetApp.openById('${config.sheetId}').getRange('${config.range}').getValues()`;
+      case 'update-range':
+        return `SpreadsheetApp.openById('${config.sheetId}').getRange('${config.range}').setValues(${config.values || '[]'})`;
+      case 'find-rows':
+        return `findRowsInSheet('${config.sheetId}', '${config.searchColumn}', '${config.searchValue}')`;
       default:
         return 'null';
     }
@@ -441,6 +541,10 @@ ${generateHelperFunctions()}
         return `DriveApp.createFolder('${config.folderName}')`;
       case 'upload-file':
         return `DriveApp.createFile(Utilities.newBlob('${config.fileContent}', '${config.fileName}'))`;
+      case 'move-file':
+        return `DriveApp.getFileById('${config.fileId}').moveTo(DriveApp.getFolderById('${config.targetFolderId}'))`;
+      case 'search-files':
+        return `DriveApp.searchFiles('${config.query}')`;
       default:
         return 'null';
     }
@@ -453,6 +557,10 @@ ${generateHelperFunctions()}
         return `DocumentApp.create('${config.title}')`;
       case 'insert-text':
         return `DocumentApp.openById('${config.documentId}').getBody().appendParagraph('${config.text}')`;
+      case 'replace-text':
+        return `replaceTextInDocument('${config.documentId}', '${config.findText}', '${config.replaceText}')`;
+      case 'insert-table':
+        return `insertTableInDocument('${config.documentId}', ${config.rows}, ${config.columns})`;
       default:
         return 'null';
     }
@@ -465,6 +573,10 @@ ${generateHelperFunctions()}
         return `CalendarApp.getDefaultCalendar().createEvent('${config.summary}', new Date('${config.startTime}'), new Date('${config.endTime}'))`;
       case 'find-events':
         return `CalendarApp.getDefaultCalendar().getEvents(new Date('${config.startDate}'), new Date('${config.endDate}'))`;
+      case 'update-event':
+        return `CalendarApp.getDefaultCalendar().getEventById('${config.eventId}').setTitle('Updated Title')`;
+      case 'add-attendees':
+        return `CalendarApp.getDefaultCalendar().getEventById('${config.eventId}').addGuest('${config.attendees}')`;
       default:
         return 'null';
     }
@@ -473,7 +585,48 @@ ${generateHelperFunctions()}
   // Generate helper functions
   const generateHelperFunctions = (): string => {
     return `
-// Helper functions for workflow execution
+// Gmail Helper Functions
+function extractEmailData(threads) {
+  return threads.map(thread => {
+    const message = thread.getMessages()[0];
+    return {
+      from: message.getFrom(),
+      subject: message.getSubject(),
+      date: message.getDate(),
+      body: message.getPlainBody(),
+      attachments: message.getAttachments()
+    };
+  });
+}
+
+function addLabelsToThreads(threads, labelNames) {
+  labelNames.forEach(labelName => {
+    const label = GmailApp.getUserLabelByName(labelName) || GmailApp.createLabel(labelName);
+    threads.forEach(thread => thread.addLabel(label));
+  });
+}
+
+// Sheets Helper Functions
+function findRowsInSheet(sheetId, column, value) {
+  const sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  return data.filter(row => row[column.charCodeAt(0) - 65] === value);
+}
+
+// Docs Helper Functions
+function replaceTextInDocument(docId, findText, replaceText) {
+  const doc = DocumentApp.openById(docId);
+  const body = doc.getBody();
+  body.replaceText(findText, replaceText);
+}
+
+function insertTableInDocument(docId, rows, cols) {
+  const doc = DocumentApp.openById(docId);
+  const body = doc.getBody();
+  return body.insertTable(rows, cols);
+}
+
+// General Helper Functions
 function logStep(stepName, data) {
   console.log(\`[Step: \${stepName}]\`, data);
 }
@@ -630,6 +783,13 @@ function validateInput(input, fieldName) {
             <div 
               ref={canvasRef}
               className="min-h-[600px] border-2 border-dashed border-gray-300 rounded-lg p-4 relative bg-gray-50 overflow-hidden"
+              style={{
+                backgroundImage: `
+                  radial-gradient(circle at 25px 25px, #e5e7eb 2px, transparent 0),
+                  radial-gradient(circle at 75px 75px, #e5e7eb 2px, transparent 0)
+                `,
+                backgroundSize: '100px 100px'
+              }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
@@ -718,7 +878,7 @@ function validateInput(input, fieldName) {
                         <div 
                           className="w-48 rounded-lg border-2 shadow-lg transition-all duration-200 hover:shadow-xl"
                           style={{
-                            backgroundColor: appConfig.bgColor,
+                            background: appConfig.gradient,
                             borderColor: node.isSelected ? '#3b82f6' : appConfig.borderColor
                           }}
                         >
