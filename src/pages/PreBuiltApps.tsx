@@ -22,7 +22,7 @@ import {
   Brain,
   Chrome
 } from "lucide-react";
-import { ScriptCustomizer } from "@/components/demos/ScriptCustomizer";
+import VisualGraphCustomizer from "@/components/customizer/VisualGraphCustomizer";
 import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
 
 const preBuiltApps = [
@@ -1655,19 +1655,15 @@ export default function PreBuiltApps() {
                 </TabsContent>
 
                 <TabsContent value="customize" className="mt-6">
-                  {currentApp?.customizationOptions && (
-                    <ScriptCustomizer
-                      scriptId={currentApp.id}
-                      scriptTitle={currentApp.title}
-                      baseCode={currentApp.codePreview}
-                      
-                      onDownload={(customizedCode, config) => {
-                        // This would handle the download with customizations
-                        console.log("Downloading customized script:", { customizedCode, config });
-                        alert("Custom script download would start here with your AI enhancements!");
-                      }}
-                    />
-                  )}
+                  <VisualGraphCustomizer
+                    scriptId={currentApp?.id || ""}
+                    scriptTitle={currentApp?.title || ""}
+                    onDownload={(customizedCode, config) => {
+                      // This would handle the download with customizations
+                      console.log("Downloading customized script:", { customizedCode, config });
+                      alert("Custom script download would start here with your visual graph customizations!");
+                    }}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="features" className="mt-6">
