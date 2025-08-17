@@ -1,69 +1,80 @@
 import { Card } from "@/components/ui/card";
 
+import { 
+  Sheet, Mail, HardDrive, Calendar, FileText, Presentation, 
+  FileEdit, MessageCircle, Slack, Users, Gamepad2, Video,
+  Cloud, Heart, RotateCw, TrendingUp, CheckSquare, Trello,
+  BarChart3, Bug, DollarSign, PieChart, FileSpreadsheet,
+  CreditCard, Building, Briefcase, Linkedin,
+  Send, Radio, Facebook, Target, Package, CloudDrizzle,
+  Folder, Github, GitBranch, ShoppingBag, ShoppingCart,
+  Store, Square
+} from "lucide-react";
+
 const integrations = [
   // Google Workspace
-  { name: "Google Sheets", category: "Google Workspace", logo: "📊" },
-  { name: "Gmail", category: "Google Workspace", logo: "📧" },
-  { name: "Google Drive", category: "Google Workspace", logo: "💾" },
-  { name: "Google Calendar", category: "Google Workspace", logo: "📅" },
-  { name: "Google Docs", category: "Google Workspace", logo: "📄" },
-  { name: "Google Slides", category: "Google Workspace", logo: "📽️" },
-  { name: "Google Forms", category: "Google Workspace", logo: "📝" },
-  { name: "Google Chat", category: "Google Workspace", logo: "💬" },
+  { name: "Google Sheets", category: "Google Workspace", icon: Sheet },
+  { name: "Gmail", category: "Google Workspace", icon: Mail },
+  { name: "Google Drive", category: "Google Workspace", icon: HardDrive },
+  { name: "Google Calendar", category: "Google Workspace", icon: Calendar },
+  { name: "Google Docs", category: "Google Workspace", icon: FileText },
+  { name: "Google Slides", category: "Google Workspace", icon: Presentation },
+  { name: "Google Forms", category: "Google Workspace", icon: FileEdit },
+  { name: "Google Chat", category: "Google Workspace", icon: MessageCircle },
   
   // Communication
-  { name: "Slack", category: "Communication", logo: "💬" },
-  { name: "Microsoft Teams", category: "Communication", logo: "👥" },
-  { name: "Discord", category: "Communication", logo: "🎮" },
-  { name: "Zoom", category: "Communication", logo: "📹" },
+  { name: "Slack", category: "Communication", icon: Slack },
+  { name: "Microsoft Teams", category: "Communication", icon: Users },
+  { name: "Discord", category: "Communication", icon: Gamepad2 },
+  { name: "Zoom", category: "Communication", icon: Video },
   
   // CRM & Sales
-  { name: "Salesforce", category: "CRM & Sales", logo: "☁️" },
-  { name: "HubSpot", category: "CRM & Sales", logo: "🧡" },
-  { name: "Pipedrive", category: "CRM & Sales", logo: "🔄" },
-  { name: "Zoho CRM", category: "CRM & Sales", logo: "📈" },
+  { name: "Salesforce", category: "CRM & Sales", icon: Cloud },
+  { name: "HubSpot", category: "CRM & Sales", icon: Heart },
+  { name: "Pipedrive", category: "CRM & Sales", icon: RotateCw },
+  { name: "Zoho CRM", category: "CRM & Sales", icon: TrendingUp },
   
   // Project Management
-  { name: "Asana", category: "Project Management", logo: "✅" },
-  { name: "Trello", category: "Project Management", logo: "📋" },
-  { name: "Monday.com", category: "Project Management", logo: "📊" },
-  { name: "Jira", category: "Project Management", logo: "🐛" },
+  { name: "Asana", category: "Project Management", icon: CheckSquare },
+  { name: "Trello", category: "Project Management", icon: Trello },
+  { name: "Monday.com", category: "Project Management", icon: BarChart3 },
+  { name: "Jira", category: "Project Management", icon: Bug },
   
   // Finance & Accounting
-  { name: "QuickBooks", category: "Finance", logo: "💰" },
-  { name: "Xero", category: "Finance", logo: "📊" },
-  { name: "FreshBooks", category: "Finance", logo: "📄" },
-  { name: "Stripe", category: "Finance", logo: "💳" },
+  { name: "QuickBooks", category: "Finance", icon: DollarSign },
+  { name: "Xero", category: "Finance", icon: PieChart },
+  { name: "FreshBooks", category: "Finance", icon: FileSpreadsheet },
+  { name: "Stripe", category: "Finance", icon: CreditCard },
   
   // HR & Recruiting
-  { name: "BambooHR", category: "HR", logo: "🎋" },
-  { name: "Workday", category: "HR", logo: "👔" },
-  { name: "Greenhouse", category: "HR", logo: "🌱" },
-  { name: "LinkedIn", category: "HR", logo: "💼" },
+  { name: "BambooHR", category: "HR", icon: Building },
+  { name: "Workday", category: "HR", icon: Briefcase },
+  { name: "Greenhouse", category: "HR", icon: Building },
+  { name: "LinkedIn", category: "HR", icon: Linkedin },
   
   // Marketing
-  { name: "Mailchimp", category: "Marketing", logo: "🐵" },
-  { name: "Constant Contact", category: "Marketing", logo: "📮" },
-  { name: "Facebook Ads", category: "Marketing", logo: "📘" },
-  { name: "Google Ads", category: "Marketing", logo: "🎯" },
+  { name: "Mailchimp", category: "Marketing", icon: Send },
+  { name: "Constant Contact", category: "Marketing", icon: Radio },
+  { name: "Facebook Ads", category: "Marketing", icon: Facebook },
+  { name: "Google Ads", category: "Marketing", icon: Target },
   
   // Storage & Files
-  { name: "Dropbox", category: "Storage", logo: "📦" },
-  { name: "OneDrive", category: "Storage", logo: "☁️" },
-  { name: "Box", category: "Storage", logo: "📁" },
-  { name: "AWS S3", category: "Storage", logo: "🪣" },
+  { name: "Dropbox", category: "Storage", icon: Package },
+  { name: "OneDrive", category: "Storage", icon: CloudDrizzle },
+  { name: "Box", category: "Storage", icon: Folder },
+  { name: "AWS S3", category: "Storage", icon: Package },
   
   // Development
-  { name: "GitHub", category: "Development", logo: "🐙" },
-  { name: "GitLab", category: "Development", logo: "🦊" },
-  { name: "Bitbucket", category: "Development", logo: "🪣" },
-  { name: "Jira", category: "Development", logo: "🛠️" },
+  { name: "GitHub", category: "Development", icon: Github },
+  { name: "GitLab", category: "Development", icon: GitBranch },
+  { name: "Bitbucket", category: "Development", icon: Package },
+  { name: "Jira", category: "Development", icon: Bug },
   
   // E-commerce
-  { name: "Shopify", category: "E-commerce", logo: "🛍️" },
-  { name: "WooCommerce", category: "E-commerce", logo: "🛒" },
-  { name: "BigCommerce", category: "E-commerce", logo: "🏪" },
-  { name: "Square", category: "E-commerce", logo: "⬜" }
+  { name: "Shopify", category: "E-commerce", icon: ShoppingBag },
+  { name: "WooCommerce", category: "E-commerce", icon: ShoppingCart },
+  { name: "BigCommerce", category: "E-commerce", icon: Store },
+  { name: "Square", category: "E-commerce", icon: Square }
 ];
 
 const categories = [...new Set(integrations.map(app => app.category))];
@@ -90,7 +101,9 @@ export const AppIntegrations = () => {
                 .filter(app => app.category === category)
                 .map((app) => (
                   <Card key={app.name} className="p-4 text-center hover-scale glass-card tint-a">
-                    <div className="text-2xl mb-2">{app.logo}</div>
+                    <div className="mb-2 flex justify-center">
+                      <app.icon className="size-8 text-primary" />
+                    </div>
                     <p className="text-sm font-medium">{app.name}</p>
                   </Card>
                 ))}

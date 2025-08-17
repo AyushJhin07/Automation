@@ -1106,7 +1106,7 @@ export default function PreBuiltApps() {
                       scriptId={currentApp.id}
                       scriptTitle={currentApp.title}
                       baseCode={currentApp.codePreview}
-                      customizationOptions={currentApp.customizationOptions}
+                      
                       onDownload={(customizedCode, config) => {
                         // This would handle the download with customizations
                         console.log("Downloading customized script:", { customizedCode, config });

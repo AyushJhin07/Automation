@@ -36,6 +36,17 @@ interface GoogleFunction {
   category: "gmail" | "sheets" | "calendar" | "drive" | "notifications";
 }
 
+interface CustomizationOption {
+  id: string;
+  label: string;
+  description: string;
+  type: 'text' | 'select' | 'boolean' | 'textarea' | 'number';
+  defaultValue: any;
+  options?: { label: string; value: string }[];
+  aiEnhanced?: boolean;
+  category: string;
+}
+
 interface ScriptCustomizerProps {
   scriptId: string;
   scriptTitle: string;

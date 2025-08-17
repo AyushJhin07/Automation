@@ -171,9 +171,6 @@ export function InteractiveScriptDemo({
     }
   };
 
-  // Use the provided demo steps or generate default ones
-  const actualDemoSteps = demoSteps.length > 0 ? demoSteps : getDemoStepsForScript(scriptId);
-
   const getDemoStepsForScript = (scriptId: string): DemoStep[] => {
     switch (scriptId) {
       case "email-automation":
@@ -388,6 +385,9 @@ export function InteractiveScriptDemo({
         ];
     }
   };
+
+  // Use the provided demo steps or generate default ones
+  const actualDemoSteps = demoSteps.length > 0 ? demoSteps : getDemoStepsForScript(scriptId);
 
   return (
     <Card className="glass-card">

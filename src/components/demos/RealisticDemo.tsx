@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,9 +25,7 @@ import {
   Settings,
   Users,
   FileSpreadsheet,
-  Gmail,
-  Drive,
-  Chrome
+  HardDrive
 } from "lucide-react";
 
 interface DemoStep {
@@ -50,7 +48,7 @@ const GmailInterface = ({ isActive, data }: { isActive: boolean; data?: any }) =
   <div className={`border rounded-lg bg-white shadow-lg transition-all duration-500 ${isActive ? 'scale-105' : 'scale-100'}`}>
     {/* Gmail Header */}
     <div className="bg-red-500 text-white p-3 rounded-t-lg flex items-center gap-2">
-      <Gmail className="size-5" />
+      <Mail className="size-5" />
       <span className="font-semibold">Gmail</span>
       <div className="ml-auto flex items-center gap-2">
         <Search className="size-4" />
@@ -180,7 +178,7 @@ const DriveInterface = ({ isActive, data }: { isActive: boolean; data?: any }) =
   <div className={`border rounded-lg bg-white shadow-lg transition-all duration-500 ${isActive ? 'scale-105' : 'scale-100'}`}>
     {/* Drive Header */}
     <div className="bg-yellow-500 text-white p-3 rounded-t-lg flex items-center gap-2">
-      <Drive className="size-5" />
+      <HardDrive className="size-5" />
       <span className="font-semibold">Google Drive</span>
       <span className="text-sm ml-auto">Inbox Folder</span>
     </div>
@@ -318,7 +316,7 @@ export function RealisticDemo({ scriptId, scriptTitle, onClose }: RealisticDemoP
             id: "data-extract",
             title: "Extracting Data",
             description: "Using AI to parse and extract structured information",
-            icon: Brain,
+            icon: Database,
             duration: 2500,
             uiComponent: GmailInterface
           },
@@ -380,7 +378,7 @@ export function RealisticDemo({ scriptId, scriptTitle, onClose }: RealisticDemoP
             id: "scan-files",
             title: "Scanning Drive",
             description: "Analyzing files in source folder",
-            icon: Drive,
+            icon: HardDrive,
             duration: 2000,
             uiComponent: DriveInterface
           },
@@ -423,7 +421,7 @@ export function RealisticDemo({ scriptId, scriptTitle, onClose }: RealisticDemoP
             id: "extract-data",
             title: "Extracting Data",
             description: "Using AI to extract expense details",
-            icon: Brain,
+            icon: Database,
             duration: 2500,
             uiComponent: ExpenseInterface
           },
@@ -653,7 +651,7 @@ export function RealisticDemo({ scriptId, scriptTitle, onClose }: RealisticDemoP
           {demoSteps[currentStep] && (
             <div className="text-center space-y-2">
               <div className="flex items-center justify-center gap-2">
-                <demoSteps[currentStep].icon className="size-5 text-primary" />
+                {React.createElement(demoSteps[currentStep].icon, { className: "size-5 text-primary" })}
                 <h3 className="text-lg font-semibold">{demoSteps[currentStep].title}</h3>
               </div>
               <p className="text-muted-foreground">{demoSteps[currentStep].description}</p>
@@ -664,10 +662,10 @@ export function RealisticDemo({ scriptId, scriptTitle, onClose }: RealisticDemoP
           <div className="flex justify-center">
             <div className="w-full max-w-2xl">
               {demoSteps[currentStep] && (
-                <demoSteps[currentStep].uiComponent 
-                  isActive={isRunning && currentStep < demoSteps.length} 
-                  data={currentStepData}
-                />
+                React.createElement(demoSteps[currentStep].uiComponent, {
+                  isActive: isRunning && currentStep < demoSteps.length,
+                  data: currentStepData
+                })
               )}
             </div>
           </div>
