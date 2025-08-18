@@ -1509,7 +1509,7 @@ export default function PreBuiltApps() {
                         className="rounded-xl border-2 hover:border-primary hover:bg-primary/5 transition-all duration-200 shadow-sm hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleTryEnhancedDemo(app.id);
+                          setSelectedForDemo(app.id);
                         }}
                       >
                         <Play className="size-3 mr-1" />

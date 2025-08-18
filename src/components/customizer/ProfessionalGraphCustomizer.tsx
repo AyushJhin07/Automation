@@ -729,11 +729,11 @@ function validateInput(input, fieldName) {
                     <SelectValue placeholder="Choose an action..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(GOOGLE_APPS_CONFIG[selectedApp].actions).map(([key, action]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="space-y-1">
-                          <div className="font-medium">{action.name}</div>
-                          <div className="text-xs text-muted-foreground">{action.description}</div>
+                     {Object.entries(GOOGLE_APPS_CONFIG[selectedApp].actions).map(([key, action]: [string, any]) => (
+                       <SelectItem key={key} value={key}>
+                         <div className="space-y-1">
+                           <div className="font-medium">{action.name}</div>
+                           <div className="text-xs text-muted-foreground">{action.description}</div>
                         </div>
                       </SelectItem>
                     ))}
@@ -746,7 +746,7 @@ function validateInput(input, fieldName) {
             {selectedApp && selectedAction && (
               <div className="space-y-4">
                 <Label>Configuration</Label>
-                {Object.entries(GOOGLE_APPS_CONFIG[selectedApp].actions[selectedAction].config).map(([key, config]) => (
+                {Object.entries(GOOGLE_APPS_CONFIG[selectedApp].actions[selectedAction].config).map(([key, config]: [string, any]) => (
                   <div key={key}>
                     <Label>{config.label}</Label>
                     {config.type === 'text' && (

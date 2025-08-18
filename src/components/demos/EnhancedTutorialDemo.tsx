@@ -31,7 +31,6 @@ import {
   MoreHorizontal,
   Star,
   Archive,
-  Label,
   Reply,
   Forward,
   Share,
@@ -72,8 +71,6 @@ import {
   HelpCircle,
   ExternalLink,
   Copy,
-  Paste,
-  Cut,
   Save,
   RefreshCw,
   ZoomIn,
@@ -388,7 +385,7 @@ export default function EnhancedTutorialDemo({
             title: 'Opening Google Docs',
             description: 'Accessing the report template document',
             duration: 2000,
-            interface: 'docs',
+            interface: 'drive',
             cursorPosition: { x: 200, y: 100 },
             actions: [
               { type: 'click', target: 'docs-icon', delay: 200, duration: 100 }
@@ -399,7 +396,7 @@ export default function EnhancedTutorialDemo({
             title: 'Inserting Report Data',
             description: 'Adding generated data to the report document',
             duration: 3000,
-            interface: 'docs',
+            interface: 'drive',
             cursorPosition: { x: 400, y: 250 },
             actions: [
               { type: 'click', target: 'insert-data', delay: 200, duration: 100 },
@@ -412,7 +409,7 @@ export default function EnhancedTutorialDemo({
             title: 'Generating Charts',
             description: 'Creating visual charts for the report',
             duration: 3500,
-            interface: 'docs',
+            interface: 'drive',
             cursorPosition: { x: 350, y: 300 },
             actions: [
               { type: 'click', target: 'insert-chart', delay: 200, duration: 100 },
