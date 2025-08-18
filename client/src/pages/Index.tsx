@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import heroImage from "@/assets/hero-automation-interconnected.jpg";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 import {
   Mail, CalendarRange, FileSpreadsheet, FileText, BarChart3, FolderCog,
   Inbox, CheckCircle2, Workflow, Code2, Download, Play
