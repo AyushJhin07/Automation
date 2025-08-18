@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import ProfessionalGraphCustomizer from "@/components/customizer/ProfessionalGraphCustomizer";
 import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
+import { WorkflowGraphBuilder } from "@/components/workflow/WorkflowGraphBuilder";
 
 const preBuiltApps = [
   {
@@ -1656,15 +1657,30 @@ export default function PreBuiltApps() {
                 </TabsContent>
 
                 <TabsContent value="customize" className="mt-6">
-                  <ProfessionalGraphCustomizer
-                    scriptId={currentApp?.id || ""}
-                    scriptTitle={currentApp?.title || ""}
-                    onDownload={(customizedCode, config) => {
-                      // This would handle the download with customizations
-                      console.log("Downloading customized script:", { customizedCode, config });
-                      alert("Custom script download would start here with your professional graph customizations!");
-                    }}
-                  />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="size-5" />
+                        Visual Workflow Builder
+                      </CardTitle>
+                      <CardDescription>
+                        Build custom automation workflows by connecting Google Apps with visual nodes. 
+                        Drag and drop different apps, select actions, and connect them to create your perfect automation.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <WorkflowGraphBuilder 
+                        onWorkflowSave={(workflow) => {
+                          console.log("Saving workflow:", workflow);
+                          // This would integrate with your backend to save the workflow
+                        }}
+                        onWorkflowTest={(workflow) => {
+                          console.log("Testing workflow:", workflow);
+                          // This would execute a test run of the workflow
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
                 </TabsContent>
                 
                 <TabsContent value="features" className="mt-6">

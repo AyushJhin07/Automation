@@ -39,7 +39,7 @@ const App = () => (
           <Route path="/resources" component={Resources} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/terms" component={Terms} />
-          <Route component={NotFound} />
+          <Route path="/:rest*" component={NotFound} />
           <Footer />
         </Router>
       </TooltipProvider>
