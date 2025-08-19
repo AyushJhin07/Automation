@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 
 const Footer = () => {
@@ -11,9 +11,9 @@ const Footer = () => {
               © {new Date().getFullYear()} Apps Script Studio. All rights reserved.
             </p>
             <nav className="flex items-center gap-6 text-sm">
-              <Link href="/privacy" className="hover:underline">Privacy</Link>
-              <Link href="/terms" className="hover:underline">Terms</Link>
-              <Link href="/contact" className="hover:underline">Contact</Link>
+              <Link to="/privacy" className="hover:underline">Privacy</Link>
+              <Link to="/terms" className="hover:underline">Terms</Link>
+              <Link to="/contact" className="hover:underline">Contact</Link>
             </nav>
           </div>
           <Separator className="my-4" />

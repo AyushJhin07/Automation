@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -15,7 +15,7 @@ const navItems = [
 
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
-  const [location] = useLocation();
+  const location = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -32,28 +32,30 @@ export const Navbar = () => {
       )}
     >
       <nav className="container mx-auto flex items-center justify-between py-3">
-        <Link href="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <span className="inline-block h-8 w-8 rounded-md bg-gradient-to-br from-primary to-muted" aria-hidden />
           <span className="text-base font-semibold tracking-tight">Apps Script Studio</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-2">
           {navItems.map((item) => (
-            <Link
+            <NavLink
               key={item.to}
-              href={item.to}
-              className={cn(
-                "px-3 py-2 rounded-md text-sm transition-colors",
-                location === item.to || (item.to.includes("#") && location.includes("#demos"))
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent hover:text-accent-foreground"
-              )}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "px-3 py-2 rounded-md text-sm transition-colors",
+                  isActive || (item.to.includes("#") && location.hash === "#demos")
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                )
+              }
             >
               {item.label}
-            </Link>
+            </NavLink>
           ))}
           <Button asChild variant="hero">
-            <Link href="/schedule">Book a 30‑min call</Link>
+            <Link to="/schedule">Book a 30‑min call</Link>
           </Button>
         </div>
       </nav>

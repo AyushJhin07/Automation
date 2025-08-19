@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Router, Route } from "wouter";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -27,21 +27,24 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <Router>
+        <BrowserRouter>
           <Navbar />
-          <Route path="/" component={Index} />
-          <Route path="/pre-built-apps" component={PreBuiltApps} />
-          <Route path="/schedule" component={Schedule} />
-          <Route path="/contact" component={Contact} />
-          <Route path="/about" component={About} />
-          <Route path="/faq" component={FAQ} />
-          <Route path="/blog" component={Blog} />
-          <Route path="/resources" component={Resources} />
-          <Route path="/privacy" component={Privacy} />
-          <Route path="/terms" component={Terms} />
-          <Route path="/:rest*" component={NotFound} />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/pre-built-apps" element={<PreBuiltApps />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/resources" element={<Resources />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
           <Footer />
-        </Router>
+        </BrowserRouter>
       </TooltipProvider>
     </HelmetProvider>
   </QueryClientProvider>
