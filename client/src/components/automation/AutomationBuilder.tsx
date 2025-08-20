@@ -457,7 +457,7 @@ export function AutomationBuilder({ automationId, onScriptGenerated }: Automatio
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const type = event.dataTransfer.getData('application/reactflow');
-      const appData = event.dataTransfer.getData('application/json');
+      const appId = event.dataTransfer.getData('application/json');
 
       if (!type) return;
 
@@ -466,11 +466,26 @@ export function AutomationBuilder({ automationId, onScriptGenerated }: Automatio
         y: event.clientY - reactFlowBounds.top,
       });
 
+      let nodeData = {};
+      
+      // For googleApp type, find the original app data to preserve React components
+      if (type === 'googleApp' && appId) {
+        const parsedData = JSON.parse(appId);
+        const originalApp = googleApps.find(app => app.id === parsedData.id);
+        nodeData = originalApp || parsedData;
+      } else if (type === 'trigger' && appId) {
+        const parsedData = JSON.parse(appId);
+        const originalTrigger = triggerTypes.find(trigger => trigger.id === parsedData.id);
+        nodeData = originalTrigger || parsedData;
+      } else if (appId) {
+        nodeData = JSON.parse(appId);
+      }
+
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: appData ? JSON.parse(appData) : {},
+        data: nodeData,
       };
 
       setNodes((nds) => nds.concat(newNode));

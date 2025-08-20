@@ -44,7 +44,11 @@ export function TriggerNode({ data }: NodeProps<TriggerNodeData>) {
         
         <CardContent className="pt-0">
           <div className="flex items-center gap-2 mb-2">
-            <Icon className="w-4 h-4 text-green-600" />
+            {Icon && typeof Icon === 'function' ? (
+              <Icon className="w-4 h-4 text-green-600" />
+            ) : (
+              <div className="w-4 h-4 rounded bg-green-300" />
+            )}
             <div className="font-medium text-sm">{data.name}</div>
           </div>
           <div className="text-xs text-gray-600">
@@ -62,7 +66,11 @@ export function TriggerNode({ data }: NodeProps<TriggerNodeData>) {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Icon className="w-5 h-5 text-green-600" />
+                  {Icon && typeof Icon === 'function' ? (
+                    <Icon className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <div className="w-5 h-5 rounded bg-green-300" />
+                  )}
                   Configure {data.name}
                 </CardTitle>
                 <Button
