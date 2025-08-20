@@ -1,0 +1,127 @@
+with the help of curser AI, I tried to make some changes in the prebuilt app section, basically in the customized feature for the prebuilt automations that we have built, you can see there are six automations, and in the customized feature what I decided it is rather than just providing a form type of UI
+We build agent tech type of graph, where we will choose the app and the type of function that we are expecting to do from that particular application and then we will choose another app, and that app will be setup into the graph and then we will connect the applications with the help of node like n8n
+But if you see, the format is not looking good when I tried to connect with the notes there was some buck and I was not able to connect with the notes and they were not looking good at all. It was like some kind of arrow was coming in.
+
+I am sharing you the screenshots like how I want this graph to be built and I want to connect with these applications
+I have shared you the screenshot. I want this type of UI.
+And implement this graph like a structure in all the prebuilt automations
+Second thing rather than just building UI you have to build the back and logic as well so that I can check and try to test it
+** and just a special request whatever the changes you are implementing I don't want these changes just in the form of UI so since we are building the script automation just in the form of agent graphs you have to prepare the back as well, so that if I test the code, it means I tried to connect some applications according to my convenience and then download the script then it should provide me a legit script. You have to implement in all of the prebuilt automations*  whatever changes you will be making immediately push it to github repository 
+I am sharing you the list of functions that I want to implement for each application and for whatever the application that I haven't provided you the function functions you provide yourself all the functions
+Gmail (Apps Script: GmailApp / Gmail API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/gmail.readonly (read)
+	•	https://www.googleapis.com/auth/gmail.modify (read + label/star/archive/trash)
+	•	https://www.googleapis.com/auth/gmail.send (send/draft)
+
+MVP actions
+	•	Search emails (by query / date range / from / subject)
+	•	Get threads by label
+	•	Read latest message in each thread
+	•	Extract fields (date, from, subject, snippet, body)
+	•	Download attachments (to Drive)
+	•	Create draft
+	•	Send email (to / cc / bcc, HTML/text, attachments)
+	•	Mark as read/unread
+	•	Add/remove labels
+	•	Archive / move to trash
+
+Advanced actions
+	•	Heuristic spam filter (keyword / sender / score rules)
+	•	Auto-reply template (with placeholders)
+	•	Forward with filters (only if matches query)
+	•	Deduplicate by message-ID
+	•	Parse structured data (regex → JSON → Sheets)
+	•	Thread statistics (count, last activity)
+	•	Batch label management (create/rename/delete)
+	•	Gmail → Webhook notify (UrlFetch to Slack/other)
+
+Triggers
+	•	Time-based polling (e.g., every 15/30/60 min)
+(Gmail doesn’t have native on-new-email triggers in Apps Script; you poll.)
+
+⸻
+
+Google Sheets (Apps Script: SpreadsheetApp / Sheets API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/spreadsheets (read/write)
+	•	https://www.googleapis.com/auth/spreadsheets.readonly (read-only)
+
+MVP actions
+	•	Append row(s)
+	•	Read range (A1 / named range)
+	•	Update range (values)
+	•	Clear range / sheet
+	•	Create sheet (tab) / rename / delete
+	•	Find row(s) by value (first/All)
+	•	Basic sort (by column)
+	•	Get last row/column; get sheet metadata
+
+Advanced actions
+	•	Batch get/update ranges
+	•	Upsert rows (match key column; insert or update)
+	•	Data validation (set/clear)
+	•	Filter / Filter views (create/apply/remove)
+	•	Conditional formatting
+	•	Number/date formats
+	•	Protected ranges & sheet protection
+	•	Pivot tables (build/update)
+	•	Charts (create/update)
+	•	Named ranges (create/update/delete)
+	•	Import CSV (to new sheet)
+	•	Write ISO dates, auto-timezone handling
+
+Triggers
+	•	On edit (simple or installable)
+	•	On form submit (linked Form)
+	•	Time-based (recalc/refresh pipelines)
+
+⸻
+
+Google Drive (Apps Script: DriveApp / Advanced Drive API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/drive (full) or
+	•	https://www.googleapis.com/auth/drive.file (only files your script creates/opens)
+	•	https://www.googleapis.com/auth/drive.readonly (read-only)
+
+MVP actions
+	•	Create folder
+	•	Upload file (blob / Base64)
+	•	Move file to folder
+	•	Copy file
+	•	Rename file/folder
+	•	Delete (trash) / restore from trash
+	•	Search files/folders (query by name, mimeType, owner, modifiedTime)
+	•	Get share link (anyone with link / restricted)
+	•	Export Google Docs/Sheets/Slides as PDF
+
+Advanced actions
+	•	Set permissions (add/remove viewer/editor; domain-wide)
+	•	Change owner (if allowed)
+	•	List revisions / restore revision
+	•	Create shortcut
+	•	Download file content (as blob)
+	•	MIME conversions (e.g., Doc → PDF/Docx, Sheet → CSV)
+	•	Quarantine/cleanup rules (auto-move/archive by age)
+
+Triggers
+	•	Time-based scans (e.g., nightly cleanup/export)
+
+⸻
+
+Google Docs (Apps Script: DocumentApp / Docs API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/documents (read/write)
+	•	https://www.googleapis.com/auth/documents.readonly (read-only)
+
+MVP actions
+	•	Create document (from template or blank)
+	•	Open doc by ID
+	•	Insert/append text (plain or styled)
+	•	Find & replace text (placeholders → values)
+	•	Insert table (rows/cols) and fill cells
+	•	Insert image (from URL/Drive)
