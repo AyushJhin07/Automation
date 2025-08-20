@@ -48,7 +48,11 @@ export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Icon className="w-5 h-5" style={{ color: data.color }} />
+              {Icon && typeof Icon === 'function' ? (
+                <Icon className="w-5 h-5" style={{ color: data.color }} />
+              ) : (
+                <div className="w-5 h-5 rounded bg-gray-300" style={{ backgroundColor: data.color }} />
+              )}
               <CardTitle className="text-sm">{data.name}</CardTitle>
             </div>
             <Button
