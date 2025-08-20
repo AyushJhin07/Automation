@@ -1318,6 +1318,7 @@ export default function PreBuiltApps() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showEnhancedTutorialDemo, setShowEnhancedTutorialDemo] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedForDemo, setSelectedForDemo] = useState("");
 
   const currentApp = preBuiltApps.find(app => app.id === activeApp);
   const categories = Array.from(new Set(preBuiltApps.map(app => app.category)));
