@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import ProfessionalGraphCustomizer from "@/components/customizer/ProfessionalGraphCustomizer";
 import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
+import AutomationBuilderWrapper from "@/components/automation/AutomationBuilder";
 
 const preBuiltApps = [
   {
@@ -1656,15 +1657,25 @@ export default function PreBuiltApps() {
                 </TabsContent>
 
                 <TabsContent value="customize" className="mt-6">
-                  <ProfessionalGraphCustomizer
-                    scriptId={currentApp?.id || ""}
-                    scriptTitle={currentApp?.title || ""}
-                    onDownload={(customizedCode, config) => {
-                      // This would handle the download with customizations
-                      console.log("Downloading customized script:", { customizedCode, config });
-                      alert("Custom script download would start here with your professional graph customizations!");
-                    }}
-                  />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="size-5" />
+                        Visual Automation Builder
+                      </CardTitle>
+                      <CardDescription>
+                        Create your custom automation workflow by connecting Google Workspace applications with drag-and-drop nodes
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <AutomationBuilderWrapper
+                        automationId={currentApp?.id || "custom"}
+                        onScriptGenerated={(script) => {
+                          console.log("Generated script:", script);
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
                 </TabsContent>
                 
                 <TabsContent value="features" className="mt-6">

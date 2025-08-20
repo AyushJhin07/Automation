@@ -1,0 +1,118 @@
+I am sharing you the list of functions that I want to implement for each application and for whatever the application that I haven't provided you the function functions you provide yourself all the functions
+Gmail (Apps Script: GmailApp / Gmail API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/gmail.readonly (read)
+	•	https://www.googleapis.com/auth/gmail.modify (read + label/star/archive/trash)
+	•	https://www.googleapis.com/auth/gmail.send (send/draft)
+
+MVP actions
+	•	Search emails (by query / date range / from / subject)
+	•	Get threads by label
+	•	Read latest message in each thread
+	•	Extract fields (date, from, subject, snippet, body)
+	•	Download attachments (to Drive)
+	•	Create draft
+	•	Send email (to / cc / bcc, HTML/text, attachments)
+	•	Mark as read/unread
+	•	Add/remove labels
+	•	Archive / move to trash
+
+Advanced actions
+	•	Heuristic spam filter (keyword / sender / score rules)
+	•	Auto-reply template (with placeholders)
+	•	Forward with filters (only if matches query)
+	•	Deduplicate by message-ID
+	•	Parse structured data (regex → JSON → Sheets)
+	•	Thread statistics (count, last activity)
+	•	Batch label management (create/rename/delete)
+	•	Gmail → Webhook notify (UrlFetch to Slack/other)
+
+Triggers
+	•	Time-based polling (e.g., every 15/30/60 min)
+(Gmail doesn’t have native on-new-email triggers in Apps Script; you poll.)
+
+⸻
+
+Google Sheets (Apps Script: SpreadsheetApp / Sheets API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/spreadsheets (read/write)
+	•	https://www.googleapis.com/auth/spreadsheets.readonly (read-only)
+
+MVP actions
+	•	Append row(s)
+	•	Read range (A1 / named range)
+	•	Update range (values)
+	•	Clear range / sheet
+	•	Create sheet (tab) / rename / delete
+	•	Find row(s) by value (first/All)
+	•	Basic sort (by column)
+	•	Get last row/column; get sheet metadata
+
+Advanced actions
+	•	Batch get/update ranges
+	•	Upsert rows (match key column; insert or update)
+	•	Data validation (set/clear)
+	•	Filter / Filter views (create/apply/remove)
+	•	Conditional formatting
+	•	Number/date formats
+	•	Protected ranges & sheet protection
+	•	Pivot tables (build/update)
+	•	Charts (create/update)
+	•	Named ranges (create/update/delete)
+	•	Import CSV (to new sheet)
+	•	Write ISO dates, auto-timezone handling
+
+Triggers
+	•	On edit (simple or installable)
+	•	On form submit (linked Form)
+	•	Time-based (recalc/refresh pipelines)
+
+⸻
+
+Google Drive (Apps Script: DriveApp / Advanced Drive API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/drive (full) or
+	•	https://www.googleapis.com/auth/drive.file (only files your script creates/opens)
+	•	https://www.googleapis.com/auth/drive.readonly (read-only)
+
+MVP actions
+	•	Create folder
+	•	Upload file (blob / Base64)
+	•	Move file to folder
+	•	Copy file
+	•	Rename file/folder
+	•	Delete (trash) / restore from trash
+	•	Search files/folders (query by name, mimeType, owner, modifiedTime)
+	•	Get share link (anyone with link / restricted)
+	•	Export Google Docs/Sheets/Slides as PDF
+
+Advanced actions
+	•	Set permissions (add/remove viewer/editor; domain-wide)
+	•	Change owner (if allowed)
+	•	List revisions / restore revision
+	•	Create shortcut
+	•	Download file content (as blob)
+	•	MIME conversions (e.g., Doc → PDF/Docx, Sheet → CSV)
+	•	Quarantine/cleanup rules (auto-move/archive by age)
+
+Triggers
+	•	Time-based scans (e.g., nightly cleanup/export)
+
+⸻
+
+Google Docs (Apps Script: DocumentApp / Docs API)
+
+Common scopes:
+	•	https://www.googleapis.com/auth/documents (read/write)
+	•	https://www.googleapis.com/auth/documents.readonly (read-only)
+
+MVP actions
+	•	Create document (from template or blank)
+	•	Open doc by ID
+	•	Insert/append text (plain or styled)
+	•	Find & replace text (placeholders → values)
+	•	Insert table (rows/cols) and fill cells
+	•	Insert image (from URL/Drive)
