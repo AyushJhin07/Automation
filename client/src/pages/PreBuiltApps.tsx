@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import ProfessionalGraphCustomizer from "@/components/customizer/ProfessionalGraphCustomizer";
 import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
+import RealisticScreenDemo from "@/components/demos/RealisticScreenDemo";
 import AutomationBuilderWrapper from "@/components/automation/AutomationBuilder";
 
 const preBuiltApps = [
@@ -1318,6 +1319,7 @@ export default function PreBuiltApps() {
   const [showCode, setShowCode] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showEnhancedTutorialDemo, setShowEnhancedTutorialDemo] = useState(false);
+  const [selectedDemo, setSelectedDemo] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedForDemo, setSelectedForDemo] = useState("");
 
@@ -1641,13 +1643,22 @@ export default function PreBuiltApps() {
                           <p className="text-muted-foreground mb-6">
                             Click the "Try Demo" button above to see the enhanced tutorial demo with realistic visual progression.
                           </p>
-                          <Button 
-                            onClick={() => setShowEnhancedTutorialDemo(true)}
-                            className="hover-glow"
-                          >
-                            <Play className="size-4 mr-2" />
-                            Launch Enhanced Demo
-                          </Button>
+                          <div className="flex gap-3 justify-center">
+                            <Button 
+                              onClick={() => setShowEnhancedTutorialDemo(true)}
+                              className="hover-glow"
+                            >
+                              <Play className="size-4 mr-2" />
+                              Tutorial Demo
+                            </Button>
+                            <Button 
+                              onClick={() => setSelectedDemo(currentApp?.id || "")}
+                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                            >
+                              <Chrome className="size-4 mr-2" />
+                              Screen Recording Demo
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -1797,6 +1808,14 @@ export default function PreBuiltApps() {
             scriptId={currentApp?.id || ""}
             scriptTitle={currentApp?.title || ""}
             onClose={() => setShowEnhancedTutorialDemo(false)}
+          />
+        )}
+
+        {/* Realistic Screen Demo Modal */}
+        {selectedDemo && (
+          <RealisticScreenDemo
+            automationId={selectedDemo}
+            onClose={() => setSelectedDemo(null)}
           />
         )}
       </main>
