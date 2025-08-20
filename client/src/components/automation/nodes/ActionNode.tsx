@@ -2,11 +2,7 @@ import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap } from 'lucide-react';
-
-export interface ActionNodeData {
-  label: string;
-  description?: string;
-}
+import { ActionNodeData } from '../types';
 
 export function ActionNode({ data }: NodeProps<ActionNodeData>) {
   return (

@@ -8,12 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Settings, X } from 'lucide-react';
-import { GoogleApp, AppFunction } from '../AutomationBuilder';
-
-export interface GoogleAppsNodeData extends GoogleApp {
-  selectedFunction?: AppFunction;
-  functionConfig?: Record<string, any>;
-}
+import { GoogleAppsNodeData, AppFunction } from '../types';
 
 export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);

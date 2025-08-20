@@ -7,21 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Settings, X, Play } from 'lucide-react';
-
-export interface TriggerNodeData {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ComponentType<any>;
-  parameters: {
-    name: string;
-    type: 'text' | 'select' | 'number';
-    required: boolean;
-    options?: string[];
-    description: string;
-  }[];
-  config?: Record<string, any>;
-}
+import { TriggerNodeData } from '../types';
 
 export function TriggerNode({ data }: NodeProps<TriggerNodeData>) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);

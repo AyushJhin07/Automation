@@ -38,6 +38,7 @@ import { GoogleAppsNode } from '@/components/automation/nodes/GoogleAppsNode';
 import { TriggerNode } from '@/components/automation/nodes/TriggerNode';
 import { ActionNode } from '@/components/automation/nodes/ActionNode';
 import { GoogleAppsScriptGenerator } from '@/components/automation/GoogleAppsScriptGenerator';
+import { GoogleApp, AppFunction, AutomationBuilderProps } from './types';
 
 const nodeTypes: NodeTypes = {
   googleApp: GoogleAppsNode,
@@ -46,30 +47,6 @@ const nodeTypes: NodeTypes = {
 };
 
 const edgeTypes: EdgeTypes = {};
-
-export interface AppFunction {
-  id: string;
-  name: string;
-  description: string;
-  category: 'MVP' | 'Advanced';
-  parameters: {
-    name: string;
-    type: 'text' | 'select' | 'textarea' | 'number' | 'boolean';
-    required: boolean;
-    options?: string[];
-    defaultValue?: any;
-    description: string;
-  }[];
-}
-
-export interface GoogleApp {
-  id: string;
-  name: string;
-  icon: React.ComponentType<any>;
-  color: string;
-  functions: AppFunction[];
-  scopes: string[];
-}
 
 const googleApps: GoogleApp[] = [
   {
@@ -437,11 +414,6 @@ const triggerTypes = [
     ]
   }
 ];
-
-export interface AutomationBuilderProps {
-  automationId: string;
-  onScriptGenerated: (script: string) => void;
-}
 
 export function AutomationBuilder({ automationId, onScriptGenerated }: AutomationBuilderProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);

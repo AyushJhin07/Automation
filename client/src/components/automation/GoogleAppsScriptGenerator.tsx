@@ -1,6 +1,5 @@
 import { Node, Edge } from 'reactflow';
-import { GoogleAppsNodeData } from './nodes/GoogleAppsNode';
-import { TriggerNodeData } from './nodes/TriggerNode';
+import { GoogleAppsNodeData, TriggerNodeData } from './types';
 
 export class GoogleAppsScriptGenerator {
   private generateFunctionImplementation(app: GoogleAppsNodeData): string {
