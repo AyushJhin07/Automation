@@ -34,9 +34,9 @@ import {
   Timer,
   Zap
 } from 'lucide-react';
-import { GoogleAppsNode } from '@/components/automation/nodes/GoogleAppsNode';
-import { TriggerNode } from '@/components/automation/nodes/TriggerNode';
-import { ActionNode } from '@/components/automation/nodes/ActionNode';
+import GoogleAppsNode from '@/components/automation/nodes/GoogleAppsNode';
+import TriggerNode from '@/components/automation/nodes/TriggerNode';
+import ActionNode from '@/components/automation/nodes/ActionNode';
 import { GoogleAppsScriptGenerator } from '@/components/automation/GoogleAppsScriptGenerator';
 import { GoogleApp, AppFunction, AutomationBuilderProps } from './types';
 

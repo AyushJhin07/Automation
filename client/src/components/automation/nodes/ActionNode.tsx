@@ -29,3 +29,5 @@ export function ActionNode({ data }: NodeProps<ActionNodeData>) {
     </>
   );
 }
+
+export default React.memo(ActionNode);

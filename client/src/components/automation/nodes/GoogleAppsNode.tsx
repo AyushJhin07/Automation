@@ -199,3 +199,5 @@ export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
     </>
   );
 }
+
+export default React.memo(GoogleAppsNode);

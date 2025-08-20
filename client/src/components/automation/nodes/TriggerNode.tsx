@@ -143,3 +143,5 @@ export function TriggerNode({ data }: NodeProps<TriggerNodeData>) {
     </>
   );
 }
+
+export default React.memo(TriggerNode);
