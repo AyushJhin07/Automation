@@ -23,7 +23,7 @@ import {
   Chrome
 } from "lucide-react";
 import ProfessionalGraphCustomizer from "@/components/customizer/ProfessionalGraphCustomizer";
-import EnhancedTutorialDemo from "@/components/demos/EnhancedTutorialDemo";
+import PreBuiltAutomationDemos from "@/components/demos/PreBuiltAutomationDemos";
 import RealisticScreenDemo from "@/components/demos/RealisticScreenDemo";
 import AutomationBuilderWrapper from "@/components/automation/AutomationBuilder";
 
@@ -1318,7 +1318,7 @@ export default function PreBuiltApps() {
   const [activeApp, setActiveApp] = useState("email-automation");
   const [showCode, setShowCode] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
-  const [showEnhancedTutorialDemo, setShowEnhancedTutorialDemo] = useState(false);
+  const [showAutomationDemo, setShowAutomationDemo] = useState(false);
   const [selectedDemo, setSelectedDemo] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedForDemo, setSelectedForDemo] = useState("");
@@ -1339,7 +1339,7 @@ export default function PreBuiltApps() {
 
   const handleTryDemo = (appId: string) => {
     setActiveApp(appId);
-    setShowEnhancedTutorialDemo(true);
+    setShowAutomationDemo(true);
   };
 
 
@@ -1645,7 +1645,7 @@ export default function PreBuiltApps() {
                           </p>
                           <div className="flex gap-3 justify-center">
                             <Button 
-                              onClick={() => setShowEnhancedTutorialDemo(true)}
+                              onClick={() => setShowAutomationDemo(true)}
                               className="hover-glow"
                             >
                               <Play className="size-4 mr-2" />
