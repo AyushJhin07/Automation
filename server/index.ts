@@ -56,15 +56,63 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  // Serve the app on port 5000 or fallback ports for macOS compatibility
+  const preferredPort = 5000;
+  const fallbackPorts = [5001, 3000, 8000, 8080];
+  
+  const tryPort = (port: number): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const onError = (err: any) => {
+        if (err.code === 'EADDRINUSE' || err.code === 'ENOTSUP') {
+          reject(err);
+        } else {
+          reject(err);
+        }
+      };
+
+      server.on('error', onError);
+
+      if (process.env.NODE_ENV === "production") {
+        // Production: bind to all interfaces
+        server.listen({
+          port,
+          host: "0.0.0.0",
+          reusePort: true,
+        }, () => {
+          server.removeListener('error', onError);
+          log(`serving on 0.0.0.0:${port}`);
+          resolve();
+        });
+      } else {
+        // Development: use localhost for macOS compatibility
+        server.listen(port, () => {
+          server.removeListener('error', onError);
+          log(`serving on localhost:${port}`);
+          resolve();
+        });
+      }
+    });
+  };
+
+  // Try preferred port first, then fallback ports
+  const startServer = async () => {
+    const portsToTry = [preferredPort, ...fallbackPorts];
+    
+    for (const port of portsToTry) {
+      try {
+        await tryPort(port);
+        return; // Success, exit the loop
+      } catch (err: any) {
+        log(`Port ${port} failed: ${err.message}`);
+        if (port === portsToTry[portsToTry.length - 1]) {
+          // Last port failed
+          log(`All ports failed. Please check if another service is using these ports.`);
+          log(`On macOS, you might need to disable AirPlay Receiver in System Preferences > Sharing`);
+          process.exit(1);
+        }
+      }
+    }
+  };
+
+  startServer();
 })();
