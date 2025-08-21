@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import ProfessionalGraphCustomizer from "@/components/customizer/ProfessionalGraphCustomizer";
 import PreBuiltAutomationDemos from "@/components/demos/PreBuiltAutomationDemos";
-import RealisticScreenDemo from "@/components/demos/RealisticScreenDemo";
 import AutomationBuilderWrapper from "@/components/automation/AutomationBuilder";
 
 const preBuiltApps = [
@@ -1731,22 +1730,33 @@ export default function PreBuiltApps() {
           </div>
         </section>
 
-        {/* Enhanced Tutorial Demo Modal */}
-        {showEnhancedTutorialDemo && (
-          <EnhancedTutorialDemo
-            scriptId={currentApp?.id || ""}
-            scriptTitle={currentApp?.title || ""}
-            onClose={() => setShowEnhancedTutorialDemo(false)}
-          />
+        {/* Animated Screen Recording Demo Modal */}
+        {showAutomationDemo && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 z-50 overflow-y-auto">
+            <div className="min-h-screen flex items-center justify-center p-4">
+              <div className="w-full max-w-7xl bg-white rounded-2xl shadow-2xl">
+                <div className="p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50">
+                  <div>
+                    <h2 className="text-3xl font-bold">🎬 {currentApp?.title} Demo</h2>
+                    <p className="text-gray-600">Watch how this automation works with your Google Workspace</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setShowAutomationDemo(false)}
+                    className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
+                  >
+                    ✕
+                  </Button>
+                </div>
+                <div className="p-6">
+                  <PreBuiltAutomationDemos />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Realistic Screen Demo Modal */}
-        {selectedDemo && (
-          <RealisticScreenDemo
-            automationId={selectedDemo}
-            onClose={() => setSelectedDemo(null)}
-          />
-        )}
+
       </main>
     </>
   );
