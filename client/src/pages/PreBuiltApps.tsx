@@ -1398,13 +1398,12 @@ export default function PreBuiltApps() {
               implement immediately. No monthly fees, no vendor lock-in, just powerful automation.
             </p>
             <div className="flex gap-4 justify-center">
-              <Button size="lg" onClick={() => setShowCode(true)} className="hover-glow">
+              <Button size="lg" onClick={() => setShowAutomationDemo(true)} className="hover-glow bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 <Play className="size-5 mr-2" />
-                Try Live Demo
+                🎬 Watch Demo
               </Button>
               <Button variant="outline" size="lg" className="glass-card">
-                <Download className="size-5 mr-2" />
-                Download Samples
+                📞 Book 30-min Call
               </Button>
             </div>
           </div>
@@ -1509,26 +1508,25 @@ export default function PreBuiltApps() {
                     <div className="grid grid-cols-2 gap-3 mt-6">
                       <Button 
                         size="sm" 
-                        variant="outline"
-                        className="rounded-xl border-2 hover:border-primary hover:bg-primary/5 transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedForDemo(app.id);
+                          handleTryDemo(app.id);
                         }}
                       >
                         <Play className="size-3 mr-1" />
-                        Try Demo
+                        🎬 Watch Demo
                       </Button>
                       <Button 
                         size="sm"
-                        className="rounded-xl bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        variant="outline"
+                        className="rounded-xl border-2 hover:border-green-500 hover:bg-green-50 transition-all duration-200 shadow-sm hover:shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleCustomize(app.id);
+                          window.open('tel:+1234567890', '_blank');
                         }}
                       >
-                        <Settings className="size-3 mr-1" />
-                        Customize
+                        📞 Book Call
                       </Button>
                     </div>
                   </div>
@@ -1570,10 +1568,8 @@ export default function PreBuiltApps() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-6">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="demo">Live Demo</TabsTrigger>
-                  <TabsTrigger value="customize">Customize</TabsTrigger>
                   <TabsTrigger value="features">Features</TabsTrigger>
                   <TabsTrigger value="code">Code Preview</TabsTrigger>
                   <TabsTrigger value="use-cases">Use Cases</TabsTrigger>
@@ -1620,73 +1616,6 @@ export default function PreBuiltApps() {
                       </CardContent>
                     </Card>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="demo" className="mt-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Play className="size-5" />
-                        Live Demo
-                      </CardTitle>
-                      <CardDescription>
-                        Experience how this automation works in real-time with realistic Google Apps interfaces
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="text-center py-12">
-                        <div className="max-w-md mx-auto">
-                          <div className="size-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                            <Play className="size-8 text-primary" />
-                          </div>
-                          <h3 className="text-xl font-semibold mb-2">Interactive Demo</h3>
-                          <p className="text-muted-foreground mb-6">
-                            Click the "Try Demo" button above to see the enhanced tutorial demo with realistic visual progression.
-                          </p>
-                          <div className="flex gap-3 justify-center">
-                            <Button 
-                              onClick={() => setShowAutomationDemo(true)}
-                              className="hover-glow"
-                            >
-                              <Play className="size-4 mr-2" />
-                              Tutorial Demo
-                            </Button>
-                            <Button 
-                              onClick={() => setSelectedDemo(currentApp?.id || "")}
-                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                            >
-                              <Chrome className="size-4 mr-2" />
-                              Screen Recording Demo
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-
-                </TabsContent>
-
-                <TabsContent value="customize" className="mt-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Settings className="size-5" />
-                        Visual Automation Builder
-                      </CardTitle>
-                      <CardDescription>
-                        Create your custom automation workflow by connecting Google Workspace applications with drag-and-drop nodes
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <AutomationBuilderWrapper
-                        automationId={currentApp?.id || "custom"}
-                        onScriptGenerated={(script) => {
-                          console.log("Generated script:", script);
-                        }}
-                      />
-                    </CardContent>
-                  </Card>
                 </TabsContent>
                 
                 <TabsContent value="features" className="mt-6">
