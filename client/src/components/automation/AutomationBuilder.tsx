@@ -60,84 +60,330 @@ const googleApps: GoogleApp[] = [
       'https://www.googleapis.com/auth/gmail.send'
     ],
     functions: [
-      {
-        id: 'search_emails',
-        name: 'Search Emails',
-        description: 'Search emails by query, date range, from, or subject',
-        category: 'MVP',
-        parameters: [
-          { name: 'query', type: 'text', required: true, description: 'Gmail search query', defaultValue: 'is:unread' },
-          { name: 'maxResults', type: 'number', required: false, description: 'Maximum number of results', defaultValue: 10 }
-        ]
-      },
+      // Core Email Functions
       {
         id: 'send_email',
         name: 'Send Email',
         description: 'Send email with to, cc, bcc, HTML/text, attachments',
-        category: 'MVP',
+        category: 'Core',
         parameters: [
           { name: 'to', type: 'text', required: true, description: 'Recipient email addresses' },
           { name: 'subject', type: 'text', required: true, description: 'Email subject' },
           { name: 'body', type: 'textarea', required: true, description: 'Email body content' },
           { name: 'cc', type: 'text', required: false, description: 'CC recipients' },
+          { name: 'bcc', type: 'text', required: false, description: 'BCC recipients' },
+          { name: 'attachments', type: 'text', required: false, description: 'File attachments (comma-separated)' }
+        ]
+      },
+      {
+        id: 'send_html_email',
+        name: 'Send HTML Email',
+        description: 'Send rich HTML formatted emails',
+        category: 'Core',
+        parameters: [
+          { name: 'to', type: 'text', required: true, description: 'Recipient email addresses' },
+          { name: 'subject', type: 'text', required: true, description: 'Email subject' },
+          { name: 'htmlBody', type: 'textarea', required: true, description: 'HTML email body' },
+          { name: 'cc', type: 'text', required: false, description: 'CC recipients' },
           { name: 'bcc', type: 'text', required: false, description: 'BCC recipients' }
+        ]
+      },
+      {
+        id: 'reply_to_email',
+        name: 'Reply to Email',
+        description: 'Reply to a specific email thread',
+        category: 'Core',
+        parameters: [
+          { name: 'messageId', type: 'text', required: true, description: 'Original message ID to reply to' },
+          { name: 'body', type: 'textarea', required: true, description: 'Reply content' },
+          { name: 'replyAll', type: 'select', required: false, options: ['true', 'false'], description: 'Reply to all recipients', defaultValue: 'false' }
+        ]
+      },
+      {
+        id: 'forward_email',
+        name: 'Forward Email',
+        description: 'Forward an email to other recipients',
+        category: 'Core',
+        parameters: [
+          { name: 'messageId', type: 'text', required: true, description: 'Message ID to forward' },
+          { name: 'to', type: 'text', required: true, description: 'Forward to recipients' },
+          { name: 'additionalText', type: 'textarea', required: false, description: 'Additional message to add' }
+        ]
+      },
+      
+      // Search & Read Functions
+      {
+        id: 'search_emails',
+        name: 'Search Emails',
+        description: 'Search emails by query, date range, from, or subject',
+        category: 'Search',
+        parameters: [
+          { name: 'query', type: 'text', required: true, description: 'Gmail search query', defaultValue: 'is:unread' },
+          { name: 'maxResults', type: 'number', required: false, description: 'Maximum number of results', defaultValue: 10 },
+          { name: 'dateRange', type: 'text', required: false, description: 'Date range (e.g., newer_than:7d)' }
         ]
       },
       {
         id: 'read_latest_message',
         name: 'Read Latest Message',
         description: 'Read latest message in each thread',
-        category: 'MVP',
+        category: 'Search',
         parameters: [
-          { name: 'labelName', type: 'text', required: false, description: 'Label to filter by', defaultValue: 'INBOX' }
+          { name: 'labelName', type: 'text', required: false, description: 'Label to filter by', defaultValue: 'INBOX' },
+          { name: 'includeSpam', type: 'select', required: false, options: ['true', 'false'], description: 'Include spam folder', defaultValue: 'false' }
         ]
       },
       {
-        id: 'extract_fields',
-        name: 'Extract Fields',
-        description: 'Extract date, from, subject, snippet, body from emails',
-        category: 'MVP',
+        id: 'get_email_by_id',
+        name: 'Get Email by ID',
+        description: 'Retrieve specific email by message ID',
+        category: 'Search',
         parameters: [
-          { name: 'fields', type: 'select', required: true, options: ['date', 'from', 'subject', 'snippet', 'body'], description: 'Fields to extract' }
+          { name: 'messageId', type: 'text', required: true, description: 'Gmail message ID' },
+          { name: 'format', type: 'select', required: false, options: ['full', 'metadata', 'minimal'], description: 'Response format', defaultValue: 'full' }
         ]
       },
       {
-        id: 'download_attachments',
-        name: 'Download Attachments',
-        description: 'Download email attachments to Drive',
-        category: 'MVP',
+        id: 'list_threads',
+        name: 'List Email Threads',
+        description: 'List email conversation threads',
+        category: 'Search',
         parameters: [
-          { name: 'folderId', type: 'text', required: true, description: 'Drive folder ID for attachments' }
+          { name: 'query', type: 'text', required: false, description: 'Search query for threads' },
+          { name: 'maxResults', type: 'number', required: false, description: 'Maximum threads to return', defaultValue: 20 }
         ]
       },
+      
+      // Label Management
       {
         id: 'add_label',
         name: 'Add/Remove Labels',
         description: 'Add or remove labels from emails',
-        category: 'MVP',
+        category: 'Labels',
         parameters: [
+          { name: 'messageIds', type: 'text', required: true, description: 'Message IDs (comma-separated)' },
           { name: 'labelName', type: 'text', required: true, description: 'Label name to add/remove' },
           { name: 'action', type: 'select', required: true, options: ['add', 'remove'], description: 'Add or remove label' }
         ]
       },
       {
+        id: 'create_label',
+        name: 'Create Label',
+        description: 'Create a new Gmail label',
+        category: 'Labels',
+        parameters: [
+          { name: 'labelName', type: 'text', required: true, description: 'Name for the new label' },
+          { name: 'color', type: 'select', required: false, options: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'], description: 'Label color' }
+        ]
+      },
+      {
+        id: 'list_labels',
+        name: 'List All Labels',
+        description: 'Get all Gmail labels and their properties',
+        category: 'Labels',
+        parameters: []
+      },
+      
+      // Attachment Functions
+      {
+        id: 'download_attachments',
+        name: 'Download Attachments',
+        description: 'Download email attachments to Drive',
+        category: 'Attachments',
+        parameters: [
+          { name: 'messageId', type: 'text', required: true, description: 'Message ID with attachments' },
+          { name: 'folderId', type: 'text', required: true, description: 'Drive folder ID for attachments' },
+          { name: 'fileTypes', type: 'text', required: false, description: 'Filter by file types (e.g., pdf,jpg,doc)' }
+        ]
+      },
+      {
+        id: 'save_attachments_to_sheets',
+        name: 'Save Attachment Info to Sheets',
+        description: 'Extract attachment details and save to spreadsheet',
+        category: 'Attachments',
+        parameters: [
+          { name: 'messageId', type: 'text', required: true, description: 'Message ID with attachments' },
+          { name: 'spreadsheetId', type: 'text', required: true, description: 'Target spreadsheet ID' },
+          { name: 'sheetName', type: 'text', required: false, description: 'Sheet name', defaultValue: 'Attachments' }
+        ]
+      },
+      
+      // Advanced Automation
+      {
         id: 'auto_reply',
         name: 'Auto-Reply Template',
         description: 'Send auto-reply with placeholders',
-        category: 'Advanced',
+        category: 'Automation',
         parameters: [
           { name: 'template', type: 'textarea', required: true, description: 'Reply template with placeholders' },
-          { name: 'conditions', type: 'text', required: false, description: 'Conditions for auto-reply' }
+          { name: 'conditions', type: 'text', required: false, description: 'Conditions for auto-reply' },
+          { name: 'delay', type: 'number', required: false, description: 'Delay in minutes before sending', defaultValue: 0 }
+        ]
+      },
+      {
+        id: 'email_scheduler',
+        name: 'Schedule Email',
+        description: 'Schedule emails to be sent at specific times',
+        category: 'Automation',
+        parameters: [
+          { name: 'to', type: 'text', required: true, description: 'Recipient email addresses' },
+          { name: 'subject', type: 'text', required: true, description: 'Email subject' },
+          { name: 'body', type: 'textarea', required: true, description: 'Email body content' },
+          { name: 'scheduleTime', type: 'text', required: true, description: 'Schedule time (YYYY-MM-DD HH:MM)' }
+        ]
+      },
+      {
+        id: 'bulk_email_sender',
+        name: 'Bulk Email Sender',
+        description: 'Send personalized emails to multiple recipients',
+        category: 'Automation',
+        parameters: [
+          { name: 'recipientList', type: 'textarea', required: true, description: 'Recipient list (one email per line)' },
+          { name: 'subjectTemplate', type: 'text', required: true, description: 'Subject template with placeholders' },
+          { name: 'bodyTemplate', type: 'textarea', required: true, description: 'Body template with placeholders' },
+          { name: 'delay', type: 'number', required: false, description: 'Delay between emails (seconds)', defaultValue: 1 }
+        ]
+      },
+      
+      // Data Processing
+      {
+        id: 'extract_fields',
+        name: 'Extract Email Data',
+        description: 'Extract specific fields from emails',
+        category: 'Data',
+        parameters: [
+          { name: 'messageIds', type: 'text', required: true, description: 'Message IDs to process' },
+          { name: 'fields', type: 'select', required: true, options: ['date', 'from', 'subject', 'snippet', 'body', 'attachments'], description: 'Fields to extract' },
+          { name: 'outputFormat', type: 'select', required: false, options: ['JSON', 'CSV', 'Array'], description: 'Output format', defaultValue: 'JSON' }
         ]
       },
       {
         id: 'parse_structured_data',
-        name: 'Parse Structured Data',
-        description: 'Parse structured data using regex to JSON for Sheets',
-        category: 'Advanced',
+        name: 'Parse Structured Email Data',
+        description: 'Parse structured data using regex patterns',
+        category: 'Data',
         parameters: [
+          { name: 'messageIds', type: 'text', required: true, description: 'Message IDs to parse' },
           { name: 'regex', type: 'text', required: true, description: 'Regex pattern for data extraction' },
-          { name: 'outputFormat', type: 'select', required: true, options: ['JSON', 'CSV'], description: 'Output format' }
+          { name: 'outputFormat', type: 'select', required: true, options: ['JSON', 'CSV', 'Array'], description: 'Output format' }
+        ]
+      },
+      {
+        id: 'email_analytics',
+        name: 'Email Analytics',
+        description: 'Generate analytics from email data',
+        category: 'Data',
+        parameters: [
+          { name: 'dateRange', type: 'text', required: true, description: 'Date range for analysis (e.g., 30d)' },
+          { name: 'metrics', type: 'select', required: true, options: ['count', 'senders', 'subjects', 'attachments'], description: 'Metrics to analyze' },
+          { name: 'groupBy', type: 'select', required: false, options: ['day', 'week', 'month', 'sender'], description: 'Group results by' }
+        ]
+      },
+      
+      // Filter & Organization
+      {
+        id: 'create_filters',
+        name: 'Create Email Filters',
+        description: 'Create automatic email filters and rules',
+        category: 'Filters',
+        parameters: [
+          { name: 'criteria', type: 'text', required: true, description: 'Filter criteria (from, subject, etc.)' },
+          { name: 'action', type: 'select', required: true, options: ['label', 'archive', 'delete', 'forward'], description: 'Action to take' },
+          { name: 'actionValue', type: 'text', required: false, description: 'Value for action (label name, forward address)' }
+        ]
+      },
+      {
+        id: 'archive_emails',
+        name: 'Archive Emails',
+        description: 'Archive emails based on criteria',
+        category: 'Filters',
+        parameters: [
+          { name: 'query', type: 'text', required: true, description: 'Search query for emails to archive' },
+          { name: 'confirm', type: 'select', required: true, options: ['true', 'false'], description: 'Confirm before archiving', defaultValue: 'true' }
+        ]
+      },
+      {
+        id: 'delete_emails',
+        name: 'Delete Emails',
+        description: 'Permanently delete emails (use with caution)',
+        category: 'Filters',
+        parameters: [
+          { name: 'query', type: 'text', required: true, description: 'Search query for emails to delete' },
+          { name: 'confirm', type: 'select', required: true, options: ['true', 'false'], description: 'Confirm before deleting', defaultValue: 'true' },
+          { name: 'safetyCheck', type: 'text', required: true, description: 'Type "DELETE" to confirm' }
+        ]
+      },
+      
+      // Integration Functions
+      {
+        id: 'email_to_sheets',
+        name: 'Email Data to Sheets',
+        description: 'Export email data directly to Google Sheets',
+        category: 'Integration',
+        parameters: [
+          { name: 'query', type: 'text', required: true, description: 'Search query for emails' },
+          { name: 'spreadsheetId', type: 'text', required: true, description: 'Target spreadsheet ID' },
+          { name: 'sheetName', type: 'text', required: false, description: 'Sheet name', defaultValue: 'Email Data' },
+          { name: 'fields', type: 'select', required: true, options: ['basic', 'full', 'custom'], description: 'Data fields to export' }
+        ]
+      },
+      {
+        id: 'email_to_calendar',
+        name: 'Create Calendar Events from Emails',
+        description: 'Extract dates/events from emails and create calendar entries',
+        category: 'Integration',
+        parameters: [
+          { name: 'query', type: 'text', required: true, description: 'Search query for emails with events' },
+          { name: 'calendarId', type: 'text', required: false, description: 'Target calendar ID (default: primary)' },
+          { name: 'extractPattern', type: 'text', required: false, description: 'Pattern to extract dates/events' }
+        ]
+      },
+      
+      // Monitoring & Alerts
+      {
+        id: 'email_monitor',
+        name: 'Email Monitor',
+        description: 'Monitor for specific emails and trigger alerts',
+        category: 'Monitoring',
+        parameters: [
+          { name: 'watchQuery', type: 'text', required: true, description: 'Query to monitor for' },
+          { name: 'alertMethod', type: 'select', required: true, options: ['email', 'slack', 'webhook'], description: 'How to send alerts' },
+          { name: 'alertTarget', type: 'text', required: true, description: 'Alert destination (email/webhook URL)' }
+        ]
+      },
+      {
+        id: 'spam_detector',
+        name: 'Advanced Spam Detection',
+        description: 'Detect and handle spam emails with custom rules',
+        category: 'Monitoring',
+        parameters: [
+          { name: 'customRules', type: 'textarea', required: true, description: 'Custom spam detection rules' },
+          { name: 'action', type: 'select', required: true, options: ['label', 'delete', 'archive'], description: 'Action for detected spam' },
+          { name: 'confidence', type: 'number', required: false, description: 'Confidence threshold (0-100)', defaultValue: 80 }
+        ]
+      },
+      
+      // Backup & Export
+      {
+        id: 'backup_emails',
+        name: 'Backup Emails',
+        description: 'Backup emails to Google Drive',
+        category: 'Backup',
+        parameters: [
+          { name: 'query', type: 'text', required: true, description: 'Query for emails to backup' },
+          { name: 'backupFolder', type: 'text', required: true, description: 'Drive folder ID for backup' },
+          { name: 'format', type: 'select', required: false, options: ['mbox', 'pdf', 'txt'], description: 'Backup format', defaultValue: 'mbox' }
+        ]
+      },
+      {
+        id: 'export_contacts',
+        name: 'Export Email Contacts',
+        description: 'Extract and export unique email contacts',
+        category: 'Backup',
+        parameters: [
+          { name: 'dateRange', type: 'text', required: false, description: 'Date range for contact extraction' },
+          { name: 'outputLocation', type: 'select', required: true, options: ['sheets', 'drive', 'contacts'], description: 'Where to export contacts' },
+          { name: 'targetId', type: 'text', required: true, description: 'Target spreadsheet/folder ID' }
         ]
       }
     ]

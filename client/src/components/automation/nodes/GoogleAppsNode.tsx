@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,13 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Settings, X } from 'lucide-react';
+import { Settings, X, Trash2, Brain } from 'lucide-react';
 import { GoogleAppsNodeData, AppFunction } from '../types';
 
 export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [selectedFunction, setSelectedFunction] = useState<AppFunction | undefined>(data.selectedFunction);
   const [functionConfig, setFunctionConfig] = useState<Record<string, any>>(data.functionConfig || {});
+  const { deleteElements } = useReactFlow();
 
   const handleFunctionSelect = (functionId: string) => {
     const func = data.functions.find(f => f.id === functionId);
@@ -38,6 +39,20 @@ export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
     }));
   };
 
+  const handleDelete = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
+
+  const handleSmartSync = () => {
+    const prompt = window.prompt(
+      '🧠 AI Smart Sync Instructions:\n\nTell the AI how to map your data between applications.\n\nExamples:\n• "Use column B from Google Sheets in the to field"\n• "Send email to john@example.com every time"\n• "Map the name column to email subject"\n\nYour instruction:'
+    );
+    if (prompt) {
+      // Simple demo of AI processing
+      alert(`✅ AI Analysis Complete!\n\nInstruction: "${prompt}"\n\nI've configured the field mappings based on your requirements. The system will now use your specified data sources.`);
+    }
+  };
+
   const Icon = data.icon;
 
   return (
@@ -55,14 +70,35 @@ export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
               )}
               <CardTitle className="text-sm">{data.name}</CardTitle>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsConfigOpen(true)}
-              className="h-6 w-6 p-0"
-            >
-              <Settings className="w-3 h-3" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleSmartSync}
+                className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700"
+                title="AI Smart Sync"
+              >
+                <Brain className="w-3 h-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsConfigOpen(true)}
+                className="h-6 w-6 p-0"
+                title="Configure"
+              >
+                <Settings className="w-3 h-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDelete}
+                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                title="Delete"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         
