@@ -739,12 +739,45 @@ export function AutomationBuilder({ automationId, onScriptGenerated }: Automatio
     [reactFlowInstance, setNodes]
   );
 
-  const generateScript = useCallback(() => {
-    const generator = new GoogleAppsScriptGenerator();
-    const script = generator.generateScript(nodes, edges);
-    setGeneratedScript(script);
-    onScriptGenerated(script);
-    setActiveTab('code');
+  const generateScript = useCallback(async () => {
+    try {
+      // Use backend API for script generation
+      const response = await fetch('/api/automation/generate-script', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nodes, edges }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate script');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setGeneratedScript(result.script);
+        onScriptGenerated(result.script);
+        setActiveTab('code');
+      } else {
+        console.error('Script generation failed:', result.error);
+        // Fallback to client-side generation
+        const generator = new GoogleAppsScriptGenerator();
+        const script = generator.generateScript(nodes, edges);
+        setGeneratedScript(script);
+        onScriptGenerated(script);
+        setActiveTab('code');
+      }
+    } catch (error) {
+      console.error('Error generating script:', error);
+      // Fallback to client-side generation
+      const generator = new GoogleAppsScriptGenerator();
+      const script = generator.generateScript(nodes, edges);
+      setGeneratedScript(script);
+      onScriptGenerated(script);
+      setActiveTab('code');
+    }
   }, [nodes, edges, onScriptGenerated]);
 
   const downloadScript = useCallback(() => {
