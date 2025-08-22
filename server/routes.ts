@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
 import { RealAIService, ConversationManager } from "./realAIService";
+import { WorkflowAPI } from "./workflowAPI";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Google Apps Script automation routes
@@ -11,6 +12,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // AI workflow generation routes
   registerAIWorkflowRoutes(app);
+
+  // NEW ChatGPT-Style Workflow API
+  const workflowAPI = new WorkflowAPI();
+  
+  // System capabilities
+  app.get('/api/workflow/capabilities', workflowAPI.getCapabilities);
+  
+  // Workflow generation pipeline
+  app.post('/api/workflow/clarify', workflowAPI.clarifyIntent);
+  app.post('/api/workflow/plan', workflowAPI.planWorkflow);
+  app.post('/api/workflow/fix', workflowAPI.fixWorkflow);
+  app.post('/api/workflow/generate-code', workflowAPI.generateCode);
+  app.post('/api/workflow/deploy', workflowAPI.deployWorkflow);
+  
+  // Complete workflow generation (all steps combined)
+  app.post('/api/workflow/generate-complete', workflowAPI.generateCompleteWorkflow);
+  
+  // Validation and templates
+  app.post('/api/workflow/validate', workflowAPI.validateWorkflow);
+  app.get('/api/workflow/templates', workflowAPI.getWorkflowTemplates);
 
   // REAL AI Conversation API
   app.post('/api/ai/conversation', async (req, res) => {
