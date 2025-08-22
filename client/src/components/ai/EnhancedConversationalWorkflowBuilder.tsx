@@ -221,7 +221,19 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | null>(null);
   const [showWorkflowPreview, setShowWorkflowPreview] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
+  const [apiKeys, setApiKeys] = useState<{gemini?: string; claude?: string; openai?: string}>({});
+  const [selectedModel, setSelectedModel] = useState('gemini-pro');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load API keys from localStorage
+  useEffect(() => {
+    const savedKeys = {
+      gemini: localStorage.getItem('gemini_api_key') || '',
+      claude: localStorage.getItem('claude_api_key') || '',
+      openai: localStorage.getItem('openai_api_key') || ''
+    };
+    setApiKeys(savedKeys);
+  }, []);
 
   useEffect(() => {
     // Add welcome message
@@ -303,35 +315,30 @@ You can try:
     try {
       setProcessingStep('🤔 Understanding your request...');
       
-      // Try the new workflow API first, fallback to old AI API
-      let response;
-      try {
-        response = await fetch('/api/workflow/generate-complete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prompt,
-            answers: Object.keys(questionAnswers).length > 0 ? questionAnswers : undefined,
-            skipQuestions: Object.keys(questionAnswers).length > 0
-          })
-        });
-      } catch (error) {
-        console.log('New API not available, using fallback...');
-        // Fallback to old API
-        response = await fetch('/api/ai/generate-workflow', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prompt,
-            model: 'gemini-pro',
-            userId: 'ai-builder-user'
-          })
-        });
+      // Get API key for selected model
+      const currentApiKey = selectedModel === 'gemini-pro' ? apiKeys.gemini :
+                           selectedModel === 'claude-3-haiku' ? apiKeys.claude :
+                           selectedModel === 'gpt-4o-mini' ? apiKeys.openai : '';
+
+      if (!currentApiKey) {
+        throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
       }
+
+      // Use the real conversational AI API with proper API key
+      const response = await fetch('/api/ai/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: Object.keys(questionAnswers).length > 0 
+            ? `${prompt}\n\nUser provided these answers:\n${Object.entries(questionAnswers).map(([q, a]) => `Q: ${q}\nA: ${a}`).join('\n\n')}\n\nNow generate a complete Google Apps Script automation workflow.`
+            : `${prompt}\n\nGenerate a complete Google Apps Script automation workflow. If you need clarification, ask specific questions.`,
+          model: selectedModel,
+          apiKey: currentApiKey,
+          userId: 'ai-builder-user'
+        })
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -339,28 +346,41 @@ You can try:
 
       const result = await response.json();
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to generate workflow');
+      if (!result.response) {
+        throw new Error(result.error || 'Failed to get AI response');
       }
 
-      // Check if we need to ask questions
-      if (result.needsQuestions && result.questions) {
-        setCurrentQuestions(result.questions);
+      console.log('🤖 AI Response received:', result.model, result.tokensUsed, 'tokens');
+
+      // Check if AI is asking questions (if no answers provided yet)
+      if (Object.keys(questionAnswers).length === 0 && result.response.includes('?')) {
+        // Parse questions from AI response
+        const aiResponse = result.response;
+        const questionLines = aiResponse.split('\n').filter(line => line.includes('?'));
         
-        addMessage({
-          role: 'assistant',
-          content: `🤔 **I need some clarification to build the perfect automation:**
+        if (questionLines.length > 0) {
+          const parsedQuestions: Question[] = questionLines.slice(0, 5).map((line, index) => ({
+            id: `question_${index}`,
+            text: line.replace(/^\d+\.?\s*/, '').replace(/\*\*/g, '').trim(),
+            kind: 'missingParam' as const,
+            choices: []
+          }));
+          
+          setCurrentQuestions(parsedQuestions);
+          
+          addMessage({
+            role: 'assistant',
+            content: `🤔 **I need some clarification to build the perfect automation:**
 
-${result.questions.map((q: Question, index: number) => 
-  `**${index + 1}.** ${q.text}${q.choices ? `\n   Options: ${q.choices.join(', ')}` : ''}`
-).join('\n\n')}
+${aiResponse}
 
-Please answer these questions so I can create exactly what you need!`,
-          type: 'question',
-          data: { questions: result.questions }
-        });
+Please answer these questions in the form below:`,
+            type: 'question',
+            data: { questions: parsedQuestions }
+          });
 
-        return;
+          return;
+        }
       }
 
       // Process the complete workflow result
@@ -513,6 +533,15 @@ Need help? I can guide you through each step!`
           </div>
           
           <div className="flex items-center gap-2">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1"
+            >
+              <option value="gemini-pro">Gemini Pro</option>
+              <option value="claude-3-haiku">Claude 3 Haiku</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+            </select>
             <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
               <Zap className="w-3 h-3 mr-1" />
               500+ Apps
@@ -521,6 +550,11 @@ Need help? I can guide you through each step!`
               <Code className="w-3 h-3 mr-1" />
               Real Code
             </Badge>
+            {!apiKeys[selectedModel.split('-')[0] as keyof typeof apiKeys] && (
+              <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
+                ⚠️ API Key Required
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -629,54 +663,53 @@ Need help? I can guide you through each step!`
                     <span className="flex-1">{question.text}</span>
                   </label>
                   
-                  {question.choices ? (
-                    <div className="space-y-2">
-                      {question.choices.map((choice) => (
-                        <button
-                          key={choice}
-                          onClick={() => handleAnswerQuestion(question.id, choice)}
-                          className={`w-full p-3 text-left rounded-lg border transition-all ${
-                            questionAnswers[question.id] === choice
-                              ? 'bg-blue-600 border-blue-500 text-white'
-                              : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:border-blue-500'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              questionAnswers[question.id] === choice
-                                ? 'border-white bg-white'
-                                : 'border-slate-400'
-                            }`}>
-                              {questionAnswers[question.id] === choice && (
-                                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                              )}
-                            </div>
-                            <span>{choice}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Type your answer here..."
-                        value={questionAnswers[question.id] || ''}
-                        onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
-                        className="bg-slate-600 border-2 border-slate-500 text-white placeholder-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 text-base p-3"
-                      />
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">
-                          {question.kind === 'missingParam' && '💡 Be specific - this helps generate better automation'}
-                          {question.kind === 'disambiguation' && '🎯 Choose the option that best fits your needs'}
-                          {question.kind === 'permission' && '🔐 This affects what permissions are needed'}
-                          {question.kind === 'volume' && '📊 This helps optimize performance'}
-                        </span>
-                        <span className={`${questionAnswers[question.id] ? 'text-green-400' : 'text-slate-500'}`}>
-                          {questionAnswers[question.id] ? '✅ Answered' : '⏳ Required'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                                     {/* ALWAYS SHOW INPUT FIELD */}
+                   <div className="space-y-3">
+                     {/* Text input - always visible and prominent */}
+                     <div className="space-y-2">
+                       <Textarea
+                         placeholder="Type your answer here... (Be as specific as possible)"
+                         value={questionAnswers[question.id] || ''}
+                         onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
+                         className="bg-slate-600 border-2 border-blue-400 text-white placeholder-slate-300 focus:border-blue-300 focus:ring-2 focus:ring-blue-400/20 text-base p-4 min-h-[80px]"
+                         rows={3}
+                       />
+                       <div className="flex items-center justify-between text-xs">
+                         <span className="text-slate-400">
+                           💡 {question.kind === 'missingParam' && 'Be specific - this helps generate better automation'}
+                           {question.kind === 'disambiguation' && 'Choose the option that best fits your needs'}
+                           {question.kind === 'permission' && 'This affects what permissions are needed'}
+                           {question.kind === 'volume' && 'This helps optimize performance'}
+                           {!question.kind && 'Please provide details for this question'}
+                         </span>
+                         <span className={`font-medium ${questionAnswers[question.id] ? 'text-green-400' : 'text-yellow-400'}`}>
+                           {questionAnswers[question.id] ? '✅ Answered' : '⏳ Please Answer'}
+                         </span>
+                       </div>
+                     </div>
+                     
+                     {/* Choice buttons if available */}
+                     {question.choices && question.choices.length > 0 && (
+                       <div className="space-y-2">
+                         <p className="text-xs text-slate-400 mb-2">Quick options (or type custom answer above):</p>
+                         <div className="flex flex-wrap gap-2">
+                           {question.choices.map((choice) => (
+                             <button
+                               key={choice}
+                               onClick={() => handleAnswerQuestion(question.id, choice)}
+                               className={`px-3 py-2 rounded-lg border transition-all text-sm ${
+                                 questionAnswers[question.id] === choice
+                                   ? 'bg-blue-600 border-blue-500 text-white'
+                                   : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:border-blue-500'
+                               }`}
+                             >
+                               {choice}
+                             </button>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                   </div>
                 </div>
               ))}
               
