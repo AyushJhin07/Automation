@@ -19,6 +19,7 @@ import {
 import { WorkflowButtons } from "@/components/sections/WorkflowButtons";
 import { AIShowcase } from "@/components/sections/AIShowcase";
 import { AppIntegrations } from "@/components/sections/AppIntegrations";
+import { AIWorkflowShowcase } from "@/components/sections/AIWorkflowShowcase";
 
 // Demo preview assets
 import imgFormsSheets from "@/assets/demos/forms-sheets-gmail.jpg";
@@ -263,19 +264,19 @@ const Index = () => {
         <div className="radial-spotlight" onMouseMove={handleMouseMove}>
           <div className="container mx-auto grid lg:grid-cols-2 gap-8 py-16 md:py-24 items-center">
             <div className="animate-fade-in">
-              <Badge variant="secondary" className="mb-4">Google Workspace Automation</Badge>
+              <Badge variant="secondary" className="mb-4 bg-purple-100 text-purple-800">🤖 AI-Powered Automation</Badge>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-                Automate Google Workspace with Apps Script + AI
+                Describe Your Workflow - <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">AI Builds It Instantly</span>
               </h1>
               <p className="text-lg text-muted-foreground mb-6 max-w-xl">
-                We build high‑impact automations for HR, Finance, Sales, and Operations teams using Google Apps Script—so your team saves hours every week.
+                Revolutionary AI transforms your plain English descriptions into complete Google Apps Script automations. No coding required - just describe what you need.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild variant="hero" className="hover-scale">
-                  <Link to="/schedule">Book a 30‑min call</Link>
+                  <a href="#ai-generator">🤖 See AI in Action</a>
                 </Button>
                 <Button asChild variant="outline" className="hover-scale">
-                  <a href="#demos">Explore demos</a>
+                  <Link to="/schedule">Book a 30‑min call</Link>
                 </Button>
               </div>
             </div>
@@ -293,6 +294,11 @@ const Index = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* AI Workflow Generator Showcase */}
+      <section id="ai-generator" className="container mx-auto py-16 md:py-24">
+        <AIWorkflowShowcase />
       </section>
 
       {/* 3D Workflow Buttons */}
