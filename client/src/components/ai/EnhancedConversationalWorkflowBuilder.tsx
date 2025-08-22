@@ -303,18 +303,35 @@ You can try:
     try {
       setProcessingStep('🤔 Understanding your request...');
       
-      // Call the complete workflow generation API
-      const response = await fetch('/api/workflow/generate-complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt,
-          answers: Object.keys(questionAnswers).length > 0 ? questionAnswers : undefined,
-          skipQuestions: Object.keys(questionAnswers).length > 0
-        })
-      });
+      // Try the new workflow API first, fallback to old AI API
+      let response;
+      try {
+        response = await fetch('/api/workflow/generate-complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prompt,
+            answers: Object.keys(questionAnswers).length > 0 ? questionAnswers : undefined,
+            skipQuestions: Object.keys(questionAnswers).length > 0
+          })
+        });
+      } catch (error) {
+        console.log('New API not available, using fallback...');
+        // Fallback to old API
+        response = await fetch('/api/ai/generate-workflow', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prompt,
+            model: 'gemini-pro',
+            userId: 'ai-builder-user'
+          })
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -592,18 +609,24 @@ Need help? I can guide you through each step!`
 
         {/* Questions Interface */}
         {currentQuestions.length > 0 && (
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
+          <Card className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-2 border-blue-500/50 shadow-xl">
+            <CardHeader className="bg-slate-800/50">
               <CardTitle className="flex items-center gap-2 text-white">
-                <HelpCircle className="w-5 h-5 text-blue-400" />
-                Please Answer These Questions
+                <HelpCircle className="w-5 h-5 text-blue-400 animate-pulse" />
+                🤔 Please Answer These Questions ({currentQuestions.length})
               </CardTitle>
+              <p className="text-sm text-slate-300">
+                Help me understand your automation requirements better:
+              </p>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 bg-slate-800/30">
               {currentQuestions.map((question, index) => (
-                <div key={question.id} className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">
-                    {index + 1}. {question.text}
+                <div key={question.id} className="space-y-3 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                  <label className="text-sm font-medium text-white flex items-start gap-2">
+                    <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                      {index + 1}
+                    </span>
+                    <span className="flex-1">{question.text}</span>
                   </label>
                   
                   {question.choices ? (
@@ -634,28 +657,56 @@ Need help? I can guide you through each step!`
                       ))}
                     </div>
                   ) : (
-                    <Input
-                      placeholder="Type your answer..."
-                      value={questionAnswers[question.id] || ''}
-                      onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
-                      className="bg-slate-700 border-slate-600 text-white"
-                    />
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Type your answer here..."
+                        value={questionAnswers[question.id] || ''}
+                        onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
+                        className="bg-slate-600 border-2 border-slate-500 text-white placeholder-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 text-base p-3"
+                      />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">
+                          {question.kind === 'missingParam' && '💡 Be specific - this helps generate better automation'}
+                          {question.kind === 'disambiguation' && '🎯 Choose the option that best fits your needs'}
+                          {question.kind === 'permission' && '🔐 This affects what permissions are needed'}
+                          {question.kind === 'volume' && '📊 This helps optimize performance'}
+                        </span>
+                        <span className={`${questionAnswers[question.id] ? 'text-green-400' : 'text-slate-500'}`}>
+                          {questionAnswers[question.id] ? '✅ Answered' : '⏳ Required'}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
               
-              <Button
-                onClick={handleSubmitAnswers}
-                disabled={Object.keys(questionAnswers).length === 0 || isProcessing}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4 mr-2" />
+              <div className="space-y-3">
+                <div className="text-xs text-slate-400 text-center">
+                  Answered: {Object.keys(questionAnswers).length} / {currentQuestions.length} questions
+                </div>
+                <Button
+                  onClick={handleSubmitAnswers}
+                  disabled={Object.keys(questionAnswers).length === 0 || isProcessing}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 p-4 text-base font-semibold"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Generating Your Workflow...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-2" />
+                      Generate Workflow ({Object.keys(questionAnswers).length} answers)
+                    </>
+                  )}
+                </Button>
+                {Object.keys(questionAnswers).length === 0 && (
+                  <p className="text-xs text-center text-slate-400">
+                    Please answer at least one question to continue
+                  </p>
                 )}
-                {isProcessing ? 'Processing...' : 'Submit Answers'}
-              </Button>
+              </div>
             </CardContent>
           </Card>
         )}
