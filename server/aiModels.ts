@@ -249,13 +249,26 @@ class MultiAIService {
 
     // Determine intent based on detected apps and prompt
     let intent = 'custom_automation';
-    if (lowerPrompt.includes('track') && lowerPrompt.includes('email')) intent = 'email_tracking';
-    if (lowerPrompt.includes('follow') && (lowerPrompt.includes('lead') || lowerPrompt.includes('customer'))) intent = 'lead_followup';
-    if (lowerPrompt.includes('organize') && lowerPrompt.includes('file')) intent = 'file_organization';
-    if (lowerPrompt.includes('report') || lowerPrompt.includes('dashboard')) intent = 'reporting_automation';
-    if (lowerPrompt.includes('payment') || lowerPrompt.includes('order')) intent = 'ecommerce_automation';
-    if (lowerPrompt.includes('social') || lowerPrompt.includes('post')) intent = 'social_media_automation';
-    if (lowerPrompt.includes('support') || lowerPrompt.includes('ticket')) intent = 'customer_support_automation';
+    
+    // Email automation intents (specific)
+    if (lowerPrompt.includes('auto reply') || lowerPrompt.includes('automatic reply') || 
+        lowerPrompt.includes('mail responder') || lowerPrompt.includes('email responder')) {
+      intent = 'email_auto_reply';
+    } else if (lowerPrompt.includes('track') && lowerPrompt.includes('email')) {
+      intent = 'email_tracking';
+    } else if (lowerPrompt.includes('follow') && (lowerPrompt.includes('lead') || lowerPrompt.includes('customer'))) {
+      intent = 'lead_followup';
+    } else if (lowerPrompt.includes('organize') && lowerPrompt.includes('file')) {
+      intent = 'file_organization';
+    } else if (lowerPrompt.includes('report') || lowerPrompt.includes('dashboard')) {
+      intent = 'reporting_automation';
+    } else if (lowerPrompt.includes('payment') || lowerPrompt.includes('order')) {
+      intent = 'ecommerce_automation';
+    } else if (lowerPrompt.includes('social') || lowerPrompt.includes('post')) {
+      intent = 'social_media_automation';
+    } else if (lowerPrompt.includes('support') || lowerPrompt.includes('ticket')) {
+      intent = 'customer_support_automation';
+    }
 
     // Calculate complexity based on number of apps and their individual complexity
     let complexity: 'Simple' | 'Medium' | 'Complex' = 'Simple';
@@ -623,7 +636,27 @@ function main() {
   // Generate specific function implementations based on intelligent selection
   functionMappings.forEach(mapping => {
     if (mapping.appName === 'Gmail') {
-      if (mapping.selectedFunction === 'search_emails') {
+      if (mapping.selectedFunction === 'set_auto_reply') {
+        code += `
+    // Gmail: Set Auto Reply (AI Selected - ${mapping.reason})
+    function setupAutoReply() {
+      const message = '${mapping.parameters.message || 'Thank you for your email. I will respond shortly.'}';
+      const startDate = new Date();
+      const endDate = null; // Runs indefinitely until disabled
+      
+      // Set up Gmail auto-reply
+      Gmail.Users.Settings.updateVacation({
+        enableAutoReply: true,
+        responseSubject: 'Auto Reply',
+        responseBodyPlainText: message,
+        restrictToContacts: ${mapping.parameters.restrictToContacts || false},
+        restrictToDomain: false
+      }, 'me');
+      
+      console.log('Auto-reply enabled with message:', message);
+    }
+`;
+      } else if (mapping.selectedFunction === 'search_emails') {
         code += `
     // Gmail: Search Emails (AI Selected - ${mapping.reason})
     function searchEmails() {
@@ -734,11 +767,17 @@ function main() {
 `;
 
   // Add execution logic based on function mappings
+  const hasGmailAutoReply = functionMappings.some(m => m.appName === 'Gmail' && m.selectedFunction === 'set_auto_reply');
   const hasGmailSearch = functionMappings.some(m => m.appName === 'Gmail' && m.selectedFunction === 'search_emails');
   const hasSheetAppend = functionMappings.some(m => m.appName === 'Google Sheets' && m.selectedFunction === 'append_row');
   const hasCalendarCreate = functionMappings.some(m => m.appName === 'Google Calendar' && m.selectedFunction === 'create_event');
 
-  if (hasGmailSearch) {
+  if (hasGmailAutoReply) {
+    code += `    // Set up automatic email responder
+    setupAutoReply();
+    console.log('Automatic email responder is now active!');
+`;
+  } else if (hasGmailSearch) {
     code += `    const emailData = searchEmails();\n`;
     
     if (hasSheetAppend) {

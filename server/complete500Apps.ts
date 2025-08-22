@@ -399,8 +399,23 @@ export function detectAppsFromPrompt(prompt: string): any[] {
   const detectedApps: any[] = [];
   const allApps = generateCompleteAppDatabase();
   
-  // Direct app name matching (highest priority)
-  const directMatches = [
+  // Enhanced app detection with intent-based matching
+  const appDetectionRules = [
+    // Email automation rules
+    { 
+      keywords: ['auto reply', 'automatic reply', 'mail responder', 'email responder'], 
+      appName: 'Gmail',
+      singleApp: true, // Only Gmail needed for auto-reply
+      intent: 'email_auto_reply'
+    },
+    { 
+      keywords: ['track email', 'monitor email', 'email tracking'], 
+      appName: 'Gmail',
+      singleApp: false, // Might need Sheets for tracking
+      intent: 'email_tracking'
+    },
+    
+    // Direct app name matching
     { keywords: ['shopify'], appName: 'Shopify' },
     { keywords: ['stripe'], appName: 'Stripe' },
     { keywords: ['slack'], appName: 'Slack' },
@@ -421,13 +436,18 @@ export function detectAppsFromPrompt(prompt: string): any[] {
     { keywords: ['monday.com', 'monday'], appName: 'Monday.com' }
   ];
 
-  // Check for direct app name matches first
-  directMatches.forEach(({ keywords, appName }) => {
-    const hasDirectMatch = keywords.some(keyword => lowerPrompt.includes(keyword));
-    if (hasDirectMatch) {
-      const app = allApps.find(a => a.name === appName);
-      if (app && !detectedApps.find(d => d.name === appName)) {
+  // Check for app matches with intent understanding
+  appDetectionRules.forEach((rule) => {
+    const hasMatch = rule.keywords.some(keyword => lowerPrompt.includes(keyword));
+    if (hasMatch) {
+      const app = allApps.find(a => a.name === rule.appName);
+      if (app && !detectedApps.find(d => d.name === rule.appName)) {
         detectedApps.push(app);
+        
+        // If it's a single-app automation, don't add more apps
+        if (rule.singleApp) {
+          return detectedApps;
+        }
       }
     }
   });

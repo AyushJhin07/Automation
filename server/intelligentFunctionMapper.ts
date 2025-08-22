@@ -1430,6 +1430,17 @@ export class IntelligentFunctionMapper {
       });
 
       // Intent-based scoring (high weight)
+      if (intent === 'email_auto_reply' && appName === 'Gmail') {
+        if (functionId === 'set_auto_reply') {
+          score += 50; // Very high score for exact match
+          reasons.push('auto-reply intent - perfect match');
+        }
+        if (functionId.includes('reply')) {
+          score += 30;
+          reasons.push('reply functionality for auto-responder');
+        }
+      }
+
       if (intent === 'email_tracking' && appName === 'Gmail') {
         if (functionId.includes('search') || functionId.includes('read')) {
           score += 20;
@@ -1574,6 +1585,15 @@ export class IntelligentFunctionMapper {
           body: 'Generated from automation context',
           cc: prompt.includes('team') ? 'team@company.com' : '',
           bcc: ''
+        };
+      }
+      
+      if (functionId === 'set_auto_reply') {
+        return {
+          message: 'Thank you for your email. I have received your message and will respond within 24 hours.',
+          startDate: 'immediate',
+          endDate: 'until_disabled',
+          restrictToContacts: false
         };
       }
     }
@@ -1758,14 +1778,28 @@ export class IntelligentFunctionMapper {
     
     // Determine intent with enhanced detection
     let intent = 'custom_automation';
-    if (lowerPrompt.includes('track') && lowerPrompt.includes('email')) intent = 'email_tracking';
-    if (lowerPrompt.includes('follow') && lowerPrompt.includes('lead')) intent = 'lead_followup';
-    if (lowerPrompt.includes('report') || lowerPrompt.includes('dashboard')) intent = 'reporting_automation';
-    if (lowerPrompt.includes('notify') || lowerPrompt.includes('alert')) intent = 'notification_automation';
-    if (lowerPrompt.includes('sync') || lowerPrompt.includes('update')) intent = 'data_sync_automation';
-    if (lowerPrompt.includes('crm') || lowerPrompt.includes('sales')) intent = 'crm_automation';
-    if (lowerPrompt.includes('marketing') || lowerPrompt.includes('campaign')) intent = 'marketing_automation';
-    if (lowerPrompt.includes('support') || lowerPrompt.includes('ticket')) intent = 'support_automation';
+    
+    // Email automation intents (specific)
+    if (lowerPrompt.includes('auto reply') || lowerPrompt.includes('automatic reply') || 
+        lowerPrompt.includes('mail responder') || lowerPrompt.includes('email responder')) {
+      intent = 'email_auto_reply';
+    } else if (lowerPrompt.includes('track') && lowerPrompt.includes('email')) {
+      intent = 'email_tracking';
+    } else if (lowerPrompt.includes('follow') && lowerPrompt.includes('lead')) {
+      intent = 'lead_followup';
+    } else if (lowerPrompt.includes('report') || lowerPrompt.includes('dashboard')) {
+      intent = 'reporting_automation';
+    } else if (lowerPrompt.includes('notify') || lowerPrompt.includes('alert')) {
+      intent = 'notification_automation';
+    } else if (lowerPrompt.includes('sync') || lowerPrompt.includes('update')) {
+      intent = 'data_sync_automation';
+    } else if (lowerPrompt.includes('crm') || lowerPrompt.includes('sales')) {
+      intent = 'crm_automation';
+    } else if (lowerPrompt.includes('marketing') || lowerPrompt.includes('campaign')) {
+      intent = 'marketing_automation';
+    } else if (lowerPrompt.includes('support') || lowerPrompt.includes('ticket')) {
+      intent = 'support_automation';
+    }
 
     // Enhanced trigger app detection
     let triggerApp = detectedApps[0] || 'Gmail';
