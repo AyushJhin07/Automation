@@ -44,8 +44,10 @@ import {
   Heart,
   X,
   Plus,
-  Trash2
+  Trash2,
+  MessageCircle
 } from 'lucide-react';
+import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
 
 // N8N-Style Custom Node Component
 const N8NNode = ({ data }: { data: any }) => {
@@ -299,6 +301,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const [thinkingSteps, setThinkingSteps] = useState<AIThinkingStep[]>([]);
   const [currentThinkingStep, setCurrentThinkingStep] = useState(0);
   const [showAIPanel, setShowAIPanel] = useState(true);
+  const [showConversationalAI, setShowConversationalAI] = useState(false);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -491,24 +494,34 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
             />
           </div>
 
-          {/* Generate Button */}
-          <Button 
-            onClick={generateWorkflowWithThinking}
-            disabled={!prompt.trim() || isThinking}
-            className="w-full bg-purple-600 hover:bg-purple-700 mb-6"
-          >
-            {isThinking ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                AI Thinking...
-              </>
-            ) : (
-              <>
-                <Brain className="w-4 h-4 mr-2" />
-                Generate Workflow
-              </>
-            )}
-          </Button>
+                     {/* Generate Buttons */}
+           <div className="space-y-3 mb-6">
+             <Button 
+               onClick={() => setShowConversationalAI(true)}
+               className="w-full bg-green-600 hover:bg-green-700"
+             >
+               <MessageCircle className="w-4 h-4 mr-2" />
+               Chat with AI (Real LLM)
+             </Button>
+             
+             <Button 
+               onClick={generateWorkflowWithThinking}
+               disabled={!prompt.trim() || isThinking}
+               className="w-full bg-purple-600 hover:bg-purple-700"
+             >
+               {isThinking ? (
+                 <>
+                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                   AI Thinking...
+                 </>
+               ) : (
+                 <>
+                   <Brain className="w-4 h-4 mr-2" />
+                   Quick Generate
+                 </>
+               )}
+             </Button>
+           </div>
 
           {/* AI Thinking Process */}
           {isThinking && (
@@ -650,6 +663,29 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
                   Open AI Assistant
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Conversational AI Overlay */}
+        {showConversationalAI && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="w-full max-w-4xl h-5/6 bg-gray-900 rounded-lg border border-gray-700 shadow-2xl relative">
+              <ConversationalWorkflowBuilder 
+                onWorkflowGenerated={(workflow) => {
+                  console.log('Workflow generated from conversation:', workflow);
+                  setShowConversationalAI(false);
+                  // TODO: Convert conversation workflow to visual nodes
+                }}
+              />
+              
+              {/* Close Button */}
+              <button
+                onClick={() => setShowConversationalAI(false)}
+                className="absolute top-4 right-4 w-8 h-8 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-colors z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
