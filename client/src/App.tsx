@@ -21,6 +21,7 @@ import PreBuiltApps from "./pages/PreBuiltApps";
 import AIBuilder from "./pages/AIBuilder";
 import AdminSettings from "./pages/AdminSettings";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
+import GraphEditor from "./pages/GraphEditor";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/ai-builder" element={<AIBuilder />} />
             <Route path="/workflow-builder" element={<WorkflowBuilder />} />
+            <Route path="/graph-editor" element={<GraphEditor />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/pre-built-apps" element={<PreBuiltApps />} />
             <Route path="/schedule" element={<Schedule />} />

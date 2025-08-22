@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { AIWorkflowBuilder } from "@/components/ai/AIWorkflowBuilder";
+import EnhancedConversationalWorkflowBuilder from "@/components/ai/EnhancedConversationalWorkflowBuilder";
 
 export default function AIBuilder() {
   return (
@@ -9,9 +9,7 @@ export default function AIBuilder() {
         <meta name="description" content="Generate Google Apps Script automations with AI. Describe your workflow in plain English and our AI builds it instantly." />
       </Helmet>
       
-      <main className="min-h-screen bg-gray-50 py-8">
-        <AIWorkflowBuilder />
-      </main>
+      <EnhancedConversationalWorkflowBuilder />
     </>
   );
 }
