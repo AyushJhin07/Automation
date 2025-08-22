@@ -270,93 +270,1280 @@ const EmailProcessorResults = () => (
   </div>
 );
 
-// Simple placeholder components for other demos
+// Report Generator Demo Components
 const ReportGeneratorDemo = ({ step }: { step: number }) => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold mb-2">Report Generator Demo - Step {step}</h3>
-      <p className="text-gray-600">Sheets → Drive → Gmail workflow for automated reporting</p>
+  <div className="h-full p-6">
+    {/* Website Header */}
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">Automated Report Generator</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-96">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Google Apps</h3>
+        
+        {/* Google Sheets */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 1 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-5 h-5 text-green-600" />
+            <div>
+              <div className="font-medium text-sm">Google Sheets</div>
+              <div className="text-xs text-gray-500">7 functions</div>
+            </div>
+          </div>
+          {step >= 1 && (
+            <div className="mt-2 text-xs text-green-600">✅ Reading sales data</div>
+          )}
+        </div>
+
+        {/* Google Drive */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 3 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-blue-600" />
+            <div>
+              <div className="font-medium text-sm">Google Drive</div>
+              <div className="text-xs text-gray-500">5 functions</div>
+            </div>
+          </div>
+          {step >= 3 && (
+            <div className="mt-2 text-xs text-blue-600">✅ Creating PDF reports</div>
+          )}
+        </div>
+
+        {/* Gmail */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 4 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-red-600" />
+            <div>
+              <div className="font-medium text-sm">Gmail</div>
+              <div className="text-xs text-gray-500">26 functions</div>
+            </div>
+          </div>
+          {step >= 4 && (
+            <div className="mt-2 text-xs text-red-600">✅ Emailing reports</div>
+          )}
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 1 && (
+          <div className="absolute left-16 top-12 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Sheets" 
+              icon={<Sheet className="w-4 h-4 text-green-600" />}
+              color="#0F9D58"
+              configured={step >= 2}
+              function={step >= 2 ? "Read Range" : undefined}
+            />
+          </div>
+        )}
+        
+        {step >= 3 && (
+          <div className="absolute left-16 top-32 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Drive" 
+              icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
+              color="#4285F4"
+              configured={step >= 3}
+              function={step >= 3 ? "Create File" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className="absolute right-16 top-20 transition-all duration-1000">
+            <AutomationNode 
+              app="Gmail" 
+              icon={<Mail className="w-4 h-4 text-red-600" />}
+              color="#EA4335"
+              configured={step >= 4}
+              function={step >= 4 ? "Send Email" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {/* Connection Lines */}
+        {step >= 5 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="arrowhead1" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+              </marker>
+            </defs>
+            {/* Sheets to Drive */}
+            <line x1="200" y1="76" x2="200" y2="160" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead1)" />
+            {/* Drive to Gmail */}
+            <line x1="200" y1="180" x2="350" y2="120" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead1)" />
+            <text x="275" y="150" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
+              AI Data Flow
+            </text>
+          </svg>
+        )}
+
+        {step >= 5 && (
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-purple-500 text-white animate-pulse">
+              🧠 Report Pipeline Active
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Status Messages */}
+    <div className="mt-4 h-12 flex items-center justify-center">
+      {step === 1 && (
+        <div className="text-green-600 text-center">
+          📊 Google Sheets added! This will read sales data and analytics...
+        </div>
+      )}
+      {step === 2 && (
+        <div className="text-green-600 text-center">
+          ⚙️ Sheets configured to read range A1:G100 - sales data, metrics, and KPIs...
+        </div>
+      )}
+      {step === 3 && (
+        <div className="text-blue-600 text-center">
+          📁 Google Drive added! This will create professional PDF reports...
+        </div>
+      )}
+      {step === 4 && (
+        <div className="text-red-600 text-center">
+          📧 Gmail added! This will email reports to stakeholders automatically...
+        </div>
+      )}
+      {step >= 5 && (
+        <div className="text-purple-600 text-center">
+          🎯 AI Connected! Data flows: Sheets→Drive (PDF creation)→Gmail (distribution)
+        </div>
+      )}
     </div>
   </div>
 );
 
 const ReportGeneratorResults = () => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold text-green-600">📊 Report Generated & Emailed!</h3>
-      <p className="text-gray-600">PDF report created in Drive and sent to stakeholders</p>
+  <div className="h-full bg-white p-6">
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Google Sheets - Source Data */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Sales Data</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-gray-50 p-2 text-xs font-medium flex">
+            <div className="w-20 border-r">Month</div>
+            <div className="w-20 border-r">Sales</div>
+            <div className="w-20">Growth</div>
+          </div>
+          <div className="bg-white p-2 text-xs flex">
+            <div className="w-20 border-r">Jan</div>
+            <div className="w-20 border-r">$45,000</div>
+            <div className="w-20">+12%</div>
+          </div>
+          <div className="bg-white p-2 text-xs flex">
+            <div className="w-20 border-r">Feb</div>
+            <div className="w-20 border-r">$52,000</div>
+            <div className="w-20">+15%</div>
+          </div>
+          <div className="bg-green-50 p-2 text-xs flex animate-pulse border border-green-300">
+            <div className="w-20 border-r font-medium">Mar</div>
+            <div className="w-20 border-r font-medium">$58,000</div>
+            <div className="w-20 font-medium">+18%</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Google Drive - Generated Report */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <FolderOpen className="w-6 h-6 text-blue-600" />
+          <h3 className="text-lg font-semibold">Generated Report</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-red-100 rounded flex items-center justify-center">
+              📄
+            </div>
+            <div>
+              <div className="font-medium">Q1_Sales_Report_2025.pdf</div>
+              <div className="text-xs text-gray-500">Generated just now</div>
+            </div>
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Auto-Generated</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800">
+          📊 Professional PDF report created with charts and analysis
+        </div>
+      </div>
+
+      {/* Gmail - Email Distribution */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-6 h-6 text-red-600" />
+          <h3 className="text-lg font-semibold">Email Sent</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+          <div className="text-sm mb-2">
+            <strong>To:</strong> team@company.com, ceo@company.com
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Subject:</strong> Q1 Sales Report - 18% Growth!
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Attachment:</strong> Q1_Sales_Report_2025.pdf
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Report Distributed</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+          📧 Report automatically emailed to all stakeholders
+        </div>
+      </div>
     </div>
   </div>
 );
 
 const CalendarBookingDemo = ({ step }: { step: number }) => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold mb-2">Calendar Booking Demo - Step {step}</h3>
-      <p className="text-gray-600">Calendar → Gmail → Sheets workflow for booking management</p>
+  <div className="h-full p-6">
+    {/* Website Header */}
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">Smart Calendar Booking System</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-96">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Google Apps</h3>
+        
+        {/* Google Calendar */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 1 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            <div>
+              <div className="font-medium text-sm">Google Calendar</div>
+              <div className="text-xs text-gray-500">12 functions</div>
+            </div>
+          </div>
+          {step >= 1 && (
+            <div className="mt-2 text-xs text-blue-600">✅ Managing bookings</div>
+          )}
+        </div>
+
+        {/* Gmail */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 3 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-red-600" />
+            <div>
+              <div className="font-medium text-sm">Gmail</div>
+              <div className="text-xs text-gray-500">26 functions</div>
+            </div>
+          </div>
+          {step >= 3 && (
+            <div className="mt-2 text-xs text-red-600">✅ Sending confirmations</div>
+          )}
+        </div>
+
+        {/* Google Sheets */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 4 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-5 h-5 text-green-600" />
+            <div>
+              <div className="font-medium text-sm">Google Sheets</div>
+              <div className="text-xs text-gray-500">7 functions</div>
+            </div>
+          </div>
+          {step >= 4 && (
+            <div className="mt-2 text-xs text-green-600">✅ Logging bookings</div>
+          )}
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 1 && (
+          <div className="absolute left-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Calendar" 
+              icon={<Calendar className="w-4 h-4 text-blue-600" />}
+              color="#4285F4"
+              configured={step >= 2}
+              function={step >= 2 ? "Create Event" : undefined}
+            />
+          </div>
+        )}
+        
+        {step >= 3 && (
+          <div className="absolute right-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Gmail" 
+              icon={<Mail className="w-4 h-4 text-red-600" />}
+              color="#EA4335"
+              configured={step >= 3}
+              function={step >= 3 ? "Send Email" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Sheets" 
+              icon={<Sheet className="w-4 h-4 text-green-600" />}
+              color="#0F9D58"
+              configured={step >= 4}
+              function={step >= 4 ? "Append Row" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {/* Connection Lines */}
+        {step >= 5 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="arrowhead2" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+              </marker>
+            </defs>
+            {/* Calendar to Gmail */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead2)" />
+            {/* Calendar to Sheets */}
+            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead2)" />
+            <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
+              AI Booking Flow
+            </text>
+          </svg>
+        )}
+
+        {step >= 5 && (
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-blue-500 text-white animate-pulse">
+              🧠 Booking System Active
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Status Messages */}
+    <div className="mt-4 h-12 flex items-center justify-center">
+      {step === 1 && (
+        <div className="text-blue-600 text-center">
+          📅 Google Calendar added! This will manage appointment bookings...
+        </div>
+      )}
+      {step === 2 && (
+        <div className="text-blue-600 text-center">
+          ⚙️ Calendar configured to create events with customer details and time slots...
+        </div>
+      )}
+      {step === 3 && (
+        <div className="text-red-600 text-center">
+          📧 Gmail added! This will send booking confirmations to customers...
+        </div>
+      )}
+      {step === 4 && (
+        <div className="text-green-600 text-center">
+          📊 Google Sheets added! This will log all booking details and customer info...
+        </div>
+      )}
+      {step >= 5 && (
+        <div className="text-purple-600 text-center">
+          🎯 AI Connected! Booking flow: Calendar event→Email confirmation→Sheets logging
+        </div>
+      )}
     </div>
   </div>
 );
 
 const CalendarBookingResults = () => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold text-blue-600">📅 Booking Confirmed & Logged!</h3>
-      <p className="text-gray-600">Calendar event created, confirmation sent, booking logged</p>
+  <div className="h-full bg-white p-6">
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Google Calendar - New Event */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar className="w-6 h-6 text-blue-600" />
+          <h3 className="text-lg font-semibold">Calendar Event</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+          <div className="text-sm mb-2">
+            <strong>Title:</strong> Consultation - John Smith
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Date:</strong> Aug 25, 2025 2:00 PM
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Duration:</strong> 30 minutes
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Event Created</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800">
+          📅 Appointment automatically scheduled in calendar
+        </div>
+      </div>
+
+      {/* Gmail - Confirmation Email */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-6 h-6 text-red-600" />
+          <h3 className="text-lg font-semibold">Confirmation Email</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+          <div className="text-sm mb-2">
+            <strong>To:</strong> john@example.com
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Subject:</strong> Booking Confirmed - Aug 25 at 2:00 PM
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Body:</strong> Your consultation is confirmed. Calendar invite attached.
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Confirmation Sent</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+          📧 Automatic confirmation with calendar invite
+        </div>
+      </div>
+
+      {/* Google Sheets - Booking Log */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Booking Database</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-gray-50 p-2 text-xs font-medium flex">
+            <div className="w-24 border-r">Date</div>
+            <div className="w-24 border-r">Name</div>
+            <div className="w-32 border-r">Email</div>
+            <div className="w-20">Status</div>
+          </div>
+          <div className="bg-green-50 p-2 text-xs flex animate-pulse border border-green-300">
+            <div className="w-24 border-r">Aug 25</div>
+            <div className="w-24 border-r font-medium">John Smith</div>
+            <div className="w-32 border-r font-medium">john@example.com</div>
+            <div className="w-20 font-medium">Confirmed</div>
+          </div>
+        </div>
+        
+        <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+          📊 Booking automatically logged with all details
+        </div>
+      </div>
     </div>
   </div>
 );
 
 const FileOrganizerDemo = ({ step }: { step: number }) => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold mb-2">File Organizer Demo - Step {step}</h3>
-      <p className="text-gray-600">Drive → Sheets → Gmail workflow for file management</p>
+  <div className="h-full p-6">
+    {/* Website Header */}
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">Intelligent File Organizer</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-96">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Google Apps</h3>
+        
+        {/* Google Drive */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 1 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-blue-600" />
+            <div>
+              <div className="font-medium text-sm">Google Drive</div>
+              <div className="text-xs text-gray-500">5 functions</div>
+            </div>
+          </div>
+          {step >= 1 && (
+            <div className="mt-2 text-xs text-blue-600">✅ Monitoring files</div>
+          )}
+        </div>
+
+        {/* Google Sheets */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 3 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-5 h-5 text-green-600" />
+            <div>
+              <div className="font-medium text-sm">Google Sheets</div>
+              <div className="text-xs text-gray-500">7 functions</div>
+            </div>
+          </div>
+          {step >= 3 && (
+            <div className="mt-2 text-xs text-green-600">✅ Logging activities</div>
+          )}
+        </div>
+
+        {/* Gmail */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 4 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-red-600" />
+            <div>
+              <div className="font-medium text-sm">Gmail</div>
+              <div className="text-xs text-gray-500">26 functions</div>
+            </div>
+          </div>
+          {step >= 4 && (
+            <div className="mt-2 text-xs text-red-600">✅ Notifying team</div>
+          )}
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 1 && (
+          <div className="absolute left-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Drive" 
+              icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
+              color="#4285F4"
+              configured={step >= 2}
+              function={step >= 2 ? "List Files" : undefined}
+            />
+          </div>
+        )}
+        
+        {step >= 3 && (
+          <div className="absolute right-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Sheets" 
+              icon={<Sheet className="w-4 h-4 text-green-600" />}
+              color="#0F9D58"
+              configured={step >= 3}
+              function={step >= 3 ? "Append Row" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Gmail" 
+              icon={<Mail className="w-4 h-4 text-red-600" />}
+              color="#EA4335"
+              configured={step >= 4}
+              function={step >= 4 ? "Send Email" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {/* Connection Lines */}
+        {step >= 5 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="arrowhead3" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+              </marker>
+            </defs>
+            {/* Drive to Sheets */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead3)" />
+            {/* Sheets to Gmail */}
+            <line x1="350" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead3)" />
+            <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
+              AI File Flow
+            </text>
+          </svg>
+        )}
+
+        {step >= 5 && (
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-blue-500 text-white animate-pulse">
+              🧠 File Organization Active
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Status Messages */}
+    <div className="mt-4 h-12 flex items-center justify-center">
+      {step === 1 && (
+        <div className="text-blue-600 text-center">
+          📁 Google Drive added! This will monitor new file uploads and changes...
+        </div>
+      )}
+      {step === 2 && (
+        <div className="text-blue-600 text-center">
+          ⚙️ Drive configured to watch for new files and organize them by type and date...
+        </div>
+      )}
+      {step === 3 && (
+        <div className="text-green-600 text-center">
+          📊 Google Sheets added! This will log all file activities and metadata...
+        </div>
+      )}
+      {step === 4 && (
+        <div className="text-red-600 text-center">
+          📧 Gmail added! This will notify team members about file changes...
+        </div>
+      )}
+      {step >= 5 && (
+        <div className="text-purple-600 text-center">
+          🎯 AI Connected! File flow: Drive monitoring→Sheets logging→Gmail notifications
+        </div>
+      )}
     </div>
   </div>
 );
 
 const FileOrganizerResults = () => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold text-blue-600">📁 Files Organized & Team Notified!</h3>
-      <p className="text-gray-600">Files sorted, activities logged, notifications sent</p>
+  <div className="h-full bg-white p-6">
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Google Drive - Organized Files */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <FolderOpen className="w-6 h-6 text-blue-600" />
+          <h3 className="text-lg font-semibold">Organized Files</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-blue-600 text-white p-2 text-sm font-medium">
+            📁 Project Files / 2025
+          </div>
+          <div className="bg-blue-50 p-2 text-xs flex items-center gap-2 animate-pulse border border-blue-300">
+            <div className="w-6 h-6 bg-red-100 rounded flex items-center justify-center">📄</div>
+            <div className="flex-1">
+              <div className="font-medium">Project_Proposal_v2.pdf</div>
+              <div className="text-gray-500">Auto-sorted • Just now</div>
+            </div>
+          </div>
+          <div className="bg-blue-50 p-2 text-xs flex items-center gap-2 animate-pulse border border-blue-300">
+            <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">📊</div>
+            <div className="flex-1">
+              <div className="font-medium">Budget_Analysis.xlsx</div>
+              <div className="text-gray-500">Auto-sorted • Just now</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800">
+          📁 Files automatically organized by type and project
+        </div>
+      </div>
+
+      {/* Google Sheets - Activity Log */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Activity Log</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-gray-50 p-2 text-xs font-medium flex">
+            <div className="w-20 border-r">Time</div>
+            <div className="w-24 border-r">File</div>
+            <div className="w-20 border-r">Action</div>
+            <div className="w-16">User</div>
+          </div>
+          <div className="bg-green-50 p-2 text-xs flex animate-pulse border border-green-300">
+            <div className="w-20 border-r">12:06 PM</div>
+            <div className="w-24 border-r font-medium">Proposal.pdf</div>
+            <div className="w-20 border-r font-medium">Uploaded</div>
+            <div className="w-16 font-medium">John</div>
+          </div>
+          <div className="bg-green-50 p-2 text-xs flex animate-pulse border border-green-300">
+            <div className="w-20 border-r">12:06 PM</div>
+            <div className="w-24 border-r font-medium">Budget.xlsx</div>
+            <div className="w-20 border-r font-medium">Organized</div>
+            <div className="w-16 font-medium">Auto</div>
+          </div>
+        </div>
+        
+        <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+          📊 All file activities automatically tracked
+        </div>
+      </div>
+
+      {/* Gmail - Team Notification */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-6 h-6 text-red-600" />
+          <h3 className="text-lg font-semibold">Team Notification</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+          <div className="text-sm mb-2">
+            <strong>To:</strong> team@company.com
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Subject:</strong> New Files Organized - Project Folder
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Body:</strong> 2 new files uploaded and organized: Project_Proposal_v2.pdf, Budget_Analysis.xlsx
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Team Notified</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+          📧 Automatic team notifications for file changes
+        </div>
+      </div>
     </div>
   </div>
 );
 
 const ExpenseTrackerDemo = ({ step }: { step: number }) => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold mb-2">Expense Tracker Demo - Step {step}</h3>
-      <p className="text-gray-600">Sheets → Gmail → Drive workflow for expense management</p>
+  <div className="h-full p-6">
+    {/* Website Header */}
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">Expense Tracker & Approval</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-96">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Google Apps</h3>
+        
+        {/* Google Sheets */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 1 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-5 h-5 text-green-600" />
+            <div>
+              <div className="font-medium text-sm">Google Sheets</div>
+              <div className="text-xs text-gray-500">7 functions</div>
+            </div>
+          </div>
+          {step >= 1 && (
+            <div className="mt-2 text-xs text-green-600">✅ Tracking expenses</div>
+          )}
+        </div>
+
+        {/* Gmail */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 3 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-red-600" />
+            <div>
+              <div className="font-medium text-sm">Gmail</div>
+              <div className="text-xs text-gray-500">26 functions</div>
+            </div>
+          </div>
+          {step >= 3 && (
+            <div className="mt-2 text-xs text-red-600">✅ Approval notifications</div>
+          )}
+        </div>
+
+        {/* Google Drive */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 4 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-blue-600" />
+            <div>
+              <div className="font-medium text-sm">Google Drive</div>
+              <div className="text-xs text-gray-500">5 functions</div>
+            </div>
+          </div>
+          {step >= 4 && (
+            <div className="mt-2 text-xs text-blue-600">✅ Storing receipts</div>
+          )}
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 1 && (
+          <div className="absolute left-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Sheets" 
+              icon={<Sheet className="w-4 h-4 text-green-600" />}
+              color="#0F9D58"
+              configured={step >= 2}
+              function={step >= 2 ? "Append Row" : undefined}
+            />
+          </div>
+        )}
+        
+        {step >= 3 && (
+          <div className="absolute right-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Gmail" 
+              icon={<Mail className="w-4 h-4 text-red-600" />}
+              color="#EA4335"
+              configured={step >= 3}
+              function={step >= 3 ? "Send Email" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Drive" 
+              icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
+              color="#4285F4"
+              configured={step >= 4}
+              function={step >= 4 ? "Upload File" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {/* Connection Lines */}
+        {step >= 5 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="arrowhead4" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+              </marker>
+            </defs>
+            {/* Sheets to Gmail */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead4)" />
+            {/* Sheets to Drive */}
+            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead4)" />
+            <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
+              AI Expense Flow
+            </text>
+          </svg>
+        )}
+
+        {step >= 5 && (
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-green-500 text-white animate-pulse">
+              🧠 Expense System Active
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Status Messages */}
+    <div className="mt-4 h-12 flex items-center justify-center">
+      {step === 1 && (
+        <div className="text-green-600 text-center">
+          💰 Google Sheets added! This will track employee expense submissions...
+        </div>
+      )}
+      {step === 2 && (
+        <div className="text-green-600 text-center">
+          ⚙️ Sheets configured to monitor new expense entries with amount, category, and receipt...
+        </div>
+      )}
+      {step === 3 && (
+        <div className="text-red-600 text-center">
+          📧 Gmail added! This will send approval requests to managers...
+        </div>
+      )}
+      {step === 4 && (
+        <div className="text-blue-600 text-center">
+          📁 Google Drive added! This will store receipt files and documentation...
+        </div>
+      )}
+      {step >= 5 && (
+        <div className="text-purple-600 text-center">
+          🎯 AI Connected! Expense flow: New expense→Manager approval→Receipt storage
+        </div>
+      )}
     </div>
   </div>
 );
 
 const ExpenseTrackerResults = () => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold text-green-600">💰 Expense Tracked & Approved!</h3>
-      <p className="text-gray-600">Expense logged, receipt stored, manager notified</p>
+  <div className="h-full bg-white p-6">
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Google Sheets - Expense Entry */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Expense Entry</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-gray-50 p-2 text-xs font-medium flex">
+            <div className="w-20 border-r">Date</div>
+            <div className="w-24 border-r">Amount</div>
+            <div className="w-24 border-r">Category</div>
+            <div className="w-20">Status</div>
+          </div>
+          <div className="bg-green-50 p-2 text-xs flex animate-pulse border border-green-300">
+            <div className="w-20 border-r">Aug 21</div>
+            <div className="w-24 border-r font-medium">$125.50</div>
+            <div className="w-24 border-r font-medium">Travel</div>
+            <div className="w-20 font-medium text-orange-600">Pending</div>
+          </div>
+        </div>
+        
+        <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+          💰 New expense automatically detected and logged
+        </div>
+      </div>
+
+      {/* Gmail - Approval Request */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-6 h-6 text-red-600" />
+          <h3 className="text-lg font-semibold">Approval Request</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+          <div className="text-sm mb-2">
+            <strong>To:</strong> manager@company.com
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Subject:</strong> Expense Approval Required - $125.50
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Body:</strong> Employee submitted travel expense. Receipt attached. Please approve.
+          </div>
+          <Badge className="bg-orange-500 text-white">⏳ Awaiting Approval</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+          📧 Approval request automatically sent to manager
+        </div>
+      </div>
+
+      {/* Google Drive - Receipt Storage */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <FolderOpen className="w-6 h-6 text-blue-600" />
+          <h3 className="text-lg font-semibold">Receipt Storage</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-blue-600 text-white p-2 text-sm font-medium">
+            📁 Expense Receipts / 2025
+          </div>
+          <div className="bg-blue-50 p-2 text-xs flex items-center gap-2 animate-pulse border border-blue-300">
+            <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">🧾</div>
+            <div className="flex-1">
+              <div className="font-medium">Travel_Receipt_Aug21_125.50.pdf</div>
+              <div className="text-gray-500">Auto-stored • Just now</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800">
+          📁 Receipt automatically stored with expense details
+        </div>
+      </div>
     </div>
   </div>
 );
 
 const TaskAutomatorDemo = ({ step }: { step: number }) => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold mb-2">Task Automator Demo - Step {step}</h3>
-      <p className="text-gray-600">Sheets → Gmail → Calendar workflow for task management</p>
+  <div className="h-full p-6">
+    {/* Website Header */}
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">Project Task Automator</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-96">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Google Apps</h3>
+        
+        {/* Google Sheets */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 1 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-5 h-5 text-green-600" />
+            <div>
+              <div className="font-medium text-sm">Google Sheets</div>
+              <div className="text-xs text-gray-500">7 functions</div>
+            </div>
+          </div>
+          {step >= 1 && (
+            <div className="mt-2 text-xs text-green-600">✅ Managing tasks</div>
+          )}
+        </div>
+
+        {/* Gmail */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 3 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-red-600" />
+            <div>
+              <div className="font-medium text-sm">Gmail</div>
+              <div className="text-xs text-gray-500">26 functions</div>
+            </div>
+          </div>
+          {step >= 3 && (
+            <div className="mt-2 text-xs text-red-600">✅ Team notifications</div>
+          )}
+        </div>
+
+        {/* Google Calendar */}
+        <div className={`p-3 border rounded-lg mb-3 transition-all ${
+          step >= 4 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            <div>
+              <div className="font-medium text-sm">Google Calendar</div>
+              <div className="text-xs text-gray-500">12 functions</div>
+            </div>
+          </div>
+          {step >= 4 && (
+            <div className="mt-2 text-xs text-blue-600">✅ Deadline tracking</div>
+          )}
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 1 && (
+          <div className="absolute left-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Sheets" 
+              icon={<Sheet className="w-4 h-4 text-green-600" />}
+              color="#0F9D58"
+              configured={step >= 2}
+              function={step >= 2 ? "Update Range" : undefined}
+            />
+          </div>
+        )}
+        
+        {step >= 3 && (
+          <div className="absolute right-16 top-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Gmail" 
+              icon={<Mail className="w-4 h-4 text-red-600" />}
+              color="#EA4335"
+              configured={step >= 3}
+              function={step >= 3 ? "Send Email" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+            <AutomationNode 
+              app="Google Calendar" 
+              icon={<Calendar className="w-4 h-4 text-blue-600" />}
+              color="#4285F4"
+              configured={step >= 4}
+              function={step >= 4 ? "Create Event" : undefined}
+              connected={step >= 5}
+            />
+          </div>
+        )}
+
+        {/* Connection Lines */}
+        {step >= 5 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="arrowhead5" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+              </marker>
+            </defs>
+            {/* Sheets to Gmail */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead5)" />
+            {/* Sheets to Calendar */}
+            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead5)" />
+            <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
+              AI Task Flow
+            </text>
+          </svg>
+        )}
+
+        {step >= 5 && (
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-purple-500 text-white animate-pulse">
+              🧠 Task System Active
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Status Messages */}
+    <div className="mt-4 h-12 flex items-center justify-center">
+      {step === 1 && (
+        <div className="text-green-600 text-center">
+          ✅ Google Sheets added! This will manage project tasks and status updates...
+        </div>
+      )}
+      {step === 2 && (
+        <div className="text-green-600 text-center">
+          ⚙️ Sheets configured to track task progress, assignments, and deadlines...
+        </div>
+      )}
+      {step === 3 && (
+        <div className="text-red-600 text-center">
+          📧 Gmail added! This will notify team members about task changes...
+        </div>
+      )}
+      {step === 4 && (
+        <div className="text-blue-600 text-center">
+          📅 Google Calendar added! This will track deadlines and create reminders...
+        </div>
+      )}
+      {step >= 5 && (
+        <div className="text-purple-600 text-center">
+          🎯 AI Connected! Task flow: Status updates→Team notifications→Deadline tracking
+        </div>
+      )}
     </div>
   </div>
 );
 
 const TaskAutomatorResults = () => (
-  <div className="h-full p-6 flex items-center justify-center">
-    <div className="text-center">
-      <h3 className="text-lg font-semibold text-purple-600">✅ Tasks Automated & Team Notified!</h3>
-      <p className="text-gray-600">Task updated, team notified, deadlines tracked</p>
+  <div className="h-full bg-white p-6">
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Google Sheets - Task Update */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Task Management</h3>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-gray-50 p-2 text-xs font-medium flex">
+            <div className="w-24 border-r">Task</div>
+            <div className="w-20 border-r">Assignee</div>
+            <div className="w-20 border-r">Status</div>
+            <div className="w-20">Due</div>
+          </div>
+          <div className="bg-green-50 p-2 text-xs flex animate-pulse border border-green-300">
+            <div className="w-24 border-r font-medium">Website Design</div>
+            <div className="w-20 border-r font-medium">Sarah</div>
+            <div className="w-20 border-r font-medium text-green-600">Completed</div>
+            <div className="w-20 font-medium">Aug 25</div>
+          </div>
+        </div>
+        
+        <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+          ✅ Task status automatically updated to "Completed"
+        </div>
+      </div>
+
+      {/* Gmail - Team Notification */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-6 h-6 text-red-600" />
+          <h3 className="text-lg font-semibold">Team Update</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+          <div className="text-sm mb-2">
+            <strong>To:</strong> team@company.com, manager@company.com
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Subject:</strong> Task Completed: Website Design
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Body:</strong> Sarah has completed the Website Design task. Ready for review.
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Team Notified</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+          📧 Automatic team notifications for task updates
+        </div>
+      </div>
+
+      {/* Google Calendar - Deadline Tracking */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar className="w-6 h-6 text-blue-600" />
+          <h3 className="text-lg font-semibold">Deadline Tracking</h3>
+        </div>
+        
+        <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+          <div className="text-sm mb-2">
+            <strong>Event:</strong> Website Design - Review Phase
+          </div>
+          <div className="text-sm mb-2">
+            <strong>Date:</strong> Aug 25, 2025 9:00 AM
+          </div>
+          <div className="text-sm mb-3">
+            <strong>Attendees:</strong> Sarah, Manager, Team Lead
+          </div>
+          <Badge className="bg-green-500 text-white">✅ Review Scheduled</Badge>
+        </div>
+        
+        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800">
+          📅 Review meeting automatically scheduled for completed task
+        </div>
+      </div>
     </div>
   </div>
 );
