@@ -25,7 +25,13 @@ import {
   ExternalLink,
   Sparkles,
   Clock,
-  HelpCircle
+  HelpCircle,
+  ArrowRight,
+  Mail,
+  Sheet,
+  Calendar,
+  Filter,
+  Globe
 } from 'lucide-react';
 import { NodeGraph, Question, ValidationError } from '../../../shared/nodeGraphSchema';
 
@@ -64,6 +70,146 @@ interface WorkflowResult {
   estimatedValue: string;
   complexity: string;
 }
+
+// Visual Workflow Preview Component
+const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
+  if (!workflowData?.workflow?.graph) return null;
+
+  const graph = workflowData.workflow.graph;
+  
+  const getNodeIcon = (nodeType: string, app: string) => {
+    if (nodeType.includes('gmail') || app === 'Gmail') return Mail;
+    if (nodeType.includes('sheets') || app === 'Google Sheets') return Sheet;
+    if (nodeType.includes('calendar') || app === 'Google Calendar') return Calendar;
+    if (nodeType.includes('transform')) return Filter;
+    if (nodeType.includes('http')) return Globe;
+    if (nodeType.includes('time')) return Clock;
+    return Zap;
+  };
+
+  const getNodeColor = (nodeType: string) => {
+    if (nodeType.startsWith('trigger.')) return 'from-green-500 to-emerald-600';
+    if (nodeType.startsWith('action.')) return 'from-blue-500 to-indigo-600';
+    if (nodeType.startsWith('transform.')) return 'from-purple-500 to-violet-600';
+    return 'from-gray-500 to-slate-600';
+  };
+
+  return (
+    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+      <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+        <Workflow className="w-4 h-4 text-blue-400" />
+        Generated Workflow Structure
+      </h3>
+      
+      <div className="flex items-center gap-4 overflow-x-auto pb-2">
+        {graph.nodes.map((node: any, index: number) => {
+          const IconComponent = getNodeIcon(node.type, node.app);
+          const colorClass = getNodeColor(node.type);
+          
+          return (
+            <div key={node.id} className="flex items-center gap-2 flex-shrink-0">
+              {/* Node */}
+              <div className={`
+                bg-gradient-to-br ${colorClass} 
+                rounded-lg p-3 min-w-[140px] text-center
+                border border-white/20 shadow-lg
+              `}>
+                <div className="flex items-center justify-center mb-2">
+                  <div className="p-1.5 bg-white/20 rounded-lg">
+                    <IconComponent className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <h4 className="text-white font-medium text-sm">{node.label}</h4>
+                <p className="text-white/70 text-xs mt-1">{node.app || 'Built-in'}</p>
+                
+                {/* Show key parameters */}
+                {node.params && Object.keys(node.params).length > 0 && (
+                  <div className="mt-2 text-xs text-white/60">
+                    {Object.entries(node.params).slice(0, 2).map(([key, value]) => (
+                      <div key={key} className="truncate">
+                        {key}: {String(value).substring(0, 20)}...
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Arrow */}
+              {index < graph.nodes.length - 1 && (
+                <ArrowRight className="w-5 h-5 text-blue-400 flex-shrink-0" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Workflow Stats */}
+      <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+        <div className="bg-slate-700 rounded p-2">
+          <div className="text-lg font-bold text-green-400">
+            {graph.nodes.filter((n: any) => n.type.startsWith('trigger.')).length}
+          </div>
+          <div className="text-xs text-slate-400">Triggers</div>
+        </div>
+        <div className="bg-slate-700 rounded p-2">
+          <div className="text-lg font-bold text-blue-400">
+            {graph.nodes.filter((n: any) => n.type.startsWith('action.')).length}
+          </div>
+          <div className="text-xs text-slate-400">Actions</div>
+        </div>
+        <div className="bg-slate-700 rounded p-2">
+          <div className="text-lg font-bold text-purple-400">
+            {graph.nodes.filter((n: any) => n.type.startsWith('transform.')).length}
+          </div>
+          <div className="text-xs text-slate-400">Transforms</div>
+        </div>
+      </div>
+      
+      {/* Quick Actions */}
+      <div className="mt-4 flex gap-2">
+        <Button
+          size="sm"
+          onClick={() => {
+            localStorage.setItem('ai_generated_workflow', JSON.stringify(workflowData));
+            window.open('/graph-editor?from=ai-builder', '_blank');
+          }}
+          className="bg-green-600 hover:bg-green-700 flex-1"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Open in Graph Editor
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            // Generate and download code
+            fetch('/api/workflow/generate-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ graph: workflowData.workflow.graph })
+            })
+            .then(response => response.json())
+            .then(result => {
+              if (result.success) {
+                const codeContent = result.files.find((f: any) => f.path === 'Code.js')?.content || '';
+                const blob = new Blob([codeContent], { type: 'text/javascript' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'automation-code.js';
+                a.click();
+                URL.revokeObjectURL(url);
+              }
+            });
+          }}
+          className="bg-purple-600 hover:bg-purple-700 flex-1"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Download Code
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 export default function EnhancedConversationalWorkflowBuilder() {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -247,6 +393,14 @@ ${result.workflow.rationale}
         data: result
       });
 
+      // Add visual workflow preview message
+      addMessage({
+        role: 'assistant',
+        content: `📊 **Visual Workflow Structure:**`,
+        type: 'workflow-visual',
+        data: result
+      });
+
     } catch (error) {
       throw error;
     }
@@ -382,6 +536,13 @@ Need help? I can guide you through each step!`
                     <div className="whitespace-pre-wrap">{message.content}</div>
                   </div>
                   
+                  {/* Visual Workflow Preview */}
+                  {message.type === 'workflow-visual' && message.data && (
+                    <div className="mt-4">
+                      <WorkflowVisualPreview workflowData={message.data} />
+                    </div>
+                  )}
+
                   {/* Workflow Action Buttons */}
                   {message.type === 'workflow' && message.data && (
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -391,7 +552,7 @@ Need help? I can guide you through each step!`
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         <Eye className="w-4 h-4 mr-2" />
-                        View Workflow
+                        View Details
                       </Button>
                       <Button
                         size="sm"
