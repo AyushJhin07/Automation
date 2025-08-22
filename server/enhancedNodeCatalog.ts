@@ -2,7 +2,7 @@
 // Based on ChatGPT's architecture but extended for comprehensive app coverage
 
 import { NodeCatalog, NodeType, AppDefinition, ConnectorDescriptor } from '../shared/nodeGraphSchema';
-import { APP_DATABASE } from './complete500Apps';
+import { generateCompleteAppDatabase } from './complete500Apps';
 
 export class EnhancedNodeCatalog {
   private static instance: EnhancedNodeCatalog;
@@ -330,7 +330,8 @@ export class EnhancedNodeCatalog {
     actions: Record<string, NodeType>
   ): void {
     // Generate nodes for all apps in our database
-    APP_DATABASE.forEach(app => {
+    const appDatabase = generateCompleteAppDatabase();
+    appDatabase.forEach(app => {
       // Add common actions for each app
       this.addAppActions(app, actions);
       
@@ -488,8 +489,9 @@ export class EnhancedNodeCatalog {
 
   private buildAppDefinitions(): Map<string, AppDefinition> {
     const definitions = new Map<string, AppDefinition>();
+    const appDatabase = generateCompleteAppDatabase();
     
-    APP_DATABASE.forEach(app => {
+    appDatabase.forEach(app => {
       const appDef: AppDefinition = {
         id: app.id,
         name: app.name,
