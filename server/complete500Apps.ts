@@ -167,44 +167,119 @@ function getCategoryForApp(appName: string): string {
     'Google Sheets': 'Spreadsheets & Data',
     'Google Drive': 'Storage & Files',
     'Google Calendar': 'Calendar & Scheduling',
+    'Google Docs': 'Document Management',
+    'Google Forms': 'Form & Survey',
+    'Google Slides': 'Presentation',
+    'Google Meet': 'Video & Conferencing',
+    'Google Chat': 'Communication',
+    'Google Analytics': 'Analytics & Reporting',
     
     // Communication
     'Slack': 'Communication',
     'Microsoft Teams': 'Communication',
     'Zoom': 'Video & Conferencing',
     'Discord': 'Communication',
+    'WhatsApp Business': 'Communication',
+    'Telegram': 'Communication',
     
     // CRM
     'Salesforce': 'CRM & Sales',
     'HubSpot': 'CRM & Sales',
     'Pipedrive': 'CRM & Sales',
+    'Zoho CRM': 'CRM & Sales',
+    'Freshsales': 'CRM & Sales',
+    'Copper': 'CRM & Sales',
+    'Insightly': 'CRM & Sales',
     
     // Project Management
     'Asana': 'Project Management',
     'Trello': 'Project Management',
     'Monday.com': 'Project Management',
     'Jira': 'Project Management',
+    'ClickUp': 'Project Management',
+    'Basecamp': 'Project Management',
+    'Wrike': 'Project Management',
+    'Smartsheet': 'Project Management',
+    'Airtable': 'Database & Spreadsheets',
+    'Linear': 'Project Management',
     
     // E-commerce
     'Shopify': 'E-commerce',
     'WooCommerce': 'E-commerce',
     'BigCommerce': 'E-commerce',
+    'Magento': 'E-commerce',
+    'Square': 'E-commerce & POS',
+    'Amazon Seller': 'E-commerce',
+    'eBay': 'E-commerce',
+    'Etsy': 'E-commerce',
     
-    // Finance
+    // Finance & Payments
     'Stripe': 'Finance & Payments',
     'PayPal': 'Finance & Payments',
     'QuickBooks': 'Accounting & Finance',
+    'Xero': 'Accounting & Finance',
+    'FreshBooks': 'Accounting & Finance',
+    'Wave Accounting': 'Accounting & Finance',
+    'Sage': 'Accounting & Finance',
+    
+    // Marketing
+    'Mailchimp': 'Email Marketing',
+    'Constant Contact': 'Email Marketing',
+    'SendGrid': 'Email Marketing',
+    'Klaviyo': 'Email Marketing',
+    'Facebook Ads': 'Advertising',
+    'Google Ads': 'Advertising',
+    'LinkedIn Ads': 'Advertising',
     
     // Social Media
     'Facebook': 'Social Media',
     'Instagram': 'Social Media',
     'Twitter': 'Social Media',
     'LinkedIn': 'Social Media',
+    'YouTube': 'Video & Social',
+    'TikTok': 'Social Media',
+    'Pinterest': 'Social Media',
     
     // Development
     'GitHub': 'Development',
     'GitLab': 'Development',
-    'Bitbucket': 'Development'
+    'Bitbucket': 'Development',
+    'Jenkins': 'Development & DevOps',
+    'Docker': 'Development & DevOps',
+    'AWS': 'Cloud & Infrastructure',
+    'Azure': 'Cloud & Infrastructure',
+    
+    // Customer Support
+    'Zendesk': 'Customer Support',
+    'Freshdesk': 'Customer Support',
+    'Intercom': 'Customer Support',
+    'Help Scout': 'Customer Support',
+    
+    // HR & Recruiting
+    'BambooHR': 'HR & Recruiting',
+    'Workday': 'HR & Recruiting',
+    'ADP': 'HR & Recruiting',
+    'Greenhouse': 'HR & Recruiting',
+    'Lever': 'HR & Recruiting',
+    
+    // Storage
+    'Dropbox': 'Storage & Files',
+    'OneDrive': 'Storage & Files',
+    'Box': 'Storage & Files',
+    'AWS S3': 'Storage & Files',
+    
+    // Design & Creative
+    'Figma': 'Design & Creative',
+    'Adobe Photoshop': 'Design & Creative',
+    'Canva': 'Design & Creative',
+    'Sketch': 'Design & Creative',
+    
+    // Analytics
+    'Google Analytics': 'Analytics & Reporting',
+    'Mixpanel': 'Analytics & Reporting',
+    'Amplitude': 'Analytics & Reporting',
+    'Tableau': 'Analytics & Reporting',
+    'Power BI': 'Analytics & Reporting'
   };
   
   return categoryMap[appName] || 'Business Tools';
@@ -317,3 +392,59 @@ export const TOTAL_SUPPORTED_APPS =
   COMPLETE_APP_LIST.tier5_emerging.length;
 
 console.log(`Total Supported Applications: ${TOTAL_SUPPORTED_APPS}`);
+
+// Export the missing functions that aiModels.ts needs
+export function detectAppsFromPrompt(prompt: string): any[] {
+  const lowerPrompt = prompt.toLowerCase();
+  const detectedApps: any[] = [];
+  const allApps = generateCompleteAppDatabase();
+  
+  // Check each app for keyword matches
+  allApps.forEach(app => {
+    const appKeywords = [
+      app.name.toLowerCase(),
+      ...app.name.toLowerCase().split(' '),
+      ...app.category.toLowerCase().split(' '),
+      ...app.description.toLowerCase().split(' ')
+    ];
+    
+    const hasMatch = appKeywords.some(keyword => 
+      keyword.length > 2 && lowerPrompt.includes(keyword)
+    );
+    
+    if (hasMatch) {
+      detectedApps.push(app);
+    }
+  });
+  
+  // If no specific apps detected, suggest based on intent
+  if (detectedApps.length === 0) {
+    if (lowerPrompt.includes('email')) {
+      const gmailApp = allApps.find(app => app.name === 'Gmail');
+      if (gmailApp) detectedApps.push(gmailApp);
+    }
+    if (lowerPrompt.includes('spreadsheet') || lowerPrompt.includes('data')) {
+      const sheetsApp = allApps.find(app => app.name === 'Google Sheets');
+      if (sheetsApp) detectedApps.push(sheetsApp);
+    }
+    if (lowerPrompt.includes('calendar') || lowerPrompt.includes('schedule')) {
+      const calendarApp = allApps.find(app => app.name === 'Google Calendar');
+      if (calendarApp) detectedApps.push(calendarApp);
+    }
+    if (lowerPrompt.includes('payment') || lowerPrompt.includes('charge')) {
+      const stripeApp = allApps.find(app => app.name === 'Stripe');
+      if (stripeApp) detectedApps.push(stripeApp);
+    }
+    if (lowerPrompt.includes('task') || lowerPrompt.includes('project')) {
+      const asanaApp = allApps.find(app => app.name === 'Asana');
+      if (asanaApp) detectedApps.push(asanaApp);
+    }
+  }
+  
+  return detectedApps.filter(Boolean).slice(0, 6); // Limit to 6 apps max
+}
+
+export function getAppById(id: string): any | undefined {
+  const allApps = generateCompleteAppDatabase();
+  return allApps.find(app => app.id === id);
+}
