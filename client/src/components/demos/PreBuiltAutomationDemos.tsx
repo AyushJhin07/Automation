@@ -342,8 +342,11 @@ const ReportGeneratorDemo = ({ step }: { step: number }) => (
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {/* Step 1: Drag Sheets Animation */}
         {step >= 1 && (
-          <div className="absolute left-16 top-12 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 1 ? 'left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 top-12'
+          }`}>
             <AutomationNode 
               app="Google Sheets" 
               icon={<Sheet className="w-4 h-4 text-green-600" />}
@@ -351,11 +354,19 @@ const ReportGeneratorDemo = ({ step }: { step: number }) => (
               configured={step >= 2}
               function={step >= 2 ? "Read Range" : undefined}
             />
+            {step === 1 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-green-500 text-white px-2 py-1 rounded animate-pulse">
+                Dragging...
+              </div>
+            )}
           </div>
         )}
         
+        {/* Step 3: Drag Drive Animation */}
         {step >= 3 && (
-          <div className="absolute left-16 top-32 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 3 ? 'left-1/2 top-1/3 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 top-32'
+          }`}>
             <AutomationNode 
               app="Google Drive" 
               icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
@@ -364,11 +375,19 @@ const ReportGeneratorDemo = ({ step }: { step: number }) => (
               function={step >= 3 ? "Create File" : undefined}
               connected={step >= 5}
             />
+            {step === 3 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-blue-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Drive...
+              </div>
+            )}
           </div>
         )}
 
+        {/* Step 4: Drag Gmail Animation */}
         {step >= 4 && (
-          <div className="absolute right-16 top-20 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 4 ? 'right-1/3 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'right-16 top-20'
+          }`}>
             <AutomationNode 
               app="Gmail" 
               icon={<Mail className="w-4 h-4 text-red-600" />}
@@ -377,10 +396,25 @@ const ReportGeneratorDemo = ({ step }: { step: number }) => (
               function={step >= 4 ? "Send Email" : undefined}
               connected={step >= 5}
             />
+            {step === 4 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-red-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Gmail...
+              </div>
+            )}
           </div>
         )}
 
-        {/* Connection Lines */}
+        {/* Step 2: Configuration Animation */}
+        {step === 2 && (
+          <div className="absolute left-16 top-12">
+            <div className="w-56 bg-white border-2 border-green-400 rounded-lg shadow-lg p-3 animate-pulse">
+              <div className="text-center text-green-600 font-medium">⚙️ Configuring...</div>
+              <div className="text-xs text-center text-gray-500">Setting up "Read Range" function</div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Connection Animation */}
         {step >= 5 && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <defs>
@@ -389,21 +423,32 @@ const ReportGeneratorDemo = ({ step }: { step: number }) => (
                 <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
               </marker>
             </defs>
-            {/* Sheets to Drive */}
-            <line x1="200" y1="76" x2="200" y2="160" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead1)" />
-            {/* Drive to Gmail */}
-            <line x1="200" y1="180" x2="350" y2="120" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead1)" />
+            {/* Animated connection lines */}
+            <line x1="200" y1="76" x2="200" y2="160" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead1)" 
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
+            <line x1="200" y1="180" x2="350" y2="120" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead1)"
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
             <text x="275" y="150" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
-              AI Data Flow
+              {step === 5 ? '🔄 Connecting...' : 'AI Data Flow'}
             </text>
           </svg>
         )}
 
         {step >= 5 && (
           <div className="absolute top-4 right-4">
-            <Badge className="bg-purple-500 text-white animate-pulse">
-              🧠 Report Pipeline Active
+            <Badge className={`text-white ${step === 5 ? 'bg-orange-500 animate-bounce' : 'bg-purple-500 animate-pulse'}`}>
+              {step === 5 ? '🔄 AI Analyzing...' : '🧠 Report Pipeline Active'}
             </Badge>
+          </div>
+        )}
+
+        {/* Data flow animation */}
+        {step >= 5 && (
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-lg animate-pulse">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">Data Flowing...</span>
+            </div>
           </div>
         )}
       </div>
@@ -598,8 +643,11 @@ const CalendarBookingDemo = ({ step }: { step: number }) => (
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {/* Step 1: Drag Calendar Animation */}
         {step >= 1 && (
-          <div className="absolute left-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 1 ? 'left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 top-16'
+          }`}>
             <AutomationNode 
               app="Google Calendar" 
               icon={<Calendar className="w-4 h-4 text-blue-600" />}
@@ -607,11 +655,19 @@ const CalendarBookingDemo = ({ step }: { step: number }) => (
               configured={step >= 2}
               function={step >= 2 ? "Create Event" : undefined}
             />
+            {step === 1 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-blue-500 text-white px-2 py-1 rounded animate-pulse">
+                Dragging Calendar...
+              </div>
+            )}
           </div>
         )}
         
+        {/* Step 3: Drag Gmail Animation */}
         {step >= 3 && (
-          <div className="absolute right-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 3 ? 'right-1/3 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'right-16 top-16'
+          }`}>
             <AutomationNode 
               app="Gmail" 
               icon={<Mail className="w-4 h-4 text-red-600" />}
@@ -620,11 +676,19 @@ const CalendarBookingDemo = ({ step }: { step: number }) => (
               function={step >= 3 ? "Send Email" : undefined}
               connected={step >= 5}
             />
+            {step === 3 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-red-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Gmail...
+              </div>
+            )}
           </div>
         )}
 
+        {/* Step 4: Drag Sheets Animation */}
         {step >= 4 && (
-          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 4 ? 'left-1/3 bottom-1/3 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 bottom-16'
+          }`}>
             <AutomationNode 
               app="Google Sheets" 
               icon={<Sheet className="w-4 h-4 text-green-600" />}
@@ -633,10 +697,25 @@ const CalendarBookingDemo = ({ step }: { step: number }) => (
               function={step >= 4 ? "Append Row" : undefined}
               connected={step >= 5}
             />
+            {step === 4 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-green-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Sheets...
+              </div>
+            )}
           </div>
         )}
 
-        {/* Connection Lines */}
+        {/* Step 2: Configuration Animation */}
+        {step === 2 && (
+          <div className="absolute left-16 top-16">
+            <div className="w-56 bg-white border-2 border-blue-400 rounded-lg shadow-lg p-3 animate-pulse">
+              <div className="text-center text-blue-600 font-medium">⚙️ Configuring...</div>
+              <div className="text-xs text-center text-gray-500">Setting up "Create Event" function</div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Connection Animation */}
         {step >= 5 && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <defs>
@@ -645,21 +724,32 @@ const CalendarBookingDemo = ({ step }: { step: number }) => (
                 <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
               </marker>
             </defs>
-            {/* Calendar to Gmail */}
-            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead2)" />
-            {/* Calendar to Sheets */}
-            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead2)" />
+            {/* Animated connection lines */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead2)" 
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
+            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead2)"
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
             <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
-              AI Booking Flow
+              {step === 5 ? '🔄 Connecting...' : 'AI Booking Flow'}
             </text>
           </svg>
         )}
 
         {step >= 5 && (
           <div className="absolute top-4 right-4">
-            <Badge className="bg-blue-500 text-white animate-pulse">
-              🧠 Booking System Active
+            <Badge className={`text-white ${step === 5 ? 'bg-orange-500 animate-bounce' : 'bg-blue-500 animate-pulse'}`}>
+              {step === 5 ? '🔄 AI Analyzing...' : '🧠 Booking System Active'}
             </Badge>
+          </div>
+        )}
+
+        {/* Booking flow animation */}
+        {step >= 5 && (
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-lg animate-pulse">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">Booking Flow Active...</span>
+            </div>
           </div>
         )}
       </div>
@@ -850,8 +940,11 @@ const FileOrganizerDemo = ({ step }: { step: number }) => (
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {/* Step 1: Drag Drive Animation */}
         {step >= 1 && (
-          <div className="absolute left-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 1 ? 'left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 top-16'
+          }`}>
             <AutomationNode 
               app="Google Drive" 
               icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
@@ -859,11 +952,19 @@ const FileOrganizerDemo = ({ step }: { step: number }) => (
               configured={step >= 2}
               function={step >= 2 ? "List Files" : undefined}
             />
+            {step === 1 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-blue-500 text-white px-2 py-1 rounded animate-pulse">
+                Dragging Drive...
+              </div>
+            )}
           </div>
         )}
         
+        {/* Step 3: Drag Sheets Animation */}
         {step >= 3 && (
-          <div className="absolute right-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 3 ? 'right-1/3 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'right-16 top-16'
+          }`}>
             <AutomationNode 
               app="Google Sheets" 
               icon={<Sheet className="w-4 h-4 text-green-600" />}
@@ -872,11 +973,19 @@ const FileOrganizerDemo = ({ step }: { step: number }) => (
               function={step >= 3 ? "Append Row" : undefined}
               connected={step >= 5}
             />
+            {step === 3 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-green-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Sheets...
+              </div>
+            )}
           </div>
         )}
 
+        {/* Step 4: Drag Gmail Animation */}
         {step >= 4 && (
-          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 4 ? 'left-1/3 bottom-1/3 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 bottom-16'
+          }`}>
             <AutomationNode 
               app="Gmail" 
               icon={<Mail className="w-4 h-4 text-red-600" />}
@@ -885,10 +994,25 @@ const FileOrganizerDemo = ({ step }: { step: number }) => (
               function={step >= 4 ? "Send Email" : undefined}
               connected={step >= 5}
             />
+            {step === 4 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-red-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Gmail...
+              </div>
+            )}
           </div>
         )}
 
-        {/* Connection Lines */}
+        {/* Step 2: Configuration Animation */}
+        {step === 2 && (
+          <div className="absolute left-16 top-16">
+            <div className="w-56 bg-white border-2 border-blue-400 rounded-lg shadow-lg p-3 animate-pulse">
+              <div className="text-center text-blue-600 font-medium">⚙️ Configuring...</div>
+              <div className="text-xs text-center text-gray-500">Setting up "List Files" function</div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Connection Animation */}
         {step >= 5 && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <defs>
@@ -897,21 +1021,32 @@ const FileOrganizerDemo = ({ step }: { step: number }) => (
                 <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
               </marker>
             </defs>
-            {/* Drive to Sheets */}
-            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead3)" />
-            {/* Sheets to Gmail */}
-            <line x1="350" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead3)" />
+            {/* Animated connection lines */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead3)" 
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
+            <line x1="350" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead3)"
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
             <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
-              AI File Flow
+              {step === 5 ? '🔄 Connecting...' : 'AI File Flow'}
             </text>
           </svg>
         )}
 
         {step >= 5 && (
           <div className="absolute top-4 right-4">
-            <Badge className="bg-blue-500 text-white animate-pulse">
-              🧠 File Organization Active
+            <Badge className={`text-white ${step === 5 ? 'bg-orange-500 animate-bounce' : 'bg-blue-500 animate-pulse'}`}>
+              {step === 5 ? '🔄 AI Analyzing...' : '🧠 File Organization Active'}
             </Badge>
+          </div>
+        )}
+
+        {/* File flow animation */}
+        {step >= 5 && (
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-lg animate-pulse">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">File Processing...</span>
+            </div>
           </div>
         )}
       </div>
@@ -1115,8 +1250,11 @@ const ExpenseTrackerDemo = ({ step }: { step: number }) => (
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {/* Step 1: Drag Sheets Animation */}
         {step >= 1 && (
-          <div className="absolute left-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 1 ? 'left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 top-16'
+          }`}>
             <AutomationNode 
               app="Google Sheets" 
               icon={<Sheet className="w-4 h-4 text-green-600" />}
@@ -1124,11 +1262,19 @@ const ExpenseTrackerDemo = ({ step }: { step: number }) => (
               configured={step >= 2}
               function={step >= 2 ? "Append Row" : undefined}
             />
+            {step === 1 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-green-500 text-white px-2 py-1 rounded animate-pulse">
+                Dragging Sheets...
+              </div>
+            )}
           </div>
         )}
         
+        {/* Step 3: Drag Gmail Animation */}
         {step >= 3 && (
-          <div className="absolute right-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 3 ? 'right-1/3 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'right-16 top-16'
+          }`}>
             <AutomationNode 
               app="Gmail" 
               icon={<Mail className="w-4 h-4 text-red-600" />}
@@ -1137,11 +1283,19 @@ const ExpenseTrackerDemo = ({ step }: { step: number }) => (
               function={step >= 3 ? "Send Email" : undefined}
               connected={step >= 5}
             />
+            {step === 3 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-red-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Gmail...
+              </div>
+            )}
           </div>
         )}
 
+        {/* Step 4: Drag Drive Animation */}
         {step >= 4 && (
-          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 4 ? 'left-1/3 bottom-1/3 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 bottom-16'
+          }`}>
             <AutomationNode 
               app="Google Drive" 
               icon={<FolderOpen className="w-4 h-4 text-blue-600" />}
@@ -1150,10 +1304,25 @@ const ExpenseTrackerDemo = ({ step }: { step: number }) => (
               function={step >= 4 ? "Upload File" : undefined}
               connected={step >= 5}
             />
+            {step === 4 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-blue-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Drive...
+              </div>
+            )}
           </div>
         )}
 
-        {/* Connection Lines */}
+        {/* Step 2: Configuration Animation */}
+        {step === 2 && (
+          <div className="absolute left-16 top-16">
+            <div className="w-56 bg-white border-2 border-green-400 rounded-lg shadow-lg p-3 animate-pulse">
+              <div className="text-center text-green-600 font-medium">⚙️ Configuring...</div>
+              <div className="text-xs text-center text-gray-500">Setting up expense tracking</div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Connection Animation */}
         {step >= 5 && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <defs>
@@ -1162,21 +1331,32 @@ const ExpenseTrackerDemo = ({ step }: { step: number }) => (
                 <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
               </marker>
             </defs>
-            {/* Sheets to Gmail */}
-            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead4)" />
-            {/* Sheets to Drive */}
-            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead4)" />
+            {/* Animated connection lines */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead4)" 
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
+            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead4)"
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
             <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
-              AI Expense Flow
+              {step === 5 ? '🔄 Connecting...' : 'AI Expense Flow'}
             </text>
           </svg>
         )}
 
         {step >= 5 && (
           <div className="absolute top-4 right-4">
-            <Badge className="bg-green-500 text-white animate-pulse">
-              🧠 Expense System Active
+            <Badge className={`text-white ${step === 5 ? 'bg-orange-500 animate-bounce' : 'bg-green-500 animate-pulse'}`}>
+              {step === 5 ? '🔄 AI Analyzing...' : '🧠 Expense System Active'}
             </Badge>
+          </div>
+        )}
+
+        {/* Expense flow animation */}
+        {step >= 5 && (
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-lg animate-pulse">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">Expense Processing...</span>
+            </div>
           </div>
         )}
       </div>
@@ -1367,8 +1547,11 @@ const TaskAutomatorDemo = ({ step }: { step: number }) => (
 
       {/* Canvas */}
       <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {/* Step 1: Drag Sheets Animation */}
         {step >= 1 && (
-          <div className="absolute left-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 1 ? 'left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 top-16'
+          }`}>
             <AutomationNode 
               app="Google Sheets" 
               icon={<Sheet className="w-4 h-4 text-green-600" />}
@@ -1376,11 +1559,19 @@ const TaskAutomatorDemo = ({ step }: { step: number }) => (
               configured={step >= 2}
               function={step >= 2 ? "Update Range" : undefined}
             />
+            {step === 1 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-green-500 text-white px-2 py-1 rounded animate-pulse">
+                Dragging Sheets...
+              </div>
+            )}
           </div>
         )}
         
+        {/* Step 3: Drag Gmail Animation */}
         {step >= 3 && (
-          <div className="absolute right-16 top-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 3 ? 'right-1/3 top-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'right-16 top-16'
+          }`}>
             <AutomationNode 
               app="Gmail" 
               icon={<Mail className="w-4 h-4 text-red-600" />}
@@ -1389,11 +1580,19 @@ const TaskAutomatorDemo = ({ step }: { step: number }) => (
               function={step >= 3 ? "Send Email" : undefined}
               connected={step >= 5}
             />
+            {step === 3 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-red-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Gmail...
+              </div>
+            )}
           </div>
         )}
 
+        {/* Step 4: Drag Calendar Animation */}
         {step >= 4 && (
-          <div className="absolute left-16 bottom-16 transition-all duration-1000">
+          <div className={`absolute transition-all duration-1000 ${
+            step === 4 ? 'left-1/3 bottom-1/3 transform -translate-x-1/2 -translate-y-1/2 scale-110 animate-bounce' : 'left-16 bottom-16'
+          }`}>
             <AutomationNode 
               app="Google Calendar" 
               icon={<Calendar className="w-4 h-4 text-blue-600" />}
@@ -1402,10 +1601,25 @@ const TaskAutomatorDemo = ({ step }: { step: number }) => (
               function={step >= 4 ? "Create Event" : undefined}
               connected={step >= 5}
             />
+            {step === 4 && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs bg-blue-500 text-white px-2 py-1 rounded animate-pulse">
+                Adding Calendar...
+              </div>
+            )}
           </div>
         )}
 
-        {/* Connection Lines */}
+        {/* Step 2: Configuration Animation */}
+        {step === 2 && (
+          <div className="absolute left-16 top-16">
+            <div className="w-56 bg-white border-2 border-green-400 rounded-lg shadow-lg p-3 animate-pulse">
+              <div className="text-center text-green-600 font-medium">⚙️ Configuring...</div>
+              <div className="text-xs text-center text-gray-500">Setting up task management</div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Connection Animation */}
         {step >= 5 && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <defs>
@@ -1414,21 +1628,32 @@ const TaskAutomatorDemo = ({ step }: { step: number }) => (
                 <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
               </marker>
             </defs>
-            {/* Sheets to Gmail */}
-            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead5)" />
-            {/* Sheets to Calendar */}
-            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead5)" />
+            {/* Animated connection lines */}
+            <line x1="200" y1="80" x2="350" y2="80" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead5)" 
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
+            <line x1="200" y1="80" x2="200" y2="220" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrowhead5)"
+                  className={step === 5 ? 'animate-pulse' : ''} strokeDasharray={step === 5 ? '5,5' : '0'} />
             <text x="275" y="70" fill="#6366f1" fontSize="12" textAnchor="middle" className="font-medium">
-              AI Task Flow
+              {step === 5 ? '🔄 Connecting...' : 'AI Task Flow'}
             </text>
           </svg>
         )}
 
         {step >= 5 && (
           <div className="absolute top-4 right-4">
-            <Badge className="bg-purple-500 text-white animate-pulse">
-              🧠 Task System Active
+            <Badge className={`text-white ${step === 5 ? 'bg-orange-500 animate-bounce' : 'bg-purple-500 animate-pulse'}`}>
+              {step === 5 ? '🔄 AI Analyzing...' : '🧠 Task System Active'}
             </Badge>
+          </div>
+        )}
+
+        {/* Task flow animation */}
+        {step >= 5 && (
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-lg animate-pulse">
+              <div className="w-3 h-3 bg-purple-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">Task Processing...</span>
+            </div>
           </div>
         )}
       </div>
