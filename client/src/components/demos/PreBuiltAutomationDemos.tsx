@@ -383,25 +383,338 @@ const CustomerSupportDemo = ({ step }: { step: number }) => (
       </div>
     </div>
 
-    <div className="text-center h-full flex items-center justify-center">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Customer Support Demo - Step {step}</h3>
-        <p className="text-gray-600">Gmail → AI Triage → Sheets → Calendar workflow</p>
-        <div className="mt-4">
-          <Badge className="bg-blue-500 text-white">Step {step} of 12</Badge>
+    <div className="flex h-96">
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Support Apps & AI</h3>
+        
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 2 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-red-600" />
+            <div className="text-xs">
+              <div className="font-medium">Gmail Support</div>
+              <div className="text-gray-500">Ticket monitoring</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 4 ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-purple-600" />
+            <div className="text-xs">
+              <div className="font-medium">AI Triage</div>
+              <div className="text-gray-500">Smart categorization</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 6 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-4 h-4 text-green-600" />
+            <div className="text-xs">
+              <div className="font-medium">Ticket Database</div>
+              <div className="text-gray-500">Support tracking</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 8 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <div className="text-xs">
+              <div className="font-medium">Follow-up</div>
+              <div className="text-gray-500">Escalation scheduling</div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 2 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 2 ? 'left-1/2 top-1/4 scale-110 animate-bounce' : ''
+          }`} style={{left: '20px', top: '20px'}}>
+            <div className="w-40 bg-white border-2 border-red-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-medium">Support Gmail</span>
+              </div>
+              {step >= 3 && <Badge className="text-xs bg-red-500">Monitor Tickets</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
+            step === 4 ? 'scale-110 animate-bounce' : ''
+          }`}>
+            <div className="w-44 bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-400 rounded-lg shadow-lg p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-medium">AI Triage System</span>
+              </div>
+              {step >= 5 && <Badge className="text-xs bg-purple-500">Smart Analysis</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 6 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 6 ? 'right-1/4 top-1/4 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', top: '20px'}}>
+            <div className="w-40 bg-white border-2 border-green-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Sheet className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-medium">Ticket Database</span>
+              </div>
+              {step >= 6 && <Badge className="text-xs bg-green-500">Track Issues</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 7 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 7 ? 'right-1/4 top-1/2 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', top: '50%'}}>
+            <div className="w-40 bg-white border-2 border-red-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-medium">AI Response</span>
+              </div>
+              {step >= 7 && <Badge className="text-xs bg-red-500">Send Reply</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 8 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 8 ? 'right-1/4 bottom-1/4 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', bottom: '20px'}}>
+            <div className="w-40 bg-white border-2 border-blue-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-medium">Follow-up</span>
+              </div>
+              {step >= 8 && <Badge className="text-xs bg-blue-500">Schedule</Badge>}
+            </div>
+          </div>
+        )}
+
+        {(step === 3 || step === 5) && (
+          <div className="absolute left-1/2 top-1/3 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-64 bg-white border-2 border-blue-400 rounded-lg shadow-lg p-4 animate-pulse">
+              <div className="text-center text-blue-600 font-medium">
+                {step === 3 ? '⚙️ Configuring Support Monitoring...' : '🤖 Setting up AI Triage Rules...'}
+              </div>
+              <div className="text-xs text-center text-gray-500 mt-1">
+                {step === 3 ? 'Monitoring support@company.com inbox' : 'Priority levels, sentiment analysis, auto-routing'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step >= 9 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="supportArrow" markerWidth="8" markerHeight="6" 
+                refX="7" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#DC2626" />
+              </marker>
+            </defs>
+            <line x1="85" y1="35" x2="180" y2="100" stroke="#DC2626" strokeWidth="2" markerEnd="url(#supportArrow)" 
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="220" y1="100" x2="315" y2="35" stroke="#DC2626" strokeWidth="2" markerEnd="url(#supportArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="315" y1="35" x2="315" y2="85" stroke="#DC2626" strokeWidth="2" markerEnd="url(#supportArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="315" y1="100" x2="315" y2="150" stroke="#DC2626" strokeWidth="2" markerEnd="url(#supportArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+          </svg>
+        )}
+
+        {step >= 10 && (
+          <div className="absolute left-1/2 bottom-4 transform -translate-x-1/2">
+            <div className="bg-white rounded-full px-4 py-2 shadow-lg border-2 border-red-300 animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                <span className="text-sm font-medium">🎧 AI Support System Active...</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step >= 9 && (
+          <div className="absolute top-4 left-4">
+            <Badge className={`text-white ${step === 9 ? 'bg-orange-500 animate-bounce' : 'bg-red-500 animate-pulse'}`}>
+              {step === 9 ? '🔄 AI Connecting Support Flow...' : '🎧 Smart Support Pipeline Active'}
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <div className="mt-4 h-16 flex items-center justify-center">
+      {step === 1 && <div className="text-blue-600 text-center">🚀 Setting up Advanced Customer Support Automation...</div>}
+      {step === 2 && <div className="text-red-600 text-center">📧 Support Gmail node added - will monitor support@company.com...</div>}
+      {step === 3 && <div className="text-red-600 text-center">⚙️ Configuring to monitor 'label:support is:unread' tickets...</div>}
+      {step === 4 && <div className="text-purple-600 text-center">🧠 AI Triage node added - will analyze and categorize tickets...</div>}
+      {step === 5 && <div className="text-purple-600 text-center">🤖 AI configured with sentiment analysis and priority routing...</div>}
+      {step === 6 && <div className="text-green-600 text-center">📊 Ticket database added - will track all support interactions...</div>}
+      {step === 7 && <div className="text-red-600 text-center">📤 AI response node added - will send intelligent replies...</div>}
+      {step === 8 && <div className="text-blue-600 text-center">📅 Follow-up scheduling added - will create escalation events...</div>}
+      {step >= 9 && <div className="text-red-600 text-center">🎯 Support Pipeline Connected! Ticket → AI Triage → Response → Follow-up</div>}
     </div>
   </div>
 );
 
 const CustomerSupportResults = ({ step }: { step: number }) => (
-  <div className="h-full p-6 text-center flex items-center justify-center">
-    <div>
-      <h3 className="text-lg font-semibold text-blue-600 mb-2">🎧 Support System Results</h3>
-      <p className="text-gray-600">AI-powered support with intelligent triage and responses</p>
-      <Badge className="mt-4 bg-green-500 text-white">✅ Support Automation Active</Badge>
-    </div>
+  <div className="h-full bg-white p-6">
+    {step === 1 && (
+      <div className="grid grid-cols-2 gap-6 h-full">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Mail className="w-6 h-6 text-red-600" />
+            <h3 className="text-lg font-semibold">Support Ticket</h3>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+            <div className="text-sm mb-2"><strong>From:</strong> customer@example.com</div>
+            <div className="text-sm mb-2"><strong>Subject:</strong> Billing Issue - Urgent</div>
+            <div className="text-sm mb-3">
+              <strong>Body:</strong> Hi, I've been charged twice for my subscription. This is very frustrating! Please fix this immediately.
+            </div>
+            <Badge className="bg-orange-500 text-white">⏳ AI Analyzing...</Badge>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-6 h-6 text-purple-600" />
+            <h3 className="text-lg font-semibold">AI Triage Analysis</h3>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-purple-50 border-purple-200">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span><strong>Category:</strong></span>
+                <Badge className="bg-blue-500 text-white">Billing</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span><strong>Priority:</strong></span>
+                <Badge className="bg-red-500 text-white">High</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span><strong>Sentiment:</strong></span>
+                <Badge className="bg-orange-500 text-white">Frustrated</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span><strong>Auto-Route to:</strong></span>
+                <span className="font-medium">Billing Team</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step === 2 && (
+      <div className="h-full">
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Support Analytics Dashboard</h3>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-red-600 text-white p-2 text-sm font-medium">Ticket Management</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Response Time:</span>
+                <span className="font-medium text-green-600">2.3 min</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Resolution Rate:</span>
+                <span className="font-medium">87%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Auto-Triage:</span>
+                <span className="font-medium">94%</span>
+              </div>
+            </div>
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-purple-600 text-white p-2 text-sm font-medium">AI Performance</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Sentiment Accuracy:</span>
+                <span className="font-medium">91%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Category Precision:</span>
+                <span className="font-medium text-purple-600">89%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Escalation Rate:</span>
+                <span className="font-medium">13%</span>
+              </div>
+            </div>
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-blue-600 text-white p-2 text-sm font-medium">Customer Satisfaction</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>CSAT Score:</span>
+                <span className="font-medium text-green-600">4.7/5.0</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>First Contact Resolution:</span>
+                <span className="font-medium">78%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Cost Savings:</span>
+                <span className="font-medium text-green-600">$3,200/mo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step === 3 && (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-2xl">
+          <div className="w-24 h-24 bg-gradient-to-r from-red-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Headphones className="w-12 h-12 text-white" />
+          </div>
+          <h3 className="text-3xl font-bold text-red-600 mb-4">🎧 Advanced Support System Complete!</h3>
+          <p className="text-gray-600 text-lg mb-6">
+            Your AI-powered support system is now intelligently triaging tickets, providing instant responses, 
+            and maintaining 87% auto-resolution with 4.7/5 customer satisfaction.
+          </p>
+          <div className="flex gap-6 justify-center">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">87%</div>
+              <div className="text-sm text-gray-600">Auto-Resolution</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600">2.3min</div>
+              <div className="text-sm text-gray-600">Response Time</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600">$3.2K</div>
+              <div className="text-sm text-gray-600">Monthly Savings</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 );
 
@@ -421,25 +734,376 @@ const SlackBridgeDemo = ({ step }: { step: number }) => (
       </div>
     </div>
 
-    <div className="text-center h-full flex items-center justify-center">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Slack Bridge Demo - Step {step}</h3>
-        <p className="text-gray-600">Slack → Google Workspace integration workflow</p>
-        <div className="mt-4">
-          <Badge className="bg-purple-500 text-white">Step {step} of 12</Badge>
+    <div className="flex h-96">
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Integration Apps</h3>
+        
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 2 ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-purple-600" />
+            <div className="text-xs">
+              <div className="font-medium">Slack Webhook</div>
+              <div className="text-gray-500">Message monitoring</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 4 ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-purple-600" />
+            <div className="text-xs">
+              <div className="font-medium">AI Processing</div>
+              <div className="text-gray-500">Action extraction</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 5 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-4 h-4 text-green-600" />
+            <div className="text-xs">
+              <div className="font-medium">Sheets Archive</div>
+              <div className="text-gray-500">Message storage</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 6 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <div className="text-xs">
+              <div className="font-medium">Calendar</div>
+              <div className="text-gray-500">Action scheduling</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 7 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-blue-600" />
+            <div className="text-xs">
+              <div className="font-medium">Drive</div>
+              <div className="text-gray-500">File organization</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 8 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-red-600" />
+            <div className="text-xs">
+              <div className="font-medium">Gmail</div>
+              <div className="text-gray-500">Email summaries</div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {step >= 2 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 2 ? 'left-1/2 top-1/4 scale-110 animate-bounce' : ''
+          }`} style={{left: '20px', top: '20px'}}>
+            <div className="w-40 bg-white border-2 border-purple-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <MessageSquare className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-medium">Slack Webhook</span>
+              </div>
+              {step >= 3 && <Badge className="text-xs bg-purple-500">Monitor Messages</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 4 && (
+          <div className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
+            step === 4 ? 'scale-110 animate-bounce' : ''
+          }`}>
+            <div className="w-44 bg-gradient-to-r from-purple-100 to-indigo-100 border-2 border-purple-400 rounded-lg shadow-lg p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-medium">AI Action Extractor</span>
+              </div>
+              {step >= 4 && <Badge className="text-xs bg-purple-500">Extract Actions</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 5 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 5 ? 'right-1/4 top-1/4 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', top: '20px'}}>
+            <div className="w-36 bg-white border-2 border-green-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Sheet className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-medium">Archive</span>
+              </div>
+              {step >= 5 && <Badge className="text-xs bg-green-500">Store Messages</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 6 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 6 ? 'right-1/4 top-1/2 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', top: '50%'}}>
+            <div className="w-36 bg-white border-2 border-blue-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-medium">Calendar</span>
+              </div>
+              {step >= 6 && <Badge className="text-xs bg-blue-500">Schedule Events</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 7 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 7 ? 'left-1/4 bottom-1/4 scale-110 animate-bounce' : ''
+          }`} style={{left: '20px', bottom: '20px'}}>
+            <div className="w-36 bg-white border-2 border-blue-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <FolderOpen className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-medium">Drive</span>
+              </div>
+              {step >= 7 && <Badge className="text-xs bg-blue-500">Organize Files</Badge>}
+            </div>
+          </div>
+        )}
+
+        {step >= 8 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 8 ? 'right-1/4 bottom-1/4 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', bottom: '20px'}}>
+            <div className="w-36 bg-white border-2 border-red-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-medium">Gmail</span>
+              </div>
+              {step >= 8 && <Badge className="text-xs bg-red-500">Send Summaries</Badge>}
+            </div>
+          </div>
+        )}
+
+        {(step === 3 || step === 4) && (
+          <div className="absolute left-1/2 top-1/3 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-64 bg-white border-2 border-purple-400 rounded-lg shadow-lg p-4 animate-pulse">
+              <div className="text-center text-purple-600 font-medium">
+                {step === 3 ? '⚙️ Configuring Slack Filters...' : '🤖 Setting up AI Action Detection...'}
+              </div>
+              <div className="text-xs text-center text-gray-500 mt-1">
+                {step === 3 ? 'Important messages, mentions, keywords' : 'Meeting requests, deadlines, file shares'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step >= 9 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="slackArrow" markerWidth="8" markerHeight="6" 
+                refX="7" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#7C3AED" />
+              </marker>
+            </defs>
+            <line x1="85" y1="35" x2="180" y2="100" stroke="#7C3AED" strokeWidth="2" markerEnd="url(#slackArrow)" 
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="220" y1="100" x2="315" y2="35" stroke="#7C3AED" strokeWidth="2" markerEnd="url(#slackArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="220" y1="100" x2="315" y2="100" stroke="#7C3AED" strokeWidth="2" markerEnd="url(#slackArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="220" y1="100" x2="85" y2="185" stroke="#7C3AED" strokeWidth="2" markerEnd="url(#slackArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+            <line x1="220" y1="100" x2="315" y2="185" stroke="#7C3AED" strokeWidth="2" markerEnd="url(#slackArrow)"
+                  className={step === 9 ? 'animate-pulse' : ''} strokeDasharray={step === 9 ? '3,3' : '0'} />
+          </svg>
+        )}
+
+        {step >= 10 && (
+          <div className="absolute left-1/2 bottom-4 transform -translate-x-1/2">
+            <div className="bg-white rounded-full px-4 py-2 shadow-lg border-2 border-purple-300 animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-purple-500 rounded-full animate-ping"></div>
+                <span className="text-sm font-medium">💬 Slack Bridge Active...</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step >= 9 && (
+          <div className="absolute top-4 left-4">
+            <Badge className={`text-white ${step === 9 ? 'bg-orange-500 animate-bounce' : 'bg-purple-500 animate-pulse'}`}>
+              {step === 9 ? '🔄 Connecting Integration Bridge...' : '💬 Slack-Workspace Sync Active'}
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <div className="mt-4 h-16 flex items-center justify-center">
+      {step === 1 && <div className="text-purple-600 text-center">🚀 Setting up Slack-Google Workspace Bridge...</div>}
+      {step === 2 && <div className="text-purple-600 text-center">💬 Slack webhook added - will monitor important messages...</div>}
+      {step === 3 && <div className="text-purple-600 text-center">⚙️ Configuring filters for mentions, keywords, and important channels...</div>}
+      {step === 4 && <div className="text-purple-600 text-center">🧠 AI action extractor added - will identify actionable items...</div>}
+      {step === 5 && <div className="text-green-600 text-center">📊 Message archive added - will store important Slack messages...</div>}
+      {step === 6 && <div className="text-blue-600 text-center">📅 Calendar integration added - will schedule action items...</div>}
+      {step === 7 && <div className="text-blue-600 text-center">📁 Drive organization added - will manage shared files...</div>}
+      {step === 8 && <div className="text-red-600 text-center">📧 Gmail summaries added - will send activity digests...</div>}
+      {step >= 9 && <div className="text-purple-600 text-center">🎯 Bridge Connected! Slack → AI Processing → Google Workspace Actions</div>}
     </div>
   </div>
 );
 
 const SlackBridgeResults = ({ step }: { step: number }) => (
-  <div className="h-full p-6 text-center flex items-center justify-center">
-    <div>
-      <h3 className="text-lg font-semibold text-purple-600 mb-2">💬 Slack Bridge Results</h3>
-      <p className="text-gray-600">Complete Slack-Google Workspace synchronization</p>
-      <Badge className="mt-4 bg-purple-500 text-white">✅ Integration Bridge Active</Badge>
-    </div>
+  <div className="h-full bg-white p-6">
+    {step === 1 && (
+      <div className="grid grid-cols-2 gap-6 h-full">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="w-6 h-6 text-purple-600" />
+            <h3 className="text-lg font-semibold">Slack Message</h3>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-purple-50 border-purple-200">
+            <div className="text-sm mb-2"><strong>Channel:</strong> #project-alpha</div>
+            <div className="text-sm mb-2"><strong>From:</strong> @sarah.pm</div>
+            <div className="text-sm mb-3">
+              <strong>Message:</strong> "Can we schedule a client review meeting for the new features? Also, the design files need to be organized in Drive. @team"
+            </div>
+            <Badge className="bg-orange-500 text-white">⏳ AI Processing...</Badge>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-6 h-6 text-purple-600" />
+            <h3 className="text-lg font-semibold">AI Action Detection</h3>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-indigo-50 border-indigo-200">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span><strong>Actions Found:</strong></span>
+                <Badge className="bg-green-500 text-white">2</Badge>
+              </div>
+              <div className="text-sm">
+                <strong>1.</strong> Schedule meeting → Calendar
+              </div>
+              <div className="text-sm">
+                <strong>2.</strong> Organize files → Drive
+              </div>
+              <div className="flex justify-between text-sm">
+                <span><strong>Priority:</strong></span>
+                <Badge className="bg-blue-500 text-white">Medium</Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step === 2 && (
+      <div className="h-full">
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">Integration Analytics Dashboard</h3>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-purple-600 text-white p-2 text-sm font-medium">Slack Integration</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Messages Processed:</span>
+                <span className="font-medium text-purple-600">1,247</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Actions Extracted:</span>
+                <span className="font-medium">342</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Auto-Archive Rate:</span>
+                <span className="font-medium">78%</span>
+              </div>
+            </div>
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-blue-600 text-white p-2 text-sm font-medium">Workspace Actions</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Events Created:</span>
+                <span className="font-medium">89</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Files Organized:</span>
+                <span className="font-medium text-blue-600">156</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Email Summaries:</span>
+                <span className="font-medium">23</span>
+              </div>
+            </div>
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-green-600 text-white p-2 text-sm font-medium">Productivity Impact</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Time Saved:</span>
+                <span className="font-medium text-green-600">45 hrs/mo</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Task Completion:</span>
+                <span className="font-medium">+34%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Value Generated:</span>
+                <span className="font-medium text-green-600">$1,800/mo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step === 3 && (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-2xl">
+          <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <MessageSquare className="w-12 h-12 text-white" />
+          </div>
+          <h3 className="text-3xl font-bold text-purple-600 mb-4">💬 Slack-Workspace Bridge Complete!</h3>
+          <p className="text-gray-600 text-lg mb-6">
+            Your intelligent integration bridge is now seamlessly connecting Slack conversations with Google Workspace actions, 
+            automatically organizing work and saving 45+ hours per month.
+          </p>
+          <div className="flex gap-6 justify-center">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">78%</div>
+              <div className="text-sm text-gray-600">Auto-Archive</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600">342</div>
+              <div className="text-sm text-gray-600">Actions Extracted</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">$1.8K</div>
+              <div className="text-sm text-gray-600">Monthly Value</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 );
 
