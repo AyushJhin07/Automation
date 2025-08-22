@@ -148,12 +148,12 @@ export const AIWorkflowShowcase: React.FC<AIWorkflowShowcaseProps> = ({ classNam
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <Sparkles className="w-6 h-6 text-purple-600" />
-          <h2 className="text-2xl font-bold text-gray-900">AI Workflow Generator</h2>
-          <Badge className="bg-purple-600 text-white">LIVE DEMO</Badge>
+          <Sparkles className="w-6 h-6 text-green-600" />
+          <h2 className="text-2xl font-bold text-gray-900">Smart Automation Builder</h2>
+          <Badge className="bg-green-600 text-white">AI-ENHANCED</Badge>
         </div>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Watch how our AI instantly transforms your ideas into complete automation workflows
+          Our drag-and-drop builder with AI assistance makes automation 10x faster than expensive AI agents
         </p>
       </div>
 
@@ -174,7 +174,7 @@ export const AIWorkflowShowcase: React.FC<AIWorkflowShowcaseProps> = ({ classNam
                }`}></div>
                <span className="text-sm font-medium text-gray-600">
                  {isTyping ? '✍️ User typing...' : 
-                  currentStep > 0 ? '🤖 AI analyzing...' : 'AI Workflow Generator'}
+                  currentStep > 0 ? '🤖 AI analyzing...' : 'Smart Automation Builder'}
                </span>
                {isTyping && (
                  <Badge className="bg-blue-100 text-blue-800 text-xs animate-pulse">LIVE</Badge>
@@ -399,18 +399,18 @@ export const AIWorkflowShowcase: React.FC<AIWorkflowShowcaseProps> = ({ classNam
       {/* Call to Action */}
       <div className="mt-8 text-center">
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-          Ready to Build Your AI-Powered Automation?
+          Skip Expensive AI Agents - Build Smarter Automations
         </h3>
         <p className="text-gray-600 mb-4">
-          Our AI can generate any workflow from your description. No technical skills required.
+          Get the same results as $5,000/month AI agents for just $99/month. Drag-and-drop + AI assistance = perfect balance.
         </p>
         <div className="flex gap-4 justify-center">
-          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg px-8 py-3">
+          <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-lg px-8 py-3">
             <Sparkles className="w-4 h-4 mr-2" />
-            Try AI Generator
+            Start Building for $99/mo
           </Button>
           <Button variant="outline" className="text-lg px-8 py-3">
-            📞 Book Demo Call
+            📞 See Cost Comparison
           </Button>
         </div>
       </div>

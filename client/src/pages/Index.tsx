@@ -264,16 +264,16 @@ const Index = () => {
         <div className="radial-spotlight" onMouseMove={handleMouseMove}>
           <div className="container mx-auto grid lg:grid-cols-2 gap-8 py-16 md:py-24 items-center">
             <div className="animate-fade-in">
-              <Badge variant="secondary" className="mb-4 bg-purple-100 text-purple-800">🤖 AI-Powered Automation</Badge>
+              <Badge variant="secondary" className="mb-4 bg-green-100 text-green-800">💰 10x Cheaper Than AI Agents</Badge>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-                Describe Your Workflow - <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">AI Builds It Instantly</span>
+                Build Powerful Automations at <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Fraction of AI Agent Cost</span>
               </h1>
               <p className="text-lg text-muted-foreground mb-6 max-w-xl">
-                Revolutionary AI transforms your plain English descriptions into complete Google Apps Script automations. No coding required - just describe what you need.
+                Get enterprise-grade Google Workspace automation with drag-and-drop simplicity + AI assistance. Why pay $5,000/month for AI agents when you can automate for $99/month?
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild variant="hero" className="hover-scale">
-                  <a href="#ai-generator">🤖 See AI in Action</a>
+                  <a href="#ai-generator">💰 See Cost Advantage</a>
                 </Button>
                 <Button asChild variant="outline" className="hover-scale">
                   <Link to="/schedule">Book a 30‑min call</Link>
@@ -292,6 +292,48 @@ const Index = () => {
               <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/5 to-transparent rounded-xl pointer-events-none animate-ping opacity-20"></div>
             </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cost Comparison Section */}
+      <section className="bg-gradient-to-r from-red-50 to-green-50 py-12">
+        <div className="container mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-8">Why Pay 50x More for AI Agents?</h2>
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Expensive AI Agents */}
+            <div className="bg-white p-6 rounded-xl border-2 border-red-200 shadow-lg">
+              <div className="text-red-600 text-xl font-bold mb-2">❌ Expensive AI Agents</div>
+              <div className="text-3xl font-bold text-red-600 mb-4">$5,000+/month</div>
+              <ul className="text-left space-y-2 text-gray-600">
+                <li>• Black box - no control</li>
+                <li>• Limited to pre-built capabilities</li>
+                <li>• Expensive per-task pricing</li>
+                <li>• Complex setup and training</li>
+                <li>• Vendor lock-in</li>
+              </ul>
+            </div>
+            
+            {/* Your Solution */}
+            <div className="bg-white p-6 rounded-xl border-2 border-green-200 shadow-lg relative">
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <Badge className="bg-green-600 text-white px-4 py-1">BEST VALUE</Badge>
+              </div>
+              <div className="text-green-600 text-xl font-bold mb-2">✅ Our Smart Automation</div>
+              <div className="text-3xl font-bold text-green-600 mb-4">$99/month</div>
+              <ul className="text-left space-y-2 text-gray-600">
+                <li>• Full control with drag-and-drop</li>
+                <li>• Unlimited custom automations</li>
+                <li>• Google Apps Script power</li>
+                <li>• AI-enhanced field mapping</li>
+                <li>• Own your automations forever</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-8">
+            <p className="text-2xl font-semibold text-gray-900">
+              <span className="text-green-600">Save $58,800/year</span> while getting more control and flexibility
+            </p>
           </div>
         </div>
       </section>
