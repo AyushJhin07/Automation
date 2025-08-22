@@ -20,6 +20,7 @@ import Terms from "./pages/Terms";
 import PreBuiltApps from "./pages/PreBuiltApps";
 import AIBuilder from "./pages/AIBuilder";
 import AdminSettings from "./pages/AdminSettings";
+import WorkflowBuilder from "./pages/WorkflowBuilder";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/ai-builder" element={<AIBuilder />} />
+            <Route path="/workflow-builder" element={<WorkflowBuilder />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/pre-built-apps" element={<PreBuiltApps />} />
             <Route path="/schedule" element={<Schedule />} />
