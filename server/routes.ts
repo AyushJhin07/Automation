@@ -2,10 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
+import { registerAIWorkflowRoutes } from "./aiWorkflowAPI";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Google Apps Script automation routes
   registerGoogleAppsRoutes(app);
+  
+  // AI workflow generation routes
+  registerAIWorkflowRoutes(app);
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {

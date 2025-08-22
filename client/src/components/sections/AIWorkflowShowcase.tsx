@@ -404,15 +404,18 @@ export const AIWorkflowShowcase: React.FC<AIWorkflowShowcaseProps> = ({ classNam
         <p className="text-gray-600 mb-4">
           Get the same results as $5,000/month AI agents for just $99/month. Drag-and-drop + AI assistance = perfect balance.
         </p>
-        <div className="flex gap-4 justify-center">
-          <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-lg px-8 py-3">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Start Building for $99/mo
-          </Button>
-          <Button variant="outline" className="text-lg px-8 py-3">
-            📞 See Cost Comparison
-          </Button>
-        </div>
+                 <div className="flex gap-4 justify-center">
+           <Button 
+             onClick={() => window.open('/ai-builder', '_blank')}
+             className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-lg px-8 py-3"
+           >
+             <Sparkles className="w-4 h-4 mr-2" />
+             Try Real AI Builder
+           </Button>
+           <Button variant="outline" className="text-lg px-8 py-3">
+             📞 Book Demo Call
+           </Button>
+         </div>
       </div>
     </div>
   );
