@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +52,25 @@ export const AIWorkflowBuilder: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<GeneratedWorkflow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('auto');
+
+  // Load available AI models on component mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const response = await fetch('/api/ai/models');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModels(data.models);
+        }
+      } catch (err) {
+        console.log('Could not load AI models, using fallback');
+      }
+    };
+    
+    loadModels();
+  }, []);
 
   const handleGenerateWorkflow = async () => {
     if (!prompt.trim()) return;
@@ -69,6 +88,7 @@ export const AIWorkflowBuilder: React.FC = () => {
         body: JSON.stringify({ 
           prompt: prompt.trim(),
           userId: 'demo-user', // TODO: Replace with real user ID
+          preferredModel: selectedModel !== 'auto' ? selectedModel : undefined,
         }),
       });
 
@@ -271,11 +291,31 @@ function processCustomerEmails() {
             disabled={isGenerating}
           />
           
-          <div className="flex gap-3">
+          <div className="space-y-3">
+            {/* AI Model Selection */}
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">AI Model:</label>
+              <select 
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                disabled={isGenerating}
+              >
+                <option value="auto">🤖 Auto (Cheapest Available)</option>
+                <option value="Gemini Pro">💎 Gemini Pro (Fastest & Cheapest)</option>
+                <option value="Claude 3 Haiku">🧠 Claude Haiku (Most Accurate)</option>
+                <option value="GPT-4o Mini">⚡ GPT-4o Mini (Balanced)</option>
+                <option value="Local Fallback">🏠 Local Analysis (Free)</option>
+              </select>
+              <Badge className="bg-green-100 text-green-800 text-xs">
+                Cost: ~$0.001 per request
+              </Badge>
+            </div>
+            
             <Button 
               onClick={handleGenerateWorkflow}
               disabled={!prompt.trim() || isGenerating}
-              className="bg-purple-600 hover:bg-purple-700 flex-1"
+              className="bg-purple-600 hover:bg-purple-700 w-full"
             >
               {isGenerating ? (
                 <>
@@ -338,14 +378,24 @@ function processCustomerEmails() {
             <CardContent>
               <h3 className="font-semibold text-lg mb-2">{generatedWorkflow.title}</h3>
               <p className="text-gray-600 mb-4">{generatedWorkflow.description}</p>
-              <div className="flex gap-4">
-                <Badge className="bg-green-600 text-white">
-                  {generatedWorkflow.nodes.length} Steps
-                </Badge>
-                <Badge className="bg-blue-600 text-white">
-                  {generatedWorkflow.estimatedValue}
-                </Badge>
-              </div>
+                             <div className="flex gap-2 flex-wrap">
+                 <Badge className="bg-green-600 text-white">
+                   {generatedWorkflow.nodes.length} Steps
+                 </Badge>
+                 <Badge className="bg-blue-600 text-white">
+                   {generatedWorkflow.estimatedValue}
+                 </Badge>
+                 {(generatedWorkflow as any).aiAnalysis && (
+                   <Badge className="bg-purple-600 text-white">
+                     {(generatedWorkflow as any).aiAnalysis.modelUsed}
+                   </Badge>
+                 )}
+                 {(generatedWorkflow as any).aiAnalysis && (
+                   <Badge className="bg-gray-600 text-white">
+                     {((generatedWorkflow as any).aiAnalysis.confidence * 100).toFixed(0)}% Confidence
+                   </Badge>
+                 )}
+               </div>
             </CardContent>
           </Card>
 

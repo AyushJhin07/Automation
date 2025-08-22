@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
-import { registerAIWorkflowRoutes } from "./aiWorkflowAPI";
+import { registerAIWorkflowRoutes } from "./aiModels";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Google Apps Script automation routes
