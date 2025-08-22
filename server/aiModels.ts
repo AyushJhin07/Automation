@@ -459,7 +459,7 @@ async function generateWorkflowFromAnalysis(analysis: AIAnalysisResult, original
       type: mapping.appName.toLowerCase().replace(/\s+/g, '-'),
       app: mapping.appName,
       function: mapping.selectedFunction,
-      functionName: APP_FUNCTIONS[mapping.appName as keyof typeof APP_FUNCTIONS]?.[mapping.selectedFunction]?.name || mapping.selectedFunction,
+      functionName: mapping.selectedFunction, // Use the function ID as name for now
       parameters: mapping.parameters,
       position: { x: 100 + (index * 200), y: 100 + (index % 2) * 100 },
       icon: getIconForApp(mapping.appName),

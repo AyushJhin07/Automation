@@ -16,7 +16,8 @@ import {
   FolderOpen,
   Zap,
   ArrowRight,
-  Code2
+  Code2,
+  Workflow
 } from 'lucide-react';
 
 interface GeneratedWorkflow {
