@@ -1,6 +1,7 @@
 import express from 'express';
 import { detectAppsFromPrompt, getAppById, generateCompleteAppDatabase, TOTAL_SUPPORTED_APPS } from './complete500Apps';
 import { IntelligentFunctionMapper } from './intelligentFunctionMapper';
+import { AIWorkflowIntelligence } from './aiWorkflowIntelligence';
 
 interface AIModelConfig {
   name: string;
@@ -230,72 +231,44 @@ class MultiAIService {
     }
   }
 
-  private static localFallbackAnalysis(prompt: string): AIAnalysisResult {
-    const lowerPrompt = prompt.toLowerCase();
+  private static async localFallbackAnalysis(prompt: string): Promise<AIAnalysisResult> {
+    console.log(`🧠 Starting comprehensive AI analysis for: "${prompt}"`);
     
-    // Use comprehensive app detection from 500+ app database
-    const detectedApps = detectAppsFromPrompt(prompt);
-    const appNames = detectedApps.map(app => app.name);
+    // Use the comprehensive AI workflow intelligence
+    const intelligence = await AIWorkflowIntelligence.analyzeAutomationRequest(prompt);
     
-    console.log(`Detected apps from prompt "${prompt}":`, appNames);
-    
-    // Extract suggested functions from detected apps
-    const functions: string[] = [];
-    detectedApps.forEach(app => {
-      app.commonFunctions.forEach(func => {
-        functions.push(func.name);
-      });
+    console.log(`✅ AI Intelligence Results:`, {
+      intent: intelligence.intent,
+      apps: intelligence.requiredApps,
+      functions: intelligence.logicalFunctions.map(f => `${f.app}:${f.function}`)
     });
 
-    // Determine intent based on detected apps and prompt
-    let intent = 'custom_automation';
-    
-    // Email automation intents (specific)
-    if (lowerPrompt.includes('auto reply') || lowerPrompt.includes('automatic reply') || 
-        lowerPrompt.includes('mail responder') || lowerPrompt.includes('email responder')) {
-      intent = 'email_auto_reply';
-    } else if (lowerPrompt.includes('track') && lowerPrompt.includes('email')) {
-      intent = 'email_tracking';
-    } else if (lowerPrompt.includes('follow') && (lowerPrompt.includes('lead') || lowerPrompt.includes('customer'))) {
-      intent = 'lead_followup';
-    } else if (lowerPrompt.includes('organize') && lowerPrompt.includes('file')) {
-      intent = 'file_organization';
-    } else if (lowerPrompt.includes('report') || lowerPrompt.includes('dashboard')) {
-      intent = 'reporting_automation';
-    } else if (lowerPrompt.includes('payment') || lowerPrompt.includes('order')) {
-      intent = 'ecommerce_automation';
-    } else if (lowerPrompt.includes('social') || lowerPrompt.includes('post')) {
-      intent = 'social_media_automation';
-    } else if (lowerPrompt.includes('support') || lowerPrompt.includes('ticket')) {
-      intent = 'customer_support_automation';
-    }
+    // Extract function names for compatibility
+    const functions = intelligence.logicalFunctions.map(f => f.function);
 
-    // Calculate complexity based on number of apps and their individual complexity
+    // Calculate complexity based on workflow logic
     let complexity: 'Simple' | 'Medium' | 'Complex' = 'Simple';
-    if (detectedApps.length > 3 || detectedApps.some(app => app.complexity === 'Complex')) {
+    if (intelligence.dataFlow.length > 3 || intelligence.requiredApps.length > 3) {
       complexity = 'Complex';
-    } else if (detectedApps.length > 2 || detectedApps.some(app => app.complexity === 'Medium')) {
+    } else if (intelligence.dataFlow.length > 1 || intelligence.requiredApps.length > 1) {
       complexity = 'Medium';
     }
 
-    // Calculate estimated value based on apps and complexity
-    const baseValue = Math.max(400, detectedApps.length * 600);
-    const complexityMultiplier = complexity === 'Complex' ? 2 : complexity === 'Medium' ? 1.5 : 1;
+    // Calculate estimated value based on business impact
+    const baseValue = Math.max(400, intelligence.dataFlow.length * 800);
+    const complexityMultiplier = complexity === 'Complex' ? 2.5 : complexity === 'Medium' ? 1.8 : 1.2;
     const totalValue = Math.round(baseValue * complexityMultiplier);
     const estimatedValue = `$${totalValue.toLocaleString()}/month time savings`;
 
-    // High confidence if we detected specific apps, lower if using defaults
-    const confidence = detectedApps.length > 0 ? 0.9 : 0.6;
-
     return {
-      intent,
-      requiredApps: appNames.length > 0 ? appNames : ['Gmail', 'Google Sheets'], // Default if nothing detected
-      suggestedFunctions: functions.length > 0 ? functions.slice(0, 8) : ['Process Data'], // Limit to 8 functions
+      intent: intelligence.intent,
+      requiredApps: intelligence.requiredApps,
+      suggestedFunctions: functions,
       complexity,
       estimatedValue,
-      confidence,
-      processingTime: 50, // Fast local processing
-      modelUsed: `Local AI Analysis (${TOTAL_SUPPORTED_APPS}+ Apps)`
+      confidence: intelligence.confidence,
+      processingTime: 80, // Slightly longer for comprehensive analysis
+      modelUsed: `Comprehensive AI Intelligence (${TOTAL_SUPPORTED_APPS}+ Apps)`
     };
   }
 
@@ -453,57 +426,58 @@ export function registerAIWorkflowRoutes(app: express.Application) {
 }
 
 async function generateWorkflowFromAnalysis(analysis: AIAnalysisResult, originalPrompt: string) {
-  // Use intelligent function mapping for each app
-  const functionMappings = IntelligentFunctionMapper.generateWorkflowWithIntelligentFunctions(
-    originalPrompt,
-    analysis.requiredApps
-  );
-
-  // Build workflow structure with intelligent function selection
+  console.log(`🔧 Generating workflow from comprehensive analysis...`);
+  
+  // Get the comprehensive intelligence analysis
+  const intelligence = await AIWorkflowIntelligence.analyzeAutomationRequest(originalPrompt);
+  
+  // Build workflow structure with logical function selection
   const nodes = [];
   const connections = [];
   
-  // Create nodes with intelligently selected functions
-  functionMappings.forEach((mapping, index) => {
-    const nodeId = `${mapping.appName.toLowerCase().replace(/\s+/g, '-')}-${index}`;
+  // Create nodes based on intelligent analysis
+  intelligence.logicalFunctions.forEach((funcMapping, index) => {
+    const nodeId = `${funcMapping.app.toLowerCase().replace(/\s+/g, '-')}-${index}`;
     
     nodes.push({
       id: nodeId,
-      type: mapping.appName.toLowerCase().replace(/\s+/g, '-'),
-      app: mapping.appName,
-      function: mapping.selectedFunction,
-      functionName: mapping.selectedFunction, // Use the function ID as name for now
-      parameters: mapping.parameters,
-      position: { x: 100 + (index * 200), y: 100 + (index % 2) * 100 },
-      icon: getIconForApp(mapping.appName),
-      color: getColorForApp(mapping.appName),
-      aiReason: mapping.reason,
-      confidence: mapping.confidence
+      type: funcMapping.app.toLowerCase().replace(/\s+/g, '-'),
+      app: funcMapping.app,
+      function: funcMapping.function,
+      functionName: funcMapping.function,
+      parameters: funcMapping.parameters,
+      position: { x: 100 + (index * 220), y: 100 + (index % 2) * 120 },
+      icon: getIconForApp(funcMapping.app),
+      color: getColorForApp(funcMapping.app),
+      aiReason: funcMapping.reason,
+      confidence: intelligence.confidence,
+      isRequired: funcMapping.isRequired
     });
     
-    // Create connections between consecutive nodes
+    // Create logical connections based on data flow
     if (index > 0) {
       connections.push({
         id: `conn-${index}`,
         source: nodes[index - 1].id,
-        target: nodeId
+        target: nodeId,
+        dataType: intelligence.dataFlow[index - 1]?.dataOut[0] || 'data'
       });
     }
   });
 
-  // Generate enhanced Google Apps Script code with specific functions
-  const appsScriptCode = generateEnhancedAppsScriptCode(nodes, analysis, functionMappings);
+  // Generate intelligent Google Apps Script code
+  const appsScriptCode = generateIntelligentAppsScriptCode(intelligence, nodes);
 
   return {
     id: `workflow-${Date.now()}`,
-    title: generateTitle(analysis.intent),
-    description: generateDescription(originalPrompt),
+    title: generateIntelligentTitle(intelligence.intent, originalPrompt),
+    description: intelligence.businessLogic,
     nodes,
     connections,
     appsScriptCode,
     estimatedValue: analysis.estimatedValue,
     complexity: analysis.complexity,
-    functionMappings // Include the intelligent function selections
+    intelligence // Include the full intelligence analysis
   };
 }
 
@@ -595,6 +569,216 @@ function getColorForApp(app: string): string {
   return colorMap[app] || '#6366f1';
 }
 
+function generateIntelligentTitle(intent: string, prompt: string): string {
+  const titleMap: Record<string, string> = {
+    'email_auto_responder': 'Automatic Email Responder',
+    'email_monitoring': 'Email Monitoring System',
+    'email_tracking': 'Smart Email Tracking System',
+    'lead_followup': 'Automated Lead Follow-up',
+    'lead_capture': 'Lead Capture Automation',
+    'order_processing': 'Order Processing Automation',
+    'notification_system': 'Smart Notification System',
+    'data_synchronization': 'Data Sync Automation',
+    'file_organization': 'Intelligent File Organization',
+    'reporting_automation': 'Automated Reporting System',
+    'custom_workflow': 'Custom Workflow Automation'
+  };
+  
+  return titleMap[intent] || `AI-Generated Automation: ${prompt.substring(0, 50)}...`;
+}
+
+function generateDescription(prompt: string): string {
+  return `Automatically ${prompt.toLowerCase().replace(/^i want to |^i need to |^please |^can you /, '')}`;
+}
+
+function generateIntelligentAppsScriptCode(intelligence: any, nodes: any[]): string {
+  let code = `/**
+ * ${generateIntelligentTitle(intelligence.intent, 'automation')}
+ * Generated by Comprehensive AI Intelligence
+ * 
+ * Business Logic: ${intelligence.businessLogic}
+ * 
+ * Data Flow:
+${intelligence.dataFlow.map((step: any) => ` * ${step.step}. ${step.action} (${step.app}: ${step.function})`).join('\n')}
+ * 
+ * Confidence: ${(intelligence.confidence * 100).toFixed(1)}%
+ */
+
+function main() {
+  try {
+    console.log('Starting intelligent automation: ${intelligence.intent}');
+    
+    // Configuration
+    const CONFIG = {
+      SPREADSHEET_ID: 'YOUR_SPREADSHEET_ID',
+      CALENDAR_ID: 'primary',
+      DRIVE_FOLDER_ID: 'YOUR_FOLDER_ID'
+    };
+`;
+
+  // Generate code based on data flow steps
+  intelligence.dataFlow.forEach((step: any, index: number) => {
+    if (step.app === 'Gmail') {
+      if (step.function === 'set_auto_reply') {
+        code += `
+    // Step ${step.step}: ${step.action}
+    function setupAutoReply() {
+      Gmail.Users.Settings.updateVacation({
+        enableAutoReply: true,
+        responseSubject: 'Auto Reply',
+        responseBodyPlainText: 'Thank you for your email. I will respond as soon as possible.',
+        restrictToContacts: false,
+        restrictToDomain: false
+      }, 'me');
+      
+      console.log('✅ Auto-reply enabled successfully');
+    }
+`;
+      } else if (step.function === 'search_emails') {
+        code += `
+    // Step ${step.step}: ${step.action}
+    function ${step.function}() {
+      const query = 'is:unread';
+      const threads = GmailApp.search(query, 0, 50);
+      
+      console.log(\`Found \${threads.length} emails for: ${step.purpose}\`);
+      
+      const emailData = [];
+      threads.forEach(thread => {
+        const message = thread.getMessages()[0];
+        emailData.push({
+          from: message.getFrom(),
+          subject: message.getSubject(),
+          body: message.getPlainBody(),
+          date: message.getDate()
+        });
+      });
+      
+      return emailData;
+    }
+`;
+      }
+    }
+    
+    if (step.app === 'Google Sheets' && step.function === 'append_row') {
+      code += `
+    // Step ${step.step}: ${step.action}
+    function appendToSheet(data) {
+      const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+      const sheet = spreadsheet.getActiveSheet();
+      
+      // Purpose: ${step.purpose}
+      const values = [
+        new Date(),
+        data.from || '',
+        data.subject || '',
+        data.body?.substring(0, 500) || '',
+        'Processed by AI'
+      ];
+      
+      sheet.appendRow(values);
+      console.log('✅ Data stored:', values);
+    }
+`;
+    }
+    
+    if (step.app === 'Slack' && step.function === 'send_message') {
+      code += `
+    // Step ${step.step}: ${step.action}
+    function sendSlackNotification(data) {
+      // Purpose: ${step.purpose}
+      const webhookUrl = 'YOUR_SLACK_WEBHOOK_URL';
+      const message = {
+        text: \`Automation Update: \${data.subject || 'New event'}\`,
+        channel: '#general',
+        username: 'AutomationBot',
+        icon_emoji: ':robot_face:'
+      };
+      
+      UrlFetchApp.fetch(webhookUrl, {
+        method: 'POST',
+        contentType: 'application/json',
+        payload: JSON.stringify(message)
+      });
+      
+      console.log('✅ Slack notification sent');
+    }
+`;
+    }
+  });
+
+  // Main execution logic
+  code += `
+    // Execute intelligent workflow
+    console.log('🚀 Executing ${intelligence.intent} automation...');
+    
+`;
+
+  if (intelligence.intent === 'email_auto_responder') {
+    code += `    setupAutoReply();
+    console.log('✅ Email auto-responder is now active!');
+`;
+  } else {
+    // Multi-step execution
+    const hasEmailSearch = intelligence.dataFlow.some((step: any) => step.function === 'search_emails');
+    const hasSheetAppend = intelligence.dataFlow.some((step: any) => step.function === 'append_row');
+    const hasSlackNotify = intelligence.dataFlow.some((step: any) => step.function === 'send_message');
+
+    if (hasEmailSearch) {
+      code += `    const emailData = search_emails();
+    
+`;
+      if (hasSheetAppend) {
+        code += `    emailData.forEach(email => {
+      appendToSheet(email);
+    });
+    
+`;
+      }
+      
+      if (hasSlackNotify) {
+        code += `    emailData.forEach(email => {
+      sendSlackNotification(email);
+    });
+    
+`;
+      }
+    }
+  }
+
+  code += `    console.log('✅ Intelligent automation completed successfully!');
+  } catch (error) {
+    console.error('❌ Automation error:', error);
+    
+    // Send error notification
+    GmailApp.sendEmail(
+      Session.getActiveUser().getEmail(),
+      'Automation Error Alert',
+      \`Your \${intelligence.intent} automation encountered an error: \${error.message}\`
+    );
+  }
+}
+
+// Setup function
+function setupTriggers() {
+  console.log('Setting up triggers for: ${intelligence.intent}');
+  
+  // Delete existing triggers
+  ScriptApp.getProjectTriggers().forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  
+  // Create appropriate trigger based on automation type
+  ScriptApp.newTrigger('main')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+    
+  console.log('✅ Intelligent automation triggers configured');
+}
+`;
+
+  return code;
+}
+
 function generateTitle(intent: string): string {
   const titleMap: Record<string, string> = {
     'email_tracking': 'Smart Email Tracking System',
@@ -604,10 +788,6 @@ function generateTitle(intent: string): string {
     'custom_automation': 'Custom Workflow Automation'
   };
   return titleMap[intent] || 'AI-Generated Automation';
-}
-
-function generateDescription(prompt: string): string {
-  return `Automatically ${prompt.toLowerCase().replace(/^i want to |^i need to |^please |^can you /, '')}`;
 }
 
 function generateEnhancedAppsScriptCode(nodes: any[], analysis: AIAnalysisResult, functionMappings: any[]): string {
