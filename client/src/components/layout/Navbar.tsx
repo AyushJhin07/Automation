@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { to: "/", label: "Home" },
+  { to: "/ai-builder", label: "🤖 AI Builder" },
   { to: "/#demos", label: "Demos" },
   { to: "/pre-built-apps", label: "Pre-Built Apps" },
   { to: "/schedule", label: "Schedule" },
@@ -45,9 +46,11 @@ export const Navbar = () => {
               className={({ isActive }) =>
                 cn(
                   "px-3 py-2 rounded-md text-sm transition-colors",
-                  isActive || (item.to.includes("#") && location.hash === "#demos")
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent hover:text-accent-foreground"
+                  item.label.includes("AI Builder") 
+                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 font-semibold"
+                    : isActive || (item.to.includes("#") && location.hash === "#demos")
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
                 )
               }
             >

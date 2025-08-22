@@ -273,6 +273,9 @@ const Index = () => {
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild variant="hero" className="hover-scale">
+                  <Link to="/ai-builder">🤖 Try AI Builder</Link>
+                </Button>
+                <Button asChild variant="outline" className="hover-scale">
                   <a href="#ai-generator">💰 See Cost Advantage</a>
                 </Button>
                 <Button asChild variant="outline" className="hover-scale">
