@@ -57,6 +57,7 @@ export const AIWorkflowBuilder: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>('auto');
   const [showPaywall, setShowPaywall] = useState(false);
   const [isPaidUser, setIsPaidUser] = useState(false); // TODO: Replace with real auth check
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   // Load available AI models on component mount
   useEffect(() => {
@@ -78,9 +79,13 @@ export const AIWorkflowBuilder: React.FC = () => {
   const handleGenerateWorkflow = async () => {
     if (!prompt.trim()) return;
     
+    // Admin mode check (bypass paywall for testing)
+    const adminKey = new URLSearchParams(window.location.search).get('admin');
+    const isAdmin = adminKey === 'test123' || isAdminMode;
+    
     // Check if user is paid (for now, allow 1 free trial)
     const hasUsedTrial = localStorage.getItem('ai-builder-trial-used');
-    if (!isPaidUser && hasUsedTrial) {
+    if (!isPaidUser && hasUsedTrial && !isAdmin) {
       setShowPaywall(true);
       return;
     }
@@ -88,8 +93,8 @@ export const AIWorkflowBuilder: React.FC = () => {
     setIsGenerating(true);
     setError(null);
     
-    // Mark trial as used for demo purposes
-    if (!isPaidUser) {
+    // Mark trial as used for demo purposes (unless admin)
+    if (!isPaidUser && !isAdmin) {
       localStorage.setItem('ai-builder-trial-used', 'true');
     }
     
@@ -291,6 +296,12 @@ function processCustomerEmails() {
            <Badge className="bg-blue-100 text-blue-800">500+ Apps Supported</Badge>
            <Badge className="bg-green-100 text-green-800">Gemini + Claude + GPT-4</Badge>
            <Badge className="bg-purple-100 text-purple-800">Real Google Apps Script</Badge>
+           <button 
+             onClick={() => setIsAdminMode(!isAdminMode)}
+             className={`px-3 py-1 rounded text-xs ${isAdminMode ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+           >
+             {isAdminMode ? '🔓 Admin Mode ON' : '🔒 Enable Admin Mode'}
+           </button>
          </div>
       </div>
 
