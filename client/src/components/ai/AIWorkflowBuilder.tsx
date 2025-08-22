@@ -269,9 +269,14 @@ function processCustomerEmails() {
           <h1 className="text-3xl font-bold text-gray-900">AI Workflow Builder</h1>
           <Badge className="bg-purple-600 text-white">BETA</Badge>
         </div>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Describe your automation in plain English. Our AI will build the complete workflow and Google Apps Script code for you.
-        </p>
+                 <p className="text-gray-600 max-w-2xl mx-auto">
+           Describe your automation in plain English. Our AI supports <strong>500+ applications</strong> and will build the complete workflow and Google Apps Script code for you.
+         </p>
+         <div className="flex justify-center gap-4 mt-4">
+           <Badge className="bg-blue-100 text-blue-800">500+ Apps Supported</Badge>
+           <Badge className="bg-green-100 text-green-800">Gemini + Claude + GPT-4</Badge>
+           <Badge className="bg-purple-100 text-purple-800">Real Google Apps Script</Badge>
+         </div>
       </div>
 
       {/* AI Input Section */}
@@ -331,14 +336,16 @@ function processCustomerEmails() {
             </Button>
           </div>
 
-          {/* Example Prompts */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-sm text-gray-500">Try these examples:</span>
-            {[
-              "Track customer emails and create reports",
-              "Send follow-ups to leads who don't respond",
-              "Organize project files automatically"
-            ].map((example, index) => (
+                     {/* Example Prompts */}
+           <div className="flex flex-wrap gap-2">
+             <span className="text-sm text-gray-500">Try these examples:</span>
+             {[
+               "Add Salesforce leads to Mailchimp when HubSpot deals close",
+               "Create Trello cards from Slack messages and notify via Teams",
+               "Sync Shopify orders to QuickBooks and send Stripe receipts",
+               "Post GitHub commits to Discord and update Asana tasks",
+               "Track Zendesk tickets in Google Sheets and calendar follow-ups"
+             ].map((example, index) => (
               <button
                 key={index}
                 onClick={() => setPrompt(example)}

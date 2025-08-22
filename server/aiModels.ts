@@ -1,4 +1,5 @@
 import express from 'express';
+import { detectAppsFromPrompt, getAppById, generateCompleteAppDatabase, TOTAL_SUPPORTED_APPS } from './complete500Apps';
 
 interface AIModelConfig {
   name: string;
@@ -231,65 +232,54 @@ class MultiAIService {
   private static localFallbackAnalysis(prompt: string): AIAnalysisResult {
     const lowerPrompt = prompt.toLowerCase();
     
-    // Intelligent local analysis
-    const apps = [];
-    const functions = [];
+    // Use comprehensive app detection from 500+ app database
+    const detectedApps = detectAppsFromPrompt(prompt);
+    const appNames = detectedApps.map(app => app.name);
     
-    // Email detection
-    if (lowerPrompt.includes('email') || lowerPrompt.includes('gmail')) {
-      apps.push('Gmail');
-      if (lowerPrompt.includes('send')) functions.push('Send Email');
-      if (lowerPrompt.includes('track') || lowerPrompt.includes('monitor')) functions.push('Search Emails');
-      if (lowerPrompt.includes('respond') || lowerPrompt.includes('reply')) functions.push('Auto Reply');
-    }
-    
-    // Sheets detection
-    if (lowerPrompt.includes('sheet') || lowerPrompt.includes('spreadsheet') || lowerPrompt.includes('data') || lowerPrompt.includes('track')) {
-      apps.push('Google Sheets');
-      if (lowerPrompt.includes('read') || lowerPrompt.includes('get')) functions.push('Read Range');
-      else functions.push('Append Row');
-    }
-    
-    // Calendar detection
-    if (lowerPrompt.includes('calendar') || lowerPrompt.includes('schedule') || lowerPrompt.includes('meeting') || lowerPrompt.includes('event')) {
-      apps.push('Google Calendar');
-      functions.push('Create Event');
-    }
-    
-    // Drive detection
-    if (lowerPrompt.includes('drive') || lowerPrompt.includes('file') || lowerPrompt.includes('document') || lowerPrompt.includes('organize')) {
-      apps.push('Google Drive');
-      if (lowerPrompt.includes('organize')) functions.push('Organize Files');
-      else functions.push('Upload File');
-    }
-    
-    // Report/Analysis detection
-    if (lowerPrompt.includes('report') || lowerPrompt.includes('analyze') || lowerPrompt.includes('summary')) {
-      apps.push('AI Analysis');
-      functions.push('Process Data');
-    }
+    // Extract suggested functions from detected apps
+    const functions: string[] = [];
+    detectedApps.forEach(app => {
+      app.commonFunctions.forEach(func => {
+        functions.push(func.name);
+      });
+    });
 
-    // Determine intent
+    // Determine intent based on detected apps and prompt
     let intent = 'custom_automation';
     if (lowerPrompt.includes('track') && lowerPrompt.includes('email')) intent = 'email_tracking';
     if (lowerPrompt.includes('follow') && (lowerPrompt.includes('lead') || lowerPrompt.includes('customer'))) intent = 'lead_followup';
     if (lowerPrompt.includes('organize') && lowerPrompt.includes('file')) intent = 'file_organization';
     if (lowerPrompt.includes('report') || lowerPrompt.includes('dashboard')) intent = 'reporting_automation';
+    if (lowerPrompt.includes('payment') || lowerPrompt.includes('order')) intent = 'ecommerce_automation';
+    if (lowerPrompt.includes('social') || lowerPrompt.includes('post')) intent = 'social_media_automation';
+    if (lowerPrompt.includes('support') || lowerPrompt.includes('ticket')) intent = 'customer_support_automation';
 
-    // Calculate complexity and value
-    const complexity = apps.length <= 2 ? 'Simple' : apps.length <= 4 ? 'Medium' : 'Complex';
-    const baseValue = apps.length * 400;
-    const estimatedValue = `$${baseValue.toLocaleString()}/month time savings`;
+    // Calculate complexity based on number of apps and their individual complexity
+    let complexity: 'Simple' | 'Medium' | 'Complex' = 'Simple';
+    if (detectedApps.length > 3 || detectedApps.some(app => app.complexity === 'Complex')) {
+      complexity = 'Complex';
+    } else if (detectedApps.length > 2 || detectedApps.some(app => app.complexity === 'Medium')) {
+      complexity = 'Medium';
+    }
+
+    // Calculate estimated value based on apps and complexity
+    const baseValue = Math.max(400, detectedApps.length * 600);
+    const complexityMultiplier = complexity === 'Complex' ? 2 : complexity === 'Medium' ? 1.5 : 1;
+    const totalValue = Math.round(baseValue * complexityMultiplier);
+    const estimatedValue = `$${totalValue.toLocaleString()}/month time savings`;
+
+    // High confidence if we detected specific apps, lower if using defaults
+    const confidence = detectedApps.length > 0 ? 0.9 : 0.6;
 
     return {
       intent,
-      requiredApps: apps.length > 0 ? apps : ['Gmail', 'Google Sheets'], // Default if nothing detected
-      suggestedFunctions: functions.length > 0 ? functions : ['Process Data'],
+      requiredApps: appNames.length > 0 ? appNames : ['Gmail', 'Google Sheets'], // Default if nothing detected
+      suggestedFunctions: functions.length > 0 ? functions.slice(0, 8) : ['Process Data'], // Limit to 8 functions
       complexity,
       estimatedValue,
-      confidence: 0.85, // High confidence for local analysis
+      confidence,
       processingTime: 50, // Fast local processing
-      modelUsed: 'Local Intelligent Analysis'
+      modelUsed: `Local AI Analysis (${TOTAL_SUPPORTED_APPS}+ Apps)`
     };
   }
 
@@ -370,6 +360,45 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       res.json(estimate);
     } catch (error) {
       res.status(500).json({ error: 'Failed to estimate cost' });
+    }
+  });
+
+  // Get all supported applications
+  app.get('/api/ai/supported-apps', async (req, res) => {
+    try {
+      const allApps = generateCompleteAppDatabase();
+      const { category, search, limit = 50 } = req.query;
+      
+      let filteredApps = allApps;
+      
+      // Filter by category if specified
+      if (category) {
+        filteredApps = filteredApps.filter(app => 
+          app.category.toLowerCase() === (category as string).toLowerCase()
+        );
+      }
+      
+      // Filter by search term if specified
+      if (search) {
+        const searchTerm = (search as string).toLowerCase();
+        filteredApps = filteredApps.filter(app =>
+          app.name.toLowerCase().includes(searchTerm) ||
+          app.description.toLowerCase().includes(searchTerm)
+        );
+      }
+      
+      // Sort by popularity and limit results
+      const sortedApps = filteredApps
+        .sort((a, b) => b.popularity - a.popularity)
+        .slice(0, parseInt(limit as string));
+      
+      res.json({ 
+        apps: sortedApps,
+        total: TOTAL_SUPPORTED_APPS,
+        filtered: filteredApps.length
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get supported apps' });
     }
   });
 
