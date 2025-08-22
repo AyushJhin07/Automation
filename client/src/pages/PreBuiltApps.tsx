@@ -20,7 +20,9 @@ import {
   DollarSign,
   Settings,
   Brain,
-  Chrome
+  Chrome,
+  Headphones,
+  MessageSquare
 } from "lucide-react";
 import ProfessionalGraphCustomizer from "@/components/customizer/ProfessionalGraphCustomizer";
 import PreBuiltAutomationDemos from "@/components/demos/PreBuiltAutomationDemos";
@@ -581,54 +583,82 @@ const preBuiltApps = [
     ],
   },
   {
-    id: "file-organizer",
-    title: "Intelligent File Organizer",
-    description: "Automatically organize Google Drive files by type, date, or content with smart folder structures.",
-    icon: FolderCog,
-    category: "File Management",
-    complexity: "Beginner",
-    setupTime: "20 minutes",
-    monthlyValue: "$400+", 
+    id: "ai-email-assistant",
+    title: "Intelligent Email Assistant with LLM",
+    description: "AI-powered email responses using advanced language models. Responds intelligently based on your company knowledge and custom prompts.",
+    icon: Brain,
+    category: "AI & Communication",
+    complexity: "Advanced",
+    setupTime: "30 minutes",
+    monthlyValue: "$2000+", 
     features: [
-      "Auto-sort files by type and date",
-      "Smart folder creation",
-      "Duplicate file detection",
-      "Permission management automation"
+      "AI-powered email responses with LLM",
+      "Custom company knowledge integration",
+      "Sentiment analysis and tone matching",
+      "Auto-categorization and priority assignment",
+      "Multi-language support",
+      "Learning from your email patterns"
     ],
-    codePreview: `function organizeFiles() {
-  const folder = DriveApp.getFolderById('INBOX_FOLDER_ID');
-  const files = folder.getFiles();
+    codePreview: `function processEmailWithAI() {
+  const threads = GmailApp.search('is:unread label:customer-support');
   
-  while (files.hasNext()) {
-    const file = files.next();
-    const fileName = file.getName();
-    const fileType = getFileType(file);
-    const createDate = file.getDateCreated();
+  threads.forEach(thread => {
+    const email = thread.getMessages()[0];
+    const emailBody = email.getPlainBody();
+    const subject = email.getSubject();
+    const sender = email.getFrom();
     
-    // Determine target folder
-    const targetFolder = getOrCreateFolder(fileType, createDate);
+    // AI Analysis with LLM
+    const aiPrompt = \`
+      Email Content: \${emailBody}
+      Subject: \${subject}
+      Company Knowledge: \${getCompanyKnowledgeBase()}
+      Instructions: Respond professionally, be helpful, match customer tone
+    \`;
     
-    // Move file and set permissions
-    file.moveTo(targetFolder);
-    setAppropriatePermissions(file, fileType);
+    // Call OpenAI/Claude API
+    const aiResponse = callLLMAPI(aiPrompt, {
+      model: 'gpt-4',
+      temperature: 0.7,
+      max_tokens: 500,
+      context: 'customer_support'
+    });
     
-    // Log activity
-    logFileActivity(fileName, targetFolder.getName());
-  }
+    // Send intelligent response
+    email.reply(aiResponse.content, {
+      htmlBody: formatResponse(aiResponse.content),
+      cc: getRelevantTeamMembers(subject)
+    });
+    
+    // Log interaction with sentiment
+    logCustomerInteraction(sender, subject, aiResponse.sentiment);
+  });
 }
 
-function getOrCreateFolder(type, date) {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const folderPath = \`\${type}/\${year}/\${month.toString().padStart(2, '0')}\`;
+function callLLMAPI(prompt, options) {
+  const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + getAPIKey(),
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      model: options.model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: options.temperature,
+      max_tokens: options.max_tokens
+    })
+  });
   
-  return createFolderPath(folderPath);
+  return JSON.parse(response.getContentText());
 }`,
     useCases: [
-      "Document management systems",
-      "Project file organization",
-      "Client deliverable sorting",
-      "Archive and backup automation"
+      "Customer support email automation",
+      "Sales inquiry intelligent responses", 
+      "HR recruitment email screening",
+      "Technical support ticket handling",
+      "Multi-language customer communication",
+      "Executive assistant email management"
     ],
     customizationOptions: [
       // Google Drive App Specific Options
@@ -777,56 +807,81 @@ function getOrCreateFolder(type, date) {
     ],
   },
   {
-    id: "expense-tracker",
-    title: "Expense Tracker & Approval",
-    description: "Complete expense management with receipt parsing, approval workflows, and reimbursement tracking.",
-    icon: DollarSign,
-    category: "Finance & Operations",
-    complexity: "Advanced",
-    setupTime: "45 minutes",
-    monthlyValue: "$1000+",
+    id: "ai-customer-support",
+    title: "Advanced Customer Support Automation",
+    description: "AI-powered customer support system that triages emails, generates intelligent responses, and manages support tickets with advanced analytics.",
+    icon: Headphones,
+    category: "AI & Customer Service",
+    complexity: "Advanced", 
+    setupTime: "40 minutes",
+    monthlyValue: "$3000+",
     features: [
-      "Receipt email parsing and data extraction", 
-      "Multi-level approval workflows",
-      "Automatic expense categorization",
-      "Reimbursement tracking and reporting"
+      "AI email triage and categorization",
+      "Intelligent response generation with LLM",
+      "Automatic ticket creation and tracking",
+      "Sentiment analysis and escalation rules",
+      "Multi-language support detection",
+      "Customer satisfaction scoring"
     ],
-    codePreview: `function processExpenseReceipt() {
-  const emails = GmailApp.search('has:attachment subject:receipt');
-  const sheet = SpreadsheetApp.openById('EXPENSE_SHEET_ID');
+    codePreview: `function processCustomerSupportEmail() {
+  const threads = GmailApp.search('is:unread label:support');
+  const supportSheet = SpreadsheetApp.openById('SUPPORT_TICKETS_ID');
   
-  emails.forEach(thread => {
-    const message = thread.getMessages()[0];
-    const attachments = message.getAttachments();
+  threads.forEach(thread => {
+    const email = thread.getMessages()[0];
+    const emailBody = email.getPlainBody();
+    const subject = email.getSubject();
+    const sender = email.getFrom();
     
-    attachments.forEach(attachment => {
-      if (attachment.getContentType().includes('image')) {
-        // Extract text from receipt using OCR
-        const extractedData = extractReceiptData(attachment);
-        
-        // Add to expense sheet
-        const row = [
-          new Date(),
-          message.getFrom(),
-          extractedData.amount,
-          extractedData.vendor,
-          extractedData.category,
-          'Pending Approval'
-        ];
-        
-        sheet.appendRow(row);
-        
-        // Trigger approval workflow
-        sendForApproval(extractedData, message.getFrom());
-      }
+    // AI Triage and Analysis
+    const triageResult = analyzeEmailWithAI(emailBody, subject);
+    
+    // Create support ticket
+    const ticketId = 'TICKET-' + Date.now();
+    supportSheet.appendRow([
+      new Date(),
+      ticketId,
+      sender,
+      subject,
+      triageResult.category,
+      triageResult.priority,
+      triageResult.sentiment,
+      'Open'
+    ]);
+    
+    // Generate AI response
+    const aiResponse = generateSupportResponse(emailBody, triageResult);
+    
+    // Send intelligent reply
+    email.reply(aiResponse, {
+      htmlBody: formatSupportResponse(aiResponse),
+      cc: triageResult.escalate ? 'manager@company.com' : ''
     });
+    
+    // Add support label
+    thread.addLabel(GmailApp.getUserLabelByName('Support-Processed'));
   });
+}
+
+function analyzeEmailWithAI(content, subject) {
+  const prompt = \`Analyze this support email:
+  Subject: \${subject}
+  Content: \${content}
+  
+  Categorize as: technical, billing, sales, general
+  Priority: high, medium, low
+  Sentiment: positive, neutral, negative
+  Escalate: true/false\`;
+  
+  return callLLMAPI(prompt);
 }`,
     useCases: [
-      "Employee expense management",
-      "Vendor invoice processing", 
-      "Travel expense tracking",
-      "Project cost monitoring"
+      "24/7 customer support automation",
+      "Technical support ticket management",
+      "Sales inquiry intelligent routing",
+      "Billing dispute resolution",
+      "Product feedback collection",
+      "Multi-language customer service"
     ],
     customizationOptions: [
       // Google Sheets App Specific Options
@@ -1026,50 +1081,75 @@ function getOrCreateFolder(type, date) {
     ],
   },
   {
-    id: "task-automation",
-    title: "Project Task Automator",
-    description: "Automate project tasks, status updates, and team notifications based on Google Sheets data.",
-    icon: CheckCircle2,
-    category: "Project Management",
-    complexity: "Intermediate",
-    setupTime: "35 minutes", 
-    monthlyValue: "$700+",
+    id: "slack-workspace-bridge",
+    title: "Slack-Google Workspace Bridge",
+    description: "Advanced integration bridge that seamlessly connects Slack conversations with Google Workspace apps for unified communication and data flow.",
+    icon: MessageSquare,
+    category: "Enterprise Integration",
+    complexity: "Advanced",
+    setupTime: "45 minutes", 
+    monthlyValue: "$1500+",
     features: [
-      "Automatic task status updates",
-      "Smart deadline reminders",
-      "Progress report generation",
-      "Team notification automation"
+      "Real-time Slack to Google Workspace sync",
+      "Important message auto-archival to Sheets",
+      "Action items from Slack create calendar events",
+      "File shares auto-organized in Drive",
+      "Slack mentions trigger email summaries",
+      "Cross-platform search and analytics"
     ],
-    codePreview: `function updateProjectTasks() {
-  const sheet = SpreadsheetApp.openById('PROJECT_SHEET_ID');
-  const data = sheet.getDataRange().getValues();
+    codePreview: `function processSlackWebhook() {
+  const slackData = JSON.parse(e.postData.contents);
+  const message = slackData.event;
   
-  for (let i = 1; i < data.length; i++) {
-    const [task, assignee, deadline, status, priority] = data[i];
-    const deadlineDate = new Date(deadline);
-    const today = new Date();
-    const daysUntilDeadline = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+  // Process different Slack message types
+  if (message.type === 'message' && message.text) {
+    // Check if message contains action items
+    const actionItems = extractActionItems(message.text);
     
-    // Send reminders based on deadline proximity
-    if (daysUntilDeadline <= 3 && status !== 'Complete') {
-      sendDeadlineReminder(assignee, task, daysUntilDeadline);
+    if (actionItems.length > 0) {
+      // Save to Google Sheets
+      const sheet = SpreadsheetApp.openById('SLACK_ARCHIVE_ID');
+      actionItems.forEach(item => {
+        sheet.appendRow([
+          new Date(),
+          message.user,
+          message.channel,
+          item.text,
+          item.deadline,
+          'Pending'
+        ]);
+        
+        // Create calendar event for action item
+        if (item.deadline) {
+          CalendarApp.createEvent(item.text, item.deadline, item.deadline);
+        }
+      });
     }
     
-    // Auto-update overdue tasks
-    if (daysUntilDeadline < 0 && status !== 'Complete') {
-      sheet.getRange(i + 1, 4).setValue('Overdue');
-      notifyProjectManager(task, assignee);
+    // Check for file shares
+    if (message.files) {
+      organizeSlackFiles(message.files, message.channel);
+    }
+    
+    // Check for mentions that need email summaries
+    if (message.text.includes('@channel') || message.text.includes('@here')) {
+      sendEmailSummary(message, getChannelMembers(message.channel));
     }
   }
-  
-  // Generate weekly progress report
-  generateProgressReport(sheet);
+}
+
+function extractActionItems(text) {
+  // AI-powered action item extraction
+  const prompt = \`Extract action items from: \${text}\`;
+  return callLLMAPI(prompt);
 }`,
     useCases: [
-      "Project milestone tracking",
-      "Team task coordination",
-      "Client project updates", 
-      "Resource allocation management"
+      "Enterprise communication synchronization",
+      "Cross-platform data archival",
+      "Slack action item management",
+      "Team productivity analytics",
+      "Automated meeting scheduling from Slack",
+      "Unified workspace search and retrieval"
     ],
     customizationOptions: [
       // Google Sheets App Specific Options

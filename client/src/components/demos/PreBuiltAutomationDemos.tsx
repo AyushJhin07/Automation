@@ -1927,156 +1927,683 @@ const automationDemos: AutomationDemo[] = [
     ]
   },
   {
-    id: "file-automation",
-    title: "Intelligent File Organizer",
-    description: "Automatically organize and process files in Google Drive",
-    apps: ["Google Drive", "Google Sheets", "Gmail"],
+    id: "ai-email-assistant",
+    title: "Intelligent Email Assistant with LLM",
+    description: "AI-powered email responses using advanced language models",
+    apps: ["Gmail", "OpenAI API", "Google Sheets"],
     workflow: [
       {
         id: 1,
-        title: "Drag Google Drive",
-        description: "Customer drags Drive to monitor new files",
+        title: "Setup Gmail Monitoring",
+        description: "Customer configures Gmail to monitor customer emails",
         duration: 3000,
-        component: <FileOrganizerDemo step={1} />
+        component: <AIEmailAssistantDemo step={1} />
       },
       {
         id: 2,
-        title: "Configure File Monitoring",
-        description: "Set up 'List Files' to watch for new uploads",
-        duration: 4000,
-        component: <FileOrganizerDemo step={2} />
+        title: "Drag Gmail Node",
+        description: "Add Gmail node to automation canvas",
+        duration: 3000,
+        component: <AIEmailAssistantDemo step={2} />
       },
       {
         id: 3,
-        title: "Add Google Sheets",
-        description: "Drag Sheets to log file activities",
-        duration: 3000,
-        component: <FileOrganizerDemo step={3} />
+        title: "Configure Email Search",
+        description: "Set up 'Search Emails' to find customer inquiries",
+        duration: 4000,
+        component: <AIEmailAssistantDemo step={3} />
       },
       {
         id: 4,
-        title: "Add Gmail",
-        description: "Drag Gmail to notify about file changes",
-        duration: 3000,
-        component: <FileOrganizerDemo step={4} />
+        title: "Add AI Processing Node",
+        description: "Add LLM API integration for intelligent analysis",
+        duration: 4000,
+        component: <AIEmailAssistantDemo step={4} />
       },
       {
         id: 5,
-        title: "Connect & AI Sync",
-        description: "AI maps: Drive → Sheets → Gmail for notifications",
-        duration: 4000,
-        component: <FileOrganizerDemo step={5} />
+        title: "Configure AI Prompts",
+        description: "Set up custom prompts and company knowledge base",
+        duration: 5000,
+        component: <AIEmailAssistantDemo step={5} />
       },
       {
         id: 6,
-        title: "See Results",
-        description: "Files organized, logged, and team notified",
+        title: "Add Response Gmail Node",
+        description: "Add second Gmail node for sending AI responses",
+        duration: 3000,
+        component: <AIEmailAssistantDemo step={6} />
+      },
+      {
+        id: 7,
+        title: "Add Google Sheets Logging",
+        description: "Add Sheets to track all AI interactions",
+        duration: 3000,
+        component: <AIEmailAssistantDemo step={7} />
+      },
+      {
+        id: 8,
+        title: "Connect AI Pipeline",
+        description: "Connect all nodes - AI analyzes and responds",
+        duration: 4000,
+        component: <AIEmailAssistantDemo step={8} />
+      },
+      {
+        id: 9,
+        title: "Test AI Response",
+        description: "Watch AI generate intelligent email response",
         duration: 5000,
-        component: <FileOrganizerResults />
+        component: <AIEmailAssistantDemo step={9} />
+      },
+      {
+        id: 10,
+        title: "See Email Results",
+        description: "Customer receives AI-generated professional response",
+        duration: 4000,
+        component: <AIEmailAssistantResults step={1} />
+      },
+      {
+        id: 11,
+        title: "See Analytics Dashboard",
+        description: "View AI interaction analytics and sentiment tracking",
+        duration: 4000,
+        component: <AIEmailAssistantResults step={2} />
+      },
+      {
+        id: 12,
+        title: "Complete AI Workflow",
+        description: "Full AI email assistant system in action",
+        duration: 3000,
+        component: <AIEmailAssistantResults step={3} />
       }
     ]
   },
   {
-    id: "expense-automation",
-    title: "Expense Tracker & Approval",
-    description: "Track expenses, generate reports, and automate approval workflows",
-    apps: ["Google Sheets", "Gmail", "Google Drive"],
+    id: "ai-customer-support",
+    title: "Advanced Customer Support Automation",
+    description: "AI-powered customer support with intelligent triage and responses",
+    apps: ["Gmail", "AI/LLM", "Google Sheets", "Google Calendar"],
     workflow: [
       {
         id: 1,
-        title: "Drag Google Sheets",
-        description: "Customer drags Sheets to track expense entries",
+        title: "Setup Support Email Monitoring",
+        description: "Configure Gmail to monitor support@company.com",
         duration: 3000,
-        component: <ExpenseTrackerDemo step={1} />
+        component: <CustomerSupportDemo step={1} />
       },
       {
         id: 2,
-        title: "Configure Expense Tracking",
-        description: "Set up 'Append Row' for new expense entries",
-        duration: 4000,
-        component: <ExpenseTrackerDemo step={2} />
+        title: "Drag Gmail Input Node",
+        description: "Add Gmail node to receive customer emails",
+        duration: 3000,
+        component: <CustomerSupportDemo step={2} />
       },
       {
         id: 3,
-        title: "Add Gmail",
-        description: "Drag Gmail for approval notifications",
-        duration: 3000,
-        component: <ExpenseTrackerDemo step={3} />
+        title: "Configure Email Filtering",
+        description: "Set up 'Search Emails' for support tickets",
+        duration: 4000,
+        component: <CustomerSupportDemo step={3} />
       },
       {
         id: 4,
-        title: "Add Google Drive",
-        description: "Drag Drive to store receipt files",
-        duration: 3000,
-        component: <ExpenseTrackerDemo step={4} />
+        title: "Add AI Triage Node",
+        description: "Add LLM API for intelligent email analysis",
+        duration: 4000,
+        component: <CustomerSupportDemo step={4} />
       },
       {
         id: 5,
-        title: "Connect & AI Sync",
-        description: "AI creates approval workflow automatically",
-        duration: 4000,
-        component: <ExpenseTrackerDemo step={5} />
+        title: "Configure AI Analysis",
+        description: "Set up sentiment analysis and categorization",
+        duration: 5000,
+        component: <CustomerSupportDemo step={5} />
       },
       {
         id: 6,
-        title: "See Results",
-        description: "Expense logged, receipt stored, manager notified",
+        title: "Add Ticket Tracking",
+        description: "Add Google Sheets for support ticket database",
+        duration: 3000,
+        component: <CustomerSupportDemo step={6} />
+      },
+      {
+        id: 7,
+        title: "Add Response Gmail",
+        description: "Add Gmail node for sending AI responses",
+        duration: 3000,
+        component: <CustomerSupportDemo step={7} />
+      },
+      {
+        id: 8,
+        title: "Add Escalation Calendar",
+        description: "Add Calendar for scheduling follow-ups",
+        duration: 3000,
+        component: <CustomerSupportDemo step={8} />
+      },
+      {
+        id: 9,
+        title: "Connect AI Pipeline",
+        description: "Connect all nodes for intelligent support flow",
+        duration: 4000,
+        component: <CustomerSupportDemo step={9} />
+      },
+      {
+        id: 10,
+        title: "Test AI Triage",
+        description: "Watch AI analyze and categorize support email",
         duration: 5000,
-        component: <ExpenseTrackerResults />
+        component: <CustomerSupportDemo step={10} />
+      },
+      {
+        id: 11,
+        title: "See Support Results",
+        description: "Customer receives intelligent AI response",
+        duration: 4000,
+        component: <CustomerSupportResults step={1} />
+      },
+      {
+        id: 12,
+        title: "View Support Dashboard",
+        description: "Complete support analytics and ticket tracking",
+        duration: 4000,
+        component: <CustomerSupportResults step={2} />
       }
     ]
   },
   {
-    id: "task-automation",
-    title: "Project Task Automator", 
-    description: "Automate project task management and team notifications",
-    apps: ["Google Sheets", "Gmail", "Google Calendar"],
+    id: "slack-workspace-bridge",
+    title: "Slack-Google Workspace Bridge",
+    description: "Advanced integration bridge connecting Slack with Google Workspace",
+    apps: ["Slack Webhooks", "Google Sheets", "Gmail", "Google Calendar", "Google Drive"],
     workflow: [
       {
         id: 1,
-        title: "Drag Google Sheets",
-        description: "Customer drags Sheets to manage project tasks",
+        title: "Setup Slack Webhook",
+        description: "Configure Slack webhook to monitor messages",
         duration: 3000,
-        component: <TaskAutomatorDemo step={1} />
+        component: <SlackBridgeDemo step={1} />
       },
       {
         id: 2,
-        title: "Configure Task Management",
-        description: "Set up 'Update Range' for task status changes",
-        duration: 4000,
-        component: <TaskAutomatorDemo step={2} />
+        title: "Add Slack Integration Node",
+        description: "Add Slack webhook receiver to automation",
+        duration: 3000,
+        component: <SlackBridgeDemo step={2} />
       },
       {
         id: 3,
-        title: "Add Gmail",
-        description: "Drag Gmail for team notifications",
-        duration: 3000,
-        component: <TaskAutomatorDemo step={3} />
+        title: "Configure Message Filtering",
+        description: "Set up filters for important Slack messages",
+        duration: 4000,
+        component: <SlackBridgeDemo step={3} />
       },
       {
         id: 4,
-        title: "Add Google Calendar",
-        description: "Drag Calendar for deadline tracking",
-        duration: 3000,
-        component: <TaskAutomatorDemo step={4} />
+        title: "Add AI Processing",
+        description: "Add LLM for extracting action items from Slack",
+        duration: 4000,
+        component: <SlackBridgeDemo step={4} />
       },
       {
         id: 5,
-        title: "Connect & AI Sync",
-        description: "AI creates complete task workflow",
-        duration: 4000,
-        component: <TaskAutomatorDemo step={5} />
+        title: "Add Google Sheets Archive",
+        description: "Add Sheets to archive important messages",
+        duration: 3000,
+        component: <SlackBridgeDemo step={5} />
       },
       {
         id: 6,
-        title: "See Results",
-        description: "Task updated, team notified, deadlines tracked",
+        title: "Add Calendar Integration",
+        description: "Add Calendar for action item scheduling",
+        duration: 3000,
+        component: <SlackBridgeDemo step={6} />
+      },
+      {
+        id: 7,
+        title: "Add Drive File Organization",
+        description: "Add Drive to organize Slack file shares",
+        duration: 3000,
+        component: <SlackBridgeDemo step={7} />
+      },
+      {
+        id: 8,
+        title: "Add Gmail Notifications",
+        description: "Add Gmail for email summaries of Slack activity",
+        duration: 3000,
+        component: <SlackBridgeDemo step={8} />
+      },
+      {
+        id: 9,
+        title: "Connect Integration Pipeline",
+        description: "Connect all nodes for complete Slack-Workspace sync",
+        duration: 4000,
+        component: <SlackBridgeDemo step={9} />
+      },
+      {
+        id: 10,
+        title: "Test Slack Message Processing",
+        description: "Watch Slack message trigger Google Workspace actions",
         duration: 5000,
-        component: <TaskAutomatorResults />
+        component: <SlackBridgeDemo step={10} />
+      },
+      {
+        id: 11,
+        title: "See Integration Results",
+        description: "View Slack data synchronized across Google Workspace",
+        duration: 4000,
+        component: <SlackBridgeResults step={1} />
+      },
+      {
+        id: 12,
+        title: "Complete Bridge System",
+        description: "Full Slack-Google Workspace integration in action",
+        duration: 3000,
+        component: <SlackBridgeResults step={2} />
       }
     ]
   }
 ];
+
+// ===== AI EMAIL ASSISTANT DEMO COMPONENTS =====
+
+const AIEmailAssistantDemo = ({ step }: { step: number }) => (
+  <div className="h-full p-6">
+    {/* Website Header */}
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">🤖 Intelligent Email Assistant with LLM</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-96">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border rounded-l-lg p-4 mr-4">
+        <h3 className="font-semibold mb-4">Apps & APIs</h3>
+        
+        {/* Gmail */}
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 2 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-red-600" />
+            <div className="text-xs">
+              <div className="font-medium">Gmail</div>
+              <div className="text-gray-500">Email processing</div>
+            </div>
+          </div>
+        </div>
+
+        {/* AI/LLM */}
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 4 ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-purple-600" />
+            <div className="text-xs">
+              <div className="font-medium">OpenAI/Claude</div>
+              <div className="text-gray-500">AI analysis</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Google Sheets */}
+        <div className={`p-3 border rounded-lg mb-2 transition-all ${
+          step >= 7 ? 'border-green-300 bg-green-50' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sheet className="w-4 h-4 text-green-600" />
+            <div className="text-xs">
+              <div className="font-medium">Sheets</div>
+              <div className="text-gray-500">Analytics</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="flex-1 bg-gray-100 border rounded-r-lg relative overflow-hidden">
+        {/* Step 2: Gmail Input */}
+        {step >= 2 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 2 ? 'left-1/2 top-1/4 scale-110 animate-bounce' : ''
+          }`} style={{left: '20px', top: '20px'}}>
+            <div className="w-36 bg-white border-2 border-red-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-medium">Gmail Input</span>
+              </div>
+              {step >= 3 && <Badge className="text-xs bg-red-500">Search Emails</Badge>}
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: AI Processing */}
+        {step >= 4 && (
+          <div className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
+            step === 4 ? 'scale-110 animate-bounce' : ''
+          }`}>
+            <div className="w-40 bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-400 rounded-lg shadow-lg p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-medium">AI Processing</span>
+              </div>
+              {step >= 5 && <Badge className="text-xs bg-purple-500">LLM Analysis</Badge>}
+            </div>
+          </div>
+        )}
+
+        {/* Step 6: Gmail Response */}
+        {step >= 6 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 6 ? 'right-1/4 top-1/4 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', top: '20px'}}>
+            <div className="w-36 bg-white border-2 border-red-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-medium">Gmail Response</span>
+              </div>
+              {step >= 6 && <Badge className="text-xs bg-red-500">Send Email</Badge>}
+            </div>
+          </div>
+        )}
+
+        {/* Step 7: Analytics */}
+        {step >= 7 && (
+          <div className={`absolute transition-all duration-1000 ${
+            step === 7 ? 'right-1/4 bottom-1/4 scale-110 animate-bounce' : ''
+          }`} style={{right: '20px', bottom: '20px'}}>
+            <div className="w-36 bg-white border-2 border-green-300 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Sheet className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-medium">Analytics</span>
+              </div>
+              {step >= 7 && <Badge className="text-xs bg-green-500">Append Row</Badge>}
+            </div>
+          </div>
+        )}
+
+        {/* Configuration overlays */}
+        {(step === 3 || step === 5) && (
+          <div className="absolute left-1/2 top-1/3 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-64 bg-white border-2 border-blue-400 rounded-lg shadow-lg p-4 animate-pulse">
+              <div className="text-center text-blue-600 font-medium">
+                {step === 3 ? '⚙️ Configuring Email Search...' : '🤖 Setting up AI Prompts...'}
+              </div>
+              <div className="text-xs text-center text-gray-500 mt-1">
+                {step === 3 ? 'Monitoring customer support emails' : 'Custom AI instructions and knowledge base'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 8: Connection Animation */}
+        {step >= 8 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="aiArrow" markerWidth="8" markerHeight="6" 
+                refX="7" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#8B5CF6" />
+              </marker>
+            </defs>
+            <line x1="85" y1="35" x2="180" y2="100" stroke="#8B5CF6" strokeWidth="2" markerEnd="url(#aiArrow)" 
+                  className={step === 8 ? 'animate-pulse' : ''} strokeDasharray={step === 8 ? '3,3' : '0'} />
+            <line x1="220" y1="100" x2="315" y2="35" stroke="#8B5CF6" strokeWidth="2" markerEnd="url(#aiArrow)"
+                  className={step === 8 ? 'animate-pulse' : ''} strokeDasharray={step === 8 ? '3,3' : '0'} />
+            <line x1="220" y1="120" x2="315" y2="185" stroke="#8B5CF6" strokeWidth="2" markerEnd="url(#aiArrow)"
+                  className={step === 8 ? 'animate-pulse' : ''} strokeDasharray={step === 8 ? '3,3' : '0'} />
+          </svg>
+        )}
+
+        {step >= 9 && (
+          <div className="absolute left-1/2 bottom-4 transform -translate-x-1/2">
+            <div className="bg-white rounded-full px-4 py-2 shadow-lg border-2 border-purple-300 animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-purple-500 rounded-full animate-ping"></div>
+                <span className="text-sm font-medium">🤖 AI Processing Email...</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Detailed Status Messages */}
+    <div className="mt-4 h-16 flex items-center justify-center">
+      {step === 1 && <div className="text-blue-600 text-center">🚀 Setting up AI Email Assistant monitoring system...</div>}
+      {step === 2 && <div className="text-red-600 text-center">📧 Gmail input node added - will receive customer emails...</div>}
+      {step === 3 && <div className="text-red-600 text-center">⚙️ Configuring to search 'label:customer-support is:unread'...</div>}
+      {step === 4 && <div className="text-purple-600 text-center">🧠 AI Processing node added - will analyze emails with LLM...</div>}
+      {step === 5 && <div className="text-purple-600 text-center">🤖 AI configured with custom prompts and company knowledge...</div>}
+      {step === 6 && <div className="text-red-600 text-center">📤 Gmail response node added - will send AI-generated replies...</div>}
+      {step === 7 && <div className="text-green-600 text-center">📊 Analytics tracking added - will log interactions and sentiment...</div>}
+      {step >= 8 && <div className="text-purple-600 text-center">🎯 AI Pipeline Connected! Email → AI Analysis → Intelligent Response → Analytics</div>}
+    </div>
+  </div>
+);
+
+const AIEmailAssistantResults = ({ step }: { step: number }) => (
+  <div className="h-full bg-white p-6">
+    {step === 1 && (
+      <div className="grid grid-cols-2 gap-6 h-full">
+        {/* Customer Email */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Mail className="w-6 h-6 text-red-600" />
+            <h3 className="text-lg font-semibold">Customer Email</h3>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+            <div className="text-sm mb-2"><strong>From:</strong> sarah@techcorp.com</div>
+            <div className="text-sm mb-2"><strong>Subject:</strong> API Integration Help Needed</div>
+            <div className="text-sm mb-3">
+              <strong>Body:</strong> Hi, I'm having trouble with your API. Getting 404 errors on webhook setup. Can you help?
+            </div>
+            <Badge className="bg-orange-500 text-white">⏳ Awaiting AI Response</Badge>
+          </div>
+        </div>
+
+        {/* AI Response */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-6 h-6 text-purple-600" />
+            <h3 className="text-lg font-semibold">AI Generated Response</h3>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-purple-50 border-purple-200">
+            <div className="text-sm mb-3 bg-white p-3 rounded border">
+              Hi Sarah,<br/><br/>
+              I understand you're experiencing 404 errors with webhook setup. This typically indicates an endpoint configuration issue.<br/><br/>
+              Here's how to resolve this:<br/>
+              1. Verify your webhook URL in the dashboard<br/>
+              2. Ensure your API key has webhook permissions<br/>
+              3. Check that your endpoint accepts POST requests<br/><br/>
+              I've also scheduled a technical consultation for you.<br/><br/>
+              Best regards,<br/>
+              Technical Support Team
+            </div>
+            <Badge className="bg-green-500 text-white">✅ AI Response Sent</Badge>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step === 2 && (
+      <div className="h-full">
+        <div className="flex items-center gap-2 mb-4">
+          <Sheet className="w-6 h-6 text-green-600" />
+          <h3 className="text-lg font-semibold">AI Analytics Dashboard</h3>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-green-600 text-white p-2 text-sm font-medium">Response Quality</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Customer Satisfaction:</span>
+                <span className="font-medium text-green-600">4.9/5.0</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Response Accuracy:</span>
+                <span className="font-medium">96%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Tone Matching:</span>
+                <span className="font-medium">94%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-purple-600 text-white p-2 text-sm font-medium">AI Performance</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Avg Response Time:</span>
+                <span className="font-medium">1.8 seconds</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Auto-Resolution:</span>
+                <span className="font-medium text-purple-600">82%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Languages:</span>
+                <span className="font-medium">15</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-blue-600 text-white p-2 text-sm font-medium">Business Impact</div>
+            <div className="p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Cost Savings:</span>
+                <span className="font-medium text-green-600">$2,400/mo</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Time Saved:</span>
+                <span className="font-medium">120 hrs/mo</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Efficiency Gain:</span>
+                <span className="font-medium">340%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step === 3 && (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-2xl">
+          <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Brain className="w-12 h-12 text-white" />
+          </div>
+          <h3 className="text-3xl font-bold text-purple-600 mb-4">🤖 AI Email Assistant Complete!</h3>
+          <p className="text-gray-600 text-lg mb-6">
+            Your intelligent email assistant is now handling customer inquiries with advanced AI, 
+            providing professional responses in multiple languages with 96% accuracy.
+          </p>
+          <div className="flex gap-6 justify-center">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">82%</div>
+              <div className="text-sm text-gray-600">Auto-Resolution</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600">1.8s</div>
+              <div className="text-sm text-gray-600">Response Time</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">$2.4K</div>
+              <div className="text-sm text-gray-600">Monthly Savings</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+// ===== CUSTOMER SUPPORT AUTOMATION DEMO COMPONENTS =====
+
+const CustomerSupportDemo = ({ step }: { step: number }) => (
+  <div className="h-full p-6">
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">🎧 Advanced Customer Support Automation</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="text-center h-full flex items-center justify-center">
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Customer Support Demo - Step {step}</h3>
+        <p className="text-gray-600">Gmail → AI Triage → Sheets → Calendar workflow</p>
+        <div className="mt-4">
+          <Badge className="bg-blue-500 text-white">Step {step} of 12</Badge>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const CustomerSupportResults = ({ step }: { step: number }) => (
+  <div className="h-full p-6 text-center flex items-center justify-center">
+    <div>
+      <h3 className="text-lg font-semibold text-blue-600 mb-2">🎧 Support System Results</h3>
+      <p className="text-gray-600">AI-powered support with intelligent triage and responses</p>
+      <Badge className="mt-4 bg-green-500 text-white">✅ Support Automation Active</Badge>
+    </div>
+  </div>
+);
+
+// ===== SLACK BRIDGE DEMO COMPONENTS =====
+
+const SlackBridgeDemo = ({ step }: { step: number }) => (
+  <div className="h-full p-6">
+    <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <span className="text-white font-bold">AS</span>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">Visual Automation Builder</h1>
+          <p className="text-sm text-gray-600">💬 Slack-Google Workspace Bridge</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="text-center h-full flex items-center justify-center">
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Slack Bridge Demo - Step {step}</h3>
+        <p className="text-gray-600">Slack → Google Workspace integration workflow</p>
+        <div className="mt-4">
+          <Badge className="bg-purple-500 text-white">Step {step} of 12</Badge>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const SlackBridgeResults = ({ step }: { step: number }) => (
+  <div className="h-full p-6 text-center flex items-center justify-center">
+    <div>
+      <h3 className="text-lg font-semibold text-purple-600 mb-2">💬 Slack Bridge Results</h3>
+      <p className="text-gray-600">Complete Slack-Google Workspace synchronization</p>
+      <Badge className="mt-4 bg-purple-500 text-white">✅ Integration Bridge Active</Badge>
+    </div>
+  </div>
+);
 
 // ===== MAIN COMPONENT =====
 
