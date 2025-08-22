@@ -393,51 +393,87 @@ export const TOTAL_SUPPORTED_APPS =
 
 console.log(`Total Supported Applications: ${TOTAL_SUPPORTED_APPS}`);
 
-// Export the missing functions that aiModels.ts needs
+// Enhanced app detection with specific keyword matching
 export function detectAppsFromPrompt(prompt: string): any[] {
   const lowerPrompt = prompt.toLowerCase();
   const detectedApps: any[] = [];
   const allApps = generateCompleteAppDatabase();
   
-  // Check each app for keyword matches
-  allApps.forEach(app => {
-    const appKeywords = [
-      app.name.toLowerCase(),
-      ...app.name.toLowerCase().split(' '),
-      ...app.category.toLowerCase().split(' '),
-      ...app.description.toLowerCase().split(' ')
-    ];
-    
-    const hasMatch = appKeywords.some(keyword => 
-      keyword.length > 2 && lowerPrompt.includes(keyword)
-    );
-    
-    if (hasMatch) {
-      detectedApps.push(app);
+  // Direct app name matching (highest priority)
+  const directMatches = [
+    { keywords: ['shopify'], appName: 'Shopify' },
+    { keywords: ['stripe'], appName: 'Stripe' },
+    { keywords: ['slack'], appName: 'Slack' },
+    { keywords: ['salesforce'], appName: 'Salesforce' },
+    { keywords: ['hubspot'], appName: 'HubSpot' },
+    { keywords: ['asana'], appName: 'Asana' },
+    { keywords: ['trello'], appName: 'Trello' },
+    { keywords: ['gmail'], appName: 'Gmail' },
+    { keywords: ['google sheets', 'sheets'], appName: 'Google Sheets' },
+    { keywords: ['google calendar', 'calendar'], appName: 'Google Calendar' },
+    { keywords: ['google drive', 'drive'], appName: 'Google Drive' },
+    { keywords: ['microsoft teams', 'teams'], appName: 'Microsoft Teams' },
+    { keywords: ['discord'], appName: 'Discord' },
+    { keywords: ['zoom'], appName: 'Zoom' },
+    { keywords: ['mailchimp'], appName: 'Mailchimp' },
+    { keywords: ['github'], appName: 'GitHub' },
+    { keywords: ['jira'], appName: 'Jira' },
+    { keywords: ['monday.com', 'monday'], appName: 'Monday.com' }
+  ];
+
+  // Check for direct app name matches first
+  directMatches.forEach(({ keywords, appName }) => {
+    const hasDirectMatch = keywords.some(keyword => lowerPrompt.includes(keyword));
+    if (hasDirectMatch) {
+      const app = allApps.find(a => a.name === appName);
+      if (app && !detectedApps.find(d => d.name === appName)) {
+        detectedApps.push(app);
+      }
     }
   });
-  
-  // If no specific apps detected, suggest based on intent
+
+  // If no direct matches, use context-based detection
   if (detectedApps.length === 0) {
-    if (lowerPrompt.includes('email')) {
-      const gmailApp = allApps.find(app => app.name === 'Gmail');
-      if (gmailApp) detectedApps.push(gmailApp);
+    // E-commerce context
+    if (lowerPrompt.includes('order') || lowerPrompt.includes('product') || lowerPrompt.includes('store')) {
+      const shopifyApp = allApps.find(app => app.name === 'Shopify');
+      if (shopifyApp) detectedApps.push(shopifyApp);
     }
-    if (lowerPrompt.includes('spreadsheet') || lowerPrompt.includes('data')) {
-      const sheetsApp = allApps.find(app => app.name === 'Google Sheets');
-      if (sheetsApp) detectedApps.push(sheetsApp);
-    }
-    if (lowerPrompt.includes('calendar') || lowerPrompt.includes('schedule')) {
-      const calendarApp = allApps.find(app => app.name === 'Google Calendar');
-      if (calendarApp) detectedApps.push(calendarApp);
-    }
-    if (lowerPrompt.includes('payment') || lowerPrompt.includes('charge')) {
+    
+    // Payment context
+    if (lowerPrompt.includes('payment') || lowerPrompt.includes('charge') || lowerPrompt.includes('billing')) {
       const stripeApp = allApps.find(app => app.name === 'Stripe');
       if (stripeApp) detectedApps.push(stripeApp);
     }
-    if (lowerPrompt.includes('task') || lowerPrompt.includes('project')) {
+    
+    // Communication context
+    if (lowerPrompt.includes('notify') || lowerPrompt.includes('message') || lowerPrompt.includes('team')) {
+      const slackApp = allApps.find(app => app.name === 'Slack');
+      if (slackApp) detectedApps.push(slackApp);
+    }
+    
+    // CRM context
+    if (lowerPrompt.includes('lead') || lowerPrompt.includes('contact') || lowerPrompt.includes('crm')) {
+      const salesforceApp = allApps.find(app => app.name === 'Salesforce');
+      if (salesforceApp) detectedApps.push(salesforceApp);
+    }
+    
+    // Project management context
+    if (lowerPrompt.includes('task') || lowerPrompt.includes('project') || lowerPrompt.includes('assign')) {
       const asanaApp = allApps.find(app => app.name === 'Asana');
       if (asanaApp) detectedApps.push(asanaApp);
+    }
+    
+    // Default fallbacks
+    if (detectedApps.length === 0) {
+      if (lowerPrompt.includes('email')) {
+        const gmailApp = allApps.find(app => app.name === 'Gmail');
+        if (gmailApp) detectedApps.push(gmailApp);
+      }
+      if (lowerPrompt.includes('spreadsheet') || lowerPrompt.includes('data')) {
+        const sheetsApp = allApps.find(app => app.name === 'Google Sheets');
+        if (sheetsApp) detectedApps.push(sheetsApp);
+      }
     }
   }
   

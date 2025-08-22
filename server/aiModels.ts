@@ -237,6 +237,8 @@ class MultiAIService {
     const detectedApps = detectAppsFromPrompt(prompt);
     const appNames = detectedApps.map(app => app.name);
     
+    console.log(`Detected apps from prompt "${prompt}":`, appNames);
+    
     // Extract suggested functions from detected apps
     const functions: string[] = [];
     detectedApps.forEach(app => {
