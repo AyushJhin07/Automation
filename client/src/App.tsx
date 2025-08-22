@@ -19,6 +19,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import PreBuiltApps from "./pages/PreBuiltApps";
 import AIBuilder from "./pages/AIBuilder";
+import AdminSettings from "./pages/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/ai-builder" element={<AIBuilder />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/pre-built-apps" element={<PreBuiltApps />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/contact" element={<Contact />} />

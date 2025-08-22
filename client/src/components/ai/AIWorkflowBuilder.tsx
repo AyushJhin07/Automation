@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { PaywallModal } from '@/components/auth/PaywallModal';
 import { 
   Brain, 
   Sparkles, 
@@ -54,6 +55,8 @@ export const AIWorkflowBuilder: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('auto');
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [isPaidUser, setIsPaidUser] = useState(false); // TODO: Replace with real auth check
 
   // Load available AI models on component mount
   useEffect(() => {
@@ -75,8 +78,20 @@ export const AIWorkflowBuilder: React.FC = () => {
   const handleGenerateWorkflow = async () => {
     if (!prompt.trim()) return;
     
+    // Check if user is paid (for now, allow 1 free trial)
+    const hasUsedTrial = localStorage.getItem('ai-builder-trial-used');
+    if (!isPaidUser && hasUsedTrial) {
+      setShowPaywall(true);
+      return;
+    }
+    
     setIsGenerating(true);
     setError(null);
+    
+    // Mark trial as used for demo purposes
+    if (!isPaidUser) {
+      localStorage.setItem('ai-builder-trial-used', 'true');
+    }
     
     try {
       // Call our backend API to generate workflow
@@ -406,76 +421,123 @@ function processCustomerEmails() {
             </CardContent>
           </Card>
 
-          {/* Visual Workflow Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Generated Workflow</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden">
-                {/* Render generated nodes */}
-                {generatedWorkflow.nodes.map((node, index) => (
-                  <div
-                    key={node.id}
-                    className="absolute"
-                    style={{
-                      left: `${node.position.x}px`,
-                      top: `${node.position.y}px`,
-                    }}
-                  >
-                    <div 
-                      className="w-24 h-24 rounded-xl flex flex-col items-center justify-center shadow-lg"
-                      style={{ 
-                        backgroundColor: node.color,
-                        boxShadow: `0 8px 20px ${node.color}30`
-                      }}
-                    >
-                      <node.icon className="w-6 h-6 text-white mb-1" />
-                      <span className="text-xs text-white font-medium text-center">
-                        {node.app}
-                      </span>
-                    </div>
-                    <Badge 
-                      className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs"
-                      style={{ backgroundColor: node.color }}
-                    >
-                      {node.function}
-                    </Badge>
-                  </div>
-                ))}
+                     {/* Professional Workflow Preview */}
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <Workflow className="w-5 h-5 text-blue-600" />
+                 Generated Workflow Preview
+               </CardTitle>
+             </CardHeader>
+             <CardContent>
+               <div className="relative h-80 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-200 overflow-hidden">
+                 {/* Professional Node Layout */}
+                 {generatedWorkflow.nodes.map((node, index) => {
+                   const x = 80 + (index % 3) * 200;
+                   const y = 60 + Math.floor(index / 3) * 120;
+                   
+                   return (
+                     <div
+                       key={node.id}
+                       className="absolute animate-fade-in"
+                       style={{
+                         left: `${x}px`,
+                         top: `${y}px`,
+                         animationDelay: `${index * 0.2}s`
+                       }}
+                     >
+                       {/* Professional Node Design */}
+                       <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-4 w-40 hover:shadow-xl transition-all">
+                         <div className="flex items-center gap-2 mb-2">
+                           <div 
+                             className="w-8 h-8 rounded-lg flex items-center justify-center"
+                             style={{ backgroundColor: node.color }}
+                           >
+                             <node.icon className="w-5 h-5 text-white" />
+                           </div>
+                           <div className="flex-1">
+                             <div className="font-medium text-sm text-gray-900">{node.app}</div>
+                             <div className="text-xs text-gray-500">{node.type}</div>
+                           </div>
+                         </div>
+                         
+                         <Badge 
+                           className="w-full text-xs text-white"
+                           style={{ backgroundColor: node.color }}
+                         >
+                           {node.function}
+                         </Badge>
+                         
+                         {/* Connection Points */}
+                         <div className="absolute -right-2 top-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg transform -translate-y-1/2"></div>
+                         {index > 0 && (
+                           <div className="absolute -left-2 top-1/2 w-4 h-4 bg-gray-400 rounded-full border-2 border-white shadow-lg transform -translate-y-1/2"></div>
+                         )}
+                       </div>
+                     </div>
+                   );
+                 })}
 
-                {/* Render connections */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                  <defs>
-                    <marker id="workflowArrow" markerWidth="8" markerHeight="6" 
-                      refX="7" refY="3" orient="auto">
-                      <polygon points="0 0, 8 3, 0 6" fill="#6366f1" />
-                    </marker>
-                  </defs>
-                  {generatedWorkflow.connections.map((conn, index) => {
-                    const sourceNode = generatedWorkflow.nodes.find(n => n.id === conn.source);
-                    const targetNode = generatedWorkflow.nodes.find(n => n.id === conn.target);
-                    
-                    if (!sourceNode || !targetNode) return null;
-                    
-                    return (
-                      <line
-                        key={conn.id}
-                        x1={sourceNode.position.x + 48}
-                        y1={sourceNode.position.y + 48}
-                        x2={targetNode.position.x + 48}
-                        y2={targetNode.position.y + 48}
-                        stroke="#6366f1"
-                        strokeWidth="3"
-                        markerEnd="url(#workflowArrow)"
-                        className="animate-pulse"
-                      />
-                    );
-                  })}
-                </svg>
-              </div>
-            </CardContent>
-          </Card>
+                 {/* Professional Connection Lines */}
+                 <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                   <defs>
+                     <marker id="professionalArrow" markerWidth="10" markerHeight="8" 
+                       refX="9" refY="4" orient="auto">
+                       <polygon points="0 0, 10 4, 0 8" fill="#3B82F6" />
+                     </marker>
+                   </defs>
+                   {generatedWorkflow.connections.map((conn, index) => {
+                     const sourceIndex = generatedWorkflow.nodes.findIndex(n => n.id === conn.source);
+                     const targetIndex = generatedWorkflow.nodes.findIndex(n => n.id === conn.target);
+                     
+                     if (sourceIndex === -1 || targetIndex === -1) return null;
+                     
+                     const sourceX = 80 + (sourceIndex % 3) * 200 + 160; // Right edge of source node
+                     const sourceY = 60 + Math.floor(sourceIndex / 3) * 120 + 40; // Center of source node
+                     const targetX = 80 + (targetIndex % 3) * 200; // Left edge of target node  
+                     const targetY = 60 + Math.floor(targetIndex / 3) * 120 + 40; // Center of target node
+                     
+                     return (
+                       <g key={conn.id}>
+                         <line
+                           x1={sourceX}
+                           y1={sourceY}
+                           x2={targetX}
+                           y2={targetY}
+                           stroke="#3B82F6"
+                           strokeWidth="3"
+                           markerEnd="url(#professionalArrow)"
+                           className="animate-pulse"
+                           strokeDasharray="0"
+                         />
+                         {/* Data Flow Animation */}
+                         <circle
+                           r="4"
+                           fill="#3B82F6"
+                           className="animate-pulse"
+                         >
+                           <animateMotion
+                             dur="2s"
+                             repeatCount="indefinite"
+                             path={`M ${sourceX} ${sourceY} L ${targetX} ${targetY}`}
+                           />
+                         </circle>
+                       </g>
+                     );
+                   })}
+                 </svg>
+
+                 {/* Workflow Stats */}
+                 <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 border">
+                   <div className="text-xs text-gray-600 space-y-1">
+                     <div>📊 {generatedWorkflow.nodes.length} Apps Connected</div>
+                     <div>⚡ {generatedWorkflow.connections.length} Data Flows</div>
+                     <div>🎯 {generatedWorkflow.complexity} Complexity</div>
+                   </div>
+                 </div>
+               </div>
+             </CardContent>
+           </Card>
 
           {/* Generated Google Apps Script Code */}
           <Card>
@@ -535,6 +597,13 @@ function processCustomerEmails() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Paywall Modal */}
+      <PaywallModal 
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature="AI Workflow Builder"
+      />
     </div>
   );
 };
