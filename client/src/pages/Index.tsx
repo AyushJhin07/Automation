@@ -6,7 +6,7 @@ import heroImage from "@/assets/hero-automation-interconnected.jpg";
 import { Link } from "react-router-dom";
 import {
   Mail, CalendarRange, FileSpreadsheet, FileText, BarChart3, FolderCog,
-  Inbox, CheckCircle2, Workflow, Code2, Download, Play
+  Inbox, CheckCircle2, Workflow, Code2, Download, Play, Sparkles
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { AutomationDialog } from "@/components/demos/AutomationDialog";
@@ -271,6 +271,16 @@ const Index = () => {
               <p className="text-lg text-muted-foreground mb-6 max-w-xl">
                 Get enterprise-grade Google Workspace automation with drag-and-drop simplicity + AI assistance. Why pay $5,000/month for AI agents when you can automate for $99/month?
               </p>
+              <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  <span className="font-semibold text-purple-800">NEW: AI Workflow Builder</span>
+                  <Badge className="bg-purple-600 text-white">500+ Apps</Badge>
+                </div>
+                <p className="text-sm text-purple-700">
+                  Describe any automation in plain English - our AI builds it instantly with Google Apps Script
+                </p>
+              </div>
               <div className="flex flex-wrap gap-3">
                 <Button asChild variant="hero" className="hover-scale">
                   <Link to="/ai-builder">🤖 Try AI Builder</Link>
