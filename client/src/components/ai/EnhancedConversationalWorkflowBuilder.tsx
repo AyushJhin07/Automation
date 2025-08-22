@@ -395,8 +395,20 @@ Need help? I can guide you through each step!`
                       </Button>
                       <Button
                         size="sm"
-                        onClick={handleViewCode}
+                        onClick={() => {
+                          // Save workflow to localStorage and open Graph Editor
+                          localStorage.setItem('ai_generated_workflow', JSON.stringify(message.data));
+                          window.open('/graph-editor?from=ai-builder', '_blank');
+                        }}
                         className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Edit in Graph Editor
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleViewCode}
+                        className="bg-purple-600 hover:bg-purple-700"
                       >
                         <Code className="w-4 h-4 mr-2" />
                         View Code
@@ -404,7 +416,7 @@ Need help? I can guide you through each step!`
                       <Button
                         size="sm"
                         onClick={handleDeployWorkflow}
-                        className="bg-purple-600 hover:bg-purple-700"
+                        className="bg-orange-600 hover:bg-orange-700"
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Deploy Now
@@ -434,16 +446,32 @@ Need help? I can guide you through each step!`
                   </label>
                   
                   {question.choices ? (
-                    <select
-                      className="w-full p-2 bg-slate-700 border border-slate-600 rounded text-white"
-                      value={questionAnswers[question.id] || ''}
-                      onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
-                    >
-                      <option value="">Select an option...</option>
+                    <div className="space-y-2">
                       {question.choices.map((choice) => (
-                        <option key={choice} value={choice}>{choice}</option>
+                        <button
+                          key={choice}
+                          onClick={() => handleAnswerQuestion(question.id, choice)}
+                          className={`w-full p-3 text-left rounded-lg border transition-all ${
+                            questionAnswers[question.id] === choice
+                              ? 'bg-blue-600 border-blue-500 text-white'
+                              : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:border-blue-500'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                              questionAnswers[question.id] === choice
+                                ? 'border-white bg-white'
+                                : 'border-slate-400'
+                            }`}>
+                              {questionAnswers[question.id] === choice && (
+                                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              )}
+                            </div>
+                            <span>{choice}</span>
+                          </div>
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   ) : (
                     <Input
                       placeholder="Type your answer..."
@@ -457,11 +485,15 @@ Need help? I can guide you through each step!`
               
               <Button
                 onClick={handleSubmitAnswers}
-                disabled={Object.keys(questionAnswers).length === 0}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={Object.keys(questionAnswers).length === 0 || isProcessing}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               >
-                <Send className="w-4 h-4 mr-2" />
-                Submit Answers
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2" />
+                )}
+                {isProcessing ? 'Processing...' : 'Submit Answers'}
               </Button>
             </CardContent>
           </Card>

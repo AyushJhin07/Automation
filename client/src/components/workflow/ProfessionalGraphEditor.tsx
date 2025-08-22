@@ -17,7 +17,9 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   Panel,
-  MiniMap
+  MiniMap,
+  Handle,
+  Position
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -116,10 +118,12 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
           </div>
         )}
         
-        {/* Connection points */}
-        <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-          <div className="w-4 h-4 bg-white rounded-full border-2 border-green-500 shadow-lg"></div>
-        </div>
+        {/* ReactFlow Handles */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="w-3 h-3 bg-white border-2 border-green-500"
+        />
       </div>
     </div>
   );
@@ -191,13 +195,17 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
           </div>
         )}
         
-        {/* Connection points */}
-        <div className="absolute -left-2 top-1/2 transform -translate-y-1/2">
-          <div className="w-4 h-4 bg-white rounded-full border-2 border-blue-500 shadow-lg"></div>
-        </div>
-        <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-          <div className="w-4 h-4 bg-white rounded-full border-2 border-blue-500 shadow-lg"></div>
-        </div>
+        {/* ReactFlow Handles */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-3 h-3 bg-white border-2 border-blue-500"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="w-3 h-3 bg-white border-2 border-blue-500"
+        />
       </div>
     </div>
   );
@@ -263,13 +271,17 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
           </div>
         )}
         
-        {/* Connection points */}
-        <div className="absolute -left-2 top-1/2 transform -translate-y-1/2">
-          <div className="w-4 h-4 bg-white rounded-full border-2 border-purple-500 shadow-lg"></div>
-        </div>
-        <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-          <div className="w-4 h-4 bg-white rounded-full border-2 border-purple-500 shadow-lg"></div>
-        </div>
+        {/* ReactFlow Handles */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-3 h-3 bg-white border-2 border-purple-500"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="w-3 h-3 bg-white border-2 border-purple-500"
+        />
       </div>
     </div>
   );
@@ -333,19 +345,37 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   const nodeTemplates = [
-    // Triggers
+    // Time Triggers
     { 
       type: 'trigger', 
       category: 'triggers',
-      label: 'Time Trigger', 
-      description: 'Run on schedule',
+      label: 'Every 15 Minutes', 
+      description: 'Run every 15 minutes',
       icon: Clock,
       data: { app: 'Google Apps Script', params: { everyMinutes: 15 } }
     },
     { 
       type: 'trigger', 
       category: 'triggers',
-      label: 'Gmail Trigger', 
+      label: 'Every Hour', 
+      description: 'Run every hour',
+      icon: Clock,
+      data: { app: 'Google Apps Script', params: { everyHours: 1 } }
+    },
+    { 
+      type: 'trigger', 
+      category: 'triggers',
+      label: 'Daily at 9 AM', 
+      description: 'Run daily at 9 AM',
+      icon: Clock,
+      data: { app: 'Google Apps Script', params: { everyHours: 24, startHour: 9 } }
+    },
+    
+    // Gmail Triggers
+    { 
+      type: 'trigger', 
+      category: 'triggers',
+      label: 'New Gmail Email', 
       description: 'New email received',
       icon: Mail,
       data: { app: 'Gmail', params: { query: 'is:unread' } }
@@ -353,36 +383,172 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
     { 
       type: 'trigger', 
       category: 'triggers',
-      label: 'Sheets Trigger', 
-      description: 'New row added',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: '' } }
+      label: 'Gmail with Attachment', 
+      description: 'Email with attachment',
+      icon: Mail,
+      data: { app: 'Gmail', params: { query: 'has:attachment' } }
+    },
+    { 
+      type: 'trigger', 
+      category: 'triggers',
+      label: 'Gmail from Sender', 
+      description: 'Email from specific sender',
+      icon: Mail,
+      data: { app: 'Gmail', params: { query: 'from:example@domain.com' } }
     },
     
-    // Actions
+    // Sheets Triggers
+    { 
+      type: 'trigger', 
+      category: 'triggers',
+      label: 'New Sheets Row', 
+      description: 'New row added to sheet',
+      icon: Sheet,
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: 'Sheet1' } }
+    },
+    { 
+      type: 'trigger', 
+      category: 'triggers',
+      label: 'Sheets Cell Changed', 
+      description: 'Specific cell updated',
+      icon: Sheet,
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1:Z1000' } }
+    },
+    
+    // Gmail Actions
     { 
       type: 'action', 
       category: 'actions',
       label: 'Send Email', 
       description: 'Send Gmail message',
       icon: Mail,
-      data: { app: 'Gmail', params: { to: '', subject: '', body: '' } }
+      data: { app: 'Gmail', params: { to: '', subject: '', bodyText: '' } }
     },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Reply to Email', 
+      description: 'Reply to Gmail thread',
+      icon: Mail,
+      data: { app: 'Gmail', params: { threadId: '', message: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Forward Email', 
+      description: 'Forward Gmail message',
+      icon: Mail,
+      data: { app: 'Gmail', params: { messageId: '', to: '', note: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Set Auto Reply', 
+      description: 'Set Gmail auto-reply',
+      icon: Mail,
+      data: { app: 'Gmail', params: { message: '', startDate: '', endDate: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Add Gmail Label', 
+      description: 'Add label to email',
+      icon: Mail,
+      data: { app: 'Gmail', params: { messageId: '', labelName: '' } }
+    },
+    
+    // Google Sheets Actions
     { 
       type: 'action', 
       category: 'actions',
       label: 'Add Row', 
-      description: 'Append to Google Sheets',
+      description: 'Append row to sheet',
       icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', values: [] } }
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: 'Sheet1', values: [] } }
     },
     { 
       type: 'action', 
       category: 'actions',
+      label: 'Update Cell', 
+      description: 'Update specific cell',
+      icon: Sheet,
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1', value: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Clear Range', 
+      description: 'Clear sheet range',
+      icon: Sheet,
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1:Z100' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Create Sheet', 
+      description: 'Create new sheet',
+      icon: Sheet,
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: 'New Sheet' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Sort Data', 
+      description: 'Sort sheet data',
+      icon: Sheet,
+      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1:Z100', column: 1 } }
+    },
+    
+    // Calendar Actions
+    { 
+      type: 'action', 
+      category: 'actions',
       label: 'Create Event', 
-      description: 'Add calendar event',
+      description: 'Create calendar event',
       icon: Calendar,
-      data: { app: 'Google Calendar', params: { title: '', start: '', end: '' } }
+      data: { app: 'Google Calendar', params: { title: '', start: '', end: '', description: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Update Event', 
+      description: 'Update existing event',
+      icon: Calendar,
+      data: { app: 'Google Calendar', params: { eventId: '', title: '', start: '', end: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Delete Event', 
+      description: 'Delete calendar event',
+      icon: Calendar,
+      data: { app: 'Google Calendar', params: { eventId: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Find Free Time', 
+      description: 'Find available time slots',
+      icon: Calendar,
+      data: { app: 'Google Calendar', params: { startDate: '', endDate: '', duration: 60 } }
+    },
+    
+    // External Apps
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Send Slack Message', 
+      description: 'Post to Slack channel',
+      icon: MessageSquare,
+      data: { app: 'Slack', params: { channel: '', message: '' } }
+    },
+    { 
+      type: 'action', 
+      category: 'actions',
+      label: 'Create Salesforce Lead', 
+      description: 'Create lead in Salesforce',
+      icon: Database,
+      data: { app: 'Salesforce', params: { firstName: '', lastName: '', email: '', company: '' } }
     },
     { 
       type: 'action', 
@@ -390,10 +556,10 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
       label: 'HTTP Request', 
       description: 'Call external API',
       icon: Globe,
-      data: { app: 'Built-in', params: { method: 'GET', url: '' } }
+      data: { app: 'Built-in', params: { method: 'GET', url: '', headers: {} } }
     },
     
-    // Transforms
+    // Transform Nodes
     { 
       type: 'transform', 
       category: 'transforms',
@@ -409,6 +575,30 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
       description: 'Template interpolation',
       icon: Code,
       data: { app: 'Built-in', params: { template: 'Hello {{name}}!' } }
+    },
+    { 
+      type: 'transform', 
+      category: 'transforms',
+      label: 'Extract Email', 
+      description: 'Extract email from text',
+      icon: Code,
+      data: { app: 'Built-in', params: { source: 'text', pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' } }
+    },
+    { 
+      type: 'transform', 
+      category: 'transforms',
+      label: 'Split Text', 
+      description: 'Split text by delimiter',
+      icon: Code,
+      data: { app: 'Built-in', params: { source: 'text', delimiter: ',' } }
+    },
+    { 
+      type: 'transform', 
+      category: 'transforms',
+      label: 'Date Format', 
+      description: 'Format date/time',
+      icon: Clock,
+      data: { app: 'Built-in', params: { source: 'date', format: 'YYYY-MM-DD' } }
     },
   ];
   
@@ -508,6 +698,70 @@ const GraphEditorContent = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const { project, getViewport, setViewport } = useReactFlow();
+
+  // Load AI-generated workflow if coming from AI Builder
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('from') === 'ai-builder') {
+      const savedWorkflow = localStorage.getItem('ai_generated_workflow');
+      if (savedWorkflow) {
+        try {
+          const workflowData = JSON.parse(savedWorkflow);
+          loadWorkflowIntoGraph(workflowData);
+          localStorage.removeItem('ai_generated_workflow'); // Clean up
+        } catch (error) {
+          console.error('Failed to load AI-generated workflow:', error);
+        }
+      }
+    }
+  }, []);
+
+  const loadWorkflowIntoGraph = (workflowData: any) => {
+    if (!workflowData.workflow?.graph) return;
+    
+    const graph = workflowData.workflow.graph;
+    const newNodes: Node[] = [];
+    const newEdges: Edge[] = [];
+    
+    // Convert NodeGraph to ReactFlow nodes
+    graph.nodes.forEach((node: any, index: number) => {
+      const nodeType = node.type.startsWith('trigger.') ? 'trigger' :
+                      node.type.startsWith('action.') ? 'action' : 'transform';
+      
+      newNodes.push({
+        id: node.id,
+        type: nodeType,
+        position: node.position || { x: 100 + index * 250, y: 200 },
+        data: {
+          label: node.label,
+          description: node.type,
+          app: node.app || 'Unknown',
+          params: node.params || {}
+        }
+      });
+    });
+    
+    // Convert edges
+    graph.edges.forEach((edge: any) => {
+      newEdges.push({
+        id: `edge-${edge.from}-${edge.to}`,
+        source: edge.from,
+        target: edge.to,
+        type: 'animated',
+        animated: true,
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+      });
+    });
+    
+    setNodes(newNodes);
+    setEdges(newEdges);
+    
+    // Show success message
+    setTimeout(() => {
+      alert(`✅ Loaded AI-generated workflow: "${graph.name}"\n\nNodes: ${newNodes.length}\nConnections: ${newEdges.length}`);
+    }, 500);
+  };
   
   const onConnect = useCallback((params: Connection) => {
     const edge = {
