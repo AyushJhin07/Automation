@@ -1,4 +1,4 @@
-import { graphValidator } from './GraphValidator';
+import { simpleGraphValidator } from './SimpleGraphValidator';
 
 export interface CompilerOptions {
   projectName?: string;
@@ -28,7 +28,7 @@ export class GraphCompiler {
    */
   public compile(graph: any, options: CompilerOptions = {}): CompilerResult {
     // First validate the graph
-    const validation = graphValidator.validate(graph);
+    const validation = simpleGraphValidator.validate(graph);
     if (!validation.valid) {
       throw new Error(`Cannot compile invalid graph: ${validation.errors.map(e => e.message).join(', ')}`);
     }

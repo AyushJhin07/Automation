@@ -5,10 +5,8 @@ import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
 import { RealAIService, ConversationManager } from "./realAIService";
 import { WorkflowAPI } from "./workflowAPI";
-// Temporarily commented out to fix import issues
-// import { graphValidator } from "./core/GraphValidator.js";
-// import { graphCompiler } from "./core/GraphCompiler.js";
-// import { googleAppsScriptDeployer } from "./core/GoogleAppsScriptDeployer.js";
+import { simpleGraphValidator } from "./core/SimpleGraphValidator.js";
+import { graphCompiler } from "./core/GraphCompiler.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Google Apps Script automation routes
@@ -17,10 +15,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI workflow generation routes
   registerAIWorkflowRoutes(app);
 
-  // NEW Proper Backend Pipeline API - TEMPORARILY DISABLED
+  // NEW Proper Backend Pipeline API - RE-ENABLED
   
-  // TODO: Re-enable after fixing import issues
-  /*
   // Workflow API endpoints
   app.post('/api/workflow/clarify', async (req, res) => {
     try {
@@ -144,7 +140,7 @@ Return JSON:
         return res.status(400).json({ error: 'Graph is required' });
       }
 
-      const validation = graphValidator.validate(graph);
+      const validation = simpleGraphValidator.validate(graph);
       res.json({ success: true, ...validation });
     } catch (error) {
       res.status(500).json({ error: error.message, success: false });
@@ -172,13 +168,16 @@ Return JSON:
         return res.status(400).json({ error: 'Files are required' });
       }
 
-      const deployment = await googleAppsScriptDeployer.deploy(files, options || {});
-      res.json({ success: deployment.success, ...deployment });
+      // For now, return deployment instructions instead of actual deployment
+      res.json({ 
+        success: true, 
+        message: 'Deployment instructions generated',
+        instructions: 'Please use clasp to deploy manually. Full deployment coming soon.'
+      });
     } catch (error) {
       res.status(500).json({ error: error.message, success: false });
     }
   });
-  */
 
   // REAL AI Conversation API
   app.post('/api/ai/conversation', async (req, res) => {
