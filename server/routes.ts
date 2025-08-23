@@ -4,254 +4,615 @@ import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
 import { RealAIService, ConversationManager } from "./realAIService";
-import { WorkflowAPI } from "./workflowAPI";
-import { simpleGraphValidator } from "./core/SimpleGraphValidator.js";
-import { graphCompiler } from "./core/GraphCompiler.js";
+
+// Production services
+import { authService } from "./services/AuthService";
+import { connectionService } from "./services/ConnectionService";
+import { productionLLMOrchestrator } from "./services/ProductionLLMOrchestrator";
+import { productionGraphCompiler } from "./core/ProductionGraphCompiler";
+import { productionDeployer } from "./core/ProductionDeployer";
+import { connectorFramework } from "./connectors/ConnectorFramework";
+import { healthMonitoringService } from "./services/HealthMonitoringService";
+import { usageMeteringService } from "./services/UsageMeteringService";
+import { securityService } from "./services/SecurityService";
+
+// Middleware
+import { 
+  authenticateToken, 
+  optionalAuth, 
+  checkQuota, 
+  rateLimit, 
+  adminOnly, 
+  proOrHigher 
+} from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Google Apps Script automation routes
-  registerGoogleAppsRoutes(app);
   
-  // AI workflow generation routes
+  // Apply global security middleware
+  app.use(securityService.securityHeaders());
+  app.use(securityService.requestMonitoring());
+  
+  // Apply global rate limiting (100 requests per minute)
+  app.use(securityService.createRateLimiter({
+    windowMs: 60000,
+    maxRequests: 100
+  }));
+
+  // Legacy routes (for backward compatibility)
+  registerGoogleAppsRoutes(app);
   registerAIWorkflowRoutes(app);
 
-  // NEW Proper Backend Pipeline API - RE-ENABLED
+  // ===== AUTHENTICATION ROUTES =====
   
-  // Workflow API endpoints
-  app.post('/api/workflow/clarify', async (req, res) => {
-    try {
-      const { prompt, context, model = 'gemini-1.5-flash', apiKey } = req.body;
-
-      if (!prompt || !apiKey) {
-        return res.status(400).json({ error: 'Prompt and API key are required' });
+  app.post('/api/auth/register', 
+    securityService.validateInput([
+      { field: 'email', type: 'email', required: true, sanitize: true },
+      { field: 'password', type: 'string', required: true, minLength: 8 },
+      { field: 'name', type: 'string', required: false, maxLength: 255, sanitize: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await authService.register(req.body);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
       }
-
-      const systemPrompt = `You are an automation analyst for Google Apps Script. Ask essential clarifying questions.
-
-Return JSON:
-{
-  "questions": [
-    {
-      "id": "trigger_type",
-      "text": "What should trigger this automation?",
-      "type": "choice",
-      "choices": ["Time schedule", "New email", "Webhook"],
-      "required": true,
-      "category": "trigger"
     }
-  ]
-}`;
+  );
 
-      const aiResponse = await RealAIService.processAutomationRequest(
-        `${systemPrompt}\n\nAnalyze: "${prompt}"`,
-        model,
-        apiKey,
-        []
+  app.post('/api/auth/login',
+    securityService.validateInput([
+      { field: 'email', type: 'email', required: true },
+      { field: 'password', type: 'string', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await authService.login(req.body);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.post('/api/auth/refresh',
+    securityService.validateInput([
+      { field: 'refreshToken', type: 'string', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await authService.refreshToken(req.body.refreshToken);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (token) {
+        await authService.logout(token);
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== CONNECTION MANAGEMENT ROUTES =====
+
+  app.post('/api/connections', 
+    authenticateToken,
+    checkQuota(1),
+    securityService.validateInput([
+      { field: 'name', type: 'string', required: true, maxLength: 255, sanitize: true },
+      { field: 'provider', type: 'string', required: true, allowedValues: ['openai', 'gemini', 'claude', 'slack', 'gmail'] },
+      { field: 'type', type: 'string', required: true, allowedValues: ['llm', 'saas', 'database'] },
+      { field: 'credentials', type: 'json', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const connectionId = await connectionService.createConnection({
+          userId: req.user!.id,
+          ...req.body
+        });
+        res.json({ success: true, connectionId });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.get('/api/connections', authenticateToken, async (req, res) => {
+    try {
+      const connections = await connectionService.getUserConnections(req.user!.id);
+      // Mask credentials for security
+      const maskedConnections = connections.map(conn => connectionService.maskCredentials(conn));
+      res.json({ success: true, connections: maskedConnections });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/connections/:id/test', 
+    authenticateToken,
+    checkQuota(1),
+    async (req, res) => {
+      try {
+        const result = await connectionService.testConnection(req.params.id, req.user!.id);
+        res.json({ success: true, ...result });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.delete('/api/connections/:id', authenticateToken, async (req, res) => {
+    try {
+      await connectionService.deleteConnection(req.params.id, req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== PRODUCTION LLM ORCHESTRATOR ROUTES =====
+
+  app.post('/api/workflow/clarify', 
+    authenticateToken,
+    checkQuota(1, 500),
+    securityService.validateInput([
+      { field: 'prompt', type: 'string', required: true, maxLength: 10000, sanitize: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await productionLLMOrchestrator.clarifyIntent({
+          prompt: req.body.prompt,
+          userId: req.user!.id,
+          context: req.body.context || {}
+        });
+
+        // Record usage
+        if (result.tokensUsed) {
+          await usageMeteringService.recordApiUsage(
+            req.user!.id,
+            1,
+            result.tokensUsed,
+            result.cost || 0
+          );
+        }
+
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.post('/api/workflow/plan',
+    authenticateToken,
+    checkQuota(1, 1500),
+    securityService.validateInput([
+      { field: 'prompt', type: 'string', required: true, maxLength: 10000, sanitize: true },
+      { field: 'answers', type: 'json', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await productionLLMOrchestrator.planWorkflow({
+          prompt: req.body.prompt,
+          answers: req.body.answers,
+          userId: req.user!.id,
+          context: req.body.context || {}
+        });
+
+        // Record usage
+        if (result.tokensUsed) {
+          await usageMeteringService.recordApiUsage(
+            req.user!.id,
+            1,
+            result.tokensUsed,
+            result.cost || 0
+          );
+        }
+
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.post('/api/workflow/fix',
+    authenticateToken,
+    checkQuota(1, 800),
+    securityService.validateInput([
+      { field: 'graph', type: 'json', required: true },
+      { field: 'errors', type: 'array', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await productionLLMOrchestrator.fixWorkflow({
+          graph: req.body.graph,
+          errors: req.body.errors,
+          userId: req.user!.id
+        });
+
+        // Record usage
+        if (result.tokensUsed) {
+          await usageMeteringService.recordApiUsage(
+            req.user!.id,
+            1,
+            result.tokensUsed,
+            result.cost || 0
+          );
+        }
+
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  // ===== GRAPH COMPILER ROUTES =====
+
+  app.post('/api/workflow/compile',
+    authenticateToken,
+    checkQuota(1),
+    securityService.validateInput([
+      { field: 'graph', type: 'json', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = productionGraphCompiler.compile(req.body.graph, req.body.options || {});
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  // ===== DEPLOYMENT ROUTES =====
+
+  app.post('/api/workflow/deploy',
+    authenticateToken,
+    proOrHigher, // Deployment requires Pro plan or higher
+    checkQuota(1),
+    securityService.validateInput([
+      { field: 'files', type: 'array', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        const result = await productionDeployer.deploy(req.body.files, req.body.options || {});
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.get('/api/deployment/prerequisites', authenticateToken, async (req, res) => {
+    try {
+      const result = await productionDeployer.validatePrerequisites();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== CONNECTOR FRAMEWORK ROUTES =====
+
+  app.get('/api/connectors', optionalAuth, async (req, res) => {
+    try {
+      const { search, category, limit } = req.query;
+      const connectors = await connectorFramework.searchConnectors(
+        search as string,
+        category as string,
+        parseInt(limit as string) || 50
       );
-
-      const result = JSON.parse(aiResponse.response || '{}');
-
-      res.json({
-        success: true,
-        questions: result.questions || [],
-        tokensUsed: aiResponse.tokensUsed,
-        cost: aiResponse.cost
-      });
-
+      res.json({ success: true, connectors });
     } catch (error) {
-      res.status(500).json({ error: error.message, success: false });
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.post('/api/workflow/generate-complete', async (req, res) => {
+  app.get('/api/connectors/categories', async (req, res) => {
     try {
-      const { prompt, answers, model = 'gemini-1.5-flash', apiKey, options } = req.body;
-
-      if (!prompt || !apiKey) {
-        return res.status(400).json({ error: 'Prompt and API key are required' });
-      }
-
-      const systemPrompt = `Generate a NodeGraph for Google Apps Script automation.
-
-Return JSON:
-{
-  "graph": {
-    "id": "workflow_123",
-    "name": "Email Logger",
-    "nodes": [
-      {
-        "id": "trigger1",
-        "type": "trigger.gmail.new_email",
-        "position": {"x": 100, "y": 100},
-        "data": {"query": "is:unread"}
-      }
-    ],
-    "edges": []
-  },
-  "rationale": "This workflow..."
-}`;
-
-      const answersText = Object.entries(answers || {})
-        .map(([q, a]) => `Q: ${q}\nA: ${a}`)
-        .join('\n\n');
-
-      const aiResponse = await RealAIService.processAutomationRequest(
-        `${systemPrompt}\n\nRequest: "${prompt}"\n\nAnswers:\n${answersText}`,
-        model,
-        apiKey,
-        []
-      );
-
-      const result = JSON.parse(aiResponse.response || '{}');
-      const graph = result.graph || {
-        id: `fallback_${Date.now()}`,
-        name: 'Basic Automation',
-        nodes: [{
-          id: 'trigger1',
-          type: 'trigger.time.cron',
-          position: { x: 100, y: 100 },
-          data: { schedule: '@daily' }
-        }],
-        edges: []
-      };
-
-      // Compile to Google Apps Script
-      const compiled = graphCompiler.compile(graph, options || {});
-
-      res.json({
-        success: true,
-        graph: graph,
-        rationale: result.rationale || 'Generated workflow',
-        files: compiled.files,
-        manifest: compiled.manifest,
-        tokensUsed: aiResponse.tokensUsed,
-        cost: aiResponse.cost
-      });
-
+      const categories = await connectorFramework.getCategories();
+      res.json({ success: true, categories });
     } catch (error) {
-      res.status(500).json({ error: error.message, success: false });
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.post('/api/workflow/validate', async (req, res) => {
+  app.get('/api/connectors/:slug', async (req, res) => {
     try {
-      const { graph } = req.body;
-      if (!graph) {
-        return res.status(400).json({ error: 'Graph is required' });
+      const connector = await connectorFramework.getConnector(req.params.slug);
+      if (!connector) {
+        return res.status(404).json({ success: false, error: 'Connector not found' });
       }
-
-      const validation = simpleGraphValidator.validate(graph);
-      res.json({ success: true, ...validation });
+      res.json({ success: true, connector });
     } catch (error) {
-      res.status(500).json({ error: error.message, success: false });
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.post('/api/workflow/compile', async (req, res) => {
-    try {
-      const { graph, options } = req.body;
-      if (!graph) {
-        return res.status(400).json({ error: 'Graph is required' });
-      }
+  // ===== USAGE & BILLING ROUTES =====
 
-      const compiled = graphCompiler.compile(graph, options || {});
-      res.json({ success: true, ...compiled });
+  app.get('/api/usage', authenticateToken, async (req, res) => {
+    try {
+      const usage = await usageMeteringService.getUserUsage(req.user!.id);
+      res.json({ success: true, usage });
     } catch (error) {
-      res.status(500).json({ error: error.message, success: false });
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.post('/api/workflow/deploy', async (req, res) => {
+  app.get('/api/usage/quota', authenticateToken, async (req, res) => {
     try {
-      const { files, options } = req.body;
-      if (!files) {
-        return res.status(400).json({ error: 'Files are required' });
-      }
-
-      // For now, return deployment instructions instead of actual deployment
-      res.json({ 
-        success: true, 
-        message: 'Deployment instructions generated',
-        instructions: 'Please use clasp to deploy manually. Full deployment coming soon.'
-      });
+      const quota = await usageMeteringService.checkQuota(req.user!.id);
+      res.json({ success: true, quota });
     } catch (error) {
-      res.status(500).json({ error: error.message, success: false });
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  // REAL AI Conversation API
-  app.post('/api/ai/conversation', async (req, res) => {
+  app.get('/api/plans', async (req, res) => {
     try {
-      const { prompt, model, apiKey, userId } = req.body;
-      
-      if (!prompt || !model || !apiKey) {
-        return res.status(400).json({ 
-          error: 'Prompt, model, and apiKey are required' 
+      const plans = usageMeteringService.getAvailablePlans();
+      res.json({ success: true, plans });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/upgrade',
+    authenticateToken,
+    securityService.validateInput([
+      { field: 'plan', type: 'string', required: true, allowedValues: ['free', 'pro', 'enterprise'] }
+    ]),
+    async (req, res) => {
+      try {
+        await usageMeteringService.upgradeUserPlan(req.user!.id, req.body.plan);
+        res.json({ success: true });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  // ===== HEALTH & MONITORING ROUTES =====
+
+  app.get('/api/health', async (req, res) => {
+    try {
+      const health = await healthMonitoringService.getSystemHealth();
+      res.json({ success: true, ...health });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/health/metrics', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const metrics = healthMonitoringService.getSystemMetrics();
+      res.json({ success: true, metrics });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/health/alerts', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const alerts = healthMonitoringService.getActiveAlerts();
+      res.json({ success: true, alerts });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/health/alerts/:id/resolve', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const resolved = healthMonitoringService.resolveAlert(req.params.id);
+      res.json({ success: resolved });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== SECURITY ROUTES =====
+
+  app.get('/api/security/events', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const events = securityService.getSecurityEvents(parseInt(req.query.limit as string) || 100);
+      res.json({ success: true, events });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/security/stats', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const stats = securityService.getSecurityStats();
+      res.json({ success: true, stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/security/block-ip',
+    authenticateToken,
+    adminOnly,
+    securityService.validateInput([
+      { field: 'ipAddress', type: 'string', required: true },
+      { field: 'reason', type: 'string', required: true, maxLength: 500, sanitize: true }
+    ]),
+    async (req, res) => {
+      try {
+        securityService.blockIP(req.body.ipAddress, req.body.reason);
+        res.json({ success: true });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.post('/api/security/unblock-ip',
+    authenticateToken,
+    adminOnly,
+    securityService.validateInput([
+      { field: 'ipAddress', type: 'string', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        securityService.unblockIP(req.body.ipAddress);
+        res.json({ success: true });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  // ===== ADMIN ANALYTICS ROUTES =====
+
+  app.get('/api/admin/analytics',
+    authenticateToken,
+    adminOnly,
+    async (req, res) => {
+      try {
+        const { startDate, endDate } = req.query;
+        const analytics = await usageMeteringService.getUsageAnalytics(
+          new Date(startDate as string),
+          new Date(endDate as string)
+        );
+        res.json({ success: true, analytics });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  app.get('/api/admin/reports',
+    authenticateToken,
+    adminOnly,
+    async (req, res) => {
+      try {
+        const healthReport = healthMonitoringService.generateHealthReport();
+        const securityReport = securityService.generateSecurityReport();
+        
+        res.json({
+          success: true,
+          reports: {
+            health: healthReport,
+            security: securityReport
+          }
+        });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  // ===== LEGACY AI CONVERSATION API (for backward compatibility) =====
+
+  app.post('/api/ai/conversation', 
+    authenticateToken,
+    checkQuota(1, 500),
+    async (req, res) => {
+      try {
+        const { prompt, model, apiKey, userId } = req.body;
+        
+        if (!prompt || !model || !apiKey) {
+          return res.status(400).json({ 
+            error: 'Prompt, model, and apiKey are required' 
+          });
+        }
+
+        console.log(`🧠 REAL AI Conversation Request:`, { model, prompt: prompt.substring(0, 100) });
+
+        // Get conversation history
+        const conversationHistory = ConversationManager.getConversation(userId);
+        
+        // Add user message to conversation
+        ConversationManager.addMessage(userId, 'user', prompt);
+
+        // Call REAL AI service
+        const aiResponse = await RealAIService.processAutomationRequest(
+          prompt,
+          model,
+          apiKey,
+          conversationHistory
+        );
+
+        // Add AI response to conversation
+        ConversationManager.addMessage(userId, 'assistant', aiResponse.response);
+
+        // Record usage
+        await usageMeteringService.recordApiUsage(
+          req.user!.id,
+          1,
+          aiResponse.tokensUsed || 0,
+          aiResponse.cost || 0
+        );
+
+        console.log(`✅ REAL AI Response: ${aiResponse.model}, ${aiResponse.tokensUsed} tokens, $${aiResponse.cost.toFixed(4)}`);
+
+        res.json({
+          ...aiResponse,
+          conversationHistory: ConversationManager.getConversation(userId)
+        });
+
+      } catch (error) {
+        console.error('❌ Real AI conversation error:', error);
+        res.status(500).json({ 
+          error: error.message || 'Failed to process AI request',
+          model: req.body.model || 'unknown'
         });
       }
-
-      console.log(`🧠 REAL AI Conversation Request:`, { model, prompt: prompt.substring(0, 100) });
-
-      // Get conversation history
-      const conversationHistory = ConversationManager.getConversation(userId);
-      
-      // Add user message to conversation
-      ConversationManager.addMessage(userId, 'user', prompt);
-
-      // Call REAL AI service
-      const aiResponse = await RealAIService.processAutomationRequest(
-        prompt,
-        model,
-        apiKey,
-        conversationHistory
-      );
-
-      // Add AI response to conversation
-      ConversationManager.addMessage(userId, 'assistant', aiResponse.response);
-
-      console.log(`✅ REAL AI Response: ${aiResponse.model}, ${aiResponse.tokensUsed} tokens, $${aiResponse.cost.toFixed(4)}`);
-
-      res.json({
-        ...aiResponse,
-        conversationHistory: ConversationManager.getConversation(userId)
-      });
-
-    } catch (error) {
-      console.error('❌ Real AI conversation error:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to process AI request',
-        model: req.body.model || 'unknown'
-      });
     }
-  });
+  );
 
   // Clear conversation history
-  app.delete('/api/ai/conversation/:userId', (req, res) => {
+  app.delete('/api/ai/conversation/:userId', authenticateToken, (req, res) => {
     const { userId } = req.params;
     ConversationManager.clearConversation(userId);
     res.json({ success: true });
   });
 
-  // Health check endpoint
-  app.get('/api/health', (req, res) => {
-    res.json({ 
-      status: 'healthy', 
-      timestamp: new Date().toISOString(),
-      version: '1.0.0'
-    });
-  });
+  // ===== AUTOMATION MANAGEMENT ROUTES =====
 
-  // Automation management endpoints
-  app.get('/api/automations', (req, res) => {
+  app.get('/api/automations', authenticateToken, async (req, res) => {
     // TODO: Get saved automations from storage
     res.json({ automations: [] });
   });
 
-  app.post('/api/automations', (req, res) => {
-    // TODO: Save automation to storage
-    const { name, nodes, edges } = req.body;
-    res.json({ success: true, id: Date.now().toString() });
-  });
+  app.post('/api/automations', 
+    authenticateToken,
+    checkQuota(1),
+    securityService.validateInput([
+      { field: 'name', type: 'string', required: true, maxLength: 255, sanitize: true },
+      { field: 'nodes', type: 'array', required: true },
+      { field: 'edges', type: 'array', required: true }
+    ]),
+    async (req, res) => {
+      try {
+        // TODO: Save automation to storage
+        const { name, nodes, edges } = req.body;
+        
+        // Record workflow creation
+        await usageMeteringService.recordWorkflowExecution(
+          req.user!.id,
+          `workflow_${Date.now()}`,
+          true
+        );
+        
+        res.json({ success: true, id: Date.now().toString() });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
 
   const httpServer = createServer(app);
 
