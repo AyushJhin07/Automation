@@ -5,6 +5,9 @@ import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
 import { RealAIService, ConversationManager } from "./realAIService";
 import { WorkflowAPI } from "./workflowAPI";
+import { graphValidator } from "./core/GraphValidator.js";
+import { graphCompiler } from "./core/GraphCompiler.js";
+import { googleAppsScriptDeployer } from "./core/GoogleAppsScriptDeployer.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Google Apps Script automation routes
@@ -14,9 +17,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAIWorkflowRoutes(app);
 
   // NEW Proper Backend Pipeline API
-  const { graphValidator } = await import('./core/GraphValidator');
-  const { graphCompiler } = await import('./core/GraphCompiler');
-  const { googleAppsScriptDeployer } = await import('./core/GoogleAppsScriptDeployer');
   
   // Workflow API endpoints
   app.post('/api/workflow/clarify', async (req, res) => {
