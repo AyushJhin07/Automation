@@ -3,11 +3,18 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
-    "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "dev": "npm run check:deps && NODE_ENV=development tsx server/index.ts",
+    "dev:fast": "NODE_ENV=development tsx server/index.ts",
+    "build": "npm run check:deps && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "check:deps": "node scripts/check-deps.js",
+    "fix:deps": "rm -rf node_modules package-lock.json && npm cache clean --force && npm install",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
