@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/graph.schema.json",
+  "title": "NodeGraph",
+  "description": "A directed acyclic graph representing a Google Apps Script automation workflow",
+  "type": "object",
+  "required": ["id", "name", "nodes", "edges", "metadata"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the graph"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Human-readable name for the automation"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Optional description of what this automation does"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/Node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Edge"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "author": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["version", "createdAt"]
+    }
+  },
+  "definitions": {
+    "Node": {
+      "type": "object",
+      "required": ["id", "type", "position"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "trigger.time.cron",
+            "trigger.webhook.inbound", 
+            "trigger.gmail.new_email",
+            "trigger.sheets.row_added",
+            "action.http.request",
+            "action.gmail.send",
+            "action.sheets.append_row",
+            "action.drive.create_file",
+            "condition.if",
+            "transform.data_mapper",
+            "utility.delay",
+            "utility.logger"
+          ]
+        },
+        "position": {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": {"type": "number"},
+            "y": {"type": "number"}
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Node-specific configuration data"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 50
+        }
+      }
+    },
+    "Edge": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source node ID"
+        },
+        "target": {
+          "type": "string", 
+          "description": "Target node ID"
+        },
+        "sourceHandle": {
+          "type": "string",
+          "description": "Optional source handle ID"
+        },
+        "targetHandle": {
+          "type": "string",
+          "description": "Optional target handle ID"
+        },
+        "condition": {
+          "type": "object",
+          "description": "Optional condition for conditional edges"
+        }
+      }
+    }
+  }
+}

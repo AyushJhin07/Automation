@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/trigger.time.cron.schema.json",
+  "title": "Cron Time Trigger Node",
+  "description": "A time-based trigger that runs on a cron schedule",
+  "type": "object",
+  "required": ["schedule"],
+  "properties": {
+    "schedule": {
+      "type": "string",
+      "pattern": "^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\d+(ns|us|µs|ms|s|m|h))+)|(((\\d+,)+\\d+|(\\d+([/-])\\d+)|\\d+|\\*) ?){5,7}$",
+      "description": "Cron expression or Apps Script trigger frequency",
+      "examples": [
+        "0 9 * * 1-5",
+        "@daily", 
+        "@hourly",
+        "*/15 * * * *"
+      ]
+    },
+    "timezone": {
+      "type": "string",
+      "default": "America/New_York",
+      "description": "Timezone for the schedule"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this trigger is active"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Human-readable description of when this runs"
+    }
+  },
+  "additionalProperties": false
+}
