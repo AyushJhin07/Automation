@@ -344,28 +344,42 @@ function getComplexityForApp(appName: string): string {
   return 'Medium';
 }
 
+// Import comprehensive function library
+import { getComprehensiveAppFunctions, AppFunction } from './comprehensive-app-functions';
+
 function getCommonFunctionsForApp(appName: string): any[] {
-  // Return common functions based on app type
-  if (appName.includes('Email') || appName === 'Gmail') {
-    return [
-      { id: 'send_email', name: 'Send Email', description: 'Send email message', category: 'action' },
-      { id: 'search_emails', name: 'Search Emails', description: 'Find emails', category: 'trigger' }
-    ];
-  }
+  // Use comprehensive function library
+  const comprehensiveFunctions = getComprehensiveAppFunctions(appName);
   
-  if (appName.includes('Sheet') || appName.includes('Spreadsheet')) {
-    return [
-      { id: 'append_row', name: 'Add Row', description: 'Add new row', category: 'action' },
-      { id: 'read_data', name: 'Read Data', description: 'Get data', category: 'both' }
-    ];
-  }
+  // Convert to legacy format for backward compatibility
+  return comprehensiveFunctions.map(func => ({
+    id: func.id,
+    name: func.name,
+    description: func.description,
+    category: func.category,
+    parameters: func.parameters,
+    requiredScopes: func.requiredScopes,
+    rateLimits: func.rateLimits,
+    pricing: func.pricing
+  }));
+}
+
+// New function to get comprehensive function details
+export function getComprehensiveAppFunctionsDetailed(appName: string): AppFunction[] {
+  return getComprehensiveAppFunctions(appName);
+}
+
+// Legacy function for backward compatibility
+export function getAppFunctions(appName: string): { id: string; name: string; description: string; category: string }[] {
+  const comprehensiveFunctions = getComprehensiveAppFunctions(appName);
   
-  // Default functions for any app
-  return [
-    { id: 'create_item', name: 'Create Item', description: 'Create new item', category: 'action' },
-    { id: 'update_item', name: 'Update Item', description: 'Update existing item', category: 'action' },
-    { id: 'get_item', name: 'Get Item', description: 'Retrieve item', category: 'both' }
-  ];
+  // Convert to simple format
+  return comprehensiveFunctions.map(func => ({
+    id: func.id,
+    name: func.name,
+    description: func.description,
+    category: func.category
+  }));
 }
 
 function getTriggersForApp(appName: string): any[] {
