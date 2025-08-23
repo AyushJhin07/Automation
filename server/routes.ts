@@ -35,11 +35,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(securityService.securityHeaders());
   app.use(securityService.requestMonitoring());
   
-  // Apply global rate limiting (100 requests per minute)
-  app.use(securityService.createRateLimiter({
-    windowMs: 60000,
-    maxRequests: 100
-  }));
+  // Apply global rate limiting (more permissive in development)
+  const rateLimitConfig = process.env.NODE_ENV === 'development' 
+    ? { windowMs: 60000, maxRequests: 1000 }  // 1000 requests per minute in dev
+    : { windowMs: 60000, maxRequests: 100 };   // 100 requests per minute in production
+  
+  app.use(securityService.createRateLimiter(rateLimitConfig));
 
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);

@@ -72,6 +72,14 @@ export class SecurityService {
    */
   public createRateLimiter(config: RateLimitConfig) {
     return (req: Request, res: Response, next: NextFunction) => {
+      const clientIP = this.getClientIP(req);
+      
+      // Skip rate limiting for localhost in development
+      if (process.env.NODE_ENV === 'development' && 
+          (clientIP === '127.0.0.1' || clientIP === '::1' || clientIP === 'localhost')) {
+        return next();
+      }
+      
       const key = config.keyGenerator ? config.keyGenerator(req) : this.getClientKey(req);
       const now = Date.now();
       
