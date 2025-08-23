@@ -5,9 +5,10 @@ import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
 import { RealAIService, ConversationManager } from "./realAIService";
 import { WorkflowAPI } from "./workflowAPI";
-import { graphValidator } from "./core/GraphValidator.js";
-import { graphCompiler } from "./core/GraphCompiler.js";
-import { googleAppsScriptDeployer } from "./core/GoogleAppsScriptDeployer.js";
+// Temporarily commented out to fix import issues
+// import { graphValidator } from "./core/GraphValidator.js";
+// import { graphCompiler } from "./core/GraphCompiler.js";
+// import { googleAppsScriptDeployer } from "./core/GoogleAppsScriptDeployer.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Google Apps Script automation routes
@@ -16,8 +17,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI workflow generation routes
   registerAIWorkflowRoutes(app);
 
-  // NEW Proper Backend Pipeline API
+  // NEW Proper Backend Pipeline API - TEMPORARILY DISABLED
   
+  // TODO: Re-enable after fixing import issues
+  /*
   // Workflow API endpoints
   app.post('/api/workflow/clarify', async (req, res) => {
     try {
@@ -175,6 +178,7 @@ Return JSON:
       res.status(500).json({ error: error.message, success: false });
     }
   });
+  */
 
   // REAL AI Conversation API
   app.post('/api/ai/conversation', async (req, res) => {
