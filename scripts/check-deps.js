@@ -9,6 +9,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createRequire } from 'module';
 
+// Initialize require for checking package existence
 const require = createRequire(import.meta.url);
 
 // Colors for console output
@@ -76,10 +77,17 @@ function isExternalPackage(importPath) {
 
 async function checkPackageExists(packageName) {
   try {
-    require.resolve(packageName);
+    // Try to import the package dynamically (more reliable in ESM)
+    await import(packageName);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // Fallback to require.resolve
+    try {
+      require.resolve(packageName);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
