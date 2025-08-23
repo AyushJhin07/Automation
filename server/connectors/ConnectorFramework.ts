@@ -1,7 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
 import { eq, like, and } from 'drizzle-orm';
-import { connectorDefinitions } from '../database/schema';
+import { connectorDefinitions, db } from '../database/schema';
 
 export interface ConnectorDefinition {
   id: string;
@@ -158,8 +156,10 @@ export class ConnectorFramework {
   private cacheExpiry = new Map<string, number>();
 
   constructor() {
-    const sql = neon(process.env.DATABASE_URL!);
-    this.db = drizzle(sql);
+    this.db = db;
+    if (!this.db && process.env.NODE_ENV !== 'development') {
+      throw new Error('Database connection not available');
+    }
   }
 
   /**

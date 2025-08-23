@@ -1,7 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
 import { eq, and } from 'drizzle-orm';
-import { users, sessions } from '../database/schema';
+import { users, sessions, db } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 
 export interface RegisterRequest {
@@ -51,8 +49,10 @@ export class AuthService {
   private db: any;
 
   constructor() {
-    const sql = neon(process.env.DATABASE_URL!);
-    this.db = drizzle(sql);
+    this.db = db;
+    if (!this.db && process.env.NODE_ENV !== 'development') {
+      throw new Error('Database connection not available');
+    }
   }
 
   /**

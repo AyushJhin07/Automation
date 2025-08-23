@@ -1,5 +1,4 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { db } from '../database/schema';
 import { connectionService } from './ConnectionService';
 import { authService } from './AuthService';
 import { connectorFramework } from '../connectors/ConnectorFramework';
@@ -71,12 +70,16 @@ export class HealthMonitoringService {
   };
 
   constructor() {
-    const sql = neon(process.env.DATABASE_URL!);
-    this.db = drizzle(sql);
+    this.db = db;
+    if (!this.db && process.env.NODE_ENV !== 'development') {
+      throw new Error('Database connection not available');
+    }
     
-    // Start monitoring
-    this.startHealthChecks();
-    this.startMetricsCollection();
+    // Start monitoring (only if database is available)
+    if (this.db) {
+      this.startHealthChecks();
+      this.startMetricsCollection();
+    }
   }
 
   /**

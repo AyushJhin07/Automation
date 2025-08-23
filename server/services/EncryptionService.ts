@@ -26,7 +26,15 @@ export class EncryptionService {
   static async init(): Promise<void> {
     const masterKey = process.env.ENCRYPTION_MASTER_KEY;
     if (!masterKey) {
-      throw new Error('ENCRYPTION_MASTER_KEY environment variable is required');
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ ENCRYPTION_MASTER_KEY not set - using development fallback (NOT SECURE)');
+        // Use a development-only fallback key
+        this.encryptionKey = Buffer.from('dev-fallback-key-not-secure-32b');
+        console.log('🔐 Development encryption service initialized (NOT SECURE)');
+        return;
+      } else {
+        throw new Error('ENCRYPTION_MASTER_KEY environment variable is required');
+      }
     }
     
     if (masterKey.length < 32) {
@@ -119,7 +127,7 @@ export class EncryptionService {
   }
 
   static generateJWT(payload: JWTPayload, expiresIn: string = '1h'): string {
-    const secret = process.env.JWT_SECRET;
+    const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-jwt-secret-not-secure' : undefined);
     if (!secret) {
       throw new Error('JWT_SECRET environment variable is required');
     }
@@ -127,7 +135,7 @@ export class EncryptionService {
   }
 
   static verifyJWT(token: string): JWTPayload {
-    const secret = process.env.JWT_SECRET;
+    const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-jwt-secret-not-secure' : undefined);
     if (!secret) {
       throw new Error('JWT_SECRET environment variable is required');
     }

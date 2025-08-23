@@ -426,3 +426,6 @@ export class SimpleGraphValidator {
     return 'unknown';
   }
 }
+
+// Export singleton instance
+export const simpleGraphValidator = new SimpleGraphValidator();

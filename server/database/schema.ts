@@ -420,27 +420,38 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 
 // Database connection
 const connectionString = process.env.DATABASE_URL;
+
+let db: any = null;
+
 if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is required');
+  // In development, log a warning but don't crash
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ DATABASE_URL not set - database features will be disabled in development');
+    db = null;
+  } else {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+} else {
+  const sql = neon(connectionString);
+  db = drizzle(sql, {
+    schema: {
+      users,
+      connections,
+      workflows,
+      workflowExecutions,
+      usageTracking,
+      connectorDefinitions,
+      sessions,
+      usersRelations,
+      connectionsRelations,
+      workflowsRelations,
+      workflowExecutionsRelations,
+      usageTrackingRelations,
+      sessionsRelations,
+    },
+  });
 }
 
-const sql = neon(connectionString);
-export const db = drizzle(sql, {
-  schema: {
-    users,
-    connections,
-    workflows,
-    workflowExecutions,
-    usageTracking,
-    connectorDefinitions,
-    sessions,
-    usersRelations,
-    connectionsRelations,
-    workflowsRelations,
-    workflowExecutionsRelations,
-    usageTrackingRelations,
-    sessionsRelations,
-  },
-});
+export { db };
 
 console.log('✅ Database schema loaded with comprehensive indexes and PII tracking for ALL applications');
