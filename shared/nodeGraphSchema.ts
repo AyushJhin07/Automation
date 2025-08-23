@@ -172,8 +172,12 @@ export interface ClarifyRequest {
 }
 
 export interface ClarifyResponse {
-  questions: Question[];
+  questions?: Question[];
   guessedGraph?: NodeGraph;
+  needsMoreInfo?: boolean;
+  summary?: string;
+  confidence?: number;
+  reasoning?: string;
 }
 
 export interface PlanRequest {

@@ -7,7 +7,7 @@ import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
 import { authService } from "./services/AuthService";
-import { connectionService } from "./services/ConnectionService";
+import { connectionService, ConnectionService } from "./services/ConnectionService";
 import { productionLLMOrchestrator } from "./services/ProductionLLMOrchestrator";
 import { productionGraphCompiler } from "./core/ProductionGraphCompiler";
 import { productionDeployer } from "./core/ProductionDeployer";
@@ -25,6 +25,9 @@ import {
   adminOnly, 
   proOrHigher 
 } from "./middleware/auth";
+
+// Error handling utilities
+import { getErrorMessage, formatError, APIResponse } from "./types/common";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -55,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await authService.register(req.body);
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -70,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await authService.login(req.body);
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -84,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await authService.refreshToken(req.body.refreshToken);
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -97,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -120,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         res.json({ success: true, connectionId });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -129,10 +132,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const connections = await connectionService.getUserConnections(req.user!.id);
       // Mask credentials for security
-      const maskedConnections = connections.map(conn => connectionService.maskCredentials(conn));
+      const maskedConnections = connections.map(conn => ConnectionService.maskCredentials(conn));
       res.json({ success: true, connections: maskedConnections });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -142,9 +145,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const result = await connectionService.testConnection(req.params.id, req.user!.id);
-        res.json({ success: true, ...result });
+        res.json({ success: true, data: result });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -154,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await connectionService.deleteConnection(req.params.id, req.user!.id);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -186,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -219,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -251,7 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -269,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = productionGraphCompiler.compile(req.body.graph, req.body.options || {});
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -288,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await productionDeployer.deploy(req.body.files, req.body.options || {});
         res.json(result);
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -296,9 +299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/deployment/prerequisites', authenticateToken, async (req, res) => {
     try {
       const result = await productionDeployer.validatePrerequisites();
-      res.json({ success: true, ...result });
+      res.json({ success: true, data: result });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -314,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json({ success: true, connectors });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -323,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categories = await connectorFramework.getCategories();
       res.json({ success: true, categories });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -335,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ success: true, connector });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -346,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const usage = await usageMeteringService.getUserUsage(req.user!.id);
       res.json({ success: true, usage });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -355,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quota = await usageMeteringService.checkQuota(req.user!.id);
       res.json({ success: true, quota });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -364,7 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const plans = usageMeteringService.getAvailablePlans();
       res.json({ success: true, plans });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -378,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await usageMeteringService.upgradeUserPlan(req.user!.id, req.body.plan);
         res.json({ success: true });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -390,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const health = await healthMonitoringService.getSystemHealth();
       res.json({ success: true, ...health });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -399,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metrics = healthMonitoringService.getSystemMetrics();
       res.json({ success: true, metrics });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -408,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alerts = healthMonitoringService.getActiveAlerts();
       res.json({ success: true, alerts });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -417,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resolved = healthMonitoringService.resolveAlert(req.params.id);
       res.json({ success: resolved });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -428,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const events = securityService.getSecurityEvents(parseInt(req.query.limit as string) || 100);
       res.json({ success: true, events });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -437,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = securityService.getSecurityStats();
       res.json({ success: true, stats });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -453,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         securityService.blockIP(req.body.ipAddress, req.body.reason);
         res.json({ success: true });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -469,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         securityService.unblockIP(req.body.ipAddress);
         res.json({ success: true });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -488,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         res.json({ success: true, analytics });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -509,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -566,7 +569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('❌ Real AI conversation error:', error);
         res.status(500).json({ 
-          error: error.message || 'Failed to process AI request',
+          error: getErrorMessage(error) || 'Failed to process AI request',
           model: req.body.model || 'unknown'
         });
       }
@@ -609,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         res.json({ success: true, id: Date.now().toString() });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
       }
     }
   );
@@ -625,7 +628,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ['gemini', 'openai', 'claude', 'anthropic'].includes(conn.provider.toLowerCase())
       );
 
-      const healthResults = {
+      const healthResults: {
+        timestamp: string;
+        userId: string;
+        results: Record<string, any>;
+        overall: string;
+        summary?: any;
+      } = {
         timestamp: new Date().toISOString(),
         userId: userId,
         results: {},
@@ -645,6 +654,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           let testResult;
           const decryptedCredentials = await connectionService.getConnection(connection.id, userId);
+          if (!decryptedCredentials) {
+            throw new Error('Failed to decrypt credentials');
+          }
           const apiKey = decryptedCredentials.credentials.apiKey || decryptedCredentials.credentials.token;
 
           switch (provider) {
@@ -676,14 +688,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           // Record usage for this API test
-          await usageMeteringService.recordApiUsage(userId, 'llm_health_check', 1, 0);
+          await usageMeteringService.recordApiUsage(userId, 1, 0, 0);
 
         } catch (error) {
           console.error(`❌ LLM health check failed for ${provider}:`, error);
           healthResults.results[provider] = {
             ok: false,
             message: 'Health check failed',
-            error: error.message,
+            error: getErrorMessage(error),
             lastTested: new Date().toISOString(),
             connectionName: connection.name
           };
@@ -714,7 +726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ LLM health endpoint error:', error);
       res.status(500).json({
         error: 'Health check failed',
-        message: error.message,
+        message: getErrorMessage(error),
         timestamp: new Date().toISOString()
       });
     }
@@ -766,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       return {
         ok: false,
-        error: error.message,
+        error: getErrorMessage(error),
         responseTime: Date.now() - startTime
       };
     }
@@ -815,7 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       return {
         ok: false,
-        error: error.message,
+        error: getErrorMessage(error),
         responseTime: Date.now() - startTime
       };
     }
@@ -865,7 +877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       return {
         ok: false,
-        error: error.message,
+        error: getErrorMessage(error),
         responseTime: Date.now() - startTime
       };
     }

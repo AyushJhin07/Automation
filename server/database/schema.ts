@@ -21,13 +21,21 @@ export const users = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
+    name: text('name'), // User's display name
     role: text('role').notNull().default('user'), // user, admin, enterprise
     plan: text('plan').notNull().default('free'), // free, pro, enterprise
+    planType: text('plan_type').notNull().default('free'), // Alias for plan for compatibility
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastLogin: timestamp('last_login'),
     isActive: boolean('is_active').default(true).notNull(),
     quotaResetDate: timestamp('quota_reset_date').defaultNow().notNull(),
+    
+    // Usage quotas and tracking
+    quotaApiCalls: integer('quota_api_calls').default(1000).notNull(),
+    quotaTokens: integer('quota_tokens').default(100000).notNull(),
+    monthlyApiCalls: integer('monthly_api_calls').default(0).notNull(),
+    monthlyTokensUsed: integer('monthly_tokens_used').default(0).notNull(),
     
     // PII tracking for ALL applications
     piiConsentGiven: boolean('pii_consent_given').default(false).notNull(),
@@ -117,6 +125,8 @@ export const workflows = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastExecuted: timestamp('last_executed'),
     executionCount: integer('execution_count').default(0).notNull(),
+    totalRuns: integer('total_runs').default(0).notNull(), // Total execution runs
+    successfulRuns: integer('successful_runs').default(0).notNull(), // Successful execution runs
     
     // Categories for ALL application domains
     category: text('category').default('general').notNull(), // email, crm, ecommerce, finance, hr, marketing, etc.
@@ -254,10 +264,14 @@ export const usageTracking = pgTable(
     id: serial('id').primaryKey(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
     date: timestamp('date').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(), // Add missing createdAt
+    year: integer('year').notNull(), // Add missing year column
+    month: integer('month').notNull(), // Add missing month column
     
     // API usage tracking for ALL applications
     apiCalls: integer('api_calls').default(0).notNull(),
     llmTokens: integer('llm_tokens').default(0).notNull(),
+    tokensUsed: integer('tokens_used').default(0).notNull(), // Alias for llmTokens
     workflowRuns: integer('workflow_runs').default(0).notNull(),
     storageUsed: integer('storage_used').default(0).notNull(), // bytes
     
@@ -272,6 +286,7 @@ export const usageTracking = pgTable(
     
     // Cost tracking
     cost: integer('cost').default(0).notNull(), // cents
+    estimatedCost: integer('estimated_cost').default(0).notNull(), // cents - alias for cost
     
     // Metadata for detailed tracking
     metadata: json('metadata').$type<{
@@ -366,10 +381,12 @@ export const sessions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    token: text('token').notNull().unique(), // JWT token
     refreshToken: text('refresh_token').notNull().unique(),
     expiresAt: timestamp('expires_at').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     lastUsed: timestamp('last_used').defaultNow().notNull(),
+    isActive: boolean('is_active').default(true).notNull(), // Active session flag
     
     // Security tracking for ALL applications
     ipAddress: text('ip_address'),

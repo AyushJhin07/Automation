@@ -2,6 +2,7 @@ import express from 'express';
 import { detectAppsFromPrompt, getAppById, generateCompleteAppDatabase, TOTAL_SUPPORTED_APPS } from './complete500Apps';
 import { IntelligentFunctionMapper } from './intelligentFunctionMapper';
 import { AIWorkflowIntelligence } from './aiWorkflowIntelligence';
+import { getErrorMessage } from './types/common';
 
 interface AIModelConfig {
   name: string;
@@ -82,7 +83,7 @@ class MultiAIService {
         };
         
       } catch (error) {
-        console.warn(`${model.name} failed, trying next model:`, error.message);
+        console.warn(`${model.name} failed, trying next model:`, getErrorMessage(error));
         continue;
       }
     }
@@ -437,7 +438,7 @@ export function registerAIWorkflowRoutes(app: express.Application) {
           results.push({
             model: model.name,
             status: 'failed',
-            error: error.message
+            error: getErrorMessage(error)
           });
         }
       }
@@ -456,8 +457,8 @@ async function generateWorkflowFromAnalysis(analysis: AIAnalysisResult, original
   const intelligence = await AIWorkflowIntelligence.analyzeAutomationRequest(originalPrompt);
   
   // Build workflow structure with logical function selection
-  const nodes = [];
-  const connections = [];
+  const nodes: any[] = [];
+  const connections: any[] = [];
   
   // Create nodes based on intelligent analysis
   intelligence.logicalFunctions.forEach((funcMapping, index) => {
@@ -778,7 +779,7 @@ function main() {
     GmailApp.sendEmail(
       Session.getActiveUser().getEmail(),
       'Automation Error Alert',
-      \`Your \${intelligence.intent} automation encountered an error: \${error.message}\`
+      \`Your \${intelligence.intent} automation encountered an error: \${getErrorMessage(error)}\`
     );
   }
 }
@@ -1014,7 +1015,7 @@ function main() {
     GmailApp.sendEmail(
       Session.getActiveUser().getEmail(),
       'Automation Error Alert',
-      \`Your automation encountered an error: \${error.message}\`
+      \`Your automation encountered an error: \${getErrorMessage(error)}\`
     );
   }
 }
@@ -1205,7 +1206,7 @@ function main() {
     GmailApp.sendEmail(
       Session.getActiveUser().getEmail(),
       'Automation Error Alert',
-      \`Your automation encountered an error: \${error.message}\`
+      \`Your automation encountered an error: \${getErrorMessage(error)}\`
     );
   }
 }

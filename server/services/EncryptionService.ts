@@ -1,18 +1,10 @@
 import crypto, { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { JWTPayload, getErrorMessage } from '../types/common';
 
 interface EncryptedData {
   encryptedData: string;
   iv: string;
-}
-
-interface JWTPayload {
-  userId: string;
-  email: string;
-  role: string;
-  plan: string;
-  iat?: number;
-  exp?: number;
 }
 
 export class EncryptionService {
@@ -203,6 +195,6 @@ try {
   EncryptionService.init();
   console.log('🔐 Encryption service initialized successfully');
 } catch (error) {
-  console.error('❌ Failed to initialize encryption service:', error.message);
+  console.error('❌ Failed to initialize encryption service:', getErrorMessage(error));
   console.error('Please set ENCRYPTION_MASTER_KEY and JWT_SECRET environment variables');
 }

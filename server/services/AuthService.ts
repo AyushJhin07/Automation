@@ -1,6 +1,7 @@
 import { eq, and } from 'drizzle-orm';
 import { users, sessions, db } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
+import { JWTPayload } from '../types/common';
 
 export interface RegisterRequest {
   email: string;
@@ -366,7 +367,26 @@ export class AuthService {
     refreshToken: string;
     expiresAt: Date;
   }> {
-    const token = EncryptionService.generateJWT({ userId }, '24h');
+    // Get user details for JWT payload
+    const [user] = await this.db
+      .select({
+        email: users.email,
+        role: users.role,
+        plan: users.plan
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+      
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const token = EncryptionService.generateJWT({
+      userId,
+      email: user.email,
+      role: user.role,
+      plan: user.plan
+    }, '24h');
     const refreshToken = EncryptionService.generateRefreshToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 

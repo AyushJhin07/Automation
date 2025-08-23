@@ -275,7 +275,6 @@ function getCategoryForApp(appName: string): string {
     'Sketch': 'Design & Creative',
     
     // Analytics
-    'Google Analytics': 'Analytics & Reporting',
     'Mixpanel': 'Analytics & Reporting',
     'Amplitude': 'Analytics & Reporting',
     'Tableau': 'Analytics & Reporting',

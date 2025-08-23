@@ -17,6 +17,7 @@ import {
 import { EnhancedNodeCatalog } from './enhancedNodeCatalog';
 import { simpleGraphValidator } from './core/SimpleGraphValidator';
 import { RealAIService } from './realAIService'; // Import for direct calls
+import { getErrorMessage, createError } from './types/common';
 
 export class WorkflowOrchestrator {
   private nodeCatalog: EnhancedNodeCatalog;
@@ -120,7 +121,7 @@ Only ask 1-2 essential questions. Be specific and practical.`;
 
     } catch (error) {
       console.error('❌ Clarify step failed:', error);
-      throw new Error(`Clarification failed: ${error.message}`);
+      throw createError(`Clarification failed: ${getErrorMessage(error)}`, 'CLARIFICATION_FAILED');
     }
   }
 
@@ -156,7 +157,7 @@ ${Object.entries(request.answers).map(([q, a]) => `Q: ${q}\nA: ${a}`).join('\n\n
         const validationResult = simpleGraphValidator.validate(response.graph);
         const errors = validationResult.errors;
         
-        if (errors.filter(e => e.severity === 'error').length > 0) {
+        if (errors.filter((e: ValidationError) => e.severity === 'error').length > 0) {
           // Try to fix errors automatically
           const fixedGraph = await this.fixWorkflow({
             graph: response.graph,
@@ -260,7 +261,7 @@ Return the fixed graph as JSON.`;
       
     } catch (error) {
       console.error('❌ LLM Tools call failed:', error);
-      throw new Error(`LLM orchestrator call failed: ${error.message}`);
+      throw createError(`LLM orchestrator call failed: ${getErrorMessage(error)}`, 'LLM_CALL_FAILED');
     }
   }
 
@@ -423,7 +424,7 @@ Ask 3-7 concise, specific questions. Return JSON: { "questions": Question[], "gu
     errors.forEach(error => {
       if (error.severity === 'error') {
         // Try to fix common errors
-        if (error.message.includes('missing required parameter')) {
+        if (getErrorMessage(error).includes('missing required parameter')) {
           // Add default values for missing parameters
           const nodeId = error.nodeId;
           const node = fixedGraph.nodes.find(n => n.id === nodeId);
