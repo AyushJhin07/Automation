@@ -1,0 +1,235 @@
+{
+  "id": "slack",
+  "name": "Slack",
+  "description": "Connect to Slack workspace for messaging, notifications, and collaboration automation",
+  "category": "Communication",
+  "icon": "slack",
+  "color": "#4A154B",
+  "authentication": {
+    "type": "oauth2",
+    "authUrl": "https://slack.com/oauth/v2/authorize",
+    "tokenUrl": "https://slack.com/api/oauth.v2.access",
+    "scopes": ["chat:write", "channels:read", "users:read", "files:write", "reactions:write"],
+    "clientIdRequired": true,
+    "clientSecretRequired": true
+  },
+  "baseUrl": "https://slack.com/api",
+  "rateLimits": {
+    "requestsPerSecond": 1,
+    "requestsPerMinute": 50,
+    "burstAllowed": 3
+  },
+  "actions": [
+    {
+      "id": "send_message",
+      "name": "Send Message",
+      "description": "Send a message to a Slack channel or user",
+      "endpoint": "/chat.postMessage",
+      "method": "POST",
+      "params": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID or user ID to send message to"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Message text content"
+        },
+        "username": {
+          "type": "string",
+          "required": false,
+          "description": "Bot username override"
+        },
+        "icon_emoji": {
+          "type": "string",
+          "required": false,
+          "description": "Emoji icon for the message"
+        },
+        "thread_ts": {
+          "type": "string",
+          "required": false,
+          "description": "Timestamp of parent message to reply in thread"
+        },
+        "blocks": {
+          "type": "array",
+          "required": false,
+          "description": "Rich message blocks for formatting"
+        }
+      },
+      "responseFields": ["ts", "channel", "message"],
+      "errorCodes": {
+        "channel_not_found": "The specified channel does not exist",
+        "not_in_channel": "Bot is not a member of the channel",
+        "msg_too_long": "Message text is too long"
+      }
+    },
+    {
+      "id": "create_channel",
+      "name": "Create Channel",
+      "description": "Create a new Slack channel",
+      "endpoint": "/conversations.create",
+      "method": "POST",
+      "params": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Channel name (lowercase, no spaces)"
+        },
+        "is_private": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Create a private channel"
+        }
+      },
+      "requiredScopes": ["channels:write", "groups:write"],
+      "responseFields": ["channel"]
+    },
+    {
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to Slack",
+      "endpoint": "/files.upload",
+      "method": "POST",
+      "contentType": "multipart/form-data",
+      "params": {
+        "channels": {
+          "type": "string",
+          "required": true,
+          "description": "Comma-separated list of channel IDs"
+        },
+        "content": {
+          "type": "string",
+          "required": false,
+          "description": "File content as text"
+        },
+        "filename": {
+          "type": "string",
+          "required": false,
+          "description": "Filename for the upload"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "description": "Title of the file"
+        },
+        "initial_comment": {
+          "type": "string",
+          "required": false,
+          "description": "Initial comment for the file"
+        }
+      },
+      "requiredScopes": ["files:write"],
+      "responseFields": ["file"]
+    },
+    {
+      "id": "add_reaction",
+      "name": "Add Reaction",
+      "description": "Add an emoji reaction to a message",
+      "endpoint": "/reactions.add",
+      "method": "POST",
+      "params": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel containing the message"
+        },
+        "timestamp": {
+          "type": "string",
+          "required": true,
+          "description": "Timestamp of the message"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Emoji name (without colons)"
+        }
+      },
+      "requiredScopes": ["reactions:write"],
+      "responseFields": ["ok"]
+    },
+    {
+      "id": "set_status",
+      "name": "Set User Status",
+      "description": "Set the status for the authenticated user",
+      "endpoint": "/users.profile.set",
+      "method": "POST",
+      "params": {
+        "status_text": {
+          "type": "string",
+          "required": false,
+          "description": "Status text to display"
+        },
+        "status_emoji": {
+          "type": "string",
+          "required": false,
+          "description": "Status emoji"
+        },
+        "status_expiration": {
+          "type": "number",
+          "required": false,
+          "description": "Unix timestamp when status expires"
+        }
+      },
+      "requiredScopes": ["users.profile:write"],
+      "responseFields": ["profile"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "new_message",
+      "name": "New Message",
+      "description": "Triggered when a new message is posted",
+      "type": "webhook",
+      "eventType": "message",
+      "params": {
+        "channel": {
+          "type": "string",
+          "required": false,
+          "description": "Specific channel to monitor (leave empty for all)"
+        },
+        "user": {
+          "type": "string",
+          "required": false,
+          "description": "Specific user to monitor"
+        },
+        "keyword": {
+          "type": "string",
+          "required": false,
+          "description": "Keyword to filter messages"
+        }
+      },
+      "outputFields": ["channel", "user", "text", "timestamp", "thread_ts"],
+      "requiredScopes": ["channels:history", "groups:history", "im:history"]
+    },
+    {
+      "id": "new_channel",
+      "name": "New Channel Created",
+      "description": "Triggered when a new channel is created",
+      "type": "webhook",
+      "eventType": "channel_created",
+      "outputFields": ["channel"],
+      "requiredScopes": ["channels:read"]
+    },
+    {
+      "id": "user_joined",
+      "name": "User Joined Workspace",
+      "description": "Triggered when a new user joins the workspace",
+      "type": "webhook",
+      "eventType": "team_join",
+      "outputFields": ["user"],
+      "requiredScopes": ["users:read"]
+    }
+  ],
+  "testConnection": {
+    "endpoint": "/auth.test",
+    "method": "GET",
+    "expectedResponse": {
+      "ok": true
+    }
+  },
+  "documentation": "https://api.slack.com/web",
+  "supportContact": "https://slack.com/help/contact"
+}

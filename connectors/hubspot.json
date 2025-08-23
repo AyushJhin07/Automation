@@ -1,0 +1,372 @@
+{
+  "id": "hubspot",
+  "name": "HubSpot",
+  "description": "Connect to HubSpot CRM for managing contacts, deals, companies, and marketing automation",
+  "category": "CRM",
+  "icon": "hubspot",
+  "color": "#FF7A59",
+  "authentication": {
+    "type": "oauth2",
+    "authUrl": "https://app.hubspot.com/oauth/authorize",
+    "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+    "scopes": ["contacts", "content", "reports", "social", "automation", "timeline", "files"],
+    "clientIdRequired": true,
+    "clientSecretRequired": true
+  },
+  "baseUrl": "https://api.hubapi.com",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "burstAllowed": 20,
+    "dailyLimit": 40000
+  },
+  "actions": [
+    {
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact in HubSpot",
+      "endpoint": "/crm/v3/objects/contacts",
+      "method": "POST",
+      "params": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "description": "Contact's email address"
+        },
+        "firstname": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's first name"
+        },
+        "lastname": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's last name"
+        },
+        "company": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's company name"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's phone number"
+        },
+        "website": {
+          "type": "string",
+          "required": false,
+          "format": "url",
+          "description": "Contact's website"
+        },
+        "lifecyclestage": {
+          "type": "string",
+          "required": false,
+          "enum": ["subscriber", "lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer", "evangelist", "other"],
+          "description": "Contact's lifecycle stage"
+        },
+        "lead_status": {
+          "type": "string",
+          "required": false,
+          "enum": ["NEW", "OPEN", "IN_PROGRESS", "OPEN_DEAL", "UNQUALIFIED", "ATTEMPTED_TO_CONTACT", "CONNECTED", "BAD_TIMING"],
+          "description": "Lead status"
+        }
+      },
+      "responseFields": ["id", "properties", "createdAt", "updatedAt"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "update_contact",
+      "name": "Update Contact",
+      "description": "Update an existing contact in HubSpot",
+      "endpoint": "/crm/v3/objects/contacts/{contactId}",
+      "method": "PATCH",
+      "params": {
+        "contactId": {
+          "type": "string",
+          "required": true,
+          "description": "HubSpot contact ID"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "format": "email",
+          "description": "Contact's email address"
+        },
+        "firstname": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's first name"
+        },
+        "lastname": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's last name"
+        },
+        "company": {
+          "type": "string",
+          "required": false,
+          "description": "Contact's company name"
+        },
+        "notes": {
+          "type": "string",
+          "required": false,
+          "description": "Additional notes about the contact"
+        }
+      },
+      "responseFields": ["id", "properties", "updatedAt"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "create_deal",
+      "name": "Create Deal",
+      "description": "Create a new deal in HubSpot",
+      "endpoint": "/crm/v3/objects/deals",
+      "method": "POST",
+      "params": {
+        "dealname": {
+          "type": "string",
+          "required": true,
+          "description": "Name of the deal"
+        },
+        "amount": {
+          "type": "number",
+          "required": false,
+          "description": "Deal amount in the account's currency"
+        },
+        "dealstage": {
+          "type": "string",
+          "required": false,
+          "enum": ["appointmentscheduled", "qualifiedtobuy", "presentationscheduled", "decisionmakerboughtin", "contractsent", "closedwon", "closedlost"],
+          "description": "Current stage of the deal"
+        },
+        "pipeline": {
+          "type": "string",
+          "required": false,
+          "description": "Sales pipeline ID"
+        },
+        "closedate": {
+          "type": "string",
+          "required": false,
+          "format": "date",
+          "description": "Expected close date (YYYY-MM-DD)"
+        },
+        "hubspot_owner_id": {
+          "type": "string",
+          "required": false,
+          "description": "HubSpot user ID of the deal owner"
+        }
+      },
+      "responseFields": ["id", "properties", "createdAt"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "create_company",
+      "name": "Create Company",
+      "description": "Create a new company in HubSpot",
+      "endpoint": "/crm/v3/objects/companies",
+      "method": "POST",
+      "params": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Company name"
+        },
+        "domain": {
+          "type": "string",
+          "required": false,
+          "format": "url",
+          "description": "Company website domain"
+        },
+        "industry": {
+          "type": "string",
+          "required": false,
+          "description": "Company industry"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Company phone number"
+        },
+        "city": {
+          "type": "string",
+          "required": false,
+          "description": "Company city"
+        },
+        "state": {
+          "type": "string",
+          "required": false,
+          "description": "Company state/region"
+        },
+        "country": {
+          "type": "string",
+          "required": false,
+          "description": "Company country"
+        },
+        "numberofemployees": {
+          "type": "number",
+          "required": false,
+          "description": "Number of employees"
+        }
+      },
+      "responseFields": ["id", "properties", "createdAt"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task in HubSpot",
+      "endpoint": "/crm/v3/objects/tasks",
+      "method": "POST",
+      "params": {
+        "hs_task_subject": {
+          "type": "string",
+          "required": true,
+          "description": "Task subject/title"
+        },
+        "hs_task_body": {
+          "type": "string",
+          "required": false,
+          "description": "Task description"
+        },
+        "hs_task_status": {
+          "type": "string",
+          "required": false,
+          "enum": ["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "WAITING", "DEFERRED"],
+          "default": "NOT_STARTED",
+          "description": "Task status"
+        },
+        "hs_task_priority": {
+          "type": "string",
+          "required": false,
+          "enum": ["LOW", "MEDIUM", "HIGH"],
+          "default": "MEDIUM",
+          "description": "Task priority"
+        },
+        "hs_timestamp": {
+          "type": "string",
+          "required": false,
+          "format": "datetime",
+          "description": "Due date and time (ISO 8601)"
+        },
+        "hubspot_owner_id": {
+          "type": "string",
+          "required": false,
+          "description": "HubSpot user ID of the task assignee"
+        }
+      },
+      "responseFields": ["id", "properties", "createdAt"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "send_email",
+      "name": "Send Email",
+      "description": "Send an email through HubSpot",
+      "endpoint": "/email/public/v1/singleEmail/send",
+      "method": "POST",
+      "params": {
+        "emailId": {
+          "type": "string",
+          "required": true,
+          "description": "HubSpot email template ID"
+        },
+        "recipient": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "description": "Recipient email address"
+        },
+        "contactProperties": {
+          "type": "object",
+          "required": false,
+          "description": "Contact properties for personalization"
+        },
+        "customProperties": {
+          "type": "object",
+          "required": false,
+          "description": "Custom properties for email personalization"
+        }
+      },
+      "responseFields": ["sent", "eventId"],
+      "requiredScopes": ["content"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "new_contact",
+      "name": "New Contact Created",
+      "description": "Triggered when a new contact is created",
+      "type": "webhook",
+      "eventType": "contact.creation",
+      "outputFields": ["contactId", "email", "firstname", "lastname", "company", "createdate"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "contact_updated",
+      "name": "Contact Updated",
+      "description": "Triggered when a contact is updated",
+      "type": "webhook",
+      "eventType": "contact.propertyChange",
+      "params": {
+        "propertyName": {
+          "type": "string",
+          "required": false,
+          "description": "Specific property to monitor for changes"
+        }
+      },
+      "outputFields": ["contactId", "email", "propertyName", "propertyValue", "previousValue"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "new_deal",
+      "name": "New Deal Created",
+      "description": "Triggered when a new deal is created",
+      "type": "webhook",
+      "eventType": "deal.creation",
+      "outputFields": ["dealId", "dealname", "amount", "dealstage", "pipeline", "closedate"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "deal_stage_changed",
+      "name": "Deal Stage Changed",
+      "description": "Triggered when a deal moves to a different stage",
+      "type": "webhook",
+      "eventType": "deal.propertyChange",
+      "params": {
+        "targetStage": {
+          "type": "string",
+          "required": false,
+          "description": "Specific stage to monitor for"
+        }
+      },
+      "outputFields": ["dealId", "dealname", "previousStage", "newStage", "amount"],
+      "requiredScopes": ["contacts"]
+    },
+    {
+      "id": "form_submission",
+      "name": "Form Submission",
+      "description": "Triggered when a HubSpot form is submitted",
+      "type": "webhook",
+      "eventType": "contact.formSubmission",
+      "params": {
+        "formId": {
+          "type": "string",
+          "required": false,
+          "description": "Specific form ID to monitor"
+        }
+      },
+      "outputFields": ["contactId", "formId", "pageUrl", "submissionTime", "fieldValues"],
+      "requiredScopes": ["forms"]
+    }
+  ],
+  "testConnection": {
+    "endpoint": "/account-info/v3/api-usage",
+    "method": "GET",
+    "expectedResponse": {
+      "currentUsage": "number"
+    }
+  },
+  "documentation": "https://developers.hubspot.com/docs/api/overview",
+  "supportContact": "https://developers.hubspot.com/community"
+}

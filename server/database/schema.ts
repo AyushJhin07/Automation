@@ -1,256 +1,446 @@
-import { pgTable, text, timestamp, boolean, integer, jsonb, uuid, varchar, index } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import { 
+  pgTable, 
+  text, 
+  timestamp, 
+  integer, 
+  boolean, 
+  json, 
+  uuid,
+  index,
+  uniqueIndex,
+  serial
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// Users table - for authentication and tenant management
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  name: varchar('name', { length: 255 }),
-  role: varchar('role', { length: 50 }).default('user'), // 'admin', 'user', 'trial'
-  planType: varchar('plan_type', { length: 50 }).default('free'), // 'free', 'pro', 'enterprise'
-  isActive: boolean('is_active').default(true),
-  emailVerified: boolean('email_verified').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-  lastLoginAt: timestamp('last_login_at'),
-  
-  // Usage tracking
-  monthlyApiCalls: integer('monthly_api_calls').default(0),
-  monthlyTokensUsed: integer('monthly_tokens_used').default(0),
-  quotaApiCalls: integer('quota_api_calls').default(1000), // per month
-  quotaTokens: integer('quota_tokens').default(100000), // per month
-}, (table) => ({
-  emailIdx: index('users_email_idx').on(table.email),
-  planIdx: index('users_plan_idx').on(table.planType),
-}));
+// Users table with performance indexes
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash').notNull(),
+    role: text('role').notNull().default('user'), // user, admin, enterprise
+    plan: text('plan').notNull().default('free'), // free, pro, enterprise
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastLogin: timestamp('last_login'),
+    isActive: boolean('is_active').default(true).notNull(),
+    quotaResetDate: timestamp('quota_reset_date').defaultNow().notNull(),
+    
+    // PII tracking for ALL applications
+    piiConsentGiven: boolean('pii_consent_given').default(false).notNull(),
+    piiConsentDate: timestamp('pii_consent_date'),
+    piiLastReviewed: timestamp('pii_last_reviewed'),
+    
+    // Preferences
+    emailNotifications: boolean('email_notifications').default(true).notNull(),
+    timezone: text('timezone').default('America/New_York').notNull(),
+    language: text('language').default('en').notNull(),
+  },
+  (table) => ({
+    // Performance indexes for ALL application queries
+    emailIdx: uniqueIndex('users_email_idx').on(table.email),
+    planIdx: index('users_plan_idx').on(table.plan),
+    createdAtIdx: index('users_created_at_idx').on(table.createdAt),
+    lastLoginIdx: index('users_last_login_idx').on(table.lastLogin),
+    activeUsersIdx: index('users_active_idx').on(table.isActive, table.plan),
+    quotaResetIdx: index('users_quota_reset_idx').on(table.quotaResetDate),
+  })
+);
 
-// Encrypted API connections - secure storage for LLM and SaaS API keys
-export const connections = pgTable('connections', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  
-  // Connection details
-  name: varchar('name', { length: 255 }).notNull(), // "My OpenAI Key", "Production Gemini"
-  provider: varchar('provider', { length: 100 }).notNull(), // 'openai', 'gemini', 'claude', 'slack', 'gmail'
-  type: varchar('type', { length: 50 }).notNull(), // 'llm', 'saas', 'database'
-  
-  // Encrypted credentials
-  encryptedCredentials: text('encrypted_credentials').notNull(), // JSON encrypted with AES
-  credentialsIv: text('credentials_iv').notNull(), // Initialization vector for encryption
-  
-  // Connection status
-  isActive: boolean('is_active').default(true),
-  lastTested: timestamp('last_tested'),
-  testStatus: varchar('test_status', { length: 50 }), // 'success', 'failed', 'pending'
-  testError: text('test_error'),
-  
-  // Metadata
-  metadata: jsonb('metadata'), // Additional provider-specific config
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  userProviderIdx: index('connections_user_provider_idx').on(table.userId, table.provider),
-  typeIdx: index('connections_type_idx').on(table.type),
-}));
+// Connections table with security indexes for ALL applications
+export const connections = pgTable(
+  'connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    name: text('name').notNull(),
+    provider: text('provider').notNull(), // gemini, openai, claude, slack, hubspot, jira, etc.
+    encryptedCredentials: text('encrypted_credentials').notNull(),
+    iv: text('iv').notNull(), // AES-256-GCM IV
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastUsed: timestamp('last_used'),
+    lastTested: timestamp('last_tested'),
+    lastError: text('last_error'),
+    isActive: boolean('is_active').default(true).notNull(),
+    
+    // PII and security tracking for ALL applications
+    containsPii: boolean('contains_pii').default(false).notNull(),
+    piiType: text('pii_type'), // email, phone, ssn, payment, etc.
+    securityLevel: text('security_level').default('standard').notNull(), // standard, high, critical
+    accessRestricted: boolean('access_restricted').default(false).notNull(),
+    
+    // Metadata for ALL application types
+    metadata: json('metadata').$type<{
+      scopes?: string[];
+      refreshToken?: boolean;
+      expiresAt?: string;
+      rateLimits?: {
+        requestsPerSecond?: number;
+        requestsPerMinute?: number;
+        dailyLimit?: number;
+      };
+      customSettings?: Record<string, any>;
+    }>(),
+  },
+  (table) => ({
+    // Performance indexes for ALL applications
+    userProviderIdx: index('connections_user_provider_idx').on(table.userId, table.provider),
+    providerIdx: index('connections_provider_idx').on(table.provider),
+    activeIdx: index('connections_active_idx').on(table.isActive),
+    lastUsedIdx: index('connections_last_used_idx').on(table.lastUsed),
+    
+    // Security indexes for PII tracking across ALL applications
+    piiIdx: index('connections_pii_idx').on(table.containsPii, table.piiType),
+    securityLevelIdx: index('connections_security_level_idx').on(table.securityLevel),
+    
+    // Unique constraint to prevent duplicate connections
+    userProviderNameIdx: uniqueIndex('connections_user_provider_name_idx')
+      .on(table.userId, table.provider, table.name),
+  })
+);
 
-// Workflows - stored automation workflows
-export const workflows = pgTable('workflows', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  
-  // Workflow details
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  category: varchar('category', { length: 100 }), // 'email', 'crm', 'ecommerce', 'productivity'
-  
-  // Workflow definition
-  nodeGraph: jsonb('node_graph').notNull(), // Complete NodeGraph JSON
-  generatedCode: text('generated_code'), // Generated Google Apps Script
-  
-  // Status and deployment
-  status: varchar('status', { length: 50 }).default('draft'), // 'draft', 'active', 'paused', 'error'
-  isPublic: boolean('is_public').default(false), // For template sharing
-  deploymentId: text('deployment_id'), // Google Apps Script deployment ID
-  webAppUrl: text('web_app_url'), // If deployed as web app
-  
-  // Execution tracking
-  totalRuns: integer('total_runs').default(0),
-  successfulRuns: integer('successful_runs').default(0),
-  lastRun: timestamp('last_run'),
-  lastError: text('last_error'),
-  
-  // Metadata
-  tags: jsonb('tags'), // Array of tags
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  userIdx: index('workflows_user_idx').on(table.userId),
-  statusIdx: index('workflows_status_idx').on(table.status),
-  categoryIdx: index('workflows_category_idx').on(table.category),
-  publicIdx: index('workflows_public_idx').on(table.isPublic),
-}));
+// Workflows table with indexes for ALL application types
+export const workflows = pgTable(
+  'workflows',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    graph: json('graph').$type<Record<string, any>>().notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastExecuted: timestamp('last_executed'),
+    executionCount: integer('execution_count').default(0).notNull(),
+    
+    // Categories for ALL application domains
+    category: text('category').default('general').notNull(), // email, crm, ecommerce, finance, hr, marketing, etc.
+    tags: text('tags').array(),
+    
+    // PII and security tracking for workflows across ALL applications
+    containsPii: boolean('contains_pii').default(false).notNull(),
+    piiElements: text('pii_elements').array(), // types of PII detected
+    securityReview: boolean('security_review').default(false).notNull(),
+    securityReviewDate: timestamp('security_review_date'),
+    riskLevel: text('risk_level').default('low').notNull(), // low, medium, high, critical
+    
+    // Compliance tracking for ALL applications
+    complianceFlags: text('compliance_flags').array(), // gdpr, hipaa, sox, pci, etc.
+    dataRetentionDays: integer('data_retention_days').default(90),
+    
+    // Performance metadata
+    avgExecutionTime: integer('avg_execution_time'), // milliseconds
+    successRate: integer('success_rate').default(100), // percentage
+    
+    // Workflow metadata for ALL application types
+    metadata: json('metadata').$type<{
+      version?: string;
+      nodeCount?: number;
+      complexity?: 'simple' | 'medium' | 'complex';
+      requiredScopes?: string[];
+      estimatedCost?: number;
+      [key: string]: any;
+    }>(),
+  },
+  (table) => ({
+    // Performance indexes for ALL applications
+    userIdx: index('workflows_user_idx').on(table.userId),
+    categoryIdx: index('workflows_category_idx').on(table.category),
+    activeIdx: index('workflows_active_idx').on(table.isActive),
+    lastExecutedIdx: index('workflows_last_executed_idx').on(table.lastExecuted),
+    executionCountIdx: index('workflows_execution_count_idx').on(table.executionCount),
+    
+    // Security and compliance indexes for ALL applications
+    piiIdx: index('workflows_pii_idx').on(table.containsPii),
+    riskLevelIdx: index('workflows_risk_level_idx').on(table.riskLevel),
+    securityReviewIdx: index('workflows_security_review_idx').on(table.securityReview),
+    complianceIdx: index('workflows_compliance_idx').on(table.complianceFlags),
+    
+    // Performance monitoring indexes
+    performanceIdx: index('workflows_performance_idx').on(table.avgExecutionTime, table.successRate),
+    
+    // Composite indexes for common queries
+    userActiveIdx: index('workflows_user_active_idx').on(table.userId, table.isActive),
+    userCategoryIdx: index('workflows_user_category_idx').on(table.userId, table.category),
+  })
+);
 
-// Workflow executions - detailed execution logs
-export const workflowExecutions = pgTable('workflow_executions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  
-  // Execution details
-  correlationId: varchar('correlation_id', { length: 100 }).notNull(), // For tracing
-  status: varchar('status', { length: 50 }).notNull(), // 'running', 'success', 'failed', 'timeout'
-  
-  // Timing
-  startedAt: timestamp('started_at').defaultNow(),
-  completedAt: timestamp('completed_at'),
-  durationMs: integer('duration_ms'),
-  
-  // Execution data
-  triggerData: jsonb('trigger_data'), // Input data that triggered execution
-  nodeResults: jsonb('node_results'), // Results from each node
-  errorDetails: jsonb('error_details'), // Detailed error information
-  
-  // Resource usage
-  tokensUsed: integer('tokens_used').default(0),
-  apiCallsMade: integer('api_calls_made').default(0),
-  
-  createdAt: timestamp('created_at').defaultNow(),
-}, (table) => ({
-  workflowIdx: index('executions_workflow_idx').on(table.workflowId),
-  userIdx: index('executions_user_idx').on(table.userId),
-  statusIdx: index('executions_status_idx').on(table.status),
-  correlationIdx: index('executions_correlation_idx').on(table.correlationId),
-}));
+// Workflow executions table with comprehensive tracking for ALL applications
+export const workflowExecutions = pgTable(
+  'workflow_executions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    status: text('status').notNull(), // started, completed, failed, cancelled
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    completedAt: timestamp('completed_at'),
+    duration: integer('duration'), // milliseconds
+    
+    // Execution context for ALL applications
+    triggerType: text('trigger_type').notNull(), // manual, scheduled, webhook, email, etc.
+    triggerData: json('trigger_data').$type<Record<string, any>>(),
+    
+    // Results and errors for ALL applications
+    nodeResults: json('node_results').$type<Record<string, any>>(),
+    errorDetails: json('error_details').$type<{
+      nodeId?: string;
+      error?: string;
+      stack?: string;
+      context?: Record<string, any>;
+    }>(),
+    
+    // PII tracking for execution data across ALL applications
+    processedPii: boolean('processed_pii').default(false).notNull(),
+    piiTypes: text('pii_types').array(),
+    
+    // Resource usage tracking for ALL applications
+    apiCallsMade: integer('api_calls_made').default(0).notNull(),
+    tokensUsed: integer('tokens_used').default(0).notNull(),
+    dataProcessed: integer('data_processed').default(0).notNull(), // bytes
+    
+    // Billing and metering
+    cost: integer('cost').default(0).notNull(), // cents
+    
+    // Execution metadata for ALL application types
+    metadata: json('metadata').$type<{
+      nodeExecutions?: Array<{
+        nodeId: string;
+        status: string;
+        duration: number;
+        error?: string;
+      }>;
+      externalCalls?: Array<{
+        service: string;
+        endpoint: string;
+        duration: number;
+        status: number;
+      }>;
+      [key: string]: any;
+    }>(),
+  },
+  (table) => ({
+    // Performance indexes for ALL applications
+    workflowIdx: index('executions_workflow_idx').on(table.workflowId),
+    userIdx: index('executions_user_idx').on(table.userId),
+    statusIdx: index('executions_status_idx').on(table.status),
+    startedAtIdx: index('executions_started_at_idx').on(table.startedAt),
+    durationIdx: index('executions_duration_idx').on(table.duration),
+    triggerTypeIdx: index('executions_trigger_type_idx').on(table.triggerType),
+    
+    // PII and security indexes for ALL applications
+    piiIdx: index('executions_pii_idx').on(table.processedPii),
+    
+    // Resource usage indexes for billing and monitoring
+    apiCallsIdx: index('executions_api_calls_idx').on(table.apiCallsMade),
+    costIdx: index('executions_cost_idx').on(table.cost),
+    
+    // Composite indexes for common analytics queries
+    userTimeIdx: index('executions_user_time_idx').on(table.userId, table.startedAt),
+    workflowTimeIdx: index('executions_workflow_time_idx').on(table.workflowId, table.startedAt),
+    statusTimeIdx: index('executions_status_time_idx').on(table.status, table.startedAt),
+  })
+);
 
-// Usage tracking - for billing and quotas
-export const usageTracking = pgTable('usage_tracking', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  
-  // Time period
-  year: integer('year').notNull(),
-  month: integer('month').notNull(), // 1-12
-  
-  // Usage metrics
-  apiCalls: integer('api_calls').default(0),
-  tokensUsed: integer('tokens_used').default(0),
-  workflowRuns: integer('workflow_runs').default(0),
-  storageUsed: integer('storage_used').default(0), // in bytes
-  
-  // Cost tracking
-  estimatedCost: integer('estimated_cost').default(0), // in cents
-  
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  userPeriodIdx: index('usage_user_period_idx').on(table.userId, table.year, table.month),
-}));
+// Usage tracking table with comprehensive metering for ALL applications
+export const usageTracking = pgTable(
+  'usage_tracking',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    date: timestamp('date').defaultNow().notNull(),
+    
+    // API usage tracking for ALL applications
+    apiCalls: integer('api_calls').default(0).notNull(),
+    llmTokens: integer('llm_tokens').default(0).notNull(),
+    workflowRuns: integer('workflow_runs').default(0).notNull(),
+    storageUsed: integer('storage_used').default(0).notNull(), // bytes
+    
+    // Service-specific usage for ALL applications
+    emailsSent: integer('emails_sent').default(0).notNull(),
+    webhooksReceived: integer('webhooks_received').default(0).notNull(),
+    httpRequests: integer('http_requests').default(0).notNull(),
+    dataTransfer: integer('data_transfer').default(0).notNull(), // bytes
+    
+    // PII processing tracking for ALL applications
+    piiRecordsProcessed: integer('pii_records_processed').default(0).notNull(),
+    
+    // Cost tracking
+    cost: integer('cost').default(0).notNull(), // cents
+    
+    // Metadata for detailed tracking
+    metadata: json('metadata').$type<{
+      serviceCosts?: Record<string, number>;
+      errorCounts?: Record<string, number>;
+      averageResponseTimes?: Record<string, number>;
+      [key: string]: any;
+    }>(),
+  },
+  (table) => ({
+    // Indexes for usage analytics across ALL applications
+    userDateIdx: index('usage_user_date_idx').on(table.userId, table.date),
+    dateIdx: index('usage_date_idx').on(table.date),
+    userIdx: index('usage_user_idx').on(table.userId),
+    
+    // Resource usage indexes
+    apiCallsIdx: index('usage_api_calls_idx').on(table.apiCalls),
+    costIdx: index('usage_cost_idx').on(table.cost),
+    
+    // PII tracking index
+    piiIdx: index('usage_pii_idx').on(table.piiRecordsProcessed),
+  })
+);
 
-// Connector definitions - for the 500+ apps framework
-export const connectorDefinitions = pgTable('connector_definitions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  
-  // Connector identity
-  name: varchar('name', { length: 255 }).notNull(), // "Slack", "HubSpot", "Shopify"
-  slug: varchar('slug', { length: 100 }).notNull().unique(), // "slack", "hubspot", "shopify"
-  category: varchar('category', { length: 100 }).notNull(), // "communication", "crm", "ecommerce"
-  
-  // Connector metadata
-  description: text('description'),
-  iconUrl: text('icon_url'),
-  websiteUrl: text('website_url'),
-  documentationUrl: text('documentation_url'),
-  
-  // Technical details
-  apiBaseUrl: text('api_base_url'),
-  authType: varchar('auth_type', { length: 50 }).notNull(), // 'oauth2', 'api_key', 'basic'
-  authConfig: jsonb('auth_config'), // OAuth endpoints, scopes, etc.
-  
-  // Connector definition
-  triggers: jsonb('triggers'), // Available trigger types
-  actions: jsonb('actions'), // Available action types
-  rateLimits: jsonb('rate_limits'), // Rate limiting configuration
-  
-  // Status
-  isActive: boolean('is_active').default(true),
-  isVerified: boolean('is_verified').default(false), // Manually verified by team
-  popularity: integer('popularity').default(0), // Usage count
-  
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  slugIdx: index('connectors_slug_idx').on(table.slug),
-  categoryIdx: index('connectors_category_idx').on(table.category),
-  popularityIdx: index('connectors_popularity_idx').on(table.popularity),
-}));
+// Connector definitions table for ALL applications
+export const connectorDefinitions = pgTable(
+  'connector_definitions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull().unique(),
+    name: text('name').notNull(),
+    category: text('category').notNull(),
+    description: text('description'),
+    
+    // Connector configuration for ALL applications
+    config: json('config').$type<{
+      authentication?: {
+        type: 'oauth2' | 'api_key' | 'basic' | 'custom';
+        scopes?: string[];
+        authUrl?: string;
+        tokenUrl?: string;
+      };
+      actions?: Array<{
+        id: string;
+        name: string;
+        endpoint: string;
+        method: string;
+        params: Record<string, any>;
+      }>;
+      triggers?: Array<{
+        id: string;
+        name: string;
+        type: 'webhook' | 'polling' | 'event';
+        config: Record<string, any>;
+      }>;
+      rateLimits?: {
+        requestsPerSecond?: number;
+        requestsPerMinute?: number;
+        dailyLimit?: number;
+      };
+    }>().notNull(),
+    
+    // Metadata for ALL application connectors
+    version: text('version').default('1.0.0').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    popularity: integer('popularity').default(0).notNull(),
+    
+    // PII and security metadata for ALL applications
+    handlesPersonalData: boolean('handles_personal_data').default(false).notNull(),
+    securityLevel: text('security_level').default('standard').notNull(),
+    complianceFlags: text('compliance_flags').array(),
+    
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    // Performance indexes for connector discovery
+    slugIdx: uniqueIndex('connectors_slug_idx').on(table.slug),
+    categoryIdx: index('connectors_category_idx').on(table.category),
+    activeIdx: index('connectors_active_idx').on(table.isActive),
+    popularityIdx: index('connectors_popularity_idx').on(table.popularity),
+    
+    // Security and compliance indexes for ALL applications
+    piiIdx: index('connectors_pii_idx').on(table.handlesPersonalData),
+    securityLevelIdx: index('connectors_security_level_idx').on(table.securityLevel),
+  })
+);
 
-// Sessions - for JWT token management
-export const sessions = pgTable('sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  
-  token: text('token').notNull().unique(),
-  refreshToken: text('refresh_token').notNull().unique(),
-  
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  lastUsedAt: timestamp('last_used_at').defaultNow(),
-  
-  // Session metadata
-  userAgent: text('user_agent'),
-  ipAddress: varchar('ip_address', { length: 45 }), // IPv6 compatible
-  isActive: boolean('is_active').default(true),
-}, (table) => ({
-  tokenIdx: index('sessions_token_idx').on(table.token),
-  userIdx: index('sessions_user_idx').on(table.userId),
-}));
+// Sessions table for secure authentication across ALL applications
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    refreshToken: text('refresh_token').notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    lastUsed: timestamp('last_used').defaultNow().notNull(),
+    
+    // Security tracking for ALL applications
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    isRevoked: boolean('is_revoked').default(false).notNull(),
+    revokedAt: timestamp('revoked_at'),
+    revokeReason: text('revoke_reason'),
+  },
+  (table) => ({
+    // Performance and security indexes
+    userIdx: index('sessions_user_idx').on(table.userId),
+    refreshTokenIdx: uniqueIndex('sessions_refresh_token_idx').on(table.refreshToken),
+    expiresAtIdx: index('sessions_expires_at_idx').on(table.expiresAt),
+    activeSessionsIdx: index('sessions_active_idx').on(table.isRevoked, table.expiresAt),
+  })
+);
 
-// Relations
+// Define relations between tables
 export const usersRelations = relations(users, ({ many }) => ({
   connections: many(connections),
   workflows: many(workflows),
-  executions: many(workflowExecutions),
-  usage: many(usageTracking),
+  workflowExecutions: many(workflowExecutions),
+  usageTracking: many(usageTracking),
   sessions: many(sessions),
 }));
 
 export const connectionsRelations = relations(connections, ({ one }) => ({
-  user: one(users, {
-    fields: [connections.userId],
-    references: [users.id],
-  }),
+  user: one(users, { fields: [connections.userId], references: [users.id] }),
 }));
 
 export const workflowsRelations = relations(workflows, ({ one, many }) => ({
-  user: one(users, {
-    fields: [workflows.userId],
-    references: [users.id],
-  }),
+  user: one(users, { fields: [workflows.userId], references: [users.id] }),
   executions: many(workflowExecutions),
 }));
 
 export const workflowExecutionsRelations = relations(workflowExecutions, ({ one }) => ({
-  workflow: one(workflows, {
-    fields: [workflowExecutions.workflowId],
-    references: [workflows.id],
-  }),
-  user: one(users, {
-    fields: [workflowExecutions.userId],
-    references: [users.id],
-  }),
+  workflow: one(workflows, { fields: [workflowExecutions.workflowId], references: [workflows.id] }),
+  user: one(users, { fields: [workflowExecutions.userId], references: [users.id] }),
 }));
 
 export const usageTrackingRelations = relations(usageTracking, ({ one }) => ({
-  user: one(users, {
-    fields: [usageTracking.userId],
-    references: [users.id],
-  }),
+  user: one(users, { fields: [usageTracking.userId], references: [users.id] }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, {
-    fields: [sessions.userId],
-    references: [users.id],
-  }),
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }));
+
+// Database connection
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+
+const sql = neon(connectionString);
+export const db = drizzle(sql, {
+  schema: {
+    users,
+    connections,
+    workflows,
+    workflowExecutions,
+    usageTracking,
+    connectorDefinitions,
+    sessions,
+    usersRelations,
+    connectionsRelations,
+    workflowsRelations,
+    workflowExecutionsRelations,
+    usageTrackingRelations,
+    sessionsRelations,
+  },
+});
+
+console.log('✅ Database schema loaded with comprehensive indexes and PII tracking for ALL applications');

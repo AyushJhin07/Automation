@@ -1,83 +1,90 @@
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
-export interface EncryptedData {
+interface EncryptedData {
   encryptedData: string;
   iv: string;
 }
 
+interface JWTPayload {
+  userId: string;
+  email: string;
+  role: string;
+  plan: string;
+  iat?: number;
+  exp?: number;
+}
+
 export class EncryptionService {
   private static readonly ALGORITHM = 'aes-256-gcm';
-  private static readonly KEY_LENGTH = 32; // 256 bits
-  private static readonly IV_LENGTH = 16; // 128 bits
-  private static readonly TAG_LENGTH = 16; // 128 bits
-
+  private static readonly KEY_LENGTH = 32; // bytes
+  private static readonly IV_LENGTH = 12;  // 96-bit IV recommended for GCM
+  private static readonly AAD = Buffer.from('api-credentials', 'utf8');
   private static encryptionKey: Buffer | null = null;
 
-  /**
-   * Initialize the encryption service with a master key
-   */
-  public static initialize(): void {
+  static async init(): Promise<void> {
     const masterKey = process.env.ENCRYPTION_MASTER_KEY;
-    
     if (!masterKey) {
       throw new Error('ENCRYPTION_MASTER_KEY environment variable is required');
     }
+    
+    if (masterKey.length < 32) {
+      throw new Error('ENCRYPTION_MASTER_KEY must be at least 32 characters long');
+    }
 
-    // Derive a consistent key from the master key
-    this.encryptionKey = crypto.scryptSync(masterKey, 'salt', this.KEY_LENGTH);
+    // Derive a proper 256-bit key using scrypt
+    this.encryptionKey = await new Promise<Buffer>((resolve, reject) => {
+      crypto.scrypt(masterKey, 'salt', this.KEY_LENGTH, (err, derivedKey) => {
+        if (err) reject(err);
+        else resolve(derivedKey);
+      });
+    });
+
+    console.log('✅ EncryptionService initialized with secure AES-256-GCM');
   }
 
-  /**
-   * Encrypt sensitive data (API keys, credentials)
-   */
-  public static encrypt(plaintext: string): EncryptedData {
+  static encrypt(plaintext: string): EncryptedData {
     if (!this.encryptionKey) {
       throw new Error('Encryption service not initialized');
     }
 
     const iv = crypto.randomBytes(this.IV_LENGTH);
-    const cipher = crypto.createCipher(this.ALGORITHM, this.encryptionKey);
-    cipher.setAAD(Buffer.from('api-credentials', 'utf8'));
+    const cipher = crypto.createCipheriv(this.ALGORITHM, this.encryptionKey, iv);
+    cipher.setAAD(this.AAD);
 
-    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
+    const encrypted = Buffer.concat([
+      cipher.update(plaintext, 'utf8'),
+      cipher.final()
+    ]);
+    const tag = cipher.getAuthTag(); // 16 bytes
 
-    const authTag = cipher.getAuthTag();
-    const encryptedWithTag = encrypted + authTag.toString('hex');
-
+    const payload = Buffer.concat([encrypted, tag]).toString('hex');
     return {
-      encryptedData: encryptedWithTag,
+      encryptedData: payload,
       iv: iv.toString('hex')
     };
   }
 
-  /**
-   * Decrypt sensitive data
-   */
-  public static decrypt(encryptedData: string, ivHex: string): string {
+  static decrypt(encryptedData: string, ivHex: string): string {
     if (!this.encryptionKey) {
       throw new Error('Encryption service not initialized');
     }
 
-    try {
-      const iv = Buffer.from(ivHex, 'hex');
-      
-      // Extract auth tag (last 16 bytes)
-      const authTagHex = encryptedData.slice(-32);
-      const encrypted = encryptedData.slice(0, -32);
-      const authTag = Buffer.from(authTagHex, 'hex');
+    const iv = Buffer.from(ivHex, 'hex');
+    const buf = Buffer.from(encryptedData, 'hex');
+    const tag = buf.slice(buf.length - 16);
+    const ciphertext = buf.slice(0, buf.length - 16);
 
-      const decipher = crypto.createDecipher(this.ALGORITHM, this.encryptionKey);
-      decipher.setAAD(Buffer.from('api-credentials', 'utf8'));
-      decipher.setAuthTag(authTag);
+    const decipher = crypto.createDecipheriv(this.ALGORITHM, this.encryptionKey, iv);
+    decipher.setAAD(this.AAD);
+    decipher.setAuthTag(tag);
 
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-
-      return decrypted;
-    } catch (error) {
-      throw new Error('Failed to decrypt data: Invalid key or corrupted data');
-    }
+    const decrypted = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final()
+    ]);
+    return decrypted.toString('utf8');
   }
 
   /**
@@ -103,48 +110,28 @@ export class EncryptionService {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  /**
-   * Hash a password securely
-   */
-  public static async hashPassword(password: string): Promise<string> {
-    const bcrypt = await import('bcryptjs');
+  static async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 12);
   }
 
-  /**
-   * Verify a password against its hash
-   */
-  public static async verifyPassword(password: string, hash: string): Promise<boolean> {
-    const bcrypt = await import('bcryptjs');
+  static async verifyPassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
 
-  /**
-   * Generate a JWT token
-   */
-  public static generateJWT(payload: Record<string, any>, expiresIn: string = '24h'): string {
-    const jwt = require('jsonwebtoken');
+  static generateJWT(payload: JWTPayload, expiresIn: string = '1h'): string {
     const secret = process.env.JWT_SECRET;
-    
     if (!secret) {
       throw new Error('JWT_SECRET environment variable is required');
     }
-
     return jwt.sign(payload, secret, { expiresIn });
   }
 
-  /**
-   * Verify and decode a JWT token
-   */
-  public static verifyJWT(token: string): Record<string, any> {
-    const jwt = require('jsonwebtoken');
+  static verifyJWT(token: string): JWTPayload {
     const secret = process.env.JWT_SECRET;
-    
     if (!secret) {
       throw new Error('JWT_SECRET environment variable is required');
     }
-
-    return jwt.verify(token, secret);
+    return jwt.verify(token, secret) as JWTPayload;
   }
 
   /**
@@ -180,11 +167,24 @@ export class EncryptionService {
     const pattern = patterns[provider.toLowerCase()];
     return pattern ? pattern.test(apiKey) : apiKey.length > 10;
   }
+
+  // Self-test for encryption roundtrip
+  static async selfTest(): Promise<boolean> {
+    try {
+      const testData = 'test-api-key-12345';
+      const encrypted = this.encrypt(testData);
+      const decrypted = this.decrypt(encrypted.encryptedData, encrypted.iv);
+      return decrypted === testData;
+    } catch (error) {
+      console.error('❌ Encryption self-test failed:', error);
+      return false;
+    }
+  }
 }
 
 // Initialize encryption service on import
 try {
-  EncryptionService.initialize();
+  EncryptionService.init();
   console.log('🔐 Encryption service initialized successfully');
 } catch (error) {
   console.error('❌ Failed to initialize encryption service:', error.message);

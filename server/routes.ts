@@ -614,6 +614,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Add LLM Health endpoint using actual user API keys
+  app.get('/api/llm/health', authenticateToken, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Get all LLM connections for this user
+      const connections = await connectionService.getUserConnections(userId);
+      const llmConnections = connections.filter(conn => 
+        ['gemini', 'openai', 'claude', 'anthropic'].includes(conn.provider.toLowerCase())
+      );
+
+      const healthResults = {
+        timestamp: new Date().toISOString(),
+        userId: userId,
+        results: {},
+        overall: 'unknown'
+      };
+
+      let healthyCount = 0;
+      let totalCount = 0;
+
+      // Test each LLM provider
+      for (const connection of llmConnections) {
+        totalCount++;
+        const provider = connection.provider.toLowerCase();
+        
+        try {
+          console.log(`🔍 Testing ${provider} connection for user ${userId}...`);
+          
+          let testResult;
+          const decryptedCredentials = await connectionService.getConnection(connection.id, userId);
+          const apiKey = decryptedCredentials.credentials.apiKey || decryptedCredentials.credentials.token;
+
+          switch (provider) {
+            case 'gemini':
+              testResult = await testGeminiConnection(apiKey);
+              break;
+            case 'openai':
+              testResult = await testOpenAIConnection(apiKey);
+              break;
+            case 'claude':
+            case 'anthropic':
+              testResult = await testClaudeConnection(apiKey);
+              break;
+            default:
+              testResult = { ok: false, error: 'Unknown provider' };
+          }
+
+          if (testResult.ok) {
+            healthyCount++;
+          }
+
+          healthResults.results[provider] = {
+            ok: testResult.ok,
+            message: testResult.message || (testResult.ok ? 'Connection successful' : 'Connection failed'),
+            responseTime: testResult.responseTime || 0,
+            lastTested: new Date().toISOString(),
+            connectionName: connection.name,
+            error: testResult.error || null
+          };
+
+          // Record usage for this API test
+          await usageMeteringService.recordApiUsage(userId, 'llm_health_check', 1, 0);
+
+        } catch (error) {
+          console.error(`❌ LLM health check failed for ${provider}:`, error);
+          healthResults.results[provider] = {
+            ok: false,
+            message: 'Health check failed',
+            error: error.message,
+            lastTested: new Date().toISOString(),
+            connectionName: connection.name
+          };
+        }
+      }
+
+      // Determine overall health
+      if (totalCount === 0) {
+        healthResults.overall = 'no_connections';
+      } else if (healthyCount === totalCount) {
+        healthResults.overall = 'healthy';
+      } else if (healthyCount > 0) {
+        healthResults.overall = 'partial';
+      } else {
+        healthResults.overall = 'unhealthy';
+      }
+
+      healthResults.summary = {
+        total: totalCount,
+        healthy: healthyCount,
+        unhealthy: totalCount - healthyCount,
+        healthPercentage: totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 0
+      };
+
+      res.json(healthResults);
+
+    } catch (error) {
+      console.error('❌ LLM health endpoint error:', error);
+      res.status(500).json({
+        error: 'Health check failed',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Helper functions for testing each LLM provider
+  async function testGeminiConnection(apiKey: string): Promise<{ok: boolean, message?: string, responseTime?: number, error?: string}> {
+    const startTime = Date.now();
+    
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: 'Reply with exactly: OK'
+            }]
+          }],
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 10
+          }
+        })
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          ok: false,
+          error: `HTTP ${response.status}: ${errorText}`,
+          responseTime
+        };
+      }
+
+      const data = await response.json();
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      return {
+        ok: true,
+        message: `Gemini API responding correctly (${responseTime}ms)`,
+        responseTime
+      };
+
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+        responseTime: Date.now() - startTime
+      };
+    }
+  }
+
+  async function testOpenAIConnection(apiKey: string): Promise<{ok: boolean, message?: string, responseTime?: number, error?: string}> {
+    const startTime = Date.now();
+    
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini-2024-07-18',
+          messages: [
+            { role: 'user', content: 'Reply with exactly: OK' }
+          ],
+          max_tokens: 10,
+          temperature: 0
+        })
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          ok: false,
+          error: `HTTP ${response.status}: ${errorText}`,
+          responseTime
+        };
+      }
+
+      const data = await response.json();
+      const responseText = data.choices?.[0]?.message?.content || '';
+      
+      return {
+        ok: true,
+        message: `OpenAI API responding correctly (${responseTime}ms)`,
+        responseTime
+      };
+
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+        responseTime: Date.now() - startTime
+      };
+    }
+  }
+
+  async function testClaudeConnection(apiKey: string): Promise<{ok: boolean, message?: string, responseTime?: number, error?: string}> {
+    const startTime = Date.now();
+    
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-haiku-20241022',
+          max_tokens: 10,
+          system: 'You are a test bot.',
+          messages: [
+            { role: 'user', content: 'Reply with exactly: OK' }
+          ]
+        })
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          ok: false,
+          error: `HTTP ${response.status}: ${errorText}`,
+          responseTime
+        };
+      }
+
+      const data = await response.json();
+      const responseText = data.content?.[0]?.text || '';
+      
+      return {
+        ok: true,
+        message: `Claude API responding correctly (${responseTime}ms)`,
+        responseTime
+      };
+
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+        responseTime: Date.now() - startTime
+      };
+    }
+  }
+
   const httpServer = createServer(app);
 
   return httpServer;

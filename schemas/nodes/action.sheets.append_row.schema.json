@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Google Sheets Append Row Action Node",
+  "description": "Schema for Google Sheets append row action nodes",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sheets.append_row"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "spreadsheetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sheetName": {
+          "type": "string",
+          "default": "Sheet1"
+        },
+        "range": {
+          "type": "string",
+          "pattern": "^[A-Z]+[0-9]*:[A-Z]+[0-9]*$"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "number"},
+              {"type": "boolean"}
+            ]
+          },
+          "minItems": 1
+        },
+        "valueInputOption": {
+          "type": "string",
+          "enum": ["RAW", "USER_ENTERED"],
+          "default": "USER_ENTERED"
+        }
+      },
+      "required": ["spreadsheetId", "values"],
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"}
+      },
+      "required": ["x", "y"]
+    }
+  },
+  "required": ["id", "type", "params"],
+  "additionalProperties": false
+}

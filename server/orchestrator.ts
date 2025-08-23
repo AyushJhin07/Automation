@@ -16,6 +16,7 @@ import {
 } from '../shared/nodeGraphSchema';
 import { EnhancedNodeCatalog } from './enhancedNodeCatalog';
 import { GraphValidator } from './graphValidator';
+import { RealAIService } from './realAIService'; // Import for direct calls
 
 export class WorkflowOrchestrator {
   private nodeCatalog: EnhancedNodeCatalog;
@@ -56,45 +57,72 @@ export class WorkflowOrchestrator {
     };
   }
 
-  // Step 1: Clarify user intent and ask questions
+  // ✅ CLARIFY STEP - Ask questions to understand the user's intent
   public async clarifyIntent(request: ClarifyRequest): Promise<ClarifyResponse> {
-    console.log('🤔 Clarifying user intent:', request.prompt);
+    console.log('🔍 Clarifying user intent:', request.prompt);
 
-    const systemPrompt = this.buildClarifierPrompt();
-    const userPrompt = `User goal: "${request.prompt}"
+    const systemPrompt = `You are an expert automation consultant. Your job is to understand the user's automation needs and determine if you need more information.
 
-Ask 3-7 concise questions to fill REQUIRED parameters for candidate nodes:
-- Resource IDs, tab names, API endpoints, auth scopes
-- Trigger type, volume, filters, dedupe keys  
-- Webhook path secrets or verification
+For the prompt: "${request.prompt}"
 
-Return JSON: { "questions": Question[], "guessedGraph?": NodeGraph }`;
+Analyze if you have enough information to build a complete automation workflow. Consider:
+- What specific data/content needs to be processed?
+- What triggers should start the automation?
+- What specific actions should be taken?
+- What apps/services are involved?
+- Any timing, filtering, or conditional logic?
+
+If you have enough info, respond with JSON:
+{
+  "action": "proceed_to_planning",
+  "confidence": 0.9,
+  "summary": "Clear automation request with sufficient details"
+}
+
+If you need more info, respond with JSON:
+{
+  "action": "ask_questions", 
+  "questions": ["What specific information do you want to extract?", "How often should this run?"],
+  "reasoning": "Need to clarify data extraction and timing requirements"
+}
+
+Only ask 1-2 essential questions. Be specific and practical.`;
 
     try {
-      // Call LLM with clarifier prompt
-      const response = await this.callLLMWithTools(systemPrompt, userPrompt);
+      // Use direct service call instead of relative fetch to avoid 404 in server context
+      const aiResponse = await this.callLLMDirectly(systemPrompt, request.apiKey, request.model);
       
-      if (response.questions && response.questions.length > 0) {
+      // Parse JSON response
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
+      } catch (parseError) {
+        console.error('❌ Failed to parse clarify JSON response');
+        throw new Error('Invalid JSON response from LLM during clarification');
+      }
+
+      if (parsedResponse.action === 'ask_questions') {
         return {
-          questions: response.questions,
-          guessedGraph: response.guessedGraph
+          needsMoreInfo: true,
+          questions: parsedResponse.questions.map((q: string, index: number) => ({
+            id: `clarify_${index}`,
+            text: q,
+            type: 'text' as const,
+            required: true
+          })),
+          reasoning: parsedResponse.reasoning
+        };
+      } else {
+        return {
+          needsMoreInfo: false,
+          summary: parsedResponse.summary,
+          confidence: parsedResponse.confidence || 0.8
         };
       }
 
-      // If no questions needed, return empty questions
-      return {
-        questions: [],
-        guessedGraph: response.guessedGraph
-      };
-
     } catch (error) {
-      console.error('Clarification error:', error);
-      
-      // Fallback: generate basic questions
-      return {
-        questions: this.generateBasicQuestions(request.prompt),
-        guessedGraph: undefined
-      };
+      console.error('❌ Clarify step failed:', error);
+      throw new Error(`Clarification failed: ${error.message}`);
     }
   }
 
@@ -234,6 +262,32 @@ Return the fixed graph as JSON.`;
       
       throw new Error('LLM response is not valid JSON');
     }
+  }
+
+  // Helper method to call LLM services directly (avoiding relative fetch in server)
+  private async callLLMDirectly(prompt: string, apiKey: string, model: string): Promise<string> {
+    const request = {
+      prompt,
+      model: model as 'gemini' | 'claude' | 'openai',
+      apiKey
+    };
+
+    let response;
+    switch (model) {
+      case 'gemini':
+        response = await RealAIService.callRealGemini(request);
+        break;
+      case 'claude':
+        response = await RealAIService.callRealClaude(request);
+        break;
+      case 'openai':
+        response = await RealAIService.callRealOpenAI(request);
+        break;
+      default:
+        throw new Error(`Unsupported model: ${model}`);
+    }
+
+    return response.response;
   }
 
   // Prompt Templates (from ChatGPT spec)

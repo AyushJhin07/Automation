@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Webhook Inbound Trigger Node",
+  "description": "Schema for webhook trigger nodes that receive HTTP requests",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "type": {
+      "type": "string",
+      "const": "trigger.webhook.inbound"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/[a-zA-Z0-9_/-]*$",
+          "default": "/webhook"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+          "default": "POST"
+        },
+        "authRequired": {
+          "type": "boolean",
+          "default": false
+        },
+        "authType": {
+          "type": "string",
+          "enum": ["bearer", "basic", "api_key", "none"],
+          "default": "none"
+        },
+        "secret": {
+          "type": "string",
+          "description": "Secret for webhook verification"
+        },
+        "responseType": {
+          "type": "string",
+          "enum": ["json", "text", "html"],
+          "default": "json"
+        },
+        "responseMessage": {
+          "type": "string",
+          "default": "Webhook received successfully"
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "bodyContains": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"}
+      },
+      "required": ["x", "y"]
+    }
+  },
+  "required": ["id", "type"],
+  "additionalProperties": false
+}

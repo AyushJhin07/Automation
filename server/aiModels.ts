@@ -23,18 +23,25 @@ interface AIAnalysisResult {
   modelUsed: string;
 }
 
+// Model name mapping constants for consistency
+const MODEL_MAP = {
+  gemini: 'gemini-1.5-flash', // Use latest Gemini model
+  claude: 'claude-3-5-haiku-20241022', // Use latest Claude model
+  openai: 'gpt-4o-mini-2024-07-18' // Use latest GPT model
+};
+
 class MultiAIService {
   private static models: AIModelConfig[] = [
     {
-      name: 'Gemini Pro',
+      name: 'Gemini 1.5 Flash',
       provider: 'gemini',
       costPerToken: 0.00025, // Much cheaper than OpenAI
       maxTokens: 32000,
       apiKey: process.env.GEMINI_API_KEY,
-      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
+      endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini}:generateContent`
     },
     {
-      name: 'Claude 3 Haiku',
+      name: 'Claude 3.5 Haiku',
       provider: 'claude',
       costPerToken: 0.00025, // Anthropic pricing
       maxTokens: 200000,
@@ -115,6 +122,7 @@ class MultiAIService {
 }`;
 
     try {
+      // Use correct Gemini endpoint pattern (query parameter auth, not header)
       const response = await fetch(`${model.endpoint}?key=${model.apiKey}`, {
         method: 'POST',
         headers: {
@@ -125,12 +133,19 @@ class MultiAIService {
             parts: [{
               text: `${systemPrompt}\n\nUser Request: "${prompt}"`
             }]
-          }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          }
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        const errorData = await response.text();
+        throw new Error(`Gemini API error: ${response.status} - ${errorData}`);
       }
 
       const data = await response.json();
@@ -162,7 +177,7 @@ class MultiAIService {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: MODEL_MAP.claude, // Use consistent model version
           max_tokens: 1000,
           system: systemPrompt,
           messages: [{
@@ -173,7 +188,8 @@ class MultiAIService {
       });
 
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        const errorData = await response.text();
+        throw new Error(`Claude API error: ${response.status} - ${errorData}`);
       }
 
       const data = await response.json();
@@ -201,13 +217,13 @@ class MultiAIService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${model.apiKey}`
+          'Authorization': `Bearer ${model.apiKey}` // Correct OpenAI auth
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: MODEL_MAP.openai, // Use consistent model version
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Analyze this automation request: "${prompt}"` }
+            { role: 'user', content: `Analyze this automation request and return JSON: "${prompt}"` }
           ],
           max_tokens: 1000,
           temperature: 0.1
@@ -215,7 +231,8 @@ class MultiAIService {
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.text();
+        throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
       }
 
       const data = await response.json();
