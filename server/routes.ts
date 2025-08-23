@@ -13,25 +13,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI workflow generation routes
   registerAIWorkflowRoutes(app);
 
-  // NEW ChatGPT-Style Workflow API
-  const workflowAPI = new WorkflowAPI();
+  // NEW Proper Backend Pipeline API
+  const { graphValidator } = await import('./core/GraphValidator');
+  const { graphCompiler } = await import('./core/GraphCompiler');
+  const { googleAppsScriptDeployer } = await import('./core/GoogleAppsScriptDeployer');
   
-  // System capabilities
-  app.get('/api/workflow/capabilities', workflowAPI.getCapabilities);
-  
-  // Workflow generation pipeline
-  app.post('/api/workflow/clarify', workflowAPI.clarifyIntent);
-  app.post('/api/workflow/plan', workflowAPI.planWorkflow);
-  app.post('/api/workflow/fix', workflowAPI.fixWorkflow);
-  app.post('/api/workflow/generate-code', workflowAPI.generateCode);
-  app.post('/api/workflow/deploy', workflowAPI.deployWorkflow);
-  
-  // Complete workflow generation (all steps combined)
-  app.post('/api/workflow/generate-complete', workflowAPI.generateCompleteWorkflow);
-  
-  // Validation and templates
-  app.post('/api/workflow/validate', workflowAPI.validateWorkflow);
-  app.get('/api/workflow/templates', workflowAPI.getWorkflowTemplates);
+  // Workflow API endpoints
+  app.post('/api/workflow/clarify', async (req, res) => {
+    try {
+      const { prompt, context, model = 'gemini-pro', apiKey } = req.body;
+
+      if (!prompt || !apiKey) {
+        return res.status(400).json({ error: 'Prompt and API key are required' });
+      }
+
+      const systemPrompt = `You are an automation analyst for Google Apps Script. Ask essential clarifying questions.
+
+Return JSON:
+{
+  "questions": [
+    {
+      "id": "trigger_type",
+      "text": "What should trigger this automation?",
+      "type": "choice",
+      "choices": ["Time schedule", "New email", "Webhook"],
+      "required": true,
+      "category": "trigger"
+    }
+  ]
+}`;
+
+      const aiResponse = await RealAIService.processAutomationRequest(
+        `${systemPrompt}\n\nAnalyze: "${prompt}"`,
+        model,
+        apiKey,
+        []
+      );
+
+      const result = JSON.parse(aiResponse.response || '{}');
+
+      res.json({
+        success: true,
+        questions: result.questions || [],
+        tokensUsed: aiResponse.tokensUsed,
+        cost: aiResponse.cost
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: error.message, success: false });
+    }
+  });
+
+  app.post('/api/workflow/generate-complete', async (req, res) => {
+    try {
+      const { prompt, answers, model = 'gemini-pro', apiKey, options } = req.body;
+
+      if (!prompt || !apiKey) {
+        return res.status(400).json({ error: 'Prompt and API key are required' });
+      }
+
+      const systemPrompt = `Generate a NodeGraph for Google Apps Script automation.
+
+Return JSON:
+{
+  "graph": {
+    "id": "workflow_123",
+    "name": "Email Logger",
+    "nodes": [
+      {
+        "id": "trigger1",
+        "type": "trigger.gmail.new_email",
+        "position": {"x": 100, "y": 100},
+        "data": {"query": "is:unread"}
+      }
+    ],
+    "edges": []
+  },
+  "rationale": "This workflow..."
+}`;
+
+      const answersText = Object.entries(answers || {})
+        .map(([q, a]) => `Q: ${q}\nA: ${a}`)
+        .join('\n\n');
+
+      const aiResponse = await RealAIService.processAutomationRequest(
+        `${systemPrompt}\n\nRequest: "${prompt}"\n\nAnswers:\n${answersText}`,
+        model,
+        apiKey,
+        []
+      );
+
+      const result = JSON.parse(aiResponse.response || '{}');
+      const graph = result.graph || {
+        id: `fallback_${Date.now()}`,
+        name: 'Basic Automation',
+        nodes: [{
+          id: 'trigger1',
+          type: 'trigger.time.cron',
+          position: { x: 100, y: 100 },
+          data: { schedule: '@daily' }
+        }],
+        edges: []
+      };
+
+      // Compile to Google Apps Script
+      const compiled = graphCompiler.compile(graph, options || {});
+
+      res.json({
+        success: true,
+        graph: graph,
+        rationale: result.rationale || 'Generated workflow',
+        files: compiled.files,
+        manifest: compiled.manifest,
+        tokensUsed: aiResponse.tokensUsed,
+        cost: aiResponse.cost
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: error.message, success: false });
+    }
+  });
+
+  app.post('/api/workflow/validate', async (req, res) => {
+    try {
+      const { graph } = req.body;
+      if (!graph) {
+        return res.status(400).json({ error: 'Graph is required' });
+      }
+
+      const validation = graphValidator.validate(graph);
+      res.json({ success: true, ...validation });
+    } catch (error) {
+      res.status(500).json({ error: error.message, success: false });
+    }
+  });
+
+  app.post('/api/workflow/compile', async (req, res) => {
+    try {
+      const { graph, options } = req.body;
+      if (!graph) {
+        return res.status(400).json({ error: 'Graph is required' });
+      }
+
+      const compiled = graphCompiler.compile(graph, options || {});
+      res.json({ success: true, ...compiled });
+    } catch (error) {
+      res.status(500).json({ error: error.message, success: false });
+    }
+  });
+
+  app.post('/api/workflow/deploy', async (req, res) => {
+    try {
+      const { files, options } = req.body;
+      if (!files) {
+        return res.status(400).json({ error: 'Files are required' });
+      }
+
+      const deployment = await googleAppsScriptDeployer.deploy(files, options || {});
+      res.json({ success: deployment.success, ...deployment });
+    } catch (error) {
+      res.status(500).json({ error: error.message, success: false });
+    }
+  });
 
   // REAL AI Conversation API
   app.post('/api/ai/conversation', async (req, res) => {

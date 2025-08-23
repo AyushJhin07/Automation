@@ -324,21 +324,43 @@ You can try:
         throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
       }
 
-      // Use the real conversational AI API with proper API key
-      const response = await fetch('/api/ai/conversation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: Object.keys(questionAnswers).length > 0 
-            ? `${prompt}\n\nUser provided these answers:\n${Object.entries(questionAnswers).map(([q, a]) => `Q: ${q}\nA: ${a}`).join('\n\n')}\n\nNow generate a complete Google Apps Script automation workflow.`
-            : `${prompt}\n\nGenerate a complete Google Apps Script automation workflow. If you need clarification, ask specific questions.`,
-          model: selectedModel,
-          apiKey: currentApiKey,
-          userId: 'ai-builder-user'
-        })
-      });
+      // Use the new workflow API pipeline
+      let response;
+      
+      if (Object.keys(questionAnswers).length === 0) {
+        // Step 1: Clarify intent and get questions
+        response = await fetch('/api/workflow/clarify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            context: {},
+            model: selectedModel,
+            apiKey: currentApiKey
+          })
+        });
+      } else {
+        // Step 2: Generate complete workflow with answers
+        response = await fetch('/api/workflow/generate-complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            answers: questionAnswers,
+            model: selectedModel,
+            apiKey: currentApiKey,
+            options: {
+              projectName: `Automation_${Date.now()}`,
+              includeLogging: true,
+              includeErrorHandling: true
+            }
+          })
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -346,41 +368,35 @@ You can try:
 
       const result = await response.json();
 
-      if (!result.response) {
-        throw new Error(result.error || 'Failed to get AI response');
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to process request');
       }
 
-      console.log('🤖 AI Response received:', result.model, result.tokensUsed, 'tokens');
+      console.log('🤖 API Response received:', result.tokensUsed || 0, 'tokens');
 
-      // Check if AI is asking questions (if no answers provided yet)
-      if (Object.keys(questionAnswers).length === 0 && result.response.includes('?')) {
-        // Parse questions from AI response
-        const aiResponse = result.response;
-        const questionLines = aiResponse.split('\n').filter(line => line.includes('?'));
+      // Handle clarification response (questions)
+      if (Object.keys(questionAnswers).length === 0 && result.questions) {
+        const questions: Question[] = result.questions.map((q: any, index: number) => ({
+          id: q.id || `question_${index}`,
+          text: q.text,
+          kind: q.category || 'missingParam',
+          choices: q.choices || []
+        }));
         
-        if (questionLines.length > 0) {
-          const parsedQuestions: Question[] = questionLines.slice(0, 5).map((line, index) => ({
-            id: `question_${index}`,
-            text: line.replace(/^\d+\.?\s*/, '').replace(/\*\*/g, '').trim(),
-            kind: 'missingParam' as const,
-            choices: []
-          }));
-          
-          setCurrentQuestions(parsedQuestions);
-          
-          addMessage({
-            role: 'assistant',
-            content: `🤔 **I need some clarification to build the perfect automation:**
+        setCurrentQuestions(questions);
+        
+        addMessage({
+          role: 'assistant',
+          content: `🤔 **I need some clarification to build the perfect automation:**
 
-${aiResponse}
+${questions.map((q, i) => `**${i + 1}.** ${q.text}`).join('\n\n')}
 
 Please answer these questions in the form below:`,
-            type: 'question',
-            data: { questions: parsedQuestions }
-          });
+          type: 'question',
+          data: { questions }
+        });
 
-          return;
-        }
+        return;
       }
 
       // Process the complete workflow result
@@ -396,12 +412,24 @@ Please answer these questions in the form below:`,
       setProcessingStep('🚀 Preparing deployment instructions...');
       await new Promise(resolve => setTimeout(resolve, 600));
 
+      // Create workflow result from new API response
+      const workflowData = {
+        workflow: {
+          graph: result.graph || null,
+          validation: result.validation || { valid: true, errors: [], warnings: [] }
+        },
+        code: result.files ? result.files.find((f: any) => f.name === 'Code.js')?.content || 'No code generated' : 'No code generated',
+        files: result.files || [],
+        rationale: result.rationale || 'Generated automation workflow',
+        deploymentInstructions: result.deploymentInstructions || ''
+      };
+
       // Store the workflow result
-      setWorkflowResult(result);
+      setWorkflowResult(workflowData);
 
       // Add success message with workflow summary
-      const workflow = result.workflow.graph;
-      const validation = result.workflow.validation;
+      const workflow = workflowData.workflow.graph;
+      const validation = workflowData.workflow.validation;
       
       addMessage({
         role: 'assistant',
