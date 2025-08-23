@@ -12,17 +12,15 @@ import {
 } from '../shared/nodeGraphSchema';
 import { WorkflowOrchestrator } from './orchestrator';
 import { WorkflowCompiler } from './workflowCompiler';
-import { GraphValidator } from './graphValidator';
+import { simpleGraphValidator } from './core/SimpleGraphValidator';
 
 export class WorkflowAPI {
   private orchestrator: WorkflowOrchestrator;
   private compiler: WorkflowCompiler;
-  private validator: GraphValidator;
 
   constructor() {
     this.orchestrator = new WorkflowOrchestrator();
     this.compiler = new WorkflowCompiler();
-    this.validator = new GraphValidator();
   }
 
   // Get system capabilities
@@ -97,8 +95,9 @@ export class WorkflowAPI {
       const response = await this.orchestrator.planWorkflow(request);
       
       // Validate the generated graph
-      const errors = this.validator.validateGraph(response.graph);
-      const safetyWarnings = this.validator.validateSafetyGuidelines(response.graph);
+      const validationResult = simpleGraphValidator.validate(response.graph);
+      const errors = validationResult.errors;
+      const safetyWarnings = validationResult.securityWarnings || [];
       
       res.json({
         success: true,
@@ -149,7 +148,8 @@ export class WorkflowAPI {
       const response = await this.orchestrator.fixWorkflow(request);
       
       // Re-validate the fixed graph
-      const errors = this.validator.validateGraph(response.graph);
+      const validationResult = simpleGraphValidator.validate(response.graph);
+      const errors = validationResult.errors;
       
       res.json({
         success: true,
@@ -183,7 +183,8 @@ export class WorkflowAPI {
       }
 
       // Validate graph before compilation
-      const errors = this.validator.validateGraph(request.graph);
+      const validationResult = simpleGraphValidator.validate(request.graph);
+      const errors = validationResult.errors;
       const criticalErrors = errors.filter(e => e.severity === 'error');
       
       if (criticalErrors.length > 0) {
@@ -316,7 +317,8 @@ export class WorkflowAPI {
       }
 
       // Step 3: Validate and fix if needed
-      const errors = this.validator.validateGraph(workflow);
+      const validationResult = simpleGraphValidator.validate(workflow);
+      const errors = validationResult.errors;
       const criticalErrors = errors.filter(e => e.severity === 'error');
       
       if (criticalErrors.length > 0) {
@@ -391,8 +393,9 @@ export class WorkflowAPI {
         });
       }
 
-      const errors = this.validator.validateGraph(graph);
-      const safetyWarnings = this.validator.validateSafetyGuidelines(graph);
+      const validationResult = simpleGraphValidator.validate(graph);
+      const errors = validationResult.errors;
+      const safetyWarnings = validationResult.securityWarnings || [];
       
       res.json({
         success: true,

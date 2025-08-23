@@ -15,23 +15,21 @@ import {
   Question
 } from '../shared/nodeGraphSchema';
 import { EnhancedNodeCatalog } from './enhancedNodeCatalog';
-import { GraphValidator } from './graphValidator';
+import { simpleGraphValidator } from './core/SimpleGraphValidator';
 import { RealAIService } from './realAIService'; // Import for direct calls
 
 export class WorkflowOrchestrator {
   private nodeCatalog: EnhancedNodeCatalog;
-  private validator: GraphValidator;
 
   constructor() {
     this.nodeCatalog = EnhancedNodeCatalog.getInstance();
-    this.validator = new GraphValidator();
   }
 
   // LLM Tools - Functions that the LLM can call
   private getLLMTools(): LLMTools {
     return {
       getNodeCatalog: () => this.nodeCatalog.getNodeCatalog(),
-      validateGraph: (graph: NodeGraph) => this.validator.validateGraph(graph),
+      validateGraph: (graph: NodeGraph) => simpleGraphValidator.validate(graph),
       searchApps: (query: string) => this.nodeCatalog.searchApps(query),
       getAppFunctions: (appName: string) => this.nodeCatalog.getAppFunctions(appName)
     };
@@ -155,7 +153,8 @@ ${Object.entries(request.answers).map(([q, a]) => `Q: ${q}\nA: ${a}`).join('\n\n
       
       if (response.graph) {
         // Validate the generated graph
-        const errors = this.validator.validateGraph(response.graph);
+        const validationResult = simpleGraphValidator.validate(response.graph);
+        const errors = validationResult.errors;
         
         if (errors.filter(e => e.severity === 'error').length > 0) {
           // Try to fix errors automatically
@@ -230,37 +229,38 @@ Return the fixed graph as JSON.`;
     }
   }
 
-  // LLM Integration with Tools
-  private async callLLMWithTools(systemPrompt: string, userPrompt: string): Promise<any> {
-    // This will integrate with your existing conversational AI system
-    const response = await fetch('/api/ai/conversation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: `${systemPrompt}\n\n${userPrompt}`,
-        model: 'gemini-pro', // Default to Gemini for structured tasks
-        userId: 'workflow-orchestrator',
-        tools: this.getLLMTools() // Provide tools to LLM
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('LLM API call failed');
-    }
-
-    const result = await response.json();
-    
+  // LLM Integration with Tools - Fixed to use direct service calls
+  private async callLLMWithTools(systemPrompt: string, userPrompt: string, userId: string = 'system'): Promise<any> {
     try {
-      // Try to parse JSON response
-      return JSON.parse(result.response);
-    } catch (error) {
-      // If not valid JSON, extract JSON from response
-      const jsonMatch = result.response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+      // Use environment variables for orchestrator calls (system-level)
+      const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.CLAUDE_API_KEY;
+      const model = process.env.GEMINI_API_KEY ? 'gemini' : (process.env.OPENAI_API_KEY ? 'openai' : 'claude');
+      
+      if (!apiKey) {
+        throw new Error('No LLM API key available for orchestrator');
       }
       
-      throw new Error('LLM response is not valid JSON');
+      // Use the existing callLLMDirectly method to avoid HTTP calls
+      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+      const response = await this.callLLMDirectly(fullPrompt, apiKey, model);
+      
+      try {
+        // Try to parse JSON response
+        return JSON.parse(response);
+      } catch (error) {
+        // If not valid JSON, extract JSON from response
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        
+        // Fallback to simple response
+        return { text: response };
+      }
+      
+    } catch (error) {
+      console.error('❌ LLM Tools call failed:', error);
+      throw new Error(`LLM orchestrator call failed: ${error.message}`);
     }
   }
 

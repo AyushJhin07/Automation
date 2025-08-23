@@ -178,6 +178,23 @@ function executeWorkflow(triggerData = {}) {
     throw error;
   }
 }
+
+// Polling-safe wrapper with concurrency lock (prevents overlapping executions)
+function executeWorkflowSafe(triggerData = {}) {
+  return withLock_(function() {
+    return executeWorkflow(triggerData);
+  }, 300000, 3); // 5 minute timeout, 3 retries
+}
+
+// Entry point for polling triggers (uses lock)
+function run_polling_workflow_(triggerData = {}) {
+  return executeWorkflowSafe(triggerData);
+}
+
+// Entry point for one-time triggers (no lock needed)
+function run_workflow_(triggerData = {}) {
+  return executeWorkflow(triggerData);
+}
 `;
 
     // Generate individual node functions

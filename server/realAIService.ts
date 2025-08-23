@@ -37,6 +37,8 @@ export class RealAIService {
 1. If you have enough information: Generate a detailed workflow specification
 2. If you need more info: Ask 1-2 specific clarifying questions
 
+🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.
+
 For the prompt: "${request.prompt}"
 
 If you have enough info, respond with JSON:

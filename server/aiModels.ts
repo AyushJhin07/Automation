@@ -112,6 +112,9 @@ class MultiAIService {
     }
 
     const systemPrompt = `You are an automation expert. Analyze the user's workflow request and return a JSON response with:
+
+🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.
+
 {
   "intent": "email_tracking|lead_followup|file_organization|custom_automation",
   "requiredApps": ["Gmail", "Google Sheets", etc.],
@@ -166,7 +169,9 @@ class MultiAIService {
       throw new Error('Claude API key not configured');
     }
 
-    const systemPrompt = `You are an automation expert. Analyze workflow requests and return structured JSON responses for Google Apps Script automation building.`;
+    const systemPrompt = `You are an automation expert. Analyze workflow requests and return structured JSON responses for Google Apps Script automation building.
+
+🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.`;
 
     try {
       const response = await fetch(model.endpoint!, {
@@ -210,7 +215,9 @@ class MultiAIService {
       throw new Error('OpenAI API key not configured');
     }
 
-    const systemPrompt = `You are an automation expert specializing in Google Apps Script. Analyze user requests and return structured JSON responses for automation building.`;
+    const systemPrompt = `You are an automation expert specializing in Google Apps Script. Analyze user requests and return structured JSON responses for automation building.
+
+🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.`;
 
     try {
       const response = await fetch(model.endpoint!, {
