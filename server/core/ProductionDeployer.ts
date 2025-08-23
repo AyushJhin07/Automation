@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 const execAsync = promisify(exec);
 
@@ -153,7 +153,7 @@ export class ProductionDeployer {
    * Create temporary project directory
    */
   private async createProjectDirectory(projectName: string): Promise<string> {
-    const projectId = `${projectName}-${uuidv4().substring(0, 8)}`;
+    const projectId = `${projectName}-${randomUUID().substring(0, 8)}`;
     const projectDir = path.join(this.tempDir, projectId);
 
     this.log(`📁 Creating project directory: ${projectDir}`);
