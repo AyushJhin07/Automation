@@ -1,4 +1,4 @@
-import Ajv, { JSONSchemaType } from 'ajv';
+import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import graphSchema from '../../schemas/graph.schema.json';
 import { NodeGraph, ValidationError, ValidationResult } from '../../shared/nodeGraphSchema';
