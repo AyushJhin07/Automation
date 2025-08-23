@@ -1,5 +1,4 @@
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import crypto, { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
 
 interface EncryptedData {
@@ -118,12 +117,21 @@ export class EncryptionService {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  static async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 12);
+  static hashPassword(password: string): string {
+    const salt = randomBytes(16);
+    const hash = scryptSync(password, salt, 64);
+    return salt.toString('hex') + ':' + hash.toString('hex');
   }
 
-  static async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+  static verifyPassword(password: string, stored: string): boolean {
+    const [saltHex, hashHex] = stored.split(':');
+    if (!saltHex || !hashHex) {
+      return false;
+    }
+    const salt = Buffer.from(saltHex, 'hex');
+    const hash = Buffer.from(hashHex, 'hex');
+    const test = scryptSync(password, salt, 64);
+    return timingSafeEqual(test, hash);
   }
 
   static generateJWT(payload: JWTPayload, expiresIn: string = '1h'): string {
