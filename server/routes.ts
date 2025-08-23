@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Workflow API endpoints
   app.post('/api/workflow/clarify', async (req, res) => {
     try {
-      const { prompt, context, model = 'gemini-pro', apiKey } = req.body;
+      const { prompt, context, model = 'gemini-1.5-flash', apiKey } = req.body;
 
       if (!prompt || !apiKey) {
         return res.status(400).json({ error: 'Prompt and API key are required' });
@@ -65,7 +65,7 @@ Return JSON:
 
   app.post('/api/workflow/generate-complete', async (req, res) => {
     try {
-      const { prompt, answers, model = 'gemini-pro', apiKey, options } = req.body;
+      const { prompt, answers, model = 'gemini-1.5-flash', apiKey, options } = req.body;
 
       if (!prompt || !apiKey) {
         return res.status(400).json({ error: 'Prompt and API key are required' });

@@ -58,7 +58,7 @@ If you need more info, respond with JSON:
 }`;
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${request.apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${request.apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ If you need more info, respond with JSON:
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: 'claude-3-5-haiku-20241022',
           max_tokens: 2000,
           system: systemPrompt,
           messages: [
@@ -199,7 +199,7 @@ If you need more info, respond with JSON:
           'Authorization': `Bearer ${request.apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o-mini-2024-07-18',
           messages: [
             {
               role: 'system',

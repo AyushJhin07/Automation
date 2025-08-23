@@ -222,7 +222,7 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [showWorkflowPreview, setShowWorkflowPreview] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [apiKeys, setApiKeys] = useState<{gemini?: string; claude?: string; openai?: string}>({});
-  const [selectedModel, setSelectedModel] = useState('gemini-pro');
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load API keys from localStorage
@@ -316,8 +316,8 @@ You can try:
       setProcessingStep('🤔 Understanding your request...');
       
       // Get API key for selected model
-      const currentApiKey = selectedModel === 'gemini-pro' ? apiKeys.gemini :
-                           selectedModel === 'claude-3-haiku' ? apiKeys.claude :
+      const currentApiKey = selectedModel === 'gemini-1.5-flash' ? apiKeys.gemini :
+                           selectedModel === 'claude-3.5-haiku' ? apiKeys.claude :
                            selectedModel === 'gpt-4o-mini' ? apiKeys.openai : '';
 
       if (!currentApiKey) {
@@ -566,8 +566,8 @@ Need help? I can guide you through each step!`
               onChange={(e) => setSelectedModel(e.target.value)}
               className="bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1"
             >
-              <option value="gemini-pro">Gemini Pro</option>
-              <option value="claude-3-haiku">Claude 3 Haiku</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="claude-3.5-haiku">Claude 3.5 Haiku</option>
               <option value="gpt-4o-mini">GPT-4o Mini</option>
             </select>
             <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
