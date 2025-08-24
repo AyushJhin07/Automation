@@ -1,21 +1,63 @@
 {
   "id": "circleci",
   "name": "CircleCI",
-  "description": "CircleCI continuous integration",
-  "category": "DevOps",
+  "description": "Continuous integration and delivery platform",
+  "category": "Developer Tools",
   "icon": "placeholder",
   "color": "#343434",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://circleci.com/api/v2",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "trigger_pipeline",
+      "name": "Trigger Pipeline",
+      "description": "Trigger a new pipeline",
+      "parameters": {
+        "project_slug": {
+          "type": "string",
+          "required": true
+        },
+        "branch": {
+          "type": "string",
+          "default": "main"
+        },
+        "parameters": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "id": "cancel_workflow",
+      "name": "Cancel Workflow",
+      "description": "Cancel a workflow",
+      "parameters": {
+        "workflow_id": {
+          "type": "string",
+          "required": true
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "workflow_completed",
+      "name": "Workflow Completed",
+      "description": "Triggered when a workflow completes",
+      "parameters": {
+        "project_slug": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "webhookSupport": true
+    }
+  ]
 }

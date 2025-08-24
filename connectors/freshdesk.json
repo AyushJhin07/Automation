@@ -1,21 +1,101 @@
 {
   "id": "freshdesk",
   "name": "Freshdesk",
-  "description": "Freshdesk customer support",
+  "description": "Customer support and helpdesk software",
   "category": "Customer Support",
   "icon": "placeholder",
   "color": "#2C5AA0",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://{domain}.freshdesk.com/api/v2",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_ticket",
+      "name": "Create Ticket",
+      "description": "Create a new support ticket",
+      "parameters": {
+        "subject": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "required": true
+        },
+        "email": {
+          "type": "string",
+          "required": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 5
+        }
+      }
+    },
+    {
+      "id": "update_ticket",
+      "name": "Update Ticket",
+      "description": "Update an existing ticket",
+      "parameters": {
+        "ticket_id": {
+          "type": "string",
+          "required": true
+        },
+        "status": {
+          "type": "integer"
+        },
+        "priority": {
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "id": "add_note",
+      "name": "Add Note",
+      "description": "Add a note to a ticket",
+      "parameters": {
+        "ticket_id": {
+          "type": "string",
+          "required": true
+        },
+        "body": {
+          "type": "string",
+          "required": true
+        },
+        "private": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "ticket_created",
+      "name": "Ticket Created",
+      "description": "Triggered when a ticket is created",
+      "parameters": {},
+      "webhookSupport": true
+    },
+    {
+      "id": "ticket_updated",
+      "name": "Ticket Updated",
+      "description": "Triggered when a ticket is updated",
+      "parameters": {},
+      "webhookSupport": true
+    }
+  ]
 }

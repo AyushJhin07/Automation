@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 
-// Google Apps Script function implementations
+// COMPREHENSIVE GOOGLE APPS SCRIPT FUNCTION IMPLEMENTATIONS
+// Covers ALL Google Workspace services: Gmail, Sheets, Docs, Slides, Calendar, Drive, Contacts, Chat, Meet, Forms
+
 export class GoogleAppsScriptAPI {
   
   // Gmail Functions
@@ -532,6 +534,585 @@ function ${functionId}() {
     }
   }
 
+  // Google Docs Functions
+  static generateDocsFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'create_doc':
+        return `
+function createDoc() {
+  const title = "${params.title || 'Untitled Document'}";
+  const folderId = "${params.folderId || ''}";
+  
+  try {
+    const doc = DocumentApp.create(title);
+    
+    if (folderId) {
+      const file = DriveApp.getFileById(doc.getId());
+      const folder = DriveApp.getFolderById(folderId);
+      file.moveTo(folder);
+    }
+    
+    console.log('Document created successfully: ' + title);
+    return { 
+      success: true, 
+      documentId: doc.getId(),
+      documentUrl: doc.getUrl(),
+      title: title
+    };
+  } catch (error) {
+    console.error('Error creating document:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'append_text':
+        return `
+function appendText() {
+  const documentId = "${params.documentId || ''}";
+  const text = \`${params.text || ''}\`;
+  
+  try {
+    const doc = DocumentApp.openById(documentId);
+    const body = doc.getBody();
+    body.appendParagraph(text);
+    
+    console.log('Text appended to document: ' + documentId);
+    return { success: true, message: 'Text appended successfully' };
+  } catch (error) {
+    console.error('Error appending text:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'insert_table':
+        return `
+function insertTable() {
+  const documentId = "${params.documentId || ''}";
+  const rows = parseInt("${params.rows || '2'}");
+  const cols = parseInt("${params.cols || '2'}");
+  
+  try {
+    const doc = DocumentApp.openById(documentId);
+    const body = doc.getBody();
+    
+    const tableData = [];
+    for (let i = 0; i < rows; i++) {
+      const row = [];
+      for (let j = 0; j < cols; j++) {
+        row.push('Cell ' + (i + 1) + ',' + (j + 1));
+      }
+      tableData.push(row);
+    }
+    
+    const table = body.appendTable(tableData);
+    
+    console.log('Table inserted into document: ' + documentId);
+    return { success: true, message: 'Table inserted successfully' };
+  } catch (error) {
+    console.error('Error inserting table:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'find_replace':
+        return `
+function findReplace() {
+  const documentId = "${params.documentId || ''}";
+  const findText = "${params.findText || ''}";
+  const replaceText = "${params.replaceText || ''}";
+  
+  try {
+    const doc = DocumentApp.openById(documentId);
+    const body = doc.getBody();
+    
+    const replacedCount = body.replaceText(findText, replaceText);
+    
+    console.log('Find and replace completed in document: ' + documentId);
+    return { 
+      success: true, 
+      replacedCount: replacedCount,
+      message: 'Replaced ' + replacedCount + ' instances'
+    };
+  } catch (error) {
+    console.error('Error in find and replace:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Docs function: ' + functionId;
+    }
+  }
+
+  // Google Slides Functions
+  static generateSlidesFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'create_presentation':
+        return `
+function createPresentation() {
+  const title = "${params.title || 'Untitled Presentation'}";
+  const folderId = "${params.folderId || ''}";
+  
+  try {
+    const presentation = SlidesApp.create(title);
+    
+    if (folderId) {
+      const file = DriveApp.getFileById(presentation.getId());
+      const folder = DriveApp.getFolderById(folderId);
+      file.moveTo(folder);
+    }
+    
+    console.log('Presentation created successfully: ' + title);
+    return { 
+      success: true, 
+      presentationId: presentation.getId(),
+      presentationUrl: presentation.getUrl(),
+      title: title
+    };
+  } catch (error) {
+    console.error('Error creating presentation:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'add_slide':
+        return `
+function addSlide() {
+  const presentationId = "${params.presentationId || ''}";
+  const layout = "${params.layout || 'BLANK'}";
+  
+  try {
+    const presentation = SlidesApp.openById(presentationId);
+    const slide = presentation.appendSlide(SlidesApp.PredefinedLayout[layout] || SlidesApp.PredefinedLayout.BLANK);
+    
+    console.log('Slide added to presentation: ' + presentationId);
+    return { 
+      success: true, 
+      slideId: slide.getObjectId(),
+      message: 'Slide added successfully'
+    };
+  } catch (error) {
+    console.error('Error adding slide:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'insert_text':
+        return `
+function insertText() {
+  const presentationId = "${params.presentationId || ''}";
+  const slideIndex = parseInt("${params.slideIndex || '0'}");
+  const text = \`${params.text || ''}\`;
+  
+  try {
+    const presentation = SlidesApp.openById(presentationId);
+    const slides = presentation.getSlides();
+    
+    if (slideIndex < slides.length) {
+      const slide = slides[slideIndex];
+      const textBox = slide.insertTextBox(text);
+      
+      console.log('Text inserted into slide: ' + slideIndex);
+      return { success: true, message: 'Text inserted successfully' };
+    } else {
+      return { success: false, error: 'Slide index out of range' };
+    }
+  } catch (error) {
+    console.error('Error inserting text:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Slides function: ' + functionId;
+    }
+  }
+
+  // Google Calendar Functions
+  static generateCalendarFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'create_event':
+        return `
+function createEvent() {
+  const title = "${params.title || 'New Event'}";
+  const startTime = new Date("${params.startTime || new Date().toISOString()}");
+  const endTime = new Date("${params.endTime || new Date(Date.now() + 3600000).toISOString()}");
+  const description = \`${params.description || ''}\`;
+  const location = "${params.location || ''}";
+  const guests = "${params.guests || ''}";
+  
+  try {
+    const calendar = CalendarApp.getDefaultCalendar();
+    
+    const options = {};
+    if (description) options.description = description;
+    if (location) options.location = location;
+    if (guests) options.guests = guests.split(',').map(g => g.trim());
+    
+    const event = calendar.createEvent(title, startTime, endTime, options);
+    
+    console.log('Event created successfully: ' + title);
+    return { 
+      success: true, 
+      eventId: event.getId(),
+      title: title,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating event:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'update_event':
+        return `
+function updateEvent() {
+  const eventId = "${params.eventId || ''}";
+  const title = "${params.title || ''}";
+  const description = \`${params.description || ''}\`;
+  const location = "${params.location || ''}";
+  
+  try {
+    const calendar = CalendarApp.getDefaultCalendar();
+    const event = calendar.getEventById(eventId);
+    
+    if (!event) {
+      return { success: false, error: 'Event not found' };
+    }
+    
+    if (title) event.setTitle(title);
+    if (description) event.setDescription(description);
+    if (location) event.setLocation(location);
+    
+    console.log('Event updated successfully: ' + eventId);
+    return { success: true, message: 'Event updated successfully' };
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'list_events':
+        return `
+function listEvents() {
+  const startDate = new Date("${params.startDate || new Date().toISOString()}");
+  const endDate = new Date("${params.endDate || new Date(Date.now() + 7 * 24 * 3600000).toISOString()}");
+  
+  try {
+    const calendar = CalendarApp.getDefaultCalendar();
+    const events = calendar.getEvents(startDate, endDate);
+    
+    const eventList = events.map(event => ({
+      id: event.getId(),
+      title: event.getTitle(),
+      description: event.getDescription(),
+      location: event.getLocation(),
+      startTime: event.getStartTime().toISOString(),
+      endTime: event.getEndTime().toISOString()
+    }));
+    
+    console.log('Retrieved ' + events.length + ' events');
+    return { success: true, events: eventList };
+  } catch (error) {
+    console.error('Error listing events:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Calendar function: ' + functionId;
+    }
+  }
+
+  // Google Contacts Functions
+  static generateContactsFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'create_contact':
+        return `
+function createContact() {
+  const firstName = "${params.firstName || ''}";
+  const lastName = "${params.lastName || ''}";
+  const email = "${params.email || ''}";
+  const phone = "${params.phone || ''}";
+  const company = "${params.company || ''}";
+  
+  try {
+    const contact = ContactsApp.createContact(firstName, lastName, email);
+    
+    if (phone) {
+      contact.addPhone(ContactsApp.Field.MOBILE_PHONE, phone);
+    }
+    
+    if (company) {
+      contact.addCompany(company, '');
+    }
+    
+    console.log('Contact created successfully: ' + firstName + ' ' + lastName);
+    return { 
+      success: true, 
+      contactId: contact.getId(),
+      fullName: firstName + ' ' + lastName,
+      email: email
+    };
+  } catch (error) {
+    console.error('Error creating contact:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'update_contact':
+        return `
+function updateContact() {
+  const contactId = "${params.contactId || ''}";
+  const firstName = "${params.firstName || ''}";
+  const lastName = "${params.lastName || ''}";
+  const email = "${params.email || ''}";
+  const phone = "${params.phone || ''}";
+  
+  try {
+    const contact = ContactsApp.getContact(contactId);
+    
+    if (!contact) {
+      return { success: false, error: 'Contact not found' };
+    }
+    
+    if (firstName || lastName) {
+      contact.setFullName(firstName + ' ' + lastName);
+    }
+    
+    if (email) {
+      const emails = contact.getEmails();
+      if (emails.length > 0) {
+        contact.removeEmail(emails[0]);
+      }
+      contact.addEmail(ContactsApp.Field.HOME_EMAIL, email);
+    }
+    
+    console.log('Contact updated successfully: ' + contactId);
+    return { success: true, message: 'Contact updated successfully' };
+  } catch (error) {
+    console.error('Error updating contact:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Contacts function: ' + functionId;
+    }
+  }
+
+  // Google Chat Functions
+  static generateChatFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'post_message':
+        return `
+function postMessage() {
+  const spaceId = "${params.spaceId || ''}";
+  const text = \`${params.text || ''}\`;
+  
+  try {
+    // Using Google Chat API via UrlFetchApp since ChatApp is limited
+    const accessToken = PropertiesService.getScriptProperties().getProperty('GOOGLE_ACCESS_TOKEN');
+    
+    if (!accessToken) {
+      return { success: false, error: 'Google access token not found' };
+    }
+    
+    const response = UrlFetchApp.fetch('https://chat.googleapis.com/v1/spaces/' + spaceId + '/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        text: text
+      })
+    });
+    
+    const responseData = JSON.parse(response.getContentText());
+    
+    console.log('Message posted to Chat space: ' + spaceId);
+    return { 
+      success: true, 
+      messageId: responseData.name,
+      text: text
+    };
+  } catch (error) {
+    console.error('Error posting message to Chat:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Chat function: ' + functionId;
+    }
+  }
+
+  // Google Meet Functions
+  static generateMeetFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'create_meeting':
+        return `
+function createMeeting() {
+  const title = "${params.title || 'New Meeting'}";
+  const startTime = new Date("${params.startTime || new Date().toISOString()}");
+  const endTime = new Date("${params.endTime || new Date(Date.now() + 3600000).toISOString()}");
+  const attendees = "${params.attendees || ''}";
+  
+  try {
+    const calendar = CalendarApp.getDefaultCalendar();
+    
+    const options = {
+      description: 'Meeting created via automation',
+      guests: attendees ? attendees.split(',').map(a => a.trim()) : []
+    };
+    
+    const event = calendar.createEvent(title, startTime, endTime, options);
+    
+    // Add Google Meet conference
+    const conferenceData = event.addConferenceData(ConferenceDataService.newConferenceDataBuilder()
+      .setConferenceId(Utilities.getUuid())
+      .setConferenceSolution(ConferenceDataService.newConferenceSolution()
+        .setKey({
+          type: 'hangoutsMeet'
+        }))
+      .build());
+    
+    console.log('Meeting created successfully: ' + title);
+    return { 
+      success: true, 
+      eventId: event.getId(),
+      meetingUrl: event.getDescription(),
+      title: title
+    };
+  } catch (error) {
+    console.error('Error creating meeting:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Meet function: ' + functionId;
+    }
+  }
+
+  // Google Forms Functions
+  static generateFormsFunction(functionId: string, params: Record<string, any>): string {
+    switch (functionId) {
+      case 'create_form':
+        return `
+function createForm() {
+  const title = "${params.title || 'Untitled Form'}";
+  const description = \`${params.description || ''}\`;
+  
+  try {
+    const form = FormApp.create(title);
+    
+    if (description) {
+      form.setDescription(description);
+    }
+    
+    console.log('Form created successfully: ' + title);
+    return { 
+      success: true, 
+      formId: form.getId(),
+      formUrl: form.getPublishedUrl(),
+      editUrl: form.getEditUrl(),
+      title: title
+    };
+  } catch (error) {
+    console.error('Error creating form:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'add_question':
+        return `
+function addQuestion() {
+  const formId = "${params.formId || ''}";
+  const questionText = \`${params.questionText || ''}\`;
+  const questionType = "${params.questionType || 'TEXT'}";
+  const required = ${params.required || false};
+  
+  try {
+    const form = FormApp.openById(formId);
+    
+    let question;
+    switch (questionType.toUpperCase()) {
+      case 'TEXT':
+        question = form.addTextItem();
+        break;
+      case 'PARAGRAPH':
+        question = form.addParagraphTextItem();
+        break;
+      case 'MULTIPLE_CHOICE':
+        question = form.addMultipleChoiceItem();
+        break;
+      case 'CHECKBOX':
+        question = form.addCheckboxItem();
+        break;
+      case 'SCALE':
+        question = form.addScaleItem();
+        break;
+      default:
+        question = form.addTextItem();
+    }
+    
+    question.setTitle(questionText);
+    if (required) {
+      question.setRequired(true);
+    }
+    
+    console.log('Question added to form: ' + formId);
+    return { 
+      success: true, 
+      questionId: question.getId(),
+      questionText: questionText
+    };
+  } catch (error) {
+    console.error('Error adding question to form:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      case 'get_responses':
+        return `
+function getResponses() {
+  const formId = "${params.formId || ''}";
+  const limit = parseInt("${params.limit || '100'}");
+  
+  try {
+    const form = FormApp.openById(formId);
+    const responses = form.getResponses();
+    
+    const responseData = responses.slice(-limit).map(response => ({
+      id: response.getId(),
+      timestamp: response.getTimestamp().toISOString(),
+      respondentEmail: response.getRespondentEmail(),
+      answers: response.getItemResponses().map(itemResponse => ({
+        question: itemResponse.getItem().getTitle(),
+        answer: itemResponse.getResponse()
+      }))
+    }));
+    
+    console.log('Retrieved ' + responseData.length + ' form responses');
+    return { 
+      success: true, 
+      responses: responseData,
+      totalCount: responses.length
+    };
+  } catch (error) {
+    console.error('Error getting form responses:', error);
+    return { success: false, error: error.toString() };
+  }
+}`;
+
+      default:
+        return '// Unknown Forms function: ' + functionId;
+    }
+  }
+
   // Generate complete script with all functions
   static generateCompleteScript(nodes: any[], edges: any[]): string {
     let script = `
@@ -599,6 +1180,20 @@ function main() {
           script += this.generateSheetsFunction(functionId, params) + '\n\n';
         } else if (appName.includes('drive')) {
           script += this.generateDriveFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('docs')) {
+          script += this.generateDocsFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('slides')) {
+          script += this.generateSlidesFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('calendar')) {
+          script += this.generateCalendarFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('contacts')) {
+          script += this.generateContactsFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('chat')) {
+          script += this.generateChatFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('meet')) {
+          script += this.generateMeetFunction(functionId, params) + '\n\n';
+        } else if (appName.includes('forms')) {
+          script += this.generateFormsFunction(functionId, params) + '\n\n';
         }
       }
     });
@@ -722,6 +1317,20 @@ export function registerGoogleAppsRoutes(app: Express): void {
         testScript = GoogleAppsScriptAPI.generateSheetsFunction(functionId, params);
       } else if (appType === 'drive') {
         testScript = GoogleAppsScriptAPI.generateDriveFunction(functionId, params);
+      } else if (appType === 'docs' || appType === 'google-docs') {
+        testScript = GoogleAppsScriptAPI.generateDocsFunction(functionId, params);
+      } else if (appType === 'slides' || appType === 'google-slides') {
+        testScript = GoogleAppsScriptAPI.generateSlidesFunction(functionId, params);
+      } else if (appType === 'calendar' || appType === 'google-calendar') {
+        testScript = GoogleAppsScriptAPI.generateCalendarFunction(functionId, params);
+      } else if (appType === 'contacts' || appType === 'google-contacts') {
+        testScript = GoogleAppsScriptAPI.generateContactsFunction(functionId, params);
+      } else if (appType === 'chat' || appType === 'google-chat') {
+        testScript = GoogleAppsScriptAPI.generateChatFunction(functionId, params);
+      } else if (appType === 'meet' || appType === 'google-meet') {
+        testScript = GoogleAppsScriptAPI.generateMeetFunction(functionId, params);
+      } else if (appType === 'forms' || appType === 'google-forms') {
+        testScript = GoogleAppsScriptAPI.generateFormsFunction(functionId, params);
       }
       
       res.json({ 

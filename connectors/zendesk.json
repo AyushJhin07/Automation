@@ -1,21 +1,118 @@
 {
   "id": "zendesk",
   "name": "Zendesk",
-  "description": "Zendesk customer support platform",
+  "description": "Customer service and engagement platform",
   "category": "Customer Support",
   "icon": "placeholder",
   "color": "#999999",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "oauth2"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://{subdomain}.zendesk.com/api/v2",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_ticket",
+      "name": "Create Ticket",
+      "description": "Create a new support ticket",
+      "parameters": {
+        "subject": {
+          "type": "string",
+          "required": true
+        },
+        "comment": {
+          "type": "object",
+          "required": true
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "problem",
+            "incident",
+            "question",
+            "task"
+          ]
+        }
+      }
+    },
+    {
+      "id": "update_ticket",
+      "name": "Update Ticket",
+      "description": "Update an existing ticket",
+      "parameters": {
+        "ticket_id": {
+          "type": "string",
+          "required": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "open",
+            "pending",
+            "hold",
+            "solved",
+            "closed"
+          ]
+        },
+        "comment": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create a new user",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "email": {
+          "type": "string",
+          "required": true
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "end-user",
+            "agent",
+            "admin"
+          ],
+          "default": "end-user"
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "ticket_created",
+      "name": "Ticket Created",
+      "description": "Triggered when a ticket is created",
+      "parameters": {},
+      "webhookSupport": true
+    },
+    {
+      "id": "ticket_solved",
+      "name": "Ticket Solved",
+      "description": "Triggered when a ticket is marked as solved",
+      "parameters": {},
+      "webhookSupport": true
+    }
+  ]
 }

@@ -1,21 +1,80 @@
 {
   "id": "datadog",
   "name": "Datadog",
-  "description": "Datadog monitoring and analytics",
+  "description": "Monitoring and analytics platform",
   "category": "Monitoring",
   "icon": "placeholder",
   "color": "#632CA6",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.datadoghq.com/api/v1",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Create a new event",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true
+        },
+        "text": {
+          "type": "string",
+          "required": true
+        },
+        "alert_type": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "success"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "post_metric",
+      "name": "Post Metric",
+      "description": "Submit metrics data",
+      "parameters": {
+        "metric": {
+          "type": "string",
+          "required": true
+        },
+        "points": {
+          "type": "array",
+          "required": true
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "alert_triggered",
+      "name": "Alert Triggered",
+      "description": "Triggered when an alert fires",
+      "parameters": {},
+      "webhookSupport": true
+    }
+  ]
 }

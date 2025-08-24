@@ -1,5 +1,5 @@
 // COMPREHENSIVE OAUTH MANAGER - AUTO-GENERATED
-// Handles OAuth flows for ALL 42 supported applications
+// Handles OAuth flows for ALL 68 supported applications
 
 import { getErrorMessage } from '../types/common';
 import { connectionService } from '../services/ConnectionService';
@@ -117,6 +117,34 @@ export class OAuthManager {
       },
     });
 
+    // Bitbucket
+    this.providers.set('bitbucket', {
+      name: 'bitbucket',
+      displayName: 'Bitbucket',
+      config: {
+        clientId: process.env.BITBUCKET_CLIENT_ID || '',
+        clientSecret: process.env.BITBUCKET_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/bitbucket`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.bitbucket.org/2.0/oauth/authorize',
+        tokenUrl: 'https://api.bitbucket.org/2.0/oauth/token',
+      },
+    });
+
+    // Box
+    this.providers.set('box', {
+      name: 'box',
+      displayName: 'Box',
+      config: {
+        clientId: process.env.BOX_CLIENT_ID || '',
+        clientSecret: process.env.BOX_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/box`,
+        scopes: ["read","write","files"],
+        authUrl: 'https://api.box.com/2.0/oauth/authorize',
+        tokenUrl: 'https://api.box.com/2.0/oauth/token',
+      },
+    });
+
     // Confluence
     this.providers.set('confluence', {
       name: 'confluence',
@@ -156,6 +184,21 @@ export class OAuthManager {
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
+      },
+    });
+
+    // Dropbox Enhanced
+    this.providers.set('dropbox-enhanced', {
+      name: 'dropbox-enhanced',
+      displayName: 'Dropbox Enhanced',
+      config: {
+        clientId: process.env.DROPBOX_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.DROPBOX_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/dropbox-enhanced`,
+        scopes: ["files.content.write","files.content.read","sharing.write"],
+        authUrl: 'https://www.dropbox.com/oauth2/authorize',
+        tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
+        userInfoUrl: 'https://api.dropboxapi.com/2/users/get_current_account',
       },
     });
 
@@ -218,6 +261,20 @@ export class OAuthManager {
       },
     });
 
+    // Gitlab
+    this.providers.set('gitlab', {
+      name: 'gitlab',
+      displayName: 'Gitlab',
+      config: {
+        clientId: process.env.GITLAB_CLIENT_ID || '',
+        clientSecret: process.env.GITLAB_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/gitlab`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.gitlab.com/oauth/authorize',
+        tokenUrl: 'https://api.gitlab.com/oauth/token',
+      },
+    });
+
     // Gmail Enhanced
     this.providers.set('gmail-enhanced', {
       name: 'gmail-enhanced',
@@ -230,6 +287,23 @@ export class OAuthManager {
         authUrl: 'https://gmail.googleapis.com/gmail/v1/oauth/authorize',
         tokenUrl: 'https://gmail.googleapis.com/gmail/v1/oauth/token',
       },
+    });
+
+    // Hubspot Enhanced
+    this.providers.set('hubspot-enhanced', {
+      name: 'hubspot-enhanced',
+      displayName: 'Hubspot Enhanced',
+      config: {
+        clientId: process.env.HUBSPOT_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.HUBSPOT_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/hubspot-enhanced`,
+        scopes: ["contacts","content","reports","social","timeline"],
+        authUrl: 'https://app.hubspot.com/oauth/authorize',
+        tokenUrl: 'https://api.hubapi.com/oauth/v1/token',
+        userInfoUrl: 'https://api.hubapi.com/oauth/v1/access-tokens/{token}',
+        additionalParams: {"optional_scope":"content"},
+      },
+      customAuthParams: {"optional_scope":"content"},
     });
 
     // HubSpot
@@ -247,6 +321,34 @@ export class OAuthManager {
         additionalParams: {"optional_scope":"content"},
       },
       customAuthParams: {"optional_scope":"content"},
+    });
+
+    // Intercom
+    this.providers.set('intercom', {
+      name: 'intercom',
+      displayName: 'Intercom',
+      config: {
+        clientId: process.env.INTERCOM_CLIENT_ID || '',
+        clientSecret: process.env.INTERCOM_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/intercom`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.intercom.com/oauth/authorize',
+        tokenUrl: 'https://api.intercom.com/oauth/token',
+      },
+    });
+
+    // Jenkins
+    this.providers.set('jenkins', {
+      name: 'jenkins',
+      displayName: 'Jenkins',
+      config: {
+        clientId: process.env.JENKINS_CLIENT_ID || '',
+        clientSecret: process.env.JENKINS_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/jenkins`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.jenkins.com/oauth/authorize',
+        tokenUrl: 'https://api.jenkins.com/oauth/token',
+      },
     });
 
     // Jira Service Management
@@ -279,6 +381,48 @@ export class OAuthManager {
       },
     });
 
+    // Jotform
+    this.providers.set('jotform', {
+      name: 'jotform',
+      displayName: 'Jotform',
+      config: {
+        clientId: process.env.JOTFORM_CLIENT_ID || '',
+        clientSecret: process.env.JOTFORM_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/jotform`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.jotform.com/oauth/authorize',
+        tokenUrl: 'https://api.jotform.com/oauth/token',
+      },
+    });
+
+    // Klaviyo
+    this.providers.set('klaviyo', {
+      name: 'klaviyo',
+      displayName: 'Klaviyo',
+      config: {
+        clientId: process.env.KLAVIYO_CLIENT_ID || '',
+        clientSecret: process.env.KLAVIYO_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/klaviyo`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.klaviyo.com/oauth/authorize',
+        tokenUrl: 'https://api.klaviyo.com/oauth/token',
+      },
+    });
+
+    // Linear
+    this.providers.set('linear', {
+      name: 'linear',
+      displayName: 'Linear',
+      config: {
+        clientId: process.env.LINEAR_CLIENT_ID || '',
+        clientSecret: process.env.LINEAR_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/linear`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.linear.com/oauth/authorize',
+        tokenUrl: 'https://api.linear.com/oauth/token',
+      },
+    });
+
     // Looker
     this.providers.set('looker', {
       name: 'looker',
@@ -290,6 +434,20 @@ export class OAuthManager {
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
+      },
+    });
+
+    // Mailchimp Enhanced
+    this.providers.set('mailchimp-enhanced', {
+      name: 'mailchimp-enhanced',
+      displayName: 'Mailchimp Enhanced',
+      config: {
+        clientId: process.env.MAILCHIMP_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.MAILCHIMP_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/mailchimp-enhanced`,
+        scopes: ["read","write"],
+        authUrl: 'https://login.mailchimp.com/oauth2/authorize',
+        tokenUrl: 'https://login.mailchimp.com/oauth2/token',
       },
     });
 
@@ -307,6 +465,21 @@ export class OAuthManager {
       },
     });
 
+    // Microsoft Teams
+    this.providers.set('microsoft-teams', {
+      name: 'microsoft-teams',
+      displayName: 'Microsoft Teams',
+      config: {
+        clientId: process.env.MICROSOFT_TEAMS_CLIENT_ID || '',
+        clientSecret: process.env.MICROSOFT_TEAMS_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/microsoft-teams`,
+        scopes: ["read","write"],
+        authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+      },
+    });
+
     // Microsoft To Do
     this.providers.set('microsoft-todo', {
       name: 'microsoft-todo',
@@ -319,6 +492,20 @@ export class OAuthManager {
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
         userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+      },
+    });
+
+    // Monday Enhanced
+    this.providers.set('monday-enhanced', {
+      name: 'monday-enhanced',
+      displayName: 'Monday Enhanced',
+      config: {
+        clientId: process.env.MONDAY_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.MONDAY_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/monday-enhanced`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.monday.com/oauth/authorize',
+        tokenUrl: 'https://api.monday.com/oauth/token',
       },
     });
 
@@ -397,6 +584,35 @@ export class OAuthManager {
       },
     });
 
+    // Outlook
+    this.providers.set('outlook', {
+      name: 'outlook',
+      displayName: 'Outlook',
+      config: {
+        clientId: process.env.OUTLOOK_CLIENT_ID || '',
+        clientSecret: process.env.OUTLOOK_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/outlook`,
+        scopes: ["read","write"],
+        authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+      },
+    });
+
+    // Pipedrive
+    this.providers.set('pipedrive', {
+      name: 'pipedrive',
+      displayName: 'Pipedrive',
+      config: {
+        clientId: process.env.PIPEDRIVE_CLIENT_ID || '',
+        clientSecret: process.env.PIPEDRIVE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/pipedrive`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.pipedrive.com/oauth/authorize',
+        tokenUrl: 'https://api.pipedrive.com/oauth/token',
+      },
+    });
+
     // Power BI Enhanced
     this.providers.set('powerbi-enhanced', {
       name: 'powerbi-enhanced',
@@ -439,6 +655,37 @@ export class OAuthManager {
       },
     });
 
+    // Razorpay
+    this.providers.set('razorpay', {
+      name: 'razorpay',
+      displayName: 'Razorpay',
+      config: {
+        clientId: process.env.RAZORPAY_CLIENT_ID || '',
+        clientSecret: process.env.RAZORPAY_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/razorpay`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.razorpay.com/oauth/authorize',
+        tokenUrl: 'https://api.razorpay.com/oauth/token',
+      },
+    });
+
+    // Salesforce Enhanced
+    this.providers.set('salesforce-enhanced', {
+      name: 'salesforce-enhanced',
+      displayName: 'Salesforce Enhanced',
+      config: {
+        clientId: process.env.SALESFORCE_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.SALESFORCE_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/salesforce-enhanced`,
+        scopes: ["api","chatter_api","full","id","refresh_token"],
+        authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
+        tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
+        userInfoUrl: 'https://login.salesforce.com/services/oauth2/userinfo',
+        additionalParams: {"prompt":"consent"},
+      },
+      customAuthParams: {"prompt":"consent"},
+    });
+
     // Salesforce
     this.providers.set('salesforce', {
       name: 'salesforce',
@@ -470,6 +717,20 @@ export class OAuthManager {
       },
     });
 
+    // Sendgrid
+    this.providers.set('sendgrid', {
+      name: 'sendgrid',
+      displayName: 'Sendgrid',
+      config: {
+        clientId: process.env.SENDGRID_CLIENT_ID || '',
+        clientSecret: process.env.SENDGRID_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sendgrid`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.sendgrid.com/oauth/authorize',
+        tokenUrl: 'https://api.sendgrid.com/oauth/token',
+      },
+    });
+
     // Sentry
     this.providers.set('sentry', {
       name: 'sentry',
@@ -497,6 +758,21 @@ export class OAuthManager {
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
         userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
       },
+    });
+
+    // Shopify Enhanced
+    this.providers.set('shopify-enhanced', {
+      name: 'shopify-enhanced',
+      displayName: 'Shopify Enhanced',
+      config: {
+        clientId: process.env.SHOPIFY_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.SHOPIFY_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/shopify-enhanced`,
+        scopes: ["read_products","write_products","read_orders","write_orders"],
+        authUrl: 'https://{shop}.myshopify.com/admin/oauth/authorize',
+        tokenUrl: 'https://{shop}.myshopify.com/admin/oauth/access_token',
+      },
+      pkceRequired: true,
     });
 
     // Shopify
@@ -578,6 +854,21 @@ export class OAuthManager {
       },
     });
 
+    // Stripe Enhanced
+    this.providers.set('stripe-enhanced', {
+      name: 'stripe-enhanced',
+      displayName: 'Stripe Enhanced',
+      config: {
+        clientId: process.env.STRIPE_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.STRIPE_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/stripe-enhanced`,
+        scopes: ["read_write"],
+        authUrl: 'https://connect.stripe.com/oauth/authorize',
+        tokenUrl: 'https://connect.stripe.com/oauth/token',
+      },
+      pkceRequired: true,
+    });
+
     // SuccessFactors
     this.providers.set('successfactors', {
       name: 'successfactors',
@@ -606,6 +897,34 @@ export class OAuthManager {
       },
     });
 
+    // Trello Enhanced
+    this.providers.set('trello-enhanced', {
+      name: 'trello-enhanced',
+      displayName: 'Trello Enhanced',
+      config: {
+        clientId: process.env.TRELLO_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.TRELLO_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/trello-enhanced`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.trello.com/oauth/authorize',
+        tokenUrl: 'https://api.trello.com/oauth/token',
+      },
+    });
+
+    // Typeform
+    this.providers.set('typeform', {
+      name: 'typeform',
+      displayName: 'Typeform',
+      config: {
+        clientId: process.env.TYPEFORM_CLIENT_ID || '',
+        clientSecret: process.env.TYPEFORM_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/typeform`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.typeform.com/oauth/authorize',
+        tokenUrl: 'https://api.typeform.com/oauth/token',
+      },
+    });
+
     // VictorOps
     this.providers.set('victorops', {
       name: 'victorops',
@@ -617,6 +936,20 @@ export class OAuthManager {
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
+      },
+    });
+
+    // Woocommerce
+    this.providers.set('woocommerce', {
+      name: 'woocommerce',
+      displayName: 'Woocommerce',
+      config: {
+        clientId: process.env.WOOCOMMERCE_CLIENT_ID || '',
+        clientSecret: process.env.WOOCOMMERCE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/woocommerce`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.woocommerce.com/oauth/authorize',
+        tokenUrl: 'https://api.woocommerce.com/oauth/token',
       },
     });
 
@@ -662,6 +995,20 @@ export class OAuthManager {
       },
     });
 
+    // Zendesk
+    this.providers.set('zendesk', {
+      name: 'zendesk',
+      displayName: 'Zendesk',
+      config: {
+        clientId: process.env.ZENDESK_CLIENT_ID || '',
+        clientSecret: process.env.ZENDESK_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zendesk`,
+        scopes: ["read","write"],
+        authUrl: 'https://{subdomain}.zendesk.com/api/v2/oauth/authorize',
+        tokenUrl: 'https://{subdomain}.zendesk.com/api/v2/oauth/token',
+      },
+    });
+
     // Zoho Books
     this.providers.set('zoho-books', {
       name: 'zoho-books',
@@ -673,6 +1020,34 @@ export class OAuthManager {
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
+      },
+    });
+
+    // Zoho Crm
+    this.providers.set('zoho-crm', {
+      name: 'zoho-crm',
+      displayName: 'Zoho Crm',
+      config: {
+        clientId: process.env.ZOHO_CRM_CLIENT_ID || '',
+        clientSecret: process.env.ZOHO_CRM_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoho-crm`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.zoho-crm.com/oauth/authorize',
+        tokenUrl: 'https://api.zoho-crm.com/oauth/token',
+      },
+    });
+
+    // Zoom Enhanced
+    this.providers.set('zoom-enhanced', {
+      name: 'zoom-enhanced',
+      displayName: 'Zoom Enhanced',
+      config: {
+        clientId: process.env.ZOOM_ENHANCED_CLIENT_ID || '',
+        clientSecret: process.env.ZOOM_ENHANCED_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoom-enhanced`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.zoom.com/oauth/authorize',
+        tokenUrl: 'https://api.zoom.com/oauth/token',
       },
     });
   }

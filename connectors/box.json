@@ -1,21 +1,87 @@
 {
   "id": "box",
   "name": "Box",
-  "description": "Box cloud content management",
-  "category": "Cloud Storage",
+  "description": "Cloud content management and file sharing service",
+  "category": "File Storage",
   "icon": "placeholder",
   "color": "#0061D5",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "oauth2"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.box.com/2.0",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to Box",
+      "parameters": {
+        "parent_folder_id": {
+          "type": "string",
+          "required": true
+        },
+        "file_name": {
+          "type": "string",
+          "required": true
+        },
+        "file_content": {
+          "type": "string",
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create a new folder",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "parent_folder_id": {
+          "type": "string",
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "share_file",
+      "name": "Share File",
+      "description": "Create a shared link for a file",
+      "parameters": {
+        "file_id": {
+          "type": "string",
+          "required": true
+        },
+        "access_level": {
+          "type": "string",
+          "enum": [
+            "open",
+            "company",
+            "collaborators"
+          ],
+          "default": "open"
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "file_uploaded",
+      "name": "File Uploaded",
+      "description": "Triggered when a file is uploaded",
+      "parameters": {
+        "folder_id": {
+          "type": "string"
+        }
+      },
+      "webhookSupport": true
+    }
+  ]
 }

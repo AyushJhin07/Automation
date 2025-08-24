@@ -1,21 +1,135 @@
 {
   "id": "bitbucket",
   "name": "Bitbucket",
-  "description": "Atlassian Bitbucket git repository",
-  "category": "Development",
+  "description": "Git-based source code repository hosting service",
+  "category": "Developer Tools",
   "icon": "placeholder",
   "color": "#0052CC",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "oauth2"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.bitbucket.org/2.0",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_repository",
+      "name": "Create Repository",
+      "description": "Create a new repository",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Repository name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Repository description"
+        },
+        "is_private": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "requiredScopes": [
+        "repositories:write"
+      ]
+    },
+    {
+      "id": "create_issue",
+      "name": "Create Issue",
+      "description": "Create a new issue",
+      "parameters": {
+        "repo_slug": {
+          "type": "string",
+          "required": true
+        },
+        "title": {
+          "type": "string",
+          "required": true
+        },
+        "content": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "trivial",
+            "minor",
+            "major",
+            "critical",
+            "blocker"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "issues:write"
+      ]
+    },
+    {
+      "id": "create_pull_request",
+      "name": "Create Pull Request",
+      "description": "Create a new pull request",
+      "parameters": {
+        "repo_slug": {
+          "type": "string",
+          "required": true
+        },
+        "title": {
+          "type": "string",
+          "required": true
+        },
+        "source_branch": {
+          "type": "string",
+          "required": true
+        },
+        "destination_branch": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "requiredScopes": [
+        "pullrequests:write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "repository_push",
+      "name": "Repository Push",
+      "description": "Triggered when code is pushed to repository",
+      "parameters": {
+        "repo_slug": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "webhookSupport": true,
+      "requiredScopes": [
+        "repositories:read"
+      ]
+    },
+    {
+      "id": "pull_request_created",
+      "name": "Pull Request Created",
+      "description": "Triggered when a pull request is created",
+      "parameters": {
+        "repo_slug": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "webhookSupport": true,
+      "requiredScopes": [
+        "pullrequests:read"
+      ]
+    }
+  ]
 }

@@ -1,21 +1,108 @@
 {
   "id": "clickup",
   "name": "ClickUp",
-  "description": "ClickUp productivity and project management",
+  "description": "Project management and productivity platform",
   "category": "Project Management",
   "icon": "placeholder",
   "color": "#7B68EE",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key"
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.clickup.com/api/v2",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task",
+      "parameters": {
+        "list_id": {
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string"
+        },
+        "assignees": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      }
+    },
+    {
+      "id": "update_task",
+      "name": "Update Task",
+      "description": "Update an existing task",
+      "parameters": {
+        "task_id": {
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "id": "create_comment",
+      "name": "Create Comment",
+      "description": "Add a comment to a task",
+      "parameters": {
+        "task_id": {
+          "type": "string",
+          "required": true
+        },
+        "comment_text": {
+          "type": "string",
+          "required": true
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "task_created",
+      "name": "Task Created",
+      "description": "Triggered when a task is created",
+      "parameters": {
+        "list_id": {
+          "type": "string"
+        }
+      },
+      "webhookSupport": true
+    },
+    {
+      "id": "task_updated",
+      "name": "Task Updated",
+      "description": "Triggered when a task is updated",
+      "parameters": {
+        "task_id": {
+          "type": "string"
+        }
+      },
+      "webhookSupport": true
+    }
+  ]
 }

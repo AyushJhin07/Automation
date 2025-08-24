@@ -94,7 +94,7 @@ export class WebhookManager {
       }
 
       // Verify webhook signature if secret is provided
-      if (webhook.secret && !this.verifySignature(payload, headers, webhook.secret)) {
+      if (webhook.secret && !this.verifySignature(payload, headers, webhook.secret, webhook.appId)) {
         console.warn(`🔒 Invalid webhook signature for ${webhookId}`);
         return false;
       }
@@ -331,23 +331,273 @@ export class WebhookManager {
   /**
    * Verify webhook signature
    */
-  private verifySignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+  private verifySignature(payload: any, headers: Record<string, string>, secret: string, appId?: string): boolean {
     try {
-      const signature = headers['x-signature'] || headers['x-hub-signature-256'];
-      if (!signature) {
-        return false;
+      if (!appId) {
+        return this.verifyGenericSignature(payload, headers, secret);
       }
 
-      const expectedSignature = createHash('sha256')
-        .update(JSON.stringify(payload) + secret)
-        .digest('hex');
-      
-      return signature === expectedSignature || signature === `sha256=${expectedSignature}`;
+      // Route to vendor-specific signature verification
+      switch (appId.toLowerCase()) {
+        case 'slack':
+        case 'slack-enhanced':
+          return this.verifySlackSignature(payload, headers, secret);
+        
+        case 'stripe':
+        case 'stripe-enhanced':
+          return this.verifyStripeSignature(payload, headers, secret);
+        
+        case 'shopify':
+        case 'shopify-enhanced':
+          return this.verifyShopifySignature(payload, headers, secret);
+        
+        case 'github':
+        case 'github-enhanced':
+          return this.verifyGitHubSignature(payload, headers, secret);
+        
+        case 'gitlab':
+          return this.verifyGitLabSignature(payload, headers, secret);
+        
+        case 'bitbucket':
+          return this.verifyBitbucketSignature(payload, headers, secret);
+        
+        case 'zendesk':
+          return this.verifyZendeskSignature(payload, headers, secret);
+        
+        case 'intercom':
+          return this.verifyIntercomSignature(payload, headers, secret);
+        
+        case 'jira':
+        case 'jira-service-management':
+          return this.verifyJiraSignature(payload, headers, secret);
+        
+        case 'hubspot':
+        case 'hubspot-enhanced':
+          return this.verifyHubSpotSignature(payload, headers, secret);
+        
+        default:
+          return this.verifyGenericSignature(payload, headers, secret);
+      }
       
     } catch (error) {
       console.error('❌ Error verifying signature:', getErrorMessage(error));
       return false;
     }
+  }
+
+  /**
+   * Generic signature verification (fallback)
+   */
+  private verifyGenericSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-signature'] || headers['x-hub-signature-256'];
+    if (!signature) {
+      return false;
+    }
+
+    const expectedSignature = createHash('sha256')
+      .update(JSON.stringify(payload) + secret)
+      .digest('hex');
+    
+    return signature === expectedSignature || signature === `sha256=${expectedSignature}`;
+  }
+
+  /**
+   * Slack webhook signature verification
+   * Uses v0:timestamp:body HMAC SHA256 with timestamp validation
+   */
+  private verifySlackSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-slack-signature'];
+    const timestamp = headers['x-slack-request-timestamp'];
+    
+    if (!signature || !timestamp) {
+      return false;
+    }
+
+    // Reject old requests (older than 5 minutes)
+    const timestampNum = parseInt(timestamp);
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (Math.abs(currentTime - timestampNum) > 300) {
+      console.warn('❌ Slack webhook rejected: timestamp too old');
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const signatureBaseString = `v0:${timestamp}:${rawBody}`;
+    
+    const expectedSignature = 'v0=' + createHash('sha256')
+      .update(signatureBaseString, 'utf8')
+      .digest('hex');
+
+    return signature === expectedSignature;
+  }
+
+  /**
+   * Stripe webhook signature verification
+   * Uses timestamp and tolerance window
+   */
+  private verifyStripeSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['stripe-signature'];
+    if (!signature) {
+      return false;
+    }
+
+    // Parse Stripe signature format: t=timestamp,v1=signature
+    const elements = signature.split(',');
+    const timestamp = elements.find(el => el.startsWith('t='))?.substring(2);
+    const v1Signature = elements.find(el => el.startsWith('v1='))?.substring(3);
+
+    if (!timestamp || !v1Signature) {
+      return false;
+    }
+
+    // Check timestamp tolerance (5 minutes)
+    const timestampNum = parseInt(timestamp);
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (Math.abs(currentTime - timestampNum) > 300) {
+      console.warn('❌ Stripe webhook rejected: timestamp outside tolerance window');
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const signedPayload = `${timestamp}.${rawBody}`;
+    
+    const expectedSignature = createHash('sha256')
+      .update(signedPayload, 'utf8')
+      .digest('hex');
+
+    return v1Signature === expectedSignature;
+  }
+
+  /**
+   * Shopify webhook signature verification
+   * Uses X-Shopify-Hmac-Sha256 with Base64 encoding
+   */
+  private verifyShopifySignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-shopify-hmac-sha256'];
+    if (!signature) {
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    
+    const expectedSignature = createHash('sha256')
+      .update(rawBody, 'utf8')
+      .digest('base64');
+
+    return signature === expectedSignature;
+  }
+
+  /**
+   * GitHub webhook signature verification
+   * Uses X-Hub-Signature-256 with sha256= prefix
+   */
+  private verifyGitHubSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-hub-signature-256'];
+    if (!signature) {
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    
+    const expectedSignature = 'sha256=' + createHash('sha256')
+      .update(rawBody, 'utf8')
+      .digest('hex');
+
+    return signature === expectedSignature;
+  }
+
+  /**
+   * GitLab webhook signature verification
+   */
+  private verifyGitLabSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-gitlab-token'];
+    return signature === secret;
+  }
+
+  /**
+   * Bitbucket webhook signature verification
+   */
+  private verifyBitbucketSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-hub-signature'];
+    if (!signature) {
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    
+    const expectedSignature = 'sha1=' + createHash('sha1')
+      .update(rawBody, 'utf8')
+      .digest('hex');
+
+    return signature === expectedSignature;
+  }
+
+  /**
+   * Zendesk webhook signature verification
+   */
+  private verifyZendeskSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-zendesk-webhook-signature'];
+    if (!signature) {
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const timestamp = headers['x-zendesk-webhook-signature-timestamp'] || '';
+    
+    const signedPayload = `${rawBody}${secret}${timestamp}`;
+    
+    const expectedSignature = createHash('sha256')
+      .update(signedPayload, 'utf8')
+      .digest('base64');
+
+    return signature === expectedSignature;
+  }
+
+  /**
+   * Intercom webhook signature verification
+   */
+  private verifyIntercomSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-hub-signature'];
+    if (!signature) {
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    
+    const expectedSignature = 'sha1=' + createHash('sha1')
+      .update(rawBody + secret, 'utf8')
+      .digest('hex');
+
+    return signature === expectedSignature;
+  }
+
+  /**
+   * Jira webhook signature verification
+   */
+  private verifyJiraSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-atlassian-webhook-identifier'];
+    return signature === secret;
+  }
+
+  /**
+   * HubSpot webhook signature verification
+   */
+  private verifyHubSpotSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+    const signature = headers['x-hubspot-signature'];
+    const timestamp = headers['x-hubspot-request-timestamp'];
+    
+    if (!signature || !timestamp) {
+      return false;
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const signedPayload = `POST${headers['host'] || ''}${headers['path'] || '/webhooks'}${rawBody}${timestamp}`;
+    
+    const expectedSignature = createHash('sha256')
+      .update(signedPayload + secret, 'utf8')
+      .digest('hex');
+
+    return signature === expectedSignature;
   }
 
   /**
