@@ -68,27 +68,39 @@ export class ConnectorRegistry {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
     
-    // Try multiple candidates so it works in dev, tsx, pm2, and prod builds
+    // Prefer the real /connectors with JSON files
     const candidates = [
-      // when server runs from /server
-      resolve(__dirname, '..', 'connectors'),
-      // when server runs from project root
-      resolve(process.cwd(), 'connectors'),
-      // when bundled (e.g., dist/server)
-      resolve(__dirname, '..', '..', 'connectors'),
+      // project root
+      resolve(process.cwd(), "connectors"),
+      // when running from /server
+      resolve(__dirname, "..", "connectors"),
+      // bundled dist layouts
+      resolve(__dirname, "..", "..", "connectors"),
     ];
 
-    const found = candidates.find(p => existsSync(p));
-    if (!found) {
-      console.warn('[ConnectorRegistry] Could not locate /connectors folder. Checked:', candidates);
-      // fall back to cwd/connectors to avoid crash
-      this.connectorsPath = resolve(process.cwd(), 'connectors');
-    } else {
-      this.connectorsPath = found;
+    // Pick the first folder that both exists AND contains at least one .json
+    let selected: string | null = null;
+    for (const p of candidates) {
+      if (existsSync(p)) {
+        try {
+          const files = readdirSync(p);
+          if (files.some(f => f.endsWith(".json"))) {
+            selected = p;
+            break;
+          }
+        } catch {}
+      }
     }
 
-    console.log('[ConnectorRegistry] Using connectorsPath:', this.connectorsPath);
-    
+    if (!selected) {
+      console.warn("[ConnectorRegistry] Could not locate a connectors folder with .json files. Checked:", candidates);
+      // fall back to project root, even if empty
+      selected = resolve(process.cwd(), "connectors");
+    }
+
+    this.connectorsPath = selected;
+    console.log("[ConnectorRegistry] Using connectorsPath:", this.connectorsPath);
+
     this.initializeAPIClients();
     this.loadAllConnectors();
   }
@@ -118,34 +130,34 @@ export class ConnectorRegistry {
    * Load all connector definitions from JSON files
    */
   private loadAllConnectors(): void {
+    this.registry.clear();
+    let files: string[] = [];
     try {
-      const connectorFiles = readdirSync(this.connectorsPath);
-      
-      connectorFiles
-        .filter(file => file.endsWith('.json'))
-        .forEach(file => {
-          try {
-            const definition = this.loadConnectorDefinition(file);
-            const appId = definition.id;
-            
-            const entry: ConnectorRegistryEntry = {
-              definition,
-              apiClient: this.apiClients.get(appId),
-              hasImplementation: this.apiClients.has(appId),
-              functionCount: (definition.actions?.length || 0) + (definition.triggers?.length || 0),
-              categories: [definition.category]
-            };
-            
-            this.registry.set(appId, entry);
-          } catch (error) {
-            console.warn(`Failed to load connector ${file}: ${error}`);
-          }
-        });
-      
-      console.log(`📦 Loaded ${this.registry.size} connectors into registry`);
-    } catch (error) {
-      console.error('Failed to load connectors:', error);
+      files = readdirSync(this.connectorsPath).filter(f => f.endsWith(".json"));
+    } catch (e) {
+      console.warn("[ConnectorRegistry] Failed to read connectorsPath:", this.connectorsPath, e);
+      return;
     }
+
+    let loaded = 0;
+    for (const file of files) {
+      try {
+        const def = this.loadConnectorDefinition(file); // already joins connectorsPath
+        const appId = def.id;
+        const entry: ConnectorRegistryEntry = {
+          definition: def,
+          apiClient: this.apiClients.get(appId),
+          hasImplementation: this.apiClients.has(appId),
+          functionCount: (def.actions?.length || 0) + (def.triggers?.length || 0),
+          categories: [def.category]
+        };
+        this.registry.set(appId, entry);
+        loaded++;
+      } catch (err) {
+        console.warn(`[ConnectorRegistry] Failed to load ${file}:`, err);
+      }
+    }
+    console.log(`[ConnectorRegistry] Loaded ${loaded}/${files.length} connector JSON files from ${this.connectorsPath}`);
   }
 
   /**
@@ -425,7 +437,7 @@ export class ConnectorRegistry {
    */
   public getStats() {
     return {
-      path: this.connectorsPath,
+      connectorsPath: this.connectorsPath,
       count: this.registry.size,
       apps: Array.from(this.registry.keys()).sort()
     };

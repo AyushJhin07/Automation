@@ -90,15 +90,15 @@ Total Supported Applications: 414
 ✅ Initialized 14 core compiler templates
 🛡️ Security service initialized
 [ConnectorRegistry] Using connectorsPath: /workspace/connectors
-📦 Loaded 93 connectors into registry
-2:53:44 PM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
-2:53:44 PM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
-2:53:44 PM [express] Port 3000 failed: listen EADDRINUSE: address already in use :::3000
-2:53:44 PM [express] serving on localhost:5000
-2:53:44 PM [express] serving on localhost:5001
-2:53:44 PM [express] serving on localhost:3000
-2:53:44 PM [express] serving on localhost:8000
-2:54:01 PM [express] GET /api/registry/debug 200 in 3ms :: {"success":true,"path":"/workspace/connec…
-2:54:06 PM [express] GET /api/registry/debug 200 in 1ms :: {"success":true,"path":"/workspace/connec…
-2:54:15 PM [express] GET /api/connectors 200 in 1ms :: {"success":true,"connectors":[{"id":"adp","na…
-3:01:50 PM [express] GET /api/registry/catalog 200 in 3ms :: {"success":true,"catalog":{"categories"…
+[ConnectorRegistry] Loaded 93/93 connector JSON files from /workspace/connectors
+3:06:12 PM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
+3:06:12 PM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
+3:06:12 PM [express] Port 3000 failed: listen EADDRINUSE: address already in use :::3000
+3:06:12 PM [express] Port 8000 failed: listen EADDRINUSE: address already in use :::8000
+3:06:12 PM [express] serving on localhost:5000
+3:06:12 PM [express] serving on localhost:5001
+3:06:12 PM [express] serving on localhost:3000
+3:06:12 PM [express] serving on localhost:8000
+3:06:12 PM [express] serving on localhost:8080
+3:06:32 PM [express] GET /api/registry/debug 200 in 3ms :: {"success":true,"connectorsPath":"/worksp…
+3:06:39 PM [express] GET /api/connectors 200 in 1ms :: {"success":true,"connectors":[{"id":"adp","na…
