@@ -8,14 +8,177 @@
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://auth.atlassian.com/authorize",
+      "tokenUrl": "https://auth.atlassian.com/oauth/token",
+      "scopes": [
+        "read:confluence-content.all",
+        "write:confluence-content",
+        "manage:confluence-content"
+      ]
+    }
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.atlassian.com/ex/confluence",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_page",
+      "name": "Create Page",
+      "description": "Create a new Confluence page",
+      "parameters": {
+        "space_key": {
+          "type": "string",
+          "required": true,
+          "description": "Space key"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Page title"
+        },
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Page content (Confluence storage format)"
+        },
+        "parent_id": {
+          "type": "string",
+          "required": false,
+          "description": "Parent page ID"
+        },
+        "labels": {
+          "type": "array",
+          "required": false,
+          "description": "Page labels"
+        }
+      },
+      "requiredScopes": [
+        "write:confluence-content"
+      ]
+    },
+    {
+      "id": "update_page",
+      "name": "Update Page",
+      "description": "Update an existing Confluence page",
+      "parameters": {
+        "page_id": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "description": "Updated page title"
+        },
+        "content": {
+          "type": "string",
+          "required": false,
+          "description": "Updated page content"
+        },
+        "version_number": {
+          "type": "number",
+          "required": true,
+          "description": "Current version number"
+        }
+      },
+      "requiredScopes": [
+        "write:confluence-content"
+      ]
+    },
+    {
+      "id": "delete_page",
+      "name": "Delete Page",
+      "description": "Delete a Confluence page",
+      "parameters": {
+        "page_id": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID to delete"
+        }
+      },
+      "requiredScopes": [
+        "manage:confluence-content"
+      ]
+    },
+    {
+      "id": "add_comment",
+      "name": "Add Comment",
+      "description": "Add a comment to a Confluence page",
+      "parameters": {
+        "page_id": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "comment": {
+          "type": "string",
+          "required": true,
+          "description": "Comment content"
+        },
+        "parent_comment_id": {
+          "type": "string",
+          "required": false,
+          "description": "Parent comment ID for replies"
+        }
+      },
+      "requiredScopes": [
+        "write:confluence-content"
+      ]
+    },
+    {
+      "id": "add_attachment",
+      "name": "Add Attachment",
+      "description": "Add an attachment to a Confluence page",
+      "parameters": {
+        "page_id": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "Attachment filename"
+        },
+        "file_data": {
+          "type": "string",
+          "required": true,
+          "description": "Base64 encoded file data"
+        },
+        "comment": {
+          "type": "string",
+          "required": false,
+          "description": "Attachment comment"
+        }
+      },
+      "requiredScopes": [
+        "write:confluence-content"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "page_created",
+      "name": "Page Created",
+      "description": "Triggered when a new page is created",
+      "parameters": {},
+      "requiredScopes": [
+        "read:confluence-content.all"
+      ]
+    },
+    {
+      "id": "page_updated",
+      "name": "Page Updated",
+      "description": "Triggered when a page is updated",
+      "parameters": {},
+      "requiredScopes": [
+        "read:confluence-content.all"
+      ]
+    }
+  ]
 }

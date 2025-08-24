@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.snowflake.get_table_data.schema.json",
+  "title": "Snowflake - Get Table Data",
+  "description": "Retrieve data from a Snowflake table",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.snowflake.get_table_data",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "table_name": {
+          "description": "Table name",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Number of rows to return",
+          "type": "number",
+          "default": 1000
+        },
+        "where_clause": {
+          "description": "WHERE clause filter",
+          "type": "string"
+        },
+        "order_by": {
+          "description": "ORDER BY clause",
+          "type": "string"
+        }
+      },
+      "required": [
+        "table_name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Data Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Snowflake"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "data:read"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

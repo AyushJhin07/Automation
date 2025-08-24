@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.servicenow.create_incident.schema.json",
+  "title": "ServiceNow - Create Incident",
+  "description": "Create a new incident in ServiceNow",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.servicenow.create_incident",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "short_description": {
+          "description": "Brief summary of the incident",
+          "type": "string"
+        },
+        "description": {
+          "description": "Detailed description",
+          "type": "string"
+        },
+        "urgency": {
+          "description": "Incident urgency",
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        "impact": {
+          "description": "Incident impact",
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        "caller_id": {
+          "description": "User who reported the incident",
+          "type": "string"
+        },
+        "assignment_group": {
+          "description": "Group to assign incident to",
+          "type": "string"
+        }
+      },
+      "required": [
+        "short_description"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ITSM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "ServiceNow"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "incident_write"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

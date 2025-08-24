@@ -8,14 +8,162 @@
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://{account}.snowflakecomputing.com/oauth/authorize",
+      "tokenUrl": "https://{account}.snowflakecomputing.com/oauth/token-request",
+      "scopes": [
+        "session:role:any"
+      ]
+    }
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://{account}.snowflakecomputing.com/api/v2",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "execute_query",
+      "name": "Execute Query",
+      "description": "Execute a SQL query in Snowflake",
+      "parameters": {
+        "sql": {
+          "type": "string",
+          "required": true,
+          "description": "SQL query to execute"
+        },
+        "warehouse": {
+          "type": "string",
+          "required": false,
+          "description": "Warehouse to use"
+        },
+        "database": {
+          "type": "string",
+          "required": false,
+          "description": "Database to use"
+        },
+        "schema": {
+          "type": "string",
+          "required": false,
+          "description": "Schema to use"
+        },
+        "timeout": {
+          "type": "number",
+          "required": false,
+          "description": "Query timeout in seconds",
+          "default": 300
+        }
+      },
+      "requiredScopes": [
+        "query:execute"
+      ]
+    },
+    {
+      "id": "copy_into_table",
+      "name": "Copy Into Table",
+      "description": "Load data into a Snowflake table",
+      "parameters": {
+        "table_name": {
+          "type": "string",
+          "required": true,
+          "description": "Target table name"
+        },
+        "stage_location": {
+          "type": "string",
+          "required": true,
+          "description": "Stage location of files"
+        },
+        "file_format": {
+          "type": "string",
+          "required": false,
+          "description": "File format name"
+        },
+        "copy_options": {
+          "type": "object",
+          "required": false,
+          "description": "Additional copy options"
+        }
+      },
+      "requiredScopes": [
+        "data:write"
+      ]
+    },
+    {
+      "id": "create_stage",
+      "name": "Create Stage",
+      "description": "Create a new stage for data loading",
+      "parameters": {
+        "stage_name": {
+          "type": "string",
+          "required": true,
+          "description": "Stage name"
+        },
+        "stage_type": {
+          "type": "string",
+          "required": true,
+          "description": "Stage type",
+          "options": [
+            "internal",
+            "external"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "required": false,
+          "description": "External stage location"
+        },
+        "credentials": {
+          "type": "object",
+          "required": false,
+          "description": "Cloud credentials"
+        }
+      },
+      "requiredScopes": [
+        "stage:create"
+      ]
+    },
+    {
+      "id": "get_table_data",
+      "name": "Get Table Data",
+      "description": "Retrieve data from a Snowflake table",
+      "parameters": {
+        "table_name": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "limit": {
+          "type": "number",
+          "required": false,
+          "description": "Number of rows to return",
+          "default": 1000
+        },
+        "where_clause": {
+          "type": "string",
+          "required": false,
+          "description": "WHERE clause filter"
+        },
+        "order_by": {
+          "type": "string",
+          "required": false,
+          "description": "ORDER BY clause"
+        }
+      },
+      "requiredScopes": [
+        "data:read"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "task_completed",
+      "name": "Task Completed",
+      "description": "Triggered when a Snowflake task completes",
+      "parameters": {},
+      "requiredScopes": [
+        "task:read"
+      ]
+    }
+  ]
 }

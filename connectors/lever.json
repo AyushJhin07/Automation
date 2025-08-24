@@ -7,15 +7,144 @@
   "color": "#5A67D8",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "type": "basic",
+      "username": "{api_key}",
+      "password": ""
+    }
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.lever.co/v1",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_opportunity",
+      "name": "Create Opportunity",
+      "description": "Create a new candidate opportunity",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Candidate name"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Candidate email"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Candidate phone"
+        },
+        "posting_id": {
+          "type": "string",
+          "required": false,
+          "description": "Job posting ID"
+        }
+      },
+      "requiredScopes": [
+        "opportunities:write"
+      ]
+    },
+    {
+      "id": "update_opportunity",
+      "name": "Update Opportunity",
+      "description": "Update an existing opportunity",
+      "parameters": {
+        "opportunity_id": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity ID"
+        },
+        "updates": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "opportunities:write"
+      ]
+    },
+    {
+      "id": "move_to_stage",
+      "name": "Move to Stage",
+      "description": "Move candidate to a different stage",
+      "parameters": {
+        "opportunity_id": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity ID"
+        },
+        "stage_id": {
+          "type": "string",
+          "required": true,
+          "description": "Target stage ID"
+        }
+      },
+      "requiredScopes": [
+        "opportunities:write"
+      ]
+    },
+    {
+      "id": "add_interview_feedback",
+      "name": "Add Interview Feedback",
+      "description": "Add feedback for an interview",
+      "parameters": {
+        "opportunity_id": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity ID"
+        },
+        "interviewer_id": {
+          "type": "string",
+          "required": true,
+          "description": "Interviewer ID"
+        },
+        "feedback": {
+          "type": "string",
+          "required": true,
+          "description": "Interview feedback"
+        },
+        "recommendation": {
+          "type": "string",
+          "required": false,
+          "description": "Hiring recommendation",
+          "options": [
+            "yes",
+            "no",
+            "maybe"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "feedback:write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "opportunity_created",
+      "name": "Opportunity Created",
+      "description": "Triggered when a new opportunity is created",
+      "parameters": {},
+      "requiredScopes": [
+        "opportunities:read"
+      ]
+    },
+    {
+      "id": "candidate_hired",
+      "name": "Candidate Hired",
+      "description": "Triggered when a candidate is hired",
+      "parameters": {},
+      "requiredScopes": [
+        "opportunities:read"
+      ]
+    }
+  ]
 }

@@ -7,15 +7,149 @@
   "color": "#06AC38",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Token token="
+    }
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://api.pagerduty.com",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_incident",
+      "name": "Create Incident",
+      "description": "Create a new incident in PagerDuty",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Incident title"
+        },
+        "service_id": {
+          "type": "string",
+          "required": true,
+          "description": "Service ID"
+        },
+        "urgency": {
+          "type": "string",
+          "required": false,
+          "description": "Incident urgency",
+          "options": [
+            "high",
+            "low"
+          ],
+          "default": "high"
+        },
+        "incident_key": {
+          "type": "string",
+          "required": false,
+          "description": "Unique incident key"
+        },
+        "details": {
+          "type": "string",
+          "required": false,
+          "description": "Additional incident details"
+        }
+      },
+      "requiredScopes": [
+        "incidents:write"
+      ]
+    },
+    {
+      "id": "acknowledge_incident",
+      "name": "Acknowledge Incident",
+      "description": "Acknowledge an incident",
+      "parameters": {
+        "incident_id": {
+          "type": "string",
+          "required": true,
+          "description": "Incident ID"
+        },
+        "from": {
+          "type": "string",
+          "required": true,
+          "description": "Email of user acknowledging"
+        }
+      },
+      "requiredScopes": [
+        "incidents:write"
+      ]
+    },
+    {
+      "id": "resolve_incident",
+      "name": "Resolve Incident",
+      "description": "Resolve an incident",
+      "parameters": {
+        "incident_id": {
+          "type": "string",
+          "required": true,
+          "description": "Incident ID"
+        },
+        "from": {
+          "type": "string",
+          "required": true,
+          "description": "Email of user resolving"
+        },
+        "resolution": {
+          "type": "string",
+          "required": false,
+          "description": "Resolution notes"
+        }
+      },
+      "requiredScopes": [
+        "incidents:write"
+      ]
+    },
+    {
+      "id": "add_note",
+      "name": "Add Note",
+      "description": "Add a note to an incident",
+      "parameters": {
+        "incident_id": {
+          "type": "string",
+          "required": true,
+          "description": "Incident ID"
+        },
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Note content"
+        },
+        "from": {
+          "type": "string",
+          "required": true,
+          "description": "Email of user adding note"
+        }
+      },
+      "requiredScopes": [
+        "incidents:write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "incident_triggered",
+      "name": "Incident Triggered",
+      "description": "Triggered when a new incident is created",
+      "parameters": {},
+      "requiredScopes": [
+        "incidents:read"
+      ]
+    },
+    {
+      "id": "incident_resolved",
+      "name": "Incident Resolved",
+      "description": "Triggered when an incident is resolved",
+      "parameters": {},
+      "requiredScopes": [
+        "incidents:read"
+      ]
+    }
+  ]
 }

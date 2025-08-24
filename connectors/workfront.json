@@ -16,6 +16,112 @@
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record in Workfront",
+      "parameters": {
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Record data"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record in Workfront",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Updated record data"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Retrieve a record from Workfront",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    },
+    {
+      "id": "list_records",
+      "name": "List Records",
+      "description": "List records from Workfront",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "required": false,
+          "description": "Number of records to return",
+          "default": 100
+        },
+        "filter": {
+          "type": "object",
+          "required": false,
+          "description": "Filter criteria"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    },
+    {
+      "id": "delete_record",
+      "name": "Delete Record",
+      "description": "Delete a record from Workfront",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": [
+        "delete"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a new record is created in Workfront",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ]
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Triggered when a record is updated in Workfront",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ]
+    }
+  ]
 }

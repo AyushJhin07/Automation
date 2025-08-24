@@ -53,9 +53,87 @@ import {
   Sparkles,
   ChevronDown,
   Search,
-  X
+  X,
+  Users,
+  Shield,
+  DollarSign,
+  BarChart,
+  FileText,
+  Box,
+  AlertTriangle,
+  Activity
 } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
+
+// Enhanced Node Template Interface
+interface NodeTemplate {
+  id: string;
+  type: 'trigger' | 'action' | 'transform';
+  category: string;
+  label: string;
+  description: string;
+  icon: any;
+  app: string;
+  color?: string;
+  data: any;
+}
+
+// Icon mapping for different applications
+const getAppIcon = (appName: string) => {
+  const iconMap: Record<string, any> = {
+    'gmail': Mail,
+    'google-sheets': Sheet,
+    'google-calendar': Calendar,
+    'google-drive': Database,
+    'google-docs': FileText,
+    'google-slides': FileText,
+    'slack': MessageSquare,
+    'salesforce': Database,
+    'shopify': Database,
+    'hubspot': Database,
+    'jira': Settings,
+    'confluence': FileText,
+    'okta': Shield,
+    'workday': Users,
+    'adp': DollarSign,
+    'greenhouse': Users,
+    'servicenow': Settings,
+    'pagerduty': AlertTriangle,
+    'snowflake': Database,
+    'tableau': BarChart,
+    'basecamp': Box,
+    'microsoft-todo': Settings,
+    'quickbooks': DollarSign,
+    'lever': Users,
+    'bigquery': Database,
+    'databricks': BarChart,
+    'sentry': AlertTriangle,
+    'newrelic': Activity,
+    // Add more mappings as needed
+  };
+  
+  return iconMap[appName.toLowerCase()] || Zap;
+};
+
+// Get app color based on category
+const getAppColor = (category: string) => {
+  const colorMap: Record<string, string> = {
+    'Google Workspace': '#4285F4',
+    'Communication': '#7B68EE',
+    'CRM': '#FF6347',
+    'E-commerce': '#32CD32',
+    'Identity Management': '#4169E1',
+    'HR Management': '#FF8C00',
+    'ITSM': '#DC143C',
+    'Data Analytics': '#9932CC',
+    'Collaboration': '#20B2AA',
+    'Project Management': '#1E90FF',
+    'Accounting': '#228B22',
+    'Recruitment': '#FF69B4'
+  };
+  
+  return colorMap[category] || '#6366F1';
+};
 
 // Custom Node Components
 const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
@@ -343,271 +421,181 @@ const edgeTypes: EdgeTypes = {
 const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: any) => void }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  
-  const nodeTemplates = [
-    // Time Triggers
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'Every 15 Minutes', 
-      description: 'Run every 15 minutes',
-      icon: Clock,
-      data: { app: 'Google Apps Script', params: { everyMinutes: 15 } }
-    },
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'Every Hour', 
-      description: 'Run every hour',
-      icon: Clock,
-      data: { app: 'Google Apps Script', params: { everyHours: 1 } }
-    },
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'Daily at 9 AM', 
-      description: 'Run daily at 9 AM',
-      icon: Clock,
-      data: { app: 'Google Apps Script', params: { everyHours: 24, startHour: 9 } }
-    },
-    
-    // Gmail Triggers
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'New Gmail Email', 
-      description: 'New email received',
-      icon: Mail,
-      data: { app: 'Gmail', params: { query: 'is:unread' } }
-    },
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'Gmail with Attachment', 
-      description: 'Email with attachment',
-      icon: Mail,
-      data: { app: 'Gmail', params: { query: 'has:attachment' } }
-    },
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'Gmail from Sender', 
-      description: 'Email from specific sender',
-      icon: Mail,
-      data: { app: 'Gmail', params: { query: 'from:example@domain.com' } }
-    },
-    
-    // Sheets Triggers
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'New Sheets Row', 
-      description: 'New row added to sheet',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: 'Sheet1' } }
-    },
-    { 
-      type: 'trigger', 
-      category: 'triggers',
-      label: 'Sheets Cell Changed', 
-      description: 'Specific cell updated',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1:Z1000' } }
-    },
-    
-    // Gmail Actions
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Send Email', 
-      description: 'Send Gmail message',
-      icon: Mail,
-      data: { app: 'Gmail', params: { to: '', subject: '', bodyText: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Reply to Email', 
-      description: 'Reply to Gmail thread',
-      icon: Mail,
-      data: { app: 'Gmail', params: { threadId: '', message: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Forward Email', 
-      description: 'Forward Gmail message',
-      icon: Mail,
-      data: { app: 'Gmail', params: { messageId: '', to: '', note: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Set Auto Reply', 
-      description: 'Set Gmail auto-reply',
-      icon: Mail,
-      data: { app: 'Gmail', params: { message: '', startDate: '', endDate: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Add Gmail Label', 
-      description: 'Add label to email',
-      icon: Mail,
-      data: { app: 'Gmail', params: { messageId: '', labelName: '' } }
-    },
-    
-    // Google Sheets Actions
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Add Row', 
-      description: 'Append row to sheet',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: 'Sheet1', values: [] } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Update Cell', 
-      description: 'Update specific cell',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1', value: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Clear Range', 
-      description: 'Clear sheet range',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1:Z100' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Create Sheet', 
-      description: 'Create new sheet',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', sheetName: 'New Sheet' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Sort Data', 
-      description: 'Sort sheet data',
-      icon: Sheet,
-      data: { app: 'Google Sheets', params: { spreadsheetId: '', range: 'A1:Z100', column: 1 } }
-    },
-    
-    // Calendar Actions
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Create Event', 
-      description: 'Create calendar event',
-      icon: Calendar,
-      data: { app: 'Google Calendar', params: { title: '', start: '', end: '', description: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Update Event', 
-      description: 'Update existing event',
-      icon: Calendar,
-      data: { app: 'Google Calendar', params: { eventId: '', title: '', start: '', end: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Delete Event', 
-      description: 'Delete calendar event',
-      icon: Calendar,
-      data: { app: 'Google Calendar', params: { eventId: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Find Free Time', 
-      description: 'Find available time slots',
-      icon: Calendar,
-      data: { app: 'Google Calendar', params: { startDate: '', endDate: '', duration: 60 } }
-    },
-    
-    // External Apps
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Send Slack Message', 
-      description: 'Post to Slack channel',
-      icon: MessageSquare,
-      data: { app: 'Slack', params: { channel: '', message: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'Create Salesforce Lead', 
-      description: 'Create lead in Salesforce',
-      icon: Database,
-      data: { app: 'Salesforce', params: { firstName: '', lastName: '', email: '', company: '' } }
-    },
-    { 
-      type: 'action', 
-      category: 'actions',
-      label: 'HTTP Request', 
-      description: 'Call external API',
-      icon: Globe,
-      data: { app: 'Built-in', params: { method: 'GET', url: '', headers: {} } }
-    },
-    
-    // Transform Nodes
-    { 
-      type: 'transform', 
-      category: 'transforms',
-      label: 'Filter Data', 
-      description: 'Filter items by condition',
-      icon: Filter,
-      data: { app: 'Built-in', params: { expression: 'item.value > 0' } }
-    },
-    { 
-      type: 'transform', 
-      category: 'transforms',
-      label: 'Format Text', 
-      description: 'Template interpolation',
-      icon: Code,
-      data: { app: 'Built-in', params: { template: 'Hello {{name}}!' } }
-    },
-    { 
-      type: 'transform', 
-      category: 'transforms',
-      label: 'Extract Email', 
-      description: 'Extract email from text',
-      icon: Code,
-      data: { app: 'Built-in', params: { source: 'text', pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' } }
-    },
-    { 
-      type: 'transform', 
-      category: 'transforms',
-      label: 'Split Text', 
-      description: 'Split text by delimiter',
-      icon: Code,
-      data: { app: 'Built-in', params: { source: 'text', delimiter: ',' } }
-    },
-    { 
-      type: 'transform', 
-      category: 'transforms',
-      label: 'Date Format', 
-      description: 'Format date/time',
-      icon: Clock,
-      data: { app: 'Built-in', params: { source: 'date', format: 'YYYY-MM-DD' } }
-    },
-  ];
+  const [nodeTemplates, setNodeTemplates] = useState<NodeTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  // Load node templates from ConnectorRegistry
+  useEffect(() => {
+    loadNodeTemplates();
+  }, []);
+
+  const loadNodeTemplates = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch connector catalog from registry
+      const response = await fetch('/api/registry/catalog');
+      const result = await response.json();
+      
+      if (result.success && result.catalog) {
+        const templates: NodeTemplate[] = [];
+        const categorySet = new Set<string>();
+        
+        // Add basic time triggers and built-in transforms first
+        const basicTemplates: NodeTemplate[] = [
+          {
+            id: 'trigger-every-15-minutes',
+            type: 'trigger',
+            category: 'Time Triggers',
+            label: 'Every 15 Minutes',
+            description: 'Run every 15 minutes',
+            icon: Clock,
+            app: 'Google Apps Script',
+            data: { app: 'Google Apps Script', params: { everyMinutes: 15 } }
+          },
+          {
+            id: 'trigger-every-hour',
+            type: 'trigger',
+            category: 'Time Triggers',
+            label: 'Every Hour',
+            description: 'Run every hour',
+            icon: Clock,
+            app: 'Google Apps Script',
+            data: { app: 'Google Apps Script', params: { everyHours: 1 } }
+          },
+          {
+            id: 'trigger-daily-at-9am',
+            type: 'trigger',
+            category: 'Time Triggers',
+            label: 'Daily at 9 AM',
+            description: 'Run daily at 9 AM',
+            icon: Clock,
+            app: 'Google Apps Script',
+            data: { app: 'Google Apps Script', params: { everyHours: 24, startHour: 9 } }
+          },
+          {
+            id: 'action-http-request',
+            type: 'action',
+            category: 'Built-in',
+            label: 'HTTP Request',
+            description: 'Call external API',
+            icon: Globe,
+            app: 'Built-in',
+            data: { app: 'Built-in', params: { method: 'GET', url: '', headers: {} } }
+          },
+          {
+            id: 'transform-filter-data',
+            type: 'transform',
+            category: 'Data Processing',
+            label: 'Filter Data',
+            description: 'Filter items by condition',
+            icon: Filter,
+            app: 'Built-in',
+            data: { app: 'Built-in', params: { expression: 'item.value > 0' } }
+          },
+          {
+            id: 'transform-format-text',
+            type: 'transform',
+            category: 'Data Processing',
+            label: 'Format Text',
+            description: 'Template interpolation',
+            icon: Code,
+            app: 'Built-in',
+            data: { app: 'Built-in', params: { template: 'Hello {{name}}!' } }
+          }
+        ];
+        
+        templates.push(...basicTemplates);
+        basicTemplates.forEach(t => categorySet.add(t.category));
+        
+        // Process connectors from registry
+        Object.entries(result.catalog.connectors).forEach(([appId, connector]: [string, any]) => {
+          const appIcon = getAppIcon(appId);
+          const appColor = getAppColor(connector.category);
+          
+          // Add triggers
+          connector.triggers?.forEach((trigger: any) => {
+            templates.push({
+              id: `trigger-${appId}-${trigger.id}`,
+              type: 'trigger',
+              category: connector.category,
+              label: trigger.name,
+              description: trigger.description,
+              icon: appIcon,
+              app: connector.name,
+              color: appColor,
+              data: { 
+                app: connector.name, 
+                nodeType: `trigger.${appId}.${trigger.id}`,
+                params: trigger.parameters || {} 
+              }
+            });
+          });
+          
+          // Add actions
+          connector.actions?.forEach((action: any) => {
+            templates.push({
+              id: `action-${appId}-${action.id}`,
+              type: 'action',
+              category: connector.category,
+              label: action.name,
+              description: action.description,
+              icon: appIcon,
+              app: connector.name,
+              color: appColor,
+              data: { 
+                app: connector.name, 
+                nodeType: `action.${appId}.${action.id}`,
+                params: action.parameters || {} 
+              }
+            });
+          });
+          
+          categorySet.add(connector.category);
+        });
+        
+        setNodeTemplates(templates);
+        setCategories(Array.from(categorySet).sort());
+        console.log(`🎊 Loaded ${templates.length} node templates from ${Object.keys(result.catalog.connectors).length} connectors`);
+      } else {
+        console.error('Failed to load node catalog:', result.error);
+        // Fallback to basic templates
+        setNodeTemplates(basicTemplates);
+      }
+    } catch (error) {
+      console.error('Error loading node templates:', error);
+              setNodeTemplates(basicTemplates);
+      }
+    } catch (error) {
+      console.error('Error loading node templates:', error);
+      // Fallback to minimal templates
+      setNodeTemplates([
+        {
+          id: 'action-http-request',
+          type: 'action',
+          category: 'Built-in',
+          label: 'HTTP Request',
+          description: 'Call external API',
+          icon: Globe,
+          app: 'Built-in',
+          data: { app: 'Built-in', params: { method: 'GET', url: '', headers: {} } }
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const filteredNodes = nodeTemplates.filter(node => {
     const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         node.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         node.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         node.app.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || node.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+  
+  const allCategories = ['all', ...categories];
   
   return (
     <div className="w-80 bg-slate-900 border-r border-slate-700 h-full overflow-y-auto">
@@ -615,6 +603,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Plus className="w-5 h-5 text-blue-400" />
           Add Nodes
+          {loading && <div className="ml-2 w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>}
         </h2>
         
         {/* Search */}
@@ -630,7 +619,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
         
         {/* Categories */}
         <div className="flex gap-2 mb-4 flex-wrap">
-          {['all', 'triggers', 'actions', 'transforms'].map(category => (
+          {allCategories.map(category => (
             <Button
               key={category}
               size="sm"
@@ -642,18 +631,36 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                   : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
               }`}
             >
-              {category.charAt(0).toUpperCase() + category.slice(1)}
+              {category === 'all' ? 'All' : category}
             </Button>
           ))}
         </div>
         
+        {/* Node Count */}
+        {!loading && (
+          <div className="text-xs text-slate-400 mb-3">
+            {filteredNodes.length} of {nodeTemplates.length} nodes
+          </div>
+        )}
+        
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+              <p className="text-slate-400 text-sm">Loading applications...</p>
+            </div>
+          </div>
+        )}
+        
         {/* Node Templates */}
-        <div className="space-y-2">
-          {filteredNodes.map((template, index) => {
+        {!loading && (
+          <div className="space-y-2">
+            {filteredNodes.map((template, index) => {
             const IconComponent = template.icon;
             return (
               <div
-                key={index}
+                key={template.id}
                 onClick={() => onAddNode(template.type, { 
                   ...template.data, 
                   label: template.label, 
@@ -685,7 +692,8 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

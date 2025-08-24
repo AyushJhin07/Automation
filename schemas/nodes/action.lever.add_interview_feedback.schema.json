@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.lever.add_interview_feedback.schema.json",
+  "title": "Lever - Add Interview Feedback",
+  "description": "Add feedback for an interview",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.lever.add_interview_feedback",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "opportunity_id": {
+          "description": "Opportunity ID",
+          "type": "string"
+        },
+        "interviewer_id": {
+          "description": "Interviewer ID",
+          "type": "string"
+        },
+        "feedback": {
+          "description": "Interview feedback",
+          "type": "string"
+        },
+        "recommendation": {
+          "description": "Hiring recommendation",
+          "type": "string",
+          "enum": [
+            "yes",
+            "no",
+            "maybe"
+          ]
+        }
+      },
+      "required": [
+        "opportunity_id",
+        "interviewer_id",
+        "feedback"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Recruitment"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Lever"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "feedback:write"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

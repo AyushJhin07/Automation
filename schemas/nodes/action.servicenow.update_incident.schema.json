@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.servicenow.update_incident.schema.json",
+  "title": "ServiceNow - Update Incident",
+  "description": "Update an existing incident",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.servicenow.update_incident",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "incident_id": {
+          "description": "Incident sys_id",
+          "type": "string"
+        },
+        "state": {
+          "description": "Incident state",
+          "type": "string",
+          "enum": [
+            "New",
+            "In Progress",
+            "Resolved",
+            "Closed"
+          ]
+        },
+        "work_notes": {
+          "description": "Work notes to add",
+          "type": "string"
+        },
+        "resolution_code": {
+          "description": "Resolution code",
+          "type": "string"
+        },
+        "resolution_notes": {
+          "description": "Resolution notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ITSM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "ServiceNow"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "incident_write"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

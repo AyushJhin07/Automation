@@ -7,15 +7,233 @@
   "color": "#62D84E",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "basic",
+    "config": {
+      "username": "{username}",
+      "password": "{password}"
+    }
   },
-  "baseUrl": "https://api.example.com",
+  "baseUrl": "https://{instance}.service-now.com/api/now",
   "rateLimits": {
     "requestsPerSecond": 5,
     "requestsPerMinute": 300,
     "dailyLimit": 10000
   },
-  "actions": [],
-  "triggers": []
+  "actions": [
+    {
+      "id": "create_incident",
+      "name": "Create Incident",
+      "description": "Create a new incident in ServiceNow",
+      "parameters": {
+        "short_description": {
+          "type": "string",
+          "required": true,
+          "description": "Brief summary of the incident"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Detailed description"
+        },
+        "urgency": {
+          "type": "string",
+          "required": false,
+          "description": "Incident urgency",
+          "options": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        "impact": {
+          "type": "string",
+          "required": false,
+          "description": "Incident impact",
+          "options": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        "caller_id": {
+          "type": "string",
+          "required": false,
+          "description": "User who reported the incident"
+        },
+        "assignment_group": {
+          "type": "string",
+          "required": false,
+          "description": "Group to assign incident to"
+        }
+      },
+      "requiredScopes": [
+        "incident_write"
+      ]
+    },
+    {
+      "id": "update_incident",
+      "name": "Update Incident",
+      "description": "Update an existing incident",
+      "parameters": {
+        "incident_id": {
+          "type": "string",
+          "required": true,
+          "description": "Incident sys_id"
+        },
+        "state": {
+          "type": "string",
+          "required": false,
+          "description": "Incident state",
+          "options": [
+            "New",
+            "In Progress",
+            "Resolved",
+            "Closed"
+          ]
+        },
+        "work_notes": {
+          "type": "string",
+          "required": false,
+          "description": "Work notes to add"
+        },
+        "resolution_code": {
+          "type": "string",
+          "required": false,
+          "description": "Resolution code"
+        },
+        "resolution_notes": {
+          "type": "string",
+          "required": false,
+          "description": "Resolution notes"
+        }
+      },
+      "requiredScopes": [
+        "incident_write"
+      ]
+    },
+    {
+      "id": "resolve_incident",
+      "name": "Resolve Incident",
+      "description": "Resolve an incident",
+      "parameters": {
+        "incident_id": {
+          "type": "string",
+          "required": true,
+          "description": "Incident sys_id"
+        },
+        "resolution_code": {
+          "type": "string",
+          "required": true,
+          "description": "Resolution code"
+        },
+        "resolution_notes": {
+          "type": "string",
+          "required": true,
+          "description": "Resolution notes"
+        },
+        "close_notes": {
+          "type": "string",
+          "required": false,
+          "description": "Close notes"
+        }
+      },
+      "requiredScopes": [
+        "incident_write"
+      ]
+    },
+    {
+      "id": "create_change_request",
+      "name": "Create Change Request",
+      "description": "Create a new change request",
+      "parameters": {
+        "short_description": {
+          "type": "string",
+          "required": true,
+          "description": "Brief summary of the change"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Detailed description"
+        },
+        "type": {
+          "type": "string",
+          "required": false,
+          "description": "Change type",
+          "options": [
+            "Standard",
+            "Normal",
+            "Emergency"
+          ]
+        },
+        "risk": {
+          "type": "string",
+          "required": false,
+          "description": "Risk level",
+          "options": [
+            "High",
+            "Moderate",
+            "Low"
+          ]
+        },
+        "implementation_plan": {
+          "type": "string",
+          "required": false,
+          "description": "Implementation plan"
+        }
+      },
+      "requiredScopes": [
+        "change_write"
+      ]
+    },
+    {
+      "id": "approve_request",
+      "name": "Approve Request",
+      "description": "Approve a change request or other approval",
+      "parameters": {
+        "request_id": {
+          "type": "string",
+          "required": true,
+          "description": "Request sys_id"
+        },
+        "state": {
+          "type": "string",
+          "required": true,
+          "description": "Approval state",
+          "options": [
+            "approved",
+            "rejected"
+          ]
+        },
+        "comments": {
+          "type": "string",
+          "required": false,
+          "description": "Approval comments"
+        }
+      },
+      "requiredScopes": [
+        "approval_write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "incident_created",
+      "name": "Incident Created",
+      "description": "Triggered when a new incident is created",
+      "parameters": {},
+      "requiredScopes": [
+        "incident_read"
+      ]
+    },
+    {
+      "id": "change_request_created",
+      "name": "Change Request Created",
+      "description": "Triggered when a new change request is created",
+      "parameters": {},
+      "requiredScopes": [
+        "change_read"
+      ]
+    }
+  ]
 }
