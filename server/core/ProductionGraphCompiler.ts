@@ -1,4 +1,5 @@
 import { simpleGraphValidator } from './SimpleGraphValidator';
+import { compilerTemplates, NodeData } from './CompilerTemplates';
 
 export interface CompilerOptions {
   projectName?: string;
@@ -247,50 +248,67 @@ function run_workflow_(triggerData = {}) {
 function execute_${id}(context) {
 `;
 
-    switch (type) {
-      case 'trigger.time.cron':
-        functionCode += this.generateTimeTriggerCode(data);
-        break;
-      case 'trigger.webhook':
-        functionCode += this.generateWebhookTriggerCode(data);
-        break;
-      case 'trigger.gmail.new_email':
-        functionCode += this.generateGmailTriggerCode(data);
-        break;
-      case 'action.gmail.send':
-        functionCode += this.generateGmailSendCode(data);
-        break;
-      case 'action.gmail.read':
-        functionCode += this.generateGmailReadCode(data);
-        break;
-      case 'action.sheets.append':
-        functionCode += this.generateSheetsAppendCode(data);
-        break;
-      case 'action.sheets.read':
-        functionCode += this.generateSheetsReadCode(data);
-        break;
-      case 'action.drive.create_file':
-        functionCode += this.generateDriveCreateCode(data);
-        break;
-      case 'action.http.request':
-        functionCode += this.generateHttpRequestCode(data);
-        break;
-      case 'condition.if':
-        functionCode += this.generateConditionCode(data);
-        break;
-      case 'transform.data_mapper':
-        functionCode += this.generateDataMapperCode(data);
-        break;
-      case 'utility.delay':
-        functionCode += this.generateDelayCode(data);
-        break;
-      case 'utility.logger':
-        functionCode += this.generateLoggerCode(data);
-        break;
-      default:
-        functionCode += `
+    // Use the new comprehensive template system
+    const nodeData: NodeData = {
+      nodeType: type,
+      app: data?.app || 'unknown',
+      params: data?.params || data || {},
+      ...data
+    };
+
+    // Generate code using template system with fallback to legacy methods
+    try {
+      const templateCode = compilerTemplates.generateNodeCode(type, nodeData);
+      functionCode += templateCode;
+    } catch (error) {
+      console.log(`⚠️ Using legacy template for ${type}:`, error);
+      
+      // Fallback to legacy switch statement for backward compatibility
+      switch (type) {
+        case 'trigger.time.cron':
+          functionCode += this.generateTimeTriggerCode(data);
+          break;
+        case 'trigger.webhook':
+          functionCode += this.generateWebhookTriggerCode(data);
+          break;
+        case 'trigger.gmail.new_email':
+          functionCode += this.generateGmailTriggerCode(data);
+          break;
+        case 'action.gmail.send':
+          functionCode += this.generateGmailSendCode(data);
+          break;
+        case 'action.gmail.read':
+          functionCode += this.generateGmailReadCode(data);
+          break;
+        case 'action.sheets.append':
+          functionCode += this.generateSheetsAppendCode(data);
+          break;
+        case 'action.sheets.read':
+          functionCode += this.generateSheetsReadCode(data);
+          break;
+        case 'action.drive.create_file':
+          functionCode += this.generateDriveCreateCode(data);
+          break;
+        case 'action.http.request':
+          functionCode += this.generateHttpRequestCode(data);
+          break;
+        case 'condition.if':
+          functionCode += this.generateConditionCode(data);
+          break;
+        case 'transform.data_mapper':
+          functionCode += this.generateDataMapperCode(data);
+          break;
+        case 'utility.delay':
+          functionCode += this.generateDelayCode(data);
+          break;
+        case 'utility.logger':
+          functionCode += this.generateLoggerCode(data);
+          break;
+        default:
+          functionCode += `
   Logger.log("⚠️ Unknown node type: ${type}");
   return { type: '${type}', status: 'skipped', message: 'Unknown node type' };`;
+      }
     }
 
     functionCode += '\n}\n';
@@ -1263,6 +1281,31 @@ function cleanupExpiredEntries() {
    * Generate manifest file
    */
   private generateManifest(graph: any, requiredScopes: string[], options: CompilerOptions): any {
+    // Gather additional scopes from comprehensive template system
+    const templateScopes: string[] = [];
+    
+    if (graph.nodes) {
+      graph.nodes.forEach((node: any) => {
+        const nodeData: NodeData = {
+          nodeType: node.type || node.nodeType,
+          app: node.data?.app || 'unknown',
+          params: node.data?.params || node.data || {},
+          ...node.data
+        };
+        
+        const scopes = compilerTemplates.getRequiredScopes(nodeData.nodeType, nodeData);
+        templateScopes.push(...scopes);
+      });
+    }
+    
+    // Combine and deduplicate scopes
+    const allScopes = [...new Set([...requiredScopes, ...templateScopes])];
+    console.log(`📝 Gathered ${allScopes.length} unique scopes from ${templateScopes.length} template scopes`);
+    
+    return this.generateManifestWithScopes(graph, allScopes, options);
+  }
+
+  private generateManifestWithScopes(graph: any, requiredScopes: string[], options: CompilerOptions): any {
     return {
       timeZone: options.timezone || 'America/New_York',
       dependencies: {},

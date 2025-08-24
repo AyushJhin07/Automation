@@ -469,6 +469,54 @@ if (!connectionString) {
   });
 }
 
+// Webhook logs table for trigger event tracking
+export const webhookLogs = pgTable(
+  'webhook_logs',
+  {
+    id: text('id').primaryKey(),
+    webhookId: text('webhook_id').notNull(),
+    appId: text('app_id').notNull(),
+    triggerId: text('trigger_id').notNull(),
+    payload: json('payload').$type<any>(),
+    headers: json('headers').$type<Record<string, string>>(),
+    timestamp: timestamp('timestamp').defaultNow().notNull(),
+    signature: text('signature'),
+    processed: boolean('processed').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookIdIdx: index('webhook_logs_webhook_id_idx').on(table.webhookId),
+    appTriggerIdx: index('webhook_logs_app_trigger_idx').on(table.appId, table.triggerId),
+    timestampIdx: index('webhook_logs_timestamp_idx').on(table.timestamp),
+    processedIdx: index('webhook_logs_processed_idx').on(table.processed),
+  })
+);
+
+// Polling triggers table for scheduled trigger tracking
+export const pollingTriggers = pgTable(
+  'polling_triggers',
+  {
+    id: text('id').primaryKey(),
+    workflowId: text('workflow_id').notNull(),
+    appId: text('app_id').notNull(),
+    triggerId: text('trigger_id').notNull(),
+    interval: integer('interval').notNull(), // seconds
+    lastPoll: timestamp('last_poll'),
+    nextPoll: timestamp('next_poll').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    dedupeKey: text('dedupe_key'),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowIdIdx: index('polling_triggers_workflow_id_idx').on(table.workflowId),
+    appTriggerIdx: index('polling_triggers_app_trigger_idx').on(table.appId, table.triggerId),
+    nextPollIdx: index('polling_triggers_next_poll_idx').on(table.nextPoll),
+    activeIdx: index('polling_triggers_active_idx').on(table.isActive),
+  })
+);
+
 export { db };
 
 console.log('✅ Database schema loaded with comprehensive indexes and PII tracking for ALL applications');

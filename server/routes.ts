@@ -20,6 +20,7 @@ import { oauthManager } from "./oauth/OAuthManager";
 import { endToEndTester } from "./testing/EndToEndTester";
 import { connectorSeeder } from "./database/seedConnectors";
 import { connectorRegistry } from "./ConnectorRegistry";
+import { webhookManager } from "./webhooks/WebhookManager";
 
 // Middleware
 import { 
@@ -1551,6 +1552,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
     }
   }
+
+  // ===== WEBHOOK & TRIGGER MANAGEMENT ROUTES =====
+  
+  // Handle incoming webhooks
+  app.post('/api/webhooks/:webhookId', async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { webhookId } = req.params;
+      const payload = req.body;
+      const headers = req.headers as Record<string, string>;
+      
+      const success = await webhookManager.handleWebhook(webhookId, payload, headers);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Webhook processed successfully',
+          webhookId,
+          timestamp: new Date(),
+          responseTime: Date.now() - startTime
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: 'Failed to process webhook',
+          webhookId,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Webhook endpoint error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Register new webhook
+  app.post('/api/webhooks/register', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { appId, triggerId, workflowId, secret, metadata } = req.body;
+      
+      if (!appId || !triggerId || !workflowId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: appId, triggerId, workflowId'
+        });
+      }
+      
+      const endpoint = await webhookManager.registerWebhook({
+        id: '', // Will be generated
+        appId,
+        triggerId,
+        workflowId,
+        secret,
+        isActive: true,
+        metadata: metadata || {}
+      });
+      
+      res.json({
+        success: true,
+        endpoint,
+        message: 'Webhook registered successfully',
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Webhook registration error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Register polling trigger
+  app.post('/api/triggers/polling/register', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { id, appId, triggerId, workflowId, interval, dedupeKey, metadata } = req.body;
+      
+      if (!id || !appId || !triggerId || !workflowId || !interval) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: id, appId, triggerId, workflowId, interval'
+        });
+      }
+      
+      const pollingTrigger = {
+        id,
+        appId,
+        triggerId,
+        workflowId,
+        interval,
+        nextPoll: new Date(Date.now() + interval * 1000),
+        isActive: true,
+        dedupeKey,
+        metadata: metadata || {}
+      };
+      
+      await webhookManager.registerPollingTrigger(pollingTrigger);
+      
+      res.json({
+        success: true,
+        trigger: pollingTrigger,
+        message: 'Polling trigger registered successfully',
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Polling trigger registration error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Get webhook statistics
+  app.get('/api/webhooks/stats', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const stats = webhookManager.getStats();
+      
+      res.json({
+        success: true,
+        stats,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Webhook stats error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // List all webhooks
+  app.get('/api/webhooks', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const webhooks = webhookManager.listWebhooks();
+      
+      res.json({
+        success: true,
+        webhooks,
+        count: webhooks.length,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ List webhooks error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Deactivate webhook
+  app.put('/api/webhooks/:webhookId/deactivate', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { webhookId } = req.params;
+      const success = webhookManager.deactivateWebhook(webhookId);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Webhook deactivated successfully',
+          webhookId,
+          responseTime: Date.now() - startTime
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Webhook not found',
+          webhookId,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Webhook deactivation error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
 
   const httpServer = createServer(app);
 
