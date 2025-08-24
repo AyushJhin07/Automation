@@ -1,0 +1,306 @@
+{
+  "id": "gmail-enhanced",
+  "name": "Gmail Enhanced",
+  "description": "Enhanced Gmail email management with advanced features",
+  "category": "Email",
+  "icon": "mail",
+  "color": "#EA4335",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.modify",
+        "https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.labels"
+      ]
+    }
+  },
+  "baseUrl": "https://gmail.googleapis.com/gmail/v1",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 1000000
+  },
+  "actions": [
+    {
+      "id": "send",
+      "name": "Send Email",
+      "description": "Send a new email",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient email addresses (comma-separated)"
+        },
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject"
+        },
+        "bodyText": {
+          "type": "string",
+          "required": false,
+          "description": "Plain text body"
+        },
+        "bodyHtml": {
+          "type": "string",
+          "required": false,
+          "description": "HTML body"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
+    },
+    {
+      "id": "reply",
+      "name": "Reply to Email",
+      "description": "Reply to an email thread",
+      "parameters": {
+        "threadId": {
+          "type": "string",
+          "required": true,
+          "description": "Thread ID to reply to"
+        },
+        "bodyText": {
+          "type": "string",
+          "required": false,
+          "description": "Plain text reply"
+        },
+        "bodyHtml": {
+          "type": "string",
+          "required": false,
+          "description": "HTML reply"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
+    },
+    {
+      "id": "forward",
+      "name": "Forward Email",
+      "description": "Forward an email",
+      "parameters": {
+        "msgId": {
+          "type": "string",
+          "required": true,
+          "description": "Message ID to forward"
+        },
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Forward to email addresses"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
+    },
+    {
+      "id": "create_draft",
+      "name": "Create Draft",
+      "description": "Create an email draft",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient email"
+        },
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Email body"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
+    },
+    {
+      "id": "send_draft",
+      "name": "Send Draft",
+      "description": "Send an existing draft",
+      "parameters": {
+        "draftId": {
+          "type": "string",
+          "required": true,
+          "description": "Draft ID to send"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
+    },
+    {
+      "id": "add_label",
+      "name": "Add Label",
+      "description": "Add a label to a message",
+      "parameters": {
+        "msgId": {
+          "type": "string",
+          "required": true,
+          "description": "Message ID"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "description": "Label name"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    },
+    {
+      "id": "remove_label",
+      "name": "Remove Label",
+      "description": "Remove a label from a message",
+      "parameters": {
+        "msgId": {
+          "type": "string",
+          "required": true,
+          "description": "Message ID"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "description": "Label name"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    },
+    {
+      "id": "mark_read",
+      "name": "Mark as Read",
+      "description": "Mark a message as read",
+      "parameters": {
+        "msgId": {
+          "type": "string",
+          "required": true,
+          "description": "Message ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    },
+    {
+      "id": "mark_unread",
+      "name": "Mark as Unread",
+      "description": "Mark a message as unread",
+      "parameters": {
+        "msgId": {
+          "type": "string",
+          "required": true,
+          "description": "Message ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    },
+    {
+      "id": "batch_modify",
+      "name": "Batch Modify",
+      "description": "Batch modify multiple messages",
+      "parameters": {
+        "messageIds": {
+          "type": "array",
+          "required": true,
+          "description": "Array of message IDs"
+        },
+        "add": {
+          "type": "array",
+          "required": false,
+          "description": "Labels to add"
+        },
+        "remove": {
+          "type": "array",
+          "required": false,
+          "description": "Labels to remove"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "new_email",
+      "name": "New Email",
+      "description": "Triggered when a new email is received",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Gmail search query filter"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
+    },
+    {
+      "id": "label_added",
+      "name": "Label Added",
+      "description": "Triggered when a specific label is added",
+      "parameters": {
+        "label": {
+          "type": "string",
+          "required": true,
+          "description": "Label to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
+    },
+    {
+      "id": "attachment_received",
+      "name": "Attachment Received",
+      "description": "Triggered when an email with attachment is received",
+      "parameters": {
+        "minSizeKb": {
+          "type": "number",
+          "required": false,
+          "description": "Minimum attachment size in KB"
+        },
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Additional Gmail query filter"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
+    },
+    {
+      "id": "thread_updated",
+      "name": "Thread Updated",
+      "description": "Triggered when an email thread is updated",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Gmail search query filter"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
+    }
+  ]
+}

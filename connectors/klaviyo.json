@@ -1,0 +1,21 @@
+{
+  "id": "klaviyo",
+  "name": "Klaviyo",
+  "description": "Klaviyo email and SMS marketing",
+  "category": "Marketing",
+  "icon": "placeholder",
+  "color": "#FF6900",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

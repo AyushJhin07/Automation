@@ -1,0 +1,21 @@
+{
+  "id": "freshdesk",
+  "name": "Freshdesk",
+  "description": "Freshdesk customer support",
+  "category": "Customer Support",
+  "icon": "placeholder",
+  "color": "#2C5AA0",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

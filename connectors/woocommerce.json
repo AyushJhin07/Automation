@@ -1,0 +1,21 @@
+{
+  "id": "woocommerce",
+  "name": "WooCommerce",
+  "description": "WooCommerce WordPress e-commerce",
+  "category": "E-commerce",
+  "icon": "placeholder",
+  "color": "#96588A",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

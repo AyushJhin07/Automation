@@ -1,0 +1,21 @@
+{
+  "id": "box",
+  "name": "Box",
+  "description": "Box cloud content management",
+  "category": "Cloud Storage",
+  "icon": "placeholder",
+  "color": "#0061D5",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

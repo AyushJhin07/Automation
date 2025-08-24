@@ -1,0 +1,233 @@
+{
+  "id": "sharepoint",
+  "name": "SharePoint",
+  "description": "Microsoft SharePoint collaboration and document management",
+  "category": "Collaboration",
+  "icon": "share-2",
+  "color": "#0078D4",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": [
+        "https://graph.microsoft.com/Sites.ReadWrite.All"
+      ]
+    }
+  },
+  "baseUrl": "https://graph.microsoft.com/v1.0",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 100000
+  },
+  "actions": [
+    {
+      "id": "create_file",
+      "name": "Create File",
+      "description": "Create a file in SharePoint",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "driveId": {
+          "type": "string",
+          "required": true,
+          "description": "Drive ID"
+        },
+        "path": {
+          "type": "string",
+          "required": true,
+          "description": "File path"
+        },
+        "base64": {
+          "type": "string",
+          "required": true,
+          "description": "Base64 file content"
+        }
+      },
+      "requiredScopes": [
+        "Sites.ReadWrite.All"
+      ]
+    },
+    {
+      "id": "get_file",
+      "name": "Get File",
+      "description": "Get a file from SharePoint",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "driveId": {
+          "type": "string",
+          "required": true,
+          "description": "Drive ID"
+        },
+        "path": {
+          "type": "string",
+          "required": true,
+          "description": "File path"
+        }
+      },
+      "requiredScopes": [
+        "Sites.Read.All"
+      ]
+    },
+    {
+      "id": "create_list_item",
+      "name": "Create List Item",
+      "description": "Create an item in a SharePoint list",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "List ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Item fields"
+        }
+      },
+      "requiredScopes": [
+        "Sites.ReadWrite.All"
+      ]
+    },
+    {
+      "id": "update_list_item",
+      "name": "Update List Item",
+      "description": "Update a SharePoint list item",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "List ID"
+        },
+        "itemId": {
+          "type": "string",
+          "required": true,
+          "description": "Item ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Updated fields"
+        }
+      },
+      "requiredScopes": [
+        "Sites.ReadWrite.All"
+      ]
+    },
+    {
+      "id": "share_link",
+      "name": "Share Link",
+      "description": "Create a sharing link for an item",
+      "parameters": {
+        "itemId": {
+          "type": "string",
+          "required": true,
+          "description": "Item ID"
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Link type",
+          "options": [
+            "view",
+            "edit"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "Sites.ReadWrite.All"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "file_added",
+      "name": "File Added",
+      "description": "Triggered when a file is added",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "driveId": {
+          "type": "string",
+          "required": true,
+          "description": "Drive ID"
+        },
+        "path": {
+          "type": "string",
+          "required": false,
+          "description": "Path to monitor"
+        }
+      },
+      "requiredScopes": [
+        "Sites.Read.All"
+      ]
+    },
+    {
+      "id": "file_updated",
+      "name": "File Updated",
+      "description": "Triggered when a file is updated",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "driveId": {
+          "type": "string",
+          "required": true,
+          "description": "Drive ID"
+        },
+        "path": {
+          "type": "string",
+          "required": false,
+          "description": "Path to monitor"
+        }
+      },
+      "requiredScopes": [
+        "Sites.Read.All"
+      ]
+    },
+    {
+      "id": "list_item_added",
+      "name": "List Item Added",
+      "description": "Triggered when a list item is added",
+      "parameters": {
+        "siteId": {
+          "type": "string",
+          "required": true,
+          "description": "Site ID"
+        },
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "List ID"
+        }
+      },
+      "requiredScopes": [
+        "Sites.Read.All"
+      ]
+    }
+  ]
+}

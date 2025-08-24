@@ -1,0 +1,21 @@
+{
+  "id": "stripe-enhanced",
+  "name": "Stripe Enhanced",
+  "description": "Enhanced Stripe payment processing",
+  "category": "Payments",
+  "icon": "placeholder",
+  "color": "#008CDD",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

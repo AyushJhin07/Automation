@@ -1,0 +1,21 @@
+{
+  "id": "mailchimp-enhanced",
+  "name": "Mailchimp Enhanced",
+  "description": "Enhanced Mailchimp email marketing",
+  "category": "Marketing",
+  "icon": "placeholder",
+  "color": "#FFE01B",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

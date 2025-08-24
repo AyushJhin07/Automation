@@ -1,0 +1,143 @@
+{
+  "id": "onedrive",
+  "name": "OneDrive",
+  "description": "Microsoft OneDrive cloud storage",
+  "category": "Cloud Storage",
+  "icon": "placeholder",
+  "color": "#0078D4",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": [
+        "https://graph.microsoft.com/Files.ReadWrite"
+      ]
+    }
+  },
+  "baseUrl": "https://graph.microsoft.com/v1.0",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to OneDrive",
+      "parameters": {
+        "folderId": {
+          "type": "string",
+          "required": true,
+          "description": "Folder ID"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "File name"
+        },
+        "base64": {
+          "type": "string",
+          "required": true,
+          "description": "Base64 encoded file content"
+        }
+      },
+      "requiredScopes": [
+        "Files.ReadWrite"
+      ]
+    },
+    {
+      "id": "download_file",
+      "name": "Download File",
+      "description": "Download a file from OneDrive",
+      "parameters": {
+        "itemId": {
+          "type": "string",
+          "required": true,
+          "description": "File item ID"
+        }
+      },
+      "requiredScopes": [
+        "Files.Read"
+      ]
+    },
+    {
+      "id": "move_file",
+      "name": "Move File",
+      "description": "Move a file to another folder",
+      "parameters": {
+        "itemId": {
+          "type": "string",
+          "required": true,
+          "description": "File item ID"
+        },
+        "targetFolderId": {
+          "type": "string",
+          "required": true,
+          "description": "Target folder ID"
+        }
+      },
+      "requiredScopes": [
+        "Files.ReadWrite"
+      ]
+    },
+    {
+      "id": "share_link",
+      "name": "Create Share Link",
+      "description": "Create a sharing link for a file",
+      "parameters": {
+        "itemId": {
+          "type": "string",
+          "required": true,
+          "description": "File item ID"
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Link type",
+          "options": [
+            "view",
+            "edit"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "Files.ReadWrite"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "file_created",
+      "name": "File Created",
+      "description": "Triggered when a file is created",
+      "parameters": {
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific folder"
+        }
+      },
+      "requiredScopes": [
+        "Files.Read"
+      ]
+    },
+    {
+      "id": "file_updated",
+      "name": "File Updated",
+      "description": "Triggered when a file is updated",
+      "parameters": {
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific folder"
+        }
+      },
+      "requiredScopes": [
+        "Files.Read"
+      ]
+    }
+  ]
+}

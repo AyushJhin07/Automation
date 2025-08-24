@@ -1,0 +1,226 @@
+{
+  "id": "github-enhanced",
+  "name": "GitHub Enhanced",
+  "description": "Enhanced GitHub development platform",
+  "category": "Development",
+  "icon": "placeholder",
+  "color": "#181717",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://github.com/login/oauth/authorize",
+      "tokenUrl": "https://github.com/login/oauth/access_token",
+      "scopes": [
+        "repo",
+        "workflow",
+        "admin:repo_hook"
+      ]
+    }
+  },
+  "baseUrl": "https://api.github.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_issue",
+      "name": "Create Issue",
+      "description": "Create a new issue",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository (owner/repo)"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Issue title"
+        },
+        "body": {
+          "type": "string",
+          "required": false,
+          "description": "Issue body"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    },
+    {
+      "id": "comment_issue",
+      "name": "Comment on Issue",
+      "description": "Add a comment to an issue",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository (owner/repo)"
+        },
+        "issueNumber": {
+          "type": "number",
+          "required": true,
+          "description": "Issue number"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Comment body"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    },
+    {
+      "id": "create_release",
+      "name": "Create Release",
+      "description": "Create a new release",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository (owner/repo)"
+        },
+        "tag": {
+          "type": "string",
+          "required": true,
+          "description": "Tag name"
+        },
+        "name": {
+          "type": "string",
+          "required": false,
+          "description": "Release name"
+        },
+        "body": {
+          "type": "string",
+          "required": false,
+          "description": "Release notes"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    },
+    {
+      "id": "dispatch_workflow",
+      "name": "Dispatch Workflow",
+      "description": "Trigger a workflow dispatch event",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository (owner/repo)"
+        },
+        "workflowFile": {
+          "type": "string",
+          "required": true,
+          "description": "Workflow filename"
+        },
+        "ref": {
+          "type": "string",
+          "required": true,
+          "description": "Git ref"
+        },
+        "inputs": {
+          "type": "object",
+          "required": false,
+          "description": "Workflow inputs"
+        }
+      },
+      "requiredScopes": [
+        "workflow"
+      ]
+    },
+    {
+      "id": "add_label",
+      "name": "Add Label to Issue",
+      "description": "Add labels to an issue",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository (owner/repo)"
+        },
+        "issueNumber": {
+          "type": "number",
+          "required": true,
+          "description": "Issue number"
+        },
+        "labels": {
+          "type": "array",
+          "required": true,
+          "description": "Array of label names"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "issue_opened",
+      "name": "Issue Opened",
+      "description": "Triggered when an issue is opened",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository to monitor"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    },
+    {
+      "id": "issue_commented",
+      "name": "Issue Commented",
+      "description": "Triggered when an issue is commented",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository to monitor"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    },
+    {
+      "id": "pull_request_opened",
+      "name": "Pull Request Opened",
+      "description": "Triggered when a pull request is opened",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository to monitor"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    },
+    {
+      "id": "release_published",
+      "name": "Release Published",
+      "description": "Triggered when a release is published",
+      "parameters": {
+        "repo": {
+          "type": "string",
+          "required": true,
+          "description": "Repository to monitor"
+        }
+      },
+      "requiredScopes": [
+        "repo"
+      ]
+    }
+  ]
+}

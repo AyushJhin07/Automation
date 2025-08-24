@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github-enhanced.dispatch_workflow.schema.json",
+  "title": "GitHub Enhanced - Dispatch Workflow",
+  "description": "Trigger a workflow dispatch event",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github-enhanced.dispatch_workflow",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "description": "Repository (owner/repo)",
+          "type": "string"
+        },
+        "workflowFile": {
+          "description": "Workflow filename",
+          "type": "string"
+        },
+        "ref": {
+          "description": "Git ref",
+          "type": "string"
+        },
+        "inputs": {
+          "description": "Workflow inputs",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "repo",
+        "workflowFile",
+        "ref"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Development"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "workflow"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

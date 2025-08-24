@@ -1,0 +1,174 @@
+{
+  "id": "excel-online",
+  "name": "Excel Online",
+  "description": "Microsoft Excel Online spreadsheets",
+  "category": "Productivity",
+  "icon": "placeholder",
+  "color": "#217346",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": [
+        "https://graph.microsoft.com/Files.ReadWrite"
+      ]
+    }
+  },
+  "baseUrl": "https://graph.microsoft.com/v1.0",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "add_row",
+      "name": "Add Row",
+      "description": "Add a row to an Excel worksheet",
+      "parameters": {
+        "workbookId": {
+          "type": "string",
+          "required": true,
+          "description": "Workbook ID"
+        },
+        "worksheet": {
+          "type": "string",
+          "required": true,
+          "description": "Worksheet name"
+        },
+        "values": {
+          "type": "array",
+          "required": true,
+          "description": "Array of cell values"
+        }
+      },
+      "requiredScopes": [
+        "Files.ReadWrite"
+      ]
+    },
+    {
+      "id": "update_row",
+      "name": "Update Row",
+      "description": "Update a row in an Excel worksheet",
+      "parameters": {
+        "workbookId": {
+          "type": "string",
+          "required": true,
+          "description": "Workbook ID"
+        },
+        "worksheet": {
+          "type": "string",
+          "required": true,
+          "description": "Worksheet name"
+        },
+        "rowIndex": {
+          "type": "number",
+          "required": true,
+          "description": "Row index (1-based)"
+        },
+        "values": {
+          "type": "array",
+          "required": true,
+          "description": "Array of new cell values"
+        }
+      },
+      "requiredScopes": [
+        "Files.ReadWrite"
+      ]
+    },
+    {
+      "id": "get_range",
+      "name": "Get Range",
+      "description": "Get values from a range in Excel",
+      "parameters": {
+        "workbookId": {
+          "type": "string",
+          "required": true,
+          "description": "Workbook ID"
+        },
+        "worksheet": {
+          "type": "string",
+          "required": true,
+          "description": "Worksheet name"
+        },
+        "rangeA1": {
+          "type": "string",
+          "required": true,
+          "description": "A1 notation range"
+        }
+      },
+      "requiredScopes": [
+        "Files.Read"
+      ]
+    },
+    {
+      "id": "create_table",
+      "name": "Create Table",
+      "description": "Create a table in Excel",
+      "parameters": {
+        "workbookId": {
+          "type": "string",
+          "required": true,
+          "description": "Workbook ID"
+        },
+        "worksheet": {
+          "type": "string",
+          "required": true,
+          "description": "Worksheet name"
+        },
+        "rangeA1": {
+          "type": "string",
+          "required": true,
+          "description": "Range for the table"
+        }
+      },
+      "requiredScopes": [
+        "Files.ReadWrite"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "row_added",
+      "name": "Row Added",
+      "description": "Triggered when a row is added",
+      "parameters": {
+        "workbookId": {
+          "type": "string",
+          "required": true,
+          "description": "Workbook ID"
+        },
+        "worksheet": {
+          "type": "string",
+          "required": true,
+          "description": "Worksheet name"
+        }
+      },
+      "requiredScopes": [
+        "Files.Read"
+      ]
+    },
+    {
+      "id": "row_updated",
+      "name": "Row Updated",
+      "description": "Triggered when a row is updated",
+      "parameters": {
+        "workbookId": {
+          "type": "string",
+          "required": true,
+          "description": "Workbook ID"
+        },
+        "worksheet": {
+          "type": "string",
+          "required": true,
+          "description": "Worksheet name"
+        }
+      },
+      "requiredScopes": [
+        "Files.Read"
+      ]
+    }
+  ]
+}

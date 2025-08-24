@@ -1,0 +1,412 @@
+{
+  "id": "slack-enhanced",
+  "name": "Slack Enhanced",
+  "description": "Enhanced Slack team collaboration and messaging platform",
+  "category": "Communication",
+  "icon": "message-square",
+  "color": "#4A154B",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://slack.com/oauth/v2/authorize",
+      "tokenUrl": "https://slack.com/api/oauth.v2.access",
+      "scopes": [
+        "chat:write",
+        "chat:write.public",
+        "channels:read",
+        "channels:manage",
+        "files:write",
+        "reactions:write",
+        "users:read"
+      ]
+    }
+  },
+  "baseUrl": "https://slack.com/api",
+  "rateLimits": {
+    "requestsPerSecond": 1,
+    "requestsPerMinute": 60,
+    "dailyLimit": 100000
+  },
+  "actions": [
+    {
+      "id": "post_message",
+      "name": "Post Message",
+      "description": "Post a message to a channel",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID or name"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Message text"
+        },
+        "blocksJson": {
+          "type": "object",
+          "required": false,
+          "description": "Rich message blocks JSON"
+        }
+      },
+      "requiredScopes": [
+        "chat:write"
+      ]
+    },
+    {
+      "id": "reply_in_thread",
+      "name": "Reply in Thread",
+      "description": "Reply to a message in a thread",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "threadTs": {
+          "type": "string",
+          "required": true,
+          "description": "Thread timestamp"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Reply text"
+        }
+      },
+      "requiredScopes": [
+        "chat:write"
+      ]
+    },
+    {
+      "id": "update_message",
+      "name": "Update Message",
+      "description": "Update an existing message",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "ts": {
+          "type": "string",
+          "required": true,
+          "description": "Message timestamp"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "New message text"
+        }
+      },
+      "requiredScopes": [
+        "chat:write"
+      ]
+    },
+    {
+      "id": "delete_message",
+      "name": "Delete Message",
+      "description": "Delete a message",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "ts": {
+          "type": "string",
+          "required": true,
+          "description": "Message timestamp"
+        }
+      },
+      "requiredScopes": [
+        "chat:write"
+      ]
+    },
+    {
+      "id": "schedule_message",
+      "name": "Schedule Message",
+      "description": "Schedule a message for later",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Message text"
+        },
+        "postAt": {
+          "type": "string",
+          "required": true,
+          "description": "Unix timestamp when to post"
+        }
+      },
+      "requiredScopes": [
+        "chat:write"
+      ]
+    },
+    {
+      "id": "add_reaction",
+      "name": "Add Reaction",
+      "description": "Add a reaction to a message",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "ts": {
+          "type": "string",
+          "required": true,
+          "description": "Message timestamp"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Reaction emoji name"
+        }
+      },
+      "requiredScopes": [
+        "reactions:write"
+      ]
+    },
+    {
+      "id": "remove_reaction",
+      "name": "Remove Reaction",
+      "description": "Remove a reaction from a message",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "ts": {
+          "type": "string",
+          "required": true,
+          "description": "Message timestamp"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Reaction emoji name"
+        }
+      },
+      "requiredScopes": [
+        "reactions:write"
+      ]
+    },
+    {
+      "id": "set_topic",
+      "name": "Set Channel Topic",
+      "description": "Set the topic for a channel",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "topic": {
+          "type": "string",
+          "required": true,
+          "description": "New topic"
+        }
+      },
+      "requiredScopes": [
+        "channels:manage"
+      ]
+    },
+    {
+      "id": "set_purpose",
+      "name": "Set Channel Purpose",
+      "description": "Set the purpose for a channel",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "purpose": {
+          "type": "string",
+          "required": true,
+          "description": "New purpose"
+        }
+      },
+      "requiredScopes": [
+        "channels:manage"
+      ]
+    },
+    {
+      "id": "invite_user",
+      "name": "Invite User to Channel",
+      "description": "Invite a user to a channel",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID to invite"
+        }
+      },
+      "requiredScopes": [
+        "channels:manage"
+      ]
+    },
+    {
+      "id": "kick_user",
+      "name": "Remove User from Channel",
+      "description": "Remove a user from a channel",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID to remove"
+        }
+      },
+      "requiredScopes": [
+        "channels:manage"
+      ]
+    },
+    {
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to a channel",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID"
+        },
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "File name"
+        },
+        "base64": {
+          "type": "string",
+          "required": true,
+          "description": "Base64 encoded file content"
+        }
+      },
+      "requiredScopes": [
+        "files:write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "message_posted",
+      "name": "Message Posted",
+      "description": "Triggered when a message is posted",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID to monitor"
+        }
+      },
+      "requiredScopes": [
+        "channels:history"
+      ]
+    },
+    {
+      "id": "message_edited",
+      "name": "Message Edited",
+      "description": "Triggered when a message is edited",
+      "parameters": {
+        "channel": {
+          "type": "string",
+          "required": true,
+          "description": "Channel ID to monitor"
+        }
+      },
+      "requiredScopes": [
+        "channels:history"
+      ]
+    },
+    {
+      "id": "reaction_added",
+      "name": "Reaction Added",
+      "description": "Triggered when a reaction is added to a message",
+      "parameters": {},
+      "requiredScopes": [
+        "reactions:read"
+      ]
+    },
+    {
+      "id": "reaction_removed",
+      "name": "Reaction Removed",
+      "description": "Triggered when a reaction is removed",
+      "parameters": {},
+      "requiredScopes": [
+        "reactions:read"
+      ]
+    },
+    {
+      "id": "user_joined",
+      "name": "User Joined",
+      "description": "Triggered when a user joins the workspace",
+      "parameters": {},
+      "requiredScopes": [
+        "users:read"
+      ]
+    },
+    {
+      "id": "user_left",
+      "name": "User Left",
+      "description": "Triggered when a user leaves the workspace",
+      "parameters": {},
+      "requiredScopes": [
+        "users:read"
+      ]
+    },
+    {
+      "id": "file_shared",
+      "name": "File Shared",
+      "description": "Triggered when a file is shared",
+      "parameters": {},
+      "requiredScopes": [
+        "files:read"
+      ]
+    },
+    {
+      "id": "channel_created",
+      "name": "Channel Created",
+      "description": "Triggered when a channel is created",
+      "parameters": {},
+      "requiredScopes": [
+        "channels:read"
+      ]
+    },
+    {
+      "id": "channel_archived",
+      "name": "Channel Archived",
+      "description": "Triggered when a channel is archived",
+      "parameters": {},
+      "requiredScopes": [
+        "channels:read"
+      ]
+    },
+    {
+      "id": "channel_unarchived",
+      "name": "Channel Unarchived",
+      "description": "Triggered when a channel is unarchived",
+      "parameters": {},
+      "requiredScopes": [
+        "channels:read"
+      ]
+    }
+  ]
+}

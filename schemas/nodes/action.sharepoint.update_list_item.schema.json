@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.sharepoint.update_list_item.schema.json",
+  "title": "SharePoint - Update List Item",
+  "description": "Update a SharePoint list item",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sharepoint.update_list_item",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "description": "Site ID",
+          "type": "string"
+        },
+        "listId": {
+          "description": "List ID",
+          "type": "string"
+        },
+        "itemId": {
+          "description": "Item ID",
+          "type": "string"
+        },
+        "fields": {
+          "description": "Updated fields",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "siteId",
+        "listId",
+        "itemId",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Collaboration"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SharePoint"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Sites.ReadWrite.All"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,280 @@
+{
+  "id": "google-sheets-enhanced",
+  "name": "Google Sheets Enhanced",
+  "description": "Enhanced Google Sheets with advanced spreadsheet operations",
+  "category": "Productivity",
+  "icon": "table",
+  "color": "#34A853",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.metadata.readonly"
+      ]
+    }
+  },
+  "baseUrl": "https://sheets.googleapis.com/v4",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 1000000
+  },
+  "actions": [
+    {
+      "id": "append_row",
+      "name": "Append Row",
+      "description": "Append a row to a sheet",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name"
+        },
+        "values": {
+          "type": "array",
+          "required": true,
+          "description": "Array of cell values"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    {
+      "id": "append_rows_bulk",
+      "name": "Append Multiple Rows",
+      "description": "Append multiple rows at once",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name"
+        },
+        "rows": {
+          "type": "array",
+          "required": true,
+          "description": "Array of row arrays"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    {
+      "id": "update_row",
+      "name": "Update Row",
+      "description": "Update a specific row",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name"
+        },
+        "rowIndex": {
+          "type": "number",
+          "required": true,
+          "description": "Row index (1-based)"
+        },
+        "values": {
+          "type": "array",
+          "required": true,
+          "description": "Array of new cell values"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    {
+      "id": "get_range",
+      "name": "Get Range",
+      "description": "Get values from a range",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "rangeA1": {
+          "type": "string",
+          "required": true,
+          "description": "A1 notation range (e.g., 'Sheet1!A1:C10')"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    },
+    {
+      "id": "find_replace",
+      "name": "Find and Replace",
+      "description": "Find and replace text in a sheet",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name"
+        },
+        "find": {
+          "type": "string",
+          "required": true,
+          "description": "Text to find"
+        },
+        "replace": {
+          "type": "string",
+          "required": true,
+          "description": "Replacement text"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    {
+      "id": "clear_range",
+      "name": "Clear Range",
+      "description": "Clear values in a range",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "rangeA1": {
+          "type": "string",
+          "required": true,
+          "description": "A1 notation range to clear"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    {
+      "id": "create_sheet",
+      "name": "Create Sheet",
+      "description": "Create a new sheet in the spreadsheet",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet title"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    {
+      "id": "delete_row",
+      "name": "Delete Row",
+      "description": "Delete a specific row",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name"
+        },
+        "rowIndex": {
+          "type": "number",
+          "required": true,
+          "description": "Row index to delete (1-based)"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "new_row",
+      "name": "New Row Added",
+      "description": "Triggered when a new row is added",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID to monitor"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    },
+    {
+      "id": "row_updated",
+      "name": "Row Updated",
+      "description": "Triggered when a row is updated",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID to monitor"
+        },
+        "sheet": {
+          "type": "string",
+          "required": true,
+          "description": "Sheet name to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    },
+    {
+      "id": "sheet_added",
+      "name": "Sheet Added",
+      "description": "Triggered when a new sheet is added",
+      "parameters": {
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Spreadsheet ID to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    }
+  ]
+}

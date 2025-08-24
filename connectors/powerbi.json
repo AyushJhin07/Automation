@@ -1,0 +1,104 @@
+{
+  "id": "powerbi",
+  "name": "Power BI",
+  "description": "Microsoft Power BI business analytics",
+  "category": "Analytics",
+  "icon": "placeholder",
+  "color": "#F2C811",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": [
+        "https://analysis.windows.net/powerbi/api/Dataset.ReadWrite.All"
+      ]
+    }
+  },
+  "baseUrl": "https://api.powerbi.com/v1.0",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "query_dataset",
+      "name": "Query Dataset",
+      "description": "Query a Power BI dataset",
+      "parameters": {
+        "datasetId": {
+          "type": "string",
+          "required": true,
+          "description": "Dataset ID"
+        },
+        "sql": {
+          "type": "string",
+          "required": true,
+          "description": "SQL query"
+        }
+      },
+      "requiredScopes": [
+        "Dataset.Read.All"
+      ]
+    },
+    {
+      "id": "trigger_refresh",
+      "name": "Trigger Refresh",
+      "description": "Trigger a dataset refresh",
+      "parameters": {
+        "datasetId": {
+          "type": "string",
+          "required": true,
+          "description": "Dataset ID"
+        }
+      },
+      "requiredScopes": [
+        "Dataset.ReadWrite.All"
+      ]
+    },
+    {
+      "id": "add_rows",
+      "name": "Add Rows",
+      "description": "Add rows to a dataset table",
+      "parameters": {
+        "datasetId": {
+          "type": "string",
+          "required": true,
+          "description": "Dataset ID"
+        },
+        "tableName": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "rows": {
+          "type": "array",
+          "required": true,
+          "description": "Array of row objects"
+        }
+      },
+      "requiredScopes": [
+        "Dataset.ReadWrite.All"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "dataset_refresh_completed",
+      "name": "Dataset Refresh Completed",
+      "description": "Triggered when a dataset refresh completes",
+      "parameters": {
+        "datasetId": {
+          "type": "string",
+          "required": true,
+          "description": "Dataset ID to monitor"
+        }
+      },
+      "requiredScopes": [
+        "Dataset.Read.All"
+      ]
+    }
+  ]
+}
