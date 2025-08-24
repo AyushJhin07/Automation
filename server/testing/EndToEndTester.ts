@@ -475,7 +475,7 @@ export class EndToEndTester {
       
       return sendEmailFunction && 
              sendEmailFunction.rateLimits && 
-             typeof sendEmailFunction.rateLimits.requests === 'number';
+             typeof sendEmailFunction.rateLimits.requestsPerMinute === 'number';
     });
 
     await this.runTest('Rate Limiting - Validation', async () => {
@@ -493,7 +493,7 @@ export class EndToEndTester {
     console.log('🛡️ Testing Security Validation...');
     
     await this.runTest('Security - Sensitive Parameter Detection', async () => {
-      const functions = getAppFunctions('gmail');
+      const functions = getAppFunctions('slack');
       // Check if any functions have sensitive parameters properly marked
       return functions.some(f => 
         Object.values(f.parameters).some((p: any) => p.sensitive === true)

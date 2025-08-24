@@ -19,6 +19,7 @@ export interface AppFunction {
     description: string;
     options?: string[];
     default?: any;
+    sensitive?: boolean;
   }>;
   requiredScopes: string[];
   rateLimits?: {
@@ -51,7 +52,12 @@ export const GMAIL_FUNCTIONS: AppFunction[] = [
       replyTo: { type: 'string', required: false, description: 'Reply-to address' },
       importance: { type: 'string', required: false, description: 'Email importance', options: ['low', 'normal', 'high'] }
     },
-    requiredScopes: ['https://www.googleapis.com/auth/gmail.send']
+    requiredScopes: ['https://www.googleapis.com/auth/gmail.send'],
+    rateLimits: {
+      requestsPerSecond: 10,
+      requestsPerMinute: 250,
+      dailyLimit: 1000000000
+    }
   },
   {
     id: 'reply_to_email',
@@ -1035,7 +1041,8 @@ export const SLACK_FUNCTIONS: AppFunction[] = [
       threadTs: { type: 'string', required: false, description: 'Thread timestamp for replies' },
       username: { type: 'string', required: false, description: 'Custom username' },
       iconEmoji: { type: 'string', required: false, description: 'Custom emoji icon' },
-      unfurlLinks: { type: 'boolean', required: false, description: 'Unfurl links', default: true }
+      unfurlLinks: { type: 'boolean', required: false, description: 'Unfurl links', default: true },
+      apiToken: { type: 'string', required: false, description: 'Slack API token', sensitive: true }
     },
     requiredScopes: ['chat:write']
   },
@@ -1760,7 +1767,12 @@ export const SHOPIFY_FUNCTIONS: AppFunction[] = [
       images: { type: 'array', required: false, description: 'Product images' },
       variants: { type: 'array', required: false, description: 'Product variants' }
     },
-    requiredScopes: ['write_products']
+    requiredScopes: ['write_products'],
+    rateLimits: {
+      requestsPerSecond: 2,
+      requestsPerMinute: 40,
+      dailyLimit: 10000
+    }
   },
   {
     id: 'update_product',
