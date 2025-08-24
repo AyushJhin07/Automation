@@ -505,7 +505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get supported OAuth providers
   app.get('/api/oauth/providers', async (req, res) => {
     try {
-      const providers = oauthManager.getSupportedProviders();
+      const providers = oauthManager.listProviders();
       
       res.json({
         success: true,
@@ -513,8 +513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           providers: providers.map(p => ({
             name: p.name,
             displayName: p.displayName,
-            scopes: p.scopes,
-            configured: oauthManager.isProviderConfigured(p.name)
+            scopes: p.config.scopes,
+            configured: !!(p.config.clientId && p.config.clientSecret)
           }))
         }
       });
@@ -539,17 +539,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (!oauthManager.isProviderConfigured(provider)) {
+      if (!oauthManager.supportsOAuth(provider)) {
         return res.status(400).json({
           success: false,
-          error: `OAuth provider ${provider} is not configured`
+          error: `OAuth provider ${provider} is not supported`
         });
       }
 
       const { authUrl, state } = await oauthManager.generateAuthUrl(
         provider,
         userId,
-        additionalParams
+        undefined, // returnUrl
+        additionalParams?.scopes // additionalScopes
       );
       
       res.json({
@@ -582,12 +583,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Handle callback and exchange code for tokens
-      const additionalParams = shop ? { shop: shop as string } : undefined;
       const { tokens, userInfo } = await oauthManager.handleCallback(
-        provider,
         code as string,
         state as string,
-        additionalParams
+        provider
       );
 
       // Store the connection (we'll need to get userId from state or session)
@@ -622,22 +621,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const connectionId = await oauthManager.storeConnection(
+      // Store connection through connection service (OAuth manager handles this in callback)
+      await connectionService.storeConnection(
         userId,
         provider,
         tokens,
-        userInfo,
-        additionalConfig
+        userInfo
       );
       
-      res.json({
-        success: true,
-        data: {
-          connectionId,
-          provider,
-          message: 'Connection stored successfully'
-        }
-      });
+              res.json({
+          success: true,
+          data: {
+            provider,
+            message: 'Connection stored successfully'
+          }
+        });
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -649,16 +647,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Refresh OAuth token
   app.post('/api/oauth/refresh', authenticateToken, async (req, res) => {
     try {
-      const { provider, refreshToken } = req.body;
+      const { provider } = req.body;
+      const userId = req.user!.id;
       
-      if (!provider || !refreshToken) {
+      if (!provider) {
         return res.status(400).json({
           success: false,
-          error: 'Provider and refresh token are required'
+          error: 'Provider is required'
         });
       }
 
-      const newTokens = await oauthManager.refreshToken(provider, refreshToken);
+      const newTokens = await oauthManager.refreshToken(userId, provider);
       
       res.json({
         success: true,
