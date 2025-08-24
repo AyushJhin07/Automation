@@ -1,0 +1,204 @@
+{
+  "name": "Mailchimp",
+  "category": "marketing",
+  "description": "Mailchimp email marketing platform with audience and campaign management",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.example.com/oauth/authorize",
+      "tokenUrl": "https://api.example.com/oauth/token",
+      "scopes": [
+        "read",
+        "write"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "add_subscriber",
+      "name": "Add Subscriber",
+      "description": "Add subscriber to mailing list",
+      "parameters": {
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "Mailing list ID"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Subscriber email"
+        },
+        "firstName": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Subscription status",
+          "options": [
+            "subscribed",
+            "unsubscribed",
+            "cleaned",
+            "pending"
+          ],
+          "default": "subscribed"
+        },
+        "tags": {
+          "type": "array",
+          "required": false,
+          "description": "Subscriber tags"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "create_campaign",
+      "name": "Create Campaign",
+      "description": "Create email campaign",
+      "parameters": {
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Campaign type",
+          "options": [
+            "regular",
+            "plaintext",
+            "absplit",
+            "rss",
+            "variate"
+          ]
+        },
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "Audience list ID"
+        },
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject"
+        },
+        "fromName": {
+          "type": "string",
+          "required": true,
+          "description": "From name"
+        },
+        "fromEmail": {
+          "type": "string",
+          "required": true,
+          "description": "From email"
+        },
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Email content"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "send_campaign",
+      "name": "Send Campaign",
+      "description": "Send email campaign",
+      "parameters": {
+        "campaignId": {
+          "type": "string",
+          "required": true,
+          "description": "Campaign ID"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "update_subscriber",
+      "name": "Update Subscriber",
+      "description": "Update subscriber information",
+      "parameters": {
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "List ID"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Subscriber email"
+        },
+        "firstName": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Subscription status"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "subscriber_added",
+      "name": "Subscriber Added",
+      "description": "Trigger when new subscriber is added",
+      "parameters": {
+        "listId": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by list ID"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    },
+    {
+      "id": "campaign_sent",
+      "name": "Campaign Sent",
+      "description": "Trigger when campaign is sent",
+      "parameters": {
+        "campaignType": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by campaign type"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 3,
+    "requestsPerMinute": 60,
+    "dailyLimit": 50000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.001
+  }
+}

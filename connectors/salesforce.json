@@ -1,0 +1,226 @@
+{
+  "name": "Salesforce",
+  "category": "crm",
+  "description": "Salesforce CRM platform with comprehensive sales and customer management",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.example.com/oauth/authorize",
+      "tokenUrl": "https://api.example.com/oauth/token",
+      "scopes": [
+        "api",
+        "refresh_token",
+        "full"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_lead",
+      "name": "Create Lead",
+      "description": "Create a new lead in Salesforce",
+      "parameters": {
+        "firstName": {
+          "type": "string",
+          "required": true,
+          "description": "Lead first name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": true,
+          "description": "Lead last name"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Lead email"
+        },
+        "company": {
+          "type": "string",
+          "required": true,
+          "description": "Lead company"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Lead phone"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Lead status",
+          "options": [
+            "New",
+            "Working",
+            "Qualified",
+            "Unqualified"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "api"
+      ]
+    },
+    {
+      "id": "create_opportunity",
+      "name": "Create Opportunity",
+      "description": "Create a new sales opportunity",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity name"
+        },
+        "accountId": {
+          "type": "string",
+          "required": true,
+          "description": "Account ID"
+        },
+        "amount": {
+          "type": "number",
+          "required": false,
+          "description": "Opportunity amount"
+        },
+        "closeDate": {
+          "type": "string",
+          "required": true,
+          "description": "Expected close date"
+        },
+        "stageName": {
+          "type": "string",
+          "required": true,
+          "description": "Sales stage"
+        }
+      },
+      "requiredScopes": [
+        "api"
+      ]
+    },
+    {
+      "id": "update_contact",
+      "name": "Update Contact",
+      "description": "Update contact information",
+      "parameters": {
+        "contactId": {
+          "type": "string",
+          "required": true,
+          "description": "Contact ID"
+        },
+        "firstName": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "Email address"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone number"
+        }
+      },
+      "requiredScopes": [
+        "api"
+      ]
+    },
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task",
+      "parameters": {
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Task subject"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Task description"
+        },
+        "whoId": {
+          "type": "string",
+          "required": false,
+          "description": "Related contact/lead ID"
+        },
+        "whatId": {
+          "type": "string",
+          "required": false,
+          "description": "Related account/opportunity ID"
+        },
+        "activityDate": {
+          "type": "string",
+          "required": false,
+          "description": "Due date"
+        },
+        "priority": {
+          "type": "string",
+          "required": false,
+          "description": "Task priority",
+          "options": [
+            "High",
+            "Normal",
+            "Low"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "api"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "lead_created",
+      "name": "Lead Created",
+      "description": "Trigger when new lead is created",
+      "parameters": {
+        "source": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by lead source"
+        }
+      },
+      "requiredScopes": [
+        "api"
+      ]
+    },
+    {
+      "id": "opportunity_closed",
+      "name": "Opportunity Closed",
+      "description": "Trigger when opportunity is closed",
+      "parameters": {
+        "stage": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by stage",
+          "options": [
+            "Closed Won",
+            "Closed Lost"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "api"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 100,
+    "dailyLimit": 100000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.002
+  }
+}

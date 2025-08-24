@@ -1,0 +1,183 @@
+{
+  "name": "Airtable",
+  "category": "database",
+  "description": "Airtable database platform with spreadsheet-like interface",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create new record in table",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "required": true,
+          "description": "Table ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Record fields"
+        }
+      },
+      "requiredScopes": [
+        "data:write"
+      ]
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update existing record",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "required": true,
+          "description": "Table ID"
+        },
+        "recordId": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Updated fields"
+        }
+      },
+      "requiredScopes": [
+        "data:write"
+      ]
+    },
+    {
+      "id": "delete_record",
+      "name": "Delete Record",
+      "description": "Delete record from table",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "required": true,
+          "description": "Table ID"
+        },
+        "recordId": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": [
+        "data:write"
+      ]
+    },
+    {
+      "id": "list_records",
+      "name": "List Records",
+      "description": "List records from table",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "required": true,
+          "description": "Table ID"
+        },
+        "maxRecords": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum records",
+          "default": 100
+        },
+        "view": {
+          "type": "string",
+          "required": false,
+          "description": "View name"
+        },
+        "filterByFormula": {
+          "type": "string",
+          "required": false,
+          "description": "Filter formula"
+        }
+      },
+      "requiredScopes": [
+        "data:read"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Trigger when new record is created",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "required": true,
+          "description": "Table ID"
+        }
+      },
+      "requiredScopes": [
+        "data:read"
+      ]
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Trigger when record is updated",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "required": true,
+          "description": "Table ID"
+        }
+      },
+      "requiredScopes": [
+        "data:read"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 100,
+    "dailyLimit": 50000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.001
+  }
+}

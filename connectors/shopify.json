@@ -1,0 +1,602 @@
+{
+  "name": "Shopify",
+  "category": "ecommerce",
+  "description": "Shopify e-commerce platform integration with comprehensive store management capabilities",
+  "version": "1.3.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://{shop}.myshopify.com/admin/oauth/authorize",
+      "tokenUrl": "https://{shop}.myshopify.com/admin/oauth/access_token",
+      "scopes": [
+        "read_products",
+        "write_products",
+        "read_orders",
+        "write_orders",
+        "read_customers",
+        "write_customers",
+        "read_inventory",
+        "write_inventory",
+        "read_fulfillments",
+        "write_fulfillments"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_product",
+      "name": "Create Product",
+      "description": "Create a new product in Shopify store",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Product title"
+        },
+        "body_html": {
+          "type": "string",
+          "required": false,
+          "description": "Product description (HTML)"
+        },
+        "vendor": {
+          "type": "string",
+          "required": false,
+          "description": "Product vendor"
+        },
+        "product_type": {
+          "type": "string",
+          "required": false,
+          "description": "Product type"
+        },
+        "tags": {
+          "type": "string",
+          "required": false,
+          "description": "Product tags (comma-separated)"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Product status",
+          "options": ["active", "archived", "draft"],
+          "default": "active"
+        },
+        "images": {
+          "type": "array",
+          "required": false,
+          "description": "Product images"
+        },
+        "variants": {
+          "type": "array",
+          "required": false,
+          "description": "Product variants"
+        }
+      },
+      "requiredScopes": ["write_products"],
+      "rateLimits": {
+        "requestsPerSecond": 2,
+        "requestsPerMinute": 40,
+        "dailyLimit": 10000
+      }
+    },
+    {
+      "id": "update_product",
+      "name": "Update Product",
+      "description": "Update an existing product",
+      "parameters": {
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "description": "Product title"
+        },
+        "body_html": {
+          "type": "string",
+          "required": false,
+          "description": "Product description"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Product status",
+          "options": ["active", "archived", "draft"]
+        },
+        "tags": {
+          "type": "string",
+          "required": false,
+          "description": "Product tags"
+        }
+      },
+      "requiredScopes": ["write_products"]
+    },
+    {
+      "id": "delete_product",
+      "name": "Delete Product",
+      "description": "Delete a product",
+      "parameters": {
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID"
+        }
+      },
+      "requiredScopes": ["write_products"]
+    },
+    {
+      "id": "archive_product",
+      "name": "Archive Product",
+      "description": "Archive a product",
+      "parameters": {
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID"
+        }
+      },
+      "requiredScopes": ["write_products"]
+    },
+    {
+      "id": "get_products",
+      "name": "Get Products",
+      "description": "Retrieve products from store",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "required": false,
+          "description": "Number of products to retrieve",
+          "default": 50
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by status",
+          "options": ["active", "archived", "draft"]
+        },
+        "vendor": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by vendor"
+        }
+      },
+      "requiredScopes": ["read_products"]
+    },
+    {
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a new order",
+      "parameters": {
+        "line_items": {
+          "type": "array",
+          "required": true,
+          "description": "Order line items"
+        },
+        "customer": {
+          "type": "object",
+          "required": false,
+          "description": "Customer information"
+        },
+        "billing_address": {
+          "type": "object",
+          "required": false,
+          "description": "Billing address"
+        },
+        "shipping_address": {
+          "type": "object",
+          "required": false,
+          "description": "Shipping address"
+        }
+      },
+      "requiredScopes": ["write_orders"]
+    },
+    {
+      "id": "update_order",
+      "name": "Update Order",
+      "description": "Update an existing order",
+      "parameters": {
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Order ID"
+        },
+        "note": {
+          "type": "string",
+          "required": false,
+          "description": "Order note"
+        },
+        "tags": {
+          "type": "string",
+          "required": false,
+          "description": "Order tags"
+        }
+      },
+      "requiredScopes": ["write_orders"]
+    },
+    {
+      "id": "cancel_order",
+      "name": "Cancel Order",
+      "description": "Cancel an order",
+      "parameters": {
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Order ID"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Cancellation reason",
+          "options": ["customer", "fraud", "inventory", "declined", "other"]
+        },
+        "email": {
+          "type": "boolean",
+          "required": false,
+          "description": "Send cancellation email",
+          "default": true
+        }
+      },
+      "requiredScopes": ["write_orders"]
+    },
+    {
+      "id": "fulfill_order",
+      "name": "Fulfill Order",
+      "description": "Fulfill an order",
+      "parameters": {
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Order ID"
+        },
+        "location_id": {
+          "type": "string",
+          "required": true,
+          "description": "Fulfillment location ID"
+        },
+        "tracking_number": {
+          "type": "string",
+          "required": false,
+          "description": "Tracking number"
+        },
+        "tracking_company": {
+          "type": "string",
+          "required": false,
+          "description": "Tracking company"
+        },
+        "notify_customer": {
+          "type": "boolean",
+          "required": false,
+          "description": "Send notification to customer",
+          "default": true
+        }
+      },
+      "requiredScopes": ["write_fulfillments"]
+    },
+    {
+      "id": "refund_order",
+      "name": "Refund Order",
+      "description": "Create a refund for an order",
+      "parameters": {
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Order ID"
+        },
+        "amount": {
+          "type": "number",
+          "required": true,
+          "description": "Refund amount"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Refund reason"
+        },
+        "notify": {
+          "type": "boolean",
+          "required": false,
+          "description": "Send notification",
+          "default": true
+        }
+      },
+      "requiredScopes": ["write_orders"]
+    },
+    {
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
+      "parameters": {
+        "first_name": {
+          "type": "string",
+          "required": true,
+          "description": "Customer first name"
+        },
+        "last_name": {
+          "type": "string",
+          "required": true,
+          "description": "Customer last name"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Customer email"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Customer phone"
+        },
+        "tags": {
+          "type": "string",
+          "required": false,
+          "description": "Customer tags"
+        }
+      },
+      "requiredScopes": ["write_customers"]
+    },
+    {
+      "id": "update_customer",
+      "name": "Update Customer",
+      "description": "Update customer information",
+      "parameters": {
+        "customerId": {
+          "type": "string",
+          "required": true,
+          "description": "Customer ID"
+        },
+        "first_name": {
+          "type": "string",
+          "required": false,
+          "description": "Customer first name"
+        },
+        "last_name": {
+          "type": "string",
+          "required": false,
+          "description": "Customer last name"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "Customer email"
+        },
+        "tags": {
+          "type": "string",
+          "required": false,
+          "description": "Customer tags"
+        }
+      },
+      "requiredScopes": ["write_customers"]
+    },
+    {
+      "id": "search_customers",
+      "name": "Search Customers",
+      "description": "Search for customers",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "Search query"
+        },
+        "limit": {
+          "type": "number",
+          "required": false,
+          "description": "Number of results",
+          "default": 50
+        }
+      },
+      "requiredScopes": ["read_customers"]
+    },
+    {
+      "id": "update_inventory",
+      "name": "Update Inventory",
+      "description": "Update inventory levels",
+      "parameters": {
+        "inventory_item_id": {
+          "type": "string",
+          "required": true,
+          "description": "Inventory item ID"
+        },
+        "location_id": {
+          "type": "string",
+          "required": true,
+          "description": "Location ID"
+        },
+        "available": {
+          "type": "number",
+          "required": true,
+          "description": "Available quantity"
+        }
+      },
+      "requiredScopes": ["write_inventory"]
+    },
+    {
+      "id": "create_collection",
+      "name": "Create Collection",
+      "description": "Create a product collection",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Collection title"
+        },
+        "body_html": {
+          "type": "string",
+          "required": false,
+          "description": "Collection description"
+        },
+        "collection_type": {
+          "type": "string",
+          "required": false,
+          "description": "Collection type",
+          "options": ["smart", "custom"],
+          "default": "custom"
+        }
+      },
+      "requiredScopes": ["write_products"]
+    },
+    {
+      "id": "create_discount_code",
+      "name": "Create Discount Code",
+      "description": "Create a discount code",
+      "parameters": {
+        "code": {
+          "type": "string",
+          "required": true,
+          "description": "Discount code"
+        },
+        "value": {
+          "type": "number",
+          "required": true,
+          "description": "Discount value"
+        },
+        "value_type": {
+          "type": "string",
+          "required": true,
+          "description": "Value type",
+          "options": ["percentage", "fixed_amount"]
+        },
+        "usage_limit": {
+          "type": "number",
+          "required": false,
+          "description": "Usage limit"
+        }
+      },
+      "requiredScopes": ["write_price_rules"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "order_created",
+      "name": "Order Created",
+      "description": "Trigger when new order is placed",
+      "parameters": {
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by order status",
+          "options": ["open", "closed", "cancelled", "any"],
+          "default": "any"
+        },
+        "financial_status": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by financial status",
+          "options": ["pending", "authorized", "paid", "refunded", "voided", "any"],
+          "default": "any"
+        }
+      },
+      "requiredScopes": ["read_orders"]
+    },
+    {
+      "id": "order_paid",
+      "name": "Order Paid",
+      "description": "Trigger when order is paid",
+      "parameters": {
+        "amount_threshold": {
+          "type": "number",
+          "required": false,
+          "description": "Minimum order amount"
+        }
+      },
+      "requiredScopes": ["read_orders"]
+    },
+    {
+      "id": "order_fulfilled",
+      "name": "Order Fulfilled",
+      "description": "Trigger when order is fulfilled",
+      "parameters": {
+        "location_id": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by fulfillment location"
+        }
+      },
+      "requiredScopes": ["read_fulfillments"]
+    },
+    {
+      "id": "order_cancelled",
+      "name": "Order Cancelled",
+      "description": "Trigger when order is cancelled",
+      "parameters": {
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by cancellation reason"
+        }
+      },
+      "requiredScopes": ["read_orders"]
+    },
+    {
+      "id": "product_created",
+      "name": "Product Created",
+      "description": "Trigger when new product is created",
+      "parameters": {
+        "vendor": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by vendor"
+        },
+        "product_type": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by product type"
+        }
+      },
+      "requiredScopes": ["read_products"]
+    },
+    {
+      "id": "product_updated",
+      "name": "Product Updated",
+      "description": "Trigger when product is updated",
+      "parameters": {
+        "fields": {
+          "type": "array",
+          "required": false,
+          "description": "Monitor specific fields for changes"
+        }
+      },
+      "requiredScopes": ["read_products"]
+    },
+    {
+      "id": "customer_created",
+      "name": "Customer Created",
+      "description": "Trigger when new customer is created",
+      "parameters": {
+        "tags": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by customer tags"
+        }
+      },
+      "requiredScopes": ["read_customers"]
+    },
+    {
+      "id": "inventory_low",
+      "name": "Inventory Low",
+      "description": "Trigger when inventory is low",
+      "parameters": {
+        "threshold": {
+          "type": "number",
+          "required": true,
+          "description": "Low inventory threshold"
+        },
+        "location_id": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by location"
+        }
+      },
+      "requiredScopes": ["read_inventory"]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 2,
+    "requestsPerMinute": 40,
+    "dailyLimit": 10000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.001
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "name": "Twilio",
+  "category": "communication",
+  "description": "Twilio communication platform for SMS, voice, and messaging",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "actions": [
+    {
+      "id": "send_sms",
+      "name": "Send SMS",
+      "description": "Send SMS message",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient phone number"
+        },
+        "from": {
+          "type": "string",
+          "required": true,
+          "description": "Sender phone number"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Message body"
+        },
+        "mediaUrl": {
+          "type": "string",
+          "required": false,
+          "description": "Media URL for MMS"
+        }
+      },
+      "requiredScopes": [
+        "messaging"
+      ]
+    },
+    {
+      "id": "make_call",
+      "name": "Make Call",
+      "description": "Initiate phone call",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient phone number"
+        },
+        "from": {
+          "type": "string",
+          "required": true,
+          "description": "Caller phone number"
+        },
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "TwiML URL for call instructions"
+        }
+      },
+      "requiredScopes": [
+        "voice"
+      ]
+    },
+    {
+      "id": "send_whatsapp",
+      "name": "Send WhatsApp Message",
+      "description": "Send WhatsApp message",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient WhatsApp number"
+        },
+        "from": {
+          "type": "string",
+          "required": true,
+          "description": "Sender WhatsApp number"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Message body"
+        }
+      },
+      "requiredScopes": [
+        "messaging"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "message_received",
+      "name": "Message Received",
+      "description": "Trigger when SMS is received",
+      "parameters": {
+        "from": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by sender number"
+        }
+      },
+      "requiredScopes": [
+        "messaging"
+      ]
+    },
+    {
+      "id": "call_completed",
+      "name": "Call Completed",
+      "description": "Trigger when call ends",
+      "parameters": {
+        "minDuration": {
+          "type": "number",
+          "required": false,
+          "description": "Minimum call duration"
+        }
+      },
+      "requiredScopes": [
+        "voice"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 1,
+    "requestsPerMinute": 60,
+    "dailyLimit": 10000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.005
+  }
+}

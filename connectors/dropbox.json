@@ -1,0 +1,176 @@
+{
+  "name": "Dropbox",
+  "category": "storage",
+  "description": "Dropbox cloud storage platform with file management capabilities",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.example.com/oauth/authorize",
+      "tokenUrl": "https://api.example.com/oauth/token",
+      "scopes": [
+        "files.content.write",
+        "files.content.read",
+        "files.metadata.read"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload file to Dropbox",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": true,
+          "description": "File path in Dropbox"
+        },
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "File content (base64 encoded)"
+        },
+        "mode": {
+          "type": "string",
+          "required": false,
+          "description": "Upload mode",
+          "options": [
+            "add",
+            "overwrite",
+            "update"
+          ],
+          "default": "add"
+        }
+      },
+      "requiredScopes": [
+        "files.content.write"
+      ]
+    },
+    {
+      "id": "download_file",
+      "name": "Download File",
+      "description": "Download file from Dropbox",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": true,
+          "description": "File path in Dropbox"
+        }
+      },
+      "requiredScopes": [
+        "files.content.read"
+      ]
+    },
+    {
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create new folder",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": true,
+          "description": "Folder path"
+        },
+        "autorename": {
+          "type": "boolean",
+          "required": false,
+          "description": "Auto-rename if exists",
+          "default": false
+        }
+      },
+      "requiredScopes": [
+        "files.content.write"
+      ]
+    },
+    {
+      "id": "list_files",
+      "name": "List Files",
+      "description": "List files in folder",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": false,
+          "description": "Folder path",
+          "default": ""
+        },
+        "recursive": {
+          "type": "boolean",
+          "required": false,
+          "description": "Include subfolders",
+          "default": false
+        },
+        "limit": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum files to return",
+          "default": 2000
+        }
+      },
+      "requiredScopes": [
+        "files.metadata.read"
+      ]
+    },
+    {
+      "id": "share_file",
+      "name": "Share File",
+      "description": "Create shareable link for file",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": true,
+          "description": "File path"
+        },
+        "settings": {
+          "type": "object",
+          "required": false,
+          "description": "Sharing settings"
+        }
+      },
+      "requiredScopes": [
+        "sharing.write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "file_uploaded",
+      "name": "File Uploaded",
+      "description": "Trigger when file is uploaded",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific path"
+        }
+      },
+      "requiredScopes": [
+        "files.metadata.read"
+      ]
+    },
+    {
+      "id": "file_modified",
+      "name": "File Modified",
+      "description": "Trigger when file is modified",
+      "parameters": {
+        "path": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific path"
+        }
+      },
+      "requiredScopes": [
+        "files.metadata.read"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 120,
+    "dailyLimit": 100000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.001
+  }
+}

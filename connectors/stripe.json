@@ -1,0 +1,182 @@
+{
+  "name": "Stripe",
+  "category": "payments",
+  "description": "Stripe payment processing platform with comprehensive financial operations",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "actions": [
+    {
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Customer email"
+        },
+        "name": {
+          "type": "string",
+          "required": false,
+          "description": "Customer name"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Customer phone"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Customer description"
+        },
+        "metadata": {
+          "type": "object",
+          "required": false,
+          "description": "Custom metadata"
+        }
+      },
+      "requiredScopes": [
+        "read_write"
+      ]
+    },
+    {
+      "id": "create_payment_intent",
+      "name": "Create Payment Intent",
+      "description": "Create a payment intent",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "description": "Payment amount in cents"
+        },
+        "currency": {
+          "type": "string",
+          "required": true,
+          "description": "Currency code",
+          "default": "usd"
+        },
+        "customerId": {
+          "type": "string",
+          "required": false,
+          "description": "Customer ID"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Payment description"
+        },
+        "metadata": {
+          "type": "object",
+          "required": false,
+          "description": "Custom metadata"
+        }
+      },
+      "requiredScopes": [
+        "read_write"
+      ]
+    },
+    {
+      "id": "create_subscription",
+      "name": "Create Subscription",
+      "description": "Create a subscription",
+      "parameters": {
+        "customerId": {
+          "type": "string",
+          "required": true,
+          "description": "Customer ID"
+        },
+        "priceId": {
+          "type": "string",
+          "required": true,
+          "description": "Price ID"
+        },
+        "trialPeriodDays": {
+          "type": "number",
+          "required": false,
+          "description": "Trial period in days"
+        },
+        "metadata": {
+          "type": "object",
+          "required": false,
+          "description": "Custom metadata"
+        }
+      },
+      "requiredScopes": [
+        "read_write"
+      ]
+    },
+    {
+      "id": "create_refund",
+      "name": "Create Refund",
+      "description": "Create a refund",
+      "parameters": {
+        "paymentIntentId": {
+          "type": "string",
+          "required": true,
+          "description": "Payment intent ID"
+        },
+        "amount": {
+          "type": "number",
+          "required": false,
+          "description": "Refund amount in cents"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Refund reason",
+          "options": [
+            "duplicate",
+            "fraudulent",
+            "requested_by_customer"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "read_write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "payment_succeeded",
+      "name": "Payment Succeeded",
+      "description": "Trigger when payment is successful",
+      "parameters": {
+        "minAmount": {
+          "type": "number",
+          "required": false,
+          "description": "Minimum amount filter"
+        }
+      },
+      "requiredScopes": [
+        "read_write"
+      ]
+    },
+    {
+      "id": "subscription_created",
+      "name": "Subscription Created",
+      "description": "Trigger when new subscription is created",
+      "parameters": {},
+      "requiredScopes": [
+        "read_write"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 25,
+    "requestsPerMinute": 100,
+    "dailyLimit": 1000000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.001
+  }
+}

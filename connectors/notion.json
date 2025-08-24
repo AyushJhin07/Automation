@@ -1,0 +1,150 @@
+{
+  "name": "Notion",
+  "category": "productivity",
+  "description": "Notion workspace platform for notes, databases, and collaboration",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.example.com/oauth/authorize",
+      "tokenUrl": "https://api.example.com/oauth/token",
+      "scopes": [
+        "read",
+        "write"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_page",
+      "name": "Create Page",
+      "description": "Create new Notion page",
+      "parameters": {
+        "parent": {
+          "type": "object",
+          "required": true,
+          "description": "Parent page or database"
+        },
+        "properties": {
+          "type": "object",
+          "required": true,
+          "description": "Page properties"
+        },
+        "children": {
+          "type": "array",
+          "required": false,
+          "description": "Page content blocks"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "update_page",
+      "name": "Update Page",
+      "description": "Update existing page",
+      "parameters": {
+        "pageId": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "properties": {
+          "type": "object",
+          "required": false,
+          "description": "Updated properties"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "create_database_entry",
+      "name": "Create Database Entry",
+      "description": "Create entry in Notion database",
+      "parameters": {
+        "databaseId": {
+          "type": "string",
+          "required": true,
+          "description": "Database ID"
+        },
+        "properties": {
+          "type": "object",
+          "required": true,
+          "description": "Entry properties"
+        }
+      },
+      "requiredScopes": [
+        "write"
+      ]
+    },
+    {
+      "id": "query_database",
+      "name": "Query Database",
+      "description": "Query Notion database",
+      "parameters": {
+        "databaseId": {
+          "type": "string",
+          "required": true,
+          "description": "Database ID"
+        },
+        "filter": {
+          "type": "object",
+          "required": false,
+          "description": "Query filter"
+        },
+        "sorts": {
+          "type": "array",
+          "required": false,
+          "description": "Sort criteria"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "page_created",
+      "name": "Page Created",
+      "description": "Trigger when page is created",
+      "parameters": {
+        "parentId": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by parent"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    },
+    {
+      "id": "database_entry_created",
+      "name": "Database Entry Created",
+      "description": "Trigger when database entry is created",
+      "parameters": {
+        "databaseId": {
+          "type": "string",
+          "required": true,
+          "description": "Database ID"
+        }
+      },
+      "requiredScopes": [
+        "read"
+      ]
+    }
+  ],
+  "rateLimits": {
+    "requestsPerSecond": 3,
+    "requestsPerMinute": 100,
+    "dailyLimit": 10000
+  },
+  "pricing": {
+    "tier": "premium",
+    "costPerExecution": 0.001
+  }
+}

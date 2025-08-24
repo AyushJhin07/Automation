@@ -18,6 +18,7 @@ import { securityService } from "./services/SecurityService";
 import { integrationManager } from "./integrations/IntegrationManager";
 import { oauthManager } from "./oauth/OAuthManager";
 import { endToEndTester } from "./testing/EndToEndTester";
+import { connectorSeeder } from "./database/seedConnectors";
 
 // Middleware
 import { 
@@ -856,6 +857,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
           appName,
           removed
         }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // ===== DATABASE SEEDING ROUTES =====
+  
+  // Seed connectors from JSON files
+  app.post('/api/admin/seed-connectors', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      console.log('🌱 Starting connector seeding via API...');
+      const results = await connectorSeeder.seedAllConnectors();
+      
+      res.json({
+        success: true,
+        data: results,
+        message: `Seeded ${results.imported} new connectors, updated ${results.updated} existing`
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Get seeding statistics
+  app.get('/api/admin/connector-stats', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const stats = await connectorSeeder.getSeedingStats();
+      
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Clear all connectors (dangerous - admin only)
+  app.delete('/api/admin/clear-connectors', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const deletedCount = await connectorSeeder.clearAllConnectors();
+      
+      res.json({
+        success: true,
+        data: { deletedCount },
+        message: `Cleared ${deletedCount} connectors from database`
       });
     } catch (error) {
       res.status(500).json({
