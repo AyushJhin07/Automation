@@ -373,6 +373,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reload connectors from disk (dev utility)
+  app.post('/api/registry/reload', (req, res) => {
+    try {
+      connectorRegistry.reload();
+      res.json({ success: true, message: 'Connector registry reloaded' });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
+  // Simple debug endpoint
+  app.get('/api/registry/debug', (req, res) => {
+    const stats = connectorRegistry.getStats();
+    res.json({ success: true, ...stats });
+  });
+
   app.get('/api/connectors/:slug', async (req, res) => {
     try {
       const connector = await connectorFramework.getConnector(req.params.slug);

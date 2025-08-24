@@ -1,8 +1,9 @@
 // CONNECTOR REGISTRY - UNIFIED CONNECTOR MANAGEMENT SYSTEM
 // Syncs connector definitions with API client implementations
 
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, readdirSync, existsSync } from 'fs';
+import { join, resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { GmailAPIClient } from './integrations/GmailAPIClient';
 import { ShopifyAPIClient } from './integrations/ShopifyAPIClient';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
@@ -63,7 +64,31 @@ export class ConnectorRegistry {
   private apiClients: Map<string, APIClientConstructor> = new Map();
 
   private constructor() {
-    this.connectorsPath = join(process.cwd(), 'connectors');
+    // Get current file directory in ES module
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    
+    // Try multiple candidates so it works in dev, tsx, pm2, and prod builds
+    const candidates = [
+      // when server runs from /server
+      resolve(__dirname, '..', 'connectors'),
+      // when server runs from project root
+      resolve(process.cwd(), 'connectors'),
+      // when bundled (e.g., dist/server)
+      resolve(__dirname, '..', '..', 'connectors'),
+    ];
+
+    const found = candidates.find(p => existsSync(p));
+    if (!found) {
+      console.warn('[ConnectorRegistry] Could not locate /connectors folder. Checked:', candidates);
+      // fall back to cwd/connectors to avoid crash
+      this.connectorsPath = resolve(process.cwd(), 'connectors');
+    } else {
+      this.connectorsPath = found;
+    }
+
+    console.log('[ConnectorRegistry] Using connectorsPath:', this.connectorsPath);
+    
     this.initializeAPIClients();
     this.loadAllConnectors();
   }
@@ -385,6 +410,25 @@ export class ConnectorRegistry {
    */
   public isValidNodeType(nodeType: string): boolean {
     return this.getFunctionByType(nodeType) !== undefined;
+  }
+
+  /**
+   * Reload connectors from disk (dev utility)
+   */
+  public reload(): void {
+    this.registry.clear();
+    this.loadAllConnectors();
+  }
+
+  /**
+   * Get registry statistics for debugging
+   */
+  public getStats() {
+    return {
+      path: this.connectorsPath,
+      count: this.registry.size,
+      apps: Array.from(this.registry.keys()).sort()
+    };
   }
 }
 
