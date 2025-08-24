@@ -22,6 +22,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Asana Enhanced and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "default"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "create_task",
       "name": "Create Task",
       "description": "Create a new task in a project",

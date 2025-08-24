@@ -266,4 +266,58 @@ export abstract class BaseAPIClient {
       data: allResults
     };
   }
+
+  /**
+   * Register a webhook with the external service
+   * Override this method in specific API clients
+   */
+  async registerWebhook(webhookUrl: string, events: string[], secret?: string): Promise<APIResponse<{ webhookId: string; secret?: string }>> {
+    console.log(`🪝 Registering webhook for ${this.constructor.name}: ${webhookUrl}`);
+    
+    // Default implementation - override in specific clients
+    return {
+      success: false,
+      error: 'Webhook registration not implemented for this service'
+    };
+  }
+
+  /**
+   * Unregister a webhook from the external service
+   * Override this method in specific API clients
+   */
+  async unregisterWebhook(webhookId: string): Promise<APIResponse<void>> {
+    console.log(`🗑️ Unregistering webhook ${webhookId} for ${this.constructor.name}`);
+    
+    // Default implementation - override in specific clients
+    return {
+      success: false,
+      error: 'Webhook unregistration not implemented for this service'
+    };
+  }
+
+  /**
+   * List registered webhooks for this service
+   * Override this method in specific API clients
+   */
+  async listWebhooks(): Promise<APIResponse<any[]>> {
+    console.log(`📋 Listing webhooks for ${this.constructor.name}`);
+    
+    // Default implementation - override in specific clients
+    return {
+      success: false,
+      error: 'Webhook listing not implemented for this service'
+    };
+  }
+
+  /**
+   * Validate webhook signature
+   * Override this method in specific API clients for custom validation
+   */
+  validateWebhookSignature(payload: string, signature: string, secret: string): boolean {
+    console.log(`🔒 Validating webhook signature for ${this.constructor.name}`);
+    
+    // Default implementation - override in specific clients
+    // This is handled by WebhookManager with vendor-specific logic
+    return true;
+  }
 }

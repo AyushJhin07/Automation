@@ -24,6 +24,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Google Contacts and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "create_contact",
       "name": "Create Contact",
       "description": "Create a new contact",

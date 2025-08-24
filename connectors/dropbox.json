@@ -18,6 +18,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Dropbox and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "account_info.read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "upload_file",
       "name": "Upload File",
       "description": "Upload file to Dropbox",

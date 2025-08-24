@@ -27,6 +27,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Slack and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "users:read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "send_message",
       "name": "Send Message",
       "description": "Send a message to a Slack channel or user",

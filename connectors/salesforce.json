@@ -18,6 +18,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Salesforce and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "api"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "create_lead",
       "name": "Create Lead",
       "description": "Create a new lead in Salesforce",

@@ -25,6 +25,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Google Sheets Enhanced and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "append_row",
       "name": "Append Row",
       "description": "Append a row to a sheet",

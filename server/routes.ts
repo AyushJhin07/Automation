@@ -1759,6 +1759,652 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generic webhook handler (handles all incoming webhooks)
+  app.post('/api/webhooks/:webhookId', async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { webhookId } = req.params;
+      const headers = req.headers as Record<string, string>;
+      const payload = req.body;
+      
+      // Get raw body for signature verification (critical for Stripe, Shopify, GitHub)
+      const rawBody = (req as any).rawBody || JSON.stringify(payload);
+      
+      console.log(`📥 Webhook received: ${webhookId}`);
+      
+      const success = await webhookManager.handleWebhook(webhookId, payload, headers, rawBody);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Webhook processed successfully',
+          webhookId,
+          responseTime: Date.now() - startTime
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: 'Webhook processing failed',
+          webhookId,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Webhook processing error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+
+  // Vendor-specific webhook endpoints for better organization
+  app.post('/api/webhooks/slack/:webhookId', async (req, res) => {
+    const { webhookId } = req.params;
+    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    res.status(200).send('OK');
+  });
+
+  app.post('/api/webhooks/stripe/:webhookId', async (req, res) => {
+    const { webhookId } = req.params;
+    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    res.status(200).send('OK');
+  });
+
+  app.post('/api/webhooks/shopify/:webhookId', async (req, res) => {
+    const { webhookId } = req.params;
+    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    res.status(200).send('OK');
+  });
+
+  app.post('/api/webhooks/github/:webhookId', async (req, res) => {
+    const { webhookId } = req.params;
+    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    res.status(200).send('OK');
+  });
+
+  // ===== CONNECTOR ENDPOINTS =====
+  
+  // List all available connectors
+  app.get('/api/connectors', async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const connectors = await connectorRegistry.listConnectors();
+      
+      res.json({
+        success: true,
+        connectors: connectors.map(connector => ({
+          id: connector.id,
+          name: connector.name,
+          description: connector.description,
+          category: connector.category,
+          authentication: connector.authentication,
+          isActive: connector.isActive,
+          actionsCount: connector.actions?.length || 0,
+          triggersCount: connector.triggers?.length || 0,
+          hasOAuth: connector.authentication?.type === 'oauth2',
+          hasWebhooks: connector.triggers?.some(t => t.webhookSupport) || false
+        })),
+        total: connectors.length,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ List connectors error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Get specific connector details
+  app.get('/api/connectors/:connectorId', async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { connectorId } = req.params;
+      const connector = await connectorRegistry.getConnector(connectorId);
+      
+      if (!connector) {
+        return res.status(404).json({
+          success: false,
+          error: `Connector not found: ${connectorId}`,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      res.json({
+        success: true,
+        connector,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error(`❌ Get connector error for ${req.params.connectorId}:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Get connector functions (actions and triggers)
+  app.get('/api/connectors/:connectorId/functions', async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { connectorId } = req.params;
+      const connector = await connectorRegistry.getConnector(connectorId);
+      
+      if (!connector) {
+        return res.status(404).json({
+          success: false,
+          error: `Connector not found: ${connectorId}`,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      const functions = [
+        ...(connector.actions || []).map(action => ({
+          ...action,
+          type: 'action'
+        })),
+        ...(connector.triggers || []).map(trigger => ({
+          ...trigger,
+          type: 'trigger'
+        }))
+      ];
+      
+      res.json({
+        success: true,
+        functions,
+        total: functions.length,
+        actions: connector.actions?.length || 0,
+        triggers: connector.triggers?.length || 0,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error(`❌ Get connector functions error for ${req.params.connectorId}:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+
+  // ===== WEBHOOK REGISTRATION ENDPOINTS =====
+  
+  // Register a webhook for a specific provider
+  app.post('/api/webhooks/register/:provider', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const userId = req.user!.id;
+      const { provider } = req.params;
+      const { events, callbackUrl, secret } = req.body;
+      
+      // Validate required fields
+      if (!events || !Array.isArray(events) || events.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Events array is required',
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      // Get the API client for this provider
+      const apiClient = integrationManager.getAPIClient(provider);
+      if (!apiClient) {
+        return res.status(404).json({
+          success: false,
+          error: `No API client found for provider: ${provider}`,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      // Generate webhook URL if not provided
+      const webhookUrl = callbackUrl || `${process.env.BASE_URL || 'https://your-domain.com'}/api/webhooks/${provider}`;
+      
+      // Register webhook with the external service
+      const result = await apiClient.registerWebhook(webhookUrl, events, secret);
+      
+      if (result.success && result.data) {
+        // Store webhook registration in database
+        const webhook = await webhookManager.registerWebhook({
+          appId: provider,
+          triggerId: 'webhook_received',
+          workflowId: req.body.workflowId || 'manual',
+          endpoint: webhookUrl,
+          secret: result.data.secret || secret,
+          isActive: true,
+          metadata: {
+            events,
+            externalWebhookId: result.data.webhookId,
+            userId,
+            registeredAt: new Date()
+          }
+        });
+        
+        res.json({
+          success: true,
+          webhook: {
+            ...webhook,
+            externalWebhookId: result.data.webhookId
+          },
+          responseTime: Date.now() - startTime
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error || 'Failed to register webhook',
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+    } catch (error) {
+      console.error(`❌ Webhook registration error for ${req.params.provider}:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Unregister a webhook
+  app.delete('/api/webhooks/register/:provider/:webhookId', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { provider, webhookId } = req.params;
+      
+      // Get the API client for this provider
+      const apiClient = integrationManager.getAPIClient(provider);
+      if (!apiClient) {
+        return res.status(404).json({
+          success: false,
+          error: `No API client found for provider: ${provider}`,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      // Get webhook metadata to find external webhook ID
+      const webhook = webhookManager.getWebhook(webhookId);
+      if (!webhook) {
+        return res.status(404).json({
+          success: false,
+          error: 'Webhook not found',
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      // Unregister from external service
+      const externalWebhookId = webhook.metadata?.externalWebhookId;
+      if (externalWebhookId) {
+        const result = await apiClient.unregisterWebhook(externalWebhookId);
+        if (!result.success) {
+          console.warn(`Failed to unregister webhook from ${provider}: ${result.error}`);
+        }
+      }
+      
+      // Deactivate webhook locally
+      const success = webhookManager.deactivateWebhook(webhookId);
+      
+      res.json({
+        success,
+        message: success ? 'Webhook unregistered successfully' : 'Webhook not found',
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error(`❌ Webhook unregistration error:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // List registered webhooks for a provider
+  app.get('/api/webhooks/register/:provider', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const { provider } = req.params;
+      
+      // Get local webhooks for this provider
+      const localWebhooks = webhookManager.listWebhooks().filter(w => w.appId === provider);
+      
+      // Get external webhooks if API client supports it
+      const apiClient = integrationManager.getAPIClient(provider);
+      let externalWebhooks = [];
+      
+      if (apiClient) {
+        try {
+          const result = await apiClient.listWebhooks();
+          if (result.success) {
+            externalWebhooks = result.data || [];
+          }
+        } catch (error) {
+          console.warn(`Failed to list external webhooks for ${provider}:`, error.message);
+        }
+      }
+      
+      res.json({
+        success: true,
+        webhooks: {
+          local: localWebhooks,
+          external: externalWebhooks
+        },
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error(`❌ List webhooks error for ${req.params.provider}:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+
+  // ===== ADMIN ENDPOINTS =====
+  
+  // Seed connectors from JSON files to database
+  app.post('/api/admin/seed-connectors', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      // TODO: Add admin role check
+      // if (req.user!.role !== 'admin') {
+      //   return res.status(403).json({ success: false, error: 'Admin access required' });
+      // }
+      
+      const result = await connectorSeeder.seedAllConnectors();
+      
+      res.json({
+        success: true,
+        message: 'Connectors seeded successfully',
+        result,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Seed connectors error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Get seeding statistics
+  app.get('/api/admin/seed-connectors/stats', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const stats = await connectorSeeder.getSeedingStats();
+      
+      res.json({
+        success: true,
+        stats,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Get seeding stats error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Clear all connectors from database
+  app.delete('/api/admin/seed-connectors', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      // TODO: Add admin role check
+      // if (req.user!.role !== 'admin') {
+      //   return res.status(403).json({ success: false, error: 'Admin access required' });
+      // }
+      
+      const deletedCount = await connectorSeeder.clearAllConnectors();
+      
+      res.json({
+        success: true,
+        message: `Cleared ${deletedCount} connectors from database`,
+        deletedCount,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Clear connectors error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+
+  // ===== HEALTH CHECK ENDPOINTS =====
+  
+  // Health check for all integrations
+  app.get('/api/health/integrations', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const userId = req.user!.id;
+      
+      // Get all user connections
+      const connections = await connectionService.getUserConnections(userId);
+      
+      const healthChecks: Record<string, any> = {};
+      let totalConnections = 0;
+      let healthyConnections = 0;
+      let failedConnections = 0;
+      
+      // Test each connection
+      for (const connection of connections) {
+        totalConnections++;
+        
+        try {
+          // Use the integrationManager to test the connection
+          const testResult = await integrationManager.executeFunction(
+            connection.provider,
+            'test_connection',
+            {},
+            userId
+          );
+          
+          healthChecks[connection.provider] = {
+            status: testResult.success ? 'healthy' : 'error',
+            lastChecked: new Date().toISOString(),
+            connectedAt: connection.createdAt,
+            error: testResult.success ? null : testResult.error
+          };
+          
+          if (testResult.success) {
+            healthyConnections++;
+          } else {
+            failedConnections++;
+          }
+          
+        } catch (error) {
+          failedConnections++;
+          healthChecks[connection.provider] = {
+            status: 'error',
+            lastChecked: new Date().toISOString(),
+            connectedAt: connection.createdAt,
+            error: getErrorMessage(error)
+          };
+        }
+      }
+      
+      const overallHealth = failedConnections === 0 ? 'healthy' : 
+                          healthyConnections > failedConnections ? 'degraded' : 'unhealthy';
+      
+      res.json({
+        success: true,
+        health: {
+          status: overallHealth,
+          summary: {
+            total: totalConnections,
+            healthy: healthyConnections,
+            failed: failedConnections
+          },
+          connections: healthChecks,
+          checkedAt: new Date().toISOString()
+        },
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      console.error('❌ Integration health check error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Health check for specific integration
+  app.get('/api/health/integrations/:provider', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const userId = req.user!.id;
+      const { provider } = req.params;
+      
+      // Check if user has this connection
+      const connections = await connectionService.getUserConnections(userId);
+      const connection = connections.find(conn => conn.provider === provider);
+      
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          error: `No connection found for provider: ${provider}`,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+      try {
+        // Test the specific connection
+        const testResult = await integrationManager.executeFunction(
+          provider,
+          'test_connection',
+          {},
+          userId
+        );
+        
+        res.json({
+          success: true,
+          health: {
+            provider,
+            status: testResult.success ? 'healthy' : 'error',
+            lastChecked: new Date().toISOString(),
+            connectedAt: connection.createdAt,
+            error: testResult.success ? null : testResult.error,
+            details: testResult
+          },
+          responseTime: Date.now() - startTime
+        });
+        
+      } catch (error) {
+        res.json({
+          success: true,
+          health: {
+            provider,
+            status: 'error',
+            lastChecked: new Date().toISOString(),
+            connectedAt: connection.createdAt,
+            error: getErrorMessage(error)
+          },
+          responseTime: Date.now() - startTime
+        });
+      }
+      
+    } catch (error) {
+      console.error(`❌ Health check error for ${req.params.provider}:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Overall system health
+  app.get('/api/health', async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      const health = {
+        status: 'healthy',
+        services: {
+          database: 'healthy',
+          oauth: 'healthy', 
+          integrations: 'healthy',
+          webhooks: 'healthy'
+        },
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: process.env.npm_package_version || '1.0.0'
+      };
+      
+      // Quick database check
+      try {
+        const connectors = await connectorRegistry.listConnectors();
+        health.services.database = connectors.length > 0 ? 'healthy' : 'degraded';
+      } catch (error) {
+        health.services.database = 'error';
+        health.status = 'degraded';
+      }
+      
+      // Check OAuth manager
+      try {
+        const providers = oauthManager.listProviders();
+        health.services.oauth = providers.length > 0 ? 'healthy' : 'degraded';
+      } catch (error) {
+        health.services.oauth = 'error';
+        health.status = 'degraded';
+      }
+      
+      res.json({
+        success: true,
+        health,
+        responseTime: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

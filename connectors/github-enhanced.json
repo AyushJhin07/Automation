@@ -26,6 +26,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to GitHub Enhanced and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "user:read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "create_issue",
       "name": "Create Issue",
       "description": "Create a new issue",

@@ -50,7 +50,11 @@ export class ProductionGraphCompiler {
       }
 
       const compiledFiles: CompiledFile[] = [];
-      const requiredScopes = validation.requiredScopes || [];
+      const baseScopes = validation.requiredScopes || [];
+      
+      // Collect all required scopes from nodes
+      const nodeScopes = this.collectRequiredScopes(graph);
+      const requiredScopes = [...new Set([...baseScopes, ...nodeScopes])];
 
       // Generate main execution file
       const mainCode = this.generateMainCode(graph, options);
@@ -1625,6 +1629,172 @@ Run \`executeWorkflow({})\` to test the workflow manually.
     });
     
     return result;
+  }
+
+  /**
+   * Generate Apps Script manifest with scopes unioned from all nodes
+   */
+  private generateManifest(graph: any, baseScopes: string[], options: CompilerOptions): any {
+    console.log('🔧 Generating appsscript.json manifest with scope unioning...');
+    
+    const allScopes = new Set(baseScopes);
+    
+    // Collect scopes from all nodes using the compiler templates
+    graph.nodes.forEach(node => {
+      try {
+        const nodeData: NodeData = {
+          nodeType: node.type,
+          app: node.type.split('.')[1] || 'unknown',
+          params: node.data || {}
+        };
+        
+        // Get required scopes from compiler templates
+        const nodeScopes = compilerTemplates.getRequiredScopes(node.type, nodeData);
+        nodeScopes.forEach(scope => allScopes.add(scope));
+        
+        // Add app-specific scopes based on node type
+        if (node.type.includes('gmail')) {
+          allScopes.add('https://www.googleapis.com/auth/gmail.modify');
+          allScopes.add('https://www.googleapis.com/auth/gmail.send');
+          if (node.type.includes('read') || node.type.includes('search')) {
+            allScopes.add('https://www.googleapis.com/auth/gmail.readonly');
+          }
+        }
+        
+        if (node.type.includes('sheets') || node.type.includes('google-sheets')) {
+          allScopes.add('https://www.googleapis.com/auth/spreadsheets');
+        }
+        
+        if (node.type.includes('drive') || node.type.includes('google-drive')) {
+          allScopes.add('https://www.googleapis.com/auth/drive.file');
+          if (node.type.includes('read') || node.type.includes('list')) {
+            allScopes.add('https://www.googleapis.com/auth/drive.readonly');
+          }
+        }
+        
+        if (node.type.includes('calendar') || node.type.includes('google-calendar')) {
+          allScopes.add('https://www.googleapis.com/auth/calendar');
+        }
+        
+        if (node.type.includes('docs') || node.type.includes('google-docs')) {
+          allScopes.add('https://www.googleapis.com/auth/documents');
+        }
+        
+        if (node.type.includes('slides') || node.type.includes('google-slides')) {
+          allScopes.add('https://www.googleapis.com/auth/presentations');
+        }
+        
+        if (node.type.includes('forms') || node.type.includes('google-forms')) {
+          allScopes.add('https://www.googleapis.com/auth/forms');
+        }
+        
+        if (node.type.includes('contacts') || node.type.includes('google-contacts')) {
+          allScopes.add('https://www.googleapis.com/auth/contacts');
+        }
+        
+        if (node.type.includes('chat') || node.type.includes('google-chat')) {
+          allScopes.add('https://www.googleapis.com/auth/chat.messages');
+        }
+        
+        if (node.type.includes('admin') || node.type.includes('google-admin')) {
+          allScopes.add('https://www.googleapis.com/auth/admin.directory.user');
+        }
+        
+        // Always add script external request for external API calls
+        if (!node.type.includes('google-') && !node.type.includes('gmail') && !node.type.includes('sheets')) {
+          allScopes.add('https://www.googleapis.com/auth/script.external_request');
+        }
+        
+        console.log(`📋 Node ${node.id} (${node.type}) requires ${nodeScopes.length} scopes`);
+        
+      } catch (error) {
+        console.warn(`⚠️ Failed to get scopes for node ${node.id}: ${error.message}`);
+      }
+    });
+    
+    // Convert to array and sort for consistency
+    const scopesArray = Array.from(allScopes).sort();
+    
+    console.log(`🔒 Total unique scopes required: ${scopesArray.length}`);
+    scopesArray.forEach(scope => console.log(`  - ${scope}`));
+    
+    const manifest = {
+      timeZone: options.timezone || 'America/New_York',
+      dependencies: {
+        enabledAdvancedServices: [
+          {
+            userSymbol: 'Gmail',
+            serviceId: 'gmail',
+            version: 'v1'
+          },
+          {
+            userSymbol: 'Drive',
+            serviceId: 'drive',
+            version: 'v3'
+          },
+          {
+            userSymbol: 'Sheets',
+            serviceId: 'sheets',
+            version: 'v4'
+          },
+          {
+            userSymbol: 'Calendar',
+            serviceId: 'calendar',
+            version: 'v3'
+          },
+          {
+            userSymbol: 'Docs',
+            serviceId: 'docs',
+            version: 'v1'
+          },
+          {
+            userSymbol: 'Slides',
+            serviceId: 'slides',
+            version: 'v1'
+          },
+          {
+            userSymbol: 'Forms',
+            serviceId: 'forms',
+            version: 'v1'
+          }
+        ]
+      },
+      oauthScopes: scopesArray,
+      runtimeVersion: 'V8',
+      executionApi: {
+        access: 'DOMAIN'
+      },
+      webapp: {
+        access: 'ANYONE',
+        executeAs: 'USER_DEPLOYING'
+      }
+    };
+    
+    return manifest;
+  }
+
+  /**
+   * Collect all required scopes from nodes in the graph
+   */
+  private collectRequiredScopes(graph: any): string[] {
+    const scopes = new Set<string>();
+    
+    graph.nodes.forEach(node => {
+      try {
+        const nodeData: NodeData = {
+          nodeType: node.type,
+          app: node.type.split('.')[1] || 'unknown',
+          params: node.data || {}
+        };
+        
+        const nodeScopes = compilerTemplates.getRequiredScopes(node.type, nodeData);
+        nodeScopes.forEach(scope => scopes.add(scope));
+      } catch (error) {
+        console.warn(`Failed to get scopes for node ${node.id}: ${error.message}`);
+      }
+    });
+    
+    return Array.from(scopes);
   }
 }
 

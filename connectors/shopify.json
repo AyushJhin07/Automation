@@ -25,6 +25,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Shopify and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "read_products"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "create_product",
       "name": "Create Product",
       "description": "Create a new product in Shopify store",

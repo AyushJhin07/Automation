@@ -25,6 +25,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Google Docs and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "create_document",
       "name": "Create Document",
       "description": "Create a new Google Docs document",
@@ -40,7 +54,10 @@
           "description": "ID of the folder to create the document in"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive.file"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
     },
     {
       "id": "append_text",
@@ -58,7 +75,9 @@
           "description": "Text to append"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents"
+      ]
     },
     {
       "id": "replace_text",
@@ -81,7 +100,9 @@
           "description": "Text to replace with"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents"
+      ]
     },
     {
       "id": "insert_table",
@@ -109,7 +130,9 @@
           "description": "Index location to insert the table"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents"
+      ]
     },
     {
       "id": "add_heading",
@@ -130,10 +153,19 @@
           "type": "number",
           "required": true,
           "description": "Heading level (1-6)",
-          "options": [1, 2, 3, 4, 5, 6]
+          "options": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents"
+      ]
     },
     {
       "id": "add_image_from_url",
@@ -156,7 +188,9 @@
           "description": "Index location to insert the image"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents"
+      ]
     },
     {
       "id": "export_pdf",
@@ -169,7 +203,9 @@
           "description": "ID of the document to export"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents.readonly"
+      ]
     },
     {
       "id": "duplicate",
@@ -192,7 +228,9 @@
           "description": "ID of the folder for the duplicate"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/drive.file"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/drive.file"
+      ]
     },
     {
       "id": "share_document",
@@ -213,10 +251,16 @@
           "type": "string",
           "required": true,
           "description": "Role to assign",
-          "options": ["reader", "writer", "commenter"]
+          "options": [
+            "reader",
+            "writer",
+            "commenter"
+          ]
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/drive.file"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/drive.file"
+      ]
     }
   ],
   "triggers": [
@@ -231,7 +275,9 @@
           "description": "Monitor documents in specific folder only"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/drive.metadata.readonly"
+      ]
     },
     {
       "id": "document_updated",
@@ -244,7 +290,9 @@
           "description": "ID of the document to monitor"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/documents.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/documents.readonly"
+      ]
     }
   ]
 }

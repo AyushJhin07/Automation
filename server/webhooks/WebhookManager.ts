@@ -85,7 +85,7 @@ export class WebhookManager {
   /**
    * Handle incoming webhook request
    */
-  async handleWebhook(webhookId: string, payload: any, headers: Record<string, string>): Promise<boolean> {
+  async handleWebhook(webhookId: string, payload: any, headers: Record<string, string>, rawBody?: string): Promise<boolean> {
     try {
       const webhook = this.activeWebhooks.get(webhookId);
       if (!webhook) {
@@ -94,7 +94,7 @@ export class WebhookManager {
       }
 
       // Verify webhook signature if secret is provided
-      if (webhook.secret && !this.verifySignature(payload, headers, webhook.secret, webhook.appId)) {
+      if (webhook.secret && !this.verifySignature(payload, headers, webhook.secret, webhook.appId, rawBody)) {
         console.warn(`🔒 Invalid webhook signature for ${webhookId}`);
         return false;
       }
@@ -331,7 +331,7 @@ export class WebhookManager {
   /**
    * Verify webhook signature
    */
-  private verifySignature(payload: any, headers: Record<string, string>, secret: string, appId?: string): boolean {
+  private verifySignature(payload: any, headers: Record<string, string>, secret: string, appId?: string, rawBody?: string): boolean {
     try {
       if (!appId) {
         return this.verifyGenericSignature(payload, headers, secret);
@@ -341,19 +341,19 @@ export class WebhookManager {
       switch (appId.toLowerCase()) {
         case 'slack':
         case 'slack-enhanced':
-          return this.verifySlackSignature(payload, headers, secret);
+          return this.verifySlackSignature(payload, headers, secret, rawBody);
         
         case 'stripe':
         case 'stripe-enhanced':
-          return this.verifyStripeSignature(payload, headers, secret);
+          return this.verifyStripeSignature(payload, headers, secret, rawBody);
         
         case 'shopify':
         case 'shopify-enhanced':
-          return this.verifyShopifySignature(payload, headers, secret);
+          return this.verifyShopifySignature(payload, headers, secret, rawBody);
         
         case 'github':
         case 'github-enhanced':
-          return this.verifyGitHubSignature(payload, headers, secret);
+          return this.verifyGitHubSignature(payload, headers, secret, rawBody);
         
         case 'gitlab':
           return this.verifyGitLabSignature(payload, headers, secret);
@@ -405,7 +405,7 @@ export class WebhookManager {
    * Slack webhook signature verification
    * Uses v0:timestamp:body HMAC SHA256 with timestamp validation
    */
-  private verifySlackSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+  private verifySlackSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
     const signature = headers['x-slack-signature'];
     const timestamp = headers['x-slack-request-timestamp'];
     
@@ -421,8 +421,9 @@ export class WebhookManager {
       return false;
     }
 
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    const signatureBaseString = `v0:${timestamp}:${rawBody}`;
+    // Use raw body if provided, otherwise fallback to JSON string
+    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
+    const signatureBaseString = `v0:${timestamp}:${body}`;
     
     const expectedSignature = 'v0=' + createHash('sha256')
       .update(signatureBaseString, 'utf8')
@@ -433,9 +434,9 @@ export class WebhookManager {
 
   /**
    * Stripe webhook signature verification
-   * Uses timestamp and tolerance window
+   * Uses timestamp and tolerance window with RAW BODY (critical for Stripe)
    */
-  private verifyStripeSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+  private verifyStripeSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
     const signature = headers['stripe-signature'];
     if (!signature) {
       return false;
@@ -458,11 +459,12 @@ export class WebhookManager {
       return false;
     }
 
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    const signedPayload = `${timestamp}.${rawBody}`;
+    // Stripe REQUIRES raw body - this is critical!
+    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
+    const signedPayload = `${timestamp}.${body}`;
     
     const expectedSignature = createHash('sha256')
-      .update(signedPayload, 'utf8')
+      .update(signedPayload + secret, 'utf8')
       .digest('hex');
 
     return v1Signature === expectedSignature;
@@ -470,18 +472,19 @@ export class WebhookManager {
 
   /**
    * Shopify webhook signature verification
-   * Uses X-Shopify-Hmac-Sha256 with Base64 encoding
+   * Uses X-Shopify-Hmac-Sha256 with Base64 encoding and RAW BODY
    */
-  private verifyShopifySignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+  private verifyShopifySignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
     const signature = headers['x-shopify-hmac-sha256'];
     if (!signature) {
       return false;
     }
 
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    // Shopify requires raw body for accurate verification
+    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
     
     const expectedSignature = createHash('sha256')
-      .update(rawBody, 'utf8')
+      .update(body + secret, 'utf8')
       .digest('base64');
 
     return signature === expectedSignature;
@@ -489,18 +492,19 @@ export class WebhookManager {
 
   /**
    * GitHub webhook signature verification
-   * Uses X-Hub-Signature-256 with sha256= prefix
+   * Uses X-Hub-Signature-256 with sha256= prefix and RAW BODY
    */
-  private verifyGitHubSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
+  private verifyGitHubSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
     const signature = headers['x-hub-signature-256'];
     if (!signature) {
       return false;
     }
 
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    // GitHub requires raw body for accurate verification
+    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
     
     const expectedSignature = 'sha256=' + createHash('sha256')
-      .update(rawBody, 'utf8')
+      .update(body + secret, 'utf8')
       .digest('hex');
 
     return signature === expectedSignature;

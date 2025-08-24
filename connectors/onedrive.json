@@ -24,6 +24,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to OneDrive and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "upload_file",
       "name": "Upload File",
       "description": "Upload a file to OneDrive",

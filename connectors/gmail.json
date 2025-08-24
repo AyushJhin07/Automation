@@ -19,6 +19,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Gmail and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "read"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "send_email",
       "name": "Send Email",
       "description": "Send a new email message",

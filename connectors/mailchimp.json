@@ -17,6 +17,20 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Mailchimp and verify authentication",
+      "parameters": {},
+      "requiredScopes": [
+        "basic"
+      ],
+      "rateLimits": {
+        "requests": 10,
+        "period": "1m",
+        "scope": "user"
+      }
+    },
+    {
       "id": "add_subscriber",
       "name": "Add Subscriber",
       "description": "Add subscriber to mailing list",
