@@ -16,6 +16,7 @@ import { healthMonitoringService } from "./services/HealthMonitoringService";
 import { usageMeteringService } from "./services/UsageMeteringService";
 import { securityService } from "./services/SecurityService";
 import { integrationManager } from "./integrations/IntegrationManager";
+import { oauthManager } from "./oauth/OAuthManager";
 
 // Middleware
 import { 
@@ -387,6 +388,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // ===== OAUTH ROUTES =====
+  
+  // Get supported OAuth providers
+  app.get('/api/oauth/providers', async (req, res) => {
+    try {
+      const providers = oauthManager.getSupportedProviders();
+      
+      res.json({
+        success: true,
+        data: {
+          providers: providers.map(p => ({
+            name: p.name,
+            displayName: p.displayName,
+            scopes: p.scopes,
+            configured: oauthManager.isProviderConfigured(p.name)
+          }))
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Initiate OAuth flow
+  app.post('/api/oauth/authorize', authenticateToken, async (req, res) => {
+    try {
+      const { provider, additionalParams } = req.body;
+      const userId = req.user!.id;
+      
+      if (!provider) {
+        return res.status(400).json({
+          success: false,
+          error: 'Provider is required'
+        });
+      }
+
+      if (!oauthManager.isProviderConfigured(provider)) {
+        return res.status(400).json({
+          success: false,
+          error: `OAuth provider ${provider} is not configured`
+        });
+      }
+
+      const { authUrl, state } = await oauthManager.generateAuthUrl(
+        provider,
+        userId,
+        additionalParams
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          authUrl,
+          state,
+          provider
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // OAuth callback handler (generic for all providers)
+  app.get('/api/oauth/callback/:provider', async (req, res) => {
+    try {
+      const { provider } = req.params;
+      const { code, state, shop } = req.query;
+      
+      if (!code || !state) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing authorization code or state'
+        });
+      }
+
+      // Handle callback and exchange code for tokens
+      const additionalParams = shop ? { shop: shop as string } : undefined;
+      const { tokens, userInfo } = await oauthManager.handleCallback(
+        provider,
+        code as string,
+        state as string,
+        additionalParams
+      );
+
+      // Store the connection (we'll need to get userId from state or session)
+      // For now, we'll return the tokens to be stored by the frontend
+      res.json({
+        success: true,
+        data: {
+          provider,
+          tokens,
+          userInfo,
+          message: 'OAuth flow completed successfully'
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Store OAuth connection after successful callback
+  app.post('/api/oauth/store-connection', authenticateToken, async (req, res) => {
+    try {
+      const { provider, tokens, userInfo, additionalConfig } = req.body;
+      const userId = req.user!.id;
+      
+      if (!provider || !tokens) {
+        return res.status(400).json({
+          success: false,
+          error: 'Provider and tokens are required'
+        });
+      }
+
+      const connectionId = await oauthManager.storeConnection(
+        userId,
+        provider,
+        tokens,
+        userInfo,
+        additionalConfig
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          connectionId,
+          provider,
+          message: 'Connection stored successfully'
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Refresh OAuth token
+  app.post('/api/oauth/refresh', authenticateToken, async (req, res) => {
+    try {
+      const { provider, refreshToken } = req.body;
+      
+      if (!provider || !refreshToken) {
+        return res.status(400).json({
+          success: false,
+          error: 'Provider and refresh token are required'
+        });
+      }
+
+      const newTokens = await oauthManager.refreshToken(provider, refreshToken);
+      
+      res.json({
+        success: true,
+        data: {
+          tokens: newTokens,
+          provider
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
 
   // ===== INTEGRATION ROUTES =====
   
