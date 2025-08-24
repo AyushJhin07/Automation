@@ -317,12 +317,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/connectors', optionalAuth, async (req, res) => {
     try {
       const { search, category, limit } = req.query;
-      const connectors = await connectorFramework.searchConnectors(
-        search as string,
-        category as string,
-        parseInt(limit as string) || 50
-      );
-      res.json({ success: true, connectors });
+      
+      // Use ConnectorRegistry instead of ConnectorFramework for development
+      // (works without database)
+      let connectors = connectorRegistry.getAllConnectors().map(entry => ({
+        id: entry.definition.id,
+        name: entry.definition.name,
+        description: entry.definition.description,
+        category: entry.definition.category,
+        authentication: entry.definition.authentication,
+        isActive: true,
+        actionsCount: entry.definition.actions?.length || 0,
+        triggersCount: entry.definition.triggers?.length || 0,
+        hasOAuth: entry.definition.authentication?.type === 'oauth2',
+        hasWebhooks: entry.definition.triggers?.some(t => t.webhookSupport) || false,
+        hasImplementation: entry.hasImplementation,
+        functionCount: entry.functionCount
+      }));
+      
+      // Apply filters
+      if (search) {
+        const searchLower = search.toLowerCase();
+        connectors = connectors.filter(c => 
+          c.name.toLowerCase().includes(searchLower) ||
+          c.description.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      if (category) {
+        connectors = connectors.filter(c => 
+          c.category.toLowerCase() === category.toLowerCase()
+        );
+      }
+      
+      if (limit) {
+        connectors = connectors.slice(0, parseInt(limit as string));
+      }
+      
+      res.json({ 
+        success: true, 
+        connectors,
+        total: connectors.length 
+      });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }

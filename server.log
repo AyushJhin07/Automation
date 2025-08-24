@@ -8,7 +8,7 @@
 
 [34m🔍 Checking all dependencies and imports...[0m
 
-Found 159 TypeScript files to check
+Found 212 TypeScript files to check
 
 [34m📦 Checking 61 external packages...[0m
 [32m✅ fs[0m
@@ -85,13 +85,14 @@ Total Supported Applications: 414
 🔐 Development encryption service initialized (NOT SECURE)
 🔐 Encryption service initialized successfully
 ✅ SimpleGraphValidator initialized with AJV schema validation
+🔧 Initializing comprehensive compiler templates...
+✅ Initialized 14 core compiler templates
 🛡️ Security service initialized
-📦 Loaded 13 connectors into registry
-5:44:46 AM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
-5:44:46 AM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
-5:44:46 AM [express] serving on localhost:5000
-5:44:46 AM [express] serving on localhost:5001
-5:44:46 AM [express] serving on localhost:3000
-5:45:02 AM [express] GET /api/registry/stats 200 in 3ms :: {"success":true,"stats":{"totalConnectors…
-5:45:08 AM [express] GET /api/registry/catalog 200 in 2ms :: {"success":true,"catalog":{"categories"…
-6:14:08 AM [express] GET /api/registry/stats 200 in 1ms :: {"success":true,"stats":{"totalConnectors…
+📦 Loaded 93 connectors into registry
+2:24:03 PM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
+2:24:03 PM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
+2:24:03 PM [express] serving on localhost:5000
+2:24:03 PM [express] serving on localhost:5001
+2:24:03 PM [express] serving on localhost:3000
+2:24:20 PM [express] GET /api/connectors 200 in 4ms :: {"success":true,"connectors":[{"id":"adp","na…
+2:24:20 PM [express] GET /api/connectors 200 in 1ms :: {"success":true,"connectors":[{"id":"adp","na…
