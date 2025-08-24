@@ -565,10 +565,6 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
       }
     } catch (error) {
       console.error('Error loading node templates:', error);
-              setNodeTemplates(basicTemplates);
-      }
-    } catch (error) {
-      console.error('Error loading node templates:', error);
       // Fallback to minimal templates
       setNodeTemplates([
         {
