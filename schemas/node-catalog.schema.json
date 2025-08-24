@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/node-catalog.schema.json",
+  "title": "Node Catalog",
+  "description": "Comprehensive catalog of all available nodes for workflow building",
+  "type": "object",
+  "properties": {
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                },
+                "appName": {
+                  "type": "string"
+                },
+                "schemaRef": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

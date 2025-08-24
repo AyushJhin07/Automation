@@ -1,4 +1,5 @@
 {
+  "id": "shopify",
   "name": "Shopify",
   "category": "ecommerce",
   "description": "Shopify e-commerce platform integration with comprehensive store management capabilities",
@@ -57,7 +58,11 @@
           "type": "string",
           "required": false,
           "description": "Product status",
-          "options": ["active", "archived", "draft"],
+          "options": [
+            "active",
+            "archived",
+            "draft"
+          ],
           "default": "active"
         },
         "images": {
@@ -71,7 +76,9 @@
           "description": "Product variants"
         }
       },
-      "requiredScopes": ["write_products"],
+      "requiredScopes": [
+        "write_products"
+      ],
       "rateLimits": {
         "requestsPerSecond": 2,
         "requestsPerMinute": 40,
@@ -102,7 +109,11 @@
           "type": "string",
           "required": false,
           "description": "Product status",
-          "options": ["active", "archived", "draft"]
+          "options": [
+            "active",
+            "archived",
+            "draft"
+          ]
         },
         "tags": {
           "type": "string",
@@ -110,7 +121,9 @@
           "description": "Product tags"
         }
       },
-      "requiredScopes": ["write_products"]
+      "requiredScopes": [
+        "write_products"
+      ]
     },
     {
       "id": "delete_product",
@@ -123,7 +136,9 @@
           "description": "Product ID"
         }
       },
-      "requiredScopes": ["write_products"]
+      "requiredScopes": [
+        "write_products"
+      ]
     },
     {
       "id": "archive_product",
@@ -136,7 +151,9 @@
           "description": "Product ID"
         }
       },
-      "requiredScopes": ["write_products"]
+      "requiredScopes": [
+        "write_products"
+      ]
     },
     {
       "id": "get_products",
@@ -153,7 +170,11 @@
           "type": "string",
           "required": false,
           "description": "Filter by status",
-          "options": ["active", "archived", "draft"]
+          "options": [
+            "active",
+            "archived",
+            "draft"
+          ]
         },
         "vendor": {
           "type": "string",
@@ -161,7 +182,9 @@
           "description": "Filter by vendor"
         }
       },
-      "requiredScopes": ["read_products"]
+      "requiredScopes": [
+        "read_products"
+      ]
     },
     {
       "id": "create_order",
@@ -189,7 +212,9 @@
           "description": "Shipping address"
         }
       },
-      "requiredScopes": ["write_orders"]
+      "requiredScopes": [
+        "write_orders"
+      ]
     },
     {
       "id": "update_order",
@@ -212,7 +237,9 @@
           "description": "Order tags"
         }
       },
-      "requiredScopes": ["write_orders"]
+      "requiredScopes": [
+        "write_orders"
+      ]
     },
     {
       "id": "cancel_order",
@@ -228,7 +255,13 @@
           "type": "string",
           "required": false,
           "description": "Cancellation reason",
-          "options": ["customer", "fraud", "inventory", "declined", "other"]
+          "options": [
+            "customer",
+            "fraud",
+            "inventory",
+            "declined",
+            "other"
+          ]
         },
         "email": {
           "type": "boolean",
@@ -237,7 +270,9 @@
           "default": true
         }
       },
-      "requiredScopes": ["write_orders"]
+      "requiredScopes": [
+        "write_orders"
+      ]
     },
     {
       "id": "fulfill_order",
@@ -271,7 +306,9 @@
           "default": true
         }
       },
-      "requiredScopes": ["write_fulfillments"]
+      "requiredScopes": [
+        "write_fulfillments"
+      ]
     },
     {
       "id": "refund_order",
@@ -300,7 +337,9 @@
           "default": true
         }
       },
-      "requiredScopes": ["write_orders"]
+      "requiredScopes": [
+        "write_orders"
+      ]
     },
     {
       "id": "create_customer",
@@ -333,7 +372,9 @@
           "description": "Customer tags"
         }
       },
-      "requiredScopes": ["write_customers"]
+      "requiredScopes": [
+        "write_customers"
+      ]
     },
     {
       "id": "update_customer",
@@ -366,7 +407,9 @@
           "description": "Customer tags"
         }
       },
-      "requiredScopes": ["write_customers"]
+      "requiredScopes": [
+        "write_customers"
+      ]
     },
     {
       "id": "search_customers",
@@ -385,7 +428,9 @@
           "default": 50
         }
       },
-      "requiredScopes": ["read_customers"]
+      "requiredScopes": [
+        "read_customers"
+      ]
     },
     {
       "id": "update_inventory",
@@ -408,7 +453,9 @@
           "description": "Available quantity"
         }
       },
-      "requiredScopes": ["write_inventory"]
+      "requiredScopes": [
+        "write_inventory"
+      ]
     },
     {
       "id": "create_collection",
@@ -429,11 +476,16 @@
           "type": "string",
           "required": false,
           "description": "Collection type",
-          "options": ["smart", "custom"],
+          "options": [
+            "smart",
+            "custom"
+          ],
           "default": "custom"
         }
       },
-      "requiredScopes": ["write_products"]
+      "requiredScopes": [
+        "write_products"
+      ]
     },
     {
       "id": "create_discount_code",
@@ -454,7 +506,10 @@
           "type": "string",
           "required": true,
           "description": "Value type",
-          "options": ["percentage", "fixed_amount"]
+          "options": [
+            "percentage",
+            "fixed_amount"
+          ]
         },
         "usage_limit": {
           "type": "number",
@@ -462,7 +517,177 @@
           "description": "Usage limit"
         }
       },
-      "requiredScopes": ["write_price_rules"]
+      "requiredScopes": [
+        "write_price_rules"
+      ]
+    },
+    {
+      "id": "complete_draft_order",
+      "name": "Complete Draft Order",
+      "description": "Complete a draft order and convert to order",
+      "parameters": {
+        "draftOrderId": {
+          "type": "string",
+          "required": true,
+          "description": "Draft order ID to complete"
+        },
+        "paymentPending": {
+          "type": "boolean",
+          "required": false,
+          "description": "Whether payment is pending",
+          "default": false
+        }
+      },
+      "requiredScopes": [
+        "write_draft_orders",
+        "write_orders"
+      ]
+    },
+    {
+      "id": "create_price_rule",
+      "name": "Create Price Rule",
+      "description": "Create a new price rule for discounts",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Price rule title"
+        },
+        "valueType": {
+          "type": "string",
+          "required": true,
+          "description": "Discount type",
+          "options": [
+            "fixed_amount",
+            "percentage"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "required": true,
+          "description": "Discount value"
+        },
+        "customerSelection": {
+          "type": "string",
+          "required": false,
+          "description": "Customer selection",
+          "options": [
+            "all",
+            "prerequisite"
+          ],
+          "default": "all"
+        },
+        "targetType": {
+          "type": "string",
+          "required": false,
+          "description": "Target type",
+          "options": [
+            "line_item",
+            "shipping_line"
+          ],
+          "default": "line_item"
+        },
+        "targetSelection": {
+          "type": "string",
+          "required": false,
+          "description": "Target selection",
+          "options": [
+            "all",
+            "entitled"
+          ],
+          "default": "all"
+        }
+      },
+      "requiredScopes": [
+        "write_price_rules"
+      ]
+    },
+    {
+      "id": "unarchive_product",
+      "name": "Unarchive Product",
+      "description": "Unarchive a previously archived product",
+      "parameters": {
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID to unarchive"
+        }
+      },
+      "requiredScopes": [
+        "write_products"
+      ]
+    },
+    {
+      "id": "add_product_to_collection",
+      "name": "Add Product to Collection",
+      "description": "Add a product to a collection",
+      "parameters": {
+        "collectionId": {
+          "type": "string",
+          "required": true,
+          "description": "Collection ID"
+        },
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID to add"
+        }
+      },
+      "requiredScopes": [
+        "write_products"
+      ]
+    },
+    {
+      "id": "remove_product_from_collection",
+      "name": "Remove Product from Collection",
+      "description": "Remove a product from a collection",
+      "parameters": {
+        "collectionId": {
+          "type": "string",
+          "required": true,
+          "description": "Collection ID"
+        },
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID to remove"
+        }
+      },
+      "requiredScopes": [
+        "write_products"
+      ]
+    },
+    {
+      "id": "create_fulfillment_service",
+      "name": "Create Fulfillment Service",
+      "description": "Create a new fulfillment service",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Fulfillment service name"
+        },
+        "callbackUrl": {
+          "type": "string",
+          "required": false,
+          "description": "Callback URL for notifications"
+        },
+        "inventoryManagement": {
+          "type": "boolean",
+          "required": false,
+          "description": "Whether service manages inventory",
+          "default": false
+        },
+        "trackingSupport": {
+          "type": "boolean",
+          "required": false,
+          "description": "Whether service supports tracking",
+          "default": false
+        }
+      },
+      "requiredScopes": [
+        "write_fulfillment_services"
+      ]
     }
   ],
   "triggers": [
@@ -475,18 +700,32 @@
           "type": "string",
           "required": false,
           "description": "Filter by order status",
-          "options": ["open", "closed", "cancelled", "any"],
+          "options": [
+            "open",
+            "closed",
+            "cancelled",
+            "any"
+          ],
           "default": "any"
         },
         "financial_status": {
           "type": "string",
           "required": false,
           "description": "Filter by financial status",
-          "options": ["pending", "authorized", "paid", "refunded", "voided", "any"],
+          "options": [
+            "pending",
+            "authorized",
+            "paid",
+            "refunded",
+            "voided",
+            "any"
+          ],
           "default": "any"
         }
       },
-      "requiredScopes": ["read_orders"]
+      "requiredScopes": [
+        "read_orders"
+      ]
     },
     {
       "id": "order_paid",
@@ -499,7 +738,9 @@
           "description": "Minimum order amount"
         }
       },
-      "requiredScopes": ["read_orders"]
+      "requiredScopes": [
+        "read_orders"
+      ]
     },
     {
       "id": "order_fulfilled",
@@ -512,7 +753,9 @@
           "description": "Filter by fulfillment location"
         }
       },
-      "requiredScopes": ["read_fulfillments"]
+      "requiredScopes": [
+        "read_fulfillments"
+      ]
     },
     {
       "id": "order_cancelled",
@@ -525,7 +768,9 @@
           "description": "Filter by cancellation reason"
         }
       },
-      "requiredScopes": ["read_orders"]
+      "requiredScopes": [
+        "read_orders"
+      ]
     },
     {
       "id": "product_created",
@@ -543,7 +788,9 @@
           "description": "Filter by product type"
         }
       },
-      "requiredScopes": ["read_products"]
+      "requiredScopes": [
+        "read_products"
+      ]
     },
     {
       "id": "product_updated",
@@ -556,7 +803,9 @@
           "description": "Monitor specific fields for changes"
         }
       },
-      "requiredScopes": ["read_products"]
+      "requiredScopes": [
+        "read_products"
+      ]
     },
     {
       "id": "customer_created",
@@ -569,7 +818,9 @@
           "description": "Filter by customer tags"
         }
       },
-      "requiredScopes": ["read_customers"]
+      "requiredScopes": [
+        "read_customers"
+      ]
     },
     {
       "id": "inventory_low",
@@ -587,7 +838,18 @@
           "description": "Filter by location"
         }
       },
-      "requiredScopes": ["read_inventory"]
+      "requiredScopes": [
+        "read_inventory"
+      ]
+    },
+    {
+      "id": "refund_created",
+      "name": "Refund Created",
+      "description": "Triggered when a refund is created",
+      "parameters": {},
+      "requiredScopes": [
+        "read_orders"
+      ]
     }
   ],
   "rateLimits": {

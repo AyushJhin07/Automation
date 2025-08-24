@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gmail.send_email.schema.json",
+  "title": "Gmail - Send Email",
+  "description": "Send a new email message",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gmail.send_email",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "description": "Recipient email address",
+          "type": "string"
+        },
+        "cc": {
+          "description": "CC recipients (comma-separated)",
+          "type": "string"
+        },
+        "bcc": {
+          "description": "BCC recipients (comma-separated)",
+          "type": "string"
+        },
+        "subject": {
+          "description": "Email subject",
+          "type": "string"
+        },
+        "body": {
+          "description": "Email body content",
+          "type": "string"
+        },
+        "htmlBody": {
+          "description": "HTML email body",
+          "type": "string"
+        },
+        "attachments": {
+          "description": "File attachments",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Gmail"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "https://www.googleapis.com/auth/gmail.send"
+          ]
+        },
+        "rateLimits": {
+          "type": "object",
+          "properties": {
+            "requestsPerSecond": {
+              "type": "number"
+            },
+            "requestsPerMinute": {
+              "type": "number"
+            },
+            "dailyLimit": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

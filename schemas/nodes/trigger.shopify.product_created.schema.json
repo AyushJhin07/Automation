@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/trigger.shopify.product_created.schema.json",
+  "title": "Shopify - Product Created",
+  "description": "Trigger when new product is created",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "trigger.shopify.product_created",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "vendor": {
+          "description": "Filter by vendor",
+          "type": "string"
+        },
+        "product_type": {
+          "description": "Filter by product type",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ecommerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "read_products"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "description": "Schema for trigger output data",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.add_subscriber.schema.json",
+  "title": "Mailchimp - Add Subscriber",
+  "description": "Add subscriber to mailing list",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp.add_subscriber",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "listId": {
+          "description": "Mailing list ID",
+          "type": "string"
+        },
+        "email": {
+          "description": "Subscriber email",
+          "type": "string"
+        },
+        "firstName": {
+          "description": "First name",
+          "type": "string"
+        },
+        "lastName": {
+          "description": "Last name",
+          "type": "string"
+        },
+        "status": {
+          "description": "Subscription status",
+          "type": "string",
+          "enum": [
+            "subscribed",
+            "unsubscribed",
+            "cleaned",
+            "pending"
+          ],
+          "default": "subscribed"
+        },
+        "tags": {
+          "description": "Subscriber tags",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "listId",
+        "email"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "write"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

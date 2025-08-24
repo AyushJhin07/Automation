@@ -1,4 +1,5 @@
 {
+  "id": "salesforce",
   "name": "Salesforce",
   "category": "crm",
   "description": "Salesforce CRM platform with comprehensive sales and customer management",

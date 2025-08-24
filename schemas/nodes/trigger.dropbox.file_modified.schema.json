@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/trigger.dropbox.file_modified.schema.json",
+  "title": "Dropbox - File Modified",
+  "description": "Trigger when file is modified",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "trigger.dropbox.file_modified",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "Monitor specific path",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "storage"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Dropbox"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "files.metadata.read"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "description": "Schema for trigger output data",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

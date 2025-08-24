@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.jira.link_issues.schema.json",
+  "title": "Jira - Link Issues",
+  "description": "Create a link between two issues",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.jira.link_issues",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "inwardIssue": {
+          "description": "Key of inward issue",
+          "type": "string"
+        },
+        "outwardIssue": {
+          "description": "Key of outward issue",
+          "type": "string"
+        },
+        "linkType": {
+          "description": "Link type name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "inwardIssue",
+        "outwardIssue",
+        "linkType"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Jira"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "write:jira-work"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

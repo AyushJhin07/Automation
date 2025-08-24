@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github.create_pull_request.schema.json",
+  "title": "GitHub - Create Pull Request",
+  "description": "Create new pull request",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github.create_pull_request",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "description": "Repository owner",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Repository name",
+          "type": "string"
+        },
+        "title": {
+          "description": "PR title",
+          "type": "string"
+        },
+        "head": {
+          "description": "Head branch",
+          "type": "string"
+        },
+        "base": {
+          "description": "Base branch",
+          "type": "string"
+        },
+        "body": {
+          "description": "PR description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "title",
+        "head",
+        "base"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "development"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "pull_requests"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

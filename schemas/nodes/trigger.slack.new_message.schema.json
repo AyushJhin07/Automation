@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/trigger.slack.new_message.schema.json",
+  "title": "Slack - New Message",
+  "description": "Triggered when a new message is posted",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "trigger.slack.new_message",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "description": "Specific channel to monitor (leave empty for all)",
+          "type": "string"
+        },
+        "user": {
+          "description": "Specific user to monitor",
+          "type": "string"
+        },
+        "keyword": {
+          "description": "Keyword to filter messages",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Slack"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "channels:history",
+            "groups:history",
+            "im:history"
+          ]
+        },
+        "outputSchema": {
+          "type": "object",
+          "description": "Schema for trigger output data",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

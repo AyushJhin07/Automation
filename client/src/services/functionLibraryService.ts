@@ -57,14 +57,14 @@ class FunctionLibraryService {
    */
   async getSupportedApplications(): Promise<string[]> {
     try {
-      const response = await fetch('/api/integrations/supported', {
+      const response = await fetch('/api/registry/connectors', {
         headers: this.getAuthHeaders()
       });
 
-      const result: APIResponse<SupportedAppsResponse> = await response.json();
+      const result = await response.json();
       
-      if (result.success && result.data) {
-        return result.data.applications;
+      if (result.success && result.connectors) {
+        return result.connectors.map((connector: any) => connector.definition.id);
       } else {
         throw new Error(result.error || 'Failed to fetch supported applications');
       }
@@ -84,16 +84,44 @@ class FunctionLibraryService {
     }
 
     try {
-      const response = await fetch(`/api/functions/${encodeURIComponent(appName)}`, {
+      const response = await fetch(`/api/registry/functions/${encodeURIComponent(appName)}`, {
         headers: this.getAuthHeaders()
       });
 
-      const result: APIResponse<AppFunctionResponse> = await response.json();
+      const result = await response.json();
       
-      if (result.success && result.data) {
-        const functions = this.transformToFunctionDefinitions(result.data.functions);
-        this.setCache(appName, functions);
-        return functions;
+      if (result.success && result.functions) {
+        // Convert connector functions to FunctionDefinition format
+        const allFunctions: FunctionDefinition[] = [];
+        
+        // Add actions
+        result.functions.actions?.forEach((action: any) => {
+          allFunctions.push({
+            id: action.id,
+            name: action.name,
+            description: action.description,
+            type: 'action',
+            parameters: action.parameters || action.params || {},
+            requiredScopes: action.requiredScopes || [],
+            rateLimits: action.rateLimits
+          });
+        });
+        
+        // Add triggers
+        result.functions.triggers?.forEach((trigger: any) => {
+          allFunctions.push({
+            id: trigger.id,
+            name: trigger.name,
+            description: trigger.description,
+            type: 'trigger',
+            parameters: trigger.parameters || trigger.params || {},
+            requiredScopes: trigger.requiredScopes || [],
+            rateLimits: trigger.rateLimits
+          });
+        });
+
+        this.setCache(appName, allFunctions);
+        return allFunctions;
       } else {
         throw new Error(result.error || `Failed to fetch functions for ${appName}`);
       }

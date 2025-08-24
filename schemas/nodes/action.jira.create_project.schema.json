@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.jira.create_project.schema.json",
+  "title": "Jira - Create Project",
+  "description": "Create a new project in Jira",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.jira.create_project",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "Project key (uppercase letters, numbers, underscores)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Project name",
+          "type": "string"
+        },
+        "projectTypeKey": {
+          "description": "Type of project",
+          "type": "string"
+        },
+        "projectTemplateKey": {
+          "description": "Project template",
+          "type": "string"
+        },
+        "description": {
+          "description": "Project description",
+          "type": "string"
+        },
+        "leadAccountId": {
+          "description": "Account ID of the project lead",
+          "type": "string"
+        },
+        "url": {
+          "description": "Project URL",
+          "type": "string"
+        },
+        "assigneeType": {
+          "description": "Default assignee for new issues",
+          "type": "string",
+          "default": "PROJECT_LEAD"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "projectTypeKey",
+        "leadAccountId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Jira"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "manage:jira-project"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

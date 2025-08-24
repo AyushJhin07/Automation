@@ -1,4 +1,5 @@
 {
+  "id": "gmail",
   "name": "Gmail",
   "category": "communication",
   "description": "Google Gmail email service integration with comprehensive email management capabilities",
@@ -58,7 +59,9 @@
           "description": "File attachments"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.send"],
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.send"
+      ],
       "rateLimits": {
         "requestsPerSecond": 10,
         "requestsPerMinute": 250,
@@ -87,7 +90,9 @@
           "default": false
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "forward_email",
@@ -110,7 +115,9 @@
           "description": "Additional message"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "create_draft",
@@ -133,7 +140,9 @@
           "description": "Email body content"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.compose"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
     },
     {
       "id": "send_draft",
@@ -146,7 +155,9 @@
           "description": "Draft ID to send"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.send"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.send"
+      ]
     },
     {
       "id": "search_emails",
@@ -165,7 +176,9 @@
           "default": 10
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     },
     {
       "id": "add_label",
@@ -183,7 +196,9 @@
           "description": "Array of label names to add"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "remove_label",
@@ -201,7 +216,9 @@
           "description": "Array of label names to remove"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "create_label",
@@ -217,11 +234,16 @@
           "type": "string",
           "required": false,
           "description": "Label visibility",
-          "options": ["labelShow", "labelHide"],
+          "options": [
+            "labelShow",
+            "labelHide"
+          ],
           "default": "labelShow"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "mark_as_read",
@@ -234,7 +256,9 @@
           "description": "Array of message IDs"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "mark_as_unread",
@@ -247,7 +271,9 @@
           "description": "Array of message IDs"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "archive_email",
@@ -260,7 +286,9 @@
           "description": "Array of message IDs"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "delete_email",
@@ -273,7 +301,9 @@
           "description": "Array of message IDs"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "watch_inbox",
@@ -291,7 +321,9 @@
           "description": "Label IDs to watch"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
     },
     {
       "id": "batch_modify",
@@ -314,7 +346,102 @@
           "description": "Label IDs to remove"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.modify"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    },
+    {
+      "id": "create_draft",
+      "name": "Create Draft",
+      "description": "Create a draft email",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient email address"
+        },
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Email body content"
+        },
+        "cc": {
+          "type": "string",
+          "required": false,
+          "description": "CC recipients"
+        },
+        "bcc": {
+          "type": "string",
+          "required": false,
+          "description": "BCC recipients"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.compose"
+      ]
+    },
+    {
+      "id": "send_draft",
+      "name": "Send Draft",
+      "description": "Send an existing draft email",
+      "parameters": {
+        "draftId": {
+          "type": "string",
+          "required": true,
+          "description": "Draft ID to send"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.send"
+      ]
+    },
+    {
+      "id": "modify_labels_batch",
+      "name": "Modify Labels (Batch)",
+      "description": "Add or remove labels from multiple emails",
+      "parameters": {
+        "messageIds": {
+          "type": "array",
+          "required": true,
+          "description": "Array of message IDs"
+        },
+        "addLabelIds": {
+          "type": "array",
+          "required": false,
+          "description": "Label IDs to add"
+        },
+        "removeLabelIds": {
+          "type": "array",
+          "required": false,
+          "description": "Label IDs to remove"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    },
+    {
+      "id": "stop_watch",
+      "name": "Stop Watch",
+      "description": "Stop watching for inbox changes",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
+    },
+    {
+      "id": "get_profile",
+      "name": "Get Profile",
+      "description": "Get Gmail profile information",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     }
   ],
   "triggers": [
@@ -335,7 +462,9 @@
           "description": "Gmail search query filter"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     },
     {
       "id": "new_email_with_query",
@@ -348,7 +477,9 @@
           "description": "Gmail search query"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     },
     {
       "id": "email_starred",
@@ -361,7 +492,9 @@
           "description": "Additional filter query"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     },
     {
       "id": "label_added",
@@ -374,7 +507,9 @@
           "description": "Label name to watch"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     },
     {
       "id": "attachment_received",
@@ -392,7 +527,24 @@
           "description": "Minimum attachment size in bytes"
         }
       },
-      "requiredScopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
+    },
+    {
+      "id": "thread_updated",
+      "name": "Thread Updated",
+      "description": "Triggered when a thread is updated",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by search query"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ]
     }
   ],
   "rateLimits": {

@@ -1,4 +1,5 @@
 {
+  "id": "twilio",
   "name": "Twilio",
   "category": "communication",
   "description": "Twilio communication platform for SMS, voice, and messaging",

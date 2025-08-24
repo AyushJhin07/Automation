@@ -1,4 +1,5 @@
 {
+  "id": "dropbox",
   "name": "Dropbox",
   "category": "storage",
   "description": "Dropbox cloud storage platform with file management capabilities",

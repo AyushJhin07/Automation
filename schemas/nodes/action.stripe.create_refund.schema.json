@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.stripe.create_refund.schema.json",
+  "title": "Stripe - Create Refund",
+  "description": "Create a refund",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.stripe.create_refund",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "paymentIntentId": {
+          "description": "Payment intent ID",
+          "type": "string"
+        },
+        "amount": {
+          "description": "Refund amount in cents",
+          "type": "number"
+        },
+        "reason": {
+          "description": "Refund reason",
+          "type": "string",
+          "enum": [
+            "duplicate",
+            "fraudulent",
+            "requested_by_customer"
+          ]
+        }
+      },
+      "required": [
+        "paymentIntentId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "payments"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Stripe"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "read_write"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

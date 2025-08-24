@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.create_customer.schema.json",
+  "title": "Shopify - Create Customer",
+  "description": "Create a new customer",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify.create_customer",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "first_name": {
+          "description": "Customer first name",
+          "type": "string"
+        },
+        "last_name": {
+          "description": "Customer last name",
+          "type": "string"
+        },
+        "email": {
+          "description": "Customer email",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Customer phone",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Customer tags",
+          "type": "string"
+        }
+      },
+      "required": [
+        "first_name",
+        "last_name",
+        "email"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ecommerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "write_customers"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

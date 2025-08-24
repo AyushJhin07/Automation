@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hubspot.create_company.schema.json",
+  "title": "HubSpot - Create Company",
+  "description": "Create a new company in HubSpot",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hubspot.create_company",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Company name",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Company website domain",
+          "type": "string"
+        },
+        "industry": {
+          "description": "Company industry",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Company phone number",
+          "type": "string"
+        },
+        "city": {
+          "description": "Company city",
+          "type": "string"
+        },
+        "state": {
+          "description": "Company state/region",
+          "type": "string"
+        },
+        "country": {
+          "description": "Company country",
+          "type": "string"
+        },
+        "numberofemployees": {
+          "description": "Number of employees",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HubSpot"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "contacts"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -19,6 +19,7 @@ import { integrationManager } from "./integrations/IntegrationManager";
 import { oauthManager } from "./oauth/OAuthManager";
 import { endToEndTester } from "./testing/EndToEndTester";
 import { connectorSeeder } from "./database/seedConnectors";
+import { connectorRegistry } from "./ConnectorRegistry";
 
 // Middleware
 import { 
@@ -342,6 +343,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: 'Connector not found' });
       }
       res.json({ success: true, connector });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // ===== CONNECTOR REGISTRY ROUTES =====
+
+  // Get comprehensive node catalog for UI
+  app.get('/api/registry/catalog', async (req, res) => {
+    try {
+      const catalog = connectorRegistry.getNodeCatalog();
+      res.json({ success: true, catalog });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Get all connectors with implementation status
+  app.get('/api/registry/connectors', async (req, res) => {
+    try {
+      const connectors = connectorRegistry.getAllConnectors();
+      res.json({ success: true, connectors });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Search connectors
+  app.get('/api/registry/search/:query', async (req, res) => {
+    try {
+      const results = connectorRegistry.searchConnectors(req.params.query);
+      res.json({ success: true, results });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Get connectors by category
+  app.get('/api/registry/category/:category', async (req, res) => {
+    try {
+      const connectors = connectorRegistry.getConnectorsByCategory(req.params.category);
+      res.json({ success: true, connectors });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Get all categories
+  app.get('/api/registry/categories', async (req, res) => {
+    try {
+      const categories = connectorRegistry.getAllCategories();
+      res.json({ success: true, categories });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Get registry statistics
+  app.get('/api/registry/stats', async (req, res) => {
+    try {
+      const stats = connectorRegistry.getRegistryStats();
+      res.json({ success: true, stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Get specific connector definition
+  app.get('/api/registry/connector/:appId', async (req, res) => {
+    try {
+      const connector = connectorRegistry.getConnector(req.params.appId);
+      if (!connector) {
+        return res.status(404).json({ success: false, error: 'Connector not found' });
+      }
+      res.json({ success: true, connector });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Get functions for a specific app
+  app.get('/api/registry/functions/:appId', async (req, res) => {
+    try {
+      const functions = connectorRegistry.getAppFunctions(req.params.appId);
+      res.json({ success: true, functions });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Validate node type
+  app.get('/api/registry/validate/:nodeType', async (req, res) => {
+    try {
+      const isValid = connectorRegistry.isValidNodeType(req.params.nodeType);
+      const functionDef = isValid ? connectorRegistry.getFunctionByType(req.params.nodeType) : null;
+      res.json({ success: true, isValid, functionDef });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Refresh registry (reload from files)
+  app.post('/api/registry/refresh', adminOnly, async (req, res) => {
+    try {
+      connectorRegistry.refresh();
+      const stats = connectorRegistry.getRegistryStats();
+      res.json({ success: true, message: 'Registry refreshed', stats });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }

@@ -317,7 +317,7 @@ export class ConnectorSeeder {
 export const connectorSeeder = new ConnectorSeeder();
 
 // CLI interface for manual seeding
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   async function runSeeding() {
     console.log('🚀 Running connector seeding from CLI...');
     

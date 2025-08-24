@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github.add_comment.schema.json",
+  "title": "GitHub - Add Comment",
+  "description": "Add comment to issue or PR",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github.add_comment",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "description": "Repository owner",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Repository name",
+          "type": "string"
+        },
+        "issueNumber": {
+          "description": "Issue/PR number",
+          "type": "number"
+        },
+        "body": {
+          "description": "Comment body",
+          "type": "string"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "issueNumber",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "development"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "issues"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

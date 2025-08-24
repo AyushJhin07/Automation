@@ -9,7 +9,12 @@
     "type": "oauth2",
     "authUrl": "https://auth.atlassian.com/authorize",
     "tokenUrl": "https://auth.atlassian.com/oauth/token",
-    "scopes": ["read:jira-work", "write:jira-work", "manage:jira-project", "manage:jira-configuration"],
+    "scopes": [
+      "read:jira-work",
+      "write:jira-work",
+      "manage:jira-project",
+      "manage:jira-configuration"
+    ],
     "clientIdRequired": true,
     "clientSecretRequired": true,
     "additionalParams": {
@@ -49,13 +54,25 @@
         "issueType": {
           "type": "string",
           "required": true,
-          "enum": ["Bug", "Task", "Story", "Epic", "Subtask"],
+          "enum": [
+            "Bug",
+            "Task",
+            "Story",
+            "Epic",
+            "Subtask"
+          ],
           "description": "Type of issue to create"
         },
         "priority": {
           "type": "string",
           "required": false,
-          "enum": ["Highest", "High", "Medium", "Low", "Lowest"],
+          "enum": [
+            "Highest",
+            "High",
+            "Medium",
+            "Low",
+            "Lowest"
+          ],
           "default": "Medium",
           "description": "Issue priority"
         },
@@ -100,8 +117,14 @@
           "description": "Due date (YYYY-MM-DD)"
         }
       },
-      "responseFields": ["id", "key", "self"],
-      "requiredScopes": ["write:jira-work"]
+      "responseFields": [
+        "id",
+        "key",
+        "self"
+      ],
+      "requiredScopes": [
+        "write:jira-work"
+      ]
     },
     {
       "id": "update_issue",
@@ -133,7 +156,13 @@
         "priority": {
           "type": "string",
           "required": false,
-          "enum": ["Highest", "High", "Medium", "Low", "Lowest"],
+          "enum": [
+            "Highest",
+            "High",
+            "Medium",
+            "Low",
+            "Lowest"
+          ],
           "description": "Issue priority"
         },
         "labels": {
@@ -151,8 +180,14 @@
           "description": "Due date (YYYY-MM-DD)"
         }
       },
-      "responseFields": ["id", "key", "self"],
-      "requiredScopes": ["write:jira-work"]
+      "responseFields": [
+        "id",
+        "key",
+        "self"
+      ],
+      "requiredScopes": [
+        "write:jira-work"
+      ]
     },
     {
       "id": "transition_issue",
@@ -184,12 +219,23 @@
         "resolution": {
           "type": "string",
           "required": false,
-          "enum": ["Fixed", "Won't Fix", "Duplicate", "Incomplete", "Cannot Reproduce", "Done"],
+          "enum": [
+            "Fixed",
+            "Won't Fix",
+            "Duplicate",
+            "Incomplete",
+            "Cannot Reproduce",
+            "Done"
+          ],
           "description": "Resolution when closing issue"
         }
       },
-      "responseFields": ["transition"],
-      "requiredScopes": ["write:jira-work"]
+      "responseFields": [
+        "transition"
+      ],
+      "requiredScopes": [
+        "write:jira-work"
+      ]
     },
     {
       "id": "add_comment",
@@ -211,13 +257,23 @@
         "visibility": {
           "type": "string",
           "required": false,
-          "enum": ["all", "internal"],
+          "enum": [
+            "all",
+            "internal"
+          ],
           "default": "all",
           "description": "Comment visibility"
         }
       },
-      "responseFields": ["id", "self", "body", "created"],
-      "requiredScopes": ["write:jira-work"]
+      "responseFields": [
+        "id",
+        "self",
+        "body",
+        "created"
+      ],
+      "requiredScopes": [
+        "write:jira-work"
+      ]
     },
     {
       "id": "create_project",
@@ -240,13 +296,21 @@
         "projectTypeKey": {
           "type": "string",
           "required": true,
-          "enum": ["software", "service_desk", "business"],
+          "enum": [
+            "software",
+            "service_desk",
+            "business"
+          ],
           "description": "Type of project"
         },
         "projectTemplateKey": {
           "type": "string",
           "required": false,
-          "enum": ["com.pyxis.greenhopper.jira:gh-simplified-agility-kanban", "com.pyxis.greenhopper.jira:gh-simplified-agility-scrum", "com.atlassian.servicedesk:simplified-it-service-desk"],
+          "enum": [
+            "com.pyxis.greenhopper.jira:gh-simplified-agility-kanban",
+            "com.pyxis.greenhopper.jira:gh-simplified-agility-scrum",
+            "com.atlassian.servicedesk:simplified-it-service-desk"
+          ],
           "description": "Project template"
         },
         "description": {
@@ -268,13 +332,22 @@
         "assigneeType": {
           "type": "string",
           "required": false,
-          "enum": ["PROJECT_LEAD", "UNASSIGNED"],
+          "enum": [
+            "PROJECT_LEAD",
+            "UNASSIGNED"
+          ],
           "default": "PROJECT_LEAD",
           "description": "Default assignee for new issues"
         }
       },
-      "responseFields": ["id", "key", "self"],
-      "requiredScopes": ["manage:jira-project"]
+      "responseFields": [
+        "id",
+        "key",
+        "self"
+      ],
+      "requiredScopes": [
+        "manage:jira-project"
+      ]
     },
     {
       "id": "search_issues",
@@ -311,8 +384,189 @@
           "description": "Specific fields to return"
         }
       },
-      "responseFields": ["issues", "total", "maxResults", "startAt"],
-      "requiredScopes": ["read:jira-work"]
+      "responseFields": [
+        "issues",
+        "total",
+        "maxResults",
+        "startAt"
+      ],
+      "requiredScopes": [
+        "read:jira-work"
+      ]
+    },
+    {
+      "id": "assign_issue",
+      "name": "Assign Issue",
+      "description": "Assign an issue to a user",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/assignee",
+      "method": "PUT",
+      "params": {
+        "issueKey": {
+          "type": "string",
+          "required": true,
+          "description": "Issue key or ID"
+        },
+        "accountId": {
+          "type": "string",
+          "required": true,
+          "description": "Account ID of assignee"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
+    },
+    {
+      "id": "add_watcher",
+      "name": "Add Watcher",
+      "description": "Add a watcher to an issue",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/watchers",
+      "method": "POST",
+      "params": {
+        "issueKey": {
+          "type": "string",
+          "required": true,
+          "description": "Issue key or ID"
+        },
+        "accountId": {
+          "type": "string",
+          "required": true,
+          "description": "Account ID of watcher"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
+    },
+    {
+      "id": "add_attachment",
+      "name": "Add Attachment",
+      "description": "Add an attachment to an issue",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/attachments",
+      "method": "POST",
+      "params": {
+        "issueKey": {
+          "type": "string",
+          "required": true,
+          "description": "Issue key or ID"
+        },
+        "file": {
+          "type": "string",
+          "required": true,
+          "description": "File to attach"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
+    },
+    {
+      "id": "link_issues",
+      "name": "Link Issues",
+      "description": "Create a link between two issues",
+      "endpoint": "/rest/api/3/issueLink",
+      "method": "POST",
+      "params": {
+        "inwardIssue": {
+          "type": "string",
+          "required": true,
+          "description": "Key of inward issue"
+        },
+        "outwardIssue": {
+          "type": "string",
+          "required": true,
+          "description": "Key of outward issue"
+        },
+        "linkType": {
+          "type": "string",
+          "required": true,
+          "description": "Link type name"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
+    },
+    {
+      "id": "add_label",
+      "name": "Add Label",
+      "description": "Add a label to an issue",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}",
+      "method": "PUT",
+      "params": {
+        "issueKey": {
+          "type": "string",
+          "required": true,
+          "description": "Issue key or ID"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "description": "Label to add"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
+    },
+    {
+      "id": "add_worklog",
+      "name": "Add Worklog",
+      "description": "Log work on an issue",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/worklog",
+      "method": "POST",
+      "params": {
+        "issueKey": {
+          "type": "string",
+          "required": true,
+          "description": "Issue key or ID"
+        },
+        "timeSpent": {
+          "type": "string",
+          "required": true,
+          "description": "Time spent (e.g., '1h 30m')"
+        },
+        "comment": {
+          "type": "string",
+          "required": false,
+          "description": "Work description"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
+    },
+    {
+      "id": "create_subtask",
+      "name": "Create Subtask",
+      "description": "Create a subtask for an issue",
+      "endpoint": "/rest/api/3/issue",
+      "method": "POST",
+      "params": {
+        "parentKey": {
+          "type": "string",
+          "required": true,
+          "description": "Parent issue key"
+        },
+        "summary": {
+          "type": "string",
+          "required": true,
+          "description": "Subtask summary"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Subtask description"
+        },
+        "assignee": {
+          "type": "string",
+          "required": false,
+          "description": "Assignee account ID"
+        }
+      },
+      "requiredScopes": [
+        "write:jira-work"
+      ]
     }
   ],
   "triggers": [
@@ -334,8 +588,14 @@
           "description": "Specific issue type to monitor"
         }
       },
-      "outputFields": ["issue", "user", "timestamp"],
-      "requiredScopes": ["read:jira-work"]
+      "outputFields": [
+        "issue",
+        "user",
+        "timestamp"
+      ],
+      "requiredScopes": [
+        "read:jira-work"
+      ]
     },
     {
       "id": "issue_updated",
@@ -355,8 +615,15 @@
           "description": "Specific field to monitor for changes"
         }
       },
-      "outputFields": ["issue", "user", "changelog", "timestamp"],
-      "requiredScopes": ["read:jira-work"]
+      "outputFields": [
+        "issue",
+        "user",
+        "changelog",
+        "timestamp"
+      ],
+      "requiredScopes": [
+        "read:jira-work"
+      ]
     },
     {
       "id": "issue_transitioned",
@@ -381,8 +648,16 @@
           "description": "New status to monitor"
         }
       },
-      "outputFields": ["issue", "user", "fromStatus", "toStatus", "timestamp"],
-      "requiredScopes": ["read:jira-work"]
+      "outputFields": [
+        "issue",
+        "user",
+        "fromStatus",
+        "toStatus",
+        "timestamp"
+      ],
+      "requiredScopes": [
+        "read:jira-work"
+      ]
     },
     {
       "id": "comment_added",
@@ -397,8 +672,60 @@
           "description": "Specific project to monitor"
         }
       },
-      "outputFields": ["issue", "comment", "user", "timestamp"],
-      "requiredScopes": ["read:jira-work"]
+      "outputFields": [
+        "issue",
+        "comment",
+        "user",
+        "timestamp"
+      ],
+      "requiredScopes": [
+        "read:jira-work"
+      ]
+    },
+    {
+      "id": "issue_deleted",
+      "name": "Issue Deleted",
+      "description": "Triggered when an issue is deleted",
+      "params": {
+        "projectKey": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by project key"
+        }
+      },
+      "requiredScopes": [
+        "read:jira-work"
+      ]
+    },
+    {
+      "id": "issue_commented",
+      "name": "Issue Commented",
+      "description": "Triggered when a comment is added to an issue",
+      "params": {
+        "projectKey": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by project key"
+        }
+      },
+      "requiredScopes": [
+        "read:jira-work"
+      ]
+    },
+    {
+      "id": "sprint_started",
+      "name": "Sprint Started",
+      "description": "Triggered when a sprint is started",
+      "params": {
+        "boardId": {
+          "type": "string",
+          "required": false,
+          "description": "Filter by board ID"
+        }
+      },
+      "requiredScopes": [
+        "read:jira-work"
+      ]
     }
   ],
   "testConnection": {

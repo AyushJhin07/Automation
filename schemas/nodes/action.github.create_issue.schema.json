@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github.create_issue.schema.json",
+  "title": "GitHub - Create Issue",
+  "description": "Create new GitHub issue",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github.create_issue",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "description": "Repository owner",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Repository name",
+          "type": "string"
+        },
+        "title": {
+          "description": "Issue title",
+          "type": "string"
+        },
+        "body": {
+          "description": "Issue description",
+          "type": "string"
+        },
+        "labels": {
+          "description": "Issue labels",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assignees": {
+          "description": "Issue assignees",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "development"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "issues"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

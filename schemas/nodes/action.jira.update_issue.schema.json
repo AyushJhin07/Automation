@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.jira.update_issue.schema.json",
+  "title": "Jira - Update Issue",
+  "description": "Update an existing issue in Jira",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.jira.update_issue",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "issueIdOrKey": {
+          "description": "Issue ID or key (e.g., PROJ-123)",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Issue summary/title",
+          "type": "string"
+        },
+        "description": {
+          "description": "Issue description",
+          "type": "string"
+        },
+        "assignee": {
+          "description": "Assignee account ID or email",
+          "type": "string"
+        },
+        "priority": {
+          "description": "Issue priority",
+          "type": "string"
+        },
+        "labels": {
+          "description": "Array of labels",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dueDate": {
+          "description": "Due date (YYYY-MM-DD)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "issueIdOrKey"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Jira"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "write:jira-work"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

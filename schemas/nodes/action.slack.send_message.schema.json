@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.slack.send_message.schema.json",
+  "title": "Slack - Send Message",
+  "description": "Send a message to a Slack channel or user",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.slack.send_message",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "description": "Channel ID or user ID to send message to",
+          "type": "string"
+        },
+        "text": {
+          "description": "Message text content",
+          "type": "string"
+        },
+        "username": {
+          "description": "Bot username override",
+          "type": "string"
+        },
+        "icon_emoji": {
+          "description": "Emoji icon for the message",
+          "type": "string"
+        },
+        "thread_ts": {
+          "description": "Timestamp of parent message to reply in thread",
+          "type": "string"
+        },
+        "blocks": {
+          "description": "Rich message blocks for formatting",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "channel",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Slack"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

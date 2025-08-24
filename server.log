@@ -1,0 +1,96 @@
+
+> rest-express@1.0.0 dev
+> npm run check:deps && NODE_ENV=development tsx server/index.ts
+
+
+> rest-express@1.0.0 check:deps
+> node scripts/check-deps.js
+
+[34m🔍 Checking all dependencies and imports...[0m
+
+Found 159 TypeScript files to check
+
+[34m📦 Checking 61 external packages...[0m
+[32m✅ fs[0m
+[32m✅ path[0m
+[32m✅ express[0m
+[32m✅ drizzle-orm[0m
+[32m✅ child_process[0m
+[32m✅ util[0m
+[32m✅ ajv[0m
+[32m✅ ajv-formats[0m
+[32m✅ @neondatabase/serverless[0m
+[32m✅ http[0m
+[32m✅ crypto[0m
+[32m✅ jsonwebtoken[0m
+[32m✅ vite[0m
+[32m✅ nanoid[0m
+[32m✅ @tanstack/react-query[0m
+[32m✅ react-router-dom[0m
+[32m✅ react-helmet-async[0m
+[32m✅ react[0m
+[32m✅ reactflow[0m
+[32m✅ lucide-react[0m
+[32m✅ @radix-ui/react-accordion[0m
+[32m✅ @radix-ui/react-alert-dialog[0m
+[32m✅ class-variance-authority[0m
+[32m✅ @radix-ui/react-aspect-ratio[0m
+[32m✅ @radix-ui/react-avatar[0m
+[32m✅ @radix-ui/react-slot[0m
+[32m✅ react-day-picker[0m
+[32m✅ recharts[0m
+[32m✅ @radix-ui/react-checkbox[0m
+[32m✅ @radix-ui/react-collapsible[0m
+[32m✅ @radix-ui/react-dialog[0m
+[32m✅ cmdk[0m
+[32m✅ @radix-ui/react-context-menu[0m
+[32m✅ vaul[0m
+[32m✅ @radix-ui/react-dropdown-menu[0m
+[32m✅ @radix-ui/react-label[0m
+[32m✅ @radix-ui/react-hover-card[0m
+[32m✅ input-otp[0m
+[32m✅ @radix-ui/react-menubar[0m
+[32m✅ @radix-ui/react-navigation-menu[0m
+[32m✅ @radix-ui/react-popover[0m
+[32m✅ @radix-ui/react-progress[0m
+[32m✅ @radix-ui/react-radio-group[0m
+[32m✅ react-resizable-panels[0m
+[32m✅ @radix-ui/react-scroll-area[0m
+[32m✅ @radix-ui/react-select[0m
+[32m✅ @radix-ui/react-separator[0m
+[32m✅ @radix-ui/react-slider[0m
+[32m✅ next-themes[0m
+[32m✅ sonner[0m
+[32m✅ @radix-ui/react-switch[0m
+[32m✅ @radix-ui/react-tabs[0m
+[32m✅ @radix-ui/react-toast[0m
+[32m✅ @radix-ui/react-toggle-group[0m
+[32m✅ @radix-ui/react-toggle[0m
+[32m✅ @radix-ui/react-tooltip[0m
+[32m✅ clsx[0m
+[32m✅ tailwind-merge[0m
+[32m✅ react-dom[0m
+[32m✅ drizzle-zod[0m
+[32m✅ zod[0m
+
+[34m📊 Summary:[0m
+[32m✅ Found: 61[0m
+[31m❌ Missing: 0[0m
+
+[32m🎉 All dependencies are properly installed![0m
+Total Supported Applications: 414
+⚠️ DATABASE_URL not set - database features will be disabled in development
+✅ Database schema loaded with comprehensive indexes and PII tracking for ALL applications
+⚠️ ENCRYPTION_MASTER_KEY not set - using development fallback (NOT SECURE)
+🔐 Development encryption service initialized (NOT SECURE)
+🔐 Encryption service initialized successfully
+✅ SimpleGraphValidator initialized with AJV schema validation
+🛡️ Security service initialized
+📦 Loaded 13 connectors into registry
+5:44:46 AM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
+5:44:46 AM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
+5:44:46 AM [express] serving on localhost:5000
+5:44:46 AM [express] serving on localhost:5001
+5:44:46 AM [express] serving on localhost:3000
+5:45:02 AM [express] GET /api/registry/stats 200 in 3ms :: {"success":true,"stats":{"totalConnectors…
+5:45:08 AM [express] GET /api/registry/catalog 200 in 2ms :: {"success":true,"catalog":{"categories"…

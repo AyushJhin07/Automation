@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.create_product.schema.json",
+  "title": "Shopify - Create Product",
+  "description": "Create a new product in Shopify store",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify.create_product",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "description": "Product title",
+          "type": "string"
+        },
+        "body_html": {
+          "description": "Product description (HTML)",
+          "type": "string"
+        },
+        "vendor": {
+          "description": "Product vendor",
+          "type": "string"
+        },
+        "product_type": {
+          "description": "Product type",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Product tags (comma-separated)",
+          "type": "string"
+        },
+        "status": {
+          "description": "Product status",
+          "type": "string",
+          "enum": [
+            "active",
+            "archived",
+            "draft"
+          ],
+          "default": "active"
+        },
+        "images": {
+          "description": "Product images",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "variants": {
+          "description": "Product variants",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ecommerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "write_products"
+          ]
+        },
+        "rateLimits": {
+          "type": "object",
+          "properties": {
+            "requestsPerSecond": {
+              "type": "number"
+            },
+            "requestsPerMinute": {
+              "type": "number"
+            },
+            "dailyLimit": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hubspot.create_task.schema.json",
+  "title": "HubSpot - Create Task",
+  "description": "Create a new task in HubSpot",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hubspot.create_task",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "hs_task_subject": {
+          "description": "Task subject/title",
+          "type": "string"
+        },
+        "hs_task_body": {
+          "description": "Task description",
+          "type": "string"
+        },
+        "hs_task_status": {
+          "description": "Task status",
+          "type": "string",
+          "default": "NOT_STARTED"
+        },
+        "hs_task_priority": {
+          "description": "Task priority",
+          "type": "string",
+          "default": "MEDIUM"
+        },
+        "hs_timestamp": {
+          "description": "Due date and time (ISO 8601)",
+          "type": "string"
+        },
+        "hubspot_owner_id": {
+          "description": "HubSpot user ID of the task assignee",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hs_task_subject"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HubSpot"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "contacts"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

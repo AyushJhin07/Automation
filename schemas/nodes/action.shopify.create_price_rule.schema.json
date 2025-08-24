@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.create_price_rule.schema.json",
+  "title": "Shopify - Create Price Rule",
+  "description": "Create a new price rule for discounts",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify.create_price_rule",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "description": "Price rule title",
+          "type": "string"
+        },
+        "valueType": {
+          "description": "Discount type",
+          "type": "string",
+          "enum": [
+            "fixed_amount",
+            "percentage"
+          ]
+        },
+        "value": {
+          "description": "Discount value",
+          "type": "number"
+        },
+        "customerSelection": {
+          "description": "Customer selection",
+          "type": "string",
+          "enum": [
+            "all",
+            "prerequisite"
+          ],
+          "default": "all"
+        },
+        "targetType": {
+          "description": "Target type",
+          "type": "string",
+          "enum": [
+            "line_item",
+            "shipping_line"
+          ],
+          "default": "line_item"
+        },
+        "targetSelection": {
+          "description": "Target selection",
+          "type": "string",
+          "enum": [
+            "all",
+            "entitled"
+          ],
+          "default": "all"
+        }
+      },
+      "required": [
+        "title",
+        "valueType",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ecommerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "write_price_rules"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
