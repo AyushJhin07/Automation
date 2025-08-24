@@ -1,0 +1,171 @@
+{
+  "id": "okta",
+  "name": "Okta",
+  "description": "Okta identity and access management platform",
+  "category": "Identity Management",
+  "icon": "shield",
+  "color": "#007DC1",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "SSWS"
+    }
+  },
+  "baseUrl": "https://your-domain.okta.com/api/v1",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 50000
+  },
+  "actions": [
+    {
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create a new user in Okta",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "User email address"
+        },
+        "firstName": {
+          "type": "string",
+          "required": true,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": true,
+          "description": "Last name"
+        },
+        "login": {
+          "type": "string",
+          "required": true,
+          "description": "User login"
+        },
+        "password": {
+          "type": "string",
+          "required": false,
+          "description": "User password"
+        }
+      },
+      "requiredScopes": [
+        "users:create"
+      ]
+    },
+    {
+      "id": "update_user",
+      "name": "Update User",
+      "description": "Update an existing user",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID"
+        },
+        "profile": {
+          "type": "object",
+          "required": true,
+          "description": "User profile data"
+        }
+      },
+      "requiredScopes": [
+        "users:manage"
+      ]
+    },
+    {
+      "id": "deactivate_user",
+      "name": "Deactivate User",
+      "description": "Deactivate a user account",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID"
+        },
+        "sendEmail": {
+          "type": "boolean",
+          "required": false,
+          "description": "Send deactivation email",
+          "default": false
+        }
+      },
+      "requiredScopes": [
+        "users:manage"
+      ]
+    },
+    {
+      "id": "assign_group",
+      "name": "Assign Group",
+      "description": "Assign a user to a group",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID"
+        },
+        "groupId": {
+          "type": "string",
+          "required": true,
+          "description": "Group ID"
+        }
+      },
+      "requiredScopes": [
+        "groups:manage"
+      ]
+    },
+    {
+      "id": "reset_password",
+      "name": "Reset Password",
+      "description": "Reset user password",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID"
+        },
+        "sendEmail": {
+          "type": "boolean",
+          "required": false,
+          "description": "Send reset email",
+          "default": true
+        }
+      },
+      "requiredScopes": [
+        "users:manage"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "user_created",
+      "name": "User Created",
+      "description": "Triggered when a new user is created",
+      "parameters": {},
+      "requiredScopes": [
+        "users:read"
+      ]
+    },
+    {
+      "id": "user_suspended",
+      "name": "User Suspended",
+      "description": "Triggered when a user is suspended",
+      "parameters": {},
+      "requiredScopes": [
+        "users:read"
+      ]
+    },
+    {
+      "id": "group_assigned",
+      "name": "Group Assigned",
+      "description": "Triggered when a user is assigned to a group",
+      "parameters": {},
+      "requiredScopes": [
+        "groups:read"
+      ]
+    }
+  ]
+}

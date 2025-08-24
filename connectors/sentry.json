@@ -1,0 +1,21 @@
+{
+  "id": "sentry",
+  "name": "Sentry",
+  "description": "Sentry error tracking and monitoring",
+  "category": "Monitoring",
+  "icon": "enterprise",
+  "color": "#362D59",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

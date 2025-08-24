@@ -1,0 +1,21 @@
+{
+  "id": "tableau",
+  "name": "Tableau",
+  "description": "Tableau business intelligence platform",
+  "category": "Business Intelligence",
+  "icon": "enterprise",
+  "color": "#E97627",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

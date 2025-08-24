@@ -1,0 +1,151 @@
+{
+  "id": "adp",
+  "name": "ADP",
+  "description": "ADP payroll and human resources platform",
+  "category": "HR Management",
+  "icon": "dollar-sign",
+  "color": "#C41E3A",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.adp.com/auth/oauth/v2/authorize",
+      "tokenUrl": "https://accounts.adp.com/auth/oauth/v2/token",
+      "scopes": [
+        "employee_read",
+        "employee_write",
+        "payroll_read",
+        "payroll_write"
+      ]
+    }
+  },
+  "baseUrl": "https://api.adp.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_employee",
+      "name": "Create Employee",
+      "description": "Create a new employee record",
+      "parameters": {
+        "personalInfo": {
+          "type": "object",
+          "required": true,
+          "description": "Employee personal information"
+        },
+        "employmentInfo": {
+          "type": "object",
+          "required": true,
+          "description": "Employment details"
+        },
+        "compensation": {
+          "type": "object",
+          "required": false,
+          "description": "Compensation details"
+        }
+      },
+      "requiredScopes": [
+        "employee_write"
+      ]
+    },
+    {
+      "id": "update_employee",
+      "name": "Update Employee",
+      "description": "Update employee information",
+      "parameters": {
+        "employeeId": {
+          "type": "string",
+          "required": true,
+          "description": "Employee ID"
+        },
+        "updates": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "employee_write"
+      ]
+    },
+    {
+      "id": "run_payroll",
+      "name": "Run Payroll",
+      "description": "Execute payroll processing",
+      "parameters": {
+        "payrollGroupId": {
+          "type": "string",
+          "required": true,
+          "description": "Payroll group ID"
+        },
+        "payPeriodStart": {
+          "type": "string",
+          "required": true,
+          "description": "Pay period start date"
+        },
+        "payPeriodEnd": {
+          "type": "string",
+          "required": true,
+          "description": "Pay period end date"
+        }
+      },
+      "requiredScopes": [
+        "payroll_write"
+      ]
+    },
+    {
+      "id": "get_payroll_report",
+      "name": "Get Payroll Report",
+      "description": "Retrieve payroll report data",
+      "parameters": {
+        "reportType": {
+          "type": "string",
+          "required": true,
+          "description": "Type of payroll report"
+        },
+        "payPeriod": {
+          "type": "string",
+          "required": true,
+          "description": "Pay period identifier"
+        },
+        "format": {
+          "type": "string",
+          "required": false,
+          "description": "Report format",
+          "options": [
+            "json",
+            "csv",
+            "pdf"
+          ],
+          "default": "json"
+        }
+      },
+      "requiredScopes": [
+        "payroll_read"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "employee_added",
+      "name": "Employee Added",
+      "description": "Triggered when a new employee is added",
+      "parameters": {},
+      "requiredScopes": [
+        "employee_read"
+      ]
+    },
+    {
+      "id": "payroll_completed",
+      "name": "Payroll Completed",
+      "description": "Triggered when payroll processing is completed",
+      "parameters": {},
+      "requiredScopes": [
+        "payroll_read"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,189 @@
+{
+  "id": "bamboohr",
+  "name": "BambooHR",
+  "description": "BambooHR human resources management system",
+  "category": "HR Management",
+  "icon": "user-check",
+  "color": "#8CC152",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "basic",
+      "username": "api_key",
+      "password": "{api_key}"
+    }
+  },
+  "baseUrl": "https://api.bamboohr.com/api/gateway.php/{company_domain}/v1",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_employee",
+      "name": "Create Employee",
+      "description": "Add a new employee to BambooHR",
+      "parameters": {
+        "firstName": {
+          "type": "string",
+          "required": true,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": true,
+          "description": "Last name"
+        },
+        "workEmail": {
+          "type": "string",
+          "required": false,
+          "description": "Work email address"
+        },
+        "hireDate": {
+          "type": "string",
+          "required": false,
+          "description": "Hire date (YYYY-MM-DD)"
+        },
+        "department": {
+          "type": "string",
+          "required": false,
+          "description": "Department"
+        }
+      },
+      "requiredScopes": [
+        "employees:write"
+      ]
+    },
+    {
+      "id": "update_employee",
+      "name": "Update Employee",
+      "description": "Update employee information",
+      "parameters": {
+        "employeeId": {
+          "type": "string",
+          "required": true,
+          "description": "Employee ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "employees:write"
+      ]
+    },
+    {
+      "id": "terminate_employee",
+      "name": "Terminate Employee",
+      "description": "Terminate an employee",
+      "parameters": {
+        "employeeId": {
+          "type": "string",
+          "required": true,
+          "description": "Employee ID"
+        },
+        "terminationDate": {
+          "type": "string",
+          "required": true,
+          "description": "Termination date"
+        },
+        "terminationType": {
+          "type": "string",
+          "required": false,
+          "description": "Termination type"
+        }
+      },
+      "requiredScopes": [
+        "employees:write"
+      ]
+    },
+    {
+      "id": "create_time_off_request",
+      "name": "Create Time Off Request",
+      "description": "Submit a time off request",
+      "parameters": {
+        "employeeId": {
+          "type": "string",
+          "required": true,
+          "description": "Employee ID"
+        },
+        "timeOffTypeId": {
+          "type": "string",
+          "required": true,
+          "description": "Time off type ID"
+        },
+        "start": {
+          "type": "string",
+          "required": true,
+          "description": "Start date (YYYY-MM-DD)"
+        },
+        "end": {
+          "type": "string",
+          "required": true,
+          "description": "End date (YYYY-MM-DD)"
+        },
+        "note": {
+          "type": "string",
+          "required": false,
+          "description": "Request note"
+        }
+      },
+      "requiredScopes": [
+        "time_off:write"
+      ]
+    },
+    {
+      "id": "approve_time_off",
+      "name": "Approve Time Off",
+      "description": "Approve a time off request",
+      "parameters": {
+        "requestId": {
+          "type": "string",
+          "required": true,
+          "description": "Time off request ID"
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "description": "Approval status",
+          "options": [
+            "approved",
+            "denied"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "required": false,
+          "description": "Approval note"
+        }
+      },
+      "requiredScopes": [
+        "time_off:write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "employee_added",
+      "name": "Employee Added",
+      "description": "Triggered when a new employee is added",
+      "parameters": {},
+      "requiredScopes": [
+        "employees:read"
+      ]
+    },
+    {
+      "id": "time_off_requested",
+      "name": "Time Off Requested",
+      "description": "Triggered when time off is requested",
+      "parameters": {},
+      "requiredScopes": [
+        "time_off:read"
+      ]
+    }
+  ]
+}

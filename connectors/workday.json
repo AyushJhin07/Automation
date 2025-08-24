@@ -1,0 +1,178 @@
+{
+  "id": "workday",
+  "name": "Workday",
+  "description": "Workday human capital management platform",
+  "category": "HR Management",
+  "icon": "briefcase",
+  "color": "#F89C0E",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://wd5-impl-services1.workday.com/ccx/oauth2/authorize",
+      "tokenUrl": "https://wd5-impl-services1.workday.com/ccx/oauth2/token",
+      "scopes": [
+        "staffing",
+        "compensation",
+        "time_tracking"
+      ]
+    }
+  },
+  "baseUrl": "https://wd5-impl-services1.workday.com/ccx/api/v1",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_worker",
+      "name": "Create Worker",
+      "description": "Create a new worker in Workday",
+      "parameters": {
+        "personalData": {
+          "type": "object",
+          "required": true,
+          "description": "Worker personal information"
+        },
+        "positionData": {
+          "type": "object",
+          "required": true,
+          "description": "Position and employment data"
+        },
+        "hireDate": {
+          "type": "string",
+          "required": true,
+          "description": "Hire date (YYYY-MM-DD)"
+        }
+      },
+      "requiredScopes": [
+        "staffing"
+      ]
+    },
+    {
+      "id": "update_worker",
+      "name": "Update Worker",
+      "description": "Update worker information",
+      "parameters": {
+        "workerId": {
+          "type": "string",
+          "required": true,
+          "description": "Worker ID"
+        },
+        "personalData": {
+          "type": "object",
+          "required": false,
+          "description": "Updated personal data"
+        },
+        "positionData": {
+          "type": "object",
+          "required": false,
+          "description": "Updated position data"
+        }
+      },
+      "requiredScopes": [
+        "staffing"
+      ]
+    },
+    {
+      "id": "terminate_worker",
+      "name": "Terminate Worker",
+      "description": "Terminate a worker's employment",
+      "parameters": {
+        "workerId": {
+          "type": "string",
+          "required": true,
+          "description": "Worker ID"
+        },
+        "terminationDate": {
+          "type": "string",
+          "required": true,
+          "description": "Termination date (YYYY-MM-DD)"
+        },
+        "reason": {
+          "type": "string",
+          "required": true,
+          "description": "Termination reason"
+        }
+      },
+      "requiredScopes": [
+        "staffing"
+      ]
+    },
+    {
+      "id": "create_position",
+      "name": "Create Position",
+      "description": "Create a new position",
+      "parameters": {
+        "positionTitle": {
+          "type": "string",
+          "required": true,
+          "description": "Position title"
+        },
+        "department": {
+          "type": "string",
+          "required": true,
+          "description": "Department"
+        },
+        "jobProfile": {
+          "type": "string",
+          "required": true,
+          "description": "Job profile"
+        }
+      },
+      "requiredScopes": [
+        "staffing"
+      ]
+    },
+    {
+      "id": "update_position",
+      "name": "Update Position",
+      "description": "Update position details",
+      "parameters": {
+        "positionId": {
+          "type": "string",
+          "required": true,
+          "description": "Position ID"
+        },
+        "updates": {
+          "type": "object",
+          "required": true,
+          "description": "Position updates"
+        }
+      },
+      "requiredScopes": [
+        "staffing"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "worker_hired",
+      "name": "Worker Hired",
+      "description": "Triggered when a new worker is hired",
+      "parameters": {},
+      "requiredScopes": [
+        "staffing"
+      ]
+    },
+    {
+      "id": "worker_terminated",
+      "name": "Worker Terminated",
+      "description": "Triggered when a worker is terminated",
+      "parameters": {},
+      "requiredScopes": [
+        "staffing"
+      ]
+    },
+    {
+      "id": "time_off_requested",
+      "name": "Time Off Requested",
+      "description": "Triggered when time off is requested",
+      "parameters": {},
+      "requiredScopes": [
+        "time_tracking"
+      ]
+    }
+  ]
+}

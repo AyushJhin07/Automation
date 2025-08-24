@@ -1,0 +1,165 @@
+{
+  "id": "greenhouse",
+  "name": "Greenhouse",
+  "description": "Greenhouse applicant tracking system",
+  "category": "Recruitment",
+  "icon": "users",
+  "color": "#00A76B",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "basic",
+      "username": "{api_key}",
+      "password": ""
+    }
+  },
+  "baseUrl": "https://harvest.greenhouse.io/v1",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 20000
+  },
+  "actions": [
+    {
+      "id": "create_candidate",
+      "name": "Create Candidate",
+      "description": "Create a new candidate",
+      "parameters": {
+        "firstName": {
+          "type": "string",
+          "required": true,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": true,
+          "description": "Last name"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Email address"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone number"
+        }
+      },
+      "requiredScopes": [
+        "candidates:write"
+      ]
+    },
+    {
+      "id": "update_candidate",
+      "name": "Update Candidate",
+      "description": "Update candidate information",
+      "parameters": {
+        "candidateId": {
+          "type": "string",
+          "required": true,
+          "description": "Candidate ID"
+        },
+        "updates": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "candidates:write"
+      ]
+    },
+    {
+      "id": "advance_stage",
+      "name": "Advance Stage",
+      "description": "Move candidate to next stage",
+      "parameters": {
+        "applicationId": {
+          "type": "string",
+          "required": true,
+          "description": "Application ID"
+        },
+        "stageId": {
+          "type": "string",
+          "required": true,
+          "description": "Target stage ID"
+        }
+      },
+      "requiredScopes": [
+        "applications:write"
+      ]
+    },
+    {
+      "id": "schedule_interview",
+      "name": "Schedule Interview",
+      "description": "Schedule an interview",
+      "parameters": {
+        "applicationId": {
+          "type": "string",
+          "required": true,
+          "description": "Application ID"
+        },
+        "interviewerId": {
+          "type": "string",
+          "required": true,
+          "description": "Interviewer ID"
+        },
+        "startTime": {
+          "type": "string",
+          "required": true,
+          "description": "Interview start time"
+        },
+        "endTime": {
+          "type": "string",
+          "required": true,
+          "description": "Interview end time"
+        }
+      },
+      "requiredScopes": [
+        "interviews:write"
+      ]
+    },
+    {
+      "id": "add_note",
+      "name": "Add Note",
+      "description": "Add note to candidate",
+      "parameters": {
+        "candidateId": {
+          "type": "string",
+          "required": true,
+          "description": "Candidate ID"
+        },
+        "message": {
+          "type": "string",
+          "required": true,
+          "description": "Note content"
+        }
+      },
+      "requiredScopes": [
+        "candidates:write"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "candidate_created",
+      "name": "Candidate Created",
+      "description": "Triggered when a candidate is created",
+      "parameters": {},
+      "requiredScopes": [
+        "candidates:read"
+      ]
+    },
+    {
+      "id": "application_updated",
+      "name": "Application Updated",
+      "description": "Triggered when an application is updated",
+      "parameters": {},
+      "requiredScopes": [
+        "applications:read"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "lever",
+  "name": "Lever",
+  "description": "Lever applicant tracking system",
+  "category": "Recruitment",
+  "icon": "enterprise",
+  "color": "#5A67D8",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

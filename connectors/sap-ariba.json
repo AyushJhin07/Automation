@@ -1,0 +1,21 @@
+{
+  "id": "sap-ariba",
+  "name": "SAP Ariba",
+  "description": "SAP Ariba procurement platform",
+  "category": "Procurement",
+  "icon": "enterprise",
+  "color": "#0073E7",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

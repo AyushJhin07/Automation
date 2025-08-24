@@ -1,0 +1,21 @@
+{
+  "id": "databricks",
+  "name": "Databricks",
+  "description": "Databricks unified analytics platform",
+  "category": "Data Analytics",
+  "icon": "enterprise",
+  "color": "#FF3621",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

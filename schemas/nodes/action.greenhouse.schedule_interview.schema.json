@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.greenhouse.schedule_interview.schema.json",
+  "title": "Greenhouse - Schedule Interview",
+  "description": "Schedule an interview",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.greenhouse.schedule_interview",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "applicationId": {
+          "description": "Application ID",
+          "type": "string"
+        },
+        "interviewerId": {
+          "description": "Interviewer ID",
+          "type": "string"
+        },
+        "startTime": {
+          "description": "Interview start time",
+          "type": "string"
+        },
+        "endTime": {
+          "description": "Interview end time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "applicationId",
+        "interviewerId",
+        "startTime",
+        "endTime"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Recruitment"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Greenhouse"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "interviews:write"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

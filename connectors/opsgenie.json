@@ -1,0 +1,21 @@
+{
+  "id": "opsgenie",
+  "name": "Opsgenie",
+  "description": "Opsgenie incident management platform",
+  "category": "Incident Management",
+  "icon": "enterprise",
+  "color": "#1B2A4E",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.successfactors.create_employee.schema.json",
+  "title": "SuccessFactors - Create Employee",
+  "description": "Create a new employee in SuccessFactors",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.successfactors.create_employee",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "description": "Unique user ID",
+          "type": "string"
+        },
+        "personalInfo": {
+          "description": "Personal information",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "employmentInfo": {
+          "description": "Employment details",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "userId",
+        "personalInfo",
+        "employmentInfo"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SuccessFactors"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "employee_central"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

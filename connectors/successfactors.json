@@ -1,0 +1,139 @@
+{
+  "id": "successfactors",
+  "name": "SuccessFactors",
+  "description": "SAP SuccessFactors human experience management",
+  "category": "HR Management",
+  "icon": "users",
+  "color": "#0073E7",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api4.successfactors.com/oauth/authorize",
+      "tokenUrl": "https://api4.successfactors.com/oauth/token",
+      "scopes": [
+        "employee_profile",
+        "employee_central"
+      ]
+    }
+  },
+  "baseUrl": "https://api4.successfactors.com/odata/v2",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 20000
+  },
+  "actions": [
+    {
+      "id": "create_employee",
+      "name": "Create Employee",
+      "description": "Create a new employee in SuccessFactors",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "Unique user ID"
+        },
+        "personalInfo": {
+          "type": "object",
+          "required": true,
+          "description": "Personal information"
+        },
+        "employmentInfo": {
+          "type": "object",
+          "required": true,
+          "description": "Employment details"
+        }
+      },
+      "requiredScopes": [
+        "employee_central"
+      ]
+    },
+    {
+      "id": "update_employee",
+      "name": "Update Employee",
+      "description": "Update employee information",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID"
+        },
+        "updates": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "employee_central"
+      ]
+    },
+    {
+      "id": "terminate_employee",
+      "name": "Terminate Employee",
+      "description": "Terminate an employee",
+      "parameters": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID"
+        },
+        "terminationDate": {
+          "type": "string",
+          "required": true,
+          "description": "Termination date"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Termination reason"
+        }
+      },
+      "requiredScopes": [
+        "employee_central"
+      ]
+    },
+    {
+      "id": "list_employees",
+      "name": "List Employees",
+      "description": "Retrieve list of employees",
+      "parameters": {
+        "filter": {
+          "type": "string",
+          "required": false,
+          "description": "OData filter expression"
+        },
+        "top": {
+          "type": "number",
+          "required": false,
+          "description": "Number of records to return",
+          "default": 100
+        }
+      },
+      "requiredScopes": [
+        "employee_profile"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "employee_created",
+      "name": "Employee Created",
+      "description": "Triggered when a new employee is created",
+      "parameters": {},
+      "requiredScopes": [
+        "employee_profile"
+      ]
+    },
+    {
+      "id": "employee_updated",
+      "name": "Employee Updated",
+      "description": "Triggered when employee data is updated",
+      "parameters": {},
+      "requiredScopes": [
+        "employee_profile"
+      ]
+    }
+  ]
+}

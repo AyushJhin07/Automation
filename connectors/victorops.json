@@ -1,0 +1,21 @@
+{
+  "id": "victorops",
+  "name": "VictorOps",
+  "description": "VictorOps incident response platform",
+  "category": "Incident Management",
+  "icon": "enterprise",
+  "color": "#F89C0E",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

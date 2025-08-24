@@ -1,0 +1,21 @@
+{
+  "id": "zoho-books",
+  "name": "Zoho Books",
+  "description": "Zoho Books accounting software",
+  "category": "Accounting",
+  "icon": "enterprise",
+  "color": "#1565C0",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.adp.get_payroll_report.schema.json",
+  "title": "ADP - Get Payroll Report",
+  "description": "Retrieve payroll report data",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.adp.get_payroll_report",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "reportType": {
+          "description": "Type of payroll report",
+          "type": "string"
+        },
+        "payPeriod": {
+          "description": "Pay period identifier",
+          "type": "string"
+        },
+        "format": {
+          "description": "Report format",
+          "type": "string",
+          "enum": [
+            "json",
+            "csv",
+            "pdf"
+          ],
+          "default": "json"
+        }
+      },
+      "required": [
+        "reportType",
+        "payPeriod"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "ADP"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "payroll_read"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
