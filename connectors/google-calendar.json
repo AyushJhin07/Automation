@@ -1,0 +1,286 @@
+{
+  "id": "google-calendar",
+  "name": "Google Calendar",
+  "description": "Google Calendar advanced scheduling and event management",
+  "category": "Productivity",
+  "icon": "calendar",
+  "color": "#4285F4",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    }
+  },
+  "baseUrl": "https://www.googleapis.com/calendar/v3",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 1000000
+  },
+  "actions": [
+    {
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Create a new calendar event",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Calendar ID (default: primary)"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Event title"
+        },
+        "start": {
+          "type": "string",
+          "required": true,
+          "description": "Start time (ISO 8601)"
+        },
+        "end": {
+          "type": "string",
+          "required": true,
+          "description": "End time (ISO 8601)"
+        },
+        "attendees": {
+          "type": "array",
+          "required": false,
+          "description": "Array of attendee emails"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Event description"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    },
+    {
+      "id": "update_event",
+      "name": "Update Event",
+      "description": "Update an existing event",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Calendar ID"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    },
+    {
+      "id": "delete_event",
+      "name": "Delete Event",
+      "description": "Delete a calendar event",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Calendar ID"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    },
+    {
+      "id": "find_events",
+      "name": "Find Events",
+      "description": "Search for events",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Calendar ID"
+        },
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Search query"
+        },
+        "timeMin": {
+          "type": "string",
+          "required": false,
+          "description": "Start time filter"
+        },
+        "timeMax": {
+          "type": "string",
+          "required": false,
+          "description": "End time filter"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "add_attendees",
+      "name": "Add Attendees",
+      "description": "Add attendees to an event",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        },
+        "attendees": {
+          "type": "array",
+          "required": true,
+          "description": "Array of attendee emails"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    },
+    {
+      "id": "remove_attendee",
+      "name": "Remove Attendee",
+      "description": "Remove an attendee from an event",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Attendee email to remove"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    },
+    {
+      "id": "set_conference_meet",
+      "name": "Set Conference Meet",
+      "description": "Add Google Meet conference to event",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    },
+    {
+      "id": "move_event",
+      "name": "Move Event",
+      "description": "Move event to another calendar",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        },
+        "targetCalendarId": {
+          "type": "string",
+          "required": true,
+          "description": "Target calendar ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.events"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "event_created",
+      "name": "Event Created",
+      "description": "Triggered when a new event is created",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific calendar"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "event_updated",
+      "name": "Event Updated",
+      "description": "Triggered when an event is updated",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific calendar"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "event_deleted",
+      "name": "Event Deleted",
+      "description": "Triggered when an event is deleted",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific calendar"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "event_starting_soon",
+      "name": "Event Starting Soon",
+      "description": "Triggered when an event is about to start",
+      "parameters": {
+        "calendarId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific calendar"
+        },
+        "minutes": {
+          "type": "number",
+          "required": false,
+          "description": "Minutes before event",
+          "default": 15
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    }
+  ]
+}

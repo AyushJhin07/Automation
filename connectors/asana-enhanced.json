@@ -1,0 +1,251 @@
+{
+  "id": "asana-enhanced",
+  "name": "Asana Enhanced",
+  "description": "Enhanced Asana project management",
+  "category": "Project Management",
+  "icon": "placeholder",
+  "color": "#273347",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://app.asana.com/-/oauth_authorize",
+      "tokenUrl": "https://app.asana.com/-/oauth_token",
+      "scopes": []
+    }
+  },
+  "baseUrl": "https://app.asana.com/api/1.0",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task in a project",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Project ID"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Task name"
+        },
+        "assignee": {
+          "type": "string",
+          "required": false,
+          "description": "Assignee user ID"
+        },
+        "dueOn": {
+          "type": "string",
+          "required": false,
+          "description": "Due date (YYYY-MM-DD)"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "update_task",
+      "name": "Update Task",
+      "description": "Update an existing task",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "move_task",
+      "name": "Move Task",
+      "description": "Move a task to a different section",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID"
+        },
+        "sectionId": {
+          "type": "string",
+          "required": true,
+          "description": "Target section ID"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "add_comment",
+      "name": "Add Comment",
+      "description": "Add a comment to a task",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Comment text"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "assign_task",
+      "name": "Assign Task",
+      "description": "Assign a task to a user",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID"
+        },
+        "assignee": {
+          "type": "string",
+          "required": true,
+          "description": "Assignee user ID"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "add_subtask",
+      "name": "Add Subtask",
+      "description": "Add a subtask to a task",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Parent task ID"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Subtask name"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "add_tag",
+      "name": "Add Tag",
+      "description": "Add a tag to a task",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID"
+        },
+        "tagId": {
+          "type": "string",
+          "required": true,
+          "description": "Tag ID"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "set_due_date",
+      "name": "Set Due Date",
+      "description": "Set due date for a task",
+      "parameters": {
+        "taskId": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID"
+        },
+        "dueOn": {
+          "type": "string",
+          "required": true,
+          "description": "Due date (YYYY-MM-DD)"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "create_section",
+      "name": "Create Section",
+      "description": "Create a new section in a project",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Project ID"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Section name"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "task_created",
+      "name": "Task Created",
+      "description": "Triggered when a task is created",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Project ID to monitor"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "task_updated",
+      "name": "Task Updated",
+      "description": "Triggered when a task is updated",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Project ID to monitor"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "task_completed",
+      "name": "Task Completed",
+      "description": "Triggered when a task is completed",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Project ID to monitor"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "comment_added",
+      "name": "Comment Added",
+      "description": "Triggered when a comment is added",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Project ID to monitor"
+        }
+      },
+      "requiredScopes": []
+    }
+  ]
+}

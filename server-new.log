@@ -86,12 +86,13 @@ Total Supported Applications: 414
 🔐 Encryption service initialized successfully
 ✅ SimpleGraphValidator initialized with AJV schema validation
 🛡️ Security service initialized
-📦 Loaded 13 connectors into registry
-5:44:46 AM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
-5:44:46 AM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
-5:44:46 AM [express] serving on localhost:5000
-5:44:46 AM [express] serving on localhost:5001
-5:44:46 AM [express] serving on localhost:3000
-5:45:02 AM [express] GET /api/registry/stats 200 in 3ms :: {"success":true,"stats":{"totalConnectors…
-5:45:08 AM [express] GET /api/registry/catalog 200 in 2ms :: {"success":true,"catalog":{"categories"…
-6:14:08 AM [express] GET /api/registry/stats 200 in 1ms :: {"success":true,"stats":{"totalConnectors…
+📦 Loaded 33 connectors into registry
+6:13:54 AM [express] Port 5000 failed: listen EADDRINUSE: address already in use :::5000
+6:13:54 AM [express] Port 5001 failed: listen EADDRINUSE: address already in use :::5001
+6:13:54 AM [express] Port 3000 failed: listen EADDRINUSE: address already in use :::3000
+6:13:54 AM [express] serving on localhost:5000
+6:13:54 AM [express] serving on localhost:5001
+6:13:54 AM [express] serving on localhost:3000
+6:13:54 AM [express] serving on localhost:8000
+6:14:21 AM [express] GET /api/registry/stats 200 in 3ms :: {"success":true,"stats":{"totalConnectors…
+6:14:32 AM [express] GET /api/registry/catalog 200 in 2ms :: {"success":true,"catalog":{"categories"…

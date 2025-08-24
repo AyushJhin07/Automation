@@ -1,0 +1,21 @@
+{
+  "id": "trello-enhanced",
+  "name": "Trello Enhanced",
+  "description": "Enhanced Trello project boards",
+  "category": "Project Management",
+  "icon": "placeholder",
+  "color": "#999999",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {}
+  },
+  "baseUrl": "https://api.example.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [],
+  "triggers": []
+}

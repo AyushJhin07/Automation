@@ -1,0 +1,172 @@
+{
+  "id": "google-forms",
+  "name": "Google Forms",
+  "description": "Google Forms survey and data collection platform",
+  "category": "Productivity",
+  "icon": "file-text",
+  "color": "#673AB7",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/forms"
+      ]
+    }
+  },
+  "baseUrl": "https://forms.googleapis.com/v1",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 50000
+  },
+  "actions": [
+    {
+      "id": "create_form",
+      "name": "Create Form",
+      "description": "Create a new Google Form",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Form title"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms"
+      ]
+    },
+    {
+      "id": "add_question",
+      "name": "Add Question",
+      "description": "Add a question to a form",
+      "parameters": {
+        "formId": {
+          "type": "string",
+          "required": true,
+          "description": "Form ID"
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Question type",
+          "options": [
+            "TEXT",
+            "PARAGRAPH_TEXT",
+            "MULTIPLE_CHOICE",
+            "CHECKBOX",
+            "DROPDOWN"
+          ]
+        },
+        "questionJson": {
+          "type": "object",
+          "required": true,
+          "description": "Question configuration"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms"
+      ]
+    },
+    {
+      "id": "update_question",
+      "name": "Update Question",
+      "description": "Update a form question",
+      "parameters": {
+        "formId": {
+          "type": "string",
+          "required": true,
+          "description": "Form ID"
+        },
+        "questionId": {
+          "type": "string",
+          "required": true,
+          "description": "Question ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms"
+      ]
+    },
+    {
+      "id": "get_responses",
+      "name": "Get Responses",
+      "description": "Get form responses",
+      "parameters": {
+        "formId": {
+          "type": "string",
+          "required": true,
+          "description": "Form ID"
+        },
+        "sinceTimestamp": {
+          "type": "string",
+          "required": false,
+          "description": "Get responses since timestamp"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms.responses.readonly"
+      ]
+    },
+    {
+      "id": "export_to_sheet",
+      "name": "Export to Sheet",
+      "description": "Export form responses to Google Sheets",
+      "parameters": {
+        "formId": {
+          "type": "string",
+          "required": true,
+          "description": "Form ID"
+        },
+        "spreadsheetId": {
+          "type": "string",
+          "required": true,
+          "description": "Target spreadsheet ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "response_received",
+      "name": "Response Received",
+      "description": "Triggered when a form response is received",
+      "parameters": {
+        "formId": {
+          "type": "string",
+          "required": true,
+          "description": "Form ID to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms.responses.readonly"
+      ]
+    },
+    {
+      "id": "form_updated",
+      "name": "Form Updated",
+      "description": "Triggered when a form is updated",
+      "parameters": {
+        "formId": {
+          "type": "string",
+          "required": true,
+          "description": "Form ID to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/forms.readonly"
+      ]
+    }
+  ]
+}

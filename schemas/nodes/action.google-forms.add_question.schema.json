@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-forms.add_question.schema.json",
+  "title": "Google Forms - Add Question",
+  "description": "Add a question to a form",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-forms.add_question",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "formId": {
+          "description": "Form ID",
+          "type": "string"
+        },
+        "type": {
+          "description": "Question type",
+          "type": "string",
+          "enum": [
+            "TEXT",
+            "PARAGRAPH_TEXT",
+            "MULTIPLE_CHOICE",
+            "CHECKBOX",
+            "DROPDOWN"
+          ]
+        },
+        "questionJson": {
+          "description": "Question configuration",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "formId",
+        "type",
+        "questionJson"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Forms"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "https://www.googleapis.com/auth/forms"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,303 @@
+{
+  "id": "google-slides",
+  "name": "Google Slides",
+  "description": "Google Slides presentation creation and editing platform",
+  "category": "Productivity",
+  "icon": "presentation",
+  "color": "#F9AB00",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/presentations",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    }
+  },
+  "baseUrl": "https://slides.googleapis.com/v1",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 100000
+  },
+  "actions": [
+    {
+      "id": "create_presentation",
+      "name": "Create Presentation",
+      "description": "Create a new Google Slides presentation",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Title of the presentation"
+        },
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "ID of folder to create in"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    {
+      "id": "add_slide",
+      "name": "Add Slide",
+      "description": "Add a new slide to the presentation",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        },
+        "layout": {
+          "type": "string",
+          "required": false,
+          "description": "Layout for the slide",
+          "options": [
+            "BLANK",
+            "CAPTION_ONLY",
+            "TITLE",
+            "TITLE_AND_BODY",
+            "TITLE_AND_TWO_COLUMNS"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations"
+      ]
+    },
+    {
+      "id": "duplicate_slide",
+      "name": "Duplicate Slide",
+      "description": "Duplicate an existing slide",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        },
+        "slideObjectId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the slide to duplicate"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations"
+      ]
+    },
+    {
+      "id": "insert_textbox",
+      "name": "Insert Text Box",
+      "description": "Insert a text box into a slide",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        },
+        "slideObjectId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the slide"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Text content"
+        },
+        "x": {
+          "type": "number",
+          "required": true,
+          "description": "X position"
+        },
+        "y": {
+          "type": "number",
+          "required": true,
+          "description": "Y position"
+        },
+        "w": {
+          "type": "number",
+          "required": true,
+          "description": "Width"
+        },
+        "h": {
+          "type": "number",
+          "required": true,
+          "description": "Height"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations"
+      ]
+    },
+    {
+      "id": "insert_image",
+      "name": "Insert Image",
+      "description": "Insert an image into a slide",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        },
+        "slideObjectId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the slide"
+        },
+        "imageUrl": {
+          "type": "string",
+          "required": true,
+          "description": "URL of the image"
+        },
+        "x": {
+          "type": "number",
+          "required": true,
+          "description": "X position"
+        },
+        "y": {
+          "type": "number",
+          "required": true,
+          "description": "Y position"
+        },
+        "w": {
+          "type": "number",
+          "required": true,
+          "description": "Width"
+        },
+        "h": {
+          "type": "number",
+          "required": true,
+          "description": "Height"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations"
+      ]
+    },
+    {
+      "id": "update_text",
+      "name": "Update Text",
+      "description": "Update text in a shape",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        },
+        "shapeId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the shape"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "New text content"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations"
+      ]
+    },
+    {
+      "id": "export_pdf",
+      "name": "Export as PDF",
+      "description": "Export the presentation as PDF",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations.readonly"
+      ]
+    },
+    {
+      "id": "share_presentation",
+      "name": "Share Presentation",
+      "description": "Share the presentation with a user",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the presentation"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Email to share with"
+        },
+        "role": {
+          "type": "string",
+          "required": true,
+          "description": "Role to assign",
+          "options": [
+            "reader",
+            "writer",
+            "commenter"
+          ]
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "presentation_created",
+      "name": "Presentation Created",
+      "description": "Triggered when a new presentation is created",
+      "parameters": {
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific folder only"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/drive.metadata.readonly"
+      ]
+    },
+    {
+      "id": "slide_added",
+      "name": "Slide Added",
+      "description": "Triggered when a slide is added",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of presentation to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations.readonly"
+      ]
+    },
+    {
+      "id": "presentation_updated",
+      "name": "Presentation Updated",
+      "description": "Triggered when presentation is updated",
+      "parameters": {
+        "presentationId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of presentation to monitor"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/presentations.readonly"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "id": "google-admin",
+  "name": "Google Admin",
+  "description": "Google Admin Directory for user and group management",
+  "category": "Admin",
+  "icon": "users",
+  "color": "#EA4335",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/admin.directory.user",
+        "https://www.googleapis.com/auth/admin.directory.group"
+      ]
+    }
+  },
+  "baseUrl": "https://admin.googleapis.com/admin/directory/v1",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 50000
+  },
+  "actions": [
+    {
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create a new user account",
+      "parameters": {
+        "primaryEmail": {
+          "type": "string",
+          "required": true,
+          "description": "Primary email address"
+        },
+        "name": {
+          "type": "object",
+          "required": true,
+          "description": "Name object with givenName and familyName"
+        },
+        "password": {
+          "type": "string",
+          "required": true,
+          "description": "User password"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user"
+      ]
+    },
+    {
+      "id": "update_user",
+      "name": "Update User",
+      "description": "Update user account",
+      "parameters": {
+        "userKey": {
+          "type": "string",
+          "required": true,
+          "description": "User key or email"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user"
+      ]
+    },
+    {
+      "id": "suspend_user",
+      "name": "Suspend User",
+      "description": "Suspend or unsuspend user account",
+      "parameters": {
+        "userKey": {
+          "type": "string",
+          "required": true,
+          "description": "User key or email"
+        },
+        "suspended": {
+          "type": "boolean",
+          "required": false,
+          "description": "Suspend status",
+          "default": true
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user"
+      ]
+    },
+    {
+      "id": "delete_user",
+      "name": "Delete User",
+      "description": "Delete user account",
+      "parameters": {
+        "userKey": {
+          "type": "string",
+          "required": true,
+          "description": "User key or email"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user"
+      ]
+    },
+    {
+      "id": "create_group",
+      "name": "Create Group",
+      "description": "Create a new group",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Group email address"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Group name"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.group"
+      ]
+    },
+    {
+      "id": "add_member_to_group",
+      "name": "Add Member to Group",
+      "description": "Add member to a group",
+      "parameters": {
+        "groupKey": {
+          "type": "string",
+          "required": true,
+          "description": "Group key or email"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Member email"
+        },
+        "role": {
+          "type": "string",
+          "required": false,
+          "description": "Member role",
+          "options": [
+            "MEMBER",
+            "MANAGER",
+            "OWNER"
+          ],
+          "default": "MEMBER"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.group.member"
+      ]
+    },
+    {
+      "id": "remove_member_from_group",
+      "name": "Remove Member from Group",
+      "description": "Remove member from a group",
+      "parameters": {
+        "groupKey": {
+          "type": "string",
+          "required": true,
+          "description": "Group key or email"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Member email"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.group.member"
+      ]
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List domain users",
+      "parameters": {
+        "domain": {
+          "type": "string",
+          "required": false,
+          "description": "Domain to search"
+        },
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Search query"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user.readonly"
+      ]
+    },
+    {
+      "id": "list_groups",
+      "name": "List Groups",
+      "description": "List domain groups",
+      "parameters": {
+        "userKey": {
+          "type": "string",
+          "required": false,
+          "description": "User key for groups"
+        },
+        "domain": {
+          "type": "string",
+          "required": false,
+          "description": "Domain to search"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.group.readonly"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "user_created",
+      "name": "User Created",
+      "description": "Triggered when a user is created",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user.readonly"
+      ]
+    },
+    {
+      "id": "user_updated",
+      "name": "User Updated",
+      "description": "Triggered when a user is updated",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.user.readonly"
+      ]
+    },
+    {
+      "id": "group_created",
+      "name": "Group Created",
+      "description": "Triggered when a group is created",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.group.readonly"
+      ]
+    },
+    {
+      "id": "group_member_added",
+      "name": "Group Member Added",
+      "description": "Triggered when a member is added to a group",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/admin.directory.group.member.readonly"
+      ]
+    }
+  ]
+}

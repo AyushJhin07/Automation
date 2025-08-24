@@ -1,0 +1,189 @@
+{
+  "id": "notion-enhanced",
+  "name": "Notion Enhanced",
+  "description": "Enhanced Notion workspace for notes, databases, and collaboration",
+  "category": "Productivity",
+  "icon": "bookmark",
+  "color": "#000000",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.notion.com/v1/oauth/authorize",
+      "tokenUrl": "https://api.notion.com/v1/oauth/token",
+      "scopes": []
+    }
+  },
+  "baseUrl": "https://api.notion.com/v1",
+  "rateLimits": {
+    "requestsPerSecond": 3,
+    "requestsPerMinute": 180,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "update_page",
+      "name": "Update Page",
+      "description": "Update an existing page",
+      "parameters": {
+        "pageId": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "properties": {
+          "type": "object",
+          "required": true,
+          "description": "Properties to update"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "archive_page",
+      "name": "Archive Page",
+      "description": "Archive a page",
+      "parameters": {
+        "pageId": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID to archive"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "query_database",
+      "name": "Query Database",
+      "description": "Query a database with filters and sorts",
+      "parameters": {
+        "databaseId": {
+          "type": "string",
+          "required": true,
+          "description": "Database ID"
+        },
+        "filter": {
+          "type": "object",
+          "required": false,
+          "description": "Filter criteria"
+        },
+        "sorts": {
+          "type": "array",
+          "required": false,
+          "description": "Sort criteria"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "append_block",
+      "name": "Append Block",
+      "description": "Append a block to a page",
+      "parameters": {
+        "pageId": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "blockJson": {
+          "type": "object",
+          "required": true,
+          "description": "Block content"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "create_database",
+      "name": "Create Database",
+      "description": "Create a new database",
+      "parameters": {
+        "parentPageId": {
+          "type": "string",
+          "required": true,
+          "description": "Parent page ID"
+        },
+        "schema": {
+          "type": "object",
+          "required": true,
+          "description": "Database schema"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "update_database",
+      "name": "Update Database",
+      "description": "Update database schema",
+      "parameters": {
+        "databaseId": {
+          "type": "string",
+          "required": true,
+          "description": "Database ID"
+        },
+        "schema": {
+          "type": "object",
+          "required": true,
+          "description": "New schema"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "invite_user",
+      "name": "Invite User",
+      "description": "Invite user to a page",
+      "parameters": {
+        "pageId": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "User email"
+        },
+        "role": {
+          "type": "string",
+          "required": true,
+          "description": "User role",
+          "options": [
+            "read",
+            "comment",
+            "edit"
+          ]
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "page_updated",
+      "name": "Page Updated",
+      "description": "Triggered when a page is updated",
+      "parameters": {
+        "databaseId": {
+          "type": "string",
+          "required": true,
+          "description": "Database ID to monitor"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "comment_added",
+      "name": "Comment Added",
+      "description": "Triggered when a comment is added",
+      "parameters": {
+        "pageId": {
+          "type": "string",
+          "required": true,
+          "description": "Page ID to monitor"
+        }
+      },
+      "requiredScopes": []
+    }
+  ]
+}

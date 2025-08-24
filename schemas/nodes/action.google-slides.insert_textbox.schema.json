@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-slides.insert_textbox.schema.json",
+  "title": "Google Slides - Insert Text Box",
+  "description": "Insert a text box into a slide",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-slides.insert_textbox",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "presentationId": {
+          "description": "ID of the presentation",
+          "type": "string"
+        },
+        "slideObjectId": {
+          "description": "ID of the slide",
+          "type": "string"
+        },
+        "text": {
+          "description": "Text content",
+          "type": "string"
+        },
+        "x": {
+          "description": "X position",
+          "type": "number"
+        },
+        "y": {
+          "description": "Y position",
+          "type": "number"
+        },
+        "w": {
+          "description": "Width",
+          "type": "number"
+        },
+        "h": {
+          "description": "Height",
+          "type": "number"
+        }
+      },
+      "required": [
+        "presentationId",
+        "slideObjectId",
+        "text",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Slides"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "https://www.googleapis.com/auth/presentations"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

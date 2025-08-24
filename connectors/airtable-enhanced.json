@@ -1,0 +1,235 @@
+{
+  "id": "airtable-enhanced",
+  "name": "Airtable Enhanced",
+  "description": "Enhanced Airtable cloud database platform",
+  "category": "Database",
+  "icon": "database",
+  "color": "#18BFFF",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "baseUrl": "https://api.airtable.com/v0",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record in a table",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Record fields"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "recordId": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Fields to update"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "upsert_record",
+      "name": "Upsert Record",
+      "description": "Create or update a record based on a key field",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "keyField": {
+          "type": "string",
+          "required": true,
+          "description": "Field to use as key"
+        },
+        "fields": {
+          "type": "object",
+          "required": true,
+          "description": "Record fields"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "bulk_upsert",
+      "name": "Bulk Upsert",
+      "description": "Bulk create or update multiple records",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "records": {
+          "type": "array",
+          "required": true,
+          "description": "Array of record objects"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "delete_record",
+      "name": "Delete Record",
+      "description": "Delete a record",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "recordId": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "find_records",
+      "name": "Find Records",
+      "description": "Find records with filters",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        },
+        "filterFormula": {
+          "type": "string",
+          "required": false,
+          "description": "Airtable filter formula"
+        },
+        "maxRecords": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum records to return",
+          "default": 100
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a record is created",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Triggered when a record is updated",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "record_deleted",
+      "name": "Record Deleted",
+      "description": "Triggered when a record is deleted",
+      "parameters": {
+        "baseId": {
+          "type": "string",
+          "required": true,
+          "description": "Base ID"
+        },
+        "table": {
+          "type": "string",
+          "required": true,
+          "description": "Table name"
+        }
+      },
+      "requiredScopes": []
+    }
+  ]
+}

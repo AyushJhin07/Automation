@@ -1,0 +1,130 @@
+{
+  "id": "google-meet",
+  "name": "Google Meet",
+  "description": "Google Meet video conferencing platform",
+  "category": "Communication",
+  "icon": "video",
+  "color": "#34A853",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar"
+      ]
+    }
+  },
+  "baseUrl": "https://www.googleapis.com/calendar/v3",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 300,
+    "dailyLimit": 50000
+  },
+  "actions": [
+    {
+      "id": "create_link",
+      "name": "Create Meeting Link",
+      "description": "Create a new Google Meet link",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar"
+      ]
+    },
+    {
+      "id": "add_participant",
+      "name": "Add Participant",
+      "description": "Add participant to meeting",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Participant email"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar"
+      ]
+    },
+    {
+      "id": "get_participants",
+      "name": "Get Participants",
+      "description": "Get meeting participants",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "end_meeting",
+      "name": "End Meeting",
+      "description": "End a Google Meet meeting",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar"
+      ]
+    },
+    {
+      "id": "get_recording",
+      "name": "Get Recording",
+      "description": "Get meeting recording",
+      "parameters": {
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "description": "Event ID"
+        }
+      },
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "meeting_created",
+      "name": "Meeting Created",
+      "description": "Triggered when a meeting is created",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "meeting_started",
+      "name": "Meeting Started",
+      "description": "Triggered when a meeting starts",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    {
+      "id": "recording_ready",
+      "name": "Recording Ready",
+      "description": "Triggered when recording is ready",
+      "parameters": {},
+      "requiredScopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    }
+  ]
+}

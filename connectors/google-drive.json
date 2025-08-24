@@ -1,0 +1,343 @@
+{
+  "id": "google-drive",
+  "name": "Google Drive",
+  "description": "Google Drive cloud storage platform for file management and collaboration",
+  "category": "Cloud Storage",
+  "icon": "drive",
+  "color": "#4285F4",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    }
+  },
+  "baseUrl": "https://www.googleapis.com/drive/v3",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 1000,
+    "dailyLimit": 1000000
+  },
+  "actions": [
+    {
+      "id": "create_file",
+      "name": "Create File",
+      "description": "Create a new file in Google Drive",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Name of the file to create"
+        },
+        "mimeType": {
+          "type": "string",
+          "required": true,
+          "description": "MIME type of the file",
+          "options": [
+            "application/vnd.google-apps.document",
+            "application/vnd.google-apps.spreadsheet",
+            "application/vnd.google-apps.presentation",
+            "text/plain",
+            "application/pdf"
+          ]
+        },
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "ID of the parent folder"
+        },
+        "contentBase64": {
+          "type": "string",
+          "required": false,
+          "description": "Base64-encoded file content"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.file"]
+    },
+    {
+      "id": "upload_base64",
+      "name": "Upload Base64 File",
+      "description": "Upload a file from base64 content",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Name of the file"
+        },
+        "folderId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the destination folder"
+        },
+        "mimeType": {
+          "type": "string",
+          "required": true,
+          "description": "MIME type of the file"
+        },
+        "base64": {
+          "type": "string",
+          "required": true,
+          "description": "Base64-encoded file content"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.file"]
+    },
+    {
+      "id": "copy_file",
+      "name": "Copy File",
+      "description": "Copy a file to another location",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file to copy"
+        },
+        "targetFolderId": {
+          "type": "string",
+          "required": false,
+          "description": "ID of the target folder"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive"]
+    },
+    {
+      "id": "move_file",
+      "name": "Move File",
+      "description": "Move a file to another folder",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file to move"
+        },
+        "targetFolderId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the target folder"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive"]
+    },
+    {
+      "id": "share_file",
+      "name": "Share File",
+      "description": "Share a file with a user",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file to share"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Email address of the user to share with"
+        },
+        "role": {
+          "type": "string",
+          "required": true,
+          "description": "Role to assign",
+          "options": ["reader", "writer", "commenter", "owner"]
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive"]
+    },
+    {
+      "id": "set_permissions",
+      "name": "Set Permissions",
+      "description": "Set permissions for a file",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file"
+        },
+        "permissions": {
+          "type": "array",
+          "required": true,
+          "description": "Array of permission objects"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive"]
+    },
+    {
+      "id": "list_files",
+      "name": "List Files",
+      "description": "List files in Drive",
+      "parameters": {
+        "q": {
+          "type": "string",
+          "required": false,
+          "description": "Query string to filter files"
+        },
+        "pageSize": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum number of files to return",
+          "default": 10
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "find_files",
+      "name": "Find Files",
+      "description": "Find files by name or type",
+      "parameters": {
+        "nameContains": {
+          "type": "string",
+          "required": false,
+          "description": "Text that the file name should contain"
+        },
+        "mimeType": {
+          "type": "string",
+          "required": false,
+          "description": "MIME type to filter by"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "export_pdf",
+      "name": "Export as PDF",
+      "description": "Export a Google Workspace file as PDF",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file to export"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.readonly"]
+    },
+    {
+      "id": "delete_file",
+      "name": "Delete File",
+      "description": "Delete a file from Drive",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file to delete"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive"]
+    },
+    {
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create a new folder",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Name of the folder"
+        },
+        "parentFolderId": {
+          "type": "string",
+          "required": false,
+          "description": "ID of the parent folder"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.file"]
+    },
+    {
+      "id": "watch_changes",
+      "name": "Watch Changes",
+      "description": "Set up a watch for changes in Drive",
+      "parameters": {
+        "pageToken": {
+          "type": "string",
+          "required": false,
+          "description": "Page token for starting the watch"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "file_created",
+      "name": "File Created",
+      "description": "Triggered when a new file is created",
+      "parameters": {
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor files in specific folder only"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "file_updated",
+      "name": "File Updated",
+      "description": "Triggered when a file is updated",
+      "parameters": {
+        "folderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor files in specific folder only"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "file_moved",
+      "name": "File Moved",
+      "description": "Triggered when a file is moved between folders",
+      "parameters": {
+        "fromFolderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor moves from specific folder"
+        },
+        "toFolderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor moves to specific folder"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "file_trashed",
+      "name": "File Trashed",
+      "description": "Triggered when a file is moved to trash",
+      "parameters": {},
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "file_shared",
+      "name": "File Shared",
+      "description": "Triggered when a file is shared",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor specific file only"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    },
+    {
+      "id": "folder_created",
+      "name": "Folder Created",
+      "description": "Triggered when a new folder is created",
+      "parameters": {
+        "parentFolderId": {
+          "type": "string",
+          "required": false,
+          "description": "Monitor folders created in specific parent"
+        }
+      },
+      "requiredScopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+    }
+  ]
+}
