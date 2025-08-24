@@ -507,9 +507,4 @@ export const GITHUB_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-// Export all function arrays
-export {
-  AIRTABLE_FUNCTIONS,
-  DROPBOX_FUNCTIONS,
-  GITHUB_FUNCTIONS
-};
+// All function arrays are already exported above with their definitions

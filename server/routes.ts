@@ -15,6 +15,7 @@ import { connectorFramework } from "./connectors/ConnectorFramework";
 import { healthMonitoringService } from "./services/HealthMonitoringService";
 import { usageMeteringService } from "./services/UsageMeteringService";
 import { securityService } from "./services/SecurityService";
+import { integrationManager } from "./integrations/IntegrationManager";
 
 // Middleware
 import { 
@@ -386,6 +387,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // ===== INTEGRATION ROUTES =====
+  
+  // Test integration connection
+  app.post('/api/integrations/test', authenticateToken, async (req, res) => {
+    try {
+      const { appName, credentials, additionalConfig } = req.body;
+      
+      if (!appName || !credentials) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: appName, credentials'
+        });
+      }
+
+      const result = await integrationManager.testConnection(appName, credentials);
+      
+      res.json({
+        success: result.success,
+        data: result.data,
+        error: result.error
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Initialize integration
+  app.post('/api/integrations/initialize', authenticateToken, async (req, res) => {
+    try {
+      const { appName, credentials, additionalConfig } = req.body;
+      
+      if (!appName || !credentials) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: appName, credentials'
+        });
+      }
+
+      const result = await integrationManager.initializeIntegration({
+        appName,
+        credentials,
+        additionalConfig
+      });
+      
+      res.json({
+        success: result.success,
+        data: result.data,
+        error: result.error
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Execute function on integrated application
+  app.post('/api/integrations/execute', authenticateToken, checkQuota, async (req, res) => {
+    try {
+      const { appName, functionId, parameters, credentials } = req.body;
+      
+      if (!appName || !functionId || !parameters || !credentials) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: appName, functionId, parameters, credentials'
+        });
+      }
+
+      const result = await integrationManager.executeFunction({
+        appName,
+        functionId,
+        parameters,
+        credentials
+      });
+
+      // Track usage
+      if (req.user?.id) {
+        await usageMeteringService.trackUsage(req.user.id, 'integration_execution', {
+          appName,
+          functionId,
+          executionTime: result.executionTime,
+          success: result.success
+        });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        appName: req.body.appName,
+        functionId: req.body.functionId,
+        executionTime: 0
+      });
+    }
+  });
+
+  // Get supported applications
+  app.get('/api/integrations/supported', async (req, res) => {
+    try {
+      const supportedApps = integrationManager.getSupportedApplications();
+      
+      res.json({
+        success: true,
+        data: {
+          applications: supportedApps,
+          count: supportedApps.length
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Get integration status
+  app.get('/api/integrations/status/:appName', authenticateToken, async (req, res) => {
+    try {
+      const { appName } = req.params;
+      const status = integrationManager.getIntegrationStatus(appName);
+      
+      res.json({
+        success: true,
+        data: {
+          appName,
+          connected: status.connected,
+          supported: integrationManager.isApplicationSupported(appName)
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Remove integration
+  app.delete('/api/integrations/:appName', authenticateToken, async (req, res) => {
+    try {
+      const { appName } = req.params;
+      const removed = integrationManager.removeIntegration(appName);
+      
+      res.json({
+        success: true,
+        data: {
+          appName,
+          removed
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
 
   // ===== HEALTH & MONITORING ROUTES =====
 
