@@ -632,18 +632,18 @@ ${templates.join('\n')}
     const [type, app, functionId] = nodeType.split('.');
     const serviceName = this.getGoogleServiceName(app);
     
-    return \`
-    // Fallback implementation for \${nodeType}
-    const params = data.params;
-    console.log('Executing \${app} \${functionId} with params:', params);
-    
-    try {
-      // TODO: Implement specific \${app} \${functionId} logic here
-      const result = { success: true, message: '\${functionId} executed successfully' };
-      return result;
-    } catch (error) {
-      throw new Error(\`\${functionId} failed: \${error.message}\`);
-    }\`;
+         return \`
+     // Fallback implementation for \${nodeType}
+     const params = data.params;
+     console.log('Executing \${app} \${functionId} with params:', params);
+     
+     try {
+       // TODO: Implement specific \${app} \${functionId} logic here
+       const result = { success: true, message: '\${functionId} executed successfully' };
+       return result;
+     } catch (error) {
+       throw new Error(\\\`\${functionId} failed: \\\${error.message}\\\`);
+     }\`;
   }
 
   /**
@@ -652,43 +652,43 @@ ${templates.join('\n')}
   private generateExternalAPIFallback(nodeType: string, data: NodeData): string {
     const [type, app, functionId] = nodeType.split('.');
     
-    return \`
-    // Fallback implementation for \${nodeType}
-    const params = data.params;
-    
-    try {
-      const token = PropertiesService.getScriptProperties().getProperty('\${app.toUpperCase()}_TOKEN');
-      if (!token) {
-        throw new Error('\${app} token not found. Please reconnect your account.');
-      }
-      
-      const response = UrlFetchApp.fetch('https://api.\${app}.com/api/\${functionId}', {
-        method: '\${type === 'action' ? 'POST' : 'GET'}',
-        headers: {
-          'Authorization': 'Bearer ' + token,
-          'Content-Type': 'application/json',
-          'User-Agent': 'Apps-Script-Automation/1.0'
-        },
-        payload: \${type === 'action' ? 'JSON.stringify(params)' : 'null'},
-        muteHttpExceptions: true
-      });
+         return \`
+     // Fallback implementation for \${nodeType}
+     const params = data.params;
+     
+     try {
+       const token = PropertiesService.getScriptProperties().getProperty('\${app.toUpperCase()}_TOKEN');
+       if (!token) {
+         throw new Error('\${app} token not found. Please reconnect your account.');
+       }
+       
+       const response = UrlFetchApp.fetch('https://api.\${app}.com/api/\${functionId}', {
+         method: '\${type === 'action' ? 'POST' : 'GET'}',
+         headers: {
+           'Authorization': 'Bearer ' + token,
+           'Content-Type': 'application/json',
+           'User-Agent': 'Apps-Script-Automation/1.0'
+         },
+         payload: \${type === 'action' ? 'JSON.stringify(params)' : 'null'},
+         muteHttpExceptions: true
+       });
 
-      const responseData = JSON.parse(response.getContentText());
-      
-      if (response.getResponseCode() >= 400) {
-        throw new Error(\`API Error (\${response.getResponseCode()}): \${responseData.message || 'Unknown error'}\`);
-      }
+       const responseData = JSON.parse(response.getContentText());
+       
+       if (response.getResponseCode() >= 400) {
+         throw new Error(\\\`API Error (\\\${response.getResponseCode()}): \\\${responseData.message || 'Unknown error'}\\\`);
+       }
 
-      return {
-        success: true,
-        data: responseData,
-        statusCode: response.getResponseCode()
-      };
+       return {
+         success: true,
+         data: responseData,
+         statusCode: response.getResponseCode()
+       };
 
-    } catch (error) {
-      console.error('\${functionId} error:', error);
-      throw new Error(\`\${functionId} failed: \${error.message}\`);
-    }\`;
+     } catch (error) {
+       console.error('\${functionId} error:', error);
+       throw new Error(\\\`\${functionId} failed: \\\${error.message}\\\`);
+     }\`;
   }
 
   /**
