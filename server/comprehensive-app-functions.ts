@@ -1,6 +1,13 @@
 // COMPREHENSIVE APPLICATION FUNCTIONS LIBRARY
 // Building maximum possible functions for each of the 500+ applications
 
+// Import additional business-critical app functions
+import { 
+  AIRTABLE_FUNCTIONS, 
+  DROPBOX_FUNCTIONS, 
+  GITHUB_FUNCTIONS 
+} from './business-critical-apps-batch2';
+
 export interface AppFunction {
   id: string;
   name: string;
@@ -616,6 +623,96 @@ export function getComprehensiveAppFunctions(appName: string): AppFunction[] {
   // Jira functions
   if (normalizedName.includes('jira')) {
     return JIRA_FUNCTIONS;
+  }
+  
+  // Shopify functions
+  if (normalizedName.includes('shopify')) {
+    return SHOPIFY_FUNCTIONS;
+  }
+  
+  // Stripe functions
+  if (normalizedName.includes('stripe')) {
+    return STRIPE_FUNCTIONS;
+  }
+  
+  // Mailchimp functions
+  if (normalizedName.includes('mailchimp')) {
+    return MAILCHIMP_FUNCTIONS;
+  }
+  
+  // Twilio functions
+  if (normalizedName.includes('twilio')) {
+    return TWILIO_FUNCTIONS;
+  }
+  
+  // Airtable functions
+  if (normalizedName.includes('airtable')) {
+    return AIRTABLE_FUNCTIONS;
+  }
+  
+  // Dropbox functions
+  if (normalizedName.includes('dropbox')) {
+    return DROPBOX_FUNCTIONS;
+  }
+  
+  // GitHub functions
+  if (normalizedName.includes('github')) {
+    return GITHUB_FUNCTIONS;
+  }
+  
+  // GitLab functions
+  if (normalizedName.includes('gitlab')) {
+    return GITLAB_FUNCTIONS;
+  }
+  
+  // Bitbucket functions
+  if (normalizedName.includes('bitbucket')) {
+    return BITBUCKET_FUNCTIONS;
+  }
+  
+  // Discord functions
+  if (normalizedName.includes('discord')) {
+    return DISCORD_FUNCTIONS;
+  }
+  
+  // Telegram functions
+  if (normalizedName.includes('telegram')) {
+    return TELEGRAM_FUNCTIONS;
+  }
+  
+  // WhatsApp Business functions
+  if (normalizedName.includes('whatsapp')) {
+    return WHATSAPP_FUNCTIONS;
+  }
+  
+  // Facebook functions
+  if (normalizedName.includes('facebook')) {
+    return FACEBOOK_FUNCTIONS;
+  }
+  
+  // Instagram functions
+  if (normalizedName.includes('instagram')) {
+    return INSTAGRAM_FUNCTIONS;
+  }
+  
+  // Twitter/X functions
+  if (normalizedName.includes('twitter') || normalizedName.includes('x.com')) {
+    return TWITTER_FUNCTIONS;
+  }
+  
+  // LinkedIn functions
+  if (normalizedName.includes('linkedin')) {
+    return LINKEDIN_FUNCTIONS;
+  }
+  
+  // YouTube functions
+  if (normalizedName.includes('youtube')) {
+    return YOUTUBE_FUNCTIONS;
+  }
+  
+  // Vimeo functions
+  if (normalizedName.includes('vimeo')) {
+    return VIMEO_FUNCTIONS;
   }
   
   // Default functions for other apps
@@ -1642,6 +1739,972 @@ const JIRA_FUNCTIONS: AppFunction[] = [
       fields: { type: 'array', required: false, description: 'Fields to return' }
     },
     requiredScopes: ['read:jira-work']
+  }
+];
+
+// ===== SHOPIFY - COMPLETE FUNCTION SET (E-COMMERCE) =====
+const SHOPIFY_FUNCTIONS: AppFunction[] = [
+  // === PRODUCT MANAGEMENT ===
+  {
+    id: 'create_product',
+    name: 'Create Product',
+    description: 'Create a new product in Shopify store',
+    category: 'action',
+    parameters: {
+      title: { type: 'string', required: true, description: 'Product title' },
+      body_html: { type: 'string', required: false, description: 'Product description (HTML)' },
+      vendor: { type: 'string', required: false, description: 'Product vendor' },
+      product_type: { type: 'string', required: false, description: 'Product type' },
+      tags: { type: 'string', required: false, description: 'Product tags (comma-separated)' },
+      status: { type: 'string', required: false, description: 'Product status', options: ['active', 'archived', 'draft'] },
+      images: { type: 'array', required: false, description: 'Product images' },
+      variants: { type: 'array', required: false, description: 'Product variants' }
+    },
+    requiredScopes: ['write_products']
+  },
+  {
+    id: 'update_product',
+    name: 'Update Product',
+    description: 'Update an existing product',
+    category: 'action',
+    parameters: {
+      productId: { type: 'string', required: true, description: 'Product ID' },
+      title: { type: 'string', required: false, description: 'Product title' },
+      body_html: { type: 'string', required: false, description: 'Product description' },
+      status: { type: 'string', required: false, description: 'Product status' },
+      tags: { type: 'string', required: false, description: 'Product tags' }
+    },
+    requiredScopes: ['write_products']
+  },
+  {
+    id: 'get_products',
+    name: 'Get Products',
+    description: 'Retrieve products from store',
+    category: 'both',
+    parameters: {
+      limit: { type: 'number', required: false, description: 'Number of products to retrieve', default: 50 },
+      status: { type: 'string', required: false, description: 'Filter by status' },
+      vendor: { type: 'string', required: false, description: 'Filter by vendor' },
+      product_type: { type: 'string', required: false, description: 'Filter by product type' }
+    },
+    requiredScopes: ['read_products']
+  },
+  {
+    id: 'delete_product',
+    name: 'Delete Product',
+    description: 'Delete a product from store',
+    category: 'action',
+    parameters: {
+      productId: { type: 'string', required: true, description: 'Product ID to delete' }
+    },
+    requiredScopes: ['write_products']
+  },
+  
+  // === ORDER MANAGEMENT ===
+  {
+    id: 'get_orders',
+    name: 'Get Orders',
+    description: 'Retrieve orders from store',
+    category: 'both',
+    parameters: {
+      status: { type: 'string', required: false, description: 'Order status', options: ['open', 'closed', 'cancelled'] },
+      financial_status: { type: 'string', required: false, description: 'Financial status' },
+      fulfillment_status: { type: 'string', required: false, description: 'Fulfillment status' },
+      limit: { type: 'number', required: false, description: 'Number of orders', default: 50 }
+    },
+    requiredScopes: ['read_orders']
+  },
+  {
+    id: 'update_order',
+    name: 'Update Order',
+    description: 'Update order details',
+    category: 'action',
+    parameters: {
+      orderId: { type: 'string', required: true, description: 'Order ID' },
+      note: { type: 'string', required: false, description: 'Order note' },
+      tags: { type: 'string', required: false, description: 'Order tags' },
+      email: { type: 'string', required: false, description: 'Customer email' }
+    },
+    requiredScopes: ['write_orders']
+  },
+  {
+    id: 'fulfill_order',
+    name: 'Fulfill Order',
+    description: 'Create fulfillment for order',
+    category: 'action',
+    parameters: {
+      orderId: { type: 'string', required: true, description: 'Order ID' },
+      line_items: { type: 'array', required: false, description: 'Line items to fulfill' },
+      tracking_number: { type: 'string', required: false, description: 'Tracking number' },
+      tracking_company: { type: 'string', required: false, description: 'Shipping company' },
+      notify_customer: { type: 'boolean', required: false, description: 'Send notification', default: true }
+    },
+    requiredScopes: ['write_orders']
+  },
+  
+  // === CUSTOMER MANAGEMENT ===
+  {
+    id: 'create_customer',
+    name: 'Create Customer',
+    description: 'Create a new customer',
+    category: 'action',
+    parameters: {
+      first_name: { type: 'string', required: true, description: 'First name' },
+      last_name: { type: 'string', required: true, description: 'Last name' },
+      email: { type: 'string', required: true, description: 'Email address' },
+      phone: { type: 'string', required: false, description: 'Phone number' },
+      tags: { type: 'string', required: false, description: 'Customer tags' },
+      accepts_marketing: { type: 'boolean', required: false, description: 'Accepts marketing', default: false }
+    },
+    requiredScopes: ['write_customers']
+  },
+  {
+    id: 'update_customer',
+    name: 'Update Customer',
+    description: 'Update customer information',
+    category: 'action',
+    parameters: {
+      customerId: { type: 'string', required: true, description: 'Customer ID' },
+      first_name: { type: 'string', required: false, description: 'First name' },
+      last_name: { type: 'string', required: false, description: 'Last name' },
+      email: { type: 'string', required: false, description: 'Email address' },
+      tags: { type: 'string', required: false, description: 'Customer tags' }
+    },
+    requiredScopes: ['write_customers']
+  },
+  {
+    id: 'search_customers',
+    name: 'Search Customers',
+    description: 'Search for customers',
+    category: 'both',
+    parameters: {
+      query: { type: 'string', required: true, description: 'Search query' },
+      limit: { type: 'number', required: false, description: 'Number of results', default: 50 }
+    },
+    requiredScopes: ['read_customers']
+  },
+  
+  // === INVENTORY MANAGEMENT ===
+  {
+    id: 'update_inventory',
+    name: 'Update Inventory',
+    description: 'Update product inventory levels',
+    category: 'action',
+    parameters: {
+      inventory_item_id: { type: 'string', required: true, description: 'Inventory item ID' },
+      location_id: { type: 'string', required: true, description: 'Location ID' },
+      available: { type: 'number', required: true, description: 'Available quantity' }
+    },
+    requiredScopes: ['write_inventory']
+  },
+  
+  // === TRIGGERS ===
+  {
+    id: 'order_created',
+    name: 'Order Created',
+    description: 'Trigger when new order is placed',
+    category: 'trigger',
+    parameters: {
+      financial_status: { type: 'string', required: false, description: 'Filter by financial status' }
+    },
+    requiredScopes: ['read_orders']
+  }
+];
+
+// ===== STRIPE - COMPLETE FUNCTION SET (PAYMENTS) =====
+const STRIPE_FUNCTIONS: AppFunction[] = [
+  // === PAYMENT PROCESSING ===
+  {
+    id: 'create_payment_intent',
+    name: 'Create Payment Intent',
+    description: 'Create a payment intent for processing',
+    category: 'action',
+    parameters: {
+      amount: { type: 'number', required: true, description: 'Amount in cents' },
+      currency: { type: 'string', required: true, description: 'Currency code (e.g., usd)' },
+      customer: { type: 'string', required: false, description: 'Customer ID' },
+      description: { type: 'string', required: false, description: 'Payment description' },
+      metadata: { type: 'object', required: false, description: 'Additional metadata' },
+      payment_method_types: { type: 'array', required: false, description: 'Allowed payment methods' }
+    },
+    requiredScopes: ['payments']
+  },
+  {
+    id: 'confirm_payment_intent',
+    name: 'Confirm Payment Intent',
+    description: 'Confirm and process payment intent',
+    category: 'action',
+    parameters: {
+      payment_intent_id: { type: 'string', required: true, description: 'Payment Intent ID' },
+      payment_method: { type: 'string', required: false, description: 'Payment method ID' },
+      return_url: { type: 'string', required: false, description: 'Return URL for redirects' }
+    },
+    requiredScopes: ['payments']
+  },
+  {
+    id: 'create_refund',
+    name: 'Create Refund',
+    description: 'Refund a payment',
+    category: 'action',
+    parameters: {
+      payment_intent: { type: 'string', required: true, description: 'Payment Intent ID' },
+      amount: { type: 'number', required: false, description: 'Refund amount (partial refund)' },
+      reason: { type: 'string', required: false, description: 'Refund reason', options: ['duplicate', 'fraudulent', 'requested_by_customer'] },
+      metadata: { type: 'object', required: false, description: 'Refund metadata' }
+    },
+    requiredScopes: ['refunds']
+  },
+  
+  // === CUSTOMER MANAGEMENT ===
+  {
+    id: 'create_customer',
+    name: 'Create Customer',
+    description: 'Create a new Stripe customer',
+    category: 'action',
+    parameters: {
+      email: { type: 'string', required: false, description: 'Customer email' },
+      name: { type: 'string', required: false, description: 'Customer name' },
+      phone: { type: 'string', required: false, description: 'Customer phone' },
+      description: { type: 'string', required: false, description: 'Customer description' },
+      metadata: { type: 'object', required: false, description: 'Customer metadata' }
+    },
+    requiredScopes: ['customers']
+  },
+  {
+    id: 'update_customer',
+    name: 'Update Customer',
+    description: 'Update customer information',
+    category: 'action',
+    parameters: {
+      customer_id: { type: 'string', required: true, description: 'Customer ID' },
+      email: { type: 'string', required: false, description: 'Customer email' },
+      name: { type: 'string', required: false, description: 'Customer name' },
+      phone: { type: 'string', required: false, description: 'Customer phone' },
+      metadata: { type: 'object', required: false, description: 'Customer metadata' }
+    },
+    requiredScopes: ['customers']
+  },
+  {
+    id: 'get_customer',
+    name: 'Get Customer',
+    description: 'Retrieve customer details',
+    category: 'both',
+    parameters: {
+      customer_id: { type: 'string', required: true, description: 'Customer ID' }
+    },
+    requiredScopes: ['customers']
+  },
+  
+  // === SUBSCRIPTION MANAGEMENT ===
+  {
+    id: 'create_subscription',
+    name: 'Create Subscription',
+    description: 'Create a new subscription',
+    category: 'action',
+    parameters: {
+      customer: { type: 'string', required: true, description: 'Customer ID' },
+      items: { type: 'array', required: true, description: 'Subscription items with price IDs' },
+      trial_period_days: { type: 'number', required: false, description: 'Trial period in days' },
+      metadata: { type: 'object', required: false, description: 'Subscription metadata' }
+    },
+    requiredScopes: ['subscriptions']
+  },
+  {
+    id: 'update_subscription',
+    name: 'Update Subscription',
+    description: 'Update subscription details',
+    category: 'action',
+    parameters: {
+      subscription_id: { type: 'string', required: true, description: 'Subscription ID' },
+      items: { type: 'array', required: false, description: 'Updated subscription items' },
+      proration_behavior: { type: 'string', required: false, description: 'Proration behavior' },
+      metadata: { type: 'object', required: false, description: 'Subscription metadata' }
+    },
+    requiredScopes: ['subscriptions']
+  },
+  {
+    id: 'cancel_subscription',
+    name: 'Cancel Subscription',
+    description: 'Cancel a subscription',
+    category: 'action',
+    parameters: {
+      subscription_id: { type: 'string', required: true, description: 'Subscription ID' },
+      at_period_end: { type: 'boolean', required: false, description: 'Cancel at period end', default: false }
+    },
+    requiredScopes: ['subscriptions']
+  },
+  
+  // === PRODUCT & PRICING ===
+  {
+    id: 'create_product',
+    name: 'Create Product',
+    description: 'Create a new product',
+    category: 'action',
+    parameters: {
+      name: { type: 'string', required: true, description: 'Product name' },
+      description: { type: 'string', required: false, description: 'Product description' },
+      metadata: { type: 'object', required: false, description: 'Product metadata' },
+      images: { type: 'array', required: false, description: 'Product images' }
+    },
+    requiredScopes: ['products']
+  },
+  {
+    id: 'create_price',
+    name: 'Create Price',
+    description: 'Create a price for a product',
+    category: 'action',
+    parameters: {
+      product: { type: 'string', required: true, description: 'Product ID' },
+      unit_amount: { type: 'number', required: true, description: 'Price in cents' },
+      currency: { type: 'string', required: true, description: 'Currency code' },
+      recurring: { type: 'object', required: false, description: 'Recurring billing settings' },
+      metadata: { type: 'object', required: false, description: 'Price metadata' }
+    },
+    requiredScopes: ['products']
+  },
+  
+  // === TRIGGERS ===
+  {
+    id: 'payment_succeeded',
+    name: 'Payment Succeeded',
+    description: 'Trigger when payment is successful',
+    category: 'trigger',
+    parameters: {
+      amount_filter: { type: 'number', required: false, description: 'Filter by minimum amount' }
+    },
+    requiredScopes: ['payments']
+  },
+  {
+    id: 'subscription_created',
+    name: 'Subscription Created',
+    description: 'Trigger when new subscription is created',
+    category: 'trigger',
+    parameters: {},
+    requiredScopes: ['subscriptions']
+  }
+];
+
+// ===== MAILCHIMP - COMPLETE FUNCTION SET (EMAIL MARKETING) =====
+const MAILCHIMP_FUNCTIONS: AppFunction[] = [
+  // === LIST MANAGEMENT ===
+  {
+    id: 'add_subscriber',
+    name: 'Add Subscriber',
+    description: 'Add subscriber to mailing list',
+    category: 'action',
+    parameters: {
+      list_id: { type: 'string', required: true, description: 'Mailing list ID' },
+      email_address: { type: 'string', required: true, description: 'Subscriber email' },
+      status: { type: 'string', required: false, description: 'Subscription status', options: ['subscribed', 'unsubscribed', 'cleaned', 'pending'], default: 'subscribed' },
+      merge_fields: { type: 'object', required: false, description: 'Subscriber merge fields (FNAME, LNAME, etc.)' },
+      interests: { type: 'object', required: false, description: 'Subscriber interests' },
+      tags: { type: 'array', required: false, description: 'Subscriber tags' }
+    },
+    requiredScopes: ['lists:write']
+  },
+  {
+    id: 'update_subscriber',
+    name: 'Update Subscriber',
+    description: 'Update subscriber information',
+    category: 'action',
+    parameters: {
+      list_id: { type: 'string', required: true, description: 'Mailing list ID' },
+      subscriber_hash: { type: 'string', required: true, description: 'Subscriber hash (MD5 of email)' },
+      email_address: { type: 'string', required: false, description: 'New email address' },
+      status: { type: 'string', required: false, description: 'Subscription status' },
+      merge_fields: { type: 'object', required: false, description: 'Updated merge fields' },
+      interests: { type: 'object', required: false, description: 'Updated interests' }
+    },
+    requiredScopes: ['lists:write']
+  },
+  {
+    id: 'remove_subscriber',
+    name: 'Remove Subscriber',
+    description: 'Remove subscriber from list',
+    category: 'action',
+    parameters: {
+      list_id: { type: 'string', required: true, description: 'Mailing list ID' },
+      subscriber_hash: { type: 'string', required: true, description: 'Subscriber hash' }
+    },
+    requiredScopes: ['lists:write']
+  },
+  {
+    id: 'get_subscribers',
+    name: 'Get Subscribers',
+    description: 'Retrieve list subscribers',
+    category: 'both',
+    parameters: {
+      list_id: { type: 'string', required: true, description: 'Mailing list ID' },
+      status: { type: 'string', required: false, description: 'Filter by status' },
+      count: { type: 'number', required: false, description: 'Number of subscribers', default: 10 },
+      offset: { type: 'number', required: false, description: 'Offset for pagination', default: 0 }
+    },
+    requiredScopes: ['lists:read']
+  },
+  
+  // === CAMPAIGN MANAGEMENT ===
+  {
+    id: 'create_campaign',
+    name: 'Create Campaign',
+    description: 'Create email campaign',
+    category: 'action',
+    parameters: {
+      type: { type: 'string', required: true, description: 'Campaign type', options: ['regular', 'plaintext', 'absplit', 'rss', 'variate'] },
+      recipients: { type: 'object', required: true, description: 'Campaign recipients (list_id)' },
+      settings: { type: 'object', required: true, description: 'Campaign settings (subject_line, from_name, reply_to)' }
+    },
+    requiredScopes: ['campaigns:write']
+  },
+  {
+    id: 'update_campaign_content',
+    name: 'Update Campaign Content',
+    description: 'Update campaign email content',
+    category: 'action',
+    parameters: {
+      campaign_id: { type: 'string', required: true, description: 'Campaign ID' },
+      html: { type: 'string', required: false, description: 'HTML content' },
+      plain_text: { type: 'string', required: false, description: 'Plain text content' },
+      template: { type: 'object', required: false, description: 'Template settings' }
+    },
+    requiredScopes: ['campaigns:write']
+  },
+  {
+    id: 'send_campaign',
+    name: 'Send Campaign',
+    description: 'Send email campaign',
+    category: 'action',
+    parameters: {
+      campaign_id: { type: 'string', required: true, description: 'Campaign ID to send' }
+    },
+    requiredScopes: ['campaigns:write']
+  },
+  {
+    id: 'schedule_campaign',
+    name: 'Schedule Campaign',
+    description: 'Schedule campaign for later sending',
+    category: 'action',
+    parameters: {
+      campaign_id: { type: 'string', required: true, description: 'Campaign ID' },
+      schedule_time: { type: 'string', required: true, description: 'Schedule time (ISO format)' },
+      timewarp: { type: 'boolean', required: false, description: 'Use Timewarp feature', default: false }
+    },
+    requiredScopes: ['campaigns:write']
+  },
+  {
+    id: 'get_campaign_reports',
+    name: 'Get Campaign Reports',
+    description: 'Get campaign performance reports',
+    category: 'both',
+    parameters: {
+      campaign_id: { type: 'string', required: true, description: 'Campaign ID' },
+      fields: { type: 'array', required: false, description: 'Specific fields to retrieve' }
+    },
+    requiredScopes: ['campaigns:read']
+  },
+  
+  // === AUTOMATION ===
+  {
+    id: 'create_automation',
+    name: 'Create Automation',
+    description: 'Create email automation workflow',
+    category: 'action',
+    parameters: {
+      recipients: { type: 'object', required: true, description: 'Automation recipients' },
+      settings: { type: 'object', required: true, description: 'Automation settings' },
+      tracking: { type: 'object', required: false, description: 'Tracking settings' }
+    },
+    requiredScopes: ['automations:write']
+  },
+  {
+    id: 'start_automation',
+    name: 'Start Automation',
+    description: 'Start automation workflow',
+    category: 'action',
+    parameters: {
+      workflow_id: { type: 'string', required: true, description: 'Automation workflow ID' }
+    },
+    requiredScopes: ['automations:write']
+  },
+  
+  // === TRIGGERS ===
+  {
+    id: 'subscriber_added',
+    name: 'Subscriber Added',
+    description: 'Trigger when new subscriber is added',
+    category: 'trigger',
+    parameters: {
+      list_id: { type: 'string', required: false, description: 'Monitor specific list' }
+    },
+    requiredScopes: ['lists:read']
+  }
+];
+
+// ===== TWILIO - COMPLETE FUNCTION SET (COMMUNICATIONS) =====
+const TWILIO_FUNCTIONS: AppFunction[] = [
+  // === SMS MESSAGING ===
+  {
+    id: 'send_sms',
+    name: 'Send SMS',
+    description: 'Send SMS message',
+    category: 'action',
+    parameters: {
+      to: { type: 'string', required: true, description: 'Recipient phone number (+1234567890)' },
+      from: { type: 'string', required: true, description: 'Twilio phone number' },
+      body: { type: 'string', required: true, description: 'Message content' },
+      media_url: { type: 'array', required: false, description: 'Media URLs for MMS' },
+      status_callback: { type: 'string', required: false, description: 'Status callback URL' }
+    },
+    requiredScopes: ['messages']
+  },
+  {
+    id: 'get_message_status',
+    name: 'Get Message Status',
+    description: 'Check SMS delivery status',
+    category: 'both',
+    parameters: {
+      message_sid: { type: 'string', required: true, description: 'Message SID' }
+    },
+    requiredScopes: ['messages']
+  },
+  {
+    id: 'list_messages',
+    name: 'List Messages',
+    description: 'Retrieve sent/received messages',
+    category: 'both',
+    parameters: {
+      to: { type: 'string', required: false, description: 'Filter by recipient' },
+      from: { type: 'string', required: false, description: 'Filter by sender' },
+      date_sent: { type: 'string', required: false, description: 'Filter by date sent' },
+      limit: { type: 'number', required: false, description: 'Number of messages', default: 20 }
+    },
+    requiredScopes: ['messages']
+  },
+  
+  // === VOICE CALLS ===
+  {
+    id: 'make_call',
+    name: 'Make Call',
+    description: 'Initiate voice call',
+    category: 'action',
+    parameters: {
+      to: { type: 'string', required: true, description: 'Recipient phone number' },
+      from: { type: 'string', required: true, description: 'Twilio phone number' },
+      url: { type: 'string', required: false, description: 'TwiML URL for call instructions' },
+      twiml: { type: 'string', required: false, description: 'TwiML instructions' },
+      timeout: { type: 'number', required: false, description: 'Ring timeout in seconds' },
+      record: { type: 'boolean', required: false, description: 'Record the call', default: false }
+    },
+    requiredScopes: ['calls']
+  },
+  {
+    id: 'get_call_details',
+    name: 'Get Call Details',
+    description: 'Retrieve call information',
+    category: 'both',
+    parameters: {
+      call_sid: { type: 'string', required: true, description: 'Call SID' }
+    },
+    requiredScopes: ['calls']
+  },
+  {
+    id: 'list_calls',
+    name: 'List Calls',
+    description: 'Retrieve call history',
+    category: 'both',
+    parameters: {
+      to: { type: 'string', required: false, description: 'Filter by recipient' },
+      from: { type: 'string', required: false, description: 'Filter by caller' },
+      status: { type: 'string', required: false, description: 'Filter by call status' },
+      limit: { type: 'number', required: false, description: 'Number of calls', default: 20 }
+    },
+    requiredScopes: ['calls']
+  },
+  
+  // === PHONE NUMBERS ===
+  {
+    id: 'search_phone_numbers',
+    name: 'Search Phone Numbers',
+    description: 'Search available phone numbers',
+    category: 'both',
+    parameters: {
+      country_code: { type: 'string', required: true, description: 'Country code (US, CA, etc.)' },
+      area_code: { type: 'string', required: false, description: 'Area code filter' },
+      contains: { type: 'string', required: false, description: 'Number pattern to match' },
+      sms_enabled: { type: 'boolean', required: false, description: 'SMS capability required' },
+      voice_enabled: { type: 'boolean', required: false, description: 'Voice capability required' }
+    },
+    requiredScopes: ['phone_numbers']
+  },
+  {
+    id: 'buy_phone_number',
+    name: 'Buy Phone Number',
+    description: 'Purchase phone number',
+    category: 'action',
+    parameters: {
+      phone_number: { type: 'string', required: true, description: 'Phone number to purchase' },
+      friendly_name: { type: 'string', required: false, description: 'Friendly name for number' },
+      sms_url: { type: 'string', required: false, description: 'SMS webhook URL' },
+      voice_url: { type: 'string', required: false, description: 'Voice webhook URL' }
+    },
+    requiredScopes: ['phone_numbers']
+  },
+  
+  // === VERIFY API ===
+  {
+    id: 'send_verification',
+    name: 'Send Verification',
+    description: 'Send verification code',
+    category: 'action',
+    parameters: {
+      to: { type: 'string', required: true, description: 'Phone number to verify' },
+      channel: { type: 'string', required: false, description: 'Verification channel', options: ['sms', 'call'], default: 'sms' },
+      custom_message: { type: 'string', required: false, description: 'Custom verification message' }
+    },
+    requiredScopes: ['verify']
+  },
+  {
+    id: 'check_verification',
+    name: 'Check Verification',
+    description: 'Verify submitted code',
+    category: 'action',
+    parameters: {
+      to: { type: 'string', required: true, description: 'Phone number being verified' },
+      code: { type: 'string', required: true, description: 'Verification code' }
+    },
+    requiredScopes: ['verify']
+  },
+  
+  // === TRIGGERS ===
+  {
+    id: 'message_received',
+    name: 'Message Received',
+    description: 'Trigger when SMS is received',
+    category: 'trigger',
+    parameters: {
+      from_number: { type: 'string', required: false, description: 'Filter by sender number' }
+    },
+    requiredScopes: ['messages']
+  },
+  {
+    id: 'call_completed',
+    name: 'Call Completed',
+    description: 'Trigger when call ends',
+    category: 'trigger',
+    parameters: {
+      call_status: { type: 'string', required: false, description: 'Filter by call status' }
+    },
+    requiredScopes: ['calls']
+  }
+];
+
+// ===== ADDITIONAL BUSINESS-CRITICAL APPS (Imported from batch2) =====
+// AIRTABLE_FUNCTIONS, DROPBOX_FUNCTIONS, GITHUB_FUNCTIONS are imported above
+
+// ===== PLACEHOLDER CONSTANTS FOR REMAINING APPS =====
+const GITLAB_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'create_issue',
+    name: 'Create Issue',
+    description: 'Create a new GitLab issue',
+    category: 'action',
+    parameters: {
+      project_id: { type: 'string', required: true, description: 'Project ID' },
+      title: { type: 'string', required: true, description: 'Issue title' },
+      description: { type: 'string', required: false, description: 'Issue description' },
+      assignee_ids: { type: 'array', required: false, description: 'Assignee IDs' },
+      labels: { type: 'string', required: false, description: 'Issue labels' }
+    },
+    requiredScopes: ['api']
+  },
+  {
+    id: 'create_merge_request',
+    name: 'Create Merge Request',
+    description: 'Create a new merge request',
+    category: 'action',
+    parameters: {
+      project_id: { type: 'string', required: true, description: 'Project ID' },
+      source_branch: { type: 'string', required: true, description: 'Source branch' },
+      target_branch: { type: 'string', required: true, description: 'Target branch' },
+      title: { type: 'string', required: true, description: 'MR title' },
+      description: { type: 'string', required: false, description: 'MR description' }
+    },
+    requiredScopes: ['api']
+  },
+  {
+    id: 'list_projects',
+    name: 'List Projects',
+    description: 'List GitLab projects',
+    category: 'both',
+    parameters: {
+      visibility: { type: 'string', required: false, description: 'Project visibility', options: ['private', 'internal', 'public'] },
+      owned: { type: 'boolean', required: false, description: 'Only owned projects' },
+      per_page: { type: 'number', required: false, description: 'Results per page', default: 20 }
+    },
+    requiredScopes: ['read_api']
+  }
+];
+
+const BITBUCKET_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'create_repository',
+    name: 'Create Repository',
+    description: 'Create a new Bitbucket repository',
+    category: 'action',
+    parameters: {
+      name: { type: 'string', required: true, description: 'Repository name' },
+      workspace: { type: 'string', required: true, description: 'Workspace name' },
+      is_private: { type: 'boolean', required: false, description: 'Private repository', default: true },
+      description: { type: 'string', required: false, description: 'Repository description' }
+    },
+    requiredScopes: ['repositories:write']
+  },
+  {
+    id: 'create_issue',
+    name: 'Create Issue',
+    description: 'Create a new issue',
+    category: 'action',
+    parameters: {
+      workspace: { type: 'string', required: true, description: 'Workspace name' },
+      repo_slug: { type: 'string', required: true, description: 'Repository slug' },
+      title: { type: 'string', required: true, description: 'Issue title' },
+      content: { type: 'string', required: false, description: 'Issue content' },
+      kind: { type: 'string', required: false, description: 'Issue kind', options: ['bug', 'enhancement', 'proposal', 'task'] }
+    },
+    requiredScopes: ['issues:write']
+  }
+];
+
+const DISCORD_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'send_message',
+    name: 'Send Message',
+    description: 'Send message to Discord channel',
+    category: 'action',
+    parameters: {
+      channel_id: { type: 'string', required: true, description: 'Channel ID' },
+      content: { type: 'string', required: true, description: 'Message content' },
+      embeds: { type: 'array', required: false, description: 'Message embeds' },
+      tts: { type: 'boolean', required: false, description: 'Text-to-speech', default: false }
+    },
+    requiredScopes: ['bot']
+  },
+  {
+    id: 'create_channel',
+    name: 'Create Channel',
+    description: 'Create a new Discord channel',
+    category: 'action',
+    parameters: {
+      guild_id: { type: 'string', required: true, description: 'Guild (server) ID' },
+      name: { type: 'string', required: true, description: 'Channel name' },
+      type: { type: 'number', required: false, description: 'Channel type', default: 0 },
+      topic: { type: 'string', required: false, description: 'Channel topic' }
+    },
+    requiredScopes: ['bot']
+  }
+];
+
+const TELEGRAM_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'send_message',
+    name: 'Send Message',
+    description: 'Send message via Telegram bot',
+    category: 'action',
+    parameters: {
+      chat_id: { type: 'string', required: true, description: 'Chat ID' },
+      text: { type: 'string', required: true, description: 'Message text' },
+      parse_mode: { type: 'string', required: false, description: 'Parse mode', options: ['Markdown', 'HTML'] },
+      disable_web_page_preview: { type: 'boolean', required: false, description: 'Disable link previews', default: false }
+    },
+    requiredScopes: ['bot']
+  },
+  {
+    id: 'send_photo',
+    name: 'Send Photo',
+    description: 'Send photo via Telegram bot',
+    category: 'action',
+    parameters: {
+      chat_id: { type: 'string', required: true, description: 'Chat ID' },
+      photo: { type: 'string', required: true, description: 'Photo URL or file_id' },
+      caption: { type: 'string', required: false, description: 'Photo caption' }
+    },
+    requiredScopes: ['bot']
+  }
+];
+
+const WHATSAPP_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'send_message',
+    name: 'Send Message',
+    description: 'Send WhatsApp Business message',
+    category: 'action',
+    parameters: {
+      to: { type: 'string', required: true, description: 'Recipient phone number' },
+      type: { type: 'string', required: true, description: 'Message type', options: ['text', 'template', 'media'] },
+      text: { type: 'string', required: false, description: 'Message text' },
+      template: { type: 'object', required: false, description: 'Template message' }
+    },
+    requiredScopes: ['whatsapp_business_messaging']
+  }
+];
+
+const FACEBOOK_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'create_post',
+    name: 'Create Post',
+    description: 'Create Facebook page post',
+    category: 'action',
+    parameters: {
+      page_id: { type: 'string', required: true, description: 'Facebook page ID' },
+      message: { type: 'string', required: true, description: 'Post message' },
+      link: { type: 'string', required: false, description: 'Link to share' },
+      published: { type: 'boolean', required: false, description: 'Publish immediately', default: true }
+    },
+    requiredScopes: ['pages_manage_posts']
+  },
+  {
+    id: 'get_page_insights',
+    name: 'Get Page Insights',
+    description: 'Get Facebook page analytics',
+    category: 'both',
+    parameters: {
+      page_id: { type: 'string', required: true, description: 'Facebook page ID' },
+      metric: { type: 'array', required: true, description: 'Metrics to retrieve' },
+      period: { type: 'string', required: false, description: 'Time period', options: ['day', 'week', 'days_28'] }
+    },
+    requiredScopes: ['pages_read_engagement']
+  }
+];
+
+const INSTAGRAM_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'create_media',
+    name: 'Create Media',
+    description: 'Create Instagram media post',
+    category: 'action',
+    parameters: {
+      image_url: { type: 'string', required: true, description: 'Image URL' },
+      caption: { type: 'string', required: false, description: 'Post caption' },
+      location_id: { type: 'string', required: false, description: 'Location ID' }
+    },
+    requiredScopes: ['instagram_basic', 'instagram_content_publish']
+  },
+  {
+    id: 'get_media_insights',
+    name: 'Get Media Insights',
+    description: 'Get Instagram post analytics',
+    category: 'both',
+    parameters: {
+      media_id: { type: 'string', required: true, description: 'Media ID' },
+      metric: { type: 'array', required: true, description: 'Metrics to retrieve' }
+    },
+    requiredScopes: ['instagram_basic']
+  }
+];
+
+const TWITTER_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'create_tweet',
+    name: 'Create Tweet',
+    description: 'Post a new tweet',
+    category: 'action',
+    parameters: {
+      text: { type: 'string', required: true, description: 'Tweet text' },
+      media_ids: { type: 'array', required: false, description: 'Media attachment IDs' },
+      reply_to: { type: 'string', required: false, description: 'Tweet ID to reply to' }
+    },
+    requiredScopes: ['tweet.write']
+  },
+  {
+    id: 'search_tweets',
+    name: 'Search Tweets',
+    description: 'Search for tweets',
+    category: 'both',
+    parameters: {
+      query: { type: 'string', required: true, description: 'Search query' },
+      max_results: { type: 'number', required: false, description: 'Maximum results', default: 10 }
+    },
+    requiredScopes: ['tweet.read']
+  }
+];
+
+const LINKEDIN_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'create_post',
+    name: 'Create Post',
+    description: 'Create LinkedIn post',
+    category: 'action',
+    parameters: {
+      author: { type: 'string', required: true, description: 'Author URN' },
+      commentary: { type: 'string', required: true, description: 'Post text' },
+      visibility: { type: 'string', required: false, description: 'Post visibility', options: ['PUBLIC', 'CONNECTIONS'], default: 'PUBLIC' }
+    },
+    requiredScopes: ['w_member_social']
+  },
+  {
+    id: 'get_profile',
+    name: 'Get Profile',
+    description: 'Get LinkedIn profile information',
+    category: 'both',
+    parameters: {
+      person_id: { type: 'string', required: false, description: 'Person ID (current user if not specified)' }
+    },
+    requiredScopes: ['r_liteprofile']
+  }
+];
+
+const YOUTUBE_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'upload_video',
+    name: 'Upload Video',
+    description: 'Upload video to YouTube',
+    category: 'action',
+    parameters: {
+      title: { type: 'string', required: true, description: 'Video title' },
+      description: { type: 'string', required: false, description: 'Video description' },
+      tags: { type: 'array', required: false, description: 'Video tags' },
+      privacy_status: { type: 'string', required: false, description: 'Privacy status', options: ['private', 'public', 'unlisted'], default: 'private' },
+      video_file: { type: 'string', required: true, description: 'Video file path or URL' }
+    },
+    requiredScopes: ['https://www.googleapis.com/auth/youtube.upload']
+  },
+  {
+    id: 'get_channel_analytics',
+    name: 'Get Channel Analytics',
+    description: 'Get YouTube channel analytics',
+    category: 'both',
+    parameters: {
+      channel_id: { type: 'string', required: false, description: 'Channel ID (current user channel if not specified)' },
+      metrics: { type: 'string', required: true, description: 'Metrics to retrieve' },
+      start_date: { type: 'string', required: true, description: 'Start date (YYYY-MM-DD)' },
+      end_date: { type: 'string', required: true, description: 'End date (YYYY-MM-DD)' }
+    },
+    requiredScopes: ['https://www.googleapis.com/auth/youtube.readonly']
+  }
+];
+
+const VIMEO_FUNCTIONS: AppFunction[] = [
+  {
+    id: 'upload_video',
+    name: 'Upload Video',
+    description: 'Upload video to Vimeo',
+    category: 'action',
+    parameters: {
+      name: { type: 'string', required: true, description: 'Video name' },
+      description: { type: 'string', required: false, description: 'Video description' },
+      privacy: { type: 'string', required: false, description: 'Privacy setting', options: ['anybody', 'nobody', 'contacts', 'password'], default: 'anybody' },
+      video_file: { type: 'string', required: true, description: 'Video file path or URL' }
+    },
+    requiredScopes: ['upload']
+  },
+  {
+    id: 'get_video_stats',
+    name: 'Get Video Stats',
+    description: 'Get Vimeo video statistics',
+    category: 'both',
+    parameters: {
+      video_id: { type: 'string', required: true, description: 'Video ID' }
+    },
+    requiredScopes: ['stats']
   }
 ];
 
