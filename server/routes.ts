@@ -564,6 +564,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== FUNCTION LIBRARY ROUTES =====
+  
+  // Get functions for a specific application
+  app.get('/api/functions/:appName', async (req, res) => {
+    try {
+      const { appName } = req.params;
+      
+      if (!appName) {
+        return res.status(400).json({
+          success: false,
+          error: 'App name is required'
+        });
+      }
+
+      const functions = getAppFunctions(appName);
+      
+      res.json({
+        success: true,
+        data: {
+          appName,
+          functions,
+          totalFunctions: functions.length
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Search functions across applications
+  app.get('/api/functions/search/:query', async (req, res) => {
+    try {
+      const { query } = req.params;
+      const { apps } = req.query;
+      
+      if (!query) {
+        return res.status(400).json({
+          success: false,
+          error: 'Search query is required'
+        });
+      }
+
+      const appNames = apps ? (apps as string).split(',') : undefined;
+      const searchResults: Array<any> = [];
+      
+      // If specific apps requested, search only those
+      const appsToSearch = appNames || Object.keys(getComprehensiveAppFunctions());
+      
+      appsToSearch.forEach(appName => {
+        const functions = getAppFunctions(appName);
+        functions.forEach(func => {
+          const matchesName = func.name.toLowerCase().includes(query.toLowerCase());
+          const matchesDescription = func.description.toLowerCase().includes(query.toLowerCase());
+          const matchesId = func.id.toLowerCase().includes(query.toLowerCase());
+          
+          if (matchesName || matchesDescription || matchesId) {
+            searchResults.push({ ...func, appName });
+          }
+        });
+      });
+
+      // Sort by relevance
+      searchResults.sort((a, b) => {
+        const aNameMatch = a.name.toLowerCase().includes(query.toLowerCase());
+        const bNameMatch = b.name.toLowerCase().includes(query.toLowerCase());
+        
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+        
+        return a.name.localeCompare(b.name);
+      });
+      
+      res.json({
+        success: true,
+        data: {
+          query,
+          results: searchResults,
+          totalResults: searchResults.length
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // Get functions by category
+  app.get('/api/functions/category/:category', async (req, res) => {
+    try {
+      const { category } = req.params;
+      const { apps } = req.query;
+      
+      if (!['action', 'trigger', 'both'].includes(category)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category must be action, trigger, or both'
+        });
+      }
+
+      const appNames = apps ? (apps as string).split(',') : undefined;
+      const results: Array<any> = [];
+      
+      const appsToSearch = appNames || Object.keys(getComprehensiveAppFunctions());
+      
+      appsToSearch.forEach(appName => {
+        const functions = getAppFunctions(appName);
+        functions.forEach(func => {
+          if (func.category === category || func.category === 'both') {
+            results.push({ ...func, appName });
+          }
+        });
+      });
+
+      results.sort((a, b) => a.name.localeCompare(b.name));
+      
+      res.json({
+        success: true,
+        data: {
+          category,
+          results,
+          totalResults: results.length
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
   // ===== INTEGRATION ROUTES =====
   
   // Test integration connection
