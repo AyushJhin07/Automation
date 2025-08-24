@@ -720,7 +720,7 @@ export function getComprehensiveAppFunctions(appName: string): AppFunction[] {
 }
 
 // ===== GOOGLE CALENDAR - COMPLETE FUNCTION SET =====
-const GOOGLE_CALENDAR_FUNCTIONS: AppFunction[] = [
+export const GOOGLE_CALENDAR_FUNCTIONS: AppFunction[] = [
   // === EVENT MANAGEMENT ===
   {
     id: 'create_event',
@@ -852,7 +852,7 @@ const GOOGLE_CALENDAR_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== GOOGLE DRIVE - COMPLETE FUNCTION SET =====
-const GOOGLE_DRIVE_FUNCTIONS: AppFunction[] = [
+export const GOOGLE_DRIVE_FUNCTIONS: AppFunction[] = [
   // === FILE MANAGEMENT ===
   {
     id: 'upload_file',
@@ -1021,7 +1021,7 @@ const GOOGLE_DRIVE_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== SLACK - COMPLETE FUNCTION SET =====
-const SLACK_FUNCTIONS: AppFunction[] = [
+export const SLACK_FUNCTIONS: AppFunction[] = [
   // === MESSAGING ===
   {
     id: 'send_message',
@@ -1237,7 +1237,7 @@ const SLACK_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== NOTION - COMPLETE FUNCTION SET =====
-const NOTION_FUNCTIONS: AppFunction[] = [
+export const NOTION_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_page',
     name: 'Create Page',
@@ -1302,7 +1302,7 @@ const NOTION_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== TRELLO - COMPLETE FUNCTION SET =====
-const TRELLO_FUNCTIONS: AppFunction[] = [
+export const TRELLO_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_card',
     name: 'Create Card',
@@ -1372,7 +1372,7 @@ const TRELLO_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== ASANA - COMPLETE FUNCTION SET =====
-const ASANA_FUNCTIONS: AppFunction[] = [
+export const ASANA_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_task',
     name: 'Create Task',
@@ -1432,7 +1432,7 @@ const ASANA_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== HUBSPOT - COMPLETE FUNCTION SET =====
-const HUBSPOT_FUNCTIONS: AppFunction[] = [
+export const HUBSPOT_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_contact',
     name: 'Create Contact',
@@ -1504,7 +1504,7 @@ const HUBSPOT_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== SALESFORCE - COMPLETE FUNCTION SET =====
-const SALESFORCE_FUNCTIONS: AppFunction[] = [
+export const SALESFORCE_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_lead',
     name: 'Create Lead',
@@ -1576,7 +1576,7 @@ const SALESFORCE_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== ZOOM - COMPLETE FUNCTION SET =====
-const ZOOM_FUNCTIONS: AppFunction[] = [
+export const ZOOM_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_meeting',
     name: 'Create Meeting',
@@ -1633,7 +1633,7 @@ const ZOOM_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== MICROSOFT TEAMS - COMPLETE FUNCTION SET =====
-const MICROSOFT_TEAMS_FUNCTIONS: AppFunction[] = [
+export const MICROSOFT_TEAMS_FUNCTIONS: AppFunction[] = [
   {
     id: 'send_message',
     name: 'Send Message',
@@ -1674,7 +1674,7 @@ const MICROSOFT_TEAMS_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== JIRA - COMPLETE FUNCTION SET =====
-const JIRA_FUNCTIONS: AppFunction[] = [
+export const JIRA_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_issue',
     name: 'Create Issue',
@@ -1743,7 +1743,7 @@ const JIRA_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== SHOPIFY - COMPLETE FUNCTION SET (E-COMMERCE) =====
-const SHOPIFY_FUNCTIONS: AppFunction[] = [
+export const SHOPIFY_FUNCTIONS: AppFunction[] = [
   // === PRODUCT MANAGEMENT ===
   {
     id: 'create_product',
@@ -1912,7 +1912,7 @@ const SHOPIFY_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== STRIPE - COMPLETE FUNCTION SET (PAYMENTS) =====
-const STRIPE_FUNCTIONS: AppFunction[] = [
+export const STRIPE_FUNCTIONS: AppFunction[] = [
   // === PAYMENT PROCESSING ===
   {
     id: 'create_payment_intent',
@@ -2085,7 +2085,7 @@ const STRIPE_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== MAILCHIMP - COMPLETE FUNCTION SET (EMAIL MARKETING) =====
-const MAILCHIMP_FUNCTIONS: AppFunction[] = [
+export const MAILCHIMP_FUNCTIONS: AppFunction[] = [
   // === LIST MANAGEMENT ===
   {
     id: 'add_subscriber',
@@ -2240,7 +2240,7 @@ const MAILCHIMP_FUNCTIONS: AppFunction[] = [
 ];
 
 // ===== TWILIO - COMPLETE FUNCTION SET (COMMUNICATIONS) =====
-const TWILIO_FUNCTIONS: AppFunction[] = [
+export const TWILIO_FUNCTIONS: AppFunction[] = [
   // === SMS MESSAGING ===
   {
     id: 'send_sms',
@@ -2401,7 +2401,7 @@ const TWILIO_FUNCTIONS: AppFunction[] = [
 // AIRTABLE_FUNCTIONS, DROPBOX_FUNCTIONS, GITHUB_FUNCTIONS are imported above
 
 // ===== PLACEHOLDER CONSTANTS FOR REMAINING APPS =====
-const GITLAB_FUNCTIONS: AppFunction[] = [
+export const GITLAB_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_issue',
     name: 'Create Issue',
@@ -2444,7 +2444,7 @@ const GITLAB_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const BITBUCKET_FUNCTIONS: AppFunction[] = [
+export const BITBUCKET_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_repository',
     name: 'Create Repository',
@@ -2474,7 +2474,7 @@ const BITBUCKET_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const DISCORD_FUNCTIONS: AppFunction[] = [
+export const DISCORD_FUNCTIONS: AppFunction[] = [
   {
     id: 'send_message',
     name: 'Send Message',
@@ -2503,7 +2503,7 @@ const DISCORD_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const TELEGRAM_FUNCTIONS: AppFunction[] = [
+export const TELEGRAM_FUNCTIONS: AppFunction[] = [
   {
     id: 'send_message',
     name: 'Send Message',
@@ -2531,7 +2531,7 @@ const TELEGRAM_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const WHATSAPP_FUNCTIONS: AppFunction[] = [
+export const WHATSAPP_FUNCTIONS: AppFunction[] = [
   {
     id: 'send_message',
     name: 'Send Message',
@@ -2547,7 +2547,7 @@ const WHATSAPP_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const FACEBOOK_FUNCTIONS: AppFunction[] = [
+export const FACEBOOK_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_post',
     name: 'Create Post',
@@ -2575,7 +2575,7 @@ const FACEBOOK_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const INSTAGRAM_FUNCTIONS: AppFunction[] = [
+export const INSTAGRAM_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_media',
     name: 'Create Media',
@@ -2601,7 +2601,7 @@ const INSTAGRAM_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const TWITTER_FUNCTIONS: AppFunction[] = [
+export const TWITTER_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_tweet',
     name: 'Create Tweet',
@@ -2627,7 +2627,7 @@ const TWITTER_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const LINKEDIN_FUNCTIONS: AppFunction[] = [
+export const LINKEDIN_FUNCTIONS: AppFunction[] = [
   {
     id: 'create_post',
     name: 'Create Post',
@@ -2652,7 +2652,7 @@ const LINKEDIN_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const YOUTUBE_FUNCTIONS: AppFunction[] = [
+export const YOUTUBE_FUNCTIONS: AppFunction[] = [
   {
     id: 'upload_video',
     name: 'Upload Video',
@@ -2682,7 +2682,7 @@ const YOUTUBE_FUNCTIONS: AppFunction[] = [
   }
 ];
 
-const VIMEO_FUNCTIONS: AppFunction[] = [
+export const VIMEO_FUNCTIONS: AppFunction[] = [
   {
     id: 'upload_video',
     name: 'Upload Video',

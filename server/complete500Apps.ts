@@ -370,16 +370,8 @@ export function getComprehensiveAppFunctionsDetailed(appName: string): AppFuncti
 }
 
 // Legacy function for backward compatibility
-export function getAppFunctions(appName: string): { id: string; name: string; description: string; category: string }[] {
-  const comprehensiveFunctions = getComprehensiveAppFunctions(appName);
-  
-  // Convert to simple format
-  return comprehensiveFunctions.map(func => ({
-    id: func.id,
-    name: func.name,
-    description: func.description,
-    category: func.category
-  }));
+export function getAppFunctions(appName: string) {
+  return getComprehensiveAppFunctions(appName);
 }
 
 function getTriggersForApp(appName: string): any[] {

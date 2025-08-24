@@ -104,7 +104,7 @@ export const createError = (message: string, code?: string, statusCode?: number)
 // Helper function to safely extract error message
 export const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
-    return getErrorMessage(error);
+    return error.message;
   }
   if (typeof error === 'string') {
     return error;

@@ -17,6 +17,7 @@ import { usageMeteringService } from "./services/UsageMeteringService";
 import { securityService } from "./services/SecurityService";
 import { integrationManager } from "./integrations/IntegrationManager";
 import { oauthManager } from "./oauth/OAuthManager";
+import { endToEndTester } from "./testing/EndToEndTester";
 
 // Middleware
 import { 
@@ -854,6 +855,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: {
           appName,
           removed
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error)
+      });
+    }
+  });
+
+  // ===== TESTING ROUTES =====
+  
+  // Run end-to-end tests
+  app.get('/api/test/e2e', async (req, res) => {
+    try {
+      console.log('🧪 Starting end-to-end tests via API...');
+      const results = await endToEndTester.runAllTests();
+      const report = endToEndTester.generateReport();
+      
+      res.json({
+        success: true,
+        data: {
+          summary: results,
+          report,
+          timestamp: new Date().toISOString()
         }
       });
     } catch (error) {
