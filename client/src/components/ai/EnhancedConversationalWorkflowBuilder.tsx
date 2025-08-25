@@ -95,7 +95,7 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-lg p-4 border border-gray-100">
       <h3 className="text-gray-900 font-semibold mb-3 flex items-center gap-2">
         <Workflow className="w-4 h-4 text-blue-600" />
         Generated Workflow Structure
@@ -546,9 +546,9 @@ Need help? I can guide you through each step!`
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="flex flex-col h-screen bg-slate-50">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white/90 backdrop-blur-sm shadow-sm">
+      <div className="border-b border-gray-100 bg-white/95 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">

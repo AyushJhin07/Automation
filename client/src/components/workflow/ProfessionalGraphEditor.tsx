@@ -670,11 +670,11 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
   // -------- Render --------
   return (
-    <div className="w-80 bg-slate-900 border-r border-slate-700 h-full flex flex-col">
+    <div className="w-80 bg-white border-r border-gray-100 h-full flex flex-col">
       {/* Sticky top: title + search + category chips */}
-      <div className="p-4 sticky top-0 bg-slate-900 z-10 border-b border-slate-800">
-        <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/15 text-blue-400">+</span>
+      <div className="p-4 sticky top-0 bg-white z-10 border-b border-gray-100">
+        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 text-blue-600">+</span>
           Add Nodes
         </h2>
 
@@ -684,12 +684,12 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
             placeholder="Search apps or nodes…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-3 bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-400"
+            className="pl-3 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-500"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               aria-label="Clear"
             >
               <X className="w-4 h-4" />
@@ -710,7 +710,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                   "shrink-0 text-xs whitespace-nowrap",
                   selectedCategory === cat
                     ? "bg-blue-600 text-white"
-                    : "bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700"
+                    : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
                 )}
               >
                 {cat === "all" ? "All" : cat}
@@ -721,7 +721,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
         {/* Small count */}
         {!loading && (
-          <div className="text-xs text-slate-400 mt-2">
+          <div className="text-xs text-gray-500 mt-2">
             {filteredNodes} of {totalNodes} nodes
             {search && <span className="ml-1">• Searching</span>}
           </div>
@@ -731,13 +731,13 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
       {/* Apps list */}
       <div className="flex-1 overflow-y-auto p-3">
         {loading ? (
-          <div className="text-slate-400 text-sm py-10 text-center">
-            <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <div className="text-gray-500 text-sm py-10 text-center">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             Loading applications…
           </div>
         ) : filteredAppList.length === 0 ? (
-          <div className="text-slate-400 text-sm py-10 text-center">
-            <div className="text-slate-500 mb-2">No results found</div>
+          <div className="text-gray-500 text-sm py-10 text-center">
+            <div className="text-gray-600 mb-2">No results found</div>
             <Button
               size="sm"
               variant="outline"
@@ -745,7 +745,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                 setSearchTerm("");
                 setSelectedCategory("all");
               }}
-              className="bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700"
+              className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
             >
               Clear filters
             </Button>
@@ -753,22 +753,22 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
         ) : (
           <Accordion type="single" collapsible className="space-y-2">
             {filteredAppList.map((app) => (
-              <AccordionItem key={app.appId} value={app.appId} className="border border-slate-700 rounded-xl bg-slate-800/60">
+              <AccordionItem key={app.appId} value={app.appId} className="border border-gray-200 rounded-xl bg-white shadow-sm">
                 <AccordionTrigger className="px-3 py-2 hover:no-underline">
                   <div className="flex items-center gap-3">
                     <BrandIcon appId={app.appId} appName={app.appName} appIcons={appIconsMap} />
                     <div className="flex flex-col text-left">
-                      <span className="text-slate-100 font-medium">{app.appName}</span>
-                      <span className="text-xs text-slate-400">{app.category}</span>
+                      <span className="text-gray-900 font-medium">{app.appName}</span>
+                      <span className="text-xs text-gray-500">{app.category}</span>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                       {app.triggers.length > 0 && (
-                        <Badge className="bg-emerald-500/15 text-emerald-300 border-emerald-500/20 text-[10px] px-1.5 py-0.5">
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0.5">
                           {app.triggers.length} trigger{app.triggers.length !== 1 ? 's' : ''}
                         </Badge>
                       )}
                       {app.actions.length > 0 && (
-                        <Badge className="bg-blue-500/15 text-blue-300 border-blue-500/20 text-[10px] px-1.5 py-0.5">
+                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0.5">
                           {app.actions.length} action{app.actions.length !== 1 ? 's' : ''}
                         </Badge>
                       )}
@@ -790,15 +790,15 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                           nodeType: t.nodeType, 
                           params: t.params || {} 
                         })}
-                        className="group text-left p-3 rounded-lg bg-slate-900/70 border border-slate-700 hover:bg-slate-800 transition-all duration-200 hover:border-emerald-500/50"
+                        className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-slate-100 text-sm font-medium truncate">{t.name}</div>
-                            {t.description && <div className="text-xs text-slate-400 mt-0.5 line-clamp-2 overflow-hidden">{t.description}</div>}
+                            <div className="text-gray-900 text-sm font-medium truncate">{t.name}</div>
+                            {t.description && <div className="text-xs text-gray-600 mt-0.5 line-clamp-2 overflow-hidden">{t.description}</div>}
                           </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 shrink-0">trigger</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">trigger</span>
                         </div>
                       </button>
                     ))}
@@ -814,7 +814,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                           nodeType: a.nodeType, 
                           params: a.params || {} 
                         })}
-                        className="group text-left p-3 rounded-lg bg-slate-900/70 border border-slate-700 hover:bg-slate-800 transition-all duration-200 hover:border-blue-500/50"
+                        className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300"
                       >
                         <div className="flex items-center gap-3">
                           <div className={clsx(
@@ -824,14 +824,14 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                               : "bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.7)]"
                           )} />
                           <div className="flex-1 min-w-0">
-                            <div className="text-slate-100 text-sm font-medium truncate">{a.name}</div>
-                            {a.description && <div className="text-xs text-slate-400 mt-0.5 line-clamp-2 overflow-hidden">{a.description}</div>}
+                            <div className="text-gray-900 text-sm font-medium truncate">{a.name}</div>
+                            {a.description && <div className="text-xs text-gray-600 mt-0.5 line-clamp-2 overflow-hidden">{a.description}</div>}
                           </div>
                           <span className={clsx(
                             "text-[10px] px-2 py-0.5 rounded border shrink-0",
                             a.kind === "transform"
-                              ? "bg-violet-500/15 text-violet-300 border-violet-500/20"
-                              : "bg-blue-500/15 text-blue-300 border-blue-500/20"
+                              ? "bg-violet-100 text-violet-700 border-violet-200"
+                              : "bg-blue-100 text-blue-700 border-blue-200"
                           )}>
                             {a.kind}
                           </span>
@@ -998,7 +998,7 @@ const GraphEditorContent = () => {
   }, [nodes, setNodes]);
   
   return (
-    <div className="flex h-screen bg-slate-900">
+    <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
       <NodeSidebar onAddNode={onAddNode} />
       
@@ -1065,24 +1065,24 @@ const GraphEditorContent = () => {
           edgeTypes={edgeTypes}
           fitView
           attributionPosition="bottom-left"
-          className="bg-slate-900"
+          className="bg-slate-50"
         >
           <Background 
-            color="#475569" 
+            color="#e2e8f0" 
             gap={20} 
             size={1}
-            style={{ backgroundColor: '#0f172a' }}
+            style={{ backgroundColor: '#f8fafc' }}
           />
           <Controls 
-            className="bg-slate-800 border-slate-700"
+            className="bg-white border-gray-200 shadow-sm"
             style={{ 
-              button: { backgroundColor: '#1e293b', borderColor: '#475569', color: '#f1f5f9' }
+              button: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#374151' }
             }}
           />
           <MiniMap 
-            className="bg-slate-800 border border-slate-700 rounded-lg"
+            className="bg-white border border-gray-200 rounded-lg shadow-sm"
             nodeColor="#3b82f6"
-            maskColor="rgba(15, 23, 42, 0.8)"
+            maskColor="rgba(248, 250, 252, 0.8)"
           />
           
           {/* Welcome message when empty */}
@@ -1122,14 +1122,14 @@ const GraphEditorContent = () => {
       
       {/* Node Properties Panel */}
       {selectedNode && (
-        <div className="w-80 bg-slate-900 border-l border-slate-700 p-4 overflow-y-auto">
+        <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">Node Properties</h3>
+            <h3 className="text-lg font-bold text-gray-900">Node Properties</h3>
             <Button
               size="sm"
               variant="ghost"
               onClick={() => setSelectedNode(null)}
-              className="text-slate-400 hover:text-white"
+              className="text-gray-400 hover:text-gray-600"
             >
               <X className="w-4 h-4" />
             </Button>
