@@ -546,17 +546,17 @@ Need help? I can guide you through each step!`
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm">
+      <div className="border-b border-gray-200 bg-white/90 backdrop-blur-sm shadow-sm">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
               <Brain className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">AI Workflow Builder</h1>
-              <p className="text-sm text-slate-400">Powered by Advanced LLM Technology</p>
+              <h1 className="text-xl font-bold text-gray-900">AI Workflow Builder</h1>
+              <p className="text-sm text-gray-600">Powered by Advanced LLM Technology</p>
             </div>
           </div>
           
@@ -564,7 +564,7 @@ Need help? I can guide you through each step!`
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1"
+              className="bg-white border border-gray-300 text-gray-900 text-sm rounded px-2 py-1"
             >
               <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
               <option value="claude-3.5-haiku">Claude 3.5 Haiku</option>
