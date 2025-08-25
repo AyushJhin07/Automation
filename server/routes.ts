@@ -389,6 +389,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, ...stats });
   });
 
+  // Node catalog endpoint for Graph Editor UI
+  app.get('/api/registry/catalog', (req, res) => {
+    try {
+      const catalog = connectorRegistry.getNodeCatalog();
+      console.log('[DEBUG] Catalog keys:', Object.keys(catalog));
+      console.log('[DEBUG] Connectors count:', Object.keys(catalog.connectors || {}).length);
+      console.log('[DEBUG] Categories count:', Object.keys(catalog.categories || {}).length);
+      
+      res.json({ 
+        success: true, 
+        catalog 
+      });
+    } catch (e) {
+      console.error('[ERROR] Catalog generation failed:', e);
+      res.status(500).json({ 
+        success: false, 
+        error: String(e) 
+      });
+    }
+  });
+
   app.get('/api/connectors/:slug', async (req, res) => {
     try {
       const connector = await connectorFramework.getConnector(req.params.slug);

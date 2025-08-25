@@ -442,6 +442,84 @@ export class ConnectorRegistry {
       apps: Array.from(this.registry.keys()).sort()
     };
   }
+
+  /**
+   * Get node catalog with both connectors and categories for UI
+   */
+  public getNodeCatalog(): {
+    connectors: Record<string, {
+      name: string;
+      category: string;
+      actions: ConnectorFunction[];
+      triggers: ConnectorFunction[];
+      hasImplementation: boolean;
+    }>;
+    categories: Record<string, {
+      name: string;
+      description: string;
+      icon: string;
+      nodes: Array<{
+        type: 'action' | 'trigger';
+        name: string;
+        description: string;
+        category: string;
+        appName: string;
+        hasImplementation: boolean;
+        nodeType: string; // e.g., action.slack.chat_postMessage
+        parameters?: any;
+      }>;
+    }>;
+  } {
+    const connectors: Record<string, any> = {};
+    const categories: Record<string, any> = {};
+
+    for (const [appId, entry] of this.registry.entries()) {
+      const def = entry.definition;
+      connectors[appId] = {
+        name: def.name,
+        category: def.category,
+        actions: def.actions || [],
+        triggers: def.triggers || [],
+        hasImplementation: entry.hasImplementation === true
+      };
+
+      const pushNode = (type: 'action' | 'trigger', fn: ConnectorFunction) => {
+        const category = def.category || 'Other';
+        if (!categories[category]) {
+          categories[category] = {
+            name: category,
+            description: `${category} apps`,
+            icon: '',
+            nodes: []
+          };
+        }
+        categories[category].nodes.push({
+          type,
+          name: fn.name,
+          description: fn.description || '',
+          category,
+          appName: def.name,
+          hasImplementation: entry.hasImplementation === true,
+          nodeType: `${type}.${appId}.${fn.id}`,
+          parameters: (fn as any).parameters || {}
+        });
+      };
+
+      (def.triggers || []).forEach(t => pushNode('trigger', t));
+      (def.actions  || []).forEach(a => pushNode('action', a));
+    }
+
+    // Optional: sort nodes so implemented ones show first
+    for (const cat of Object.values(categories)) {
+      cat.nodes.sort((a, b) => {
+        if (a.hasImplementation && !b.hasImplementation) return -1;
+        if (!a.hasImplementation && b.hasImplementation) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+
+    return { connectors, categories };
+  }
 }
 
 // Export singleton instance
