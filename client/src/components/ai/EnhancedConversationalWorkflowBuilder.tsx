@@ -95,9 +95,9 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-      <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-        <Workflow className="w-4 h-4 text-blue-400" />
+    <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+      <h3 className="text-gray-900 font-semibold mb-3 flex items-center gap-2">
+        <Workflow className="w-4 h-4 text-blue-600" />
         Generated Workflow Structure
       </h3>
       
