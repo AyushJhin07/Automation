@@ -998,7 +998,7 @@ const GraphEditorContent = () => {
   }, [nodes, setNodes]);
   
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <NodeSidebar onAddNode={onAddNode} />
       
@@ -1065,13 +1065,13 @@ const GraphEditorContent = () => {
           edgeTypes={edgeTypes}
           fitView
           attributionPosition="bottom-left"
-          className="bg-slate-50"
+          className="bg-gray-100"
         >
           <Background 
             color="#e2e8f0" 
             gap={20} 
             size={1}
-            style={{ backgroundColor: '#f8fafc' }}
+            style={{ backgroundColor: '#f3f4f6' }}
           />
           <Controls 
             className="bg-white border-gray-200 shadow-sm"
