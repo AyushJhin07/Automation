@@ -1,0 +1,111 @@
+{
+  "id": "bigcommerce",
+  "name": "BigCommerce",
+  "category": "E-commerce",
+  "description": "BigCommerce integration for automated workflows",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.example.com/oauth/authorize",
+      "tokenUrl": "https://api.example.com/oauth/token",
+      "scopes": [
+        "store_v2_products",
+        "store_v2_orders"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record in BigCommerce",
+      "parameters": {
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Record data"
+        }
+      },
+      "requiredScopes": [
+        "store_v2_products",
+        "store_v2_orders"
+      ]
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record in BigCommerce",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Updated record data"
+        }
+      },
+      "requiredScopes": [
+        "store_v2_products",
+        "store_v2_orders"
+      ]
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a record from BigCommerce",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": [
+        "store_v2_products",
+        "store_v2_orders"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a new record is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "created"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": [
+        "store_v2_products",
+        "store_v2_orders"
+      ]
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Triggered when a record is updated",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "updated"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": [
+        "store_v2_products",
+        "store_v2_orders"
+      ]
+    }
+  ]
+}

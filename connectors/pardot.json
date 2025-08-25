@@ -1,0 +1,202 @@
+{
+  "id": "pardot",
+  "name": "Salesforce Pardot (Account Engagement)",
+  "category": "Marketing Automation",
+  "description": "Salesforce Pardot B2B marketing automation platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.salesforce.com/services/oauth2/authorize",
+      "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
+      "scopes": ["refresh_token", "api"]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_prospect",
+      "name": "Create Prospect",
+      "description": "Create a new prospect in Pardot",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Prospect email address"
+        },
+        "first_name": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "last_name": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "company": {
+          "type": "string",
+          "required": false,
+          "description": "Company name"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone number"
+        },
+        "job_title": {
+          "type": "string",
+          "required": false,
+          "description": "Job title"
+        },
+        "website": {
+          "type": "string",
+          "required": false,
+          "description": "Website URL"
+        }
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    },
+    {
+      "id": "update_prospect",
+      "name": "Update Prospect",
+      "description": "Update an existing prospect in Pardot",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Prospect ID"
+        },
+        "first_name": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "last_name": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "company": {
+          "type": "string",
+          "required": false,
+          "description": "Company name"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone number"
+        },
+        "job_title": {
+          "type": "string",
+          "required": false,
+          "description": "Job title"
+        }
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    },
+    {
+      "id": "add_list_membership",
+      "name": "Add List Membership",
+      "description": "Add a prospect to a Pardot list",
+      "parameters": {
+        "list_id": {
+          "type": "string",
+          "required": true,
+          "description": "List ID"
+        },
+        "prospect_id": {
+          "type": "string",
+          "required": true,
+          "description": "Prospect ID"
+        }
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    },
+    {
+      "id": "create_visitor_activity",
+      "name": "Create Visitor Activity",
+      "description": "Create a visitor activity record in Pardot",
+      "parameters": {
+        "prospect_id": {
+          "type": "string",
+          "required": true,
+          "description": "Prospect ID"
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Activity type"
+        },
+        "details": {
+          "type": "string",
+          "required": false,
+          "description": "Activity details"
+        },
+        "campaign_id": {
+          "type": "string",
+          "required": false,
+          "description": "Associated campaign ID"
+        }
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    },
+    {
+      "id": "send_email_campaign",
+      "name": "Send Email Campaign",
+      "description": "Send an email campaign to prospects",
+      "parameters": {
+        "campaign_id": {
+          "type": "string",
+          "required": true,
+          "description": "Email campaign ID"
+        },
+        "prospect_ids": {
+          "type": "array",
+          "required": true,
+          "description": "Array of prospect IDs to send to"
+        },
+        "send_options": {
+          "type": "object",
+          "required": false,
+          "description": "Additional send options"
+        }
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "prospect_created",
+      "name": "Prospect Created",
+      "description": "Triggered when a new prospect is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["ProspectCreated"],
+        "entityTypes": ["prospect"]
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    },
+    {
+      "id": "prospect_updated",
+      "name": "Prospect Updated",
+      "description": "Triggered when a prospect is updated",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["ProspectUpdated"],
+        "entityTypes": ["prospect"]
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    },
+    {
+      "id": "list_membership_changed",
+      "name": "List Membership Changed",
+      "description": "Triggered when prospect list membership changes",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["ListMembershipChanged"],
+        "entityTypes": ["list_membership"]
+      },
+      "requiredScopes": ["refresh_token", "api"]
+    }
+  ]
+}

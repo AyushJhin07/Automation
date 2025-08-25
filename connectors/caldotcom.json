@@ -1,0 +1,138 @@
+{
+  "id": "caldotcom",
+  "name": "Cal.com",
+  "category": "Scheduling",
+  "description": "Cal.com open-source scheduling platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "actions": [
+    {
+      "id": "create_booking",
+      "name": "Create Booking",
+      "description": "Create a new booking",
+      "parameters": {
+        "eventTypeId": {
+          "type": "number",
+          "required": true,
+          "description": "Event type ID"
+        },
+        "start": {
+          "type": "string",
+          "required": true,
+          "description": "Start time (ISO format)"
+        },
+        "end": {
+          "type": "string",
+          "required": true,
+          "description": "End time (ISO format)"
+        },
+        "attendee": {
+          "type": "object",
+          "required": true,
+          "description": "Attendee information"
+        },
+        "metadata": {
+          "type": "object",
+          "required": false,
+          "description": "Additional metadata"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "list_bookings",
+      "name": "List Bookings",
+      "description": "List all bookings",
+      "parameters": {
+        "take": {
+          "type": "number",
+          "required": false,
+          "description": "Number of results to return"
+        },
+        "skip": {
+          "type": "number",
+          "required": false,
+          "description": "Number of results to skip"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "cancel_booking",
+      "name": "Cancel Booking",
+      "description": "Cancel an existing booking",
+      "parameters": {
+        "id": {
+          "type": "number",
+          "required": true,
+          "description": "Booking ID"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Cancellation reason"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "create_event_type",
+      "name": "Create Event Type",
+      "description": "Create a new event type",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Event type title"
+        },
+        "slug": {
+          "type": "string",
+          "required": true,
+          "description": "Event type slug"
+        },
+        "length": {
+          "type": "number",
+          "required": true,
+          "description": "Event duration in minutes"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "Event description"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "booking_created",
+      "name": "Booking Created",
+      "description": "Triggered when a new booking is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["BOOKING_CREATED"],
+        "entityTypes": ["booking"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "booking_cancelled",
+      "name": "Booking Cancelled",
+      "description": "Triggered when a booking is cancelled",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["BOOKING_CANCELLED"],
+        "entityTypes": ["booking"]
+      },
+      "requiredScopes": []
+    }
+  ]
+}

@@ -1050,6 +1050,300 @@ export class OAuthManager {
         tokenUrl: 'https://api.zoom.com/oauth/token',
       },
     });
+
+    // Microsoft Dynamics 365
+    this.providers.set('dynamics365', {
+      name: 'dynamics365',
+      displayName: 'Microsoft Dynamics 365 (Sales)',
+      config: {
+        clientId: process.env.DYNAMICS365_CLIENT_ID || '',
+        clientSecret: process.env.DYNAMICS365_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/dynamics365`,
+        scopes: ["https://{{org}}.crm.dynamics.com/.default"],
+        authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+      },
+    });
+
+    // Marketo
+    this.providers.set('marketo', {
+      name: 'marketo',
+      displayName: 'Marketo',
+      config: {
+        clientId: process.env.MARKETO_CLIENT_ID || '',
+        clientSecret: process.env.MARKETO_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/marketo`,
+        scopes: [],
+        authUrl: 'https://{{munchkin}}.mktorest.com/identity/oauth/authorize',
+        tokenUrl: 'https://{{munchkin}}.mktorest.com/identity/oauth/token',
+      },
+    });
+
+    // Salesforce Pardot
+    this.providers.set('pardot', {
+      name: 'pardot',
+      displayName: 'Salesforce Pardot (Account Engagement)',
+      config: {
+        clientId: process.env.PARDOT_CLIENT_ID || '',
+        clientSecret: process.env.PARDOT_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/pardot`,
+        scopes: ["refresh_token", "api"],
+        authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
+        tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
+      },
+    });
+
+    // DocuSign
+    this.providers.set('docusign', {
+      name: 'docusign',
+      displayName: 'DocuSign',
+      config: {
+        clientId: process.env.DOCUSIGN_CLIENT_ID || '',
+        clientSecret: process.env.DOCUSIGN_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/docusign`,
+        scopes: ["signature", "impersonation"],
+        authUrl: 'https://account.docusign.com/oauth/auth',
+        tokenUrl: 'https://account.docusign.com/oauth/token',
+      },
+    });
+
+    // Adobe Acrobat Sign
+    this.providers.set('adobesign', {
+      name: 'adobesign',
+      displayName: 'Adobe Acrobat Sign',
+      config: {
+        clientId: process.env.ADOBESIGN_CLIENT_ID || '',
+        clientSecret: process.env.ADOBESIGN_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/adobesign`,
+        scopes: ["agreement_read", "agreement_write"],
+        authUrl: 'https://secure.na1.echosign.com/public/oauth',
+        tokenUrl: 'https://api.na1.echosign.com/oauth/token',
+      },
+    });
+
+    // Dropbox Sign (HelloSign)
+    this.providers.set('hellosign', {
+      name: 'hellosign',
+      displayName: 'Dropbox Sign (HelloSign)',
+      config: {
+        clientId: process.env.HELLOSIGN_CLIENT_ID || '',
+        clientSecret: process.env.HELLOSIGN_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/hellosign`,
+        scopes: ["basic_account_info", "request_signature"],
+        authUrl: 'https://app.hellosign.com/oauth/authorize',
+        tokenUrl: 'https://api.hellosign.com/v3/oauth/token',
+      },
+    });
+
+    // Calendly
+    this.providers.set('calendly', {
+      name: 'calendly',
+      displayName: 'Calendly',
+      config: {
+        clientId: process.env.CALENDLY_CLIENT_ID || '',
+        clientSecret: process.env.CALENDLY_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/calendly`,
+        scopes: ["read", "write"],
+        authUrl: 'https://auth.calendly.com/oauth/authorize',
+        tokenUrl: 'https://auth.calendly.com/oauth/token',
+      },
+    });
+
+    // Webex
+    this.providers.set('webex', {
+      name: 'webex',
+      displayName: 'Webex',
+      config: {
+        clientId: process.env.WEBEX_CLIENT_ID || '',
+        clientSecret: process.env.WEBEX_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/webex`,
+        scopes: ["spark:all"],
+        authUrl: 'https://webexapis.com/v1/authorize',
+        tokenUrl: 'https://webexapis.com/v1/access_token',
+      },
+    });
+
+    // RingCentral
+    this.providers.set('ringcentral', {
+      name: 'ringcentral',
+      displayName: 'RingCentral',
+      config: {
+        clientId: process.env.RINGCENTRAL_CLIENT_ID || '',
+        clientSecret: process.env.RINGCENTRAL_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/ringcentral`,
+        scopes: ["ReadAccounts", "SMS", "ReadCallLog", "Meetings"],
+        authUrl: 'https://platform.ringcentral.com/restapi/oauth/authorize',
+        tokenUrl: 'https://platform.ringcentral.com/restapi/oauth/token',
+      },
+    });
+
+    // PayPal
+    this.providers.set('paypal', {
+      name: 'paypal',
+      displayName: 'PayPal',
+      config: {
+        clientId: process.env.PAYPAL_CLIENT_ID || '',
+        clientSecret: process.env.PAYPAL_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/paypal`,
+        scopes: ["https://uri.paypal.com/services/payments/payment"],
+        authUrl: 'https://www.paypal.com/signin/authorize',
+        tokenUrl: 'https://api-m.paypal.com/v1/oauth2/token',
+      },
+    });
+
+    // Square
+    this.providers.set('square', {
+      name: 'square',
+      displayName: 'Square',
+      config: {
+        clientId: process.env.SQUARE_CLIENT_ID || '',
+        clientSecret: process.env.SQUARE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/square`,
+        scopes: ["PAYMENTS_READ", "PAYMENTS_WRITE"],
+        authUrl: 'https://connect.squareupsandbox.com/oauth2/authorize',
+        tokenUrl: 'https://connect.squareup.com/oauth2/token',
+      },
+    });
+
+    // BigCommerce
+    this.providers.set('bigcommerce', {
+      name: 'bigcommerce',
+      displayName: 'BigCommerce',
+      config: {
+        clientId: process.env.BIGCOMMERCE_CLIENT_ID || '',
+        clientSecret: process.env.BIGCOMMERCE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/bigcommerce`,
+        scopes: ["store_v2_products", "store_v2_orders"],
+        authUrl: 'https://login.bigcommerce.com/oauth2/authorize',
+        tokenUrl: 'https://login.bigcommerce.com/oauth2/token',
+      },
+    });
+
+    // Magento
+    this.providers.set('magento', {
+      name: 'magento',
+      displayName: 'Magento (Adobe Commerce)',
+      config: {
+        clientId: process.env.MAGENTO_CLIENT_ID || '',
+        clientSecret: process.env.MAGENTO_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/magento`,
+        scopes: ["read", "write"],
+        authUrl: 'https://{{store}}/oauth/authorize',
+        tokenUrl: 'https://{{store}}/oauth/token',
+      },
+    });
+
+    // Egnyte
+    this.providers.set('egnyte', {
+      name: 'egnyte',
+      displayName: 'Egnyte',
+      config: {
+        clientId: process.env.EGNYTE_CLIENT_ID || '',
+        clientSecret: process.env.EGNYTE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/egnyte`,
+        scopes: ["Egnyte.filesystem"],
+        authUrl: 'https://{{domain}}.egnyte.com/puboauth/token',
+        tokenUrl: 'https://{{domain}}.egnyte.com/puboauth/token',
+      },
+    });
+
+    // Guru
+    this.providers.set('guru', {
+      name: 'guru',
+      displayName: 'Guru',
+      config: {
+        clientId: process.env.GURU_CLIENT_ID || '',
+        clientSecret: process.env.GURU_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/guru`,
+        scopes: ["read", "write"],
+        authUrl: 'https://api.getguru.com/oauth/authorize',
+        tokenUrl: 'https://api.getguru.com/oauth/token',
+      },
+    });
+
+    // SurveyMonkey
+    this.providers.set('surveymonkey', {
+      name: 'surveymonkey',
+      displayName: 'SurveyMonkey',
+      config: {
+        clientId: process.env.SURVEYMONKEY_CLIENT_ID || '',
+        clientSecret: process.env.SURVEYMONKEY_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/surveymonkey`,
+        scopes: ["surveys_read", "surveys_write", "responses_read"],
+        authUrl: 'https://api.surveymonkey.com/oauth/authorize',
+        tokenUrl: 'https://api.surveymonkey.com/oauth/token',
+      },
+    });
+
+    // SAP Concur
+    this.providers.set('concur', {
+      name: 'concur',
+      displayName: 'SAP Concur',
+      config: {
+        clientId: process.env.CONCUR_CLIENT_ID || '',
+        clientSecret: process.env.CONCUR_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/concur`,
+        scopes: ["read", "write"],
+        authUrl: 'https://www.concursolutions.com/net2/oauth2/Login.aspx',
+        tokenUrl: 'https://www.concursolutions.com/net2/oauth2/GetAccessToken.ashx',
+      },
+    });
+
+    // Ramp
+    this.providers.set('ramp', {
+      name: 'ramp',
+      displayName: 'Ramp',
+      config: {
+        clientId: process.env.RAMP_CLIENT_ID || '',
+        clientSecret: process.env.RAMP_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/ramp`,
+        scopes: ["read", "write"],
+        authUrl: 'https://app.ramp.com/oauth/authorize',
+        tokenUrl: 'https://api.ramp.com/oauth/token',
+      },
+    });
+
+    // Brex
+    this.providers.set('brex', {
+      name: 'brex',
+      displayName: 'Brex',
+      config: {
+        clientId: process.env.BREX_CLIENT_ID || '',
+        clientSecret: process.env.BREX_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/brex`,
+        scopes: ["transactions:read", "users:read"],
+        authUrl: 'https://accounts.brex.com/oauth/authorize',
+        tokenUrl: 'https://accounts.brex.com/oauth/token',
+      },
+    });
+
+    // NetSuite
+    this.providers.set('netsuite', {
+      name: 'netsuite',
+      displayName: 'NetSuite',
+      config: {
+        clientId: process.env.NETSUITE_CLIENT_ID || '',
+        clientSecret: process.env.NETSUITE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/netsuite`,
+        scopes: ["read", "write"],
+        authUrl: 'https://{{account}}.app.netsuite.com/app/login/oauth2/authorize.nl',
+        tokenUrl: 'https://{{account}}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token',
+      },
+    });
+
+    // Sage Intacct
+    this.providers.set('sageintacct', {
+      name: 'sageintacct',
+      displayName: 'Sage Intacct',
+      config: {
+        clientId: process.env.SAGEINTACCT_CLIENT_ID || '',
+        clientSecret: process.env.SAGEINTACCT_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sageintacct`,
+        scopes: ["read", "write"],
+        authUrl: 'https://api.intacct.com/oauth/authorize',
+        tokenUrl: 'https://api.intacct.com/oauth/token',
+      },
+    });
   }
 
   /**

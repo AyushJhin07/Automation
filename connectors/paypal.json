@@ -1,0 +1,75 @@
+{
+  "id": "paypal",
+  "name": "PayPal",
+  "category": "Payments",
+  "description": "PayPal payment processing and digital wallet platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://www.paypal.com/signin/authorize",
+      "tokenUrl": "https://api-m.paypal.com/v1/oauth2/token",
+      "scopes": ["https://uri.paypal.com/services/payments/payment"]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a PayPal order",
+      "parameters": {
+        "intent": {"type": "string", "required": true, "description": "Order intent (CAPTURE/AUTHORIZE)"},
+        "purchase_units": {"type": "array", "required": true, "description": "Purchase units"},
+        "application_context": {"type": "object", "required": false, "description": "Application context"}
+      },
+      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+    },
+    {
+      "id": "capture_order",
+      "name": "Capture Order",
+      "description": "Capture payment for an order",
+      "parameters": {
+        "id": {"type": "string", "required": true, "description": "Order ID"}
+      },
+      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+    },
+    {
+      "id": "refund_capture",
+      "name": "Refund Capture",
+      "description": "Refund a captured payment",
+      "parameters": {
+        "capture_id": {"type": "string", "required": true, "description": "Capture ID"},
+        "amount": {"type": "object", "required": false, "description": "Refund amount"},
+        "note_to_payer": {"type": "string", "required": false, "description": "Note to payer"}
+      },
+      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+    },
+    {
+      "id": "get_transaction",
+      "name": "Get Transaction",
+      "description": "Get transaction details",
+      "parameters": {
+        "transaction_id": {"type": "string", "required": true, "description": "Transaction ID"}
+      },
+      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "payment_sale_completed",
+      "name": "Payment Sale Completed",
+      "description": "Triggered when a payment sale is completed",
+      "parameters": {},
+      "webhook": {"eventTypes": ["PAYMENT.SALE.COMPLETED"], "entityTypes": ["payment"]},
+      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+    },
+    {
+      "id": "payment_refunded",
+      "name": "Payment Refunded",
+      "description": "Triggered when a payment is refunded",
+      "parameters": {},
+      "webhook": {"eventTypes": ["PAYMENT.SALE.REFUNDED"], "entityTypes": ["payment"]},
+      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+    }
+  ]
+}

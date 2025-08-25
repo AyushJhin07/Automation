@@ -1,0 +1,139 @@
+{
+  "id": "braze",
+  "name": "Braze",
+  "category": "Marketing",
+  "description": "Braze customer engagement platform for personalized messaging across channels",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "actions": [
+    {
+      "id": "track_users",
+      "name": "Track Users",
+      "description": "Create or update user profiles in Braze",
+      "parameters": {
+        "users": {
+          "type": "array",
+          "required": true,
+          "description": "Array of user objects to track"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "send_campaigns",
+      "name": "Send Campaigns",
+      "description": "Send a campaign to specific users",
+      "parameters": {
+        "campaign_id": {
+          "type": "string",
+          "required": true,
+          "description": "Campaign ID to send"
+        },
+        "recipients": {
+          "type": "array",
+          "required": true,
+          "description": "Array of recipient objects"
+        },
+        "override_messaging_limits": {
+          "type": "boolean",
+          "required": false,
+          "description": "Override frequency capping"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "trigger_canvas",
+      "name": "Trigger Canvas",
+      "description": "Trigger a Canvas flow for specific users",
+      "parameters": {
+        "canvas_id": {
+          "type": "string",
+          "required": true,
+          "description": "Canvas ID to trigger"
+        },
+        "recipients": {
+          "type": "array",
+          "required": true,
+          "description": "Array of recipient objects"
+        },
+        "canvas_entry_properties": {
+          "type": "object",
+          "required": false,
+          "description": "Canvas entry properties"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "subscription_update",
+      "name": "Update Subscription",
+      "description": "Update user subscription status",
+      "parameters": {
+        "external_id": {
+          "type": "string",
+          "required": false,
+          "description": "External user ID"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "User email address"
+        },
+        "subscription_group_id": {
+          "type": "string",
+          "required": true,
+          "description": "Subscription group ID"
+        },
+        "subscription_state": {
+          "type": "string",
+          "required": true,
+          "description": "Subscription state (subscribed/unsubscribed)"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "campaign_sent",
+      "name": "Campaign Sent",
+      "description": "Triggered when a campaign is sent",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["users.messages.send"],
+        "entityTypes": ["campaign"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "canvas_entry",
+      "name": "Canvas Entry",
+      "description": "Triggered when a user enters a Canvas",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["users.canvas.entry"],
+        "entityTypes": ["canvas"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "subscription_state_change",
+      "name": "Subscription State Change",
+      "description": "Triggered when subscription state changes",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["users.behaviors.subscription"],
+        "entityTypes": ["subscription"]
+      },
+      "requiredScopes": []
+    }
+  ]
+}

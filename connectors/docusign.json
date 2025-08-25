@@ -1,0 +1,129 @@
+{
+  "id": "docusign",
+  "name": "DocuSign",
+  "category": "E-Signature",
+  "description": "DocuSign electronic signature and digital transaction management platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://account.docusign.com/oauth/auth",
+      "tokenUrl": "https://account.docusign.com/oauth/token",
+      "scopes": ["signature", "impersonation"]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_envelope_from_template",
+      "name": "Create Envelope from Template",
+      "description": "Create an envelope from a DocuSign template",
+      "parameters": {
+        "templateId": {
+          "type": "string",
+          "required": true,
+          "description": "Template ID"
+        },
+        "emailSubject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject line"
+        },
+        "emailMessage": {
+          "type": "string",
+          "required": false,
+          "description": "Email message"
+        },
+        "templateRoles": {
+          "type": "array",
+          "required": true,
+          "description": "Array of template role objects with signer information"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "description": "Envelope status (sent, created, draft)"
+        }
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    },
+    {
+      "id": "send_envelope",
+      "name": "Send Envelope for Signature",
+      "description": "Send an envelope for signature",
+      "parameters": {
+        "envelopeId": {
+          "type": "string",
+          "required": true,
+          "description": "Envelope ID to send"
+        }
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    },
+    {
+      "id": "get_recipient_status",
+      "name": "Get Recipient Status",
+      "description": "Get the status of envelope recipients",
+      "parameters": {
+        "envelopeId": {
+          "type": "string",
+          "required": true,
+          "description": "Envelope ID"
+        }
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    },
+    {
+      "id": "download_document",
+      "name": "Download Document",
+      "description": "Download a completed document from an envelope",
+      "parameters": {
+        "envelopeId": {
+          "type": "string",
+          "required": true,
+          "description": "Envelope ID"
+        },
+        "documentId": {
+          "type": "string",
+          "required": true,
+          "description": "Document ID"
+        }
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "envelope_completed",
+      "name": "Envelope Completed",
+      "description": "Triggered when an envelope is completed",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["envelope-completed"],
+        "entityTypes": ["envelope"]
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    },
+    {
+      "id": "envelope_declined",
+      "name": "Envelope Declined",
+      "description": "Triggered when an envelope is declined",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["envelope-declined"],
+        "entityTypes": ["envelope"]
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    },
+    {
+      "id": "recipient_signed",
+      "name": "Recipient Signed",
+      "description": "Triggered when a recipient signs an envelope",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["recipient-completed"],
+        "entityTypes": ["recipient"]
+      },
+      "requiredScopes": ["signature", "impersonation"]
+    }
+  ]
+}

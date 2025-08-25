@@ -1,0 +1,69 @@
+{
+  "id": "ringcentral",
+  "name": "RingCentral",
+  "category": "Communication",
+  "description": "RingCentral unified communications platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://platform.ringcentral.com/restapi/oauth/authorize",
+      "tokenUrl": "https://platform.ringcentral.com/restapi/oauth/token",
+      "scopes": ["ReadAccounts", "SMS", "ReadCallLog", "Meetings"]
+    }
+  },
+  "actions": [
+    {
+      "id": "send_sms",
+      "name": "Send SMS",
+      "description": "Send an SMS message",
+      "parameters": {
+        "from": {"type": "string", "required": true, "description": "From phone number"},
+        "to": {"type": "array", "required": true, "description": "To phone numbers"},
+        "text": {"type": "string", "required": true, "description": "Message text"}
+      },
+      "requiredScopes": ["SMS"]
+    },
+    {
+      "id": "list_calls",
+      "name": "List Calls",
+      "description": "List call log records",
+      "parameters": {
+        "dateFrom": {"type": "string", "required": false, "description": "Date from (ISO format)"},
+        "dateTo": {"type": "string", "required": false, "description": "Date to (ISO format)"},
+        "perPage": {"type": "number", "required": false, "description": "Results per page"}
+      },
+      "requiredScopes": ["ReadCallLog"]
+    },
+    {
+      "id": "create_meeting",
+      "name": "Create Meeting",
+      "description": "Create a RingCentral meeting",
+      "parameters": {
+        "topic": {"type": "string", "required": true, "description": "Meeting topic"},
+        "meetingType": {"type": "string", "required": false, "description": "Meeting type"},
+        "startTime": {"type": "string", "required": false, "description": "Start time (ISO format)"},
+        "duration": {"type": "number", "required": false, "description": "Duration in minutes"}
+      },
+      "requiredScopes": ["Meetings"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "sms_received",
+      "name": "SMS Received",
+      "description": "Triggered when an SMS is received",
+      "parameters": {},
+      "webhook": {"eventTypes": ["instant-message-event"], "entityTypes": ["message"]},
+      "requiredScopes": ["SMS"]
+    },
+    {
+      "id": "call_completed",
+      "name": "Call Completed",
+      "description": "Triggered when a call is completed",
+      "parameters": {},
+      "webhook": {"eventTypes": ["telephony-session-event"], "entityTypes": ["call"]},
+      "requiredScopes": ["ReadCallLog"]
+    }
+  ]
+}

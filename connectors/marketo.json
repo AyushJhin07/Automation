@@ -1,0 +1,202 @@
+{
+  "id": "marketo",
+  "name": "Marketo",
+  "category": "Marketing Automation",
+  "description": "Marketo marketing automation platform for lead management and campaign execution",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://{{munchkin}}.mktorest.com/identity/oauth/authorize",
+      "tokenUrl": "https://{{munchkin}}.mktorest.com/identity/oauth/token",
+      "scopes": []
+    }
+  },
+  "actions": [
+    {
+      "id": "create_lead",
+      "name": "Create Lead",
+      "description": "Create or update a lead in Marketo",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Lead email address"
+        },
+        "firstName": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "company": {
+          "type": "string",
+          "required": false,
+          "description": "Company name"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone number"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "description": "Job title"
+        },
+        "website": {
+          "type": "string",
+          "required": false,
+          "description": "Website URL"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "update_lead",
+      "name": "Update Lead",
+      "description": "Update an existing lead in Marketo",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Lead ID or email"
+        },
+        "firstName": {
+          "type": "string",
+          "required": false,
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "required": false,
+          "description": "Last name"
+        },
+        "company": {
+          "type": "string",
+          "required": false,
+          "description": "Company name"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone number"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "description": "Job title"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "add_to_list",
+      "name": "Add Lead to List",
+      "description": "Add a lead to a static list in Marketo",
+      "parameters": {
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "Static list ID"
+        },
+        "leadIds": {
+          "type": "array",
+          "required": true,
+          "description": "Array of lead IDs to add to list"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "trigger_campaign",
+      "name": "Trigger Campaign",
+      "description": "Trigger a Marketo smart campaign",
+      "parameters": {
+        "campaignId": {
+          "type": "string",
+          "required": true,
+          "description": "Smart campaign ID"
+        },
+        "leadIds": {
+          "type": "array",
+          "required": true,
+          "description": "Array of lead IDs to trigger campaign for"
+        },
+        "tokens": {
+          "type": "object",
+          "required": false,
+          "description": "Campaign tokens (key-value pairs)"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "upsert_activities",
+      "name": "Upsert Activities",
+      "description": "Create custom activities in Marketo",
+      "parameters": {
+        "activityTypeId": {
+          "type": "string",
+          "required": true,
+          "description": "Custom activity type ID"
+        },
+        "leadId": {
+          "type": "string",
+          "required": true,
+          "description": "Lead ID"
+        },
+        "activityDate": {
+          "type": "string",
+          "required": true,
+          "description": "Activity date (ISO format)"
+        },
+        "attributes": {
+          "type": "object",
+          "required": false,
+          "description": "Activity attributes"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "lead_added",
+      "name": "Lead Added",
+      "description": "Triggered when a new lead is added to Marketo",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["New Lead"],
+        "entityTypes": ["lead"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "lead_updated",
+      "name": "Lead Updated",
+      "description": "Triggered when a lead is updated in Marketo",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["Data Value Changes"],
+        "entityTypes": ["lead"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "campaign_success",
+      "name": "Campaign Success",
+      "description": "Triggered when a lead achieves success in a campaign",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["Change Status in Progression"],
+        "entityTypes": ["campaign"]
+      },
+      "requiredScopes": []
+    }
+  ]
+}

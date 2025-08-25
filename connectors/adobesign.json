@@ -1,0 +1,113 @@
+{
+  "id": "adobesign",
+  "name": "Adobe Acrobat Sign",
+  "category": "E-Signature",
+  "description": "Adobe Acrobat Sign electronic signature and document workflow platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://secure.na1.echosign.com/public/oauth",
+      "tokenUrl": "https://api.na1.echosign.com/oauth/token",
+      "scopes": ["agreement_read", "agreement_write"]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_agreement",
+      "name": "Create Agreement",
+      "description": "Create a new agreement in Adobe Sign",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Agreement name"
+        },
+        "fileInfos": {
+          "type": "array",
+          "required": true,
+          "description": "Array of file information objects"
+        },
+        "participantSetsInfo": {
+          "type": "array",
+          "required": true,
+          "description": "Array of participant set information"
+        },
+        "signatureType": {
+          "type": "string",
+          "required": false,
+          "description": "Signature type (ESIGN or WRITTEN)"
+        },
+        "state": {
+          "type": "string",
+          "required": false,
+          "description": "Agreement state (IN_PROCESS, AUTHORING)"
+        }
+      },
+      "requiredScopes": ["agreement_write"]
+    },
+    {
+      "id": "send_agreement",
+      "name": "Send Agreement for Signature",
+      "description": "Send an agreement for signature",
+      "parameters": {
+        "agreementId": {
+          "type": "string",
+          "required": true,
+          "description": "Agreement ID to send"
+        }
+      },
+      "requiredScopes": ["agreement_write"]
+    },
+    {
+      "id": "get_agreement_status",
+      "name": "Get Agreement Status",
+      "description": "Get the status of an agreement",
+      "parameters": {
+        "agreementId": {
+          "type": "string",
+          "required": true,
+          "description": "Agreement ID"
+        }
+      },
+      "requiredScopes": ["agreement_read"]
+    },
+    {
+      "id": "download_pdf",
+      "name": "Download PDF",
+      "description": "Download the signed PDF of an agreement",
+      "parameters": {
+        "agreementId": {
+          "type": "string",
+          "required": true,
+          "description": "Agreement ID"
+        }
+      },
+      "requiredScopes": ["agreement_read"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "agreement_signed",
+      "name": "Agreement Signed",
+      "description": "Triggered when an agreement is signed",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["AGREEMENT_WORKFLOW_COMPLETED"],
+        "entityTypes": ["agreement"]
+      },
+      "requiredScopes": ["agreement_read"]
+    },
+    {
+      "id": "agreement_cancelled",
+      "name": "Agreement Cancelled",
+      "description": "Triggered when an agreement is cancelled",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["AGREEMENT_WORKFLOW_CANCELLED"],
+        "entityTypes": ["agreement"]
+      },
+      "requiredScopes": ["agreement_read"]
+    }
+  ]
+}

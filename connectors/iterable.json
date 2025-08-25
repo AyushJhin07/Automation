@@ -1,0 +1,246 @@
+{
+  "id": "iterable",
+  "name": "Iterable",
+  "category": "Marketing",
+  "description": "Iterable cross-channel marketing platform for personalized customer experiences",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Api-Key",
+      "prefix": ""
+    }
+  },
+  "actions": [
+    {
+      "id": "upsert_user",
+      "name": "Upsert User",
+      "description": "Create or update a user in Iterable",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "User email address"
+        },
+        "userId": {
+          "type": "string",
+          "required": false,
+          "description": "User ID"
+        },
+        "dataFields": {
+          "type": "object",
+          "required": false,
+          "description": "User data fields"
+        },
+        "preferUserId": {
+          "type": "boolean",
+          "required": false,
+          "description": "Prefer user ID over email for identification"
+        },
+        "mergeNestedObjects": {
+          "type": "boolean",
+          "required": false,
+          "description": "Merge nested objects instead of replacing"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "track_event",
+      "name": "Track Event",
+      "description": "Track a custom event for a user",
+      "parameters": {
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "User email address"
+        },
+        "userId": {
+          "type": "string",
+          "required": false,
+          "description": "User ID"
+        },
+        "eventName": {
+          "type": "string",
+          "required": true,
+          "description": "Event name"
+        },
+        "dataFields": {
+          "type": "object",
+          "required": false,
+          "description": "Event data fields"
+        },
+        "campaignId": {
+          "type": "string",
+          "required": false,
+          "description": "Campaign ID"
+        },
+        "templateId": {
+          "type": "string",
+          "required": false,
+          "description": "Template ID"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "send_email",
+      "name": "Send Email",
+      "description": "Send a transactional email",
+      "parameters": {
+        "campaignId": {
+          "type": "string",
+          "required": true,
+          "description": "Campaign ID"
+        },
+        "recipientEmail": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient email address"
+        },
+        "dataFields": {
+          "type": "object",
+          "required": false,
+          "description": "Data fields for personalization"
+        },
+        "sendAt": {
+          "type": "string",
+          "required": false,
+          "description": "Send at specific time (ISO format)"
+        },
+        "allowRepeatMarketingSends": {
+          "type": "boolean",
+          "required": false,
+          "description": "Allow repeat marketing sends"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "send_push",
+      "name": "Send Push Notification",
+      "description": "Send a push notification",
+      "parameters": {
+        "campaignId": {
+          "type": "string",
+          "required": true,
+          "description": "Campaign ID"
+        },
+        "recipientEmail": {
+          "type": "string",
+          "required": false,
+          "description": "Recipient email address"
+        },
+        "recipientUserId": {
+          "type": "string",
+          "required": false,
+          "description": "Recipient user ID"
+        },
+        "dataFields": {
+          "type": "object",
+          "required": false,
+          "description": "Data fields for personalization"
+        },
+        "sendAt": {
+          "type": "string",
+          "required": false,
+          "description": "Send at specific time (ISO format)"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "add_to_list",
+      "name": "Add User to List",
+      "description": "Add a user to a static list",
+      "parameters": {
+        "listId": {
+          "type": "string",
+          "required": true,
+          "description": "List ID"
+        },
+        "subscribers": {
+          "type": "array",
+          "required": true,
+          "description": "Array of subscriber objects"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "trigger_workflow",
+      "name": "Trigger Workflow",
+      "description": "Trigger a workflow for a user",
+      "parameters": {
+        "workflowId": {
+          "type": "string",
+          "required": true,
+          "description": "Workflow ID"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "User email address"
+        },
+        "userId": {
+          "type": "string",
+          "required": false,
+          "description": "User ID"
+        },
+        "dataFields": {
+          "type": "object",
+          "required": false,
+          "description": "Data fields for workflow"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "email_bounce",
+      "name": "Email Bounce",
+      "description": "Triggered when an email bounces",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["emailBounce"],
+        "entityTypes": ["email"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "email_unsubscribe",
+      "name": "Email Unsubscribe",
+      "description": "Triggered when a user unsubscribes",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["unsubscribe"],
+        "entityTypes": ["email"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "purchase_event",
+      "name": "Purchase Event",
+      "description": "Triggered when a purchase event occurs",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["purchase"],
+        "entityTypes": ["commerce"]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "custom_event",
+      "name": "Custom Event",
+      "description": "Triggered when a custom event occurs",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["customEvent"],
+        "entityTypes": ["event"]
+      },
+      "requiredScopes": []
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "id": "surveymonkey",
+  "name": "SurveyMonkey",
+  "category": "Surveys",
+  "description": "SurveyMonkey integration for automated workflows",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.surveymonkey.com/oauth/authorize",
+      "tokenUrl": "https://api.surveymonkey.com/oauth/token",
+      "scopes": [
+        "surveys_read",
+        "surveys_write",
+        "responses_read"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record in SurveyMonkey",
+      "parameters": {
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Record data"
+        }
+      },
+      "requiredScopes": [
+        "surveys_read",
+        "surveys_write",
+        "responses_read"
+      ]
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record in SurveyMonkey",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Updated record data"
+        }
+      },
+      "requiredScopes": [
+        "surveys_read",
+        "surveys_write",
+        "responses_read"
+      ]
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a record from SurveyMonkey",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": [
+        "surveys_read",
+        "surveys_write",
+        "responses_read"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a new record is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "created"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": [
+        "surveys_read",
+        "surveys_write",
+        "responses_read"
+      ]
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Triggered when a record is updated",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "updated"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": [
+        "surveys_read",
+        "surveys_write",
+        "responses_read"
+      ]
+    }
+  ]
+}

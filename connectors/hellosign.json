@@ -1,0 +1,138 @@
+{
+  "id": "hellosign",
+  "name": "Dropbox Sign (HelloSign)",
+  "category": "E-Signature",
+  "description": "Dropbox Sign (formerly HelloSign) electronic signature platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://app.hellosign.com/oauth/authorize",
+      "tokenUrl": "https://api.hellosign.com/v3/oauth/token",
+      "scopes": ["basic_account_info", "request_signature"]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_signature_request",
+      "name": "Create Signature Request",
+      "description": "Create a new signature request",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Signature request title"
+        },
+        "subject": {
+          "type": "string",
+          "required": false,
+          "description": "Email subject"
+        },
+        "message": {
+          "type": "string",
+          "required": false,
+          "description": "Email message"
+        },
+        "signers": {
+          "type": "array",
+          "required": true,
+          "description": "Array of signer objects"
+        },
+        "files": {
+          "type": "array",
+          "required": true,
+          "description": "Array of file objects"
+        }
+      },
+      "requiredScopes": ["request_signature"]
+    },
+    {
+      "id": "use_template",
+      "name": "Create Request from Template",
+      "description": "Create a signature request using a template",
+      "parameters": {
+        "template_id": {
+          "type": "string",
+          "required": true,
+          "description": "Template ID"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Signature request title"
+        },
+        "signers": {
+          "type": "array",
+          "required": true,
+          "description": "Array of signer objects"
+        },
+        "custom_fields": {
+          "type": "array",
+          "required": false,
+          "description": "Custom field values"
+        }
+      },
+      "requiredScopes": ["request_signature"]
+    },
+    {
+      "id": "get_file",
+      "name": "Get File",
+      "description": "Download files from a signature request",
+      "parameters": {
+        "signature_request_id": {
+          "type": "string",
+          "required": true,
+          "description": "Signature request ID"
+        },
+        "file_type": {
+          "type": "string",
+          "required": false,
+          "description": "File type (pdf, zip)"
+        }
+      },
+      "requiredScopes": ["basic_account_info"]
+    },
+    {
+      "id": "list_requests",
+      "name": "List Signature Requests",
+      "description": "List signature requests",
+      "parameters": {
+        "account_id": {
+          "type": "string",
+          "required": false,
+          "description": "Account ID"
+        },
+        "page": {
+          "type": "number",
+          "required": false,
+          "description": "Page number"
+        }
+      },
+      "requiredScopes": ["basic_account_info"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "signature_request_signed",
+      "name": "Signature Request Signed",
+      "description": "Triggered when a signature request is signed",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["signature_request_signed"],
+        "entityTypes": ["signature_request"]
+      },
+      "requiredScopes": ["basic_account_info"]
+    },
+    {
+      "id": "signature_request_all_signed",
+      "name": "All Signatures Complete",
+      "description": "Triggered when all signatures are complete",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["signature_request_all_signed"],
+        "entityTypes": ["signature_request"]
+      },
+      "requiredScopes": ["basic_account_info"]
+    }
+  ]
+}

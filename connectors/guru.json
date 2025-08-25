@@ -1,0 +1,96 @@
+{
+  "id": "guru",
+  "name": "Guru",
+  "category": "Knowledge Base",
+  "description": "Guru integration for automated workflows",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://api.example.com/oauth/authorize",
+      "tokenUrl": "https://api.example.com/oauth/token",
+      "scopes": [
+        "read",
+        "write"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record in Guru",
+      "parameters": {
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Record data"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record in Guru",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Updated record data"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a record from Guru",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a new record is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "created"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Triggered when a record is updated",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "updated"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": []
+    }
+  ]
+}

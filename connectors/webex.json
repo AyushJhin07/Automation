@@ -1,0 +1,81 @@
+{
+  "id": "webex",
+  "name": "Webex",
+  "category": "Communication",
+  "description": "Cisco Webex collaboration and video conferencing platform",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://webexapis.com/v1/authorize",
+      "tokenUrl": "https://webexapis.com/v1/access_token",
+      "scopes": ["spark:all"]
+    }
+  },
+  "actions": [
+    {
+      "id": "create_room",
+      "name": "Create Room",
+      "description": "Create a new Webex room",
+      "parameters": {
+        "title": {"type": "string", "required": true, "description": "Room title"},
+        "teamId": {"type": "string", "required": false, "description": "Team ID"},
+        "type": {"type": "string", "required": false, "description": "Room type (group/direct)"}
+      },
+      "requiredScopes": ["spark:all"]
+    },
+    {
+      "id": "post_message",
+      "name": "Post Message",
+      "description": "Post a message to a Webex room",
+      "parameters": {
+        "roomId": {"type": "string", "required": true, "description": "Room ID"},
+        "text": {"type": "string", "required": false, "description": "Message text"},
+        "markdown": {"type": "string", "required": false, "description": "Message in markdown"},
+        "files": {"type": "array", "required": false, "description": "File attachments"}
+      },
+      "requiredScopes": ["spark:all"]
+    },
+    {
+      "id": "add_member",
+      "name": "Add Room Member",
+      "description": "Add a member to a Webex room",
+      "parameters": {
+        "roomId": {"type": "string", "required": true, "description": "Room ID"},
+        "personEmail": {"type": "string", "required": true, "description": "Person email"},
+        "isModerator": {"type": "boolean", "required": false, "description": "Is moderator"}
+      },
+      "requiredScopes": ["spark:all"]
+    },
+    {
+      "id": "create_meeting",
+      "name": "Create Meeting",
+      "description": "Create a Webex meeting",
+      "parameters": {
+        "title": {"type": "string", "required": true, "description": "Meeting title"},
+        "start": {"type": "string", "required": true, "description": "Start time (ISO format)"},
+        "end": {"type": "string", "required": true, "description": "End time (ISO format)"},
+        "invitees": {"type": "array", "required": false, "description": "Meeting invitees"}
+      },
+      "requiredScopes": ["spark:all"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "message_created",
+      "name": "Message Created",
+      "description": "Triggered when a new message is created",
+      "parameters": {},
+      "webhook": {"eventTypes": ["created"], "entityTypes": ["messages"]},
+      "requiredScopes": ["spark:all"]
+    },
+    {
+      "id": "meeting_started",
+      "name": "Meeting Started",
+      "description": "Triggered when a meeting starts",
+      "parameters": {},
+      "webhook": {"eventTypes": ["started"], "entityTypes": ["meetings"]},
+      "requiredScopes": ["spark:all"]
+    }
+  ]
+}

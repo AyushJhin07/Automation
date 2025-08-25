@@ -1,0 +1,141 @@
+{
+  "id": "calendly",
+  "name": "Calendly",
+  "category": "Scheduling",
+  "description": "Calendly scheduling platform for booking meetings and appointments",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://auth.calendly.com/oauth/authorize",
+      "tokenUrl": "https://auth.calendly.com/oauth/token",
+      "scopes": ["read", "write"]
+    }
+  },
+  "actions": [
+    {
+      "id": "list_event_types",
+      "name": "List Event Types",
+      "description": "List available event types",
+      "parameters": {
+        "user": {
+          "type": "string",
+          "required": true,
+          "description": "User URI"
+        },
+        "count": {
+          "type": "number",
+          "required": false,
+          "description": "Number of results to return"
+        }
+      },
+      "requiredScopes": ["read"]
+    },
+    {
+      "id": "create_scheduling_link",
+      "name": "Create Scheduling Link",
+      "description": "Create a one-time scheduling link",
+      "parameters": {
+        "resource_uri": {
+          "type": "string",
+          "required": true,
+          "description": "Event type URI"
+        },
+        "max_event_count": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum number of events"
+        },
+        "expires_at": {
+          "type": "string",
+          "required": false,
+          "description": "Link expiration time (ISO format)"
+        }
+      },
+      "requiredScopes": ["write"]
+    },
+    {
+      "id": "cancel_event",
+      "name": "Cancel Event",
+      "description": "Cancel a scheduled event",
+      "parameters": {
+        "uuid": {
+          "type": "string",
+          "required": true,
+          "description": "Event UUID"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Cancellation reason"
+        }
+      },
+      "requiredScopes": ["write"]
+    },
+    {
+      "id": "list_events",
+      "name": "List Events",
+      "description": "List scheduled events",
+      "parameters": {
+        "user": {
+          "type": "string",
+          "required": false,
+          "description": "User URI"
+        },
+        "organization": {
+          "type": "string",
+          "required": false,
+          "description": "Organization URI"
+        },
+        "min_start_time": {
+          "type": "string",
+          "required": false,
+          "description": "Minimum start time (ISO format)"
+        },
+        "max_start_time": {
+          "type": "string",
+          "required": false,
+          "description": "Maximum start time (ISO format)"
+        }
+      },
+      "requiredScopes": ["read"]
+    },
+    {
+      "id": "fetch_invitees",
+      "name": "Fetch Event Invitees",
+      "description": "Get invitees for a specific event",
+      "parameters": {
+        "uuid": {
+          "type": "string",
+          "required": true,
+          "description": "Event UUID"
+        }
+      },
+      "requiredScopes": ["read"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "invitee_created",
+      "name": "Invitee Created",
+      "description": "Triggered when a new invitee is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["invitee.created"],
+        "entityTypes": ["invitee"]
+      },
+      "requiredScopes": ["read"]
+    },
+    {
+      "id": "invitee_canceled",
+      "name": "Invitee Canceled",
+      "description": "Triggered when an invitee cancels",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": ["invitee.canceled"],
+        "entityTypes": ["invitee"]
+      },
+      "requiredScopes": ["read"]
+    }
+  ]
+}

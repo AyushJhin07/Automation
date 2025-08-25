@@ -1,0 +1,93 @@
+{
+  "id": "navan",
+  "name": "Navan (TripActions)",
+  "category": "Travel",
+  "description": "Navan (TripActions) integration for automated workflows",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
+  },
+  "actions": [
+    {
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record in Navan (TripActions)",
+      "parameters": {
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Record data"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record in Navan (TripActions)",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        },
+        "data": {
+          "type": "object",
+          "required": true,
+          "description": "Updated record data"
+        }
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a record from Navan (TripActions)",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Record ID"
+        }
+      },
+      "requiredScopes": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a new record is created",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "created"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": []
+    },
+    {
+      "id": "record_updated",
+      "name": "Record Updated",
+      "description": "Triggered when a record is updated",
+      "parameters": {},
+      "webhook": {
+        "eventTypes": [
+          "updated"
+        ],
+        "entityTypes": [
+          "record"
+        ]
+      },
+      "requiredScopes": []
+    }
+  ]
+}
