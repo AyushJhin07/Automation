@@ -578,32 +578,33 @@ function getGradientForApp(appId: string) {
 }
 
 /**
- * If you place brand SVGs under /public/icons/{appId}.svg this uses them.
- * Otherwise it falls back to your existing lucide icon mapping (appIcons[appId]).
+ * 3D Gradient Glass Brand Icon Component
+ * Real brand icons with 3D glass effect, gradient background, and hover zoom animation
  */
 const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<string, any> }> = ({ appId, appName, appIcons }) => {
-  const Icon = appIcons[appId] || appIcons.default || AppWindow;
-  const gradient = getGradientForApp(appId);
+  const Icon = appIcons[appId] || appIcons.default;
 
   return (
     <div className="group relative">
-      <div className={clsx(
-        "w-9 h-9 rounded-2xl bg-gradient-to-br",
-        gradient,
-        "shadow-[0_6px_18px_rgba(0,0,0,0.35)] ring-1 ring-white/10",
-        "flex items-center justify-center",
-        "transition-transform duration-200 group-hover:scale-110"
-      )}>
+      <div
+        className={clsx(
+          "w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100/20 to-slate-300/20 backdrop-blur",
+          "shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),0_8px_16px_rgba(0,0,0,0.25)]",
+          "ring-1 ring-white/20",
+          "flex items-center justify-center",
+          "transition-transform duration-200 transform group-hover:scale-110"
+        )}
+      >
         {/* Try brand SVG first */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/icons/${appId}.svg`}
           alt={`${appName} icon`}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          className="w-5 h-5 drop-shadow"
+          className="w-6 h-6 object-contain drop-shadow"
         />
         {/* Fallback to lucide icon */}
-        {Icon && <Icon className="w-5 h-5 text-white/95 absolute" />}
+        {Icon && <Icon className="absolute w-5 h-5 text-white/90" />}
       </div>
     </div>
   );
