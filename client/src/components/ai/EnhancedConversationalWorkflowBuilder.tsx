@@ -595,11 +595,11 @@ Need help? I can guide you through each step!`
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-4xl rounded-lg p-4 ${
+              className={`max-w-4xl rounded-2xl p-6 ${
                 message.role === 'user'
                   ? 'bg-blue-600 text-white'
                   : message.role === 'system'
-                  ? 'bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 text-gray-900'
+                  ? 'bg-gradient-to-br from-sky-100/40 to-blue-100/40 backdrop-blur-sm border-2 border-sky-200/60 text-gray-900 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_12px_24px_rgba(14,165,233,0.25)] ring-1 ring-sky-200/30'
                   : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
               }`}
             >
@@ -793,25 +793,27 @@ Need help? I can guide you through each step!`
       <div className="border-t border-slate-700 bg-slate-800/50 backdrop-blur-sm p-4">
         <div className="flex gap-3">
           <div className="flex-1">
-            <Textarea
-              placeholder="Describe the automation you want to build... (e.g., 'Monitor Gmail for invoices and log to Google Sheets')"
-              value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              disabled={isProcessing}
-              className="bg-white border-gray-300 text-gray-900 placeholder-gray-500 resize-none"
-              rows={2}
-            />
+            <div className="relative">
+              <Textarea
+                placeholder="Describe the automation you want to build... (e.g., 'Monitor Gmail for invoices and log to Google Sheets')"
+                value={currentInput}
+                onChange={(e) => setCurrentInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isProcessing}
+                className="bg-gradient-to-br from-sky-50/60 to-blue-50/60 backdrop-blur-sm border-2 border-sky-200/60 text-gray-900 placeholder-sky-600/70 resize-none rounded-2xl p-4 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_12px_24px_rgba(14,165,233,0.25)] ring-1 ring-sky-200/30 focus:border-sky-300/80 focus:ring-2 focus:ring-sky-200/50 transition-all duration-200"
+                rows={2}
+              />
+            </div>
           </div>
           <Button
             onClick={handleSendMessage}
             disabled={!currentInput.trim() || isProcessing}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6"
+            className="bg-gradient-to-br from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 px-6 rounded-2xl shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_8px_16px_rgba(14,165,233,0.3)] ring-1 ring-sky-300/40 transition-all duration-200 hover:scale-105"
           >
             {isProcessing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
