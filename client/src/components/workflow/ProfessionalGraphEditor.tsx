@@ -28,6 +28,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { 
   Plus,
   Play,
@@ -61,9 +62,11 @@ import {
   FileText,
   Box,
   AlertTriangle,
-  Activity
+  Activity,
+  AppWindow
 } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
+import clsx from 'clsx';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -79,40 +82,42 @@ interface NodeTemplate {
 }
 
 // Icon mapping for different applications
+const appIconsMap: Record<string, any> = {
+  'gmail': Mail,
+  'google-sheets': Sheet,
+  'google-calendar': Calendar,
+  'google-drive': Database,
+  'google-docs': FileText,
+  'google-slides': FileText,
+  'slack': MessageSquare,
+  'salesforce': Database,
+  'shopify': Database,
+  'hubspot': Database,
+  'jira': Settings,
+  'confluence': FileText,
+  'okta': Shield,
+  'workday': Users,
+  'adp': DollarSign,
+  'greenhouse': Users,
+  'servicenow': Settings,
+  'pagerduty': AlertTriangle,
+  'snowflake': Database,
+  'tableau': BarChart,
+  'basecamp': Box,
+  'microsoft-todo': Settings,
+  'quickbooks': DollarSign,
+  'lever': Users,
+  'bigquery': Database,
+  'databricks': BarChart,
+  'sentry': AlertTriangle,
+  'newrelic': Activity,
+  'built_in': AppWindow,
+  'default': Zap,
+  // Add more mappings as needed
+};
+
 const getAppIcon = (appName: string) => {
-  const iconMap: Record<string, any> = {
-    'gmail': Mail,
-    'google-sheets': Sheet,
-    'google-calendar': Calendar,
-    'google-drive': Database,
-    'google-docs': FileText,
-    'google-slides': FileText,
-    'slack': MessageSquare,
-    'salesforce': Database,
-    'shopify': Database,
-    'hubspot': Database,
-    'jira': Settings,
-    'confluence': FileText,
-    'okta': Shield,
-    'workday': Users,
-    'adp': DollarSign,
-    'greenhouse': Users,
-    'servicenow': Settings,
-    'pagerduty': AlertTriangle,
-    'snowflake': Database,
-    'tableau': BarChart,
-    'basecamp': Box,
-    'microsoft-todo': Settings,
-    'quickbooks': DollarSign,
-    'lever': Users,
-    'bigquery': Database,
-    'databricks': BarChart,
-    'sentry': AlertTriangle,
-    'newrelic': Activity,
-    // Add more mappings as needed
-  };
-  
-  return iconMap[appName.toLowerCase()] || Zap;
+  return appIconsMap[appName.toLowerCase()] || appIconsMap.default;
 };
 
 // Get app color based on category
@@ -417,278 +422,427 @@ const edgeTypes: EdgeTypes = {
   animated: AnimatedEdge,
 };
 
-// Sidebar Component
+// --- Helpers: brand icon with gradient/3D & hover pop ---
+const GRADIENT_CLASSES = [
+  "from-sky-500 to-blue-600",
+  "from-emerald-500 to-green-600", 
+  "from-fuchsia-500 to-violet-600",
+  "from-rose-500 to-red-600",
+  "from-amber-500 to-orange-600",
+  "from-cyan-500 to-teal-600",
+  "from-indigo-500 to-purple-600",
+];
+
+function getGradientForApp(appId: string) {
+  // deterministic pick without generating dynamic class names (safe for Tailwind)
+  let sum = 0;
+  for (const ch of appId) sum = (sum + ch.charCodeAt(0)) % GRADIENT_CLASSES.length;
+  return GRADIENT_CLASSES[sum];
+}
+
+/**
+ * If you place brand SVGs under /public/icons/{appId}.svg this uses them.
+ * Otherwise it falls back to your existing lucide icon mapping (appIcons[appId]).
+ */
+const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<string, any> }> = ({ appId, appName, appIcons }) => {
+  const Icon = appIcons[appId] || appIcons.default || AppWindow;
+  const gradient = getGradientForApp(appId);
+
+  return (
+    <div className="group relative">
+      <div className={clsx(
+        "w-9 h-9 rounded-2xl bg-gradient-to-br",
+        gradient,
+        "shadow-[0_6px_18px_rgba(0,0,0,0.35)] ring-1 ring-white/10",
+        "flex items-center justify-center",
+        "transition-transform duration-200 group-hover:scale-110"
+      )}>
+        {/* Try brand SVG first */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/icons/${appId}.svg`}
+          alt={`${appName} icon`}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          className="w-5 h-5 drop-shadow"
+        />
+        {/* Fallback to lucide icon */}
+        {Icon && <Icon className="w-5 h-5 text-white/95 absolute" />}
+      </div>
+    </div>
+  );
+};
+
+// Sidebar Component (REPLACEMENT)
 const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: any) => void }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [nodeTemplates, setNodeTemplates] = useState<NodeTemplate[]>([]);
+  // Search & filters
+  const [searchTerm, setSearchTerm] = useState(() => {
+    return localStorage.getItem('sidebar_search') || "";
+  });
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    return localStorage.getItem('sidebar_category') || "all";
+  });
   const [loading, setLoading] = useState(true);
+
+  // Data built from registry
+  type NodeTpl = {
+    id: string;                            // e.g. action.gmail.sendEmail
+    kind: "action" | "trigger" | "transform";
+    name: string;
+    description?: string;
+    nodeType: string;                      // "action.gmail.sendEmail"
+    params?: any;
+  };
+
+  type AppGroup = {
+    appId: string;                         // "gmail"
+    appName: string;                       // "Gmail"
+    category: string;                      // "Email"
+    icon?: any;                            // lucide fallback
+    actions: NodeTpl[];
+    triggers: NodeTpl[];
+  };
+
+  const [apps, setApps] = useState<Record<string, AppGroup>>({});
   const [categories, setCategories] = useState<string[]>([]);
 
-  // Load node templates from ConnectorRegistry
+  // Persist user preferences
   useEffect(() => {
-    loadNodeTemplates();
+    localStorage.setItem('sidebar_search', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar_category', selectedCategory);
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    void loadFromRegistry();
   }, []);
 
-  const loadNodeTemplates = async () => {
+  const loadFromRegistry = async () => {
     try {
       setLoading(true);
-      
-      // Fetch connector catalog from registry
-      const response = await fetch('/api/registry/catalog');
-      const result = await response.json();
-      
-      if (result.success && result.catalog) {
-        const templates: NodeTemplate[] = [];
-        const categorySet = new Set<string>();
-        
-        // Add basic time triggers and built-in transforms first
-        const basicTemplates: NodeTemplate[] = [
+      const res = await fetch("/api/registry/catalog");
+      const json = await res.json();
+
+      const nextApps: Record<string, AppGroup> = {};
+      const catSet = new Set<string>();
+
+      // 1) Built-in utilities (time triggers etc.) – keep as its own "Built-in" app
+      const builtInId = "built_in";
+      nextApps[builtInId] = {
+        appId: builtInId,
+        appName: "Built-in",
+        category: "Built-in",
+        icon: appIconsMap[builtInId],
+        actions: [
           {
-            id: 'trigger-every-15-minutes',
-            type: 'trigger',
-            category: 'Time Triggers',
-            label: 'Every 15 Minutes',
-            description: 'Run every 15 minutes',
-            icon: Clock,
-            app: 'Google Apps Script',
-            data: { app: 'Google Apps Script', params: { everyMinutes: 15 } }
+            id: "action-http-request",
+            kind: "action",
+            name: "HTTP Request",
+            description: "Call external API",
+            nodeType: "action.http.request",
+            params: { method: "GET", url: "", headers: {} },
           },
           {
-            id: 'trigger-every-hour',
-            type: 'trigger',
-            category: 'Time Triggers',
-            label: 'Every Hour',
-            description: 'Run every hour',
-            icon: Clock,
-            app: 'Google Apps Script',
-            data: { app: 'Google Apps Script', params: { everyHours: 1 } }
+            id: "transform-format-text",
+            kind: "transform",
+            name: "Format Text",
+            description: "Template interpolation",
+            nodeType: "transform.format.text",
           },
           {
-            id: 'trigger-daily-at-9am',
-            type: 'trigger',
-            category: 'Time Triggers',
-            label: 'Daily at 9 AM',
-            description: 'Run daily at 9 AM',
-            icon: Clock,
-            app: 'Google Apps Script',
-            data: { app: 'Google Apps Script', params: { everyHours: 24, startHour: 9 } }
+            id: "transform-filter-data",
+            kind: "transform",
+            name: "Filter Data",
+            description: "Filter items by condition",
+            nodeType: "transform.filter.data",
+          },
+        ],
+        triggers: [
+          {
+            id: "trigger-every-15-min",
+            kind: "trigger",
+            name: "Every 15 Minutes",
+            description: "Run every 15 minutes",
+            nodeType: "trigger.time.every15",
+            params: { everyMinutes: 15 },
           },
           {
-            id: 'action-http-request',
-            type: 'action',
-            category: 'Built-in',
-            label: 'HTTP Request',
-            description: 'Call external API',
-            icon: Globe,
-            app: 'Built-in',
-            data: { app: 'Built-in', params: { method: 'GET', url: '', headers: {} } }
+            id: "trigger-every-hour",
+            kind: "trigger",
+            name: "Every Hour",
+            description: "Run every hour",
+            nodeType: "trigger.time.hourly",
+            params: { everyMinutes: 60 },
           },
           {
-            id: 'transform-filter-data',
-            type: 'transform',
-            category: 'Data Processing',
-            label: 'Filter Data',
-            description: 'Filter items by condition',
-            icon: Filter,
-            app: 'Built-in',
-            data: { app: 'Built-in', params: { expression: 'item.value > 0' } }
+            id: "trigger-daily-9am",
+            kind: "trigger",
+            name: "Daily at 9 AM",
+            description: "Run daily at 9 AM",
+            nodeType: "trigger.time.daily9",
+            params: { atHour: 9 },
           },
-          {
-            id: 'transform-format-text',
-            type: 'transform',
-            category: 'Data Processing',
-            label: 'Format Text',
-            description: 'Template interpolation',
-            icon: Code,
-            app: 'Built-in',
-            data: { app: 'Built-in', params: { template: 'Hello {{name}}!' } }
-          }
-        ];
-        
-        templates.push(...basicTemplates);
-        basicTemplates.forEach(t => categorySet.add(t.category));
-        
-        // Process connectors from registry
-        Object.entries(result.catalog.connectors).forEach(([appId, connector]: [string, any]) => {
-          const appIcon = getAppIcon(appId);
-          const appColor = getAppColor(connector.category);
-          
-          // Add triggers
-          connector.triggers?.forEach((trigger: any) => {
-            templates.push({
-              id: `trigger-${appId}-${trigger.id}`,
-              type: 'trigger',
-              category: connector.category,
-              label: trigger.name,
-              description: trigger.description,
-              icon: appIcon,
-              app: connector.name,
-              color: appColor,
-              data: { 
-                app: connector.name, 
-                nodeType: `trigger.${appId}.${trigger.id}`,
-                params: trigger.parameters || {} 
-              }
-            });
-          });
-          
-          // Add actions
-          connector.actions?.forEach((action: any) => {
-            templates.push({
-              id: `action-${appId}-${action.id}`,
-              type: 'action',
-              category: connector.category,
-              label: action.name,
-              description: action.description,
-              icon: appIcon,
-              app: connector.name,
-              color: appColor,
-              data: { 
-                app: connector.name, 
-                nodeType: `action.${appId}.${action.id}`,
-                params: action.parameters || {} 
-              }
-            });
-          });
-          
-          categorySet.add(connector.category);
-        });
-        
-        setNodeTemplates(templates);
-        setCategories(Array.from(categorySet).sort());
-        console.log(`🎊 Loaded ${templates.length} node templates from ${Object.keys(result.catalog.connectors).length} connectors`);
-      } else {
-        console.error('Failed to load node catalog:', result.error);
-        // Fallback to basic templates
-        setNodeTemplates(basicTemplates);
-      }
-    } catch (error) {
-      console.error('Error loading node templates:', error);
-      // Fallback to minimal templates
-      setNodeTemplates([
-        {
-          id: 'action-http-request',
-          type: 'action',
-          category: 'Built-in',
-          label: 'HTTP Request',
-          description: 'Call external API',
-          icon: Globe,
-          app: 'Built-in',
-          data: { app: 'Built-in', params: { method: 'GET', url: '', headers: {} } }
+        ],
+      };
+      catSet.add("Built-in");
+
+      // 2) Real connectors from registry
+      if (json?.success && json?.catalog?.connectors) {
+        for (const [appId, def] of Object.entries<any>(json.catalog.connectors)) {
+          const appName = def.name || appId;
+          const category = def.category || "Business Apps";
+          catSet.add(category);
+
+          const Icon = appIconsMap[appId] || appIconsMap.default;
+
+          const actions: NodeTpl[] = (def.actions || []).map((a: any) => ({
+            id: `action-${appId}-${a.id}`,
+            kind: "action",
+            name: a.name,
+            description: a.description || "",
+            nodeType: `action.${appId}.${a.id}`,
+            params: a.parameters || {},
+          }));
+
+          const triggers: NodeTpl[] = (def.triggers || []).map((t: any) => ({
+            id: `trigger-${appId}-${t.id}`,
+            kind: "trigger",
+            name: t.name,
+            description: t.description || "",
+            nodeType: `trigger.${appId}.${t.id}`,
+            params: t.parameters || {},
+          }));
+
+          nextApps[appId] = {
+            appId,
+            appName,
+            category,
+            icon: Icon,
+            actions,
+            triggers,
+          };
         }
-      ]);
+      }
+
+      setApps(nextApps);
+      setCategories(["all", ...Array.from(catSet).sort()]);
+      console.log(`🎊 Loaded ${Object.keys(nextApps).length} applications from registry`);
+    } catch (e) {
+      console.error("Failed to load catalog:", e);
     } finally {
       setLoading(false);
     }
   };
-  
-  const filteredNodes = nodeTemplates.filter(node => {
-    const matchesSearch = node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         node.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         node.app.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || node.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-  
-  const allCategories = ['all', ...categories];
-  
+
+  // -------- Filtering logic --------
+  const search = searchTerm.trim().toLowerCase();
+  const showCategoriesBar = !search;  // hide categories when searching
+
+  const filteredAppList = Object.values(apps)
+    .filter(app => selectedCategory === "all" || app.category === selectedCategory)
+    .map(app => {
+      if (!search) return app;
+      const nodes = [...app.triggers, ...app.actions];
+      const matched = nodes.filter(n =>
+        n.name.toLowerCase().includes(search) ||
+        n.description?.toLowerCase().includes(search) ||
+        app.appName.toLowerCase().includes(search)
+      );
+      // If any node matches search, keep app but only with the matched nodes
+      return matched.length
+        ? {
+            ...app,
+            triggers: matched.filter(n => n.kind === "trigger"),
+            actions: matched.filter(n => n.kind === "action" || n.kind === "transform"),
+          }
+        : null;
+    })
+    .filter(Boolean) as AppGroup[];
+
+  // Count nodes for the small counter
+  const totalNodes = Object.values(apps).reduce(
+    (acc, a) => acc + a.triggers.length + a.actions.length, 0
+  );
+  const filteredNodes = filteredAppList.reduce(
+    (acc, a) => acc + a.triggers.length + a.actions.length, 0
+  );
+
+  // -------- Render --------
   return (
-    <div className="w-80 bg-slate-900 border-r border-slate-700 h-full overflow-y-auto">
-      <div className="p-4">
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-blue-400" />
+    <div className="w-80 bg-slate-900 border-r border-slate-700 h-full flex flex-col">
+      {/* Sticky top: title + search + category chips */}
+      <div className="p-4 sticky top-0 bg-slate-900 z-10 border-b border-slate-800">
+        <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/15 text-blue-400">+</span>
           Add Nodes
-          {loading && <div className="ml-2 w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>}
         </h2>
-        
+
         {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="relative">
           <Input
-            placeholder="Search nodes..."
+            placeholder="Search apps or nodes…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-800 border-slate-600 text-white"
+            className="pl-3 bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-400"
           />
-        </div>
-        
-        {/* Categories */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {allCategories.map(category => (
-            <Button
-              key={category}
-              size="sm"
-              variant={selectedCategory === category ? 'default' : 'outline'}
-              onClick={() => setSelectedCategory(category)}
-              className={`text-xs ${
-                selectedCategory === category 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-              }`}
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              aria-label="Clear"
             >
-              {category === 'all' ? 'All' : category}
-            </Button>
-          ))}
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        
-        {/* Node Count */}
-        {!loading && (
-          <div className="text-xs text-slate-400 mb-3">
-            {filteredNodes.length} of {nodeTemplates.length} nodes
-          </div>
-        )}
-        
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-              <p className="text-slate-400 text-sm">Loading applications...</p>
-            </div>
-          </div>
-        )}
-        
-        {/* Node Templates */}
-        {!loading && (
-          <div className="space-y-2">
-            {filteredNodes.map((template, index) => {
-            const IconComponent = template.icon;
-            return (
-              <div
-                key={template.id}
-                onClick={() => onAddNode(template.type, { 
-                  ...template.data, 
-                  label: template.label, 
-                  description: template.description 
-                })}
-                className="p-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg cursor-pointer transition-all duration-200 hover:border-blue-500 group"
+
+        {/* Category chips (single row, scrollable). Hidden while searching */}
+        {showCategoriesBar && (
+          <div className="mt-3 flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {categories.map((cat) => (
+              <Button
+                key={cat}
+                size="sm"
+                variant={selectedCategory === cat ? "default" : "outline"}
+                onClick={() => setSelectedCategory(cat)}
+                className={clsx(
+                  "shrink-0 text-xs whitespace-nowrap",
+                  selectedCategory === cat
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700"
+                )}
               >
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    template.type === 'trigger' ? 'bg-green-500/20 text-green-400' :
-                    template.type === 'action' ? 'bg-blue-500/20 text-blue-400' :
-                    'bg-purple-500/20 text-purple-400'
-                  }`}>
-                    <IconComponent className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-white font-medium text-sm group-hover:text-blue-300 transition-colors">
-                      {template.label}
-                    </h3>
-                    <p className="text-slate-400 text-xs mt-1">{template.description}</p>
-                    <Badge 
-                      variant="secondary" 
-                      className="mt-2 text-xs bg-slate-700 text-slate-300 border-slate-600"
-                    >
-                      {template.type}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                {cat === "all" ? "All" : cat}
+              </Button>
+            ))}
           </div>
+        )}
+
+        {/* Small count */}
+        {!loading && (
+          <div className="text-xs text-slate-400 mt-2">
+            {filteredNodes} of {totalNodes} nodes
+            {search && <span className="ml-1">• Searching</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Apps list */}
+      <div className="flex-1 overflow-y-auto p-3">
+        {loading ? (
+          <div className="text-slate-400 text-sm py-10 text-center">
+            <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            Loading applications…
+          </div>
+        ) : filteredAppList.length === 0 ? (
+          <div className="text-slate-400 text-sm py-10 text-center">
+            <div className="text-slate-500 mb-2">No results found</div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedCategory("all");
+              }}
+              className="bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700"
+            >
+              Clear filters
+            </Button>
+          </div>
+        ) : (
+          <Accordion type="single" collapsible className="space-y-2">
+            {filteredAppList.map((app) => (
+              <AccordionItem key={app.appId} value={app.appId} className="border border-slate-700 rounded-xl bg-slate-800/60">
+                <AccordionTrigger className="px-3 py-2 hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <BrandIcon appId={app.appId} appName={app.appName} appIcons={appIconsMap} />
+                    <div className="flex flex-col text-left">
+                      <span className="text-slate-100 font-medium">{app.appName}</span>
+                      <span className="text-xs text-slate-400">{app.category}</span>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                      {app.triggers.length > 0 && (
+                        <Badge className="bg-emerald-500/15 text-emerald-300 border-emerald-500/20 text-[10px] px-1.5 py-0.5">
+                          {app.triggers.length} trigger{app.triggers.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                      {app.actions.length > 0 && (
+                        <Badge className="bg-blue-500/15 text-blue-300 border-blue-500/20 text-[10px] px-1.5 py-0.5">
+                          {app.actions.length} action{app.actions.length !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </AccordionTrigger>
+
+                <AccordionContent className="px-3 pb-3">
+                  {/* Nodes grid */}
+                  <div className="grid grid-cols-1 gap-2">
+                    {/* Triggers */}
+                    {app.triggers.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => onAddNode("trigger", { 
+                          label: t.name, 
+                          description: t.description, 
+                          app: app.appName, 
+                          nodeType: t.nodeType, 
+                          params: t.params || {} 
+                        })}
+                        className="group text-left p-3 rounded-lg bg-slate-900/70 border border-slate-700 hover:bg-slate-800 transition-all duration-200 hover:border-emerald-500/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-slate-100 text-sm font-medium truncate">{t.name}</div>
+                            {t.description && <div className="text-xs text-slate-400 mt-0.5 line-clamp-2 overflow-hidden">{t.description}</div>}
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 shrink-0">trigger</span>
+                        </div>
+                      </button>
+                    ))}
+
+                    {/* Actions / Transforms */}
+                    {app.actions.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => onAddNode(a.kind === "transform" ? "transform" : "action", { 
+                          label: a.name, 
+                          description: a.description, 
+                          app: app.appName, 
+                          nodeType: a.nodeType, 
+                          params: a.params || {} 
+                        })}
+                        className="group text-left p-3 rounded-lg bg-slate-900/70 border border-slate-700 hover:bg-slate-800 transition-all duration-200 hover:border-blue-500/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={clsx(
+                            "w-2 h-2 rounded-full",
+                            a.kind === "transform" 
+                              ? "bg-violet-400 shadow-[0_0_10px_rgba(139,92,246,0.7)]" 
+                              : "bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.7)]"
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-slate-100 text-sm font-medium truncate">{a.name}</div>
+                            {a.description && <div className="text-xs text-slate-400 mt-0.5 line-clamp-2 overflow-hidden">{a.description}</div>}
+                          </div>
+                          <span className={clsx(
+                            "text-[10px] px-2 py-0.5 rounded border shrink-0",
+                            a.kind === "transform"
+                              ? "bg-violet-500/15 text-violet-300 border-violet-500/20"
+                              : "bg-blue-500/15 text-blue-300 border-blue-500/20"
+                          )}>
+                            {a.kind}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         )}
       </div>
     </div>
