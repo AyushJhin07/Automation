@@ -993,6 +993,7 @@ const GraphEditorContent = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
 
   // Load AI-generated workflow if coming from AI Builder
@@ -1005,12 +1006,20 @@ const GraphEditorContent = () => {
           const workflowData = JSON.parse(savedWorkflow);
           loadWorkflowIntoGraph(workflowData);
           localStorage.removeItem('ai_generated_workflow'); // Clean up
+          setShowWelcomeModal(false); // Hide welcome modal when loading AI workflow
         } catch (error) {
           console.error('Failed to load AI-generated workflow:', error);
         }
       }
     }
   }, []);
+
+  // Auto-close welcome modal when nodes are added
+  useEffect(() => {
+    if (nodes.length > 0) {
+      setShowWelcomeModal(false);
+    }
+  }, [nodes.length]);
 
   const loadWorkflowIntoGraph = (workflowData: any) => {
     if (!workflowData.workflow?.graph) return;
@@ -1223,37 +1232,61 @@ const GraphEditorContent = () => {
             maskColor="rgba(248, 250, 252, 0.8)"
           />
           
-          {/* Welcome message when empty */}
-          {nodes.length === 0 && (
-            <Panel position="center">
-              <Card className="bg-slate-800/90 backdrop-blur-sm border-slate-700 max-w-md">
-                <CardContent className="p-6 text-center">
-                  <div className="mb-4">
-                    <Sparkles className="w-12 h-12 text-blue-400 mx-auto mb-3" />
-                    <h2 className="text-xl font-bold text-white mb-2">Welcome to Workflow Designer</h2>
-                    <p className="text-slate-400 text-sm">
-                      Start building your automation by adding nodes from the sidebar.
-                      Connect them together to create powerful workflows!
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2 text-left text-sm text-slate-300">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span>Green nodes are triggers (start your workflow)</span>
+          {/* Welcome Modal Popup */}
+          {showWelcomeModal && nodes.length === 0 && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 ease-out">
+              <div className="transform transition-all duration-500 ease-out scale-100 animate-in">
+                <Card className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md border-2 border-slate-600/50 max-w-lg mx-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 rounded-2xl">
+                  <CardContent className="p-8 text-center relative">
+                    {/* Close Button */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowWelcomeModal(false)}
+                      className="absolute top-4 right-4 text-slate-400 hover:text-white hover:bg-slate-700/50 w-8 h-8 p-0 rounded-full transition-all duration-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+
+                    <div className="mb-6">
+                      <div className="relative mb-4">
+                        <Sparkles className="w-16 h-16 text-blue-400 mx-auto mb-3 animate-pulse" />
+                        <div className="absolute inset-0 w-16 h-16 mx-auto bg-blue-400/20 rounded-full blur-xl"></div>
+                      </div>
+                      <h2 className="text-2xl font-bold text-white mb-3">Welcome to Workflow Designer</h2>
+                      <p className="text-slate-300 text-base leading-relaxed">
+                        Start building your automation by adding nodes from the sidebar.
+                        Connect them together to create powerful workflows!
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span>Blue nodes are actions (do something)</span>
+                    
+                    <div className="space-y-3 text-left">
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                        <div className="w-4 h-4 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                        <span className="text-slate-200 text-sm font-medium">Green nodes are triggers (start your workflow)</span>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                        <div className="w-4 h-4 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                        <span className="text-slate-200 text-sm font-medium">Blue nodes are actions (do something)</span>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <div className="w-4 h-4 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
+                        <span className="text-slate-200 text-sm font-medium">Purple nodes transform data</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                      <span>Purple nodes transform data</span>
+
+                    <div className="mt-6 pt-4 border-t border-slate-700/50">
+                      <Button
+                        onClick={() => setShowWelcomeModal(false)}
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                      >
+                        Get Started
+                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Panel>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           )}
         </ReactFlow>
       </div>
