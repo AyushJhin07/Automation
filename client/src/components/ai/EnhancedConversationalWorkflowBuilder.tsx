@@ -599,7 +599,7 @@ Need help? I can guide you through each step!`
                 message.role === 'user'
                   ? 'bg-blue-600 text-white'
                   : message.role === 'system'
-                  ? 'bg-gradient-to-br from-sky-100/40 to-blue-100/40 backdrop-blur-sm border-2 border-sky-200/60 text-gray-900 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_12px_24px_rgba(14,165,233,0.25)] ring-1 ring-sky-200/30'
+                  ? 'bg-gradient-to-br from-sky-50 via-blue-50 to-sky-100 border-2 border-sky-300/80 text-gray-800 shadow-[inset_0_2px_8px_rgba(255,255,255,0.8),0_8px_32px_rgba(14,165,233,0.4),0_4px_16px_rgba(14,165,233,0.3)] ring-2 ring-sky-200/50'
                   : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
               }`}
             >
@@ -805,7 +805,7 @@ Need help? I can guide you through each step!`
                   }
                 }}
                 disabled={isProcessing}
-                className="bg-gradient-to-br from-sky-50/60 to-blue-50/60 backdrop-blur-sm border-2 border-sky-200/60 text-gray-900 placeholder-sky-600/70 resize-none rounded-2xl p-4 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_12px_24px_rgba(14,165,233,0.25)] ring-1 ring-sky-200/30 focus:border-sky-300/80 focus:ring-2 focus:ring-sky-200/50 transition-all duration-200"
+                className="bg-gradient-to-br from-sky-50 via-blue-50 to-sky-100 border-2 border-sky-300/80 text-gray-800 placeholder-sky-700/80 resize-none rounded-2xl p-4 shadow-[inset_0_2px_8px_rgba(255,255,255,0.8),0_8px_32px_rgba(14,165,233,0.4),0_4px_16px_rgba(14,165,233,0.3)] ring-2 ring-sky-200/50 focus:border-sky-400 focus:ring-4 focus:ring-sky-300/40 transition-all duration-200"
                 rows={2}
               />
             </div>
@@ -813,7 +813,7 @@ Need help? I can guide you through each step!`
           <Button
             onClick={handleSendMessage}
             disabled={!currentInput.trim() || isProcessing}
-            className="bg-gradient-to-br from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 px-6 rounded-2xl shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_8px_16px_rgba(14,165,233,0.3)] ring-1 ring-sky-300/40 transition-all duration-200 hover:scale-105"
+            className="bg-gradient-to-br from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 px-6 rounded-2xl shadow-[inset_0_2px_6px_rgba(255,255,255,0.4),0_8px_24px_rgba(14,165,233,0.5),0_4px_12px_rgba(14,165,233,0.4)] ring-2 ring-sky-300/50 transition-all duration-200 hover:scale-105 hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.5),0_12px_32px_rgba(14,165,233,0.6),0_6px_16px_rgba(14,165,233,0.5)]"
           >
             {isProcessing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
