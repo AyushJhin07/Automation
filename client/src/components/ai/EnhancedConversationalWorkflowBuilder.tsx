@@ -611,8 +611,8 @@ Need help? I can guide you through each step!`
                 )}
                 
                 <div className="flex-1">
-                  <div className="prose prose-invert max-w-none">
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className={`prose max-w-none ${message.role === 'system' ? 'text-gray-800' : message.role === 'user' ? 'text-white' : 'text-gray-900'}`}>
+                    <div className="whitespace-pre-wrap font-medium">{message.content}</div>
                   </div>
                   
                   {/* Visual Workflow Preview */}
