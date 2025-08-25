@@ -616,9 +616,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
   });
-  const [selectedCategory, setSelectedCategory] = useState(() => {
-    return localStorage.getItem('sidebar_category') || "all";
-  });
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
 
   // Data built from registry
@@ -1234,55 +1232,53 @@ const GraphEditorContent = () => {
           
           {/* Welcome Modal Popup */}
           {showWelcomeModal && nodes.length === 0 && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 ease-out">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 ease-out p-4">
               <div className="transform transition-all duration-500 ease-out scale-100 animate-in">
-                <Card className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md border-2 border-slate-600/50 max-w-lg mx-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 rounded-2xl">
-                  <CardContent className="p-8 text-center relative">
-                    {/* Close Button */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowWelcomeModal(false)}
-                      className="absolute top-4 right-4 text-slate-400 hover:text-white hover:bg-slate-700/50 w-8 h-8 p-0 rounded-full transition-all duration-200"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                <Card className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md border-2 border-slate-600/50 w-full max-w-md shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 rounded-2xl relative">
+                  {/* Close Button - Outside of CardContent */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowWelcomeModal(false)}
+                    className="absolute -top-2 -right-2 text-slate-400 hover:text-white hover:bg-slate-700 w-8 h-8 p-0 rounded-full transition-all duration-200 bg-slate-800 border border-slate-600 z-10"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
 
-                    <div className="mb-6">
-                      <div className="relative mb-4">
-                        <Sparkles className="w-16 h-16 text-blue-400 mx-auto mb-3 animate-pulse" />
-                        <div className="absolute inset-0 w-16 h-16 mx-auto bg-blue-400/20 rounded-full blur-xl"></div>
+                  <CardContent className="p-6 text-center">
+
+                    <div className="mb-4">
+                      <div className="relative mb-3">
+                        <Sparkles className="w-12 h-12 text-blue-400 mx-auto mb-2 animate-pulse" />
+                        <div className="absolute inset-0 w-12 h-12 mx-auto bg-blue-400/20 rounded-full blur-lg"></div>
                       </div>
-                      <h2 className="text-2xl font-bold text-white mb-3">Welcome to Workflow Designer</h2>
-                      <p className="text-slate-300 text-base leading-relaxed">
+                      <h2 className="text-xl font-bold text-white mb-2">Welcome to Workflow Designer</h2>
+                      <p className="text-slate-300 text-sm leading-relaxed">
                         Start building your automation by adding nodes from the sidebar.
-                        Connect them together to create powerful workflows!
                       </p>
                     </div>
                     
-                    <div className="space-y-3 text-left">
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                        <div className="w-4 h-4 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                        <span className="text-slate-200 text-sm font-medium">Green nodes are triggers (start your workflow)</span>
+                    <div className="space-y-2 text-left mb-4">
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                        <span className="text-slate-200 text-xs font-medium">Green nodes are triggers</span>
                       </div>
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                        <div className="w-4 h-4 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                        <span className="text-slate-200 text-sm font-medium">Blue nodes are actions (do something)</span>
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                        <span className="text-slate-200 text-xs font-medium">Blue nodes are actions</span>
                       </div>
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                        <div className="w-4 h-4 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-                        <span className="text-slate-200 text-sm font-medium">Purple nodes transform data</span>
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                        <div className="w-3 h-3 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)]"></div>
+                        <span className="text-slate-200 text-xs font-medium">Purple nodes transform data</span>
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-slate-700/50">
-                      <Button
-                        onClick={() => setShowWelcomeModal(false)}
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                      >
-                        Get Started
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => setShowWelcomeModal(false)}
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 w-full"
+                    >
+                      Get Started
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
