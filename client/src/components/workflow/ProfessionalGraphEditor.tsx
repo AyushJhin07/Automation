@@ -63,7 +63,15 @@ import {
   Box,
   AlertTriangle,
   Activity,
-  AppWindow
+  AppWindow,
+  Video,
+  Phone,
+  CreditCard,
+  ShoppingCart,
+  Folder,
+  BookOpen,
+  MapPin,
+  Calculator
 } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
@@ -112,6 +120,39 @@ const appIconsMap: Record<string, any> = {
   'sentry': AlertTriangle,
   'newrelic': Activity,
   'built_in': AppWindow,
+  
+  // New 30 enterprise connectors
+  'dynamics365': Database,
+  'marketo': BarChart,
+  'pardot': BarChart,
+  'iterable': Mail,
+  'braze': Mail,
+  'docusign': FileText,
+  'adobesign': FileText,
+  'hellosign': FileText,
+  'calendly': Calendar,
+  'caldotcom': Calendar,
+  'webex': Video,
+  'ringcentral': Phone,
+  'paypal': CreditCard,
+  'square': CreditCard,
+  'adyen': CreditCard,
+  'bigcommerce': ShoppingCart,
+  'magento': ShoppingCart,
+  'egnyte': Folder,
+  'coda': FileText,
+  'guru': BookOpen,
+  'slab': BookOpen,
+  'qualtrics': BarChart,
+  'surveymonkey': BarChart,
+  'concur': DollarSign,
+  'navan': MapPin,
+  'expensify': DollarSign,
+  'ramp': CreditCard,
+  'brex': CreditCard,
+  'netsuite': Database,
+  'sageintacct': Calculator,
+  
   'default': Zap,
   // Add more mappings as needed
 };
