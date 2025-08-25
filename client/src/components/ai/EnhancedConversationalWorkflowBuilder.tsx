@@ -145,23 +145,23 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
       
       {/* Workflow Stats */}
       <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-        <div className="bg-slate-700 rounded p-2">
-          <div className="text-lg font-bold text-green-400">
+        <div className="bg-green-50 border border-green-200 rounded p-2">
+          <div className="text-lg font-bold text-green-600">
             {graph.nodes.filter((n: any) => n.type.startsWith('trigger.')).length}
           </div>
-          <div className="text-xs text-slate-400">Triggers</div>
+          <div className="text-xs text-gray-600">Triggers</div>
         </div>
-        <div className="bg-slate-700 rounded p-2">
-          <div className="text-lg font-bold text-blue-400">
+        <div className="bg-blue-50 border border-blue-200 rounded p-2">
+          <div className="text-lg font-bold text-blue-600">
             {graph.nodes.filter((n: any) => n.type.startsWith('action.')).length}
           </div>
-          <div className="text-xs text-slate-400">Actions</div>
+          <div className="text-xs text-gray-600">Actions</div>
         </div>
-        <div className="bg-slate-700 rounded p-2">
-          <div className="text-lg font-bold text-purple-400">
+        <div className="bg-purple-50 border border-purple-200 rounded p-2">
+          <div className="text-lg font-bold text-purple-600">
             {graph.nodes.filter((n: any) => n.type.startsWith('transform.')).length}
           </div>
-          <div className="text-xs text-slate-400">Transforms</div>
+          <div className="text-xs text-gray-600">Transforms</div>
         </div>
       </div>
       
@@ -599,8 +599,8 @@ Need help? I can guide you through each step!`
                 message.role === 'user'
                   ? 'bg-blue-600 text-white'
                   : message.role === 'system'
-                  ? 'bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 text-white'
-                  : 'bg-slate-800 text-white border border-slate-700'
+                  ? 'bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 text-gray-900'
+                  : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -671,20 +671,20 @@ Need help? I can guide you through each step!`
 
         {/* Questions Interface */}
         {currentQuestions.length > 0 && (
-          <Card className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-2 border-blue-500/50 shadow-xl">
-            <CardHeader className="bg-slate-800/50">
-              <CardTitle className="flex items-center gap-2 text-white">
-                <HelpCircle className="w-5 h-5 text-blue-400 animate-pulse" />
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 shadow-lg">
+            <CardHeader className="bg-white/80">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <HelpCircle className="w-5 h-5 text-blue-600 animate-pulse" />
                 🤔 Please Answer These Questions ({currentQuestions.length})
               </CardTitle>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-gray-600">
                 Help me understand your automation requirements better:
               </p>
             </CardHeader>
-            <CardContent className="space-y-6 bg-slate-800/30">
+            <CardContent className="space-y-6 bg-white/60">
               {currentQuestions.map((question, index) => (
-                <div key={question.id} className="space-y-3 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
-                  <label className="text-sm font-medium text-white flex items-start gap-2">
+                <div key={question.id} className="space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <label className="text-sm font-medium text-gray-900 flex items-start gap-2">
                     <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                       {index + 1}
                     </span>
@@ -699,11 +699,11 @@ Need help? I can guide you through each step!`
                          placeholder="Type your answer here... (Be as specific as possible)"
                          value={questionAnswers[question.id] || ''}
                          onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
-                         className="bg-slate-600 border-2 border-blue-400 text-white placeholder-slate-300 focus:border-blue-300 focus:ring-2 focus:ring-blue-400/20 text-base p-4 min-h-[80px]"
+                         className="bg-white border-2 border-blue-300 text-gray-900 placeholder-gray-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-base p-4 min-h-[80px]"
                          rows={3}
                        />
                        <div className="flex items-center justify-between text-xs">
-                         <span className="text-slate-400">
+                         <span className="text-gray-500">
                            💡 {question.kind === 'missingParam' && 'Be specific - this helps generate better automation'}
                            {question.kind === 'disambiguation' && 'Choose the option that best fits your needs'}
                            {question.kind === 'permission' && 'This affects what permissions are needed'}
@@ -719,7 +719,7 @@ Need help? I can guide you through each step!`
                      {/* Choice buttons if available */}
                      {question.choices && question.choices.length > 0 && (
                        <div className="space-y-2">
-                         <p className="text-xs text-slate-400 mb-2">Quick options (or type custom answer above):</p>
+                         <p className="text-xs text-gray-500 mb-2">Quick options (or type custom answer above):</p>
                          <div className="flex flex-wrap gap-2">
                            {question.choices.map((choice) => (
                              <button
@@ -728,7 +728,7 @@ Need help? I can guide you through each step!`
                                className={`px-3 py-2 rounded-lg border transition-all text-sm ${
                                  questionAnswers[question.id] === choice
                                    ? 'bg-blue-600 border-blue-500 text-white'
-                                   : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:border-blue-500'
+                                   : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-blue-400'
                                }`}
                              >
                                {choice}
@@ -742,7 +742,7 @@ Need help? I can guide you through each step!`
               ))}
               
               <div className="space-y-3">
-                <div className="text-xs text-slate-400 text-center">
+                <div className="text-xs text-gray-500 text-center">
                   Answered: {Object.keys(questionAnswers).length} / {currentQuestions.length} questions
                 </div>
                 <Button
@@ -763,7 +763,7 @@ Need help? I can guide you through each step!`
                   )}
                 </Button>
                 {Object.keys(questionAnswers).length === 0 && (
-                  <p className="text-xs text-center text-slate-400">
+                  <p className="text-xs text-center text-gray-500">
                     Please answer at least one question to continue
                   </p>
                 )}
@@ -804,7 +804,7 @@ Need help? I can guide you through each step!`
                 }
               }}
               disabled={isProcessing}
-              className="bg-slate-700 border-slate-600 text-white placeholder-slate-400 resize-none"
+              className="bg-white border-gray-300 text-gray-900 placeholder-gray-500 resize-none"
               rows={2}
             />
           </div>
@@ -821,7 +821,7 @@ Need help? I can guide you through each step!`
           </Button>
         </div>
         
-        <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
+        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
           <span>Press Enter to send, Shift+Enter for new line</span>
           <span>Powered by {workflowResult ? 'Real LLM' : 'AI'} • 500+ Apps Supported</span>
         </div>
