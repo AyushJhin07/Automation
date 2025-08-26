@@ -7,6 +7,8 @@
 import { NodeGraph, GraphNode, ParameterContext } from '../../shared/nodeGraphSchema';
 import { runLLMGenerate, runLLMExtract, runLLMClassify, runLLMToolCall } from '../nodes/llm/executeLLM';
 import { resolveAllParams } from './ParameterResolver';
+import { retryManager, RetryPolicy } from './RetryManager';
+import { runExecutionManager } from './RunExecutionManager';
 
 export interface ExecutionContext {
   outputs: Record<string, any>;
@@ -43,6 +45,9 @@ export class WorkflowRuntime {
       executionId
     };
 
+    // Start execution tracking
+    runExecutionManager.startExecution(executionId, graph, userId, 'manual', initialData);
+
     console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
 
     try {
@@ -58,19 +63,44 @@ export class WorkflowRuntime {
 
         console.log(`📋 Executing node: ${node.label} (${node.type})`);
         
+        // Start node execution tracking
+        const nodeExecution = runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput);
+        
         try {
-          const nodeResult = await this.executeNode(node, context);
+          // Execute node with retry logic and idempotency
+          const nodeResult = await retryManager.executeWithRetry(
+            node.id,
+            context.executionId,
+            () => this.executeNode(node, context),
+            {
+              policy: this.getRetryPolicyForNode(node),
+              idempotencyKey: this.generateIdempotencyKey(node, context),
+              nodeType: node.type
+            }
+          );
+          
           context.outputs[node.id] = nodeResult;
           context.prevOutput = nodeResult;
           
+          // Track successful completion
+          runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeResult, {
+            // Add any metadata from the execution
+          });
+          
           console.log(`✅ Node ${node.id} completed successfully`);
         } catch (error) {
+          // Track failure
+          runExecutionManager.failNodeExecution(context.executionId, node.id, error.message);
+          
           console.error(`❌ Node ${node.id} failed:`, error);
           throw new Error(`Node "${node.label}" failed: ${error.message}`);
         }
       }
 
       const executionTime = Date.now() - startTime.getTime();
+      
+      // Track successful completion
+      runExecutionManager.completeExecution(context.executionId, context.prevOutput);
       
       console.log(`🎉 Workflow execution completed in ${executionTime}ms`);
       
@@ -82,6 +112,9 @@ export class WorkflowRuntime {
       };
     } catch (error) {
       const executionTime = Date.now() - startTime.getTime();
+      
+      // Track failed completion
+      runExecutionManager.completeExecution(context.executionId, undefined, error.message);
       
       console.error(`💥 Workflow execution failed after ${executionTime}ms:`, error);
       
@@ -258,6 +291,101 @@ export class WorkflowRuntime {
     graph.nodes.forEach(node => visit(node.id));
     
     return result;
+  }
+
+  /**
+   * Get retry policy based on node type
+   */
+  private getRetryPolicyForNode(node: GraphNode): Partial<RetryPolicy> {
+    const nodeType = node.type;
+    
+    // LLM nodes - more retries due to rate limits
+    if (nodeType.startsWith('action.llm.')) {
+      return {
+        maxAttempts: 4,
+        initialDelayMs: 2000,
+        maxDelayMs: 60000,
+        retryableErrors: ['TIMEOUT', 'RATE_LIMIT', 'NETWORK_ERROR', 'SERVICE_UNAVAILABLE', 'SERVER_ERROR']
+      };
+    }
+    
+    // HTTP nodes - network retries
+    if (nodeType.startsWith('action.http') || nodeType.includes('webhook')) {
+      return {
+        maxAttempts: 3,
+        initialDelayMs: 1000,
+        maxDelayMs: 30000,
+        retryableErrors: ['TIMEOUT', 'RATE_LIMIT', 'NETWORK_ERROR', 'SERVICE_UNAVAILABLE']
+      };
+    }
+    
+    // External service actions (Gmail, Sheets, etc.)
+    if (nodeType.startsWith('action.') && !nodeType.startsWith('action.transform')) {
+      return {
+        maxAttempts: 2,
+        initialDelayMs: 1500,
+        maxDelayMs: 15000,
+        retryableErrors: ['TIMEOUT', 'RATE_LIMIT', 'NETWORK_ERROR', 'SERVICE_UNAVAILABLE']
+      };
+    }
+    
+    // Transform nodes - usually no retries needed
+    if (nodeType.startsWith('transform.')) {
+      return {
+        maxAttempts: 1,
+        retryableErrors: []
+      };
+    }
+    
+    // Default policy
+    return {
+      maxAttempts: 2,
+      initialDelayMs: 1000,
+      retryableErrors: ['TIMEOUT', 'NETWORK_ERROR']
+    };
+  }
+
+  /**
+   * Generate idempotency key for node execution
+   */
+  private generateIdempotencyKey(node: GraphNode, context: ExecutionContext): string {
+    // Create a hash-like key based on node content and context
+    const nodeFingerprint = JSON.stringify({
+      nodeId: node.id,
+      nodeType: node.type,
+      params: node.data.params,
+      workflowId: context.workflowId,
+      // Include relevant previous outputs for context-dependent idempotency
+      relevantInputs: this.getRelevantInputsForIdempotency(node, context)
+    });
+    
+    // Simple hash function for idempotency key
+    let hash = 0;
+    for (let i = 0; i < nodeFingerprint.length; i++) {
+      const char = nodeFingerprint.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    return `idem_${Math.abs(hash)}_${node.id}`;
+  }
+
+  /**
+   * Get relevant inputs for idempotency calculation
+   */
+  private getRelevantInputsForIdempotency(node: GraphNode, context: ExecutionContext): any {
+    // For most nodes, we only care about the direct dependencies
+    const relevantInputs: any = {};
+    
+    // If this node has parameter references to other nodes, include those outputs
+    const nodeParams = node.data.params || {};
+    for (const [key, value] of Object.entries(nodeParams)) {
+      if (typeof value === 'object' && value?.mode === 'ref' && value?.nodeId) {
+        relevantInputs[key] = context.outputs[value.nodeId];
+      }
+    }
+    
+    return relevantInputs;
   }
 }
 

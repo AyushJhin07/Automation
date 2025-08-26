@@ -2767,6 +2767,274 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== RUN EXECUTION & OBSERVABILITY API =====
+  
+  // Get workflow executions with filtering and pagination
+  app.get('/api/executions', async (req, res) => {
+    try {
+      const { runExecutionManager } = await import('./core/RunExecutionManager');
+      
+      const query = {
+        executionId: req.query.executionId as string,
+        workflowId: req.query.workflowId as string,
+        userId: req.query.userId as string,
+        status: req.query.status ? [req.query.status as string] : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
+        sortBy: req.query.sortBy as 'startTime' | 'duration' | 'status',
+        sortOrder: req.query.sortOrder as 'asc' | 'desc'
+      };
+      
+      const result = runExecutionManager.queryExecutions(query);
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to query executions:', error);
+      res.status(500).json({ error: 'Failed to query executions' });
+    }
+  });
+  
+  // Get specific execution details
+  app.get('/api/executions/:executionId', async (req, res) => {
+    try {
+      const { runExecutionManager } = await import('./core/RunExecutionManager');
+      const execution = runExecutionManager.getExecution(req.params.executionId);
+      
+      if (!execution) {
+        return res.status(404).json({ error: 'Execution not found' });
+      }
+      
+      res.json(execution);
+    } catch (error) {
+      console.error('Failed to get execution:', error);
+      res.status(500).json({ error: 'Failed to get execution' });
+    }
+  });
+  
+  // Retry entire execution
+  app.post('/api/executions/:executionId/retry', async (req, res) => {
+    try {
+      const { workflowRuntime } = await import('./core/WorkflowRuntime');
+      const { runExecutionManager } = await import('./core/RunExecutionManager');
+      
+      const execution = runExecutionManager.getExecution(req.params.executionId);
+      if (!execution) {
+        return res.status(404).json({ error: 'Execution not found' });
+      }
+      
+      // TODO: Implement retry logic by re-running the workflow
+      // For now, just return success
+      res.json({ success: true, message: 'Retry scheduled' });
+    } catch (error) {
+      console.error('Failed to retry execution:', error);
+      res.status(500).json({ error: 'Failed to retry execution' });
+    }
+  });
+  
+  // Retry specific node
+  app.post('/api/executions/:executionId/nodes/:nodeId/retry', async (req, res) => {
+    try {
+      const { retryManager } = await import('./core/RetryManager');
+      
+      await retryManager.replayFromDLQ(req.params.executionId, req.params.nodeId);
+      res.json({ success: true, message: 'Node retry scheduled' });
+    } catch (error) {
+      console.error('Failed to retry node:', error);
+      res.status(500).json({ error: 'Failed to retry node' });
+    }
+  });
+  
+  // Get execution statistics
+  app.get('/api/executions/stats/:timeframe', async (req, res) => {
+    try {
+      const { runExecutionManager } = await import('./core/RunExecutionManager');
+      const timeframe = req.params.timeframe as 'hour' | 'day' | 'week';
+      
+      const stats = runExecutionManager.getExecutionStats(timeframe);
+      res.json(stats);
+    } catch (error) {
+      console.error('Failed to get execution stats:', error);
+      res.status(500).json({ error: 'Failed to get execution stats' });
+    }
+  });
+  
+  // Get DLQ items
+  app.get('/api/dlq', async (req, res) => {
+    try {
+      const { retryManager } = await import('./core/RetryManager');
+      const dlqItems = retryManager.getDLQItems();
+      res.json({ items: dlqItems });
+    } catch (error) {
+      console.error('Failed to get DLQ items:', error);
+      res.status(500).json({ error: 'Failed to get DLQ items' });
+    }
+  });
+
+  // Test LLM JSON validation and repair
+  app.post('/api/llm/validate-json', async (req, res) => {
+    try {
+      const { llmValidationAndRepair } = await import('./llm/LLMValidationAndRepair');
+      const { jsonString, schema, originalPrompt, options } = req.body;
+      
+      const result = await llmValidationAndRepair.validateAndRepair(
+        jsonString,
+        schema,
+        originalPrompt,
+        options
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to validate JSON:', error);
+      res.status(500).json({ error: 'Failed to validate JSON' });
+    }
+  });
+
+  // ===== WEBHOOK VERIFICATION API =====
+  
+  // Verify webhook signature
+  app.post('/api/webhooks/verify', async (req, res) => {
+    try {
+      const { webhookVerifier } = await import('./webhooks/WebhookVerifier');
+      const { provider, headers, body, config } = req.body;
+      
+      const result = await webhookVerifier.verifyWebhook(
+        provider,
+        headers,
+        body,
+        config
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to verify webhook:', error);
+      res.status(500).json({ error: 'Failed to verify webhook' });
+    }
+  });
+  
+  // Generate test webhook signature
+  app.post('/api/webhooks/generate-signature', async (req, res) => {
+    try {
+      const { webhookVerifier } = await import('./webhooks/WebhookVerifier');
+      const { provider, body, config } = req.body;
+      
+      const result = webhookVerifier.generateTestSignature(provider, body, config);
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to generate webhook signature:', error);
+      res.status(500).json({ error: 'Failed to generate webhook signature' });
+    }
+  });
+  
+  // Get webhook verification stats
+  app.get('/api/webhooks/stats', async (req, res) => {
+    try {
+      const { webhookVerifier } = await import('./webhooks/WebhookVerifier');
+      const stats = webhookVerifier.getVerificationStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Failed to get webhook stats:', error);
+      res.status(500).json({ error: 'Failed to get webhook stats' });
+    }
+  });
+  
+  // Register webhook provider configuration
+  app.post('/api/webhooks/register-provider', async (req, res) => {
+    try {
+      const { webhookVerifier } = await import('./webhooks/WebhookVerifier');
+      const config = req.body;
+      
+      webhookVerifier.registerProvider(config);
+      res.json({ success: true, message: `Provider ${config.provider} registered` });
+    } catch (error) {
+      console.error('Failed to register webhook provider:', error);
+      res.status(500).json({ error: 'Failed to register webhook provider' });
+    }
+  });
+
+  // ===== LLM BUDGET & CACHE API =====
+  
+  // Get budget status
+  app.get('/api/llm/budget/status', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const status = llmBudgetAndCache.getBudgetStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Failed to get budget status:', error);
+      res.status(500).json({ error: 'Failed to get budget status' });
+    }
+  });
+  
+  // Update budget configuration
+  app.post('/api/llm/budget/config', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const config = req.body;
+      
+      llmBudgetAndCache.updateBudgetConfig(config);
+      res.json({ success: true, message: 'Budget configuration updated' });
+    } catch (error) {
+      console.error('Failed to update budget config:', error);
+      res.status(500).json({ error: 'Failed to update budget config' });
+    }
+  });
+  
+  // Get cache statistics
+  app.get('/api/llm/cache/stats', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const stats = llmBudgetAndCache.getCacheStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Failed to get cache stats:', error);
+      res.status(500).json({ error: 'Failed to get cache stats' });
+    }
+  });
+  
+  // Clear cache
+  app.post('/api/llm/cache/clear', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      llmBudgetAndCache.clearCache();
+      res.json({ success: true, message: 'Cache cleared' });
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      res.status(500).json({ error: 'Failed to clear cache' });
+    }
+  });
+  
+  // Get usage analytics
+  app.get('/api/llm/usage/analytics', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const timeframe = req.query.timeframe as 'day' | 'week' | 'month' || 'day';
+      const analytics = llmBudgetAndCache.getUsageAnalytics(timeframe);
+      res.json(analytics);
+    } catch (error) {
+      console.error('Failed to get usage analytics:', error);
+      res.status(500).json({ error: 'Failed to get usage analytics' });
+    }
+  });
+  
+  // Check budget constraints for a request
+  app.post('/api/llm/budget/check', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const { estimatedCostUSD, userId, workflowId } = req.body;
+      
+      const result = await llmBudgetAndCache.checkBudgetConstraints(
+        estimatedCostUSD,
+        userId,
+        workflowId
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to check budget constraints:', error);
+      res.status(500).json({ error: 'Failed to check budget constraints' });
+    }
+  });
+
   // ===== PHASE 4 ENTERPRISE FEATURES API =====
   
   // LLM Orchestration

@@ -1,6 +1,8 @@
 import { llmRegistry, LLMMessage, LLMTool } from '../../llm/LLMProvider';
 import { fetchAndSummarizeURLs, formatNodeDataForContext, isUrlSafe } from './rag';
 import { moderateInput, scrubPII, validatePrompt } from './safety';
+import { llmValidationAndRepair } from '../../llm/LLMValidationAndRepair';
+import { llmBudgetAndCache } from '../../llm/LLMBudgetAndCache';
 
 /**
  * Execute LLM Generate action
@@ -109,6 +111,47 @@ export async function runLLMExtract(params: any, ctx: any) {
   ];
 
   try {
+    // Check cache first
+    const cacheKey = JSON.stringify({ prompt, model, provider, jsonSchema });
+    const cachedResponse = llmBudgetAndCache.getCachedResponse(cacheKey, model, provider);
+    
+    if (cachedResponse) {
+      return {
+        json: JSON.parse(cachedResponse.response),
+        extracted: JSON.parse(cachedResponse.response),
+        usage: {
+          promptTokens: cachedResponse.tokensUsed,
+          completionTokens: 0,
+          costUSD: 0 // Cache hit = $0 cost
+        },
+        model: model,
+        provider: provider,
+        validation: {
+          isValid: true,
+          repairAttempts: 0,
+          errors: [],
+          originalResponse: cachedResponse.response,
+          finalResponse: cachedResponse.response
+        },
+        cached: true
+      };
+    }
+
+    // Estimate cost for budget checking
+    const estimatedTokens = Math.ceil(prompt.length / 4); // Rough estimation
+    const estimatedCost = llmBudgetAndCache.estimateCost(provider, model, estimatedTokens);
+    
+    // Check budget constraints
+    const budgetCheck = await llmBudgetAndCache.checkBudgetConstraints(
+      estimatedCost,
+      ctx.userId,
+      ctx.workflowId
+    );
+    
+    if (!budgetCheck.allowed) {
+      throw new Error(`Budget constraint violation: ${budgetCheck.reason}`);
+    }
+
     const llmProvider = llmRegistry.get(provider);
     const result = await llmProvider.generate({
       model,
@@ -118,14 +161,62 @@ export async function runLLMExtract(params: any, ctx: any) {
       responseFormat: { type: 'json_object', schema: jsonSchema }
     });
 
-    // Try to parse JSON from response
-    let extractedData = result.json;
-    if (!extractedData && result.text) {
-      extractedData = tryParseJSON(result.text);
+    // Validate and potentially repair the response
+    const responseText = result.text || JSON.stringify(result.json || {});
+    const validation = await llmValidationAndRepair.validateAndRepair(
+      responseText,
+      jsonSchema,
+      prompt,
+      {
+        maxRepairAttempts: 2,
+        strictMode: false,
+        repairStrategy: 'hybrid'
+      }
+    );
+
+    let extractedData = validation.repairedData;
+    
+    // Fallback to original parsing if validation failed
+    if (!extractedData) {
+      extractedData = result.json || tryParseJSON(result.text);
     }
 
     if (!extractedData) {
-      throw new Error('Failed to extract valid JSON from LLM response');
+      throw new Error(`Failed to extract valid JSON from LLM response. Validation errors: ${validation.errors.join(', ')}`);
+    }
+
+    // Log validation issues for monitoring
+    if (!validation.isValid) {
+      console.warn(`🔧 LLM Extract validation issues (${validation.repairAttempts} repairs):`, validation.errors);
+    }
+
+    // Record usage for budget tracking
+    const actualCost = result.usage?.costUSD || estimatedCost;
+    const actualTokens = result.usage?.promptTokens && result.usage?.completionTokens 
+      ? result.usage.promptTokens + result.usage.completionTokens 
+      : estimatedTokens;
+
+    llmBudgetAndCache.recordUsage({
+      userId: ctx.userId,
+      workflowId: ctx.workflowId,
+      provider,
+      model,
+      tokensUsed: actualTokens,
+      costUSD: actualCost,
+      executionId: ctx.executionId || 'unknown',
+      nodeId: ctx.nodeId || 'unknown'
+    });
+
+    // Cache the successful response
+    if (validation.isValid && validation.finalResponse) {
+      llmBudgetAndCache.cacheResponse(
+        cacheKey,
+        validation.finalResponse,
+        model,
+        provider,
+        actualTokens,
+        actualCost
+      );
     }
 
     return {
@@ -133,7 +224,15 @@ export async function runLLMExtract(params: any, ctx: any) {
       extracted: extractedData, // Alias for backward compatibility
       usage: result.usage,
       model: model,
-      provider: provider
+      provider: provider,
+      validation: {
+        isValid: validation.isValid,
+        repairAttempts: validation.repairAttempts,
+        errors: validation.errors,
+        originalResponse: validation.originalResponse,
+        finalResponse: validation.finalResponse
+      },
+      cached: false
     };
   } catch (error) {
     console.error('LLM Extract error:', error);
