@@ -2,7 +2,7 @@
   "id": "adyen",
   "name": "Adyen",
   "description": "Adyen global payment processing platform",
-  "category": "Payments",
+  "category": "Finance",
   "icon": "adyen",
   "color": "#0ABF53",
   "version": "1.0.0",
@@ -13,7 +13,7 @@
       "name": "X-API-Key"
     }
   },
-  "baseUrl": "https://checkout-test.adyen.com/v71",
+  "baseUrl": "https://checkout-test.adyen.com/v70",
   "actions": [
     {
       "id": "test_connection",
@@ -29,17 +29,16 @@
     {
       "id": "create_payment",
       "name": "Create Payment",
-      "description": "Create a payment",
+      "description": "Create a new payment",
       "parameters": {
         "type": "object",
         "properties": {
           "amount": {
             "type": "object",
             "properties": {
-              "value": {"type": "number"},
-              "currency": {"type": "string"}
+              "currency": {"type": "string"},
+              "value": {"type": "number"}
             },
-            "required": ["value", "currency"],
             "description": "Payment amount"
           },
           "reference": {
@@ -48,25 +47,36 @@
           },
           "paymentMethod": {
             "type": "object",
+            "properties": {
+              "type": {"type": "string"},
+              "encryptedCardNumber": {"type": "string"},
+              "encryptedExpiryMonth": {"type": "string"},
+              "encryptedExpiryYear": {"type": "string"},
+              "encryptedSecurityCode": {"type": "string"}
+            },
             "description": "Payment method details"
           },
           "returnUrl": {
             "type": "string",
             "format": "uri",
-            "description": "Return URL"
+            "description": "Return URL after payment"
           },
           "merchantAccount": {
             "type": "string",
-            "description": "Merchant account"
-          },
-          "shopperReference": {
-            "type": "string",
-            "description": "Shopper reference"
+            "description": "Merchant account identifier"
           },
           "shopperEmail": {
             "type": "string",
             "format": "email",
             "description": "Shopper email"
+          },
+          "shopperReference": {
+            "type": "string",
+            "description": "Shopper reference"
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "Country code"
           }
         },
         "required": ["amount", "reference", "paymentMethod", "returnUrl", "merchantAccount"],
@@ -80,28 +90,28 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "originalReference": {
+          "paymentPspReference": {
             "type": "string",
-            "description": "Original payment reference"
+            "description": "Payment PSP reference"
           },
-          "modificationAmount": {
+          "amount": {
             "type": "object",
             "properties": {
-              "value": {"type": "number"},
-              "currency": {"type": "string"}
+              "currency": {"type": "string"},
+              "value": {"type": "number"}
             },
             "description": "Amount to capture"
-          },
-          "reference": {
-            "type": "string",
-            "description": "Capture reference"
           },
           "merchantAccount": {
             "type": "string",
             "description": "Merchant account"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Capture reference"
           }
         },
-        "required": ["originalReference", "modificationAmount", "reference", "merchantAccount"],
+        "required": ["paymentPspReference", "amount", "merchantAccount"],
         "additionalProperties": false
       }
     },
@@ -112,37 +122,37 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "originalReference": {
+          "paymentPspReference": {
             "type": "string",
-            "description": "Original payment reference"
+            "description": "Payment PSP reference"
           },
-          "modificationAmount": {
+          "amount": {
             "type": "object",
             "properties": {
-              "value": {"type": "number"},
-              "currency": {"type": "string"}
+              "currency": {"type": "string"},
+              "value": {"type": "number"}
             },
-            "description": "Amount to refund"
-          },
-          "reference": {
-            "type": "string",
-            "description": "Refund reference"
+            "description": "Refund amount"
           },
           "merchantAccount": {
             "type": "string",
             "description": "Merchant account"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Refund reference"
           }
         },
-        "required": ["originalReference", "modificationAmount", "reference", "merchantAccount"],
+        "required": ["paymentPspReference", "amount", "merchantAccount"],
         "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "payment_notification",
-      "name": "Payment Notification",
-      "description": "Triggered when a payment status changes",
+      "id": "payment_success",
+      "name": "Payment Success",
+      "description": "Triggered when a payment is successful",
       "type": "webhook",
       "parameters": {
         "type": "object",
@@ -154,16 +164,15 @@
         "type": "object",
         "properties": {
           "pspReference": {"type": "string"},
-          "originalReference": {"type": "string"},
           "merchantReference": {"type": "string"},
           "eventCode": {"type": "string"},
-          "success": {"type": "string"}
+          "success": {"type": "boolean"}
         }
       }
     }
   ],
   "testConnection": {
     "method": "POST",
-    "endpoint": "/paymentMethods"
+    "endpoint": "/payments"
   }
 }

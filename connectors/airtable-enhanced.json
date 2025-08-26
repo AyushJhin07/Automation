@@ -1,11 +1,11 @@
 {
   "id": "airtable-enhanced",
   "name": "Airtable Enhanced",
-  "description": "Enhanced Airtable cloud database platform",
+  "description": "Enhanced Airtable database platform with advanced features",
   "category": "Database",
-  "icon": "database",
-  "color": "#18BFFF",
-  "version": "1.0.0",
+  "icon": "airtable",
+  "color": "#FCB400",
+  "version": "2.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
@@ -15,221 +15,332 @@
     }
   },
   "baseUrl": "https://api.airtable.com/v0",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Airtable",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_records",
+      "name": "List Records",
+      "description": "List records from a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to retrieve"
+          },
+          "filterByFormula": {
+            "type": "string",
+            "description": "Formula to filter records"
+          },
+          "maxRecords": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Maximum records to return"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Page size"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {"type": "string"},
+                "direction": {"type": "string", "enum": ["asc", "desc"]}
+              }
+            },
+            "description": "Sort configuration"
+          },
+          "view": {
+            "type": "string",
+            "description": "View name"
+          },
+          "cellFormat": {
+            "type": "string",
+            "enum": ["json", "string"],
+            "default": "json",
+            "description": "Cell format"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "Timezone for date fields"
+          },
+          "userLocale": {
+            "type": "string",
+            "description": "User locale"
+          }
+        },
+        "required": ["baseId", "tableId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a specific record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          }
+        },
+        "required": ["baseId", "tableId", "recordId"],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_record",
       "name": "Create Record",
-      "description": "Create a new record in a table",
+      "description": "Create a new record",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Record fields"
+          },
+          "typecast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically typecast field values"
+          }
         },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Record fields"
-        }
-      },
-      "requiredScopes": []
+        "required": ["baseId", "tableId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_record",
       "name": "Update Record",
       "description": "Update an existing record",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Updated fields"
+          },
+          "typecast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically typecast field values"
+          }
         },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        },
-        "recordId": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "upsert_record",
-      "name": "Upsert Record",
-      "description": "Create or update a record based on a key field",
-      "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
-        },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        },
-        "keyField": {
-          "type": "string",
-          "required": true,
-          "description": "Field to use as key"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Record fields"
-        }
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "bulk_upsert",
-      "name": "Bulk Upsert",
-      "description": "Bulk create or update multiple records",
-      "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
-        },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        },
-        "records": {
-          "type": "array",
-          "required": true,
-          "description": "Array of record objects"
-        }
-      },
-      "requiredScopes": []
+        "required": ["baseId", "tableId", "recordId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "delete_record",
       "name": "Delete Record",
       "description": "Delete a record",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          }
         },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        },
-        "recordId": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "required": ["baseId", "tableId", "recordId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "find_records",
-      "name": "Find Records",
-      "description": "Find records with filters",
+      "id": "batch_create",
+      "name": "Batch Create Records",
+      "description": "Create multiple records at once",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fields": {"type": "object"}
+              }
+            },
+            "maxItems": 10,
+            "description": "Records to create"
+          },
+          "typecast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically typecast field values"
+          }
         },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
+        "required": ["baseId", "tableId", "records"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "batch_update",
+      "name": "Batch Update Records",
+      "description": "Update multiple records at once",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Airtable base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "fields": {"type": "object"}
+              }
+            },
+            "maxItems": 10,
+            "description": "Records to update"
+          },
+          "typecast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically typecast field values"
+          }
         },
-        "filterFormula": {
-          "type": "string",
-          "required": false,
-          "description": "Airtable filter formula"
-        },
-        "maxRecords": {
-          "type": "number",
-          "required": false,
-          "description": "Maximum records to return",
-          "default": 100
-        }
-      },
-      "requiredScopes": []
+        "required": ["baseId", "tableId", "records"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "record_created",
       "name": "Record Created",
-      "description": "Triggered when a record is created",
+      "description": "Triggered when a new record is created",
+      "type": "webhook",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Filter by base"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Filter by table"
+          }
         },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "fields": {"type": "object"},
+          "createdTime": {"type": "string"}
+        }
+      }
     },
     {
       "id": "record_updated",
       "name": "Record Updated",
       "description": "Triggered when a record is updated",
+      "type": "webhook",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Filter by base"
+          }
         },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_deleted",
-      "name": "Record Deleted",
-      "description": "Triggered when a record is deleted",
-      "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
-        },
-        "table": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "fields": {"type": "object"},
+          "createdTime": {"type": "string"}
         }
-      },
-      "requiredScopes": []
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/meta/bases"
+  }
 }

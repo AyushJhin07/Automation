@@ -1,13 +1,18 @@
 {
   "id": "freshdesk",
   "name": "Freshdesk",
-  "description": "Customer support and helpdesk software",
+  "description": "Freshdesk customer support and helpdesk platform",
   "category": "Customer Support",
-  "icon": "placeholder",
-  "color": "#2C5AA0",
+  "icon": "freshdesk",
+  "color": "#26CC6E",
   "version": "1.0.0",
   "authentication": {
-    "type": "api_key"
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Basic"
+    }
   },
   "baseUrl": "https://{domain}.freshdesk.com/api/v2",
   "rateLimits": {
@@ -17,32 +22,86 @@
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Freshdesk",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "create_ticket",
       "name": "Create Ticket",
       "description": "Create a new support ticket",
       "parameters": {
-        "subject": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Requester name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Requester email"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Ticket subject"
+          },
+          "description": {
+            "type": "string",
+            "description": "Ticket description"
+          },
+          "status": {
+            "type": "number",
+            "enum": [2, 3, 4, 5],
+            "description": "Ticket status (2=Open, 3=Pending, 4=Resolved, 5=Closed)"
+          },
+          "priority": {
+            "type": "number",
+            "enum": [1, 2, 3, 4],
+            "description": "Ticket priority (1=Low, 2=Medium, 3=High, 4=Urgent)"
+          },
+          "source": {
+            "type": "number",
+            "enum": [1, 2, 3, 7, 8, 9, 10],
+            "description": "Ticket source (1=Email, 2=Portal, 3=Phone, 7=Chat, 8=Mobihelp, 9=Feedback, 10=Outbound Email)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Ticket type"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Ticket tags"
+          },
+          "cc_emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "CC email addresses"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          },
+          "due_by": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Due date"
+          },
+          "fr_due_by": {
+            "type": "string",
+            "format": "date-time",
+            "description": "First response due date"
+          }
         },
-        "description": {
-          "type": "string",
-          "required": true
-        },
-        "email": {
-          "type": "string",
-          "required": true
-        },
-        "priority": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 4
-        },
-        "status": {
-          "type": "integer",
-          "minimum": 2,
-          "maximum": 5
-        }
+        "required": ["subject", "description"],
+        "additionalProperties": false
       }
     },
     {
@@ -50,35 +109,208 @@
       "name": "Update Ticket",
       "description": "Update an existing ticket",
       "parameters": {
-        "ticket_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Ticket ID"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Ticket subject"
+          },
+          "description": {
+            "type": "string",
+            "description": "Ticket description"
+          },
+          "status": {
+            "type": "number",
+            "enum": [2, 3, 4, 5],
+            "description": "Ticket status"
+          },
+          "priority": {
+            "type": "number",
+            "enum": [1, 2, 3, 4],
+            "description": "Ticket priority"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Ticket tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          }
         },
-        "status": {
-          "type": "integer"
-        },
-        "priority": {
-          "type": "integer"
-        }
+        "required": ["id"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "add_note",
-      "name": "Add Note",
-      "description": "Add a note to a ticket",
+      "id": "get_ticket",
+      "name": "Get Ticket",
+      "description": "Get ticket details",
       "parameters": {
-        "ticket_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Ticket ID"
+          },
+          "include": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["requester", "company", "stats"]},
+            "description": "Additional data to include"
+          }
         },
-        "body": {
-          "type": "string",
-          "required": true
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tickets",
+      "name": "List Tickets",
+      "description": "List tickets with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "enum": ["new_and_my_open", "watching", "spam", "deleted"],
+            "description": "Filter preset"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 30,
+            "description": "Tickets per page"
+          },
+          "order_by": {
+            "type": "string",
+            "enum": ["created_at", "due_by", "updated_at", "status"],
+            "description": "Sort field"
+          },
+          "order_type": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          },
+          "updated_since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Updated since date"
+          },
+          "include": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["requester", "company", "stats"]},
+            "description": "Additional data to include"
+          }
         },
-        "private": {
-          "type": "boolean",
-          "default": true
-        }
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_reply",
+      "name": "Create Reply",
+      "description": "Reply to a ticket",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "number",
+            "description": "Ticket ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Reply content"
+          },
+          "from_email": {
+            "type": "string",
+            "format": "email",
+            "description": "From email address"
+          },
+          "user_id": {
+            "type": "number",
+            "description": "Agent user ID"
+          },
+          "cc_emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "CC email addresses"
+          },
+          "bcc_emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "BCC email addresses"
+          }
+        },
+        "required": ["ticket_id", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_note",
+      "name": "Create Note",
+      "description": "Add a private note to a ticket",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "number",
+            "description": "Ticket ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Note content"
+          },
+          "private": {
+            "type": "boolean",
+            "default": true,
+            "description": "Is private note"
+          },
+          "user_id": {
+            "type": "number",
+            "description": "Agent user ID"
+          },
+          "notify_emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Notify these emails"
+          }
+        },
+        "required": ["ticket_id", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_tickets",
+      "name": "Search Tickets",
+      "description": "Search tickets using query",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
       }
     }
   ],
@@ -86,16 +318,52 @@
     {
       "id": "ticket_created",
       "name": "Ticket Created",
-      "description": "Triggered when a ticket is created",
-      "parameters": {},
-      "webhookSupport": true
+      "description": "Triggered when a new ticket is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "number",
+            "description": "Filter by group"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "subject": {"type": "string"},
+          "status": {"type": "number"},
+          "priority": {"type": "number"}
+        }
+      }
     },
     {
       "id": "ticket_updated",
       "name": "Ticket Updated",
       "description": "Triggered when a ticket is updated",
-      "parameters": {},
-      "webhookSupport": true
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "status": {"type": "number"},
+          "updated_at": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/agents/me"
+  }
 }

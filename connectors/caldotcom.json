@@ -3,15 +3,14 @@
   "name": "Cal.com",
   "description": "Cal.com open-source scheduling platform",
   "category": "Scheduling",
-  "icon": "cal-com",
-  "color": "#111827",
+  "icon": "calendar",
+  "color": "#292929",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "type": "query",
+      "name": "apiKey"
     }
   },
   "baseUrl": "https://api.cal.com/v1",
@@ -24,6 +23,68 @@
         "type": "object",
         "properties": {},
         "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_bookings",
+      "name": "List Bookings",
+      "description": "List user bookings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "number",
+            "description": "Filter by user ID"
+          },
+          "eventTypeId": {
+            "type": "number",
+            "description": "Filter by event type ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["accepted", "pending", "cancelled", "rejected"],
+            "description": "Filter by booking status"
+          },
+          "take": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of bookings to return"
+          },
+          "skip": {
+            "type": "number",
+            "description": "Number of bookings to skip"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": ["createdAt", "startTime", "endTime"],
+            "description": "Order by field"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_booking",
+      "name": "Get Booking",
+      "description": "Get a specific booking",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Booking ID"
+          }
+        },
+        "required": ["id"],
         "additionalProperties": false
       }
     },
@@ -55,7 +116,6 @@
               "email": {"type": "string", "format": "email"},
               "timeZone": {"type": "string"}
             },
-            "required": ["name", "email"],
             "description": "Attendee information"
           },
           "meetingUrl": {
@@ -63,17 +123,21 @@
             "format": "uri",
             "description": "Meeting URL"
           },
+          "title": {
+            "type": "string",
+            "description": "Booking title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Booking description"
+          },
           "location": {
             "type": "string",
             "description": "Meeting location"
           },
-          "notes": {
-            "type": "string",
-            "description": "Additional notes"
-          },
-          "customInputs": {
+          "customFields": {
             "type": "object",
-            "description": "Custom form inputs"
+            "description": "Custom field values"
           }
         },
         "required": ["eventTypeId", "start", "end", "attendee"],
@@ -81,43 +145,41 @@
       }
     },
     {
-      "id": "get_bookings",
-      "name": "Get Bookings",
-      "description": "Retrieve bookings",
+      "id": "update_booking",
+      "name": "Update Booking",
+      "description": "Update an existing booking",
       "parameters": {
         "type": "object",
         "properties": {
-          "take": {
+          "id": {
             "type": "number",
-            "minimum": 1,
-            "maximum": 100,
-            "default": 10,
-            "description": "Number of bookings to return"
+            "description": "Booking ID"
           },
-          "skip": {
-            "type": "number",
-            "description": "Number of bookings to skip"
+          "title": {
+            "type": "string",
+            "description": "Booking title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Booking description"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "New start time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "New end time"
           },
           "status": {
             "type": "string",
-            "enum": ["upcoming", "recurring", "past", "cancelled"],
-            "description": "Filter by status"
-          },
-          "attendeeEmail": {
-            "type": "string",
-            "format": "email",
-            "description": "Filter by attendee email"
-          },
-          "eventTypeId": {
-            "type": "number",
-            "description": "Filter by event type"
-          },
-          "uid": {
-            "type": "string",
-            "description": "Specific booking UID"
+            "enum": ["accepted", "pending", "cancelled", "rejected"],
+            "description": "Booking status"
           }
         },
-        "required": [],
+        "required": ["id"],
         "additionalProperties": false
       }
     },
@@ -130,28 +192,28 @@
         "properties": {
           "id": {
             "type": "number",
-            "description": "Booking ID"
-          },
-          "uid": {
-            "type": "string",
-            "description": "Booking UID"
+            "description": "Booking ID to cancel"
           },
           "reason": {
             "type": "string",
             "description": "Cancellation reason"
           }
         },
-        "required": [],
+        "required": ["id"],
         "additionalProperties": false
       }
     },
     {
-      "id": "get_event_types",
-      "name": "Get Event Types",
-      "description": "Retrieve event types",
+      "id": "list_event_types",
+      "name": "List Event Types",
+      "description": "List available event types",
       "parameters": {
         "type": "object",
         "properties": {
+          "userId": {
+            "type": "number",
+            "description": "Filter by user ID"
+          },
           "take": {
             "type": "number",
             "minimum": 1,
@@ -162,10 +224,6 @@
           "skip": {
             "type": "number",
             "description": "Number of event types to skip"
-          },
-          "username": {
-            "type": "string",
-            "description": "Filter by username"
           }
         },
         "required": [],
@@ -175,10 +233,14 @@
     {
       "id": "get_availability",
       "name": "Get Availability",
-      "description": "Get availability for an event type",
+      "description": "Get user availability",
       "parameters": {
         "type": "object",
         "properties": {
+          "userId": {
+            "type": "number",
+            "description": "User ID"
+          },
           "eventTypeId": {
             "type": "number",
             "description": "Event type ID"
@@ -186,19 +248,19 @@
           "dateFrom": {
             "type": "string",
             "format": "date",
-            "description": "Start date for availability"
+            "description": "Start date"
           },
           "dateTo": {
             "type": "string",
             "format": "date",
-            "description": "End date for availability"
+            "description": "End date"
           },
           "timeZone": {
             "type": "string",
-            "description": "Time zone"
+            "description": "Timezone"
           }
         },
-        "required": ["eventTypeId"],
+        "required": ["userId", "eventTypeId", "dateFrom", "dateTo"],
         "additionalProperties": false
       }
     }
@@ -224,11 +286,9 @@
         "type": "object",
         "properties": {
           "id": {"type": "number"},
-          "uid": {"type": "string"},
           "title": {"type": "string"},
           "startTime": {"type": "string"},
-          "endTime": {"type": "string"},
-          "attendees": {"type": "array"}
+          "endTime": {"type": "string"}
         }
       }
     },
@@ -247,8 +307,8 @@
         "type": "object",
         "properties": {
           "id": {"type": "number"},
-          "uid": {"type": "string"},
-          "reason": {"type": "string"}
+          "reason": {"type": "string"},
+          "cancelledAt": {"type": "string"}
         }
       }
     }

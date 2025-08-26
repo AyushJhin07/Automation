@@ -1,20 +1,20 @@
 {
   "id": "brex",
   "name": "Brex",
-  "description": "Brex corporate credit card and expense management platform",
+  "description": "Brex corporate card and expense management platform",
   "category": "Finance",
   "icon": "brex",
   "color": "#6C47FF",
   "version": "1.0.0",
   "authentication": {
-    "type": "api_key",
+    "type": "oauth2",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "authUrl": "https://accounts.brex.com/oauth2/v1/auth",
+      "tokenUrl": "https://accounts.brex.com/oauth2/v1/access_token",
+      "scopes": ["transactions:read", "cards:read", "users:read"]
     }
   },
-  "baseUrl": "https://platform.brexapis.com/v2",
+  "baseUrl": "https://platform.brexapis.com",
   "actions": [
     {
       "id": "test_connection",
@@ -28,120 +28,47 @@
       }
     },
     {
-      "id": "get_expenses",
-      "name": "Get Expenses",
-      "description": "Retrieve expense data",
+      "id": "list_transactions",
+      "name": "List Transactions",
+      "description": "List card transactions",
       "parameters": {
         "type": "object",
         "properties": {
-          "cursor": {
-            "type": "string",
-            "description": "Pagination cursor"
-          },
-          "limit": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 100,
-            "default": 10,
-            "description": "Number of expenses to return"
-          },
-          "user_id": {
-            "type": "string",
-            "description": "Filter by user ID"
-          },
-          "parent_expense_id": {
-            "type": "string",
-            "description": "Filter by parent expense"
-          },
-          "budget_id": {
-            "type": "string",
-            "description": "Filter by budget"
-          },
-          "status": {
-            "type": "array",
-            "items": {"type": "string", "enum": ["DRAFT", "SUBMITTED", "APPROVED", "DECLINED", "PAID"]},
-            "description": "Filter by status"
-          },
-          "expand": {
+          "card_id": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Expand related resources"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_expense",
-      "name": "Create Expense",
-      "description": "Create a new expense",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "owner_user_id": {
-            "type": "string",
-            "description": "Expense owner user ID"
+            "description": "Filter by card IDs"
           },
-          "memo": {
-            "type": "string",
-            "description": "Expense memo"
+          "user_id": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by user IDs"
           },
-          "amount": {
-            "type": "object",
-            "properties": {
-              "amount": {"type": "number"},
-              "currency": {"type": "string"}
-            },
-            "required": ["amount", "currency"],
-            "description": "Expense amount"
-          },
-          "expense_type_id": {
-            "type": "string",
-            "description": "Expense type ID"
-          },
-          "purchased_at": {
+          "posted_at_start": {
             "type": "string",
             "format": "date-time",
-            "description": "Purchase date"
+            "description": "Posted after this date"
           },
-          "receipts": {
-            "type": "array",
-            "items": {"type": "object"},
-            "description": "Expense receipts"
-          }
-        },
-        "required": ["owner_user_id", "amount"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_users",
-      "name": "Get Users",
-      "description": "Retrieve users",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "cursor": {
+          "posted_at_end": {
             "type": "string",
-            "description": "Pagination cursor"
+            "format": "date-time",
+            "description": "Posted before this date"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["card", "receipt", "merchant"]},
+            "description": "Additional data to expand"
           },
           "limit": {
             "type": "number",
             "minimum": 1,
             "maximum": 100,
-            "default": 10,
-            "description": "Number of users to return"
+            "default": 100,
+            "description": "Number of transactions to return"
           },
-          "email": {
+          "cursor": {
             "type": "string",
-            "format": "email",
-            "description": "Filter by email"
-          },
-          "expand": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Expand related resources"
+            "description": "Pagination cursor"
           }
         },
         "required": [],
@@ -149,31 +76,165 @@
       }
     },
     {
-      "id": "get_cards",
-      "name": "Get Cards",
-      "description": "Retrieve card information",
+      "id": "get_transaction",
+      "name": "Get Transaction",
+      "description": "Get a specific transaction",
       "parameters": {
         "type": "object",
         "properties": {
-          "cursor": {
+          "id": {
             "type": "string",
-            "description": "Pagination cursor"
+            "description": "Transaction ID"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["card", "receipt", "merchant"]},
+            "description": "Additional data to expand"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_cards",
+      "name": "List Cards",
+      "description": "List company cards",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by user IDs"
           },
           "limit": {
             "type": "number",
             "minimum": 1,
             "maximum": 100,
-            "default": 10,
+            "default": 100,
             "description": "Number of cards to return"
           },
-          "user_id": {
+          "cursor": {
             "type": "string",
-            "description": "Filter by user ID"
+            "description": "Pagination cursor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_card",
+      "name": "Get Card",
+      "description": "Get card details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Card ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_card",
+      "name": "Create Card",
+      "description": "Create a new card",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["USER"]},
+              "user_id": {"type": "string"}
+            },
+            "description": "Card owner"
           },
-          "expand": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Expand related resources"
+          "card_name": {
+            "type": "string",
+            "description": "Card nickname"
+          },
+          "card_type": {
+            "type": "string",
+            "enum": ["VIRTUAL", "PHYSICAL"],
+            "description": "Card type"
+          },
+          "limit_type": {
+            "type": "string",
+            "enum": ["CARD", "MONTHLY"],
+            "description": "Limit type"
+          },
+          "spending_controls": {
+            "type": "object",
+            "properties": {
+              "spend_limit": {"type": "object"},
+              "locked": {"type": "boolean"}
+            },
+            "description": "Spending controls"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Card metadata"
+          }
+        },
+        "required": ["owner", "card_type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_card",
+      "name": "Update Card",
+      "description": "Update card settings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Card ID"
+          },
+          "card_name": {
+            "type": "string",
+            "description": "Card nickname"
+          },
+          "spending_controls": {
+            "type": "object",
+            "properties": {
+              "spend_limit": {"type": "object"},
+              "locked": {"type": "boolean"}
+            },
+            "description": "Spending controls"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Card metadata"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List company users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of users to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
           }
         },
         "required": [],
@@ -183,16 +244,16 @@
   ],
   "triggers": [
     {
-      "id": "expense_created",
-      "name": "Expense Created",
-      "description": "Triggered when a new expense is created",
+      "id": "transaction_created",
+      "name": "Transaction Created",
+      "description": "Triggered when a new transaction is created",
       "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
-          "user_id": {
+          "card_id": {
             "type": "string",
-            "description": "Filter by user"
+            "description": "Filter by card"
           }
         },
         "required": [],
@@ -202,16 +263,16 @@
         "type": "object",
         "properties": {
           "id": {"type": "string"},
-          "memo": {"type": "string"},
+          "card_id": {"type": "string"},
           "amount": {"type": "object"},
-          "status": {"type": "string"}
+          "merchant": {"type": "object"}
         }
       }
     },
     {
-      "id": "expense_updated",
-      "name": "Expense Updated",
-      "description": "Triggered when an expense is updated",
+      "id": "card_created",
+      "name": "Card Created",
+      "description": "Triggered when a new card is created",
       "type": "webhook",
       "parameters": {
         "type": "object",
@@ -223,14 +284,14 @@
         "type": "object",
         "properties": {
           "id": {"type": "string"},
-          "status": {"type": "string"},
-          "updated_at": {"type": "string"}
+          "card_name": {"type": "string"},
+          "card_type": {"type": "string"}
         }
       }
     }
   ],
   "testConnection": {
     "method": "GET",
-    "endpoint": "/users"
+    "endpoint": "/v2/cards"
   }
 }
