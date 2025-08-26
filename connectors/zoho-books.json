@@ -1,141 +1,681 @@
 {
   "id": "zoho-books",
   "name": "Zoho Books",
-  "description": "Zoho Books accounting software",
+  "description": "Zoho Books accounting and financial management software",
   "category": "Accounting",
-  "icon": "enterprise",
-  "color": "#1565C0",
+  "icon": "zoho-books",
+  "color": "#C8102E",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://accounts.zoho.com/oauth/v2/auth",
+      "tokenUrl": "https://accounts.zoho.com/oauth/v2/token",
+      "scopes": ["ZohoBooks.fullaccess.all"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://books.zoho.com/api/v3",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Zoho Books and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Zoho Books",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Zoho Books",
+      "id": "get_organization",
+      "name": "Get Organization",
+      "description": "Get organization details",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Zoho Books",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "description": "Organization ID"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Zoho Books",
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Zoho Books",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "contactName": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "companyName": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "website": {
+            "type": "string",
+            "description": "Website URL"
+          },
+          "billingAddress": {
+            "type": "object",
+            "properties": {
+              "address": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "zip": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Billing address"
+          },
+          "shippingAddress": {
+            "type": "object",
+            "properties": {
+              "address": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "zip": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Shipping address"
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "paymentTerms": {
+            "type": "number",
+            "description": "Payment terms in days"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["contactName"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Zoho Books",
+      "id": "get_customer",
+      "name": "Get Customer",
+      "description": "Get customer details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          }
+        },
+        "required": ["customerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_customer",
+      "name": "Update Customer",
+      "description": "Update customer details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "contactName": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "companyName": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "website": {
+            "type": "string",
+            "description": "Website URL"
+          },
+          "billingAddress": {
+            "type": "object",
+            "properties": {
+              "address": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "zip": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Billing address"
+          },
+          "paymentTerms": {
+            "type": "number",
+            "description": "Payment terms in days"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes"
+          }
+        },
+        "required": ["customerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_customers",
+      "name": "List Customers",
+      "description": "List all customers",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "perPage": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 200,
+            "description": "Number of customers per page"
+          },
+          "sortColumn": {
+            "type": "string",
+            "enum": ["contact_name", "company_name", "email", "outstanding_receivable_amount", "created_time"],
+            "description": "Sort column"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["A", "D"],
+            "description": "Sort order (A=ascending, D=descending)"
+          },
+          "filterBy": {
+            "type": "string",
+            "enum": ["Status.All", "Status.Active", "Status.Inactive"],
+            "description": "Filter by status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_item",
+      "name": "Create Item",
+      "description": "Create a new item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Item name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Item description"
+          },
+          "rate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Item rate/price"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "taxId": {
+            "type": "string",
+            "description": "Tax ID"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Stock keeping unit"
+          },
+          "productType": {
+            "type": "string",
+            "enum": ["goods", "service"],
+            "description": "Product type"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": ["sales", "purchases", "sales_and_purchases", "inventory"],
+            "description": "Item type"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_invoice",
+      "name": "Create Invoice",
+      "description": "Create a new invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "description": "Invoice number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Invoice date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemId": {"type": "string"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "rate": {"type": "number", "minimum": 0},
+                "quantity": {"type": "number", "minimum": 0},
+                "unit": {"type": "string"},
+                "discount": {"type": "number", "minimum": 0, "maximum": 100},
+                "taxId": {"type": "string"}
+              },
+              "required": ["rate", "quantity"]
+            },
+            "description": "Invoice line items"
+          },
+          "discount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Discount amount or percentage"
+          },
+          "isDiscountBeforeTax": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether discount is applied before tax"
+          },
+          "discountType": {
+            "type": "string",
+            "enum": ["entity_level", "item_level"],
+            "description": "Discount type"
+          },
+          "exchangeRate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Exchange rate"
+          },
+          "recurringInvoiceId": {
+            "type": "string",
+            "description": "Recurring invoice ID"
+          },
+          "salespersonName": {
+            "type": "string",
+            "description": "Salesperson name"
+          },
+          "customFields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "customfieldId": {"type": "string"},
+                "value": {"type": "string"}
+              }
+            },
+            "description": "Custom fields"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes"
+          },
+          "terms": {
+            "type": "string",
+            "description": "Terms and conditions"
+          }
+        },
+        "required": ["customerId", "lineItems"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoice",
+      "name": "Get Invoice",
+      "description": "Get invoice details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          }
+        },
+        "required": ["invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_invoice",
+      "name": "Send Invoice",
+      "description": "Send invoice to customer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          },
+          "sendFromOrganizationEmailId": {
+            "type": "boolean",
+            "default": false,
+            "description": "Send from organization email"
+          },
+          "toMailIds": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Recipient email addresses"
+          },
+          "ccMailIds": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "CC email addresses"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "body": {
+            "type": "string",
+            "description": "Email body"
+          }
+        },
+        "required": ["invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "record_payment",
+      "name": "Record Payment",
+      "description": "Record a payment for an invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "paymentMode": {
+            "type": "string",
+            "description": "Payment mode"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Payment amount"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Payment date"
+          },
+          "referenceNumber": {
+            "type": "string",
+            "description": "Reference number"
+          },
+          "description": {
+            "type": "string",
+            "description": "Payment description"
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "invoiceId": {"type": "string"},
+                "amountApplied": {"type": "number", "minimum": 0}
+              },
+              "required": ["invoiceId", "amountApplied"]
+            },
+            "description": "Invoices to apply payment to"
+          },
+          "exchangeRate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Exchange rate"
+          }
+        },
+        "required": ["customerId", "paymentMode", "amount", "date", "invoices"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_expense",
+      "name": "Create Expense",
+      "description": "Create a new expense",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Expense date"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Expense amount"
+          },
+          "description": {
+            "type": "string",
+            "description": "Expense description"
+          },
+          "vendorId": {
+            "type": "string",
+            "description": "Vendor ID"
+          },
+          "currencyId": {
+            "type": "string",
+            "description": "Currency ID"
+          },
+          "exchangeRate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Exchange rate"
+          },
+          "taxId": {
+            "type": "string",
+            "description": "Tax ID"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID (if billable)"
+          },
+          "isBillable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether expense is billable"
+          },
+          "referenceNumber": {
+            "type": "string",
+            "description": "Reference number"
+          }
+        },
+        "required": ["accountId", "date", "amount", "description"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get financial reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportType": {
+            "type": "string",
+            "enum": ["profit_and_loss", "balance_sheet", "cash_flow", "trial_balance", "general_ledger"],
+            "description": "Type of report"
+          },
+          "fromDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date for report"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date",
+            "description": "End date for report"
+          },
+          "accountingBasis": {
+            "type": "string",
+            "enum": ["accrual", "cash"],
+            "default": "accrual",
+            "description": "Accounting basis"
+          },
+          "filterBy": {
+            "type": "string",
+            "description": "Filter criteria"
+          }
+        },
+        "required": ["reportType"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Zoho Books",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "invoice_created",
+      "name": "Invoice Created",
+      "description": "Triggered when a new invoice is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {"type": "string"},
+          "invoiceNumber": {"type": "string"},
+          "customerId": {"type": "string"},
+          "customerName": {"type": "string"},
+          "date": {"type": "string"},
+          "dueDate": {"type": "string"},
+          "total": {"type": "number"},
+          "status": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Zoho Books",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "payment_received",
+      "name": "Payment Received",
+      "description": "Triggered when a payment is received",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          },
+          "minimumAmount": {
+            "type": "number",
+            "description": "Filter by minimum payment amount"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "paymentId": {"type": "string"},
+          "customerId": {"type": "string"},
+          "customerName": {"type": "string"},
+          "amount": {"type": "number"},
+          "date": {"type": "string"},
+          "paymentMode": {"type": "string"},
+          "referenceNumber": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "expense_created",
+      "name": "Expense Created",
+      "description": "Triggered when a new expense is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vendorId": {
+            "type": "string",
+            "description": "Filter by vendor ID"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "Filter by account ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "expenseId": {"type": "string"},
+          "accountId": {"type": "string"},
+          "vendorId": {"type": "string"},
+          "vendorName": {"type": "string"},
+          "amount": {"type": "number"},
+          "date": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/organizations"
+  }
 }

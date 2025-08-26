@@ -1,9 +1,9 @@
 {
   "id": "sharepoint",
   "name": "SharePoint",
-  "description": "Microsoft SharePoint collaboration and document management",
-  "category": "Collaboration",
-  "icon": "share-2",
+  "description": "Microsoft SharePoint collaboration and document management platform",
+  "category": "File Storage",
+  "icon": "sharepoint",
   "color": "#0078D4",
   "version": "1.0.0",
   "authentication": {
@@ -11,237 +11,584 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": [
-        "https://graph.microsoft.com/Sites.ReadWrite.All"
-      ]
+      "scopes": ["Sites.ReadWrite.All", "Files.ReadWrite.All"]
     }
   },
   "baseUrl": "https://graph.microsoft.com/v1.0",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 100000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to SharePoint and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to SharePoint",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_file",
       "name": "Create File",
-      "description": "Create a file in SharePoint",
+      "description": "Create a new file in SharePoint",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID (document library)"
+          },
+          "folderPath": {
+            "type": "string",
+            "description": "Folder path (e.g., /Documents/Projects)"
+          },
+          "fileName": {
+            "type": "string",
+            "description": "File name with extension"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content (base64 encoded for binary files)"
+          },
+          "conflictBehavior": {
+            "type": "string",
+            "enum": ["fail", "replace", "rename"],
+            "default": "fail",
+            "description": "What to do if file already exists"
+          }
         },
-        "driveId": {
-          "type": "string",
-          "required": true,
-          "description": "Drive ID"
-        },
-        "path": {
-          "type": "string",
-          "required": true,
-          "description": "File path"
-        },
-        "base64": {
-          "type": "string",
-          "required": true,
-          "description": "Base64 file content"
-        }
-      },
-      "requiredScopes": [
-        "Sites.ReadWrite.All"
-      ]
+        "required": ["siteId", "fileName", "content"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "get_file",
       "name": "Get File",
-      "description": "Get a file from SharePoint",
+      "description": "Get file metadata and content from SharePoint",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "fileId": {
+            "type": "string",
+            "description": "File ID"
+          },
+          "filePath": {
+            "type": "string",
+            "description": "File path (alternative to fileId)"
+          },
+          "includeContent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include file content in response"
+          }
         },
-        "driveId": {
-          "type": "string",
-          "required": true,
-          "description": "Drive ID"
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_file",
+      "name": "Update File",
+      "description": "Update an existing file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "fileId": {
+            "type": "string",
+            "description": "File ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "New file content"
+          }
         },
-        "path": {
-          "type": "string",
-          "required": true,
-          "description": "File path"
-        }
-      },
-      "requiredScopes": [
-        "Sites.Read.All"
-      ]
+        "required": ["siteId", "fileId", "content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_file",
+      "name": "Delete File",
+      "description": "Delete a file from SharePoint",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "fileId": {
+            "type": "string",
+            "description": "File ID to delete"
+          }
+        },
+        "required": ["siteId", "fileId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_files",
+      "name": "List Files",
+      "description": "List files in a folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Folder ID (use 'root' for root folder)"
+          },
+          "folderPath": {
+            "type": "string",
+            "description": "Folder path (alternative to folderId)"
+          },
+          "filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "orderBy": {
+            "type": "string",
+            "description": "Order by field"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999,
+            "description": "Number of items to return"
+          }
+        },
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create a new folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "parentFolderId": {
+            "type": "string",
+            "description": "Parent folder ID"
+          },
+          "folderName": {
+            "type": "string",
+            "description": "Name of the new folder"
+          },
+          "conflictBehavior": {
+            "type": "string",
+            "enum": ["fail", "replace", "rename"],
+            "default": "fail",
+            "description": "What to do if folder already exists"
+          }
+        },
+        "required": ["siteId", "folderName"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_list_item",
       "name": "Create List Item",
-      "description": "Create an item in a SharePoint list",
+      "description": "Create a new item in a SharePoint list",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "listId": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Field values for the new item"
+          }
         },
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "List ID"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Item fields"
-        }
-      },
-      "requiredScopes": [
-        "Sites.ReadWrite.All"
-      ]
+        "required": ["siteId", "listId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_list_item",
       "name": "Update List Item",
-      "description": "Update a SharePoint list item",
+      "description": "Update an existing list item",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "listId": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Item ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Field values to update"
+          }
         },
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "List ID"
+        "required": ["siteId", "listId", "itemId", "fields"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_list_items",
+      "name": "Get List Items",
+      "description": "Get items from a SharePoint list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "listId": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "orderBy": {
+            "type": "string",
+            "description": "Order by field"
+          },
+          "select": {
+            "type": "string",
+            "description": "Fields to select"
+          },
+          "expand": {
+            "type": "string",
+            "description": "Fields to expand"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Number of items to return"
+          }
         },
-        "itemId": {
-          "type": "string",
-          "required": true,
-          "description": "Item ID"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Updated fields"
-        }
-      },
-      "requiredScopes": [
-        "Sites.ReadWrite.All"
-      ]
+        "required": ["siteId", "listId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "share_link",
-      "name": "Share Link",
-      "description": "Create a sharing link for an item",
+      "name": "Create Sharing Link",
+      "description": "Create a sharing link for a file or folder",
       "parameters": {
-        "itemId": {
-          "type": "string",
-          "required": true,
-          "description": "Item ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "File or folder ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["view", "edit", "embed"],
+            "default": "view",
+            "description": "Type of sharing link"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["anonymous", "organization", "users"],
+            "default": "anonymous",
+            "description": "Who can access the link"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password for the link"
+          },
+          "expirationDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Link expiration date"
+          }
         },
-        "type": {
-          "type": "string",
-          "required": true,
-          "description": "Link type",
-          "options": [
-            "view",
-            "edit"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "Sites.ReadWrite.All"
-      ]
+        "required": ["siteId", "itemId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_sites",
+      "name": "Get Sites",
+      "description": "List SharePoint sites",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Search term for site names"
+          },
+          "filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999,
+            "description": "Number of sites to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Get SharePoint lists for a site",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "SharePoint site ID"
+          },
+          "filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "select": {
+            "type": "string",
+            "description": "Fields to select"
+          }
+        },
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_content",
+      "name": "Search Content",
+      "description": "Search for content across SharePoint",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "siteId": {
+            "type": "string",
+            "description": "Limit search to specific site"
+          },
+          "entityTypes": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["driveItem", "list", "listItem", "site"]},
+            "description": "Types of entities to search"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Number of results to return"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "file_added",
       "name": "File Added",
-      "description": "Triggered when a file is added",
+      "description": "Triggered when a file is added to SharePoint",
+      "type": "webhook",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Filter by specific site"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Filter by specific drive"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Filter by specific folder"
+          }
         },
-        "driveId": {
-          "type": "string",
-          "required": true,
-          "description": "Drive ID"
-        },
-        "path": {
-          "type": "string",
-          "required": false,
-          "description": "Path to monitor"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Sites.Read.All"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "webUrl": {"type": "string"},
+          "createdDateTime": {"type": "string"},
+          "lastModifiedDateTime": {"type": "string"},
+          "size": {"type": "number"},
+          "createdBy": {"type": "object"},
+          "lastModifiedBy": {"type": "object"}
+        }
+      }
     },
     {
       "id": "file_updated",
       "name": "File Updated",
-      "description": "Triggered when a file is updated",
+      "description": "Triggered when a file is updated in SharePoint",
+      "type": "webhook",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Filter by specific site"
+          },
+          "driveId": {
+            "type": "string",
+            "description": "Filter by specific drive"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Filter by specific folder"
+          }
         },
-        "driveId": {
-          "type": "string",
-          "required": true,
-          "description": "Drive ID"
-        },
-        "path": {
-          "type": "string",
-          "required": false,
-          "description": "Path to monitor"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Sites.Read.All"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "webUrl": {"type": "string"},
+          "lastModifiedDateTime": {"type": "string"},
+          "size": {"type": "number"},
+          "lastModifiedBy": {"type": "object"}
+        }
+      }
     },
     {
       "id": "list_item_added",
       "name": "List Item Added",
-      "description": "Triggered when a list item is added",
+      "description": "Triggered when an item is added to a SharePoint list",
+      "type": "webhook",
       "parameters": {
-        "siteId": {
-          "type": "string",
-          "required": true,
-          "description": "Site ID"
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Filter by specific site"
+          },
+          "listId": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
         },
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "List ID"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Sites.Read.All"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "webUrl": {"type": "string"},
+          "createdDateTime": {"type": "string"},
+          "lastModifiedDateTime": {"type": "string"},
+          "createdBy": {"type": "object"},
+          "lastModifiedBy": {"type": "object"},
+          "fields": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "list_item_updated",
+      "name": "List Item Updated",
+      "description": "Triggered when a list item is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Filter by specific site"
+          },
+          "listId": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "webUrl": {"type": "string"},
+          "lastModifiedDateTime": {"type": "string"},
+          "lastModifiedBy": {"type": "object"},
+          "fields": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/me"
+  }
 }

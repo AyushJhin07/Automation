@@ -1,141 +1,634 @@
 {
   "id": "sap-ariba",
   "name": "SAP Ariba",
-  "description": "SAP Ariba procurement platform",
-  "category": "Procurement",
-  "icon": "enterprise",
-  "color": "#0073E7",
+  "description": "SAP Ariba procurement and supply chain management platform",
+  "category": "ERP",
+  "icon": "sap",
+  "color": "#0073E6",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://api.ariba.com/v2/oauth/authorize",
+      "tokenUrl": "https://api.ariba.com/v2/oauth/token",
+      "scopes": ["FullAccess"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://openapi.ariba.com",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to SAP Ariba and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to SAP Ariba",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in SAP Ariba",
+      "id": "get_suppliers",
+      "name": "Get Suppliers",
+      "description": "Get list of suppliers",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in SAP Ariba",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "updatedDateFrom": {"type": "string", "format": "date"},
+              "updatedDateTo": {"type": "string", "format": "date"},
+              "status": {"type": "string"},
+              "vendorId": {"type": "string"}
+            },
+            "description": "Filter criteria"
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort fields"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["realm"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from SAP Ariba",
+      "id": "get_supplier",
+      "name": "Get Supplier",
+      "description": "Get supplier details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from SAP Ariba",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "supplierId": {
+            "type": "string",
+            "description": "Supplier ID"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["realm", "supplierId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from SAP Ariba",
+      "id": "get_purchase_orders",
+      "name": "Get Purchase Orders",
+      "description": "Get list of purchase orders",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "updatedDateFrom": {"type": "string", "format": "date"},
+              "updatedDateTo": {"type": "string", "format": "date"},
+              "status": {"type": "string"},
+              "poNumber": {"type": "string"},
+              "supplierId": {"type": "string"},
+              "buyerId": {"type": "string"}
+            },
+            "description": "Filter criteria"
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort fields"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
+        },
+        "required": ["realm"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_purchase_order",
+      "name": "Get Purchase Order",
+      "description": "Get purchase order details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "purchaseOrderId": {
+            "type": "string",
+            "description": "Purchase order ID"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          }
+        },
+        "required": ["realm", "purchaseOrderId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoices",
+      "name": "Get Invoices",
+      "description": "Get list of invoices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "updatedDateFrom": {"type": "string", "format": "date"},
+              "updatedDateTo": {"type": "string", "format": "date"},
+              "status": {"type": "string"},
+              "invoiceNumber": {"type": "string"},
+              "supplierId": {"type": "string"},
+              "poNumber": {"type": "string"}
+            },
+            "description": "Filter criteria"
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort fields"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
+        },
+        "required": ["realm"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoice",
+      "name": "Get Invoice",
+      "description": "Get invoice details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          }
+        },
+        "required": ["realm", "invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contracts",
+      "name": "Get Contracts",
+      "description": "Get list of contracts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "updatedDateFrom": {"type": "string", "format": "date"},
+              "updatedDateTo": {"type": "string", "format": "date"},
+              "status": {"type": "string"},
+              "contractId": {"type": "string"},
+              "supplierId": {"type": "string"},
+              "projectId": {"type": "string"}
+            },
+            "description": "Filter criteria"
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort fields"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
+        },
+        "required": ["realm"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contract",
+      "name": "Get Contract",
+      "description": "Get contract details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "contractId": {
+            "type": "string",
+            "description": "Contract ID"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          }
+        },
+        "required": ["realm", "contractId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_sourcing_projects",
+      "name": "Get Sourcing Projects",
+      "description": "Get list of sourcing projects",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "updatedDateFrom": {"type": "string", "format": "date"},
+              "updatedDateTo": {"type": "string", "format": "date"},
+              "status": {"type": "string"},
+              "projectId": {"type": "string"},
+              "projectType": {"type": "string"}
+            },
+            "description": "Filter criteria"
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort fields"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
+        },
+        "required": ["realm"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_sourcing_project",
+      "name": "Get Sourcing Project",
+      "description": "Get sourcing project details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Sourcing project ID"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          }
+        },
+        "required": ["realm", "projectId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_requisitions",
+      "name": "Get Requisitions",
+      "description": "Get list of requisitions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "updatedDateFrom": {"type": "string", "format": "date"},
+              "updatedDateTo": {"type": "string", "format": "date"},
+              "status": {"type": "string"},
+              "requisitionId": {"type": "string"},
+              "requesterId": {"type": "string"}
+            },
+            "description": "Filter criteria"
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort fields"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
+        },
+        "required": ["realm"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_requisition",
+      "name": "Get Requisition",
+      "description": "Get requisition details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "requisitionId": {
+            "type": "string",
+            "description": "Requisition ID"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          }
+        },
+        "required": ["realm", "requisitionId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_analytical_reporting",
+      "name": "Get Analytical Reporting",
+      "description": "Get analytical reporting data",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Ariba realm"
+          },
+          "viewTemplateName": {
+            "type": "string",
+            "description": "View template name"
+          },
+          "filters": {
+            "type": "object",
+            "description": "Filter criteria"
+          },
+          "select": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to select"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          }
+        },
+        "required": ["realm", "viewTemplateName"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in SAP Ariba",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "purchase_order_created",
+      "name": "Purchase Order Created",
+      "description": "Triggered when a new purchase order is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Filter by Ariba realm"
+          },
+          "supplierId": {
+            "type": "string",
+            "description": "Filter by supplier ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "poNumber": {"type": "string"},
+          "supplierId": {"type": "string"},
+          "supplierName": {"type": "string"},
+          "totalAmount": {"type": "number"},
+          "currency": {"type": "string"},
+          "status": {"type": "string"},
+          "createdDate": {"type": "string"},
+          "buyerId": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in SAP Ariba",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "invoice_received",
+      "name": "Invoice Received",
+      "description": "Triggered when a new invoice is received",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Filter by Ariba realm"
+          },
+          "supplierId": {
+            "type": "string",
+            "description": "Filter by supplier ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "invoiceNumber": {"type": "string"},
+          "supplierId": {"type": "string"},
+          "supplierName": {"type": "string"},
+          "invoiceAmount": {"type": "number"},
+          "currency": {"type": "string"},
+          "status": {"type": "string"},
+          "receivedDate": {"type": "string"},
+          "poNumber": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "contract_approved",
+      "name": "Contract Approved",
+      "description": "Triggered when a contract is approved",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string",
+            "description": "Filter by Ariba realm"
+          },
+          "supplierId": {
+            "type": "string",
+            "description": "Filter by supplier ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "contractId": {"type": "string"},
+          "contractTitle": {"type": "string"},
+          "supplierId": {"type": "string"},
+          "supplierName": {"type": "string"},
+          "contractValue": {"type": "number"},
+          "currency": {"type": "string"},
+          "approvedDate": {"type": "string"},
+          "effectiveDate": {"type": "string"},
+          "expirationDate": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/api/analytics/v2/reporting"
+  }
 }

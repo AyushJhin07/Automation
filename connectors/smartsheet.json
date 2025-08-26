@@ -1,141 +1,569 @@
 {
   "id": "smartsheet",
   "name": "Smartsheet",
-  "description": "Smartsheet work management platform",
+  "description": "Smartsheet collaborative work management platform",
   "category": "Project Management",
-  "icon": "enterprise",
-  "color": "#1F65A6",
+  "icon": "smartsheet",
+  "color": "#0052CC",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.smartsheet.com/2.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Smartsheet and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Smartsheet",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Smartsheet",
+      "id": "get_sheets",
+      "name": "Get Sheets",
+      "description": "Get list of sheets",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Smartsheet",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "includeAll": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include all sheets including those in workspaces and folders"
+          },
+          "modifiedSince": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only include sheets modified since this date"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Smartsheet",
+      "id": "get_sheet",
+      "name": "Get Sheet",
+      "description": "Get sheet details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Smartsheet",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["attachments", "discussions", "filters", "format", "objectValue", "source"]
+            },
+            "description": "Additional elements to include"
+          },
+          "excludeEmpty": {
+            "type": "boolean",
+            "default": false,
+            "description": "Exclude empty rows"
+          },
+          "rowIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Specific row IDs to retrieve"
+          },
+          "rowNumbers": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Specific row numbers to retrieve"
+          },
+          "columnIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Specific column IDs to retrieve"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["sheetId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Smartsheet",
+      "id": "create_sheet",
+      "name": "Create Sheet",
+      "description": "Create a new sheet",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Sheet name"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {"type": "string"},
+                "type": {"type": "string", "enum": ["TEXT_NUMBER", "DATE", "DATETIME", "CONTACT_LIST", "CHECKBOX", "PICKLIST", "DURATION", "PREDECESSOR", "ABSTRACT_DATETIME"]},
+                "primary": {"type": "boolean"},
+                "width": {"type": "number"},
+                "options": {"type": "array", "items": {"type": "string"}}
+              },
+              "required": ["title", "type"]
+            },
+            "description": "Sheet columns"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Folder ID to create sheet in"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace ID to create sheet in"
+          }
+        },
+        "required": ["name", "columns"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_sheet",
+      "name": "Update Sheet",
+      "description": "Update sheet properties",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Sheet name"
+          },
+          "userSettings": {
+            "type": "object",
+            "properties": {
+              "criticalPathEnabled": {"type": "boolean"},
+              "displaySummaryTasks": {"type": "boolean"}
+            },
+            "description": "User settings"
+          },
+          "projectSettings": {
+            "type": "object",
+            "properties": {
+              "workingDays": {"type": "array", "items": {"type": "string"}},
+              "nonWorkingDays": {"type": "array", "items": {"type": "string"}},
+              "lengthOfDay": {"type": "number"}
+            },
+            "description": "Project settings"
+          }
+        },
+        "required": ["sheetId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_rows",
+      "name": "Add Rows",
+      "description": "Add rows to a sheet",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "toTop": {"type": "boolean"},
+                "toBottom": {"type": "boolean"},
+                "parentId": {"type": "string"},
+                "siblingId": {"type": "string"},
+                "above": {"type": "boolean"},
+                "cells": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "columnId": {"type": "string"},
+                      "value": {"type": ["string", "number", "boolean"]},
+                      "displayValue": {"type": "string"},
+                      "formula": {"type": "string"},
+                      "strict": {"type": "boolean"}
+                    },
+                    "required": ["columnId"]
+                  }
+                }
+              },
+              "required": ["cells"]
+            },
+            "description": "Rows to add"
+          }
+        },
+        "required": ["sheetId", "rows"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_rows",
+      "name": "Update Rows",
+      "description": "Update existing rows",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "cells": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "columnId": {"type": "string"},
+                      "value": {"type": ["string", "number", "boolean"]},
+                      "displayValue": {"type": "string"},
+                      "formula": {"type": "string"}
+                    },
+                    "required": ["columnId"]
+                  }
+                }
+              },
+              "required": ["id", "cells"]
+            },
+            "description": "Rows to update"
+          }
+        },
+        "required": ["sheetId", "rows"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_rows",
+      "name": "Delete Rows",
+      "description": "Delete rows from a sheet",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "rowIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Row IDs to delete"
+          },
+          "ignoreRowsNotFound": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ignore if rows are not found"
+          }
+        },
+        "required": ["sheetId", "rowIds"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_columns",
+      "name": "Add Columns",
+      "description": "Add columns to a sheet",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {"type": "string"},
+                "type": {"type": "string", "enum": ["TEXT_NUMBER", "DATE", "DATETIME", "CONTACT_LIST", "CHECKBOX", "PICKLIST", "DURATION", "PREDECESSOR", "ABSTRACT_DATETIME"]},
+                "index": {"type": "number"},
+                "width": {"type": "number"},
+                "options": {"type": "array", "items": {"type": "string"}},
+                "symbol": {"type": "string"},
+                "systemColumnType": {"type": "string"},
+                "autoNumberFormat": {
+                  "type": "object",
+                  "properties": {
+                    "prefix": {"type": "string"},
+                    "suffix": {"type": "string"},
+                    "startingNumber": {"type": "number"},
+                    "fill": {"type": "string"}
+                  }
+                }
+              },
+              "required": ["title", "type"]
+            },
+            "description": "Columns to add"
+          }
+        },
+        "required": ["sheetId", "columns"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_workspaces",
+      "name": "Get Workspaces",
+      "description": "Get list of workspaces",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "includeAll": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include all workspaces"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_workspace",
+      "name": "Create Workspace",
+      "description": "Create a new workspace",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Workspace name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get list of reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "modifiedSince": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only include reports modified since this date"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_report",
+      "name": "Get Report",
+      "description": "Get report details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Report ID"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["attachments", "discussions", "filters", "format", "objectValue", "source"]
+            },
+            "description": "Additional elements to include"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000,
+            "description": "Number of rows per page"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Page number"
+          }
+        },
+        "required": ["reportId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_sheet",
+      "name": "Send Sheet",
+      "description": "Send a sheet via email",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Sheet ID"
+          },
+          "sendTo": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"}
+              },
+              "required": ["email"]
+            },
+            "description": "Recipients"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "message": {
+            "type": "string",
+            "description": "Email message"
+          },
+          "ccMe": {
+            "type": "boolean",
+            "default": false,
+            "description": "CC sender"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["PDF", "EXCEL", "PDF_GANTT"],
+            "description": "Attachment format"
+          },
+          "formatDetails": {
+            "type": "object",
+            "properties": {
+              "paperSize": {"type": "string", "enum": ["LETTER", "LEGAL", "A4", "A3", "A2", "A1", "A0"]},
+              "orientation": {"type": "string", "enum": ["PORTRAIT", "LANDSCAPE"]}
+            },
+            "description": "Format details"
+          }
+        },
+        "required": ["sheetId", "sendTo", "subject", "format"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Smartsheet",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "row_added",
+      "name": "Row Added",
+      "description": "Triggered when a new row is added to a sheet",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Filter by sheet ID"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Filter by workspace ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {"type": "string"},
+          "sheetName": {"type": "string"},
+          "rowId": {"type": "string"},
+          "rowNumber": {"type": "number"},
+          "userId": {"type": "string"},
+          "timestamp": {"type": "string"},
+          "cells": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Smartsheet",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "row_updated",
+      "name": "Row Updated",
+      "description": "Triggered when a row is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Filter by sheet ID"
+          },
+          "columnId": {
+            "type": "string",
+            "description": "Filter by specific column changes"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {"type": "string"},
+          "sheetName": {"type": "string"},
+          "rowId": {"type": "string"},
+          "rowNumber": {"type": "number"},
+          "userId": {"type": "string"},
+          "timestamp": {"type": "string"},
+          "cells": {"type": "array"},
+          "changedCells": {"type": "array"}
+        }
+      }
+    },
+    {
+      "id": "sheet_created",
+      "name": "Sheet Created",
+      "description": "Triggered when a new sheet is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "description": "Filter by workspace ID"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Filter by folder ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {"type": "string"},
+          "sheetName": {"type": "string"},
+          "userId": {"type": "string"},
+          "timestamp": {"type": "string"},
+          "workspaceId": {"type": "string"},
+          "folderId": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

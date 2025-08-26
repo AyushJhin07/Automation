@@ -1,141 +1,707 @@
 {
   "id": "workfront",
-  "name": "Workfront",
-  "description": "Adobe Workfront project management",
+  "name": "Adobe Workfront",
+  "description": "Adobe Workfront project management and work collaboration platform",
   "category": "Project Management",
-  "icon": "enterprise",
-  "color": "#FF0000",
+  "icon": "workfront",
+  "color": "#E4002B",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "sessionID"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://your-domain.workfront.com/attask/api/v15.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Workfront and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Workfront",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Workfront",
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Workfront",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "ownerID": {
+            "type": "string",
+            "description": "Project owner ID"
+          },
+          "sponsorID": {
+            "type": "string",
+            "description": "Project sponsor ID"
+          },
+          "templateID": {
+            "type": "string",
+            "description": "Template ID to create project from"
+          },
+          "groupID": {
+            "type": "string",
+            "description": "Group ID"
+          },
+          "companyID": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "plannedStartDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned start date"
+          },
+          "plannedCompletionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned completion date"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Project priority (1=Low, 2=Normal, 3=High, 4=Urgent)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PLN", "CUR", "CPL", "DAD", "REJ", "IDA"],
+            "description": "Project status"
+          },
+          "portfolioID": {
+            "type": "string",
+            "description": "Portfolio ID"
+          },
+          "programID": {
+            "type": "string",
+            "description": "Program ID"
+          },
+          "budgetedCost": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Budgeted cost"
+          },
+          "budgetedHours": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Budgeted hours"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Workfront",
+      "id": "get_project",
+      "name": "Get Project",
+      "description": "Get project details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Workfront",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "projectID": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include in response"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["projectID"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Workfront",
+      "id": "update_project",
+      "name": "Update Project",
+      "description": "Update an existing project",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "projectID": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "ownerID": {
+            "type": "string",
+            "description": "Project owner ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PLN", "CUR", "CPL", "DAD", "REJ", "IDA"],
+            "description": "Project status"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Project priority"
+          },
+          "plannedStartDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned start date"
+          },
+          "plannedCompletionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned completion date"
+          },
+          "percentComplete": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percent complete"
+          }
+        },
+        "required": ["projectID"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_projects",
+      "name": "Search Projects",
+      "description": "Search for projects",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name filter"
+          },
+          "ownerID": {
+            "type": "string",
+            "description": "Filter by owner ID"
+          },
+          "status": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by status"
+          },
+          "groupID": {
+            "type": "string",
+            "description": "Filter by group ID"
+          },
+          "portfolioID": {
+            "type": "string",
+            "description": "Filter by portfolio ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 100,
+            "description": "Maximum number of results"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Offset for pagination"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include in response"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Task name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "projectID": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "assignedToID": {
+            "type": "string",
+            "description": "Assigned user ID"
+          },
+          "parentID": {
+            "type": "string",
+            "description": "Parent task ID"
+          },
+          "plannedStartDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned start date"
+          },
+          "plannedCompletionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned completion date"
+          },
+          "plannedHours": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Planned hours"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Task priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["NEW", "INP", "CPL"],
+            "description": "Task status"
+          },
+          "percentComplete": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percent complete"
+          },
+          "predecessors": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Predecessor task IDs"
+          }
+        },
+        "required": ["name", "projectID"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_task",
+      "name": "Get Task",
+      "description": "Get task details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taskID": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include in response"
+          }
+        },
+        "required": ["taskID"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_task",
+      "name": "Update Task",
+      "description": "Update an existing task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taskID": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Task name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "assignedToID": {
+            "type": "string",
+            "description": "Assigned user ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["NEW", "INP", "CPL"],
+            "description": "Task status"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Task priority"
+          },
+          "percentComplete": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percent complete"
+          },
+          "plannedStartDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned start date"
+          },
+          "plannedCompletionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned completion date"
+          },
+          "actualStartDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Actual start date"
+          },
+          "actualCompletionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Actual completion date"
+          }
+        },
+        "required": ["taskID"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_issue",
+      "name": "Create Issue",
+      "description": "Create a new issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Issue name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Issue description"
+          },
+          "projectID": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "assignedToID": {
+            "type": "string",
+            "description": "Assigned user ID"
+          },
+          "submittedByID": {
+            "type": "string",
+            "description": "Submitted by user ID"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Issue priority"
+          },
+          "severity": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Issue severity"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["NEW", "INP", "CLS", "REO"],
+            "description": "Issue status"
+          },
+          "resolutionType": {
+            "type": "string",
+            "enum": ["FIXED", "WONTFIX", "DUPLICATE", "CANNOT_REPRODUCE"],
+            "description": "Resolution type"
+          },
+          "plannedCompletionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned completion date"
+          }
+        },
+        "required": ["name", "projectID"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_timesheet",
+      "name": "Create Timesheet",
+      "description": "Create a new timesheet",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userID": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Timesheet start date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Timesheet end date"
+          },
+          "approverID": {
+            "type": "string",
+            "description": "Approver ID"
+          },
+          "timesheetProfileID": {
+            "type": "string",
+            "description": "Timesheet profile ID"
+          }
+        },
+        "required": ["userID", "startDate", "endDate"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "log_time",
+      "name": "Log Time",
+      "description": "Log time on a task or project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taskID": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "projectID": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "issueID": {
+            "type": "string",
+            "description": "Issue ID"
+          },
+          "hours": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Hours to log"
+          },
+          "entryDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Entry date"
+          },
+          "description": {
+            "type": "string",
+            "description": "Time entry description"
+          },
+          "hourTypeID": {
+            "type": "string",
+            "description": "Hour type ID"
+          }
+        },
+        "required": ["hours", "entryDate"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean",
+            "description": "Filter by active status"
+          },
+          "groupID": {
+            "type": "string",
+            "description": "Filter by group ID"
+          },
+          "roleID": {
+            "type": "string",
+            "description": "Filter by role ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 100,
+            "description": "Maximum number of results"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include in response"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_document",
+      "name": "Create Document",
+      "description": "Create a new document",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Document name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Document description"
+          },
+          "docObjCode": {
+            "type": "string",
+            "enum": ["PROJ", "TASK", "OPTASK", "USER", "COMP"],
+            "description": "Object type to attach document to"
+          },
+          "objID": {
+            "type": "string",
+            "description": "Object ID to attach document to"
+          },
+          "currentVersion": {
+            "type": "object",
+            "properties": {
+              "fileName": {"type": "string"},
+              "handle": {"type": "string"},
+              "version": {"type": "string"}
+            },
+            "description": "Current version details"
+          }
+        },
+        "required": ["name", "docObjCode", "objID"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Workfront",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "project_created",
+      "name": "Project Created",
+      "description": "Triggered when a new project is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupID": {
+            "type": "string",
+            "description": "Filter by group ID"
+          },
+          "portfolioID": {
+            "type": "string",
+            "description": "Filter by portfolio ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ID": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "ownerID": {"type": "string"},
+          "status": {"type": "string"},
+          "plannedStartDate": {"type": "string"},
+          "plannedCompletionDate": {"type": "string"},
+          "entryDate": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Workfront",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "task_created",
+      "name": "Task Created",
+      "description": "Triggered when a new task is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectID": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "assignedToID": {
+            "type": "string",
+            "description": "Filter by assigned user ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ID": {"type": "string"},
+          "name": {"type": "string"},
+          "projectID": {"type": "string"},
+          "assignedToID": {"type": "string"},
+          "status": {"type": "string"},
+          "plannedStartDate": {"type": "string"},
+          "plannedCompletionDate": {"type": "string"},
+          "entryDate": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "task_completed",
+      "name": "Task Completed",
+      "description": "Triggered when a task is completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectID": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "assignedToID": {
+            "type": "string",
+            "description": "Filter by assigned user ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ID": {"type": "string"},
+          "name": {"type": "string"},
+          "projectID": {"type": "string"},
+          "assignedToID": {"type": "string"},
+          "status": {"type": "string"},
+          "actualCompletionDate": {"type": "string"},
+          "percentComplete": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user/search"
+  }
 }

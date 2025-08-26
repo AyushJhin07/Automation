@@ -1,141 +1,703 @@
 {
   "id": "powerbi-enhanced",
   "name": "Power BI Enhanced",
-  "description": "Enhanced Microsoft Power BI analytics",
-  "category": "Business Intelligence",
-  "icon": "enterprise",
+  "description": "Enhanced Microsoft Power BI business analytics and reporting platform",
+  "category": "Analytics",
+  "icon": "powerbi",
   "color": "#F2C811",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": ["https://analysis.windows.net/powerbi/api/.default"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.powerbi.com/v1.0/myorg",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Power BI Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Power BI",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Power BI Enhanced",
+      "id": "get_groups",
+      "name": "Get Groups",
+      "description": "Get list of workspaces (groups)",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Power BI Enhanced",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Number of groups to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of groups to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Power BI Enhanced",
+      "id": "get_group",
+      "name": "Get Group",
+      "description": "Get workspace details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Power BI Enhanced",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["groupId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Power BI Enhanced",
+      "id": "create_group",
+      "name": "Create Group",
+      "description": "Create a new workspace",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "workspaceV2": {
+            "type": "boolean",
+            "default": true,
+            "description": "Create as workspace v2"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_datasets",
+      "name": "Get Datasets",
+      "description": "Get list of datasets",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional, defaults to My Workspace)"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Number of datasets to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of datasets to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dataset",
+      "name": "Get Dataset",
+      "description": "Get dataset details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
+        },
+        "required": ["datasetId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "refresh_dataset",
+      "name": "Refresh Dataset",
+      "description": "Trigger dataset refresh",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "notifyOption": {
+            "type": "string",
+            "enum": ["MailOnCompletion", "MailOnFailure", "NoNotification"],
+            "default": "NoNotification",
+            "description": "Notification option"
+          },
+          "retryCount": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Number of retry attempts"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Full", "ClearValues", "Calculate", "DataOnly", "Automatic", "Add", "Defragment"],
+            "default": "Full",
+            "description": "Refresh type"
+          },
+          "commitMode": {
+            "type": "string",
+            "enum": ["Transactional", "PartialBatch"],
+            "description": "Commit mode"
+          },
+          "maxParallelism": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Maximum parallelism"
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "table": {"type": "string"},
+                "partition": {"type": "string"}
+              }
+            },
+            "description": "Specific objects to refresh"
+          }
+        },
+        "required": ["datasetId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_refresh_history",
+      "name": "Get Refresh History",
+      "description": "Get dataset refresh history",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 60,
+            "default": 60,
+            "description": "Number of refresh entries to return"
+          }
+        },
+        "required": ["datasetId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get list of reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Number of reports to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of reports to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_report",
+      "name": "Get Report",
+      "description": "Get report details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Report ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
+        },
+        "required": ["reportId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "clone_report",
+      "name": "Clone Report",
+      "description": "Clone an existing report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Source report ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Source workspace ID (optional)"
+          },
+          "name": {
+            "type": "string",
+            "description": "New report name"
+          },
+          "targetModelId": {
+            "type": "string",
+            "description": "Target dataset ID"
+          },
+          "targetWorkspaceId": {
+            "type": "string",
+            "description": "Target workspace ID"
+          }
+        },
+        "required": ["reportId", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "export_report",
+      "name": "Export Report",
+      "description": "Export report to file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Report ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["PDF", "PNG", "PPTX", "XLSX", "XML", "CSV"],
+            "description": "Export format"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pageName": {"type": "string"},
+                "bookmark": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "state": {"type": "string"}
+                  }
+                }
+              }
+            },
+            "description": "Specific pages to export"
+          },
+          "powerBIReportConfiguration": {
+            "type": "object",
+            "properties": {
+              "settings": {
+                "type": "object",
+                "properties": {
+                  "includeHiddenPages": {"type": "boolean"},
+                  "locale": {"type": "string"}
+                }
+              },
+              "identities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "username": {"type": "string"},
+                    "datasets": {"type": "array", "items": {"type": "string"}},
+                    "roles": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            },
+            "description": "Export configuration"
+          }
+        },
+        "required": ["reportId", "format"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dashboards",
+      "name": "Get Dashboards",
+      "description": "Get list of dashboards",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Number of dashboards to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of dashboards to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dashboard",
+      "name": "Get Dashboard",
+      "description": "Get dashboard details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dashboardId": {
+            "type": "string",
+            "description": "Dashboard ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
+        },
+        "required": ["dashboardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_tiles",
+      "name": "Get Tiles",
+      "description": "Get dashboard tiles",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dashboardId": {
+            "type": "string",
+            "description": "Dashboard ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
+        },
+        "required": ["dashboardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "generate_token",
+      "name": "Generate Embed Token",
+      "description": "Generate embed token for reports/dashboards",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "allowEdit": {"type": "boolean"}
+              },
+              "required": ["id"]
+            },
+            "description": "Reports to include in token"
+          },
+          "datasets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"}
+              },
+              "required": ["id"]
+            },
+            "description": "Datasets to include in token"
+          },
+          "targetWorkspaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"}
+              },
+              "required": ["id"]
+            },
+            "description": "Target workspaces"
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "username": {"type": "string"},
+                "datasets": {"type": "array", "items": {"type": "string"}},
+                "roles": {"type": "array", "items": {"type": "string"}}
+              },
+              "required": ["username"]
+            },
+            "description": "Row-level security identities"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "execute_dax",
+      "name": "Execute DAX Query",
+      "description": "Execute DAX query against dataset",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "query": {
+            "type": "string",
+            "description": "DAX query"
+          },
+          "serializerSettings": {
+            "type": "object",
+            "properties": {
+              "includeNulls": {"type": "boolean"}
+            },
+            "description": "Serializer settings"
+          },
+          "impersonatedUserName": {
+            "type": "string",
+            "description": "Impersonated user name for RLS"
+          }
+        },
+        "required": ["datasetId", "query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dataflows",
+      "name": "Get Dataflows",
+      "description": "Get list of dataflows",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Number of dataflows to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of dataflows to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "refresh_dataflow",
+      "name": "Refresh Dataflow",
+      "description": "Trigger dataflow refresh",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataflowId": {
+            "type": "string",
+            "description": "Dataflow ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "notifyOption": {
+            "type": "string",
+            "enum": ["MailOnCompletion", "MailOnFailure", "NoNotification"],
+            "default": "NoNotification",
+            "description": "Notification option"
+          }
+        },
+        "required": ["dataflowId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Power BI Enhanced",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "dataset_refreshed",
+      "name": "Dataset Refreshed",
+      "description": "Triggered when a dataset refresh completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Filter by workspace ID"
+          },
+          "datasetId": {
+            "type": "string",
+            "description": "Filter by dataset ID"
+          },
+          "refreshStatus": {
+            "type": "string",
+            "enum": ["Completed", "Failed", "Disabled"],
+            "description": "Filter by refresh status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "datasetId": {"type": "string"},
+          "datasetName": {"type": "string"},
+          "groupId": {"type": "string"},
+          "refreshId": {"type": "string"},
+          "refreshType": {"type": "string"},
+          "status": {"type": "string"},
+          "startTime": {"type": "string"},
+          "endTime": {"type": "string"},
+          "serviceExceptionJson": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Power BI Enhanced",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "report_created",
+      "name": "Report Created",
+      "description": "Triggered when a new report is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Filter by workspace ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "reportId": {"type": "string"},
+          "reportName": {"type": "string"},
+          "groupId": {"type": "string"},
+          "datasetId": {"type": "string"},
+          "createdDateTime": {"type": "string"},
+          "modifiedDateTime": {"type": "string"},
+          "createdBy": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "dataflow_refreshed",
+      "name": "Dataflow Refreshed",
+      "description": "Triggered when a dataflow refresh completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Filter by workspace ID"
+          },
+          "dataflowId": {
+            "type": "string",
+            "description": "Filter by dataflow ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "dataflowId": {"type": "string"},
+          "dataflowName": {"type": "string"},
+          "groupId": {"type": "string"},
+          "refreshId": {"type": "string"},
+          "status": {"type": "string"},
+          "startTime": {"type": "string"},
+          "endTime": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/groups"
+  }
 }

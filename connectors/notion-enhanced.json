@@ -1,11 +1,11 @@
 {
   "id": "notion-enhanced",
   "name": "Notion Enhanced",
-  "description": "Enhanced Notion workspace for notes, databases, and collaboration",
+  "description": "Enhanced Notion workspace and database management platform",
   "category": "Productivity",
-  "icon": "bookmark",
+  "icon": "notion",
   "color": "#000000",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
@@ -15,24 +15,64 @@
     }
   },
   "baseUrl": "https://api.notion.com/v1",
-  "rateLimits": {
-    "requestsPerSecond": 3,
-    "requestsPerMinute": 180,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Notion Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Notion",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_page",
+      "name": "Create Page",
+      "description": "Create a new page in a database or as a child page",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "object",
+            "properties": {
+              "database_id": {"type": "string"},
+              "page_id": {"type": "string"},
+              "type": {"type": "string", "enum": ["database_id", "page_id"]}
+            },
+            "description": "Parent database or page"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Page properties (for database pages)"
+          },
+          "children": {
+            "type": "array",
+            "description": "Page content blocks"
+          },
+          "icon": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["emoji", "external", "file"]},
+              "emoji": {"type": "string"},
+              "external": {"type": "object"},
+              "file": {"type": "object"}
+            },
+            "description": "Page icon"
+          },
+          "cover": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["external", "file"]},
+              "external": {"type": "object"},
+              "file": {"type": "object"}
+            },
+            "description": "Page cover"
+          }
+        },
+        "required": ["parent"],
+        "additionalProperties": false
       }
     },
     {
@@ -40,164 +80,524 @@
       "name": "Update Page",
       "description": "Update an existing page",
       "parameters": {
-        "pageId": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID"
-        },
+        "type": "object",
         "properties": {
-          "type": "object",
-          "required": true,
-          "description": "Properties to update"
-        }
-      },
-      "requiredScopes": []
+          "page_id": {
+            "type": "string",
+            "description": "Page ID to update"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to update"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Archive the page"
+          },
+          "icon": {
+            "type": "object",
+            "description": "Update page icon"
+          },
+          "cover": {
+            "type": "object",
+            "description": "Update page cover"
+          }
+        },
+        "required": ["page_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "archive_page",
-      "name": "Archive Page",
-      "description": "Archive a page",
+      "id": "get_page",
+      "name": "Get Page",
+      "description": "Retrieve a page by ID",
       "parameters": {
-        "pageId": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID to archive"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "description": "Page ID to retrieve"
+          },
+          "filter_properties": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Specific properties to retrieve"
+          }
+        },
+        "required": ["page_id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "query_database",
       "name": "Query Database",
-      "description": "Query a database with filters and sorts",
+      "description": "Query a database with filters and sorting",
       "parameters": {
-        "databaseId": {
-          "type": "string",
-          "required": true,
-          "description": "Database ID"
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "Database ID to query"
+          },
+          "filter": {
+            "type": "object",
+            "description": "Filter conditions"
+          },
+          "sorts": {
+            "type": "array",
+            "description": "Sort conditions"
+          },
+          "start_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of results per page"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        },
-        "sorts": {
-          "type": "array",
-          "required": false,
-          "description": "Sort criteria"
-        }
-      },
-      "requiredScopes": []
+        "required": ["database_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "append_block",
-      "name": "Append Block",
-      "description": "Append a block to a page",
+      "id": "get_database",
+      "name": "Get Database",
+      "description": "Retrieve database metadata",
       "parameters": {
-        "pageId": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID"
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "Database ID"
+          }
         },
-        "blockJson": {
-          "type": "object",
-          "required": true,
-          "description": "Block content"
-        }
-      },
-      "requiredScopes": []
+        "required": ["database_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_database",
+      "name": "Update Database",
+      "description": "Update database properties and schema",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "Database ID"
+          },
+          "title": {
+            "type": "array",
+            "description": "Database title"
+          },
+          "description": {
+            "type": "array",
+            "description": "Database description"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Database schema properties"
+          },
+          "is_inline": {
+            "type": "boolean",
+            "description": "Whether database is inline"
+          }
+        },
+        "required": ["database_id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_database",
       "name": "Create Database",
       "description": "Create a new database",
       "parameters": {
-        "parentPageId": {
-          "type": "string",
-          "required": true,
-          "description": "Parent page ID"
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["page_id"]},
+              "page_id": {"type": "string"}
+            },
+            "description": "Parent page"
+          },
+          "title": {
+            "type": "array",
+            "description": "Database title"
+          },
+          "description": {
+            "type": "array",
+            "description": "Database description"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Database schema properties"
+          },
+          "is_inline": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether database is inline"
+          }
         },
-        "schema": {
-          "type": "object",
-          "required": true,
-          "description": "Database schema"
-        }
-      },
-      "requiredScopes": []
+        "required": ["parent", "title", "properties"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_database",
-      "name": "Update Database",
-      "description": "Update database schema",
+      "id": "get_block_children",
+      "name": "Get Block Children",
+      "description": "Retrieve children blocks of a page or block",
       "parameters": {
-        "databaseId": {
-          "type": "string",
-          "required": true,
-          "description": "Database ID"
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Block or page ID"
+          },
+          "start_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of blocks per page"
+          }
         },
-        "schema": {
-          "type": "object",
-          "required": true,
-          "description": "New schema"
-        }
-      },
-      "requiredScopes": []
+        "required": ["block_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "invite_user",
-      "name": "Invite User",
-      "description": "Invite user to a page",
+      "id": "append_block_children",
+      "name": "Append Block Children",
+      "description": "Append children blocks to a page or block",
       "parameters": {
-        "pageId": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID"
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Parent block or page ID"
+          },
+          "children": {
+            "type": "array",
+            "description": "Array of block objects to append"
+          },
+          "after": {
+            "type": "string",
+            "description": "Block ID to insert after"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "User email"
+        "required": ["block_id", "children"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_block",
+      "name": "Update Block",
+      "description": "Update an existing block",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Block ID to update"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Archive the block"
+          },
+          "content": {
+            "type": "object",
+            "description": "Block content to update"
+          }
         },
-        "role": {
-          "type": "string",
-          "required": true,
-          "description": "User role",
-          "options": [
-            "read",
-            "comment",
-            "edit"
-          ]
-        }
-      },
-      "requiredScopes": []
+        "required": ["block_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_block",
+      "name": "Delete Block",
+      "description": "Delete a block",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Block ID to delete"
+          }
+        },
+        "required": ["block_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search",
+      "name": "Search",
+      "description": "Search pages and databases",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "filter": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string", "enum": ["page", "database"]},
+              "property": {"type": "string", "enum": ["object"]}
+            },
+            "description": "Filter by object type"
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "direction": {"type": "string", "enum": ["ascending", "descending"]},
+              "timestamp": {"type": "string", "enum": ["last_edited_time"]}
+            },
+            "description": "Sort options"
+          },
+          "start_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "List all users in the workspace",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of users per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Retrieve user information by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["user_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_comments",
+      "name": "Get Comments",
+      "description": "Retrieve comments for a page or block",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Block or page ID"
+          },
+          "start_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of comments per page"
+          }
+        },
+        "required": ["block_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_comment",
+      "name": "Create Comment",
+      "description": "Create a comment on a page or block",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "object",
+            "properties": {
+              "page_id": {"type": "string"},
+              "block_id": {"type": "string"}
+            },
+            "description": "Parent page or block"
+          },
+          "rich_text": {
+            "type": "array",
+            "description": "Comment content as rich text"
+          },
+          "discussion_id": {
+            "type": "string",
+            "description": "Discussion thread ID"
+          }
+        },
+        "required": ["parent", "rich_text"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
+      "id": "page_created",
+      "name": "Page Created",
+      "description": "Triggered when a new page is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "Filter by specific database"
+          },
+          "parent_page_id": {
+            "type": "string",
+            "description": "Filter by parent page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "created_time": {"type": "string"},
+          "last_edited_time": {"type": "string"},
+          "parent": {"type": "object"},
+          "properties": {"type": "object"}
+        }
+      }
+    },
+    {
       "id": "page_updated",
       "name": "Page Updated",
       "description": "Triggered when a page is updated",
+      "type": "webhook",
       "parameters": {
-        "databaseId": {
-          "type": "string",
-          "required": true,
-          "description": "Database ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "Filter by specific database"
+          },
+          "property_changed": {
+            "type": "string",
+            "description": "Filter by specific property changes"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "last_edited_time": {"type": "string"},
+          "parent": {"type": "object"},
+          "properties": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "comment_added",
-      "name": "Comment Added",
-      "description": "Triggered when a comment is added",
+      "id": "database_created",
+      "name": "Database Created",
+      "description": "Triggered when a new database is created",
+      "type": "webhook",
       "parameters": {
-        "pageId": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "parent_page_id": {
+            "type": "string",
+            "description": "Filter by parent page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "created_time": {"type": "string"},
+          "title": {"type": "array"},
+          "properties": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "database_updated",
+      "name": "Database Updated",
+      "description": "Triggered when a database is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "Filter by specific database"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "last_edited_time": {"type": "string"},
+          "title": {"type": "array"},
+          "properties": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

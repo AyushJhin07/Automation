@@ -1,141 +1,827 @@
 {
   "id": "quickbooks",
   "name": "QuickBooks",
-  "description": "QuickBooks accounting software",
+  "description": "QuickBooks accounting and financial management software",
   "category": "Accounting",
-  "icon": "enterprise",
-  "color": "#2CA01C",
+  "icon": "quickbooks",
+  "color": "#0077C5",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://appcenter.intuit.com/connect/oauth2",
+      "tokenUrl": "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+      "scopes": ["com.intuit.quickbooks.accounting"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://sandbox-quickbooks.api.intuit.com/v3/company",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to QuickBooks and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to QuickBooks",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in QuickBooks",
+      "id": "get_company_info",
+      "name": "Get Company Info",
+      "description": "Get company information",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in QuickBooks",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["companyId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from QuickBooks",
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from QuickBooks",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "companyName": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "primaryEmailAddr": {
+            "type": "object",
+            "properties": {
+              "address": {"type": "string", "format": "email"}
+            },
+            "description": "Primary email address"
+          },
+          "primaryPhone": {
+            "type": "object",
+            "properties": {
+              "freeFormNumber": {"type": "string"}
+            },
+            "description": "Primary phone number"
+          },
+          "billAddr": {
+            "type": "object",
+            "properties": {
+              "line1": {"type": "string"},
+              "line2": {"type": "string"},
+              "city": {"type": "string"},
+              "countrySubDivisionCode": {"type": "string"},
+              "postalCode": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Billing address"
+          },
+          "shipAddr": {
+            "type": "object",
+            "properties": {
+              "line1": {"type": "string"},
+              "line2": {"type": "string"},
+              "city": {"type": "string"},
+              "countrySubDivisionCode": {"type": "string"},
+              "postalCode": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Shipping address"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Customer notes"
+          },
+          "taxable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether customer is taxable"
+          },
+          "currencyRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Currency reference"
+          },
+          "paymentMethodRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Payment method reference"
+          },
+          "salesTermRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Sales terms reference"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["companyId", "name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from QuickBooks",
+      "id": "get_customer",
+      "name": "Get Customer",
+      "description": "Get customer details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          }
+        },
+        "required": ["companyId", "customerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_customer",
+      "name": "Update Customer",
+      "description": "Update customer information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "syncToken": {
+            "type": "string",
+            "description": "Sync token for optimistic locking"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "companyName": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "primaryEmailAddr": {
+            "type": "object",
+            "properties": {
+              "address": {"type": "string", "format": "email"}
+            },
+            "description": "Primary email address"
+          },
+          "billAddr": {
+            "type": "object",
+            "properties": {
+              "line1": {"type": "string"},
+              "city": {"type": "string"},
+              "countrySubDivisionCode": {"type": "string"},
+              "postalCode": {"type": "string"}
+            },
+            "description": "Billing address"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Customer notes"
+          }
+        },
+        "required": ["companyId", "customerId", "syncToken"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_customers",
+      "name": "Query Customers",
+      "description": "Query customers with SQL-like syntax",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "query": {
+            "type": "string",
+            "description": "SQL-like query string"
+          },
+          "maxResults": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "description": "Maximum number of results"
+          },
+          "startPosition": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Start position for pagination"
+          }
+        },
+        "required": ["companyId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_item",
+      "name": "Create Item",
+      "description": "Create a new item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Item name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Item description"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Inventory", "NonInventory", "Service"],
+            "description": "Item type"
+          },
+          "trackQtyOnHand": {
+            "type": "boolean",
+            "description": "Track quantity on hand"
+          },
+          "unitPrice": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Unit price"
+          },
+          "incomeAccountRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Income account reference"
+          },
+          "expenseAccountRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Expense account reference"
+          },
+          "assetAccountRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Asset account reference"
+          },
+          "taxable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether item is taxable"
+          },
+          "salesTaxCodeRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Sales tax code reference"
+          },
+          "purchaseTaxCodeRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Purchase tax code reference"
+          }
+        },
+        "required": ["companyId", "name", "type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_invoice",
+      "name": "Create Invoice",
+      "description": "Create a new invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "customerRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Customer reference"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Transaction date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          },
+          "line": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "amount": {"type": "number", "minimum": 0},
+                "detailType": {"type": "string", "enum": ["SalesItemLineDetail"]},
+                "salesItemLineDetail": {
+                  "type": "object",
+                  "properties": {
+                    "itemRef": {
+                      "type": "object",
+                      "properties": {
+                        "value": {"type": "string"},
+                        "name": {"type": "string"}
+                      }
+                    },
+                    "qty": {"type": "number", "minimum": 0},
+                    "unitPrice": {"type": "number", "minimum": 0},
+                    "taxCodeRef": {
+                      "type": "object",
+                      "properties": {
+                        "value": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              },
+              "required": ["amount", "detailType"]
+            },
+            "description": "Invoice line items"
+          },
+          "billAddr": {
+            "type": "object",
+            "properties": {
+              "line1": {"type": "string"},
+              "city": {"type": "string"},
+              "countrySubDivisionCode": {"type": "string"},
+              "postalCode": {"type": "string"}
+            },
+            "description": "Billing address"
+          },
+          "shipAddr": {
+            "type": "object",
+            "properties": {
+              "line1": {"type": "string"},
+              "city": {"type": "string"},
+              "countrySubDivisionCode": {"type": "string"},
+              "postalCode": {"type": "string"}
+            },
+            "description": "Shipping address"
+          },
+          "emailStatus": {
+            "type": "string",
+            "enum": ["NotSet", "NeedToSend", "EmailSent"],
+            "description": "Email status"
+          },
+          "billEmail": {
+            "type": "object",
+            "properties": {
+              "address": {"type": "string", "format": "email"}
+            },
+            "description": "Bill email address"
+          },
+          "salesTermRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"}
+            },
+            "description": "Sales terms reference"
+          },
+          "customerMemo": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"}
+            },
+            "description": "Customer memo"
+          },
+          "privateNote": {
+            "type": "string",
+            "description": "Private note"
+          }
+        },
+        "required": ["companyId", "customerRef", "line"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoice",
+      "name": "Get Invoice",
+      "description": "Get invoice details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          }
+        },
+        "required": ["companyId", "invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_invoice",
+      "name": "Send Invoice",
+      "description": "Send invoice via email",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Request ID for tracking"
+          }
+        },
+        "required": ["companyId", "invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_payment",
+      "name": "Create Payment",
+      "description": "Create a payment",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "customerRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Customer reference"
+          },
+          "totalAmt": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total payment amount"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Transaction date"
+          },
+          "paymentMethodRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Payment method reference"
+          },
+          "depositToAccountRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Deposit to account reference"
+          },
+          "line": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "amount": {"type": "number", "minimum": 0},
+                "linkedTxn": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "txnId": {"type": "string"},
+                      "txnType": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Payment line items"
+          },
+          "privateNote": {
+            "type": "string",
+            "description": "Private note"
+          }
+        },
+        "required": ["companyId", "customerRef", "totalAmt"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_accounts",
+      "name": "Get Accounts",
+      "description": "Get chart of accounts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "query": {
+            "type": "string",
+            "description": "SQL-like query string"
+          },
+          "maxResults": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "description": "Maximum number of results"
+          }
+        },
+        "required": ["companyId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_expense",
+      "name": "Create Expense",
+      "description": "Create a new expense",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "accountRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Expense account reference"
+          },
+          "paymentType": {
+            "type": "string",
+            "enum": ["Cash", "Check", "CreditCard"],
+            "description": "Payment type"
+          },
+          "totalAmt": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total expense amount"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Transaction date"
+          },
+          "entityRef": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "string"},
+              "name": {"type": "string"},
+              "type": {"type": "string"}
+            },
+            "description": "Vendor or employee reference"
+          },
+          "line": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "amount": {"type": "number", "minimum": 0},
+                "detailType": {"type": "string"},
+                "accountBasedExpenseLineDetail": {
+                  "type": "object",
+                  "properties": {
+                    "accountRef": {
+                      "type": "object",
+                      "properties": {
+                        "value": {"type": "string"}
+                      }
+                    },
+                    "customerRef": {
+                      "type": "object",
+                      "properties": {
+                        "value": {"type": "string"}
+                      }
+                    },
+                    "billableStatus": {"type": "string"},
+                    "taxCodeRef": {
+                      "type": "object",
+                      "properties": {
+                        "value": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Expense line items"
+          },
+          "privateNote": {
+            "type": "string",
+            "description": "Private note"
+          }
+        },
+        "required": ["companyId", "accountRef", "paymentType", "totalAmt"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get financial reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "reportType": {
+            "type": "string",
+            "enum": ["ProfitAndLoss", "BalanceSheet", "CashFlow", "TrialBalance", "GeneralLedger", "CustomerSales", "VendorExpenses"],
+            "description": "Report type"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date for report"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date for report"
+          },
+          "accounting_method": {
+            "type": "string",
+            "enum": ["Cash", "Accrual"],
+            "description": "Accounting method"
+          },
+          "summarize_column_by": {
+            "type": "string",
+            "enum": ["Month", "Quarter", "Year"],
+            "description": "Summarize columns by period"
+          }
+        },
+        "required": ["companyId", "reportType"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in QuickBooks",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "invoice_created",
+      "name": "Invoice Created",
+      "description": "Triggered when a new invoice is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Filter by company ID"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "docNumber": {"type": "string"},
+          "customerId": {"type": "string"},
+          "customerName": {"type": "string"},
+          "txnDate": {"type": "string"},
+          "dueDate": {"type": "string"},
+          "totalAmt": {"type": "number"},
+          "balance": {"type": "number"},
+          "emailStatus": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in QuickBooks",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "payment_received",
+      "name": "Payment Received",
+      "description": "Triggered when a payment is received",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Filter by company ID"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          },
+          "minimumAmount": {
+            "type": "number",
+            "description": "Filter by minimum payment amount"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "customerId": {"type": "string"},
+          "customerName": {"type": "string"},
+          "totalAmt": {"type": "number"},
+          "txnDate": {"type": "string"},
+          "paymentMethodName": {"type": "string"},
+          "privateNote": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "customer_created",
+      "name": "Customer Created",
+      "description": "Triggered when a new customer is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "description": "Filter by company ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "companyName": {"type": "string"},
+          "emailAddress": {"type": "string"},
+          "phone": {"type": "string"},
+          "createTime": {"type": "string"},
+          "balance": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/{companyId}/companyinfo/{companyId}"
+  }
 }

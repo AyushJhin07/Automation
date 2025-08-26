@@ -1,141 +1,653 @@
 {
   "id": "sentry",
   "name": "Sentry",
-  "description": "Sentry error tracking and monitoring",
+  "description": "Sentry application monitoring and error tracking platform",
   "category": "Monitoring",
-  "icon": "enterprise",
+  "icon": "sentry",
   "color": "#362D59",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://sentry.io/api/0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Sentry and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Sentry",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Sentry",
+      "id": "get_organizations",
+      "name": "Get Organizations",
+      "description": "Get list of organizations",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Sentry",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "member": {
+            "type": "boolean",
+            "description": "Restrict results to organizations you are a member of"
+          },
+          "owner": {
+            "type": "boolean",
+            "description": "Restrict results to organizations you are an owner of"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Sentry",
+      "id": "get_organization",
+      "name": "Get Organization",
+      "description": "Get organization details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Sentry",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["organizationSlug"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Sentry",
+      "id": "get_projects",
+      "name": "Get Projects",
+      "description": "Get list of projects in an organization",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": ["organizationSlug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_project",
+      "name": "Get Project",
+      "description": "Get project details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Project slug"
+          }
+        },
+        "required": ["organizationSlug", "projectSlug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "platform": {
+            "type": "string",
+            "description": "Platform identifier"
+          },
+          "defaultRules": {
+            "type": "boolean",
+            "default": true,
+            "description": "Create default alert rules"
+          }
+        },
+        "required": ["organizationSlug", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_project",
+      "name": "Update Project",
+      "description": "Update project settings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "platform": {
+            "type": "string",
+            "description": "Platform identifier"
+          },
+          "isBookmarked": {
+            "type": "boolean",
+            "description": "Whether project is bookmarked"
+          },
+          "digestsMinDelay": {
+            "type": "number",
+            "description": "Minimum delay for digest notifications"
+          },
+          "digestsMaxDelay": {
+            "type": "number",
+            "description": "Maximum delay for digest notifications"
+          }
+        },
+        "required": ["organizationSlug", "projectSlug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_issues",
+      "name": "Get Issues",
+      "description": "Get list of issues in a project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "statsPeriod": {
+            "type": "string",
+            "enum": ["14d", "24h"],
+            "description": "Statistics period"
+          },
+          "shortIdLookup": {
+            "type": "boolean",
+            "description": "Enable short ID lookup"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["date", "new", "priority", "freq", "user"],
+            "description": "Sort order"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": ["organizationSlug", "projectSlug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_issue",
+      "name": "Get Issue",
+      "description": "Get issue details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "string",
+            "description": "Issue ID"
+          }
+        },
+        "required": ["issueId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_issue",
+      "name": "Update Issue",
+      "description": "Update an issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "string",
+            "description": "Issue ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["resolved", "unresolved", "ignored"],
+            "description": "Issue status"
+          },
+          "statusDetails": {
+            "type": "object",
+            "properties": {
+              "inRelease": {"type": "string"},
+              "inNextRelease": {"type": "boolean"},
+              "inCommit": {"type": "string"}
+            },
+            "description": "Status details"
+          },
+          "assignedTo": {
+            "type": "string",
+            "description": "User or team to assign to"
+          },
+          "hasSeen": {
+            "type": "boolean",
+            "description": "Whether issue has been seen"
+          },
+          "isBookmarked": {
+            "type": "boolean",
+            "description": "Whether issue is bookmarked"
+          },
+          "isSubscribed": {
+            "type": "boolean",
+            "description": "Whether to subscribe to issue updates"
+          },
+          "isPublic": {
+            "type": "boolean",
+            "description": "Whether issue is public"
+          }
+        },
+        "required": ["issueId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_issue",
+      "name": "Delete Issue",
+      "description": "Delete an issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "string",
+            "description": "Issue ID"
+          }
+        },
+        "required": ["issueId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_events",
+      "name": "Get Events",
+      "description": "Get events for an issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "string",
+            "description": "Issue ID"
+          },
+          "full": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include full event body"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": ["issueId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_event",
+      "name": "Get Event",
+      "description": "Get event details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          }
+        },
+        "required": ["organizationSlug", "projectSlug", "eventId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_release",
+      "name": "Create Release",
+      "description": "Create a new release",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "version": {
+            "type": "string",
+            "description": "Release version"
+          },
+          "ref": {
+            "type": "string",
+            "description": "Git reference"
+          },
+          "url": {
+            "type": "string",
+            "description": "Release URL"
+          },
+          "projects": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Project slugs"
+          },
+          "dateReleased": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Release date"
+          },
+          "commits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "repository": {"type": "string"},
+                "author_name": {"type": "string"},
+                "author_email": {"type": "string"},
+                "message": {"type": "string"},
+                "timestamp": {"type": "string"}
+              }
+            },
+            "description": "Release commits"
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "repository": {"type": "string"},
+                "commit": {"type": "string"},
+                "previousCommit": {"type": "string"}
+              }
+            },
+            "description": "Repository references"
+          }
+        },
+        "required": ["organizationSlug", "version", "projects"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_releases",
+      "name": "Get Releases",
+      "description": "Get list of releases for an organization",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["date", "date_added", "sessions"],
+            "description": "Sort order"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": ["organizationSlug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "finalize_release",
+      "name": "Finalize Release",
+      "description": "Finalize a release",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "version": {
+            "type": "string",
+            "description": "Release version"
+          },
+          "dateReleased": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Release date"
+          }
+        },
+        "required": ["organizationSlug", "version"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_teams",
+      "name": "Get Teams",
+      "description": "Get list of teams in an organization",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": ["organizationSlug"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Sentry",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "issue_created",
+      "name": "Issue Created",
+      "description": "Triggered when a new issue is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Filter by organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Filter by project slug"
+          },
+          "level": {
+            "type": "string",
+            "enum": ["error", "warning", "info", "debug"],
+            "description": "Filter by issue level"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "culprit": {"type": "string"},
+          "level": {"type": "string"},
+          "status": {"type": "string"},
+          "statusDetails": {"type": "object"},
+          "isPublic": {"type": "boolean"},
+          "platform": {"type": "string"},
+          "project": {"type": "object"},
+          "count": {"type": "string"},
+          "userCount": {"type": "number"},
+          "firstSeen": {"type": "string"},
+          "lastSeen": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Sentry",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "issue_resolved",
+      "name": "Issue Resolved",
+      "description": "Triggered when an issue is resolved",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Filter by organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Filter by project slug"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "status": {"type": "string"},
+          "statusDetails": {"type": "object"},
+          "resolution": {"type": "string"},
+          "resolvedAt": {"type": "string"},
+          "project": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "error_event",
+      "name": "Error Event",
+      "description": "Triggered when a new error event occurs",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Filter by organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Filter by project slug"
+          },
+          "level": {
+            "type": "string",
+            "enum": ["error", "warning", "info", "debug"],
+            "description": "Filter by event level"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventID": {"type": "string"},
+          "issue": {"type": "object"},
+          "level": {"type": "string"},
+          "message": {"type": "string"},
+          "platform": {"type": "string"},
+          "project": {"type": "object"},
+          "timestamp": {"type": "string"},
+          "user": {"type": "object"},
+          "exception": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "release_deployed",
+      "name": "Release Deployed",
+      "description": "Triggered when a release is deployed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationSlug": {
+            "type": "string",
+            "description": "Filter by organization slug"
+          },
+          "projectSlug": {
+            "type": "string",
+            "description": "Filter by project slug"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "version": {"type": "string"},
+          "ref": {"type": "string"},
+          "url": {"type": "string"},
+          "dateCreated": {"type": "string"},
+          "dateReleased": {"type": "string"},
+          "projects": {"type": "array"},
+          "commitCount": {"type": "number"},
+          "deployCount": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/organizations/"
+  }
 }

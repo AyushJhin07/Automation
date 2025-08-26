@@ -1,141 +1,504 @@
 {
   "id": "tableau",
   "name": "Tableau",
-  "description": "Tableau business intelligence platform",
-  "category": "Business Intelligence",
-  "icon": "enterprise",
+  "description": "Tableau business intelligence and data visualization platform",
+  "category": "Analytics",
+  "icon": "tableau",
   "color": "#E97627",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "basic",
+    "config": {
+      "usernameField": "username",
+      "passwordField": "password"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://your-server.tableauservices.com/api/3.16",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Tableau and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Tableau Server",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Tableau",
+      "id": "sign_in",
+      "name": "Sign In",
+      "description": "Sign in to Tableau Server",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Tableau",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Username"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password"
+          },
+          "siteName": {
+            "type": "string",
+            "description": "Site name (optional)"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["username", "password"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Tableau",
+      "id": "get_sites",
+      "name": "Get Sites",
+      "description": "Get list of sites",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Tableau",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of sites per page"
+          },
+          "pageNumber": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Tableau",
+      "id": "get_workbooks",
+      "name": "Get Workbooks",
+      "description": "Get list of workbooks",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of workbooks per page"
+          },
+          "pageNumber": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort expression"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Fields to include"
+          }
+        },
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_workbook",
+      "name": "Get Workbook",
+      "description": "Get workbook details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "workbookId": {
+            "type": "string",
+            "description": "Workbook ID"
+          }
+        },
+        "required": ["siteId", "workbookId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_workbook",
+      "name": "Update Workbook",
+      "description": "Update workbook properties",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "workbookId": {
+            "type": "string",
+            "description": "Workbook ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Workbook name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Workbook description"
+          },
+          "showTabs": {
+            "type": "boolean",
+            "description": "Show tabs"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "Owner ID"
+          }
+        },
+        "required": ["siteId", "workbookId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_views",
+      "name": "Get Views",
+      "description": "Get list of views in a workbook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "workbookId": {
+            "type": "string",
+            "description": "Workbook ID"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of views per page"
+          },
+          "pageNumber": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": ["siteId", "workbookId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_view",
+      "name": "Get View",
+      "description": "Get view details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View ID"
+          }
+        },
+        "required": ["siteId", "viewId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_view_data",
+      "name": "Query View Data",
+      "description": "Query data from a view",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View ID"
+          },
+          "maxAge": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Maximum age of cached data in minutes"
+          },
+          "params": {
+            "type": "object",
+            "description": "View parameters"
+          }
+        },
+        "required": ["siteId", "viewId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_datasources",
+      "name": "Get Data Sources",
+      "description": "Get list of data sources",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of data sources per page"
+          },
+          "pageNumber": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_datasource",
+      "name": "Get Data Source",
+      "description": "Get data source details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "datasourceId": {
+            "type": "string",
+            "description": "Data source ID"
+          }
+        },
+        "required": ["siteId", "datasourceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "refresh_extract",
+      "name": "Refresh Extract",
+      "description": "Refresh a data source extract",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "datasourceId": {
+            "type": "string",
+            "description": "Data source ID"
+          }
+        },
+        "required": ["siteId", "datasourceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of users per page"
+          },
+          "pageNumber": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_projects",
+      "name": "Get Projects",
+      "description": "Get list of projects",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of projects per page"
+          },
+          "pageNumber": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          }
+        },
+        "required": ["siteId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "contentPermissions": {
+            "type": "string",
+            "enum": ["LockedToProject", "ManagedByOwner"],
+            "description": "Content permissions mode"
+          },
+          "parentProjectId": {
+            "type": "string",
+            "description": "Parent project ID"
+          }
+        },
+        "required": ["siteId", "name"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Tableau",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "extract_refreshed",
+      "name": "Extract Refreshed",
+      "description": "Triggered when a data source extract is refreshed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Filter by site ID"
+          },
+          "datasourceId": {
+            "type": "string",
+            "description": "Filter by data source ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "datasourceId": {"type": "string"},
+          "datasourceName": {"type": "string"},
+          "siteId": {"type": "string"},
+          "refreshStatus": {"type": "string"},
+          "refreshTime": {"type": "string"},
+          "jobId": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Tableau",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "workbook_published",
+      "name": "Workbook Published",
+      "description": "Triggered when a workbook is published",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Filter by site ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Filter by project ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "workbookId": {"type": "string"},
+          "workbookName": {"type": "string"},
+          "siteId": {"type": "string"},
+          "projectId": {"type": "string"},
+          "ownerId": {"type": "string"},
+          "publishTime": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/sites"
+  }
 }

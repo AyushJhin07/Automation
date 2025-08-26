@@ -1,141 +1,705 @@
 {
   "id": "xero",
   "name": "Xero",
-  "description": "Xero online accounting software",
+  "description": "Xero cloud-based accounting software for small and medium businesses",
   "category": "Accounting",
-  "icon": "enterprise",
+  "icon": "xero",
   "color": "#13B5EA",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://login.xero.com/identity/connect/authorize",
+      "tokenUrl": "https://identity.xero.com/connect/token",
+      "scopes": ["accounting.transactions", "accounting.contacts", "accounting.settings"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.xero.com/api.xro/2.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Xero and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Xero",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Xero",
+      "id": "get_organizations",
+      "name": "Get Organizations",
+      "description": "Get connected organizations",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Xero",
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Contact name"
+          },
+          "contactNumber": {
+            "type": "string",
+            "description": "Contact number"
+          },
+          "accountNumber": {
+            "type": "string",
+            "description": "Account number"
+          },
+          "contactStatus": {
+            "type": "string",
+            "enum": ["ACTIVE", "ARCHIVED"],
+            "default": "ACTIVE",
+            "description": "Contact status"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "addressType": {"type": "string", "enum": ["POBOX", "STREET"]},
+                "addressLine1": {"type": "string"},
+                "addressLine2": {"type": "string"},
+                "addressLine3": {"type": "string"},
+                "addressLine4": {"type": "string"},
+                "city": {"type": "string"},
+                "region": {"type": "string"},
+                "postalCode": {"type": "string"},
+                "country": {"type": "string"}
+              }
+            },
+            "description": "Contact addresses"
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "phoneType": {"type": "string", "enum": ["DEFAULT", "DDI", "MOBILE", "FAX"]},
+                "phoneNumber": {"type": "string"},
+                "phoneAreaCode": {"type": "string"},
+                "phoneCountryCode": {"type": "string"}
+              }
+            },
+            "description": "Contact phone numbers"
+          },
+          "isSupplier": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether contact is a supplier"
+          },
+          "isCustomer": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether contact is a customer"
+          },
+          "defaultCurrency": {
+            "type": "string",
+            "description": "Default currency code"
+          },
+          "website": {
+            "type": "string",
+            "description": "Website URL"
+          },
+          "brandingTheme": {
+            "type": "string",
+            "description": "Branding theme ID"
+          },
+          "taxNumber": {
+            "type": "string",
+            "description": "Tax number"
+          },
+          "accountsReceivableTaxType": {
+            "type": "string",
+            "description": "Accounts receivable tax type"
+          },
+          "accountsPayableTaxType": {
+            "type": "string",
+            "description": "Accounts payable tax type"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Xero",
+      "id": "get_contact",
+      "name": "Get Contact",
+      "description": "Get contact details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Xero",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Contact ID"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["contactId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Xero",
+      "id": "update_contact",
+      "name": "Update Contact",
+      "description": "Update an existing contact",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Contact ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Contact name"
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "contactStatus": {
+            "type": "string",
+            "enum": ["ACTIVE", "ARCHIVED"],
+            "description": "Contact status"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "addressType": {"type": "string", "enum": ["POBOX", "STREET"]},
+                "addressLine1": {"type": "string"},
+                "city": {"type": "string"},
+                "region": {"type": "string"},
+                "postalCode": {"type": "string"},
+                "country": {"type": "string"}
+              }
+            },
+            "description": "Contact addresses"
+          },
+          "phones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "phoneType": {"type": "string", "enum": ["DEFAULT", "DDI", "MOBILE", "FAX"]},
+                "phoneNumber": {"type": "string"}
+              }
+            },
+            "description": "Contact phone numbers"
+          }
+        },
+        "required": ["contactId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_contacts",
+      "name": "List Contacts",
+      "description": "List all contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "where": {
+            "type": "string",
+            "description": "Filter criteria"
+          },
+          "order": {
+            "type": "string",
+            "description": "Sort order"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Page number"
+          },
+          "includeArchived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include archived contacts"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_invoice",
+      "name": "Create Invoice",
+      "description": "Create a new invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["ACCREC", "ACCPAY"],
+            "description": "Invoice type (ACCREC=sales, ACCPAY=bill)"
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "contactID": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Contact information"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Invoice date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          },
+          "lineAmountTypes": {
+            "type": "string",
+            "enum": ["Exclusive", "Inclusive", "NoTax"],
+            "default": "Exclusive",
+            "description": "Line amount types"
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {"type": "string"},
+                "quantity": {"type": "number", "minimum": 0},
+                "unitAmount": {"type": "number", "minimum": 0},
+                "itemCode": {"type": "string"},
+                "accountCode": {"type": "string"},
+                "taxType": {"type": "string"},
+                "taxAmount": {"type": "number"},
+                "lineAmount": {"type": "number"},
+                "discountRate": {"type": "number", "minimum": 0, "maximum": 100}
+              },
+              "required": ["description", "quantity", "unitAmount"]
+            },
+            "description": "Invoice line items"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "description": "Invoice number"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Reference"
+          },
+          "brandingThemeID": {
+            "type": "string",
+            "description": "Branding theme ID"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL link to source document"
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "currencyRate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Currency rate"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "SUBMITTED", "AUTHORISED"],
+            "default": "DRAFT",
+            "description": "Invoice status"
+          },
+          "sentToContact": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether invoice has been sent to contact"
+          },
+          "expectedPaymentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Expected payment date"
+          },
+          "plannedPaymentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Planned payment date"
+          }
+        },
+        "required": ["type", "contact", "lineItems"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoice",
+      "name": "Get Invoice",
+      "description": "Get invoice details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          }
+        },
+        "required": ["invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_invoice",
+      "name": "Update Invoice",
+      "description": "Update an existing invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "description": "Invoice ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "SUBMITTED", "AUTHORISED", "DELETED", "VOIDED"],
+            "description": "Invoice status"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Reference"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lineItemID": {"type": "string"},
+                "description": {"type": "string"},
+                "quantity": {"type": "number", "minimum": 0},
+                "unitAmount": {"type": "number", "minimum": 0}
+              }
+            },
+            "description": "Invoice line items to update"
+          }
+        },
+        "required": ["invoiceId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_payment",
+      "name": "Create Payment",
+      "description": "Create a new payment",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "invoice": {
+            "type": "object",
+            "properties": {
+              "invoiceID": {"type": "string"}
+            },
+            "description": "Invoice to apply payment to"
+          },
+          "account": {
+            "type": "object",
+            "properties": {
+              "accountID": {"type": "string"},
+              "code": {"type": "string"}
+            },
+            "description": "Account for payment"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Payment date"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Payment amount"
+          },
+          "currencyRate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Currency rate"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Payment reference"
+          },
+          "isReconciled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether payment is reconciled"
+          }
+        },
+        "required": ["invoice", "account", "date", "amount"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_accounts",
+      "name": "Get Accounts",
+      "description": "Get chart of accounts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "where": {
+            "type": "string",
+            "description": "Filter criteria"
+          },
+          "order": {
+            "type": "string",
+            "description": "Sort order"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_bank_transaction",
+      "name": "Create Bank Transaction",
+      "description": "Create a new bank transaction",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["RECEIVE", "SPEND"],
+            "description": "Transaction type"
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "contactID": {"type": "string"},
+              "name": {"type": "string"}
+            },
+            "description": "Contact information"
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {"type": "string"},
+                "unitAmount": {"type": "number"},
+                "accountCode": {"type": "string"},
+                "taxType": {"type": "string"},
+                "quantity": {"type": "number", "minimum": 0, "default": 1}
+              },
+              "required": ["description", "unitAmount", "accountCode"]
+            },
+            "description": "Transaction line items"
+          },
+          "bankAccount": {
+            "type": "object",
+            "properties": {
+              "accountID": {"type": "string"},
+              "code": {"type": "string"}
+            },
+            "description": "Bank account"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Transaction date"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Reference"
+          },
+          "isReconciled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether transaction is reconciled"
+          }
+        },
+        "required": ["type", "lineItems", "bankAccount", "date"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get financial reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "enum": ["BalanceSheet", "ProfitAndLoss", "TrialBalance", "CashSummary", "ExecutiveSummary", "BankSummary", "AgedReceivablesByContact", "AgedPayablesByContact"],
+            "description": "Report type"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Report date"
+          },
+          "fromDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date for period reports"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date",
+            "description": "End date for period reports"
+          },
+          "periods": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Number of periods"
+          },
+          "timeframe": {
+            "type": "string",
+            "enum": ["MONTH", "QUARTER", "YEAR"],
+            "description": "Timeframe for period reports"
+          }
+        },
+        "required": ["reportId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Xero",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "invoice_created",
+      "name": "Invoice Created",
+      "description": "Triggered when a new invoice is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Filter by contact ID"
+          },
+          "invoiceType": {
+            "type": "string",
+            "enum": ["ACCREC", "ACCPAY"],
+            "description": "Filter by invoice type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "invoiceID": {"type": "string"},
+          "invoiceNumber": {"type": "string"},
+          "type": {"type": "string"},
+          "contactID": {"type": "string"},
+          "contactName": {"type": "string"},
+          "date": {"type": "string"},
+          "dueDate": {"type": "string"},
+          "total": {"type": "number"},
+          "status": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Xero",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "payment_created",
+      "name": "Payment Created",
+      "description": "Triggered when a new payment is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Filter by contact ID"
+          },
+          "minimumAmount": {
+            "type": "number",
+            "description": "Filter by minimum payment amount"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "paymentID": {"type": "string"},
+          "invoiceID": {"type": "string"},
+          "contactID": {"type": "string"},
+          "amount": {"type": "number"},
+          "date": {"type": "string"},
+          "reference": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "contact_created",
+      "name": "Contact Created",
+      "description": "Triggered when a new contact is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contactType": {
+            "type": "string",
+            "enum": ["customer", "supplier"],
+            "description": "Filter by contact type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "contactID": {"type": "string"},
+          "name": {"type": "string"},
+          "emailAddress": {"type": "string"},
+          "contactStatus": {"type": "string"},
+          "isCustomer": {"type": "boolean"},
+          "isSupplier": {"type": "boolean"},
+          "defaultCurrency": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/Organisation"
+  }
 }

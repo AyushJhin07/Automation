@@ -1,9 +1,9 @@
 {
   "id": "workday",
   "name": "Workday",
-  "description": "Workday human capital management platform",
-  "category": "HR Management",
-  "icon": "briefcase",
+  "description": "Workday human capital management and enterprise resource planning platform",
+  "category": "HR",
+  "icon": "workday",
   "color": "#F89C0E",
   "version": "1.0.0",
   "authentication": {
@@ -11,153 +11,438 @@
     "config": {
       "authUrl": "https://wd5-impl-services1.workday.com/ccx/oauth2/authorize",
       "tokenUrl": "https://wd5-impl-services1.workday.com/ccx/oauth2/token",
-      "scopes": [
-        "staffing",
-        "compensation",
-        "time_tracking"
-      ]
+      "scopes": ["staffing", "compensation", "time_tracking", "benefits"]
     }
   },
   "baseUrl": "https://wd5-impl-services1.workday.com/ccx/api/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Workday and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Workday",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_worker",
+      "name": "Get Worker",
+      "description": "Get worker details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          }
+        },
+        "required": ["workerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_workers",
+      "name": "Search Workers",
+      "description": "Search for workers",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "searchTerm": {
+            "type": "string",
+            "description": "Search term (name, email, employee ID)"
+          },
+          "location": {
+            "type": "string",
+            "description": "Filter by location"
+          },
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          },
+          "jobTitle": {
+            "type": "string",
+            "description": "Filter by job title"
+          },
+          "manager": {
+            "type": "string",
+            "description": "Filter by manager ID"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Filter by active status"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_worker",
       "name": "Create Worker",
-      "description": "Create a new worker in Workday",
+      "description": "Create a new worker",
       "parameters": {
-        "personalData": {
-          "type": "object",
-          "required": true,
-          "description": "Worker personal information"
+        "type": "object",
+        "properties": {
+          "personalData": {
+            "type": "object",
+            "properties": {
+              "firstName": {"type": "string"},
+              "lastName": {"type": "string"},
+              "middleName": {"type": "string"},
+              "preferredName": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "phone": {"type": "string"},
+              "dateOfBirth": {"type": "string", "format": "date"},
+              "gender": {"type": "string", "enum": ["Male", "Female", "Other", "Prefer not to say"]},
+              "maritalStatus": {"type": "string", "enum": ["Single", "Married", "Divorced", "Widowed", "Other"]}
+            },
+            "description": "Personal information"
+          },
+          "jobData": {
+            "type": "object",
+            "properties": {
+              "jobTitle": {"type": "string"},
+              "department": {"type": "string"},
+              "location": {"type": "string"},
+              "managerId": {"type": "string"},
+              "startDate": {"type": "string", "format": "date"},
+              "employmentType": {"type": "string", "enum": ["Full-time", "Part-time", "Contract", "Temporary"]},
+              "jobLevel": {"type": "string"}
+            },
+            "description": "Job-related information"
+          },
+          "compensationData": {
+            "type": "object",
+            "properties": {
+              "baseSalary": {"type": "number", "minimum": 0},
+              "currency": {"type": "string", "default": "USD"},
+              "payFrequency": {"type": "string", "enum": ["Weekly", "Bi-weekly", "Monthly", "Annual"]},
+              "payGroup": {"type": "string"}
+            },
+            "description": "Compensation information"
+          },
+          "workerId": {
+            "type": "string",
+            "description": "Optional worker ID (if not provided, will be auto-generated)"
+          }
         },
-        "positionData": {
-          "type": "object",
-          "required": true,
-          "description": "Position and employment data"
-        },
-        "hireDate": {
-          "type": "string",
-          "required": true,
-          "description": "Hire date (YYYY-MM-DD)"
-        }
-      },
-      "requiredScopes": [
-        "staffing"
-      ]
+        "required": ["personalData", "jobData"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_worker",
       "name": "Update Worker",
-      "description": "Update worker information",
+      "description": "Update an existing worker",
       "parameters": {
-        "workerId": {
-          "type": "string",
-          "required": true,
-          "description": "Worker ID"
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          },
+          "personalData": {
+            "type": "object",
+            "properties": {
+              "firstName": {"type": "string"},
+              "lastName": {"type": "string"},
+              "middleName": {"type": "string"},
+              "preferredName": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "phone": {"type": "string"},
+              "dateOfBirth": {"type": "string", "format": "date"},
+              "gender": {"type": "string", "enum": ["Male", "Female", "Other", "Prefer not to say"]},
+              "maritalStatus": {"type": "string", "enum": ["Single", "Married", "Divorced", "Widowed", "Other"]}
+            },
+            "description": "Personal information to update"
+          },
+          "jobData": {
+            "type": "object",
+            "properties": {
+              "jobTitle": {"type": "string"},
+              "department": {"type": "string"},
+              "location": {"type": "string"},
+              "managerId": {"type": "string"},
+              "employmentType": {"type": "string", "enum": ["Full-time", "Part-time", "Contract", "Temporary"]},
+              "jobLevel": {"type": "string"}
+            },
+            "description": "Job-related information to update"
+          },
+          "compensationData": {
+            "type": "object",
+            "properties": {
+              "baseSalary": {"type": "number", "minimum": 0},
+              "currency": {"type": "string"},
+              "payFrequency": {"type": "string", "enum": ["Weekly", "Bi-weekly", "Monthly", "Annual"]},
+              "payGroup": {"type": "string"}
+            },
+            "description": "Compensation information to update"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Effective date for the changes"
+          }
         },
-        "personalData": {
-          "type": "object",
-          "required": false,
-          "description": "Updated personal data"
-        },
-        "positionData": {
-          "type": "object",
-          "required": false,
-          "description": "Updated position data"
-        }
-      },
-      "requiredScopes": [
-        "staffing"
-      ]
+        "required": ["workerId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "terminate_worker",
       "name": "Terminate Worker",
       "description": "Terminate a worker's employment",
       "parameters": {
-        "workerId": {
-          "type": "string",
-          "required": true,
-          "description": "Worker ID"
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          },
+          "terminationDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Termination date"
+          },
+          "terminationReason": {
+            "type": "string",
+            "enum": ["Voluntary", "Involuntary", "Retirement", "End of Contract", "Other"],
+            "description": "Reason for termination"
+          },
+          "lastDayWorked": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day worked"
+          },
+          "eligibleForRehire": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether eligible for rehire"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes"
+          }
         },
-        "terminationDate": {
-          "type": "string",
-          "required": true,
-          "description": "Termination date (YYYY-MM-DD)"
-        },
-        "reason": {
-          "type": "string",
-          "required": true,
-          "description": "Termination reason"
-        }
-      },
-      "requiredScopes": [
-        "staffing"
-      ]
+        "required": ["workerId", "terminationDate", "terminationReason"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "create_position",
-      "name": "Create Position",
-      "description": "Create a new position",
+      "id": "get_time_off_request",
+      "name": "Get Time Off Request",
+      "description": "Get time off request details",
       "parameters": {
-        "positionTitle": {
-          "type": "string",
-          "required": true,
-          "description": "Position title"
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "Time off request ID"
+          }
         },
-        "department": {
-          "type": "string",
-          "required": true,
-          "description": "Department"
-        },
-        "jobProfile": {
-          "type": "string",
-          "required": true,
-          "description": "Job profile"
-        }
-      },
-      "requiredScopes": [
-        "staffing"
-      ]
+        "required": ["requestId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_position",
-      "name": "Update Position",
-      "description": "Update position details",
+      "id": "create_time_off_request",
+      "name": "Create Time Off Request",
+      "description": "Create a new time off request",
       "parameters": {
-        "positionId": {
-          "type": "string",
-          "required": true,
-          "description": "Position ID"
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          },
+          "timeOffType": {
+            "type": "string",
+            "enum": ["Vacation", "Sick", "Personal", "Bereavement", "Jury Duty", "Military", "Other"],
+            "description": "Type of time off"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date of time off"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "End date of time off"
+          },
+          "isFullDay": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether it's a full day request"
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "Start time (HH:MM) if partial day"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "End time (HH:MM) if partial day"
+          },
+          "comments": {
+            "type": "string",
+            "description": "Additional comments"
+          }
         },
-        "updates": {
-          "type": "object",
-          "required": true,
-          "description": "Position updates"
-        }
-      },
-      "requiredScopes": [
-        "staffing"
-      ]
+        "required": ["workerId", "timeOffType", "startDate", "endDate"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "approve_time_off_request",
+      "name": "Approve Time Off Request",
+      "description": "Approve a time off request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "Time off request ID"
+          },
+          "approverId": {
+            "type": "string",
+            "description": "Approver's worker ID"
+          },
+          "comments": {
+            "type": "string",
+            "description": "Approval comments"
+          }
+        },
+        "required": ["requestId", "approverId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "deny_time_off_request",
+      "name": "Deny Time Off Request",
+      "description": "Deny a time off request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "Time off request ID"
+          },
+          "approverId": {
+            "type": "string",
+            "description": "Approver's worker ID"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for denial"
+          }
+        },
+        "required": ["requestId", "approverId", "reason"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_organization_structure",
+      "name": "Get Organization Structure",
+      "description": "Get organization structure and reporting relationships",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "description": "Organization unit ID"
+          },
+          "includeSubOrgs": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include sub-organizations"
+          },
+          "asOfDate": {
+            "type": "string",
+            "format": "date",
+            "description": "As of date for historical structure"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_compensation_data",
+      "name": "Get Compensation Data",
+      "description": "Get worker compensation information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          },
+          "asOfDate": {
+            "type": "string",
+            "format": "date",
+            "description": "As of date for historical data"
+          }
+        },
+        "required": ["workerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_compensation",
+      "name": "Update Compensation",
+      "description": "Update worker compensation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          },
+          "baseSalary": {
+            "type": "number",
+            "minimum": 0,
+            "description": "New base salary"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Effective date for compensation change"
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["Merit Increase", "Promotion", "Market Adjustment", "Cost of Living", "Other"],
+            "description": "Reason for compensation change"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes"
+          }
+        },
+        "required": ["workerId", "baseSalary", "effectiveDate", "reason"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -165,28 +450,139 @@
       "id": "worker_hired",
       "name": "Worker Hired",
       "description": "Triggered when a new worker is hired",
-      "parameters": {},
-      "requiredScopes": [
-        "staffing"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          },
+          "location": {
+            "type": "string",
+            "description": "Filter by location"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "workerId": {"type": "string"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "email": {"type": "string"},
+          "jobTitle": {"type": "string"},
+          "department": {"type": "string"},
+          "startDate": {"type": "string"},
+          "managerId": {"type": "string"}
+        }
+      }
     },
     {
       "id": "worker_terminated",
       "name": "Worker Terminated",
       "description": "Triggered when a worker is terminated",
-      "parameters": {},
-      "requiredScopes": [
-        "staffing"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          },
+          "terminationReason": {
+            "type": "string",
+            "description": "Filter by termination reason"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "workerId": {"type": "string"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "email": {"type": "string"},
+          "terminationDate": {"type": "string"},
+          "terminationReason": {"type": "string"},
+          "lastDayWorked": {"type": "string"}
+        }
+      }
     },
     {
       "id": "time_off_requested",
       "name": "Time Off Requested",
-      "description": "Triggered when time off is requested",
-      "parameters": {},
-      "requiredScopes": [
-        "time_tracking"
-      ]
+      "description": "Triggered when a time off request is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "timeOffType": {
+            "type": "string",
+            "description": "Filter by time off type"
+          },
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "requestId": {"type": "string"},
+          "workerId": {"type": "string"},
+          "workerName": {"type": "string"},
+          "timeOffType": {"type": "string"},
+          "startDate": {"type": "string"},
+          "endDate": {"type": "string"},
+          "status": {"type": "string"},
+          "requestDate": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "compensation_changed",
+      "name": "Compensation Changed",
+      "description": "Triggered when worker compensation is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          },
+          "minimumIncrease": {
+            "type": "number",
+            "description": "Filter by minimum salary increase amount"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "workerId": {"type": "string"},
+          "workerName": {"type": "string"},
+          "previousSalary": {"type": "number"},
+          "newSalary": {"type": "number"},
+          "effectiveDate": {"type": "string"},
+          "reason": {"type": "string"},
+          "department": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/workers"
+  }
 }

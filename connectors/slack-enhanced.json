@@ -1,46 +1,30 @@
 {
   "id": "slack-enhanced",
   "name": "Slack Enhanced",
-  "description": "Enhanced Slack team collaboration and messaging platform",
+  "description": "Enhanced Slack team communication platform with advanced features",
   "category": "Communication",
-  "icon": "message-square",
+  "icon": "slack",
   "color": "#4A154B",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://slack.com/oauth/v2/authorize",
       "tokenUrl": "https://slack.com/api/oauth.v2.access",
-      "scopes": [
-        "chat:write",
-        "chat:write.public",
-        "channels:read",
-        "channels:manage",
-        "files:write",
-        "reactions:write",
-        "users:read"
-      ]
+      "scopes": ["chat:write", "channels:read", "users:read", "files:write", "reactions:write"]
     }
   },
   "baseUrl": "https://slack.com/api",
-  "rateLimits": {
-    "requestsPerSecond": 1,
-    "requestsPerMinute": 60,
-    "dailyLimit": 100000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Slack Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "users:read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Slack",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -48,379 +32,629 @@
       "name": "Post Message",
       "description": "Post a message to a channel",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID or name"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID or name"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "Block kit structured message"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Message attachments"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Thread timestamp for reply"
+          },
+          "username": {
+            "type": "string",
+            "description": "Bot username"
+          },
+          "icon_emoji": {
+            "type": "string",
+            "description": "Bot emoji icon"
+          },
+          "icon_url": {
+            "type": "string",
+            "description": "Bot icon URL"
+          },
+          "link_names": {
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-link channel names and usernames"
+          },
+          "parse": {
+            "type": "string",
+            "enum": ["full", "none"],
+            "description": "Parse mode"
+          },
+          "reply_broadcast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Broadcast thread reply to channel"
+          },
+          "unfurl_links": {
+            "type": "boolean",
+            "description": "Unfurl links"
+          },
+          "unfurl_media": {
+            "type": "boolean",
+            "description": "Unfurl media"
+          }
         },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Message text"
-        },
-        "blocksJson": {
-          "type": "object",
-          "required": false,
-          "description": "Rich message blocks JSON"
-        }
-      },
-      "requiredScopes": [
-        "chat:write"
-      ]
+        "required": ["channel"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "reply_in_thread",
       "name": "Reply in Thread",
       "description": "Reply to a message in a thread",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID or name"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Thread timestamp to reply to"
+          },
+          "text": {
+            "type": "string",
+            "description": "Reply text"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "Block kit structured message"
+          },
+          "reply_broadcast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Broadcast reply to channel"
+          }
         },
-        "threadTs": {
-          "type": "string",
-          "required": true,
-          "description": "Thread timestamp"
-        },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Reply text"
-        }
-      },
-      "requiredScopes": [
-        "chat:write"
-      ]
+        "required": ["channel", "thread_ts"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_message",
       "name": "Update Message",
       "description": "Update an existing message",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "ts": {
+            "type": "string",
+            "description": "Message timestamp"
+          },
+          "text": {
+            "type": "string",
+            "description": "New message text"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "New block kit message"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "New attachments"
+          }
         },
-        "ts": {
-          "type": "string",
-          "required": true,
-          "description": "Message timestamp"
-        },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "New message text"
-        }
-      },
-      "requiredScopes": [
-        "chat:write"
-      ]
+        "required": ["channel", "ts"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "delete_message",
       "name": "Delete Message",
       "description": "Delete a message",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "ts": {
+            "type": "string",
+            "description": "Message timestamp"
+          }
         },
-        "ts": {
-          "type": "string",
-          "required": true,
-          "description": "Message timestamp"
-        }
-      },
-      "requiredScopes": [
-        "chat:write"
-      ]
+        "required": ["channel", "ts"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "schedule_message",
       "name": "Schedule Message",
-      "description": "Schedule a message for later",
+      "description": "Schedule a message to be sent later",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID or name"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text"
+          },
+          "post_at": {
+            "type": "number",
+            "description": "Unix timestamp when to send"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "Block kit structured message"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Thread timestamp for reply"
+          }
         },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Message text"
-        },
-        "postAt": {
-          "type": "string",
-          "required": true,
-          "description": "Unix timestamp when to post"
-        }
-      },
-      "requiredScopes": [
-        "chat:write"
-      ]
+        "required": ["channel", "post_at"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "add_reaction",
       "name": "Add Reaction",
-      "description": "Add a reaction to a message",
+      "description": "Add emoji reaction to a message",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Message timestamp"
+          },
+          "name": {
+            "type": "string",
+            "description": "Emoji name (without colons)"
+          }
         },
-        "ts": {
-          "type": "string",
-          "required": true,
-          "description": "Message timestamp"
-        },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Reaction emoji name"
-        }
-      },
-      "requiredScopes": [
-        "reactions:write"
-      ]
+        "required": ["channel", "timestamp", "name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "remove_reaction",
       "name": "Remove Reaction",
-      "description": "Remove a reaction from a message",
+      "description": "Remove emoji reaction from a message",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Message timestamp"
+          },
+          "name": {
+            "type": "string",
+            "description": "Emoji name (without colons)"
+          }
         },
-        "ts": {
-          "type": "string",
-          "required": true,
-          "description": "Message timestamp"
-        },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Reaction emoji name"
-        }
-      },
-      "requiredScopes": [
-        "reactions:write"
-      ]
+        "required": ["channel", "timestamp", "name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "set_topic",
       "name": "Set Channel Topic",
       "description": "Set the topic for a channel",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "topic": {
+            "type": "string",
+            "description": "New channel topic"
+          }
         },
-        "topic": {
-          "type": "string",
-          "required": true,
-          "description": "New topic"
-        }
-      },
-      "requiredScopes": [
-        "channels:manage"
-      ]
+        "required": ["channel", "topic"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "set_purpose",
       "name": "Set Channel Purpose",
       "description": "Set the purpose for a channel",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "purpose": {
+            "type": "string",
+            "description": "New channel purpose"
+          }
         },
-        "purpose": {
-          "type": "string",
-          "required": true,
-          "description": "New purpose"
-        }
-      },
-      "requiredScopes": [
-        "channels:manage"
-      ]
+        "required": ["channel", "purpose"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "invite_user",
       "name": "Invite User to Channel",
       "description": "Invite a user to a channel",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "users": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "User IDs to invite"
+          }
         },
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID to invite"
-        }
-      },
-      "requiredScopes": [
-        "channels:manage"
-      ]
+        "required": ["channel", "users"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "kick_user",
       "name": "Remove User from Channel",
       "description": "Remove a user from a channel",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "user": {
+            "type": "string",
+            "description": "User ID to remove"
+          }
         },
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID to remove"
-        }
-      },
-      "requiredScopes": [
-        "channels:manage"
-      ]
+        "required": ["channel", "user"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "upload_file",
       "name": "Upload File",
-      "description": "Upload a file to a channel",
+      "description": "Upload a file to Slack",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID"
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Channel IDs to share file to"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content (for text files)"
+          },
+          "file": {
+            "type": "string",
+            "description": "File path or URL"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Filename"
+          },
+          "filetype": {
+            "type": "string",
+            "description": "File type"
+          },
+          "initial_comment": {
+            "type": "string",
+            "description": "Initial comment"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Thread timestamp"
+          },
+          "title": {
+            "type": "string",
+            "description": "File title"
+          }
         },
-        "filename": {
-          "type": "string",
-          "required": true,
-          "description": "File name"
-        },
-        "base64": {
-          "type": "string",
-          "required": true,
-          "description": "Base64 encoded file content"
-        }
-      },
-      "requiredScopes": [
-        "files:write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "message_posted",
       "name": "Message Posted",
-      "description": "Triggered when a message is posted",
+      "description": "Triggered when a message is posted to a channel",
+      "type": "webhook",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          },
+          "user": {
+            "type": "string",
+            "description": "Filter by specific user"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Filter by keyword in message"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "channels:history"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "channel": {"type": "string"},
+          "user": {"type": "string"},
+          "text": {"type": "string"},
+          "ts": {"type": "string"},
+          "thread_ts": {"type": "string"},
+          "type": {"type": "string"}
+        }
+      }
     },
     {
       "id": "message_edited",
       "name": "Message Edited",
       "description": "Triggered when a message is edited",
+      "type": "webhook",
       "parameters": {
-        "channel": {
-          "type": "string",
-          "required": true,
-          "description": "Channel ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "channels:history"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "channel": {"type": "string"},
+          "user": {"type": "string"},
+          "text": {"type": "string"},
+          "ts": {"type": "string"},
+          "edited": {"type": "object"}
+        }
+      }
     },
     {
       "id": "reaction_added",
       "name": "Reaction Added",
       "description": "Triggered when a reaction is added to a message",
-      "parameters": {},
-      "requiredScopes": [
-        "reactions:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          },
+          "emoji": {
+            "type": "string",
+            "description": "Filter by specific emoji"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "user": {"type": "string"},
+          "reaction": {"type": "string"},
+          "item": {"type": "object"},
+          "event_ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "reaction_removed",
       "name": "Reaction Removed",
-      "description": "Triggered when a reaction is removed",
-      "parameters": {},
-      "requiredScopes": [
-        "reactions:read"
-      ]
+      "description": "Triggered when a reaction is removed from a message",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          },
+          "emoji": {
+            "type": "string",
+            "description": "Filter by specific emoji"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "user": {"type": "string"},
+          "reaction": {"type": "string"},
+          "item": {"type": "object"},
+          "event_ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "user_joined",
-      "name": "User Joined",
-      "description": "Triggered when a user joins the workspace",
-      "parameters": {},
-      "requiredScopes": [
-        "users:read"
-      ]
+      "name": "User Joined Channel",
+      "description": "Triggered when a user joins a channel",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "user": {"type": "string"},
+          "channel": {"type": "string"},
+          "ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "user_left",
-      "name": "User Left",
-      "description": "Triggered when a user leaves the workspace",
-      "parameters": {},
-      "requiredScopes": [
-        "users:read"
-      ]
+      "name": "User Left Channel",
+      "description": "Triggered when a user leaves a channel",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "user": {"type": "string"},
+          "channel": {"type": "string"},
+          "ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "file_shared",
       "name": "File Shared",
       "description": "Triggered when a file is shared",
-      "parameters": {},
-      "requiredScopes": [
-        "files:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "file": {"type": "object"},
+          "user_id": {"type": "string"},
+          "event_ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "channel_created",
       "name": "Channel Created",
       "description": "Triggered when a channel is created",
-      "parameters": {},
-      "requiredScopes": [
-        "channels:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "channel": {"type": "object"},
+          "event_ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "channel_archived",
       "name": "Channel Archived",
       "description": "Triggered when a channel is archived",
-      "parameters": {},
-      "requiredScopes": [
-        "channels:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "channel": {"type": "string"},
+          "user": {"type": "string"},
+          "event_ts": {"type": "string"}
+        }
+      }
     },
     {
       "id": "channel_unarchived",
       "name": "Channel Unarchived",
       "description": "Triggered when a channel is unarchived",
-      "parameters": {},
-      "requiredScopes": [
-        "channels:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "channel": {"type": "string"},
+          "user": {"type": "string"},
+          "event_ts": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/auth.test"
+  }
 }

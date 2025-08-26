@@ -1,141 +1,384 @@
 {
   "id": "victorops",
   "name": "VictorOps",
-  "description": "VictorOps incident response platform",
-  "category": "Incident Management",
-  "icon": "enterprise",
-  "color": "#F89C0E",
+  "description": "VictorOps incident management and on-call scheduling platform",
+  "category": "Monitoring",
+  "icon": "victorops",
+  "color": "#00A86B",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "X-VO-Api-Id",
+      "additionalHeaders": {
+        "X-VO-Api-Key": "{api_key}"
+      }
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.victorops.com/api-public/v1",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to VictorOps and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to VictorOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in VictorOps",
+      "id": "create_incident",
+      "name": "Create Incident",
+      "description": "Create a new incident",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in VictorOps",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "messageType": {
+            "type": "string",
+            "enum": ["CRITICAL", "WARNING", "INFO", "RECOVERY"],
+            "description": "Message type"
+          },
+          "entityId": {
+            "type": "string",
+            "description": "Entity ID"
+          },
+          "entityDisplayName": {
+            "type": "string",
+            "description": "Entity display name"
+          },
+          "stateMessage": {
+            "type": "string",
+            "description": "State message"
+          },
+          "timestamp": {
+            "type": "number",
+            "description": "Unix timestamp"
+          },
+          "monitoringTool": {
+            "type": "string",
+            "description": "Monitoring tool name"
+          },
+          "routingKey": {
+            "type": "string",
+            "description": "Routing key"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["messageType", "entityId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from VictorOps",
+      "id": "get_incidents",
+      "name": "Get Incidents",
+      "description": "Get list of incidents",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from VictorOps",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Offset for pagination"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of results"
+          },
+          "entityId": {
+            "type": "string",
+            "description": "Filter by entity ID"
+          },
+          "incidentNumber": {
+            "type": "string",
+            "description": "Filter by incident number"
+          },
+          "startedAfter": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter incidents started after this time"
+          },
+          "startedBefore": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter incidents started before this time"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from VictorOps",
+      "id": "get_incident",
+      "name": "Get Incident",
+      "description": "Get incident details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "incidentNumber": {
+            "type": "string",
+            "description": "Incident number"
+          }
+        },
+        "required": ["incidentNumber"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ack_incident",
+      "name": "Acknowledge Incident",
+      "description": "Acknowledge an incident",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incidentNumber": {
+            "type": "string",
+            "description": "Incident number"
+          },
+          "userName": {
+            "type": "string",
+            "description": "User acknowledging the incident"
+          },
+          "message": {
+            "type": "string",
+            "description": "Acknowledgment message"
+          }
+        },
+        "required": ["incidentNumber", "userName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "resolve_incident",
+      "name": "Resolve Incident",
+      "description": "Resolve an incident",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incidentNumber": {
+            "type": "string",
+            "description": "Incident number"
+          },
+          "userName": {
+            "type": "string",
+            "description": "User resolving the incident"
+          },
+          "message": {
+            "type": "string",
+            "description": "Resolution message"
+          }
+        },
+        "required": ["incidentNumber", "userName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_teams",
+      "name": "Get Teams",
+      "description": "Get list of teams",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_team",
+      "name": "Get Team",
+      "description": "Get team details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team slug"
+          }
+        },
+        "required": ["team"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_on_call",
+      "name": "Get On-Call",
+      "description": "Get on-call schedule",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team slug"
+          },
+          "schedule": {
+            "type": "string",
+            "description": "Schedule slug"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time to check on-call status"
+          }
+        },
+        "required": ["team"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_maintenance",
+      "name": "Create Maintenance",
+      "description": "Create a maintenance window",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Maintenance window name"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End time"
+          },
+          "routingKeys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Routing keys to include"
+          }
+        },
+        "required": ["name", "startTime", "endTime"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "Username"
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in VictorOps",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "incident_triggered",
+      "name": "Incident Triggered",
+      "description": "Triggered when a new incident is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "routingKey": {
+            "type": "string",
+            "description": "Filter by routing key"
+          },
+          "team": {
+            "type": "string",
+            "description": "Filter by team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "incidentNumber": {"type": "string"},
+          "entityId": {"type": "string"},
+          "entityDisplayName": {"type": "string"},
+          "messageType": {"type": "string"},
+          "stateMessage": {"type": "string"},
+          "startTime": {"type": "string"},
+          "currentPhase": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in VictorOps",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "incident_acked",
+      "name": "Incident Acknowledged",
+      "description": "Triggered when an incident is acknowledged",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Filter by team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "incidentNumber": {"type": "string"},
+          "entityId": {"type": "string"},
+          "ackUserId": {"type": "string"},
+          "ackTime": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "incident_resolved",
+      "name": "Incident Resolved",
+      "description": "Triggered when an incident is resolved",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Filter by team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "incidentNumber": {"type": "string"},
+          "entityId": {"type": "string"},
+          "resolveUserId": {"type": "string"},
+          "resolveTime": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }
