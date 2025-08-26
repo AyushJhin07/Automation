@@ -37,6 +37,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize LLM providers
+  try {
+    const { registerLLMProviders } = await import('./llm');
+    registerLLMProviders();
+  } catch (error) {
+    console.error('Failed to initialize LLM providers:', error);
+    console.warn('LLM features will be unavailable');
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

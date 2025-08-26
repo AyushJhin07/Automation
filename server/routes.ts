@@ -2478,6 +2478,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== LLM API ENDPOINTS =====
+  // Get available LLM models and providers
+  app.get('/api/llm/models', async (req, res) => {
+    try {
+      const { llmRegistry } = await import('./llm');
+      const availableProviders = llmRegistry.getAvailableProviders();
+      const availableModels = llmRegistry.getAvailableModels();
+      
+      res.json({
+        success: true,
+        providers: availableProviders,
+        models: availableModels,
+        providerCount: availableProviders.length
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: `LLM registry error: ${error.message}`
+      });
+    }
+  });
+
+  // Test LLM connection and functionality
+  app.post('/api/llm/test', async (req, res) => {
+    try {
+      const { provider, model, prompt = 'Hello! Please respond with "Connection successful."' } = req.body || {};
+      
+      if (!provider || !model) {
+        return res.status(400).json({
+          success: false,
+          error: 'Provider and model are required'
+        });
+      }
+
+      const { llmRegistry } = await import('./llm');
+      const llmProvider = llmRegistry.get(provider);
+      
+      const startTime = Date.now();
+      const result = await llmProvider.generate({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        maxTokens: 100
+      });
+      const duration = Date.now() - startTime;
+
+      res.json({
+        success: true,
+        result: {
+          text: result.text,
+          usage: result.usage,
+          duration,
+          provider,
+          model
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: `LLM test failed: ${error.message}`
+      });
+    }
+  });
+
+  // Execute a workflow with LLM nodes (for testing)
+  app.post('/api/llm/execute-workflow', async (req, res) => {
+    try {
+      const { graph, initialData = {} } = req.body;
+      
+      if (!graph) {
+        return res.status(400).json({
+          success: false,
+          error: 'Workflow graph is required'
+        });
+      }
+
+      const { workflowRuntime } = await import('./core/WorkflowRuntime');
+      const result = await workflowRuntime.executeWorkflow(graph, initialData);
+
+      res.json({
+        success: result.success,
+        result
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: `Workflow execution failed: ${error.message}`
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

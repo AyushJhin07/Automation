@@ -1,0 +1,195 @@
+{
+  "id": "llm",
+  "name": "Large Language Model",
+  "category": "AI",
+  "description": "Leverage AI models for text generation, data extraction, classification, and tool calling",
+  "auth": { "type": "none" },
+  "actions": [
+    {
+      "id": "generate",
+      "name": "Generate Text",
+      "description": "Prompt the model and return generated text content",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider": { 
+            "type": "string", 
+            "enum": ["openai", "anthropic", "google"],
+            "description": "LLM provider to use"
+          },
+          "model": { 
+            "type": "string",
+            "description": "Model identifier (e.g., openai:gpt-4o-mini)"
+          },
+          "system": { 
+            "type": "string",
+            "description": "System prompt to guide the model's behavior"
+          },
+          "prompt": { 
+            "type": "string",
+            "description": "Main prompt for text generation"
+          },
+          "temperature": { 
+            "type": "number", 
+            "minimum": 0, 
+            "maximum": 2, 
+            "default": 0.2,
+            "description": "Controls randomness (0 = deterministic, 2 = very creative)"
+          },
+          "maxTokens": { 
+            "type": "number", 
+            "default": 1024,
+            "description": "Maximum number of tokens to generate"
+          },
+          "rag": { 
+            "type": "object", 
+            "properties": { 
+              "urls": { 
+                "type": "array", 
+                "items": { "type": "string" },
+                "description": "URLs to fetch and include as context"
+              }, 
+              "usePriorNodeData": { 
+                "type": "boolean",
+                "description": "Include data from previous workflow nodes"
+              }
+            },
+            "description": "Retrieval Augmented Generation settings"
+          }
+        },
+        "required": ["provider", "model", "prompt"]
+      }
+    },
+    {
+      "id": "extract",
+      "name": "Extract Structured Data",
+      "description": "Extract structured data from text using JSON schema",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider": { 
+            "type": "string", 
+            "enum": ["openai", "anthropic", "google"],
+            "description": "LLM provider to use"
+          },
+          "model": { 
+            "type": "string",
+            "description": "Model identifier that supports JSON output"
+          },
+          "system": { 
+            "type": "string",
+            "description": "System prompt for extraction guidance"
+          },
+          "prompt": { 
+            "type": "string",
+            "description": "Text content to extract data from"
+          },
+          "jsonSchema": { 
+            "type": "object",
+            "description": "JSON schema defining the structure to extract"
+          },
+          "temperature": { 
+            "type": "number", 
+            "default": 0.0,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Lower temperature for more consistent extraction"
+          },
+          "maxTokens": { 
+            "type": "number", 
+            "default": 1024,
+            "description": "Maximum tokens for the extracted JSON"
+          }
+        },
+        "required": ["provider", "model", "prompt", "jsonSchema"]
+      }
+    },
+    {
+      "id": "classify",
+      "name": "Classify Text",
+      "description": "Classify text into predefined categories",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider": { 
+            "type": "string", 
+            "enum": ["openai", "anthropic", "google"],
+            "description": "LLM provider to use"
+          },
+          "model": { 
+            "type": "string",
+            "description": "Model identifier for classification"
+          },
+          "prompt": { 
+            "type": "string",
+            "description": "Text content to classify"
+          },
+          "classes": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "description": "List of possible classification labels"
+          },
+          "system": {
+            "type": "string",
+            "description": "Additional context for classification"
+          }
+        },
+        "required": ["provider", "model", "prompt", "classes"]
+      }
+    },
+    {
+      "id": "tool_call",
+      "name": "Call Tool / Function",
+      "description": "Let the model choose and execute a tool/function based on the prompt",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider": { 
+            "type": "string",
+            "enum": ["openai", "anthropic", "google"],
+            "description": "LLM provider to use"
+          },
+          "model": { 
+            "type": "string",
+            "description": "Model identifier that supports tool calling"
+          },
+          "system": { 
+            "type": "string",
+            "description": "System instructions for tool selection"
+          },
+          "prompt": { 
+            "type": "string",
+            "description": "User request that may require tool usage"
+          },
+          "tools": { 
+            "type": "array", 
+            "items": { 
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "parameters": { "type": "object" }
+              },
+              "required": ["name", "description", "parameters"]
+            },
+            "description": "Available tools the model can choose from"
+          },
+          "temperature": {
+            "type": "number",
+            "default": 0.2,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Temperature for tool selection"
+          },
+          "maxTokens": {
+            "type": "number",
+            "default": 1024,
+            "description": "Maximum tokens for the response"
+          }
+        },
+        "required": ["provider", "model", "prompt", "tools"]
+      }
+    }
+  ],
+  "triggers": []
+}
