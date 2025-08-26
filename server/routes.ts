@@ -4473,6 +4473,526 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================
+  // SMART MODEL ROUTER API
+  // ==========================================
+
+  // Route a request to optimal model
+  app.post('/api/model-router/route', async (req, res) => {
+    try {
+      const { prompt, task, priority, constraints, context, user } = req.body;
+      
+      if (!prompt || !task || !user) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Prompt, task, and user are required' 
+        });
+      }
+
+      const { smartModelRouter } = await import('./llm/SmartModelRouter');
+      const decision = await smartModelRouter.routeRequest({
+        id: `req_${Date.now()}`,
+        prompt,
+        task,
+        priority: priority || 'normal',
+        constraints: constraints || {},
+        context: context || {},
+        user
+      });
+      
+      res.json({ 
+        success: true, 
+        decision 
+      });
+    } catch (error) {
+      console.error('Error routing model request:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Get cost optimization recommendations
+  app.get('/api/model-router/optimization/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { timeframe } = req.query;
+      
+      if (!userId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'User ID is required' 
+        });
+      }
+
+      let timeframeObj = undefined;
+      if (timeframe) {
+        const [start, end] = timeframe.toString().split(',');
+        timeframeObj = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { smartModelRouter } = await import('./llm/SmartModelRouter');
+      const optimization = smartModelRouter.getCostOptimization(userId, timeframeObj);
+      
+      res.json({ 
+        success: true, 
+        optimization 
+      });
+    } catch (error) {
+      console.error('Error getting cost optimization:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get cost optimization' 
+      });
+    }
+  });
+
+  // Get model analytics
+  app.get('/api/model-router/analytics', async (req, res) => {
+    try {
+      const { timeframe } = req.query;
+      
+      let timeframeObj = undefined;
+      if (timeframe) {
+        const [start, end] = timeframe.toString().split(',');
+        timeframeObj = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { smartModelRouter } = await import('./llm/SmartModelRouter');
+      const analytics = smartModelRouter.getModelAnalytics(timeframeObj);
+      
+      res.json({ 
+        success: true, 
+        analytics 
+      });
+    } catch (error) {
+      console.error('Error getting model analytics:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get model analytics' 
+      });
+    }
+  });
+
+  // Add or update model profile
+  app.post('/api/model-router/models', async (req, res) => {
+    try {
+      const modelProfile = req.body;
+      
+      if (!modelProfile.id || !modelProfile.name || !modelProfile.provider) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Model ID, name, and provider are required' 
+        });
+      }
+
+      const { smartModelRouter } = await import('./llm/SmartModelRouter');
+      smartModelRouter.addModel(modelProfile);
+      
+      res.json({ 
+        success: true, 
+        message: 'Model profile added successfully' 
+      });
+    } catch (error) {
+      console.error('Error adding model profile:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to add model profile' 
+      });
+    }
+  });
+
+  // Get all available models
+  app.get('/api/model-router/models', async (req, res) => {
+    try {
+      const { smartModelRouter } = await import('./llm/SmartModelRouter');
+      const models = smartModelRouter.getModels();
+      
+      res.json({ 
+        success: true, 
+        models 
+      });
+    } catch (error) {
+      console.error('Error getting models:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get models' 
+      });
+    }
+  });
+
+  // Update model performance metrics
+  app.put('/api/model-router/models/:modelId/performance', async (req, res) => {
+    try {
+      const { modelId } = req.params;
+      const { latency, qualityScore, successRate } = req.body;
+      
+      if (!modelId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Model ID is required' 
+        });
+      }
+
+      const { smartModelRouter } = await import('./llm/SmartModelRouter');
+      smartModelRouter.updateModelPerformance(modelId, {
+        latency,
+        qualityScore,
+        successRate
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Model performance updated successfully' 
+      });
+    } catch (error) {
+      console.error('Error updating model performance:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to update model performance' 
+      });
+    }
+  });
+
+  // ==========================================
+  // LLM EVALUATION MANAGER API
+  // ==========================================
+
+  // Create evaluation suite
+  app.post('/api/evaluation/suites', async (req, res) => {
+    try {
+      const { name, description, category, goldenSetIds, metrics, schedule } = req.body;
+      
+      if (!name || !description || !category || !goldenSetIds || !metrics) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Name, description, category, goldenSetIds, and metrics are required' 
+        });
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const suite = llmEvaluationManager.createEvaluationSuite({
+        name,
+        description,
+        category,
+        goldenSetIds,
+        metrics,
+        schedule
+      });
+      
+      res.json({ 
+        success: true, 
+        suite 
+      });
+    } catch (error) {
+      console.error('Error creating evaluation suite:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Run evaluation
+  app.post('/api/evaluation/suites/:suiteId/run', async (req, res) => {
+    try {
+      const { suiteId } = req.params;
+      const { modelId, promptVersion, configuration, subset } = req.body;
+      
+      if (!suiteId || !modelId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Suite ID and model ID are required' 
+        });
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const run = await llmEvaluationManager.runEvaluation(suiteId, modelId, {
+        promptVersion,
+        configuration,
+        subset
+      });
+      
+      res.json({ 
+        success: true, 
+        run 
+      });
+    } catch (error) {
+      console.error('Error running evaluation:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Create golden set
+  app.post('/api/evaluation/golden-sets', async (req, res) => {
+    try {
+      const { name, description, category, testCases, metadata } = req.body;
+      
+      if (!name || !description || !category || !testCases) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Name, description, category, and testCases are required' 
+        });
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const goldenSet = llmEvaluationManager.createGoldenSet({
+        name,
+        description,
+        category,
+        testCases,
+        metadata
+      });
+      
+      res.json({ 
+        success: true, 
+        goldenSet 
+      });
+    } catch (error) {
+      console.error('Error creating golden set:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Create comparison report
+  app.post('/api/evaluation/comparisons', async (req, res) => {
+    try {
+      const { name, baselineRunId, comparisonRunIds, metrics } = req.body;
+      
+      if (!name || !baselineRunId || !comparisonRunIds) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Name, baselineRunId, and comparisonRunIds are required' 
+        });
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const comparison = llmEvaluationManager.createComparison({
+        name,
+        baselineRunId,
+        comparisonRunIds,
+        metrics
+      });
+      
+      res.json({ 
+        success: true, 
+        comparison 
+      });
+    } catch (error) {
+      console.error('Error creating comparison:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Start A/B test
+  app.post('/api/evaluation/ab-tests', async (req, res) => {
+    try {
+      const { name, description, variants, trafficAllocation, successMetrics, duration } = req.body;
+      
+      if (!name || !description || !variants || !trafficAllocation || !successMetrics || !duration) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'All A/B test configuration fields are required' 
+        });
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const abTest = llmEvaluationManager.startABTest({
+        name,
+        description,
+        variants,
+        trafficAllocation,
+        successMetrics,
+        duration
+      });
+      
+      res.json({ 
+        success: true, 
+        abTest 
+      });
+    } catch (error) {
+      console.error('Error starting A/B test:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Get evaluation analytics
+  app.get('/api/evaluation/analytics', async (req, res) => {
+    try {
+      const { timeframe } = req.query;
+      
+      let timeframeObj = undefined;
+      if (timeframe) {
+        const [start, end] = timeframe.toString().split(',');
+        timeframeObj = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const analytics = llmEvaluationManager.getAnalytics(timeframeObj);
+      
+      res.json({ 
+        success: true, 
+        analytics 
+      });
+    } catch (error) {
+      console.error('Error getting evaluation analytics:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get evaluation analytics' 
+      });
+    }
+  });
+
+  // List evaluation suites
+  app.get('/api/evaluation/suites', async (req, res) => {
+    try {
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const suites = llmEvaluationManager.listEvaluationSuites();
+      
+      res.json({ 
+        success: true, 
+        suites 
+      });
+    } catch (error) {
+      console.error('Error listing evaluation suites:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to list evaluation suites' 
+      });
+    }
+  });
+
+  // Get evaluation suite details
+  app.get('/api/evaluation/suites/:suiteId', async (req, res) => {
+    try {
+      const { suiteId } = req.params;
+      
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const suite = llmEvaluationManager.getEvaluationSuite(suiteId);
+      
+      if (!suite) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Evaluation suite not found' 
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        suite 
+      });
+    } catch (error) {
+      console.error('Error getting evaluation suite:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get evaluation suite' 
+      });
+    }
+  });
+
+  // List evaluation runs
+  app.get('/api/evaluation/runs', async (req, res) => {
+    try {
+      const { suiteId, modelId, status, timeRange } = req.query;
+      
+      let filters: any = {};
+      if (suiteId) filters.suiteId = suiteId.toString();
+      if (modelId) filters.modelId = modelId.toString();
+      if (status) filters.status = status.toString();
+      
+      if (timeRange) {
+        const [start, end] = timeRange.toString().split(',');
+        filters.timeRange = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const runs = llmEvaluationManager.listEvaluationRuns(filters);
+      
+      res.json({ 
+        success: true, 
+        runs 
+      });
+    } catch (error) {
+      console.error('Error listing evaluation runs:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to list evaluation runs' 
+      });
+    }
+  });
+
+  // Get evaluation run details
+  app.get('/api/evaluation/runs/:runId', async (req, res) => {
+    try {
+      const { runId } = req.params;
+      
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const run = llmEvaluationManager.getEvaluationRun(runId);
+      
+      if (!run) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Evaluation run not found' 
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        run 
+      });
+    } catch (error) {
+      console.error('Error getting evaluation run:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get evaluation run' 
+      });
+    }
+  });
+
+  // List golden sets
+  app.get('/api/evaluation/golden-sets', async (req, res) => {
+    try {
+      const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
+      const goldenSets = llmEvaluationManager.listGoldenSets();
+      
+      res.json({ 
+        success: true, 
+        goldenSets 
+      });
+    } catch (error) {
+      console.error('Error listing golden sets:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to list golden sets' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
