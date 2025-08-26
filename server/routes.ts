@@ -3035,6 +3035,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== DATA MAPPING & EXPRESSIONS API =====
+  
+  // Apply field mappings
+  app.post('/api/data-mapping/apply', async (req, res) => {
+    try {
+      const { dataMappingEngine } = await import('./core/DataMappingEngine');
+      const { mappings, context } = req.body;
+      
+      const result = await dataMappingEngine.applyMappings(mappings, context);
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to apply mappings:', error);
+      res.status(500).json({ error: 'Failed to apply mappings' });
+    }
+  });
+  
+  // Test mappings with sample data
+  app.post('/api/data-mapping/test', async (req, res) => {
+    try {
+      const { dataMappingEngine } = await import('./core/DataMappingEngine');
+      const { mappings, context } = req.body;
+      
+      const result = await dataMappingEngine.applyMappings(mappings, context);
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to test mappings:', error);
+      res.status(500).json({ error: 'Failed to test mappings' });
+    }
+  });
+  
+  // Test individual expression
+  app.post('/api/data-mapping/test-expression', async (req, res) => {
+    try {
+      const { dataMappingEngine } = await import('./core/DataMappingEngine');
+      const { expression, context } = req.body;
+      
+      const result = await dataMappingEngine.testExpression(expression, context);
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to test expression:', error);
+      res.status(500).json({ error: 'Failed to test expression' });
+    }
+  });
+  
+  // Get available transformation functions
+  app.get('/api/data-mapping/functions', async (req, res) => {
+    try {
+      const { dataMappingEngine } = await import('./core/DataMappingEngine');
+      const functions = dataMappingEngine.getAvailableFunctions();
+      res.json(functions);
+    } catch (error) {
+      console.error('Failed to get available functions:', error);
+      res.status(500).json({ error: 'Failed to get available functions' });
+    }
+  });
+  
+  // Register custom transformation function
+  app.post('/api/data-mapping/register-function', async (req, res) => {
+    try {
+      const { dataMappingEngine } = await import('./core/DataMappingEngine');
+      const { name, code } = req.body;
+      
+      // Create function from code string (simplified - in production, use sandboxing)
+      const func = new Function('return ' + code)();
+      dataMappingEngine.registerCustomFunction(name, func);
+      
+      res.json({ success: true, message: `Function ${name} registered` });
+    } catch (error) {
+      console.error('Failed to register custom function:', error);
+      res.status(500).json({ error: 'Failed to register custom function' });
+    }
+  });
+
   // ===== PHASE 4 ENTERPRISE FEATURES API =====
   
   // LLM Orchestration
@@ -3203,6 +3276,279 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, analytics });
     } catch (error) {
       console.error('Enterprise analytics error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Template Gallery API
+  app.get('/api/templates', async (req, res) => {
+    try {
+      const { templateManager } = await import('./core/TemplateManager');
+      const query = {
+        query: req.query.q as string,
+        category: req.query.category as string,
+        tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
+        difficulty: req.query.difficulty ? (req.query.difficulty as string).split(',') : undefined,
+        connectors: req.query.connectors ? (req.query.connectors as string).split(',') : undefined,
+        sortBy: req.query.sortBy as any,
+        sortOrder: req.query.sortOrder as any,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+      };
+      
+      const result = templateManager.getTemplates(query);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error('Template gallery error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/templates/categories', async (req, res) => {
+    try {
+      const { templateManager } = await import('./core/TemplateManager');
+      const categories = templateManager.getCategories();
+      res.json({ success: true, categories });
+    } catch (error) {
+      console.error('Template categories error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/templates/:id', async (req, res) => {
+    try {
+      const { templateManager } = await import('./core/TemplateManager');
+      const template = templateManager.getTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ success: false, error: 'Template not found' });
+      }
+      res.json({ success: true, template });
+    } catch (error) {
+      console.error('Template fetch error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/templates/instantiate', async (req, res) => {
+    try {
+      const { templateManager } = await import('./core/TemplateManager');
+      const { templateId, parameters, customizations } = req.body;
+      
+      const result = templateManager.instantiateTemplate(templateId, parameters, customizations);
+      
+      if (result.success) {
+        res.json({ success: true, workflow: result.workflow, warnings: result.warnings });
+      } else {
+        res.status(400).json({ success: false, errors: result.errors });
+      }
+    } catch (error) {
+      console.error('Template instantiation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/templates/analytics', async (req, res) => {
+    try {
+      const { templateManager } = await import('./core/TemplateManager');
+      const analytics = templateManager.getTemplateAnalytics();
+      res.json({ success: true, analytics });
+    } catch (error) {
+      console.error('Template analytics error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Prompt Versioning & A/B Testing API
+  app.get('/api/prompts', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const query = {
+        search: req.query.search as string,
+        category: req.query.category as string,
+        tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
+        owner: req.query.owner as string,
+        archived: req.query.archived === 'true'
+      };
+      
+      const prompts = promptVersioningManager.getPrompts(query);
+      res.json({ success: true, prompts });
+    } catch (error) {
+      console.error('Prompts fetch error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/prompts', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { name, category, description, tags, owner } = req.body;
+      
+      const prompt = promptVersioningManager.createPrompt({
+        name,
+        category,
+        description,
+        tags,
+        owner
+      });
+      
+      res.json({ success: true, prompt });
+    } catch (error) {
+      console.error('Prompt creation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/prompts/:promptId/versions', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { promptId } = req.params;
+      const { content, name, description, tags, author, changelog, isBaseline } = req.body;
+      
+      const version = promptVersioningManager.createVersion(promptId, {
+        content,
+        name,
+        description,
+        tags,
+        author,
+        changelog,
+        isBaseline
+      });
+      
+      res.json({ success: true, version });
+    } catch (error) {
+      console.error('Version creation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/prompts/:promptId/analytics', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { promptId } = req.params;
+      const { start, end } = req.query;
+      
+      const timeframe = start && end ? {
+        start: new Date(start as string),
+        end: new Date(end as string)
+      } : undefined;
+      
+      const analytics = promptVersioningManager.getPromptAnalytics(promptId, timeframe);
+      res.json({ success: true, analytics });
+    } catch (error) {
+      console.error('Prompt analytics error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/prompts/:promptId/tests', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { promptId } = req.params;
+      const { 
+        name, 
+        description, 
+        variants, 
+        targetMetric, 
+        duration, 
+        statisticalSignificance, 
+        minSampleSize, 
+        createdBy 
+      } = req.body;
+      
+      const test = promptVersioningManager.createABTest({
+        name,
+        description,
+        promptId,
+        variants,
+        targetMetric,
+        duration,
+        statisticalSignificance,
+        minSampleSize,
+        createdBy
+      });
+      
+      res.json({ success: true, test });
+    } catch (error) {
+      console.error('A/B test creation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/tests/:testId/start', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { testId } = req.params;
+      
+      promptVersioningManager.startABTest(testId);
+      res.json({ success: true, message: 'A/B test started' });
+    } catch (error) {
+      console.error('A/B test start error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/tests/:testId/analyze', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { testId } = req.params;
+      
+      const results = promptVersioningManager.analyzeABTest(testId);
+      res.json({ success: true, results });
+    } catch (error) {
+      console.error('A/B test analysis error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/tests/:testId/deploy', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { testId } = req.params;
+      
+      promptVersioningManager.deployWinningVariant(testId);
+      res.json({ success: true, message: 'Winning variant deployed' });
+    } catch (error) {
+      console.error('Variant deployment error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/prompts/executions', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { promptId, versionId, testId, input, output, metadata, feedback } = req.body;
+      
+      promptVersioningManager.recordExecution({
+        promptId,
+        versionId,
+        testId,
+        input,
+        output,
+        metadata,
+        feedback
+      });
+      
+      res.json({ success: true, message: 'Execution recorded' });
+    } catch (error) {
+      console.error('Execution recording error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/prompts/:promptId/execution', async (req, res) => {
+    try {
+      const { promptVersioningManager } = await import('./llm/PromptVersioningManager');
+      const { promptId } = req.params;
+      const context = {
+        userId: req.query.userId as string,
+        workflowId: req.query.workflowId as string,
+        nodeId: req.query.nodeId as string
+      };
+      
+      const result = promptVersioningManager.getPromptForExecution(promptId, context);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error('Prompt execution error:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
