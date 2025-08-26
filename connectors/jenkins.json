@@ -1,93 +1,432 @@
 {
   "id": "jenkins",
   "name": "Jenkins",
-  "description": "Jenkins integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "description": "Jenkins automation server for CI/CD pipelines",
+  "category": "Developer Tools",
+  "icon": "jenkins",
   "color": "#D33833",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "basic",
+    "config": {
+      "usernameField": "username",
+      "passwordField": "api_token"
+    }
   },
-  "baseUrl": "https://api.jenkins.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "{instance_url}",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Jenkins and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Jenkins",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "trigger_build",
+      "name": "Trigger Build",
+      "description": "Trigger a job build",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Build parameters"
+          },
+          "token": {
+            "type": "string",
+            "description": "Build trigger token"
+          },
+          "cause": {
+            "type": "string",
+            "description": "Build cause description"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["job_name"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "get_build_status",
+      "name": "Get Build Status",
+      "description": "Get the status of a specific build",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          }
+        },
+        "required": ["job_name", "build_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_last_build",
+      "name": "Get Last Build",
+      "description": "Get information about the last build",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          }
+        },
+        "required": ["job_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_build_console",
+      "name": "Get Build Console",
+      "description": "Get console output for a build",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          },
+          "start": {
+            "type": "number",
+            "description": "Start position for log output"
+          }
+        },
+        "required": ["job_name", "build_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_jobs",
+      "name": "List Jobs",
+      "description": "List all jobs",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "Folder path to list jobs from"
+          },
+          "depth": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "default": 1,
+            "description": "Depth of job tree to retrieve"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_job_info",
+      "name": "Get Job Info",
+      "description": "Get detailed information about a job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          }
+        },
+        "required": ["job_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_job",
+      "name": "Create Job",
+      "description": "Create a new job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "config_xml": {
+            "type": "string",
+            "description": "Job configuration XML"
+          },
+          "folder": {
+            "type": "string",
+            "description": "Folder to create job in"
+          }
+        },
+        "required": ["job_name", "config_xml"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_job",
+      "name": "Update Job",
+      "description": "Update an existing job configuration",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "config_xml": {
+            "type": "string",
+            "description": "Updated job configuration XML"
+          }
+        },
+        "required": ["job_name", "config_xml"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_job",
+      "name": "Delete Job",
+      "description": "Delete a job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          }
+        },
+        "required": ["job_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "enable_job",
+      "name": "Enable Job",
+      "description": "Enable a disabled job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          }
+        },
+        "required": ["job_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "disable_job",
+      "name": "Disable Job",
+      "description": "Disable a job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          }
+        },
+        "required": ["job_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "copy_job",
+      "name": "Copy Job",
+      "description": "Copy an existing job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_job": {
+            "type": "string",
+            "description": "Source job name"
+          },
+          "to_job": {
+            "type": "string",
+            "description": "Destination job name"
+          },
+          "folder": {
+            "type": "string",
+            "description": "Destination folder"
+          }
+        },
+        "required": ["from_job", "to_job"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "stop_build",
+      "name": "Stop Build",
+      "description": "Stop a running build",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          }
+        },
+        "required": ["job_name", "build_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_queue",
+      "name": "Get Queue",
+      "description": "Get the build queue",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "cancel_queue_item",
+      "name": "Cancel Queue Item",
+      "description": "Cancel an item in the build queue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "queue_id": {
+            "type": "number",
+            "description": "Queue item ID"
+          }
+        },
+        "required": ["queue_id"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "build_completed",
+      "name": "Build Completed",
+      "description": "Triggered when a build completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Filter by specific job"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SUCCESS", "FAILURE", "UNSTABLE", "ABORTED"],
+            "description": "Filter by build status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"},
+          "build": {
+            "type": "object",
+            "properties": {
+              "number": {"type": "number"},
+              "queue_id": {"type": "number"},
+              "url": {"type": "string"},
+              "phase": {"type": "string"},
+              "status": {"type": "string"},
+              "full_url": {"type": "string"},
+              "parameters": {"type": "object"}
+            }
+          }
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "build_started",
+      "name": "Build Started",
+      "description": "Triggered when a build starts",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Filter by specific job"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"},
+          "build": {
+            "type": "object",
+            "properties": {
+              "number": {"type": "number"},
+              "queue_id": {"type": "number"},
+              "url": {"type": "string"},
+              "phase": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "build_failed",
+      "name": "Build Failed",
+      "description": "Triggered when a build fails",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_name": {
+            "type": "string",
+            "description": "Filter by specific job"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"},
+          "build": {
+            "type": "object",
+            "properties": {
+              "number": {"type": "number"},
+              "status": {"type": "string"},
+              "url": {"type": "string"}
+            }
+          }
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/api/json"
+  }
 }

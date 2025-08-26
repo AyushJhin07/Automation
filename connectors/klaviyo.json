@@ -1,93 +1,541 @@
 {
   "id": "klaviyo",
   "name": "Klaviyo",
-  "description": "Klaviyo integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "description": "Klaviyo email marketing and customer data platform",
+  "category": "Marketing",
+  "icon": "klaviyo",
   "color": "#FF6900",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Klaviyo-API-Key"
+    }
   },
-  "baseUrl": "https://api.klaviyo.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://a.klaviyo.com/api",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Klaviyo and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Klaviyo",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_profile",
+      "name": "Create Profile",
+      "description": "Create a new customer profile",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["profile"],
+                "default": "profile",
+                "description": "Resource type"
+              },
+              "attributes": {
+                "type": "object",
+                "properties": {
+                  "email": {"type": "string", "format": "email"},
+                  "phone_number": {"type": "string"},
+                  "external_id": {"type": "string"},
+                  "first_name": {"type": "string"},
+                  "last_name": {"type": "string"},
+                  "organization": {"type": "string"},
+                  "title": {"type": "string"},
+                  "image": {"type": "string", "format": "uri"},
+                  "location": {
+                    "type": "object",
+                    "properties": {
+                      "address1": {"type": "string"},
+                      "address2": {"type": "string"},
+                      "city": {"type": "string"},
+                      "country": {"type": "string"},
+                      "latitude": {"type": "number"},
+                      "longitude": {"type": "number"},
+                      "region": {"type": "string"},
+                      "zip": {"type": "string"},
+                      "timezone": {"type": "string"}
+                    }
+                  },
+                  "properties": {"type": "object"}
+                },
+                "description": "Profile attributes"
+              }
+            },
+            "description": "Profile data"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "update_profile",
+      "name": "Update Profile",
+      "description": "Update an existing profile",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Profile ID"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["profile"],
+                "default": "profile"
+              },
+              "id": {"type": "string"},
+              "attributes": {
+                "type": "object",
+                "properties": {
+                  "email": {"type": "string", "format": "email"},
+                  "phone_number": {"type": "string"},
+                  "first_name": {"type": "string"},
+                  "last_name": {"type": "string"},
+                  "organization": {"type": "string"},
+                  "title": {"type": "string"},
+                  "properties": {"type": "object"}
+                }
+              }
+            }
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_profile",
+      "name": "Get Profile",
+      "description": "Retrieve a specific profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Profile ID"
+          },
+          "additional_fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Additional fields to include"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_profiles",
+      "name": "List Profiles",
+      "description": "List customer profiles",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Filter profiles using KSQL"
+          },
+          "page_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of profiles per page"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort field"
+          },
+          "additional_fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Additional fields to include"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Track a custom event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["event"],
+                "default": "event"
+              },
+              "attributes": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "type": {"type": "string", "enum": ["profile"]},
+                          "attributes": {
+                            "type": "object",
+                            "properties": {
+                              "email": {"type": "string", "format": "email"},
+                              "phone_number": {"type": "string"},
+                              "external_id": {"type": "string"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "metric": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "type": {"type": "string", "enum": ["metric"]},
+                          "attributes": {
+                            "type": "object",
+                            "properties": {
+                              "name": {"type": "string"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "properties": {"type": "object"},
+                  "time": {"type": "string", "format": "date-time"},
+                  "value": {"type": "number"},
+                  "unique_id": {"type": "string"}
+                },
+                "description": "Event attributes"
+              }
+            }
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Retrieve email lists",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of lists per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_list",
+      "name": "Create List",
+      "description": "Create a new email list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["list"],
+                "default": "list"
+              },
+              "attributes": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "opt_in_process": {"type": "string", "enum": ["single_opt_in", "double_opt_in"]}
+                }
+              }
+            }
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "subscribe_profiles",
+      "name": "Subscribe Profiles",
+      "description": "Subscribe profiles to a list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {"type": "string", "enum": ["profile"]},
+                "attributes": {
+                  "type": "object",
+                  "properties": {
+                    "email": {"type": "string", "format": "email"},
+                    "phone_number": {"type": "string"},
+                    "subscriptions": {
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "object",
+                          "properties": {
+                            "marketing": {
+                              "type": "object",
+                              "properties": {
+                                "consent": {"type": "string", "enum": ["SUBSCRIBED", "UNSUBSCRIBED"]}
+                              }
+                            }
+                          }
+                        },
+                        "sms": {
+                          "type": "object",
+                          "properties": {
+                            "marketing": {
+                              "type": "object",
+                              "properties": {
+                                "consent": {"type": "string", "enum": ["SUBSCRIBED", "UNSUBSCRIBED"]}
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Array of profiles to subscribe"
+          }
+        },
+        "required": ["list_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "unsubscribe_profiles",
+      "name": "Unsubscribe Profiles",
+      "description": "Unsubscribe profiles from a list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {"type": "string", "enum": ["profile"]},
+                "attributes": {
+                  "type": "object",
+                  "properties": {
+                    "email": {"type": "string", "format": "email"},
+                    "phone_number": {"type": "string"}
+                  }
+                }
+              }
+            },
+            "description": "Array of profiles to unsubscribe"
+          }
+        },
+        "required": ["list_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_campaigns",
+      "name": "Get Campaigns",
+      "description": "Retrieve email campaigns",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Filter campaigns using KSQL"
+          },
+          "page_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of campaigns per page"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort field"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_flows",
+      "name": "Get Flows",
+      "description": "Retrieve email flows",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Filter flows using KSQL"
+          },
+          "page_cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of flows per page"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort field"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "profile_created",
+      "name": "Profile Created",
+      "description": "Triggered when a new profile is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "email": {"type": "string"},
+              "phone_number": {"type": "string"},
+              "first_name": {"type": "string"},
+              "last_name": {"type": "string"},
+              "created": {"type": "string"},
+              "updated": {"type": "string"}
+            }
+          }
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "profile_subscribed",
+      "name": "Profile Subscribed",
+      "description": "Triggered when a profile subscribes to a list",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "profile": {"type": "object"},
+          "list": {"type": "object"},
+          "datetime": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "profile_unsubscribed",
+      "name": "Profile Unsubscribed",
+      "description": "Triggered when a profile unsubscribes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "profile": {"type": "object"},
+          "list": {"type": "object"},
+          "datetime": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/accounts/"
+  }
 }

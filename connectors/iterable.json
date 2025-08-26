@@ -1,246 +1,555 @@
 {
   "id": "iterable",
   "name": "Iterable",
+  "description": "Iterable marketing automation and customer engagement platform",
   "category": "Marketing",
-  "description": "Iterable cross-channel marketing platform for personalized customer experiences",
+  "icon": "iterable",
+  "color": "#0091FF",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Api-Key",
-      "prefix": ""
+      "apiKeyLocation": "header",
+      "apiKeyName": "Api-Key"
     }
   },
+  "baseUrl": "https://api.iterable.com/api",
   "actions": [
     {
-      "id": "upsert_user",
-      "name": "Upsert User",
-      "description": "Create or update a user in Iterable",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Iterable",
       "parameters": {
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "User email address"
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user by email or userId",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
         },
-        "userId": {
-          "type": "string",
-          "required": false,
-          "description": "User ID"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_user",
+      "name": "Update User",
+      "description": "Update or create a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "dataFields": {
+            "type": "object",
+            "description": "User data fields"
+          },
+          "preferUserId": {
+            "type": "boolean",
+            "default": false,
+            "description": "Prefer userId over email for identification"
+          },
+          "mergeNestedObjects": {
+            "type": "boolean",
+            "default": false,
+            "description": "Merge nested objects instead of replacing"
+          }
         },
-        "dataFields": {
-          "type": "object",
-          "required": false,
-          "description": "User data fields"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_user",
+      "name": "Delete User",
+      "description": "Delete a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
         },
-        "preferUserId": {
-          "type": "boolean",
-          "required": false,
-          "description": "Prefer user ID over email for identification"
-        },
-        "mergeNestedObjects": {
-          "type": "boolean",
-          "required": false,
-          "description": "Merge nested objects instead of replacing"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "track_event",
       "name": "Track Event",
       "description": "Track a custom event for a user",
       "parameters": {
-        "email": {
-          "type": "string",
-          "required": false,
-          "description": "User email address"
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "eventName": {
+            "type": "string",
+            "description": "Event name"
+          },
+          "dataFields": {
+            "type": "object",
+            "description": "Event data fields"
+          },
+          "campaignId": {
+            "type": "number",
+            "description": "Campaign ID"
+          },
+          "templateId": {
+            "type": "number",
+            "description": "Template ID"
+          },
+          "createdAt": {
+            "type": "number",
+            "description": "Unix timestamp when event occurred"
+          },
+          "id": {
+            "type": "string",
+            "description": "Event ID for deduplication"
+          }
         },
-        "userId": {
-          "type": "string",
-          "required": false,
-          "description": "User ID"
+        "required": ["eventName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "track_purchase",
+      "name": "Track Purchase",
+      "description": "Track a purchase event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "email": {"type": "string", "format": "email"},
+              "userId": {"type": "string"},
+              "dataFields": {"type": "object"}
+            },
+            "description": "User information"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "sku": {"type": "string"},
+                "name": {"type": "string"},
+                "categories": {"type": "array"},
+                "price": {"type": "number"},
+                "quantity": {"type": "number"},
+                "dataFields": {"type": "object"}
+              }
+            },
+            "description": "Purchased items"
+          },
+          "campaignId": {
+            "type": "number",
+            "description": "Campaign ID"
+          },
+          "templateId": {
+            "type": "number",
+            "description": "Template ID"
+          },
+          "total": {
+            "type": "number",
+            "description": "Total purchase amount"
+          },
+          "createdAt": {
+            "type": "number",
+            "description": "Unix timestamp when purchase occurred"
+          },
+          "dataFields": {
+            "type": "object",
+            "description": "Additional purchase data"
+          }
         },
-        "eventName": {
-          "type": "string",
-          "required": true,
-          "description": "Event name"
-        },
-        "dataFields": {
-          "type": "object",
-          "required": false,
-          "description": "Event data fields"
-        },
-        "campaignId": {
-          "type": "string",
-          "required": false,
-          "description": "Campaign ID"
-        },
-        "templateId": {
-          "type": "string",
-          "required": false,
-          "description": "Template ID"
-        }
-      },
-      "requiredScopes": []
+        "required": ["items"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "send_email",
       "name": "Send Email",
       "description": "Send a transactional email",
       "parameters": {
-        "campaignId": {
-          "type": "string",
-          "required": true,
-          "description": "Campaign ID"
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "number",
+            "description": "Campaign ID"
+          },
+          "recipientEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Recipient email address"
+          },
+          "recipientUserId": {
+            "type": "string",
+            "description": "Recipient user ID"
+          },
+          "dataFields": {
+            "type": "object",
+            "description": "Data fields for personalization"
+          },
+          "sendAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Schedule send time"
+          },
+          "allowRepeatMarketingSends": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow repeat sends for marketing campaigns"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata"
+          }
         },
-        "recipientEmail": {
-          "type": "string",
-          "required": true,
-          "description": "Recipient email address"
-        },
-        "dataFields": {
-          "type": "object",
-          "required": false,
-          "description": "Data fields for personalization"
-        },
-        "sendAt": {
-          "type": "string",
-          "required": false,
-          "description": "Send at specific time (ISO format)"
-        },
-        "allowRepeatMarketingSends": {
-          "type": "boolean",
-          "required": false,
-          "description": "Allow repeat marketing sends"
-        }
-      },
-      "requiredScopes": []
+        "required": ["campaignId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "send_push",
-      "name": "Send Push Notification",
-      "description": "Send a push notification",
+      "id": "subscribe_user",
+      "name": "Subscribe User",
+      "description": "Subscribe user to email list",
       "parameters": {
-        "campaignId": {
-          "type": "string",
-          "required": true,
-          "description": "Campaign ID"
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "number",
+            "description": "List ID"
+          },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"},
+                "userId": {"type": "string"},
+                "dataFields": {"type": "object"}
+              }
+            },
+            "description": "Users to subscribe"
+          }
         },
-        "recipientEmail": {
-          "type": "string",
-          "required": false,
-          "description": "Recipient email address"
-        },
-        "recipientUserId": {
-          "type": "string",
-          "required": false,
-          "description": "Recipient user ID"
-        },
-        "dataFields": {
-          "type": "object",
-          "required": false,
-          "description": "Data fields for personalization"
-        },
-        "sendAt": {
-          "type": "string",
-          "required": false,
-          "description": "Send at specific time (ISO format)"
-        }
-      },
-      "requiredScopes": []
+        "required": ["listId", "subscribers"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_to_list",
-      "name": "Add User to List",
-      "description": "Add a user to a static list",
+      "id": "unsubscribe_user",
+      "name": "Unsubscribe User",
+      "description": "Unsubscribe user from email list",
       "parameters": {
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "List ID"
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "number",
+            "description": "List ID"
+          },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"},
+                "userId": {"type": "string"}
+              }
+            },
+            "description": "Users to unsubscribe"
+          },
+          "campaignId": {
+            "type": "number",
+            "description": "Campaign ID for context"
+          },
+          "channelUnsubscribe": {
+            "type": "boolean",
+            "default": false,
+            "description": "Unsubscribe from entire channel"
+          }
         },
-        "subscribers": {
-          "type": "array",
-          "required": true,
-          "description": "Array of subscriber objects"
-        }
-      },
-      "requiredScopes": []
+        "required": ["listId", "subscribers"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "trigger_workflow",
-      "name": "Trigger Workflow",
-      "description": "Trigger a workflow for a user",
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Get all email lists",
       "parameters": {
-        "workflowId": {
-          "type": "string",
-          "required": true,
-          "description": "Workflow ID"
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_list",
+      "name": "Create List",
+      "description": "Create a new email list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "List name"
+          },
+          "description": {
+            "type": "string",
+            "description": "List description"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": false,
-          "description": "User email address"
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_campaigns",
+      "name": "Get Campaigns",
+      "description": "Get all campaigns",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaignType": {
+            "type": "string",
+            "enum": ["Blast", "Triggered", "Workflow"],
+            "description": "Filter by campaign type"
+          }
         },
-        "userId": {
-          "type": "string",
-          "required": false,
-          "description": "User ID"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_templates",
+      "name": "Get Templates",
+      "description": "Get all email templates",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "templateType": {
+            "type": "string",
+            "enum": ["Base", "Blast", "Triggered", "Workflow"],
+            "description": "Filter by template type"
+          },
+          "messageMedium": {
+            "type": "string",
+            "enum": ["Email", "Push", "InApp", "SMS"],
+            "description": "Filter by message medium"
+          }
         },
-        "dataFields": {
-          "type": "object",
-          "required": false,
-          "description": "Data fields for workflow"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "export_data",
+      "name": "Export Data",
+      "description": "Export user data",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dataTypeName": {
+            "type": "string",
+            "enum": ["user", "emailSend", "emailOpen", "emailClick", "emailBounce", "emailComplaint", "emailUnSubscribe", "emailSubscribe", "pushSend", "pushOpen", "pushUninstall", "pushBounce", "inAppSend", "inAppOpen", "inAppClick", "inAppDelete", "smsSend", "smsReceived", "smsBounce", "smsClick", "purchase", "customEvent", "hostedUnsubscribeClick"],
+            "description": "Type of data to export"
+          },
+          "range": {
+            "type": "string",
+            "enum": ["Today", "Yesterday", "BeforeToday"],
+            "description": "Date range for export"
+          },
+          "startDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start date for custom range"
+          },
+          "endDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End date for custom range"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["csv", "json"],
+            "default": "csv",
+            "description": "Export format"
+          },
+          "delimiter": {
+            "type": "string",
+            "default": ",",
+            "description": "CSV delimiter"
+          },
+          "onlyFields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Only include specific fields"
+          },
+          "omitFields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Omit specific fields"
+          }
+        },
+        "required": ["dataTypeName"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "email_bounce",
-      "name": "Email Bounce",
-      "description": "Triggered when an email bounces",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["emailBounce"],
-        "entityTypes": ["email"]
+      "id": "email_send",
+      "name": "Email Send",
+      "description": "Triggered when an email is sent",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "number",
+            "description": "Filter by specific campaign"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "userId": {"type": "string"},
+          "campaignId": {"type": "number"},
+          "templateId": {"type": "number"},
+          "createdAt": {"type": "string"},
+          "eventName": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "email_unsubscribe",
-      "name": "Email Unsubscribe",
+      "id": "email_open",
+      "name": "Email Open",
+      "description": "Triggered when an email is opened",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "number",
+            "description": "Filter by specific campaign"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "userId": {"type": "string"},
+          "campaignId": {"type": "number"},
+          "templateId": {"type": "number"},
+          "createdAt": {"type": "string"},
+          "userAgent": {"type": "string"},
+          "ip": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_click",
+      "name": "Email Click",
+      "description": "Triggered when an email link is clicked",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "number",
+            "description": "Filter by specific campaign"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "userId": {"type": "string"},
+          "campaignId": {"type": "number"},
+          "templateId": {"type": "number"},
+          "createdAt": {"type": "string"},
+          "url": {"type": "string"},
+          "userAgent": {"type": "string"},
+          "ip": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "user_unsubscribe",
+      "name": "User Unsubscribe",
       "description": "Triggered when a user unsubscribes",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["unsubscribe"],
-        "entityTypes": ["email"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "purchase_event",
-      "name": "Purchase Event",
-      "description": "Triggered when a purchase event occurs",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["purchase"],
-        "entityTypes": ["commerce"]
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "custom_event",
-      "name": "Custom Event",
-      "description": "Triggered when a custom event occurs",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["customEvent"],
-        "entityTypes": ["event"]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "userId": {"type": "string"},
+          "campaignId": {"type": "number"},
+          "listId": {"type": "number"},
+          "createdAt": {"type": "string"},
+          "channelUnsubscribe": {"type": "boolean"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/lists"
+  }
 }

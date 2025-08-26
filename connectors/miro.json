@@ -1,0 +1,719 @@
+{
+  "id": "miro",
+  "name": "Miro",
+  "description": "Miro collaborative whiteboard platform",
+  "category": "Collaboration",
+  "icon": "miro",
+  "color": "#FFD02F",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://miro.com/oauth/authorize",
+      "tokenUrl": "https://api.miro.com/v1/oauth/token",
+      "scopes": ["boards:read", "boards:write"]
+    }
+  },
+  "baseUrl": "https://api.miro.com/v2",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Miro",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_boards",
+      "name": "Get Boards",
+      "description": "Get all boards",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by team ID"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Number of boards to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_board",
+      "name": "Get Board",
+      "description": "Get board details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          }
+        },
+        "required": ["boardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_board",
+      "name": "Create Board",
+      "description": "Create a new board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Board name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Board description"
+          },
+          "teamId": {
+            "type": "string",
+            "description": "Team ID to create board in"
+          },
+          "policy": {
+            "type": "object",
+            "properties": {
+              "permissionsPolicy": {
+                "type": "object",
+                "properties": {
+                  "collaborationToolsStartAccess": {
+                    "type": "string",
+                    "enum": ["all_editors", "board_owners_and_coowners"]
+                  },
+                  "copyAccess": {
+                    "type": "string",
+                    "enum": ["anyone", "team_members", "team_editors", "board_owners_and_coowners"]
+                  },
+                  "sharingAccess": {
+                    "type": "string",
+                    "enum": ["team_members", "team_editors", "board_owners_and_coowners"]
+                  }
+                }
+              },
+              "sharingPolicy": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string",
+                    "enum": ["private", "view", "comment", "edit"],
+                    "default": "private"
+                  },
+                  "inviteToAccountAndBoardLinkAccess": {
+                    "type": "string",
+                    "enum": ["no_access", "view", "comment", "edit"]
+                  },
+                  "organizationAccess": {
+                    "type": "string",
+                    "enum": ["no_access", "view", "comment", "edit"]
+                  },
+                  "teamAccess": {
+                    "type": "string",
+                    "enum": ["no_access", "view", "comment", "edit"]
+                  }
+                }
+              }
+            },
+            "description": "Board policy settings"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_board",
+      "name": "Update Board",
+      "description": "Update an existing board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Board name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Board description"
+          }
+        },
+        "required": ["boardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_board",
+      "name": "Delete Board",
+      "description": "Delete a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          }
+        },
+        "required": ["boardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_board_items",
+      "name": "Get Board Items",
+      "description": "Get items from a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["app_card", "card", "connector", "document", "embed", "frame", "image", "mindmap", "shape", "sticky_note", "text"],
+            "description": "Filter by item type"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Number of items to return"
+          }
+        },
+        "required": ["boardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_sticky_note",
+      "name": "Create Sticky Note",
+      "description": "Create a sticky note on a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Note content"
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "fillColor": {
+                "type": "string",
+                "enum": ["yellow", "light_yellow", "orange", "light_orange", "light_green", "green", "dark_green", "cyan", "light_pink", "pink", "violet", "red", "light_blue", "blue", "dark_blue", "gray", "light_gray", "black"]
+              },
+              "textAlign": {
+                "type": "string",
+                "enum": ["left", "center", "right"]
+              },
+              "textAlignVertical": {
+                "type": "string",
+                "enum": ["top", "middle", "bottom"]
+              }
+            },
+            "description": "Note styling"
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number"},
+              "height": {"type": "number"}
+            },
+            "description": "Note dimensions"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"},
+              "origin": {
+                "type": "string",
+                "enum": ["center"],
+                "default": "center"
+              }
+            },
+            "description": "Note position on board"
+          }
+        },
+        "required": ["boardId", "content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_card",
+      "name": "Create Card",
+      "description": "Create a card on a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Card title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Card description"
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "cardTheme": {
+                "type": "string",
+                "enum": ["#2d7ff9", "#18a0fb", "#0ca789", "#8fd14f", "#fac710", "#f24726", "#da3782", "#9510ac", "#c1c1c1", "#767676"]
+              }
+            },
+            "description": "Card styling"
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number"},
+              "height": {"type": "number"}
+            },
+            "description": "Card dimensions"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"},
+              "origin": {
+                "type": "string",
+                "enum": ["center"],
+                "default": "center"
+              }
+            },
+            "description": "Card position on board"
+          }
+        },
+        "required": ["boardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_text",
+      "name": "Create Text",
+      "description": "Create a text item on a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Text content"
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "color": {
+                "type": "string",
+                "description": "Text color"
+              },
+              "fillColor": {
+                "type": "string",
+                "description": "Background fill color"
+              },
+              "fontFamily": {
+                "type": "string",
+                "enum": ["arial", "cursive", "impact", "times_new_roman"]
+              },
+              "fontSize": {
+                "type": "number",
+                "minimum": 8,
+                "maximum": 288
+              },
+              "textAlign": {
+                "type": "string",
+                "enum": ["left", "center", "right"]
+              }
+            },
+            "description": "Text styling"
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number"},
+              "height": {"type": "number"}
+            },
+            "description": "Text dimensions"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"},
+              "origin": {
+                "type": "string",
+                "enum": ["center"],
+                "default": "center"
+              }
+            },
+            "description": "Text position on board"
+          }
+        },
+        "required": ["boardId", "content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_shape",
+      "name": "Create Shape",
+      "description": "Create a shape on a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Shape text content"
+          },
+          "shape": {
+            "type": "string",
+            "enum": ["rectangle", "round_rectangle", "circle", "triangle", "rhombus", "parallelogram", "trapezoid", "pentagon", "hexagon", "octagon", "wedge_round_rectangle_callout", "star", "flow_chart_predefined_process", "cloud", "cross", "can", "right_arrow", "left_arrow", "left_right_arrow", "left_right_up_arrow"],
+            "description": "Shape type"
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "color": {"type": "string"},
+              "fillColor": {"type": "string"},
+              "fontFamily": {
+                "type": "string",
+                "enum": ["arial", "cursive", "impact", "times_new_roman"]
+              },
+              "fontSize": {"type": "number"},
+              "textAlign": {
+                "type": "string",
+                "enum": ["left", "center", "right"]
+              },
+              "textAlignVertical": {
+                "type": "string",
+                "enum": ["top", "middle", "bottom"]
+              },
+              "borderColor": {"type": "string"},
+              "borderWidth": {"type": "number"},
+              "borderStyle": {
+                "type": "string",
+                "enum": ["normal", "dotted", "dashed"]
+              }
+            },
+            "description": "Shape styling"
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number"},
+              "height": {"type": "number"}
+            },
+            "description": "Shape dimensions"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"},
+              "origin": {
+                "type": "string",
+                "enum": ["center"],
+                "default": "center"
+              }
+            },
+            "description": "Shape position on board"
+          }
+        },
+        "required": ["boardId", "shape"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_item",
+      "name": "Update Item",
+      "description": "Update a board item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Item ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Updated content"
+          },
+          "style": {
+            "type": "object",
+            "description": "Updated styling"
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number"},
+              "height": {"type": "number"}
+            },
+            "description": "Updated dimensions"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"}
+            },
+            "description": "Updated position"
+          }
+        },
+        "required": ["boardId", "itemId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_item",
+      "name": "Delete Item",
+      "description": "Delete a board item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Item ID"
+          }
+        },
+        "required": ["boardId", "itemId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_board_members",
+      "name": "Get Board Members",
+      "description": "Get board members",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Number of members to return"
+          }
+        },
+        "required": ["boardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "share_board",
+      "name": "Share Board",
+      "description": "Share a board with team members",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Board ID"
+          },
+          "emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Email addresses to share with"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "commenter", "editor", "co_owner"],
+            "default": "editor",
+            "description": "Access role"
+          },
+          "message": {
+            "type": "string",
+            "description": "Optional message"
+          }
+        },
+        "required": ["boardId", "emails"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "board_created",
+      "name": "Board Created",
+      "description": "Triggered when a new board is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by specific team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "teamId": {"type": "string"},
+          "createdAt": {"type": "string"},
+          "createdBy": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "board_updated",
+      "name": "Board Updated",
+      "description": "Triggered when a board is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Filter by specific board"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "modifiedAt": {"type": "string"},
+          "modifiedBy": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "item_created",
+      "name": "Item Created",
+      "description": "Triggered when a new item is created on a board",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Filter by specific board"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": ["sticky_note", "card", "text", "shape"],
+            "description": "Filter by item type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "boardId": {"type": "string"},
+          "content": {"type": "string"},
+          "createdAt": {"type": "string"},
+          "createdBy": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "item_updated",
+      "name": "Item Updated",
+      "description": "Triggered when an item is updated on a board",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "description": "Filter by specific board"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": ["sticky_note", "card", "text", "shape"],
+            "description": "Filter by item type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "boardId": {"type": "string"},
+          "content": {"type": "string"},
+          "modifiedAt": {"type": "string"},
+          "modifiedBy": {"type": "object"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/boards"
+  }
+}

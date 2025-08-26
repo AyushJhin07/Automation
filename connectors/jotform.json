@@ -1,93 +1,378 @@
 {
   "id": "jotform",
-  "name": "Jotform",
-  "description": "Jotform integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#FF6100",
+  "name": "JotForm",
+  "description": "JotForm online form builder and data collection platform",
+  "category": "Forms",
+  "icon": "jotform",
+  "color": "#F5821F",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "query",
+      "apiKeyName": "apiKey"
+    }
   },
   "baseUrl": "https://api.jotform.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Jotform and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to JotForm",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user account information",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
+      "id": "get_forms",
+      "name": "Get Forms",
+      "description": "Get user's forms",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Start position for results"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "description": "Number of forms to return"
+          },
+          "orderby": {
+            "type": "string",
+            "enum": ["id", "username", "title", "status", "created_at", "updated_at", "count"],
+            "description": "Field to order by"
+          },
+          "filter": {
+            "type": "object",
+            "description": "Filter parameters"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "get_form",
+      "name": "Get Form",
+      "description": "Get a specific form",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_form_questions",
+      "name": "Get Form Questions",
+      "description": "Get questions for a form",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_form_properties",
+      "name": "Get Form Properties",
+      "description": "Get properties of a form",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_submissions",
+      "name": "Get Submissions",
+      "description": "Get form submissions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Start position for results"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 20,
+            "description": "Number of submissions to return"
+          },
+          "filter": {
+            "type": "object",
+            "description": "Filter parameters"
+          },
+          "orderby": {
+            "type": "string",
+            "enum": ["id", "created_at", "updated_at"],
+            "description": "Field to order by"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_submission",
+      "name": "Get Submission",
+      "description": "Get a specific submission",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sid": {
+            "type": "string",
+            "description": "Submission ID"
+          }
+        },
+        "required": ["sid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_submission",
+      "name": "Delete Submission",
+      "description": "Delete a submission",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sid": {
+            "type": "string",
+            "description": "Submission ID"
+          }
+        },
+        "required": ["sid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "edit_submission",
+      "name": "Edit Submission",
+      "description": "Edit a submission",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sid": {
+            "type": "string",
+            "description": "Submission ID"
+          },
+          "submission": {
+            "type": "object",
+            "description": "Updated submission data"
+          }
+        },
+        "required": ["sid", "submission"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_form",
+      "name": "Create Form",
+      "description": "Create a new form",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "form": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "questions": {"type": "object"},
+              "properties": {"type": "object"}
+            },
+            "description": "Form configuration"
+          }
+        },
+        "required": ["form"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_form",
+      "name": "Delete Form",
+      "description": "Delete a form",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "clone_form",
+      "name": "Clone Form",
+      "description": "Clone an existing form",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID to clone"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_form_files",
+      "name": "Get Form Files",
+      "description": "Get files uploaded to a form",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get form reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_report",
+      "name": "Create Report",
+      "description": "Create a new report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "report": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "list_type": {"type": "string"},
+              "fields": {"type": "string"}
+            },
+            "description": "Report configuration"
+          }
+        },
+        "required": ["id", "report"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "form_submission",
+      "name": "Form Submission",
+      "description": "Triggered when a form is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "formID": {
+            "type": "string",
+            "description": "Filter by specific form"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "submissionID": {"type": "string"},
+          "formID": {"type": "string"},
+          "rawRequest": {"type": "array"},
+          "prettyRequest": {"type": "object"},
+          "formTitle": {"type": "string"},
+          "submissionDate": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "form_created",
+      "name": "Form Created",
+      "description": "Triggered when a new form is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "formID": {"type": "string"},
+          "formTitle": {"type": "string"},
+          "formURL": {"type": "string"},
+          "created_at": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }

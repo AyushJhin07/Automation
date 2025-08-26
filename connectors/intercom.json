@@ -1,93 +1,468 @@
 {
   "id": "intercom",
   "name": "Intercom",
-  "description": "Intercom integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#999999",
+  "description": "Intercom customer messaging platform for support and engagement",
+  "category": "Customer Support",
+  "icon": "intercom",
+  "color": "#1F8DED",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
   },
-  "baseUrl": "https://api.intercom.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.intercom.io",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Intercom and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read_admin"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Intercom",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "lead"],
+            "default": "user",
+            "description": "Contact role"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name"
+          },
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["avatar"]},
+              "image_url": {"type": "string", "format": "uri"}
+            },
+            "description": "Avatar information"
+          },
+          "owner_id": {
+            "type": "number",
+            "description": "Owner admin ID"
+          },
+          "social_profiles": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["social_profile.list"]},
+              "social_profiles": {"type": "array"}
+            },
+            "description": "Social profiles"
+          },
+          "utm_campaign": {
+            "type": "string",
+            "description": "UTM campaign"
+          },
+          "utm_content": {
+            "type": "string",
+            "description": "UTM content"
+          },
+          "utm_medium": {
+            "type": "string",
+            "description": "UTM medium"
+          },
+          "utm_source": {
+            "type": "string",
+            "description": "UTM source"
+          },
+          "utm_term": {
+            "type": "string",
+            "description": "UTM term"
+          },
+          "custom_attributes": {
+            "type": "object",
+            "description": "Custom attributes object"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "update_contact",
+      "name": "Update Contact",
+      "description": "Update an existing contact",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Contact ID"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name"
+          },
+          "owner_id": {
+            "type": "number",
+            "description": "Owner admin ID"
+          },
+          "unsubscribed_from_emails": {
+            "type": "boolean",
+            "description": "Unsubscribed from emails"
+          },
+          "custom_attributes": {
+            "type": "object",
+            "description": "Custom attributes to update"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contact",
+      "name": "Get Contact",
+      "description": "Retrieve a specific contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Contact ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_contacts",
+      "name": "List Contacts",
+      "description": "List all contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 150,
+            "default": 50,
+            "description": "Number of contacts per page"
+          },
+          "starting_after": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Filter by email"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_contacts",
+      "name": "Search Contacts",
+      "description": "Search for contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "properties": {
+              "operator": {"type": "string", "enum": ["AND", "OR"]},
+              "value": {"type": "array"}
+            },
+            "description": "Search query object"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "per_page": {"type": "number", "minimum": 1, "maximum": 150, "default": 50},
+              "starting_after": {"type": "string"}
+            },
+            "description": "Pagination options"
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "field": {"type": "string"},
+              "order": {"type": "string", "enum": ["ascending", "descending"]}
+            },
+            "description": "Sort options"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_contact",
+      "name": "Delete Contact",
+      "description": "Delete a contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Contact ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_conversation",
+      "name": "Create Conversation",
+      "description": "Create a new conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["user", "contact"]},
+              "id": {"type": "string"}
+            },
+            "description": "Conversation initiator"
+          },
+          "body": {
+            "type": "string",
+            "description": "Message body"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Conversation subject"
+          },
+          "message_type": {
+            "type": "string",
+            "enum": ["email", "inapp", "facebook", "twitter"],
+            "default": "email",
+            "description": "Message type"
+          }
+        },
+        "required": ["from", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "reply_conversation",
+      "name": "Reply to Conversation",
+      "description": "Reply to an existing conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Reply message body"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["user", "admin"],
+            "description": "Reply type"
+          },
+          "message_type": {
+            "type": "string",
+            "enum": ["comment", "note"],
+            "default": "comment",
+            "description": "Message type"
+          },
+          "admin_id": {
+            "type": "string",
+            "description": "Admin ID for admin replies"
+          }
+        },
+        "required": ["id", "body", "type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "assign_conversation",
+      "name": "Assign Conversation",
+      "description": "Assign a conversation to an admin",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "admin_id": {
+            "type": "string",
+            "description": "Admin ID to assign to"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "Assignee ID"
+          }
+        },
+        "required": ["id", "admin_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "close_conversation",
+      "name": "Close Conversation",
+      "description": "Close an open conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "admin_id": {
+            "type": "string",
+            "description": "Admin ID closing the conversation"
+          }
+        },
+        "required": ["id", "admin_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_note",
+      "name": "Create Note",
+      "description": "Create a note for a contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "description": "Contact ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Note body"
+          },
+          "admin_id": {
+            "type": "string",
+            "description": "Admin ID creating the note"
+          }
+        },
+        "required": ["contact_id", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_admins",
+      "name": "List Admins",
+      "description": "List all admins",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "contact_created",
+      "name": "Contact Created",
+      "description": "Triggered when a new contact is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "workspace_id": {"type": "string"},
+          "external_id": {"type": "string"},
+          "role": {"type": "string"},
+          "email": {"type": "string"},
+          "phone": {"type": "string"},
+          "name": {"type": "string"},
+          "created_at": {"type": "number"},
+          "updated_at": {"type": "number"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "conversation_created",
+      "name": "Conversation Created",
+      "description": "Triggered when a new conversation is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "subject": {"type": "string"},
+          "state": {"type": "string"},
+          "created_at": {"type": "number"},
+          "updated_at": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "conversation_assigned",
+      "name": "Conversation Assigned",
+      "description": "Triggered when a conversation is assigned",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "state": {"type": "string"},
+          "assignee": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/me"
+  }
 }

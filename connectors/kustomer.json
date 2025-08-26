@@ -1,0 +1,601 @@
+{
+  "id": "kustomer",
+  "name": "Kustomer",
+  "description": "Kustomer customer service CRM platform",
+  "category": "Customer Support",
+  "icon": "kustomer",
+  "color": "#FF6000",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
+  },
+  "baseUrl": "https://api.kustomerapp.com/v1",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Kustomer",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Customer email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Customer phone number"
+          },
+          "externalId": {
+            "type": "string",
+            "description": "External ID for the customer"
+          },
+          "company": {
+            "type": "string",
+            "description": "Customer company"
+          },
+          "custom": {
+            "type": "object",
+            "description": "Custom attributes"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_customer",
+      "name": "Get Customer",
+      "description": "Get customer by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          }
+        },
+        "required": ["customerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_customer",
+      "name": "Update Customer",
+      "description": "Update an existing customer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Customer email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Customer phone number"
+          },
+          "company": {
+            "type": "string",
+            "description": "Customer company"
+          },
+          "custom": {
+            "type": "object",
+            "description": "Custom attributes"
+          }
+        },
+        "required": ["customerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_customers",
+      "name": "Search Customers",
+      "description": "Search for customers",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Search by email address"
+          },
+          "externalId": {
+            "type": "string",
+            "description": "Search by external ID"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Search by phone number"
+          },
+          "name": {
+            "type": "string",
+            "description": "Search by customer name"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_conversation",
+      "name": "Create Conversation",
+      "description": "Create a new conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Conversation title"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["email", "chat", "phone", "social", "api"],
+            "description": "Conversation channel"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "default": "normal",
+            "description": "Conversation priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "snoozed", "closed"],
+            "default": "open",
+            "description": "Conversation status"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["in", "out"],
+            "default": "in",
+            "description": "Conversation direction"
+          },
+          "custom": {
+            "type": "object",
+            "description": "Custom attributes"
+          }
+        },
+        "required": ["customerId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_conversation",
+      "name": "Get Conversation",
+      "description": "Get conversation by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Conversation ID"
+          }
+        },
+        "required": ["conversationId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_conversation",
+      "name": "Update Conversation",
+      "description": "Update an existing conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Conversation title"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "description": "Conversation priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "snoozed", "closed"],
+            "description": "Conversation status"
+          },
+          "assignedTeamId": {
+            "type": "string",
+            "description": "Assigned team ID"
+          },
+          "assignedUserId": {
+            "type": "string",
+            "description": "Assigned user ID"
+          },
+          "custom": {
+            "type": "object",
+            "description": "Custom attributes"
+          }
+        },
+        "required": ["conversationId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_message",
+      "name": "Create Message",
+      "description": "Create a new message in a conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Message body"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["in", "out"],
+            "default": "out",
+            "description": "Message direction"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["email", "chat", "phone", "social", "api"],
+            "description": "Message channel"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {"type": "string"},
+                "name": {"type": "string"},
+                "contentType": {"type": "string"}
+              }
+            },
+            "description": "Message attachments"
+          }
+        },
+        "required": ["conversationId", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_messages",
+      "name": "Get Messages",
+      "description": "Get messages from a conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Conversation ID"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of results per page"
+          }
+        },
+        "required": ["conversationId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_conversations",
+      "name": "Search Conversations",
+      "description": "Search for conversations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "snoozed", "closed"],
+            "description": "Filter by status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "description": "Filter by priority"
+          },
+          "assignedUserId": {
+            "type": "string",
+            "description": "Filter by assigned user"
+          },
+          "assignedTeamId": {
+            "type": "string",
+            "description": "Filter by assigned team"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["email", "chat", "phone", "social", "api"],
+            "description": "Filter by channel"
+          },
+          "createdAfter": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by creation date (after)"
+          },
+          "createdBefore": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by creation date (before)"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_note",
+      "name": "Create Note",
+      "description": "Create a note for a customer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Note content"
+          }
+        },
+        "required": ["customerId", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_teams",
+      "name": "Get Teams",
+      "description": "Get all teams",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get all users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "conversation_created",
+      "name": "Conversation Created",
+      "description": "Triggered when a new conversation is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by specific team"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Filter by specific customer"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "customerId": {"type": "string"},
+          "title": {"type": "string"},
+          "status": {"type": "string"},
+          "priority": {"type": "string"},
+          "channel": {"type": "string"},
+          "createdAt": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "conversation_updated",
+      "name": "Conversation Updated",
+      "description": "Triggered when a conversation is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by specific team"
+          },
+          "statusChange": {
+            "type": "boolean",
+            "description": "Only trigger on status changes"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "customerId": {"type": "string"},
+          "title": {"type": "string"},
+          "status": {"type": "string"},
+          "priority": {"type": "string"},
+          "updatedAt": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "message_created",
+      "name": "Message Created",
+      "description": "Triggered when a new message is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": ["in", "out"],
+            "description": "Filter by message direction"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["email", "chat", "phone", "social", "api"],
+            "description": "Filter by channel"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "conversationId": {"type": "string"},
+          "customerId": {"type": "string"},
+          "body": {"type": "string"},
+          "direction": {"type": "string"},
+          "channel": {"type": "string"},
+          "createdAt": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "customer_created",
+      "name": "Customer Created",
+      "description": "Triggered when a new customer is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "email": {"type": "string"},
+          "phone": {"type": "string"},
+          "company": {"type": "string"},
+          "createdAt": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/customers?page[size]=1"
+  }
+}

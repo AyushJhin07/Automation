@@ -1,219 +1,692 @@
 {
   "id": "mailchimp",
   "name": "Mailchimp",
-  "category": "marketing",
-  "description": "Mailchimp email marketing platform with audience and campaign management",
+  "description": "Mailchimp email marketing platform",
+  "category": "Marketing",
+  "icon": "mailchimp",
+  "color": "#FFE01B",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "read",
-        "write"
-      ]
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "apikey"
     }
   },
+  "baseUrl": "https://{dc}.api.mailchimp.com/3.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Mailchimp and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "basic"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Mailchimp",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "add_subscriber",
-      "name": "Add Subscriber",
-      "description": "Add subscriber to mailing list",
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Get all audience lists",
       "parameters": {
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "Mailing list ID"
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of lists to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of lists to skip"
+          },
+          "beforeDateCreated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter lists created before this date"
+          },
+          "sinceDateCreated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter lists created after this date"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Subscriber email"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_list",
+      "name": "Get List",
+      "description": "Get details of a specific list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "The unique ID for the list"
+          }
         },
-        "firstName": {
-          "type": "string",
-          "required": false,
-          "description": "First name"
+        "required": ["listId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_list",
+      "name": "Create List",
+      "description": "Create a new audience list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the list"
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "company": {"type": "string"},
+              "address1": {"type": "string"},
+              "address2": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "zip": {"type": "string"},
+              "country": {"type": "string"},
+              "phone": {"type": "string"}
+            },
+            "description": "Contact information for the list"
+          },
+          "permissionReminder": {
+            "type": "string",
+            "description": "The permission reminder for the list"
+          },
+          "campaignDefaults": {
+            "type": "object",
+            "properties": {
+              "fromName": {"type": "string"},
+              "fromEmail": {"type": "string", "format": "email"},
+              "subject": {"type": "string"},
+              "language": {"type": "string"}
+            },
+            "description": "Default values for campaigns"
+          },
+          "emailTypeOption": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the list supports multiple formats for emails"
+          },
+          "useArchiveBar": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether campaigns for this list use the archive bar"
+          },
+          "notifyOnSubscribe": {
+            "type": "string",
+            "description": "Email to notify when someone subscribes"
+          },
+          "notifyOnUnsubscribe": {
+            "type": "string", 
+            "description": "Email to notify when someone unsubscribes"
+          }
         },
-        "lastName": {
-          "type": "string",
-          "required": false,
-          "description": "Last name"
+        "required": ["name", "contact", "permissionReminder", "campaignDefaults"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_member",
+      "name": "Add Member",
+      "description": "Add or update a list member",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "The unique ID for the list"
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address for a subscriber"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "description": "Subscriber's current status"
+          },
+          "mergeFields": {
+            "type": "object",
+            "description": "An individual merge variable and its value"
+          },
+          "interests": {
+            "type": "object",
+            "description": "The key of this object's properties is the ID of the interest"
+          },
+          "language": {
+            "type": "string",
+            "description": "If set, the subscriber's language"
+          },
+          "vip": {
+            "type": "boolean",
+            "description": "VIP status for subscriber"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {"type": "number"},
+              "longitude": {"type": "number"}
+            },
+            "description": "Subscriber location information"
+          },
+          "ipSignup": {
+            "type": "string",
+            "description": "IP address the subscriber signed up from"
+          },
+          "timestampSignup": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the subscriber signed up"
+          },
+          "ipOpt": {
+            "type": "string",
+            "description": "The IP address the subscriber used to confirm"
+          },
+          "timestampOpt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the subscriber confirmed"
+          }
         },
-        "status": {
-          "type": "string",
-          "required": false,
-          "description": "Subscription status",
-          "options": [
-            "subscribed",
-            "unsubscribed",
-            "cleaned",
-            "pending"
-          ],
-          "default": "subscribed"
+        "required": ["listId", "emailAddress", "status"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_member",
+      "name": "Get Member",
+      "description": "Get information about a specific list member",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "The unique ID for the list"
+          },
+          "subscriberHash": {
+            "type": "string",
+            "description": "The MD5 hash of the lowercase version of the list member's email address"
+          }
         },
-        "tags": {
-          "type": "array",
-          "required": false,
-          "description": "Subscriber tags"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["listId", "subscriberHash"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_member",
+      "name": "Update Member",
+      "description": "Update a list member",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "The unique ID for the list"
+          },
+          "subscriberHash": {
+            "type": "string",
+            "description": "The MD5 hash of the lowercase version of the list member's email address"
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address for a subscriber"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "description": "Subscriber's current status"
+          },
+          "mergeFields": {
+            "type": "object",
+            "description": "An individual merge variable and its value"
+          },
+          "interests": {
+            "type": "object",
+            "description": "The key of this object's properties is the ID of the interest"
+          },
+          "language": {
+            "type": "string",
+            "description": "If set, the subscriber's language"
+          },
+          "vip": {
+            "type": "boolean",
+            "description": "VIP status for subscriber"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {"type": "number"},
+              "longitude": {"type": "number"}
+            },
+            "description": "Subscriber location information"
+          }
+        },
+        "required": ["listId", "subscriberHash"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_member",
+      "name": "Delete Member",
+      "description": "Delete a list member",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "The unique ID for the list"
+          },
+          "subscriberHash": {
+            "type": "string",
+            "description": "The MD5 hash of the lowercase version of the list member's email address"
+          }
+        },
+        "required": ["listId", "subscriberHash"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_members",
+      "name": "Get Members",
+      "description": "Get information about members in a list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "The unique ID for the list"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of members to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of members to skip"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "description": "Filter by subscriber status"
+          },
+          "sinceLastChanged": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by last changed date"
+          },
+          "beforeLastChanged": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by last changed date"
+          },
+          "sinceTimestampOpt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by opt-in time"
+          },
+          "beforeTimestampOpt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by opt-in time"
+          }
+        },
+        "required": ["listId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_campaign",
       "name": "Create Campaign",
-      "description": "Create email campaign",
+      "description": "Create a new campaign",
       "parameters": {
-        "type": {
-          "type": "string",
-          "required": true,
-          "description": "Campaign type",
-          "options": [
-            "regular",
-            "plaintext",
-            "absplit",
-            "rss",
-            "variate"
-          ]
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "description": "The campaign type"
+          },
+          "recipients": {
+            "type": "object",
+            "properties": {
+              "listId": {"type": "string"},
+              "segmentOpts": {"type": "object"}
+            },
+            "description": "List settings for the campaign"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "subjectLine": {"type": "string"},
+              "previewText": {"type": "string"},
+              "title": {"type": "string"},
+              "fromName": {"type": "string"},
+              "replyTo": {"type": "string", "format": "email"},
+              "useConversation": {"type": "boolean"},
+              "toName": {"type": "string"},
+              "folderId": {"type": "string"},
+              "authenticate": {"type": "boolean"},
+              "autoFooter": {"type": "boolean"},
+              "inlineCss": {"type": "boolean"},
+              "autoTweet": {"type": "boolean"},
+              "fbComments": {"type": "boolean"},
+              "timewarp": {"type": "boolean"},
+              "templateId": {"type": "number"},
+              "dragAndDrop": {"type": "boolean"}
+            },
+            "description": "The settings for your campaign"
+          },
+          "tracking": {
+            "type": "object",
+            "properties": {
+              "opens": {"type": "boolean"},
+              "htmlClicks": {"type": "boolean"},
+              "textClicks": {"type": "boolean"},
+              "goalTracking": {"type": "boolean"},
+              "ecomm360": {"type": "boolean"},
+              "googleAnalytics": {"type": "string"},
+              "clicktale": {"type": "string"}
+            },
+            "description": "The tracking options for a campaign"
+          },
+          "rssOpts": {
+            "type": "object",
+            "description": "RSS options for a campaign"
+          },
+          "socialCard": {
+            "type": "object",
+            "description": "The preview for the campaign in social networks"
+          }
         },
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "Audience list ID"
+        "required": ["type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_campaigns",
+      "name": "Get Campaigns",
+      "description": "Get all campaigns",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of campaigns to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of campaigns to skip"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "description": "Filter by campaign type"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["save", "paused", "schedule", "sending", "sent"],
+            "description": "Filter by campaign status"
+          },
+          "beforeSendTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by send time"
+          },
+          "sinceSendTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by send time"
+          },
+          "beforeCreateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by create time"
+          },
+          "sinceCreateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by create time"
+          },
+          "listId": {
+            "type": "string",
+            "description": "Filter by list ID"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Filter by folder ID"
+          },
+          "sortField": {
+            "type": "string",
+            "enum": ["create_time", "send_time"],
+            "description": "Field to sort by"
+          },
+          "sortDir": {
+            "type": "string",
+            "enum": ["ASC", "DESC"],
+            "description": "Sort direction"
+          }
         },
-        "subject": {
-          "type": "string",
-          "required": true,
-          "description": "Email subject"
-        },
-        "fromName": {
-          "type": "string",
-          "required": true,
-          "description": "From name"
-        },
-        "fromEmail": {
-          "type": "string",
-          "required": true,
-          "description": "From email"
-        },
-        "content": {
-          "type": "string",
-          "required": true,
-          "description": "Email content"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "send_campaign",
       "name": "Send Campaign",
-      "description": "Send email campaign",
+      "description": "Send a campaign immediately",
       "parameters": {
-        "campaignId": {
-          "type": "string",
-          "required": true,
-          "description": "Campaign ID"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "description": "The unique ID for the campaign"
+          }
+        },
+        "required": ["campaignId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_subscriber",
-      "name": "Update Subscriber",
-      "description": "Update subscriber information",
+      "id": "get_campaign_content",
+      "name": "Get Campaign Content",
+      "description": "Get the content for a campaign",
       "parameters": {
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "List ID"
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "description": "The unique ID for the campaign"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Subscriber email"
+        "required": ["campaignId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "set_campaign_content",
+      "name": "Set Campaign Content",
+      "description": "Set the content for a campaign",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "description": "The unique ID for the campaign"
+          },
+          "html": {
+            "type": "string",
+            "description": "The raw HTML for the campaign"
+          },
+          "plainText": {
+            "type": "string",
+            "description": "The plain-text portion of the campaign"
+          },
+          "template": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "number"},
+              "sections": {"type": "object"}
+            },
+            "description": "Content for the campaign using a template"
+          },
+          "archive": {
+            "type": "object",
+            "description": "Content for the campaign using an archive"
+          },
+          "url": {
+            "type": "string",
+            "description": "A URL to import content from"
+          }
         },
-        "firstName": {
-          "type": "string",
-          "required": false,
-          "description": "First name"
-        },
-        "lastName": {
-          "type": "string",
-          "required": false,
-          "description": "Last name"
-        },
-        "status": {
-          "type": "string",
-          "required": false,
-          "description": "Subscription status"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["campaignId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "subscriber_added",
       "name": "Subscriber Added",
-      "description": "Trigger when new subscriber is added",
+      "description": "Triggered when a new subscriber is added to a list",
+      "type": "webhook",
       "parameters": {
-        "listId": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by list ID"
-        }
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "emailAddress": {"type": "string"},
+          "status": {"type": "string"},
+          "mergeFields": {"type": "object"},
+          "listId": {"type": "string"},
+          "timestampSignup": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "subscriber_updated",
+      "name": "Subscriber Updated",
+      "description": "Triggered when a subscriber is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "emailAddress": {"type": "string"},
+          "status": {"type": "string"},
+          "mergeFields": {"type": "object"},
+          "listId": {"type": "string"},
+          "lastChanged": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "subscriber_unsubscribed",
+      "name": "Subscriber Unsubscribed",
+      "description": "Triggered when a subscriber unsubscribes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "emailAddress": {"type": "string"},
+          "listId": {"type": "string"},
+          "reason": {"type": "string"},
+          "campaignId": {"type": "string"}
+        }
+      }
     },
     {
       "id": "campaign_sent",
       "name": "Campaign Sent",
-      "description": "Trigger when campaign is sent",
+      "description": "Triggered when a campaign is sent",
+      "type": "webhook",
       "parameters": {
-        "campaignType": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by campaign type"
-        }
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Filter by specific list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "webId": {"type": "number"},
+          "type": {"type": "string"},
+          "createTime": {"type": "string"},
+          "archiveUrl": {"type": "string"},
+          "status": {"type": "string"},
+          "emailsSent": {"type": "number"},
+          "sendTime": {"type": "string"}
+        }
+      }
     }
   ],
-  "rateLimits": {
-    "requestsPerSecond": 3,
-    "requestsPerMinute": 60,
-    "dailyLimit": 50000
-  },
-  "pricing": {
-    "tier": "premium",
-    "costPerExecution": 0.001
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/ping"
   }
 }

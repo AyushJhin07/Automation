@@ -1,130 +1,439 @@
 {
   "id": "lever",
   "name": "Lever",
-  "description": "Lever applicant tracking system",
-  "category": "Recruitment",
-  "icon": "enterprise",
-  "color": "#5A67D8",
+  "description": "Lever talent acquisition and recruiting platform",
+  "category": "HR",
+  "icon": "lever",
+  "color": "#00A76B",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "basic",
-      "username": "{api_key}",
-      "password": ""
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Basic"
     }
   },
   "baseUrl": "https://api.lever.co/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Lever",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_opportunities",
+      "name": "List Opportunities",
+      "description": "List job opportunities (candidates)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of opportunities to return"
+          },
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset cursor"
+          },
+          "posted_after": {
+            "type": "number",
+            "description": "Unix timestamp - opportunities posted after this time"
+          },
+          "posted_before": {
+            "type": "number",
+            "description": "Unix timestamp - opportunities posted before this time"
+          },
+          "updated_after": {
+            "type": "number",
+            "description": "Unix timestamp - opportunities updated after this time"
+          },
+          "updated_before": {
+            "type": "number",
+            "description": "Unix timestamp - opportunities updated before this time"
+          },
+          "posting_id": {
+            "type": "string",
+            "description": "Filter by posting ID"
+          },
+          "stage_id": {
+            "type": "string",
+            "description": "Filter by stage ID"
+          },
+          "source_id": {
+            "type": "string",
+            "description": "Filter by source ID"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Include archived opportunities"
+          },
+          "confidentiality": {
+            "type": "string",
+            "enum": ["confidential", "non-confidential"],
+            "description": "Filter by confidentiality"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Filter by candidate email"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_opportunity",
+      "name": "Get Opportunity",
+      "description": "Get a specific opportunity",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opportunity ID"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["applications", "stage", "owner", "followers", "sourcedBy", "origin"]},
+            "description": "Additional data to include"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_opportunity",
       "name": "Create Opportunity",
-      "description": "Create a new candidate opportunity",
+      "description": "Create a new opportunity (candidate)",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Candidate name"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Candidate name"
+          },
+          "headline": {
+            "type": "string",
+            "description": "Candidate headline"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Candidate summary"
+          },
+          "location": {
+            "type": "string",
+            "description": "Candidate location"
+          },
+          "phone": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["home", "work", "mobile", "other"]},
+              "value": {"type": "string"}
+            },
+            "description": "Phone number"
+          },
+          "emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Email addresses"
+          },
+          "links": {
+            "type": "array",
+            "items": {"type": "string", "format": "uri"},
+            "description": "URLs (LinkedIn, portfolio, etc.)"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tags to apply"
+          },
+          "sources": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Source IDs"
+          },
+          "origin": {
+            "type": "string",
+            "enum": ["agency", "applied", "internal", "referred", "sourced", "university"],
+            "description": "Origin of candidate"
+          },
+          "owner": {
+            "type": "string",
+            "description": "User ID of opportunity owner"
+          },
+          "followers": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "User IDs of followers"
+          },
+          "stage": {
+            "type": "string",
+            "description": "Stage ID"
+          },
+          "archived": {
+            "type": "object",
+            "properties": {
+              "archivedAt": {"type": "number"},
+              "reason": {"type": "string", "enum": ["hired", "passed", "lost", "other"]}
+            },
+            "description": "Archive information"
+          },
+          "postings": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Posting IDs to apply to"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Candidate email"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Candidate phone"
-        },
-        "posting_id": {
-          "type": "string",
-          "required": false,
-          "description": "Job posting ID"
-        }
-      },
-      "requiredScopes": [
-        "opportunities:write"
-      ]
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_opportunity",
       "name": "Update Opportunity",
       "description": "Update an existing opportunity",
       "parameters": {
-        "opportunity_id": {
-          "type": "string",
-          "required": true,
-          "description": "Opportunity ID"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opportunity ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Candidate name"
+          },
+          "headline": {
+            "type": "string",
+            "description": "Candidate headline"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Candidate summary"
+          },
+          "location": {
+            "type": "string",
+            "description": "Candidate location"
+          },
+          "phone": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["home", "work", "mobile", "other"]},
+              "value": {"type": "string"}
+            },
+            "description": "Phone number"
+          },
+          "emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Email addresses"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tags to apply"
+          },
+          "owner": {
+            "type": "string",
+            "description": "User ID of opportunity owner"
+          },
+          "followers": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "User IDs of followers"
+          },
+          "stage": {
+            "type": "string",
+            "description": "Stage ID"
+          }
         },
-        "updates": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "opportunities:write"
-      ]
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "move_to_stage",
-      "name": "Move to Stage",
-      "description": "Move candidate to a different stage",
+      "id": "archive_opportunity",
+      "name": "Archive Opportunity",
+      "description": "Archive an opportunity",
       "parameters": {
-        "opportunity_id": {
-          "type": "string",
-          "required": true,
-          "description": "Opportunity ID"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opportunity ID"
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["hired", "passed", "lost", "other"],
+            "description": "Archive reason"
+          }
         },
-        "stage_id": {
-          "type": "string",
-          "required": true,
-          "description": "Target stage ID"
-        }
-      },
-      "requiredScopes": [
-        "opportunities:write"
-      ]
+        "required": ["id", "reason"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_interview_feedback",
-      "name": "Add Interview Feedback",
-      "description": "Add feedback for an interview",
+      "id": "list_postings",
+      "name": "List Postings",
+      "description": "List job postings",
       "parameters": {
-        "opportunity_id": {
-          "type": "string",
-          "required": true,
-          "description": "Opportunity ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of postings to return"
+          },
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset cursor"
+          },
+          "include_archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include archived postings"
+          },
+          "include_confidential": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include confidential postings"
+          },
+          "team_id": {
+            "type": "string",
+            "description": "Filter by team ID"
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Filter by location ID"
+          },
+          "commitment_id": {
+            "type": "string",
+            "description": "Filter by commitment ID"
+          }
         },
-        "interviewer_id": {
-          "type": "string",
-          "required": true,
-          "description": "Interviewer ID"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_posting",
+      "name": "Get Posting",
+      "description": "Get a specific job posting",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Posting ID"
+          }
         },
-        "feedback": {
-          "type": "string",
-          "required": true,
-          "description": "Interview feedback"
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List users in the organization",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of users to return"
+          },
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset cursor"
+          },
+          "include_deactivated": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include deactivated users"
+          }
         },
-        "recommendation": {
-          "type": "string",
-          "required": false,
-          "description": "Hiring recommendation",
-          "options": [
-            "yes",
-            "no",
-            "maybe"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "feedback:write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get a specific user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_note",
+      "name": "Add Note",
+      "description": "Add a note to an opportunity",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "opportunity_id": {
+            "type": "string",
+            "description": "Opportunity ID"
+          },
+          "value": {
+            "type": "string",
+            "description": "Note content"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private"],
+            "default": "public",
+            "description": "Note visibility"
+          }
+        },
+        "required": ["opportunity_id", "value"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "advance_opportunity",
+      "name": "Advance Opportunity",
+      "description": "Advance opportunity to next stage",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Opportunity ID"
+          },
+          "stage": {
+            "type": "string",
+            "description": "Target stage ID"
+          }
+        },
+        "required": ["id", "stage"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -132,19 +441,78 @@
       "id": "opportunity_created",
       "name": "Opportunity Created",
       "description": "Triggered when a new opportunity is created",
-      "parameters": {},
-      "requiredScopes": [
-        "opportunities:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "headline": {"type": "string"},
+          "stage": {"type": "string"},
+          "location": {"type": "string"},
+          "emails": {"type": "array"},
+          "phones": {"type": "array"},
+          "createdAt": {"type": "number"},
+          "updatedAt": {"type": "number"}
+        }
+      }
     },
     {
-      "id": "candidate_hired",
-      "name": "Candidate Hired",
-      "description": "Triggered when a candidate is hired",
-      "parameters": {},
-      "requiredScopes": [
-        "opportunities:read"
-      ]
+      "id": "opportunity_stage_changed",
+      "name": "Opportunity Stage Changed",
+      "description": "Triggered when opportunity stage changes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stage_id": {
+            "type": "string",
+            "description": "Filter by specific stage"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "opportunityId": {"type": "string"},
+          "fromStage": {"type": "object"},
+          "toStage": {"type": "object"},
+          "changedAt": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "opportunity_archived",
+      "name": "Opportunity Archived",
+      "description": "Triggered when an opportunity is archived",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "archivedAt": {"type": "number"},
+          "reason": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users"
+  }
 }

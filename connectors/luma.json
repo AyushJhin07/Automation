@@ -1,0 +1,542 @@
+{
+  "id": "luma",
+  "name": "Luma",
+  "description": "Luma event hosting and community platform",
+  "category": "Events",
+  "icon": "luma",
+  "color": "#FF5722",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "x-luma-api-key"
+    }
+  },
+  "baseUrl": "https://api.lu.ma/v1",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Luma",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Create a new event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Event name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Event description"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event start time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event end time"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Event timezone"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["venue", "online", "hybrid"]
+              },
+              "venue": {"type": "string"},
+              "address": {"type": "string"},
+              "url": {"type": "string"}
+            },
+            "description": "Event location details"
+          },
+          "coverPhoto": {
+            "type": "string",
+            "description": "Cover photo URL"
+          },
+          "requiresApproval": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether registration requires approval"
+          },
+          "maxCapacity": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Maximum number of attendees"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private", "unlisted"],
+            "default": "public",
+            "description": "Event visibility"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Event tags"
+          }
+        },
+        "required": ["name", "startAt"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_event",
+      "name": "Get Event",
+      "description": "Get event details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          }
+        },
+        "required": ["eventId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_event",
+      "name": "Update Event",
+      "description": "Update an existing event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Event name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Event description"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event start time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event end time"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Event timezone"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["venue", "online", "hybrid"]
+              },
+              "venue": {"type": "string"},
+              "address": {"type": "string"},
+              "url": {"type": "string"}
+            },
+            "description": "Event location details"
+          },
+          "coverPhoto": {
+            "type": "string",
+            "description": "Cover photo URL"
+          },
+          "requiresApproval": {
+            "type": "boolean",
+            "description": "Whether registration requires approval"
+          },
+          "maxCapacity": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Maximum number of attendees"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private", "unlisted"],
+            "description": "Event visibility"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Event tags"
+          }
+        },
+        "required": ["eventId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_events",
+      "name": "List Events",
+      "description": "List all events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of events to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of events to skip"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["upcoming", "past", "live"],
+            "description": "Filter by event status"
+          },
+          "seriesId": {
+            "type": "string",
+            "description": "Filter by event series"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_event",
+      "name": "Delete Event",
+      "description": "Delete an event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          }
+        },
+        "required": ["eventId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_registrations",
+      "name": "Get Registrations",
+      "description": "Get registrations for an event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of registrations to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of registrations to skip"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["registered", "waitlisted", "cancelled"],
+            "description": "Filter by registration status"
+          }
+        },
+        "required": ["eventId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_registration",
+      "name": "Create Registration",
+      "description": "Register a user for an event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Attendee email"
+          },
+          "name": {
+            "type": "string",
+            "description": "Attendee name"
+          },
+          "additionalInfo": {
+            "type": "object",
+            "description": "Additional registration information"
+          }
+        },
+        "required": ["eventId", "email"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "cancel_registration",
+      "name": "Cancel Registration",
+      "description": "Cancel a registration",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registrationId": {
+            "type": "string",
+            "description": "Registration ID"
+          }
+        },
+        "required": ["registrationId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_series",
+      "name": "Create Series",
+      "description": "Create an event series",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Series name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Series description"
+          },
+          "coverPhoto": {
+            "type": "string",
+            "description": "Cover photo URL"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private", "unlisted"],
+            "default": "public",
+            "description": "Series visibility"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Series tags"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_series",
+      "name": "Get Series",
+      "description": "Get series details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seriesId": {
+            "type": "string",
+            "description": "Series ID"
+          }
+        },
+        "required": ["seriesId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_series",
+      "name": "List Series",
+      "description": "List all event series",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of series to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of series to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_message",
+      "name": "Send Message",
+      "description": "Send a message to event attendees",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Message subject"
+          },
+          "body": {
+            "type": "string",
+            "description": "Message body"
+          },
+          "recipients": {
+            "type": "string",
+            "enum": ["all", "registered", "waitlisted"],
+            "default": "registered",
+            "description": "Message recipients"
+          }
+        },
+        "required": ["eventId", "subject", "body"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "event_created",
+      "name": "Event Created",
+      "description": "Triggered when a new event is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seriesId": {
+            "type": "string",
+            "description": "Filter by specific series"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventId": {"type": "string"},
+          "name": {"type": "string"},
+          "startAt": {"type": "string"},
+          "endAt": {"type": "string"},
+          "createdAt": {"type": "string"},
+          "seriesId": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "registration_created",
+      "name": "Registration Created",
+      "description": "Triggered when someone registers for an event",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Filter by specific event"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "registrationId": {"type": "string"},
+          "eventId": {"type": "string"},
+          "email": {"type": "string"},
+          "name": {"type": "string"},
+          "status": {"type": "string"},
+          "registeredAt": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "registration_cancelled",
+      "name": "Registration Cancelled",
+      "description": "Triggered when a registration is cancelled",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Filter by specific event"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "registrationId": {"type": "string"},
+          "eventId": {"type": "string"},
+          "email": {"type": "string"},
+          "name": {"type": "string"},
+          "cancelledAt": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "event_started",
+      "name": "Event Started",
+      "description": "Triggered when an event starts",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seriesId": {
+            "type": "string",
+            "description": "Filter by specific series"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventId": {"type": "string"},
+          "name": {"type": "string"},
+          "startAt": {"type": "string"},
+          "registrationCount": {"type": "number"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
+}

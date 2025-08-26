@@ -1,202 +1,719 @@
 {
   "id": "marketo",
   "name": "Marketo",
-  "category": "Marketing Automation",
-  "description": "Marketo marketing automation platform for lead management and campaign execution",
+  "description": "Adobe Marketo marketing automation platform",
+  "category": "Marketing",
+  "icon": "marketo",
+  "color": "#5C4C9F",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://{{munchkin}}.mktorest.com/identity/oauth/authorize",
-      "tokenUrl": "https://{{munchkin}}.mktorest.com/identity/oauth/token",
+      "authUrl": "https://your-instance.mktorest.com/oauth/authorize",
+      "tokenUrl": "https://your-instance.mktorest.com/identity/oauth/token",
       "scopes": []
     }
   },
+  "baseUrl": "https://your-instance.mktorest.com/rest/v1",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Marketo",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_lead",
       "name": "Create Lead",
-      "description": "Create or update a lead in Marketo",
+      "description": "Create or update a lead",
       "parameters": {
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Lead email address"
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Lead email address"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "Lead first name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Lead last name"
+          },
+          "company": {
+            "type": "string",
+            "description": "Lead company"
+          },
+          "title": {
+            "type": "string",
+            "description": "Lead job title"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Lead phone number"
+          },
+          "website": {
+            "type": "string",
+            "description": "Lead website"
+          },
+          "industry": {
+            "type": "string",
+            "description": "Lead industry"
+          },
+          "country": {
+            "type": "string",
+            "description": "Lead country"
+          },
+          "state": {
+            "type": "string",
+            "description": "Lead state/province"
+          },
+          "city": {
+            "type": "string",
+            "description": "Lead city"
+          },
+          "address": {
+            "type": "string",
+            "description": "Lead address"
+          },
+          "postalCode": {
+            "type": "string",
+            "description": "Lead postal code"
+          },
+          "leadSource": {
+            "type": "string",
+            "description": "Lead source"
+          },
+          "leadStatus": {
+            "type": "string",
+            "description": "Lead status"
+          },
+          "leadScore": {
+            "type": "number",
+            "description": "Lead score"
+          },
+          "partitionId": {
+            "type": "number",
+            "description": "Partition ID for lead"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["createOnly", "updateOnly", "createOrUpdate", "createDuplicate"],
+            "default": "createOrUpdate",
+            "description": "Action to take"
+          }
         },
-        "firstName": {
-          "type": "string",
-          "required": false,
-          "description": "First name"
+        "required": ["email"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_lead_by_id",
+      "name": "Get Lead by ID",
+      "description": "Get lead details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Lead ID"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of field names to return"
+          }
         },
-        "lastName": {
-          "type": "string",
-          "required": false,
-          "description": "Last name"
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_leads_by_filter",
+      "name": "Get Leads by Filter",
+      "description": "Get leads by filter criteria",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filterType": {
+            "type": "string",
+            "enum": ["email", "cookie", "twitterId", "facebookId", "linkedInId", "sfdcAccountId", "sfdcContactId", "sfdcLeadId", "sfdcLeadOwnerId", "sfdcOpptyId"],
+            "description": "Filter type"
+          },
+          "filterValues": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter values"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of field names to return"
+          },
+          "batchSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 300,
+            "default": 300,
+            "description": "Batch size for results"
+          },
+          "nextPageToken": {
+            "type": "string",
+            "description": "Token for next page of results"
+          }
         },
-        "company": {
-          "type": "string",
-          "required": false,
-          "description": "Company name"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Phone number"
-        },
-        "title": {
-          "type": "string",
-          "required": false,
-          "description": "Job title"
-        },
-        "website": {
-          "type": "string",
-          "required": false,
-          "description": "Website URL"
-        }
-      },
-      "requiredScopes": []
+        "required": ["filterType", "filterValues"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_lead",
       "name": "Update Lead",
-      "description": "Update an existing lead in Marketo",
+      "description": "Update an existing lead",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Lead ID or email"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Lead ID"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Lead email address"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "Lead first name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Lead last name"
+          },
+          "company": {
+            "type": "string",
+            "description": "Lead company"
+          },
+          "title": {
+            "type": "string",
+            "description": "Lead job title"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Lead phone number"
+          },
+          "leadStatus": {
+            "type": "string",
+            "description": "Lead status"
+          },
+          "leadScore": {
+            "type": "number",
+            "description": "Lead score"
+          }
         },
-        "firstName": {
-          "type": "string",
-          "required": false,
-          "description": "First name"
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_lead",
+      "name": "Delete Lead",
+      "description": "Delete a lead",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Lead ID to delete"
+          }
         },
-        "lastName": {
-          "type": "string",
-          "required": false,
-          "description": "Last name"
-        },
-        "company": {
-          "type": "string",
-          "required": false,
-          "description": "Company name"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Phone number"
-        },
-        "title": {
-          "type": "string",
-          "required": false,
-          "description": "Job title"
-        }
-      },
-      "requiredScopes": []
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "add_to_list",
-      "name": "Add Lead to List",
-      "description": "Add a lead to a static list in Marketo",
+      "name": "Add to List",
+      "description": "Add leads to a static list",
       "parameters": {
-        "listId": {
-          "type": "string",
-          "required": true,
-          "description": "Static list ID"
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "number",
+            "description": "Static list ID"
+          },
+          "leadIds": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Array of lead IDs"
+          }
         },
-        "leadIds": {
-          "type": "array",
-          "required": true,
-          "description": "Array of lead IDs to add to list"
-        }
-      },
-      "requiredScopes": []
+        "required": ["listId", "leadIds"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "trigger_campaign",
-      "name": "Trigger Campaign",
-      "description": "Trigger a Marketo smart campaign",
+      "id": "remove_from_list",
+      "name": "Remove from List",
+      "description": "Remove leads from a static list",
       "parameters": {
-        "campaignId": {
-          "type": "string",
-          "required": true,
-          "description": "Smart campaign ID"
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "number",
+            "description": "Static list ID"
+          },
+          "leadIds": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Array of lead IDs"
+          }
         },
-        "leadIds": {
-          "type": "array",
-          "required": true,
-          "description": "Array of lead IDs to trigger campaign for"
-        },
-        "tokens": {
-          "type": "object",
-          "required": false,
-          "description": "Campaign tokens (key-value pairs)"
-        }
-      },
-      "requiredScopes": []
+        "required": ["listId", "leadIds"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "upsert_activities",
-      "name": "Upsert Activities",
-      "description": "Create custom activities in Marketo",
+      "id": "create_campaign",
+      "name": "Create Campaign",
+      "description": "Create a new campaign",
       "parameters": {
-        "activityTypeId": {
-          "type": "string",
-          "required": true,
-          "description": "Custom activity type ID"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Campaign name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Campaign description"
+          },
+          "programId": {
+            "type": "number",
+            "description": "Parent program ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["batch", "trigger"],
+            "description": "Campaign type"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether campaign is active"
+          }
         },
-        "leadId": {
-          "type": "string",
-          "required": true,
-          "description": "Lead ID"
+        "required": ["name", "programId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_campaigns",
+      "name": "Get Campaigns",
+      "description": "Get all campaigns",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "programId": {
+            "type": "number",
+            "description": "Filter by program ID"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Filter by active status"
+          },
+          "batchSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 300,
+            "default": 300,
+            "description": "Batch size for results"
+          },
+          "nextPageToken": {
+            "type": "string",
+            "description": "Token for next page of results"
+          }
         },
-        "activityDate": {
-          "type": "string",
-          "required": true,
-          "description": "Activity date (ISO format)"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "request_campaign",
+      "name": "Request Campaign",
+      "description": "Request execution of a campaign for leads",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "number",
+            "description": "Campaign ID"
+          },
+          "leads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "number"}
+              }
+            },
+            "description": "Array of lead objects"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "value": {"type": "string"}
+              }
+            },
+            "description": "My tokens for the campaign"
+          }
         },
-        "attributes": {
-          "type": "object",
-          "required": false,
-          "description": "Activity attributes"
-        }
-      },
-      "requiredScopes": []
+        "required": ["campaignId", "leads"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_email",
+      "name": "Create Email",
+      "description": "Create a new email",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Email name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Email description"
+          },
+          "folderId": {
+            "type": "number",
+            "description": "Parent folder ID"
+          },
+          "templateId": {
+            "type": "number",
+            "description": "Email template ID"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "fromName": {
+            "type": "string",
+            "description": "From name"
+          },
+          "fromEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "From email address"
+          },
+          "replyToEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Reply-to email address"
+          }
+        },
+        "required": ["name", "folderId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_emails",
+      "name": "Get Emails",
+      "description": "Get all emails",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["draft", "approved", "unapproved"],
+            "description": "Filter by status"
+          },
+          "folderId": {
+            "type": "number",
+            "description": "Filter by folder ID"
+          },
+          "batchSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 20,
+            "description": "Batch size for results"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Offset for results"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_sample_email",
+      "name": "Send Sample Email",
+      "description": "Send a sample email",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "emailId": {
+            "type": "number",
+            "description": "Email ID"
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address to send sample to"
+          },
+          "textOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Send text-only version"
+          },
+          "leadId": {
+            "type": "number",
+            "description": "Lead ID to use for personalization"
+          }
+        },
+        "required": ["emailId", "emailAddress"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_programs",
+      "name": "Get Programs",
+      "description": "Get all programs",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["completed", "on", "off"],
+            "description": "Filter by status"
+          },
+          "maxReturn": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 20,
+            "description": "Maximum number of programs to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Offset for results"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_program",
+      "name": "Create Program",
+      "description": "Create a new program",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Program name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Program description"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Default", "Email", "Event", "Webinar", "Nurture", "Content", "Engagement", "Social"],
+            "description": "Program type"
+          },
+          "channel": {
+            "type": "string",
+            "description": "Program channel"
+          },
+          "folderId": {
+            "type": "number",
+            "description": "Parent folder ID"
+          },
+          "costs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startDate": {"type": "string", "format": "date"},
+                "cost": {"type": "number"},
+                "note": {"type": "string"}
+              }
+            },
+            "description": "Program costs"
+          }
+        },
+        "required": ["name", "type", "channel", "folderId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "lead_added",
-      "name": "Lead Added",
-      "description": "Triggered when a new lead is added to Marketo",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["New Lead"],
-        "entityTypes": ["lead"]
+      "id": "lead_created",
+      "name": "Lead Created",
+      "description": "Triggered when a new lead is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partitionId": {
+            "type": "number",
+            "description": "Filter by partition ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "email": {"type": "string"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "company": {"type": "string"},
+          "createdAt": {"type": "string"},
+          "updatedAt": {"type": "string"}
+        }
+      }
     },
     {
       "id": "lead_updated",
       "name": "Lead Updated",
-      "description": "Triggered when a lead is updated in Marketo",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["Data Value Changes"],
-        "entityTypes": ["lead"]
+      "description": "Triggered when a lead is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partitionId": {
+            "type": "number",
+            "description": "Filter by partition ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "email": {"type": "string"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "company": {"type": "string"},
+          "updatedAt": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "campaign_success",
-      "name": "Campaign Success",
-      "description": "Triggered when a lead achieves success in a campaign",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["Change Status in Progression"],
-        "entityTypes": ["campaign"]
+      "id": "lead_activity",
+      "name": "Lead Activity",
+      "description": "Triggered when a lead performs an activity",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activityTypeId": {
+            "type": "number",
+            "description": "Filter by activity type ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "leadId": {"type": "number"},
+          "activityDate": {"type": "string"},
+          "activityTypeId": {"type": "number"},
+          "campaignId": {"type": "number"},
+          "primaryAttributeValue": {"type": "string"},
+          "primaryAttributeValueId": {"type": "number"},
+          "attributes": {"type": "array"}
+        }
+      }
+    },
+    {
+      "id": "email_delivered",
+      "name": "Email Delivered",
+      "description": "Triggered when an email is delivered",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "emailId": {
+            "type": "number",
+            "description": "Filter by email ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "leadId": {"type": "number"},
+          "emailId": {"type": "number"},
+          "campaignId": {"type": "number"},
+          "activityDate": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_opened",
+      "name": "Email Opened",
+      "description": "Triggered when an email is opened",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "emailId": {
+            "type": "number",
+            "description": "Filter by email ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "leadId": {"type": "number"},
+          "emailId": {"type": "number"},
+          "campaignId": {"type": "number"},
+          "activityDate": {"type": "string"},
+          "isPrimary": {"type": "boolean"},
+          "device": {"type": "string"},
+          "platform": {"type": "string"},
+          "userAgent": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/identity/oauth/token?grant_type=client_credentials&client_id={client_id}&client_secret={client_secret}"
+  }
 }

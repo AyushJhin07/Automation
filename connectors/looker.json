@@ -1,141 +1,508 @@
 {
   "id": "looker",
   "name": "Looker",
-  "description": "Looker business intelligence platform",
-  "category": "Business Intelligence",
-  "icon": "enterprise",
+  "description": "Looker business intelligence and data platform",
+  "category": "Analytics",
+  "icon": "looker",
   "color": "#4285F4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://your-instance.looker.com/api/3.1/login",
+      "tokenUrl": "https://your-instance.looker.com/api/3.1/login",
+      "scopes": []
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://your-instance.looker.com/api/4.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Looker and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Looker",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Looker",
+      "id": "run_look",
+      "name": "Run Look",
+      "description": "Run a Look and return results",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Looker",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "lookId": {
+            "type": "string",
+            "description": "Look ID to run"
+          },
+          "resultFormat": {
+            "type": "string",
+            "enum": ["json", "csv", "txt", "html", "xlsx", "png", "jpg"],
+            "default": "json",
+            "description": "Format for results"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50000,
+            "description": "Row limit for results"
+          },
+          "cache": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use cached results if available"
+          },
+          "serverTableCalculations": {
+            "type": "boolean",
+            "default": false,
+            "description": "Perform table calculations on server"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["lookId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Looker",
+      "id": "run_dashboard",
+      "name": "Run Dashboard",
+      "description": "Run a dashboard and return results",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Looker",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "dashboardId": {
+            "type": "string",
+            "description": "Dashboard ID to run"
+          },
+          "resultFormat": {
+            "type": "string",
+            "enum": ["json", "csv", "txt", "html", "xlsx", "png", "jpg", "pdf"],
+            "default": "json",
+            "description": "Format for results"
+          },
+          "filters": {
+            "type": "object",
+            "description": "Dashboard filters to apply"
+          },
+          "width": {
+            "type": "number",
+            "description": "Width for image/PDF output"
+          },
+          "height": {
+            "type": "number",
+            "description": "Height for image/PDF output"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["dashboardId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Looker",
+      "id": "run_query",
+      "name": "Run Query",
+      "description": "Run an inline query",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model name"
+          },
+          "explore": {
+            "type": "string",
+            "description": "Explore name"
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Dimensions to include"
+          },
+          "measures": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Measures to include"
+          },
+          "filters": {
+            "type": "object",
+            "description": "Filters to apply"
+          },
+          "sorts": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort order"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50000,
+            "description": "Row limit for results"
+          },
+          "columnLimit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Column limit for results"
+          },
+          "resultFormat": {
+            "type": "string",
+            "enum": ["json", "csv", "txt", "html", "xlsx"],
+            "default": "json",
+            "description": "Format for results"
+          }
+        },
+        "required": ["model", "explore"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_query",
+      "name": "Create Query",
+      "description": "Create a new query",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model name"
+          },
+          "explore": {
+            "type": "string",
+            "description": "Explore name"
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Dimensions to include"
+          },
+          "measures": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Measures to include"
+          },
+          "filters": {
+            "type": "object",
+            "description": "Filters to apply"
+          },
+          "sorts": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Sort order"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50000,
+            "description": "Row limit for results"
+          },
+          "columnLimit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Column limit for results"
+          }
+        },
+        "required": ["model", "explore"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_look",
+      "name": "Get Look",
+      "description": "Get Look details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lookId": {
+            "type": "string",
+            "description": "Look ID"
+          }
+        },
+        "required": ["lookId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_looks",
+      "name": "List Looks",
+      "description": "List all Looks",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 25,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dashboard",
+      "name": "Get Dashboard",
+      "description": "Get dashboard details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dashboardId": {
+            "type": "string",
+            "description": "Dashboard ID"
+          }
+        },
+        "required": ["dashboardId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_dashboards",
+      "name": "List Dashboards",
+      "description": "List all dashboards",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 25,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List all users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 25,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_scheduled_plan",
+      "name": "Create Scheduled Plan",
+      "description": "Create a new scheduled plan",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Plan name"
+          },
+          "lookId": {
+            "type": "string",
+            "description": "Look ID to schedule"
+          },
+          "dashboardId": {
+            "type": "string",
+            "description": "Dashboard ID to schedule"
+          },
+          "crontab": {
+            "type": "string",
+            "description": "Cron expression for schedule"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Timezone for schedule"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether plan is enabled"
+          },
+          "destinationAddresses": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Email addresses for delivery"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["json", "csv", "txt", "html", "xlsx", "png", "jpg", "pdf"],
+            "default": "pdf",
+            "description": "Format for delivery"
+          }
+        },
+        "required": ["name", "crontab"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_models",
+      "name": "List Models",
+      "description": "List all models",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 25,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_model_explore",
+      "name": "Get Model Explore",
+      "description": "Get explore metadata for a model",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model name"
+          },
+          "explore": {
+            "type": "string",
+            "description": "Explore name"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          }
+        },
+        "required": ["model", "explore"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Looker",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "scheduled_plan_run",
+      "name": "Scheduled Plan Run",
+      "description": "Triggered when a scheduled plan runs",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string",
+            "description": "Filter by specific plan"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "planId": {"type": "string"},
+          "planName": {"type": "string"},
+          "runAt": {"type": "string"},
+          "status": {"type": "string"},
+          "resultUrl": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Looker",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "alert_triggered",
+      "name": "Alert Triggered",
+      "description": "Triggered when an alert condition is met",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alertId": {
+            "type": "string",
+            "description": "Filter by specific alert"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "alertId": {"type": "string"},
+          "alertName": {"type": "string"},
+          "triggeredAt": {"type": "string"},
+          "value": {"type": "number"},
+          "threshold": {"type": "number"},
+          "condition": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }

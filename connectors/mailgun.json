@@ -1,0 +1,625 @@
+{
+  "id": "mailgun",
+  "name": "Mailgun",
+  "description": "Mailgun email delivery and validation service",
+  "category": "Email",
+  "icon": "mailgun",
+  "color": "#F56565",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Basic api:"
+    }
+  },
+  "baseUrl": "https://api.mailgun.net/v3",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Mailgun",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_email",
+      "name": "Send Email",
+      "description": "Send an email message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Your Mailgun domain"
+          },
+          "from": {
+            "type": "string",
+            "description": "Email address of the sender"
+          },
+          "to": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Email address(es) of the recipient(s)"
+          },
+          "cc": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Same as To but for CC"
+          },
+          "bcc": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Same as To but for BCC"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Message subject"
+          },
+          "text": {
+            "type": "string",
+            "description": "Body of the message (text version)"
+          },
+          "html": {
+            "type": "string",
+            "description": "Body of the message (HTML version)"
+          },
+          "attachment": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File attachment URLs"
+          },
+          "inline": {
+            "type": "array", 
+            "items": {"type": "string"},
+            "description": "Attachment with inline disposition"
+          },
+          "tag": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tag string for tracking purposes"
+          },
+          "dkim": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enables/disables DKIM signatures"
+          },
+          "deliverytime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Desired time of delivery"
+          },
+          "testmode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enables sending in test mode"
+          },
+          "tracking": {
+            "type": "boolean",
+            "description": "Toggles tracking on a per-message basis"
+          },
+          "tracking-clicks": {
+            "type": "boolean",
+            "description": "Toggles clicks tracking on a per-message basis"
+          },
+          "tracking-opens": {
+            "type": "boolean", 
+            "description": "Toggles opens tracking on a per-message basis"
+          },
+          "require-tls": {
+            "type": "boolean",
+            "default": false,
+            "description": "Requires recipient TLS verification"
+          },
+          "skip-verification": {
+            "type": "boolean",
+            "default": false,
+            "description": "Skip recipient verification"
+          }
+        },
+        "required": ["domain", "from", "to"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_domain",
+      "name": "Get Domain",
+      "description": "Get details about a domain",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Domain name"
+          }
+        },
+        "required": ["domain"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_domains",
+      "name": "List Domains",
+      "description": "List all domains",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Maximum number of domains to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of domains to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "verify_domain",
+      "name": "Verify Domain",
+      "description": "Verify a domain",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Domain name to verify"
+          }
+        },
+        "required": ["domain"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_mailing_list",
+      "name": "Create Mailing List",
+      "description": "Create a new mailing list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "format": "email",
+            "description": "A valid email address for the mailing list"
+          },
+          "name": {
+            "type": "string",
+            "description": "Mailing list name"
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the mailing list"
+          },
+          "access_level": {
+            "type": "string",
+            "enum": ["readonly", "members", "everyone"],
+            "default": "readonly",
+            "description": "List access level"
+          }
+        },
+        "required": ["address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_mailing_list",
+      "name": "Get Mailing List",
+      "description": "Get details of a mailing list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "format": "email",
+            "description": "Mailing list address"
+          }
+        },
+        "required": ["address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_mailing_lists",
+      "name": "List Mailing Lists",
+      "description": "List all mailing lists",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Maximum number of lists to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of lists to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_member",
+      "name": "Add Member",
+      "description": "Add a member to a mailing list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Mailing list address"
+          },
+          "address": {
+            "type": "string",
+            "format": "email",
+            "description": "Member's email address"
+          },
+          "name": {
+            "type": "string",
+            "description": "Member's name"
+          },
+          "vars": {
+            "type": "object",
+            "description": "JSON object with arbitrary member variables"
+          },
+          "subscribed": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether the member is subscribed"
+          },
+          "upsert": {
+            "type": "boolean",
+            "default": false,
+            "description": "Update member if it already exists"
+          }
+        },
+        "required": ["listAddress", "address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_member",
+      "name": "Get Member",
+      "description": "Get member details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Mailing list address"
+          },
+          "memberAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Member's email address"
+          }
+        },
+        "required": ["listAddress", "memberAddress"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "validate_email",
+      "name": "Validate Email",
+      "description": "Validate an email address",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address to validate"
+          },
+          "mailbox_verification": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable mailbox verification"
+          }
+        },
+        "required": ["address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_stats",
+      "name": "Get Stats",
+      "description": "Get domain statistics",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Domain name"
+          },
+          "event": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["accepted", "delivered", "failed", "opened", "clicked", "unsubscribed", "complained", "stored"]
+            },
+            "description": "Name of the event to receive the stats for"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "End date"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": ["hour", "day", "month"],
+            "default": "day",
+            "description": "Time resolution"
+          },
+          "duration": {
+            "type": "string",
+            "description": "Duration like '1d', '1w', '1m'"
+          }
+        },
+        "required": ["domain"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_events",
+      "name": "Get Events",
+      "description": "Get domain events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Domain name"
+          },
+          "begin": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Beginning of the time range"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End of the time range"
+          },
+          "ascending": {
+            "type": "string",
+            "enum": ["yes", "no"],
+            "default": "yes",
+            "description": "Sort order"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 300,
+            "default": 100,
+            "description": "Number of events to return"
+          },
+          "event": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["accepted", "rejected", "delivered", "failed", "opened", "clicked", "unsubscribed", "complained", "stored"]
+            },
+            "description": "Event types to filter by"
+          }
+        },
+        "required": ["domain"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "email_delivered",
+      "name": "Email Delivered",
+      "description": "Triggered when an email is successfully delivered",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Filter by specific domain"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "recipient": {"type": "string"},
+          "domain": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "token": {"type": "string"},
+          "signature": {"type": "string"},
+          "message-headers": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_opened",
+      "name": "Email Opened",
+      "description": "Triggered when an email is opened",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Filter by specific domain"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "recipient": {"type": "string"},
+          "domain": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "token": {"type": "string"},
+          "signature": {"type": "string"},
+          "ip": {"type": "string"},
+          "country": {"type": "string"},
+          "region": {"type": "string"},
+          "city": {"type": "string"},
+          "user-agent": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_clicked",
+      "name": "Email Clicked",
+      "description": "Triggered when a link in an email is clicked",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Filter by specific domain"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "recipient": {"type": "string"},
+          "domain": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "token": {"type": "string"},
+          "signature": {"type": "string"},
+          "url": {"type": "string"},
+          "ip": {"type": "string"},
+          "country": {"type": "string"},
+          "region": {"type": "string"},
+          "city": {"type": "string"},
+          "user-agent": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_bounced",
+      "name": "Email Bounced",
+      "description": "Triggered when an email bounces",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Filter by specific domain"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "recipient": {"type": "string"},
+          "domain": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "token": {"type": "string"},
+          "signature": {"type": "string"},
+          "code": {"type": "string"},
+          "error": {"type": "string"},
+          "notification": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_complained",
+      "name": "Email Complained",
+      "description": "Triggered when an email is marked as spam",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Filter by specific domain"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "recipient": {"type": "string"},
+          "domain": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "token": {"type": "string"},
+          "signature": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "email_unsubscribed",
+      "name": "Email Unsubscribed",
+      "description": "Triggered when a user unsubscribes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Filter by specific domain"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "recipient": {"type": "string"},
+          "domain": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "token": {"type": "string"},
+          "signature": {"type": "string"},
+          "tag": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/domains"
+  }
+}

@@ -1,0 +1,675 @@
+{
+  "id": "mixpanel",
+  "name": "Mixpanel",
+  "description": "Mixpanel analytics and user behavior tracking platform",
+  "category": "Analytics",
+  "icon": "mixpanel",
+  "color": "#7856FF",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Basic"
+    }
+  },
+  "baseUrl": "https://mixpanel.com/api",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Mixpanel",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "track_event",
+      "name": "Track Event",
+      "description": "Track an event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "Event name"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "distinct_id": {
+                "type": "string",
+                "description": "Unique identifier for the user"
+              },
+              "time": {
+                "type": "number",
+                "description": "Unix timestamp of when the event occurred"
+              },
+              "ip": {
+                "type": "string",
+                "description": "IP address of the user"
+              }
+            },
+            "additionalProperties": true,
+            "description": "Event properties"
+          },
+          "mp_lib": {
+            "type": "string",
+            "default": "api",
+            "description": "Library name"
+          }
+        },
+        "required": ["event", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_set",
+      "name": "Set Profile Properties",
+      "description": "Set properties on a user profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to set on the profile"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          },
+          "ignore_time": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, Mixpanel will not automatically update the Last Seen property"
+          },
+          "ignore_alias": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, Mixpanel will not alias the distinct_id"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_set_once",
+      "name": "Set Profile Properties Once",
+      "description": "Set properties on a user profile, but only if they don't exist",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to set on the profile"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_increment",
+      "name": "Increment Profile Properties",
+      "description": "Increment numeric properties on a user profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to increment (values should be numeric)"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_append",
+      "name": "Append to Profile List Properties",
+      "description": "Append values to list properties on a user profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to append to (values will be added to lists)"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_union",
+      "name": "Union Profile List Properties",
+      "description": "Union list properties on a user profile (add only unique values)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to union (arrays will be merged with existing arrays)"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_remove",
+      "name": "Remove from Profile List Properties",
+      "description": "Remove values from list properties on a user profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Properties to remove from (values will be removed from lists)"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_unset",
+      "name": "Unset Profile Properties",
+      "description": "Remove properties from a user profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "properties": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of property names to remove"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "properties"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "engage_profile_delete",
+      "name": "Delete Profile",
+      "description": "Delete a user profile",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Unique identifier for the user"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "alias",
+      "name": "Create Alias",
+      "description": "Create an alias for a distinct_id",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {
+            "type": "string",
+            "description": "Current distinct_id"
+          },
+          "alias": {
+            "type": "string",
+            "description": "New alias for the distinct_id"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address of the user"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          }
+        },
+        "required": ["distinct_id", "alias"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "import_events",
+      "name": "Import Events",
+      "description": "Import historical events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "event": {"type": "string"},
+                "properties": {"type": "object"}
+              },
+              "required": ["event", "properties"]
+            },
+            "description": "Array of events to import"
+          },
+          "strict": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, import will fail if any event is invalid"
+          }
+        },
+        "required": ["events"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "export_events",
+      "name": "Export Events",
+      "description": "Export events from Mixpanel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD)"
+          },
+          "event": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of event names to export"
+          },
+          "where": {
+            "type": "string",
+            "description": "Expression to filter events"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Data bucket"
+          }
+        },
+        "required": ["from_date", "to_date"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_insights",
+      "name": "Query Insights",
+      "description": "Query Mixpanel Insights API",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of event names to query"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["general", "unique", "average"],
+            "default": "general",
+            "description": "Query type"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["minute", "hour", "day", "week", "month"],
+            "default": "day",
+            "description": "Time unit"
+          },
+          "interval": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 365,
+            "default": 1,
+            "description": "Number of units"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD)"
+          },
+          "where": {
+            "type": "string",
+            "description": "Expression to filter events"
+          },
+          "on": {
+            "type": "string",
+            "description": "Property expression for segmentation"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Limit number of results"
+          }
+        },
+        "required": ["event"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_funnels",
+      "name": "Query Funnels",
+      "description": "Query Mixpanel Funnels API",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of event names for the funnel steps"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["minute", "hour", "day", "week", "month"],
+            "default": "day",
+            "description": "Time unit"
+          },
+          "interval": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 365,
+            "default": 1,
+            "description": "Number of units"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD)"
+          },
+          "where": {
+            "type": "string",
+            "description": "Expression to filter events"
+          },
+          "on": {
+            "type": "string",
+            "description": "Property expression for segmentation"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Limit number of results"
+          }
+        },
+        "required": ["events"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_cohorts",
+      "name": "Query Cohorts",
+      "description": "Get cohort data",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "born_event": {
+            "type": "string",
+            "description": "Event that defines birth"
+          },
+          "event": {
+            "type": "string",
+            "description": "Event to analyze"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["day", "week", "month"],
+            "default": "day",
+            "description": "Time unit"
+          },
+          "interval": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 365,
+            "default": 1,
+            "description": "Number of units"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD)"
+          },
+          "where": {
+            "type": "string",
+            "description": "Expression to filter events"
+          },
+          "born_where": {
+            "type": "string",
+            "description": "Expression to filter birth events"
+          }
+        },
+        "required": ["born_event"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "event_tracked",
+      "name": "Event Tracked",
+      "description": "Triggered when a specific event is tracked",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventName": {
+            "type": "string",
+            "description": "Filter by specific event name"
+          },
+          "propertyFilters": {
+            "type": "object",
+            "description": "Filter by event properties"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "distinct_id": {"type": "string"},
+          "properties": {"type": "object"},
+          "time": {"type": "number"},
+          "mp_lib": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "profile_updated",
+      "name": "Profile Updated",
+      "description": "Triggered when a user profile is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "propertyFilters": {
+            "type": "object",
+            "description": "Filter by profile properties"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {"type": "string"},
+          "operation": {"type": "string"},
+          "properties": {"type": "object"},
+          "time": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "funnel_completed",
+      "name": "Funnel Completed",
+      "description": "Triggered when a user completes a funnel",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "funnelId": {
+            "type": "string",
+            "description": "Filter by specific funnel ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {"type": "string"},
+          "funnel_id": {"type": "string"},
+          "steps": {"type": "array"},
+          "completion_time": {"type": "number"},
+          "time_to_complete": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "cohort_entered",
+      "name": "Cohort Entered",
+      "description": "Triggered when a user enters a cohort",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cohortId": {
+            "type": "string",
+            "description": "Filter by specific cohort ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "distinct_id": {"type": "string"},
+          "cohort_id": {"type": "string"},
+          "cohort_name": {"type": "string"},
+          "entered_at": {"type": "number"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/2.0/engage"
+  }
+}
