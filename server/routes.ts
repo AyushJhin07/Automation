@@ -4176,6 +4176,303 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================
+  // WEBHOOK BACKFILL ENGINE API
+  // ==========================================
+
+  // Create a new backfill job
+  app.post('/api/backfill/jobs', async (req, res) => {
+    try {
+      const { connectorId, workflowId, userId, timeWindow, strategy, config } = req.body;
+      
+      if (!connectorId || !workflowId || !userId || !timeWindow) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'ConnectorId, workflowId, userId, and timeWindow are required' 
+        });
+      }
+
+      if (!timeWindow.start || !timeWindow.end) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'TimeWindow must include start and end dates' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      const job = webhookBackfillEngine.createBackfillJob({
+        connectorId,
+        workflowId,
+        userId,
+        timeWindow: {
+          start: new Date(timeWindow.start),
+          end: new Date(timeWindow.end)
+        },
+        strategy,
+        config
+      });
+      
+      res.json({ 
+        success: true, 
+        job 
+      });
+    } catch (error) {
+      console.error('Error creating backfill job:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Start a backfill job
+  app.post('/api/backfill/jobs/:jobId/start', async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      
+      if (!jobId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Job ID is required' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      await webhookBackfillEngine.startBackfillJob(jobId);
+      
+      res.json({ 
+        success: true, 
+        message: 'Backfill job started successfully' 
+      });
+    } catch (error) {
+      console.error('Error starting backfill job:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Cancel a backfill job
+  app.post('/api/backfill/jobs/:jobId/cancel', async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      
+      if (!jobId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Job ID is required' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      webhookBackfillEngine.cancelBackfillJob(jobId);
+      
+      res.json({ 
+        success: true, 
+        message: 'Backfill job cancelled successfully' 
+      });
+    } catch (error) {
+      console.error('Error cancelling backfill job:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to cancel backfill job' 
+      });
+    }
+  });
+
+  // Get backfill job details
+  app.get('/api/backfill/jobs/:jobId', async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      
+      if (!jobId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Job ID is required' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      const job = webhookBackfillEngine.getBackfillJob(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Backfill job not found' 
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        job 
+      });
+    } catch (error) {
+      console.error('Error getting backfill job:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get backfill job' 
+      });
+    }
+  });
+
+  // List backfill jobs with filtering
+  app.get('/api/backfill/jobs', async (req, res) => {
+    try {
+      const { connectorId, workflowId, userId, status, timeRange } = req.query;
+      
+      let filters: any = {};
+      if (connectorId) filters.connectorId = connectorId.toString();
+      if (workflowId) filters.workflowId = workflowId.toString();
+      if (userId) filters.userId = userId.toString();
+      if (status) filters.status = status.toString();
+      
+      if (timeRange) {
+        const [start, end] = timeRange.toString().split(',');
+        filters.timeRange = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      const jobs = webhookBackfillEngine.listBackfillJobs(filters);
+      
+      res.json({ 
+        success: true, 
+        jobs,
+        total: jobs.length
+      });
+    } catch (error) {
+      console.error('Error listing backfill jobs:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to list backfill jobs' 
+      });
+    }
+  });
+
+  // Detect webhook downtime
+  app.post('/api/backfill/downtime', async (req, res) => {
+    try {
+      const { workflowId, connectorId, cause } = req.body;
+      
+      if (!workflowId || !connectorId || !cause) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'WorkflowId, connectorId, and cause are required' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      const downtimeRecord = webhookBackfillEngine.detectWebhookDowntime(workflowId, connectorId, cause);
+      
+      res.json({ 
+        success: true, 
+        downtimeRecord 
+      });
+    } catch (error) {
+      console.error('Error detecting webhook downtime:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to detect webhook downtime' 
+      });
+    }
+  });
+
+  // Resolve webhook downtime
+  app.post('/api/backfill/downtime/:downtimeId/resolve', async (req, res) => {
+    try {
+      const { downtimeId } = req.params;
+      
+      if (!downtimeId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Downtime ID is required' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      webhookBackfillEngine.resolveWebhookDowntime(downtimeId);
+      
+      res.json({ 
+        success: true, 
+        message: 'Webhook downtime resolved successfully' 
+      });
+    } catch (error) {
+      console.error('Error resolving webhook downtime:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to resolve webhook downtime' 
+      });
+    }
+  });
+
+  // Get connector backfill capabilities
+  app.get('/api/backfill/connectors/:connectorId/capabilities', async (req, res) => {
+    try {
+      const { connectorId } = req.params;
+      
+      if (!connectorId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Connector ID is required' 
+        });
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      const capabilities = webhookBackfillEngine.getConnectorCapabilities(connectorId);
+      
+      if (!capabilities) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Connector capabilities not found' 
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        capabilities 
+      });
+    } catch (error) {
+      console.error('Error getting connector capabilities:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get connector capabilities' 
+      });
+    }
+  });
+
+  // Get backfill analytics
+  app.get('/api/backfill/analytics', async (req, res) => {
+    try {
+      const { timeframe } = req.query;
+      
+      let timeframeObj = undefined;
+      if (timeframe) {
+        const [start, end] = timeframe.toString().split(',');
+        timeframeObj = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { webhookBackfillEngine } = await import('./core/WebhookBackfillEngine');
+      const analytics = webhookBackfillEngine.getBackfillAnalytics(timeframeObj);
+      
+      res.json({ 
+        success: true, 
+        analytics 
+      });
+    } catch (error) {
+      console.error('Error getting backfill analytics:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get backfill analytics' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
