@@ -1,113 +1,203 @@
 {
   "id": "adobesign",
   "name": "Adobe Acrobat Sign",
-  "category": "E-Signature",
   "description": "Adobe Acrobat Sign electronic signature and document workflow platform",
+  "category": "E-Signature",
+  "icon": "adobe-sign",
+  "color": "#FF0000",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://secure.na1.echosign.com/public/oauth",
       "tokenUrl": "https://api.na1.echosign.com/oauth/token",
-      "scopes": ["agreement_read", "agreement_write"]
+      "scopes": ["agreement_read", "agreement_write", "agreement_send"]
     }
   },
+  "baseUrl": "https://api.na1.echosign.com/api/rest/v6",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Adobe Sign",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_agreement",
       "name": "Create Agreement",
-      "description": "Create a new agreement in Adobe Sign",
+      "description": "Create a new agreement for signature",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Agreement name"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Agreement name"
+          },
+          "fileInfos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "documentURL": {"type": "string"},
+                "fileName": {"type": "string"},
+                "mimeType": {"type": "string"}
+              }
+            },
+            "description": "Array of file information objects"
+          },
+          "participantSetsInfo": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "memberInfos": {"type": "array"},
+                "order": {"type": "number"},
+                "role": {"type": "string", "enum": ["SIGNER", "APPROVER", "DELEGATOR", "FORM_FILLER"]}
+              }
+            },
+            "description": "Array of participant set information"
+          },
+          "signatureType": {
+            "type": "string",
+            "enum": ["ESIGN", "WRITTEN"],
+            "default": "ESIGN",
+            "description": "Signature type"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["IN_PROCESS", "AUTHORING"],
+            "default": "IN_PROCESS",
+            "description": "Agreement state"
+          },
+          "emailOption": {
+            "type": "object",
+            "properties": {
+              "sendOptions": {"type": "object"},
+              "reminderFrequency": {"type": "string"}
+            },
+            "description": "Email options"
+          },
+          "externalId": {
+            "type": "string",
+            "description": "External ID for tracking"
+          },
+          "message": {
+            "type": "string",
+            "description": "Custom message to participants"
+          }
         },
-        "fileInfos": {
-          "type": "array",
-          "required": true,
-          "description": "Array of file information objects"
-        },
-        "participantSetsInfo": {
-          "type": "array",
-          "required": true,
-          "description": "Array of participant set information"
-        },
-        "signatureType": {
-          "type": "string",
-          "required": false,
-          "description": "Signature type (ESIGN or WRITTEN)"
-        },
-        "state": {
-          "type": "string",
-          "required": false,
-          "description": "Agreement state (IN_PROCESS, AUTHORING)"
-        }
-      },
-      "requiredScopes": ["agreement_write"]
+        "required": ["name", "fileInfos", "participantSetsInfo"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "send_agreement",
-      "name": "Send Agreement for Signature",
-      "description": "Send an agreement for signature",
+      "name": "Send Agreement",
+      "description": "Send an agreement for signatures",
       "parameters": {
-        "agreementId": {
-          "type": "string",
-          "required": true,
-          "description": "Agreement ID to send"
-        }
-      },
-      "requiredScopes": ["agreement_write"]
+        "type": "object",
+        "properties": {
+          "agreementId": {
+            "type": "string",
+            "description": "Agreement ID to send"
+          }
+        },
+        "required": ["agreementId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_agreement_status",
-      "name": "Get Agreement Status",
-      "description": "Get the status of an agreement",
+      "id": "get_agreement",
+      "name": "Get Agreement",
+      "description": "Retrieve agreement details",
       "parameters": {
-        "agreementId": {
-          "type": "string",
-          "required": true,
-          "description": "Agreement ID"
-        }
-      },
-      "requiredScopes": ["agreement_read"]
+        "type": "object",
+        "properties": {
+          "agreementId": {
+            "type": "string",
+            "description": "Agreement ID"
+          }
+        },
+        "required": ["agreementId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "download_pdf",
-      "name": "Download PDF",
-      "description": "Download the signed PDF of an agreement",
+      "id": "cancel_agreement",
+      "name": "Cancel Agreement",
+      "description": "Cancel an agreement",
       "parameters": {
-        "agreementId": {
-          "type": "string",
-          "required": true,
-          "description": "Agreement ID"
-        }
-      },
-      "requiredScopes": ["agreement_read"]
+        "type": "object",
+        "properties": {
+          "agreementId": {
+            "type": "string",
+            "description": "Agreement ID to cancel"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Cancellation comment"
+          }
+        },
+        "required": ["agreementId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "agreement_signed",
-      "name": "Agreement Signed",
-      "description": "Triggered when an agreement is signed",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["AGREEMENT_WORKFLOW_COMPLETED"],
-        "entityTypes": ["agreement"]
+      "id": "agreement_workflow_completed",
+      "name": "Agreement Workflow Completed",
+      "description": "Triggered when an agreement is fully executed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agreementId": {
+            "type": "string",
+            "description": "Filter by specific agreement"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["agreement_read"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventType": {"type": "string"},
+          "agreementId": {"type": "string"},
+          "participantSetId": {"type": "string"},
+          "timestamp": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "agreement_cancelled",
-      "name": "Agreement Cancelled",
-      "description": "Triggered when an agreement is cancelled",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["AGREEMENT_WORKFLOW_CANCELLED"],
-        "entityTypes": ["agreement"]
+      "id": "agreement_action_completed",
+      "name": "Agreement Action Completed",
+      "description": "Triggered when a participant completes an action",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["agreement_read"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventType": {"type": "string"},
+          "agreementId": {"type": "string"},
+          "actionType": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

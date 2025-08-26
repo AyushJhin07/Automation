@@ -1,8 +1,10 @@
 {
   "id": "braze",
   "name": "Braze",
+  "description": "Braze customer engagement and marketing automation platform",
   "category": "Marketing",
-  "description": "Braze customer engagement platform for personalized messaging across channels",
+  "icon": "braze",
+  "color": "#FF6B35",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
@@ -12,93 +14,229 @@
       "prefix": "Bearer"
     }
   },
+  "baseUrl": "https://rest.iad-01.braze.com",
   "actions": [
     {
-      "id": "track_users",
-      "name": "Track Users",
-      "description": "Create or update user profiles in Braze",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Braze",
       "parameters": {
-        "users": {
-          "type": "array",
-          "required": true,
-          "description": "Array of user objects to track"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "send_campaigns",
-      "name": "Send Campaigns",
-      "description": "Send a campaign to specific users",
+      "id": "track_user_event",
+      "name": "Track User Event",
+      "description": "Track a custom event for a user",
       "parameters": {
-        "campaign_id": {
-          "type": "string",
-          "required": true,
-          "description": "Campaign ID to send"
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "external_id": {
+            "type": "string",
+            "description": "External user ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Event name"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event timestamp"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Event properties"
+          }
         },
-        "recipients": {
-          "type": "array",
-          "required": true,
-          "description": "Array of recipient objects"
-        },
-        "override_messaging_limits": {
-          "type": "boolean",
-          "required": false,
-          "description": "Override frequency capping"
-        }
-      },
-      "requiredScopes": []
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "trigger_canvas",
-      "name": "Trigger Canvas",
-      "description": "Trigger a Canvas flow for specific users",
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create or update a user profile",
       "parameters": {
-        "canvas_id": {
-          "type": "string",
-          "required": true,
-          "description": "Canvas ID to trigger"
+        "type": "object",
+        "properties": {
+          "external_id": {
+            "type": "string",
+            "description": "External user ID"
+          },
+          "user_alias": {
+            "type": "object",
+            "properties": {
+              "alias_name": {"type": "string"},
+              "alias_label": {"type": "string"}
+            },
+            "description": "User alias"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "date_of_birth": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of birth"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language preference"
+          },
+          "custom_attributes": {
+            "type": "object",
+            "description": "Custom user attributes"
+          }
         },
-        "recipients": {
-          "type": "array",
-          "required": true,
-          "description": "Array of recipient objects"
-        },
-        "canvas_entry_properties": {
-          "type": "object",
-          "required": false,
-          "description": "Canvas entry properties"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "subscription_update",
-      "name": "Update Subscription",
-      "description": "Update user subscription status",
+      "id": "send_message",
+      "name": "Send Message",
+      "description": "Send a message to users",
       "parameters": {
-        "external_id": {
-          "type": "string",
-          "required": false,
-          "description": "External user ID"
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "description": "Campaign ID"
+          },
+          "send_id": {
+            "type": "string",
+            "description": "Send ID for tracking"
+          },
+          "trigger_properties": {
+            "type": "object",
+            "description": "Properties for message personalization"
+          },
+          "broadcast": {
+            "type": "boolean",
+            "description": "Send to entire segment"
+          },
+          "audience": {
+            "type": "object",
+            "properties": {
+              "AND": {
+                "type": "array",
+                "description": "Audience filters"
+              }
+            },
+            "description": "Target audience"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "external_user_id": {"type": "string"},
+                "user_alias": {"type": "object"},
+                "trigger_properties": {"type": "object"}
+              }
+            },
+            "description": "Specific recipients"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": false,
-          "description": "User email address"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_campaign",
+      "name": "Create Campaign",
+      "description": "Create a new campaign",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Campaign name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Campaign description"
+          },
+          "messages": {
+            "type": "object",
+            "description": "Campaign messages"
+          },
+          "schedule": {
+            "type": "object",
+            "description": "Campaign schedule"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Campaign tags"
+          }
         },
-        "subscription_group_id": {
-          "type": "string",
-          "required": true,
-          "description": "Subscription group ID"
+        "required": ["name", "messages"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "export_users",
+      "name": "Export Users",
+      "description": "Export user data",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "external_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "User external IDs to export"
+          },
+          "user_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "User IDs to export"
+          },
+          "email_address": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Email addresses to export"
+          },
+          "phone": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Phone numbers to export"
+          },
+          "fields_to_export": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include in export"
+          }
         },
-        "subscription_state": {
-          "type": "string",
-          "required": true,
-          "description": "Subscription state (subscribed/unsubscribed)"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -106,34 +244,57 @@
       "id": "campaign_sent",
       "name": "Campaign Sent",
       "description": "Triggered when a campaign is sent",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["users.messages.send"],
-        "entityTypes": ["campaign"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "description": "Filter by campaign"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "type": {"type": "string"},
+          "tags": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "canvas_entry",
-      "name": "Canvas Entry",
-      "description": "Triggered when a user enters a Canvas",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["users.canvas.entry"],
-        "entityTypes": ["canvas"]
+      "id": "user_event",
+      "name": "User Event",
+      "description": "Triggered when a user performs an event",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_name": {
+            "type": "string",
+            "description": "Filter by event name"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "subscription_state_change",
-      "name": "Subscription State Change",
-      "description": "Triggered when subscription state changes",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["users.behaviors.subscription"],
-        "entityTypes": ["subscription"]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {"type": "string"},
+          "external_user_id": {"type": "string"},
+          "event_name": {"type": "string"},
+          "properties": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/canvas/data_series"
+  }
 }

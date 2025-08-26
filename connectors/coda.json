@@ -1,8 +1,10 @@
 {
   "id": "coda",
   "name": "Coda",
-  "category": "Docs/DB",
-  "description": "Coda integration for automated workflows",
+  "description": "Coda collaborative document and database platform",
+  "category": "Productivity",
+  "icon": "coda",
+  "color": "#F46A54",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
@@ -12,82 +14,345 @@
       "prefix": "Bearer"
     }
   },
+  "baseUrl": "https://coda.io/apis/v1",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Coda",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Coda",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Coda",
+      "id": "list_docs",
+      "name": "List Documents",
+      "description": "List Coda documents",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 25,
+            "description": "Number of documents to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "sourceDoc": {
+            "type": "string",
+            "description": "Filter by source document"
+          },
+          "isOwner": {
+            "type": "boolean",
+            "description": "Filter by ownership"
+          },
+          "isPublished": {
+            "type": "boolean",
+            "description": "Filter by published status"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Coda",
+      "id": "get_doc",
+      "name": "Get Document",
+      "description": "Get document information",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          }
+        },
+        "required": ["docId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tables",
+      "name": "List Tables",
+      "description": "List tables in a document",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 25,
+            "description": "Number of tables to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "sortBy": {
+            "type": "string",
+            "enum": ["name", "createdAt", "tableType"],
+            "description": "Sort field"
+          },
+          "tableTypes": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["table", "view"]},
+            "description": "Filter by table types"
+          }
+        },
+        "required": ["docId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_table",
+      "name": "Get Table",
+      "description": "Get table information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "tableIdOrName": {
+            "type": "string",
+            "description": "Table ID or name"
+          }
+        },
+        "required": ["docId", "tableIdOrName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_rows",
+      "name": "List Rows",
+      "description": "List rows in a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "tableIdOrName": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 25,
+            "description": "Number of rows to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "query": {
+            "type": "string",
+            "description": "Query filter"
+          },
+          "sortBy": {
+            "type": "string",
+            "enum": ["natural", "createdAt", "updatedAt"],
+            "description": "Sort field"
+          },
+          "useColumnNames": {
+            "type": "boolean",
+            "description": "Use column names instead of IDs"
+          },
+          "valueFormat": {
+            "type": "string",
+            "enum": ["simple", "simpleWithArrays", "rich"],
+            "description": "Value format"
+          },
+          "visibleOnly": {
+            "type": "boolean",
+            "description": "Return only visible rows"
+          }
+        },
+        "required": ["docId", "tableIdOrName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_row",
+      "name": "Create Row",
+      "description": "Create a new row in a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "tableIdOrName": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "row": {
+            "type": "object",
+            "properties": {
+              "cells": {
+                "type": "array",
+                "items": {"type": "object"}
+              }
+            },
+            "description": "Row data"
+          },
+          "keyColumns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Key columns for upsert"
+          },
+          "disableParsing": {
+            "type": "boolean",
+            "description": "Disable parsing of cell values"
+          }
+        },
+        "required": ["docId", "tableIdOrName", "row"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_row",
+      "name": "Update Row",
+      "description": "Update a row in a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "tableIdOrName": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "rowIdOrName": {
+            "type": "string",
+            "description": "Row ID or name"
+          },
+          "row": {
+            "type": "object",
+            "properties": {
+              "cells": {
+                "type": "array",
+                "items": {"type": "object"}
+              }
+            },
+            "description": "Updated row data"
+          },
+          "disableParsing": {
+            "type": "boolean",
+            "description": "Disable parsing of cell values"
+          }
+        },
+        "required": ["docId", "tableIdOrName", "rowIdOrName", "row"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_row",
+      "name": "Delete Row",
+      "description": "Delete a row from a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "tableIdOrName": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "rowIdOrName": {
+            "type": "string",
+            "description": "Row ID or name"
+          }
+        },
+        "required": ["docId", "tableIdOrName", "rowIdOrName"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "row_created",
+      "name": "Row Created",
+      "description": "Triggered when a row is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Filter by document"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Filter by table"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "href": {"type": "string"},
+          "values": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "row_updated",
+      "name": "Row Updated",
+      "description": "Triggered when a row is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "type": "string",
+            "description": "Filter by document"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "updatedAt": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/whoami"
+  }
 }

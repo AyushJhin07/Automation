@@ -1,111 +1,236 @@
 {
   "id": "brex",
   "name": "Brex",
-  "category": "Spend Management",
-  "description": "Brex integration for automated workflows",
+  "description": "Brex corporate credit card and expense management platform",
+  "category": "Finance",
+  "icon": "brex",
+  "color": "#6C47FF",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://accounts.brex.com/oauth/authorize",
-      "tokenUrl": "https://accounts.brex.com/oauth/token",
-      "scopes": [
-        "transactions:read",
-        "users:read"
-      ]
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
     }
   },
+  "baseUrl": "https://platform.brexapis.com/v2",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Brex",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Brex",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "transactions:read",
-        "users:read"
-      ]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Brex",
+      "id": "get_expenses",
+      "name": "Get Expenses",
+      "description": "Retrieve expense data",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of expenses to return"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user ID"
+          },
+          "parent_expense_id": {
+            "type": "string",
+            "description": "Filter by parent expense"
+          },
+          "budget_id": {
+            "type": "string",
+            "description": "Filter by budget"
+          },
+          "status": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["DRAFT", "SUBMITTED", "APPROVED", "DECLINED", "PAID"]},
+            "description": "Filter by status"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Expand related resources"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "transactions:read",
-        "users:read"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Brex",
+      "id": "create_expense",
+      "name": "Create Expense",
+      "description": "Create a new expense",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "transactions:read",
-        "users:read"
-      ]
+        "type": "object",
+        "properties": {
+          "owner_user_id": {
+            "type": "string",
+            "description": "Expense owner user ID"
+          },
+          "memo": {
+            "type": "string",
+            "description": "Expense memo"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "amount": {"type": "number"},
+              "currency": {"type": "string"}
+            },
+            "required": ["amount", "currency"],
+            "description": "Expense amount"
+          },
+          "expense_type_id": {
+            "type": "string",
+            "description": "Expense type ID"
+          },
+          "purchased_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Purchase date"
+          },
+          "receipts": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Expense receipts"
+          }
+        },
+        "required": ["owner_user_id", "amount"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Retrieve users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of users to return"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Filter by email"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Expand related resources"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_cards",
+      "name": "Get Cards",
+      "description": "Retrieve card information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of cards to return"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user ID"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Expand related resources"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_created",
+      "name": "Expense Created",
+      "description": "Triggered when a new expense is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "transactions:read",
-        "users:read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "memo": {"type": "string"},
+          "amount": {"type": "object"},
+          "status": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_updated",
+      "name": "Expense Updated",
+      "description": "Triggered when an expense is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "transactions:read",
-        "users:read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "status": {"type": "string"},
+          "updated_at": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users"
+  }
 }

@@ -1,9 +1,9 @@
 {
   "id": "confluence",
-  "name": "Confluence",
-  "description": "Atlassian Confluence wiki and collaboration",
-  "category": "Collaboration",
-  "icon": "enterprise",
+  "name": "Atlassian Confluence",
+  "description": "Atlassian Confluence team collaboration and knowledge management platform",
+  "category": "Documentation",
+  "icon": "confluence",
   "color": "#172B4D",
   "version": "1.0.0",
   "authentication": {
@@ -11,168 +11,332 @@
     "config": {
       "authUrl": "https://auth.atlassian.com/authorize",
       "tokenUrl": "https://auth.atlassian.com/oauth/token",
-      "scopes": [
-        "read:confluence-content.all",
-        "write:confluence-content",
-        "manage:confluence-content"
-      ]
+      "scopes": ["read:confluence-content.all", "write:confluence-content", "read:confluence-space.summary"]
     }
   },
   "baseUrl": "https://api.atlassian.com/ex/confluence",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Confluence and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read:user"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Confluence",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_page",
       "name": "Create Page",
-      "description": "Create a new Confluence page",
+      "description": "Create a new page in Confluence",
       "parameters": {
-        "space_key": {
-          "type": "string",
-          "required": true,
-          "description": "Space key"
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["page", "blogpost"],
+            "default": "page",
+            "description": "Content type"
+          },
+          "title": {
+            "type": "string",
+            "description": "Page title"
+          },
+          "space": {
+            "type": "object",
+            "properties": {
+              "key": {"type": "string"}
+            },
+            "description": "Space information"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "storage": {
+                "type": "object",
+                "properties": {
+                  "value": {"type": "string"},
+                  "representation": {"type": "string", "enum": ["storage", "view", "wiki"]}
+                }
+              }
+            },
+            "description": "Page content"
+          },
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"}
+              }
+            },
+            "description": "Parent pages"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Page metadata"
+          }
         },
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Page title"
-        },
-        "content": {
-          "type": "string",
-          "required": true,
-          "description": "Page content (Confluence storage format)"
-        },
-        "parent_id": {
-          "type": "string",
-          "required": false,
-          "description": "Parent page ID"
-        },
-        "labels": {
-          "type": "array",
-          "required": false,
-          "description": "Page labels"
-        }
-      },
-      "requiredScopes": [
-        "write:confluence-content"
-      ]
+        "required": ["cloudid", "title", "space", "body"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_page",
       "name": "Update Page",
-      "description": "Update an existing Confluence page",
+      "description": "Update an existing page",
       "parameters": {
-        "page_id": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID"
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "id": {
+            "type": "string",
+            "description": "Page ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["page", "blogpost"],
+            "description": "Content type"
+          },
+          "title": {
+            "type": "string",
+            "description": "Page title"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "storage": {
+                "type": "object",
+                "properties": {
+                  "value": {"type": "string"},
+                  "representation": {"type": "string"}
+                }
+              }
+            },
+            "description": "Updated page content"
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "number": {"type": "number"}
+            },
+            "description": "Version information"
+          }
         },
-        "title": {
-          "type": "string",
-          "required": false,
-          "description": "Updated page title"
+        "required": ["cloudid", "id", "version"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_page",
+      "name": "Get Page",
+      "description": "Get page information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "id": {
+            "type": "string",
+            "description": "Page ID"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Properties to expand"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["current", "trashed", "draft"],
+            "description": "Page status filter"
+          },
+          "version": {
+            "type": "number",
+            "description": "Specific version number"
+          }
         },
-        "content": {
-          "type": "string",
-          "required": false,
-          "description": "Updated page content"
+        "required": ["cloudid", "id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_content",
+      "name": "Search Content",
+      "description": "Search for content in Confluence",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "cql": {
+            "type": "string",
+            "description": "Confluence Query Language (CQL) query"
+          },
+          "cqlcontext": {
+            "type": "string",
+            "description": "Context for CQL query"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Properties to expand"
+          },
+          "start": {
+            "type": "number",
+            "description": "Starting index for results"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 25,
+            "description": "Number of results to return"
+          },
+          "includeArchivedSpaces": {
+            "type": "boolean",
+            "description": "Include archived spaces"
+          }
         },
-        "version_number": {
-          "type": "number",
-          "required": true,
-          "description": "Current version number"
-        }
-      },
-      "requiredScopes": [
-        "write:confluence-content"
-      ]
+        "required": ["cloudid", "cql"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_spaces",
+      "name": "Get Spaces",
+      "description": "Get Confluence spaces",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "spaceKey": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by space keys"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["global", "personal"],
+            "description": "Space type filter"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["current", "archived"],
+            "description": "Space status filter"
+          },
+          "label": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by labels"
+          },
+          "favourite": {
+            "type": "boolean",
+            "description": "Filter by favourite status"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Properties to expand"
+          },
+          "start": {
+            "type": "number",
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 25,
+            "description": "Number of spaces to return"
+          }
+        },
+        "required": ["cloudid"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "delete_page",
       "name": "Delete Page",
-      "description": "Delete a Confluence page",
+      "description": "Delete a page",
       "parameters": {
-        "page_id": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID to delete"
-        }
-      },
-      "requiredScopes": [
-        "manage:confluence-content"
-      ]
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "id": {
+            "type": "string",
+            "description": "Page ID to delete"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["current", "trashed"],
+            "description": "Current page status"
+          }
+        },
+        "required": ["cloudid", "id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "add_comment",
       "name": "Add Comment",
-      "description": "Add a comment to a Confluence page",
+      "description": "Add a comment to a page",
       "parameters": {
-        "page_id": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID"
+        "type": "object",
+        "properties": {
+          "cloudid": {
+            "type": "string",
+            "description": "Atlassian cloud ID"
+          },
+          "container": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "type": {"type": "string"}
+            },
+            "description": "Container (page) information"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "storage": {
+                "type": "object",
+                "properties": {
+                  "value": {"type": "string"},
+                  "representation": {"type": "string"}
+                }
+              }
+            },
+            "description": "Comment content"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["comment"],
+            "default": "comment",
+            "description": "Content type"
+          }
         },
-        "comment": {
-          "type": "string",
-          "required": true,
-          "description": "Comment content"
-        },
-        "parent_comment_id": {
-          "type": "string",
-          "required": false,
-          "description": "Parent comment ID for replies"
-        }
-      },
-      "requiredScopes": [
-        "write:confluence-content"
-      ]
-    },
-    {
-      "id": "add_attachment",
-      "name": "Add Attachment",
-      "description": "Add an attachment to a Confluence page",
-      "parameters": {
-        "page_id": {
-          "type": "string",
-          "required": true,
-          "description": "Page ID"
-        },
-        "filename": {
-          "type": "string",
-          "required": true,
-          "description": "Attachment filename"
-        },
-        "file_data": {
-          "type": "string",
-          "required": true,
-          "description": "Base64 encoded file data"
-        },
-        "comment": {
-          "type": "string",
-          "required": false,
-          "description": "Attachment comment"
-        }
-      },
-      "requiredScopes": [
-        "write:confluence-content"
-      ]
+        "required": ["cloudid", "container", "body"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -180,19 +344,56 @@
       "id": "page_created",
       "name": "Page Created",
       "description": "Triggered when a new page is created",
-      "parameters": {},
-      "requiredScopes": [
-        "read:confluence-content.all"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "spaceKey": {
+            "type": "string",
+            "description": "Filter by space"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "title": {"type": "string"},
+          "space": {"type": "object"}
+        }
+      }
     },
     {
       "id": "page_updated",
       "name": "Page Updated",
       "description": "Triggered when a page is updated",
-      "parameters": {},
-      "requiredScopes": [
-        "read:confluence-content.all"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "spaceKey": {
+            "type": "string",
+            "description": "Filter by space"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "version": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/{cloudid}/wiki/rest/api/space"
+  }
 }

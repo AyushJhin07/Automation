@@ -1,10 +1,10 @@
 {
   "id": "bamboohr",
   "name": "BambooHR",
-  "description": "BambooHR human resources management system",
-  "category": "HR Management",
-  "icon": "user-check",
-  "color": "#8CC152",
+  "description": "BambooHR human resources management platform",
+  "category": "HR",
+  "icon": "bamboo-hr",
+  "color": "#79A546",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
@@ -14,176 +14,188 @@
       "password": "{api_key}"
     }
   },
-  "baseUrl": "https://api.bamboohr.com/api/gateway.php/{company_domain}/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.bamboohr.com/api/gateway.php",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to BambooHR",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_employee",
+      "name": "Get Employee",
+      "description": "Retrieve employee information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "companyDomain": {
+            "type": "string",
+            "description": "Company domain"
+          },
+          "employeeId": {
+            "type": "string",
+            "description": "Employee ID"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields"
+          }
+        },
+        "required": ["companyDomain", "employeeId"],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_employee",
       "name": "Create Employee",
-      "description": "Add a new employee to BambooHR",
+      "description": "Create a new employee",
       "parameters": {
-        "firstName": {
-          "type": "string",
-          "required": true,
-          "description": "First name"
+        "type": "object",
+        "properties": {
+          "companyDomain": {
+            "type": "string",
+            "description": "Company domain"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "workEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Work email"
+          },
+          "hireDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Hire date"
+          },
+          "department": {
+            "type": "string",
+            "description": "Department"
+          },
+          "jobTitle": {
+            "type": "string",
+            "description": "Job title"
+          },
+          "supervisor": {
+            "type": "string",
+            "description": "Supervisor ID"
+          }
         },
-        "lastName": {
-          "type": "string",
-          "required": true,
-          "description": "Last name"
-        },
-        "workEmail": {
-          "type": "string",
-          "required": false,
-          "description": "Work email address"
-        },
-        "hireDate": {
-          "type": "string",
-          "required": false,
-          "description": "Hire date (YYYY-MM-DD)"
-        },
-        "department": {
-          "type": "string",
-          "required": false,
-          "description": "Department"
-        }
-      },
-      "requiredScopes": [
-        "employees:write"
-      ]
+        "required": ["companyDomain", "firstName", "lastName"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_employee",
       "name": "Update Employee",
       "description": "Update employee information",
       "parameters": {
-        "employeeId": {
-          "type": "string",
-          "required": true,
-          "description": "Employee ID"
+        "type": "object",
+        "properties": {
+          "companyDomain": {
+            "type": "string",
+            "description": "Company domain"
+          },
+          "employeeId": {
+            "type": "string",
+            "description": "Employee ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Fields to update"
+          }
         },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "employees:write"
-      ]
+        "required": ["companyDomain", "employeeId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "terminate_employee",
-      "name": "Terminate Employee",
-      "description": "Terminate an employee",
+      "id": "get_time_off_requests",
+      "name": "Get Time Off Requests",
+      "description": "Retrieve time off requests",
       "parameters": {
-        "employeeId": {
-          "type": "string",
-          "required": true,
-          "description": "Employee ID"
+        "type": "object",
+        "properties": {
+          "companyDomain": {
+            "type": "string",
+            "description": "Company domain"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "End date"
+          },
+          "employeeId": {
+            "type": "string",
+            "description": "Employee ID filter"
+          }
         },
-        "terminationDate": {
-          "type": "string",
-          "required": true,
-          "description": "Termination date"
-        },
-        "terminationType": {
-          "type": "string",
-          "required": false,
-          "description": "Termination type"
-        }
-      },
-      "requiredScopes": [
-        "employees:write"
-      ]
-    },
-    {
-      "id": "create_time_off_request",
-      "name": "Create Time Off Request",
-      "description": "Submit a time off request",
-      "parameters": {
-        "employeeId": {
-          "type": "string",
-          "required": true,
-          "description": "Employee ID"
-        },
-        "timeOffTypeId": {
-          "type": "string",
-          "required": true,
-          "description": "Time off type ID"
-        },
-        "start": {
-          "type": "string",
-          "required": true,
-          "description": "Start date (YYYY-MM-DD)"
-        },
-        "end": {
-          "type": "string",
-          "required": true,
-          "description": "End date (YYYY-MM-DD)"
-        },
-        "note": {
-          "type": "string",
-          "required": false,
-          "description": "Request note"
-        }
-      },
-      "requiredScopes": [
-        "time_off:write"
-      ]
-    },
-    {
-      "id": "approve_time_off",
-      "name": "Approve Time Off",
-      "description": "Approve a time off request",
-      "parameters": {
-        "requestId": {
-          "type": "string",
-          "required": true,
-          "description": "Time off request ID"
-        },
-        "status": {
-          "type": "string",
-          "required": true,
-          "description": "Approval status",
-          "options": [
-            "approved",
-            "denied"
-          ]
-        },
-        "note": {
-          "type": "string",
-          "required": false,
-          "description": "Approval note"
-        }
-      },
-      "requiredScopes": [
-        "time_off:write"
-      ]
+        "required": ["companyDomain"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "employee_added",
-      "name": "Employee Added",
-      "description": "Triggered when a new employee is added",
-      "parameters": {},
-      "requiredScopes": [
-        "employees:read"
-      ]
+      "id": "employee_created",
+      "name": "Employee Created",
+      "description": "Triggered when a new employee is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "workEmail": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "time_off_requested",
-      "name": "Time Off Requested",
-      "description": "Triggered when time off is requested",
-      "parameters": {},
-      "requiredScopes": [
-        "time_off:read"
-      ]
+      "id": "employee_updated",
+      "name": "Employee Updated",
+      "description": "Triggered when an employee is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "changes": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/{companyDomain}/v1/employees/directory"
+  }
 }

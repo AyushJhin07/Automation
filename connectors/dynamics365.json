@@ -1,235 +1,395 @@
 {
   "id": "dynamics365",
-  "name": "Microsoft Dynamics 365 (Sales)",
+  "name": "Microsoft Dynamics 365",
+  "description": "Microsoft Dynamics 365 business applications suite",
   "category": "CRM",
-  "description": "Microsoft Dynamics 365 Sales CRM platform for customer relationship management",
+  "icon": "dynamics365",
+  "color": "#0078D4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://{{org}}.crm.dynamics.com/.default"]
+      "scopes": ["https://dynamics.microsoft.com/user_impersonation"]
     }
   },
+  "baseUrl": "https://{organization}.dynamics.com/api/data/v9.2",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Dynamics 365",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_account",
       "name": "Create Account",
-      "description": "Create a new account in Dynamics 365",
+      "description": "Create a new account record",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Account name"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Account name"
+          },
+          "accountnumber": {
+            "type": "string",
+            "description": "Account number"
+          },
+          "telephone1": {
+            "type": "string",
+            "description": "Main phone number"
+          },
+          "emailaddress1": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary email address"
+          },
+          "websiteurl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Website URL"
+          },
+          "address1_line1": {
+            "type": "string",
+            "description": "Street address line 1"
+          },
+          "address1_city": {
+            "type": "string",
+            "description": "City"
+          },
+          "address1_stateorprovince": {
+            "type": "string",
+            "description": "State or province"
+          },
+          "address1_postalcode": {
+            "type": "string",
+            "description": "Postal code"
+          },
+          "address1_country": {
+            "type": "string",
+            "description": "Country"
+          },
+          "industrycode": {
+            "type": "number",
+            "description": "Industry code"
+          },
+          "revenue": {
+            "type": "number",
+            "description": "Annual revenue"
+          },
+          "numberofemployees": {
+            "type": "number",
+            "description": "Number of employees"
+          },
+          "description": {
+            "type": "string",
+            "description": "Account description"
+          }
         },
-        "telephone1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary phone number"
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_account",
+      "name": "Get Account",
+      "description": "Retrieve an account record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountid": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "$select": {
+            "type": "string",
+            "description": "Fields to select"
+          },
+          "$expand": {
+            "type": "string",
+            "description": "Related entities to expand"
+          }
         },
-        "emailaddress1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary email address"
-        },
-        "websiteurl": {
-          "type": "string",
-          "required": false,
-          "description": "Website URL"
-        },
-        "address1_line1": {
-          "type": "string",
-          "required": false,
-          "description": "Address line 1"
-        },
-        "address1_city": {
-          "type": "string",
-          "required": false,
-          "description": "City"
-        },
-        "address1_stateorprovince": {
-          "type": "string",
-          "required": false,
-          "description": "State or province"
-        },
-        "address1_postalcode": {
-          "type": "string",
-          "required": false,
-          "description": "Postal code"
-        }
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+        "required": ["accountid"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_account",
       "name": "Update Account",
-      "description": "Update an existing account in Dynamics 365",
+      "description": "Update an account record",
       "parameters": {
-        "accountid": {
-          "type": "string",
-          "required": true,
-          "description": "Account ID to update"
+        "type": "object",
+        "properties": {
+          "accountid": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Account name"
+          },
+          "telephone1": {
+            "type": "string",
+            "description": "Main phone number"
+          },
+          "emailaddress1": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary email address"
+          },
+          "websiteurl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Website URL"
+          },
+          "revenue": {
+            "type": "number",
+            "description": "Annual revenue"
+          },
+          "numberofemployees": {
+            "type": "number",
+            "description": "Number of employees"
+          },
+          "description": {
+            "type": "string",
+            "description": "Account description"
+          }
         },
-        "name": {
-          "type": "string",
-          "required": false,
-          "description": "Account name"
+        "required": ["accountid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_accounts",
+      "name": "List Accounts",
+      "description": "List account records",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "$select": {
+            "type": "string",
+            "description": "Fields to select"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "$orderby": {
+            "type": "string",
+            "description": "Sort order"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "default": 50,
+            "description": "Number of records to return"
+          },
+          "$skip": {
+            "type": "number",
+            "description": "Number of records to skip"
+          },
+          "$expand": {
+            "type": "string",
+            "description": "Related entities to expand"
+          }
         },
-        "telephone1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary phone number"
-        },
-        "emailaddress1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary email address"
-        },
-        "websiteurl": {
-          "type": "string",
-          "required": false,
-          "description": "Website URL"
-        }
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_contact",
       "name": "Create Contact",
-      "description": "Create a new contact in Dynamics 365",
+      "description": "Create a new contact record",
       "parameters": {
-        "firstname": {
-          "type": "string",
-          "required": true,
-          "description": "First name"
+        "type": "object",
+        "properties": {
+          "firstname": {
+            "type": "string",
+            "description": "First name"
+          },
+          "lastname": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "emailaddress1": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary email address"
+          },
+          "telephone1": {
+            "type": "string",
+            "description": "Business phone"
+          },
+          "mobilephone": {
+            "type": "string",
+            "description": "Mobile phone"
+          },
+          "jobtitle": {
+            "type": "string",
+            "description": "Job title"
+          },
+          "parentcustomerid_account@odata.bind": {
+            "type": "string",
+            "description": "Associated account (use /accounts(accountid) format)"
+          },
+          "address1_line1": {
+            "type": "string",
+            "description": "Street address line 1"
+          },
+          "address1_city": {
+            "type": "string",
+            "description": "City"
+          },
+          "address1_stateorprovince": {
+            "type": "string",
+            "description": "State or province"
+          },
+          "address1_postalcode": {
+            "type": "string",
+            "description": "Postal code"
+          },
+          "address1_country": {
+            "type": "string",
+            "description": "Country"
+          },
+          "description": {
+            "type": "string",
+            "description": "Contact description"
+          }
         },
-        "lastname": {
-          "type": "string",
-          "required": true,
-          "description": "Last name"
-        },
-        "emailaddress1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary email address"
-        },
-        "telephone1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary phone number"
-        },
-        "jobtitle": {
-          "type": "string",
-          "required": false,
-          "description": "Job title"
-        },
-        "parentcustomerid": {
-          "type": "string",
-          "required": false,
-          "description": "Associated account ID"
-        }
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+        "required": ["lastname"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_lead",
       "name": "Create Lead",
-      "description": "Create a new lead in Dynamics 365",
+      "description": "Create a new lead record",
       "parameters": {
-        "firstname": {
-          "type": "string",
-          "required": false,
-          "description": "First name"
+        "type": "object",
+        "properties": {
+          "firstname": {
+            "type": "string",
+            "description": "First name"
+          },
+          "lastname": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Lead topic"
+          },
+          "emailaddress1": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "telephone1": {
+            "type": "string",
+            "description": "Business phone"
+          },
+          "mobilephone": {
+            "type": "string",
+            "description": "Mobile phone"
+          },
+          "companyname": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "jobtitle": {
+            "type": "string",
+            "description": "Job title"
+          },
+          "industrycode": {
+            "type": "number",
+            "description": "Industry code"
+          },
+          "revenue": {
+            "type": "number",
+            "description": "Annual revenue"
+          },
+          "numberofemployees": {
+            "type": "number",
+            "description": "Number of employees"
+          },
+          "leadqualitycode": {
+            "type": "number",
+            "description": "Lead quality code"
+          },
+          "leadsourcecode": {
+            "type": "number",
+            "description": "Lead source code"
+          },
+          "description": {
+            "type": "string",
+            "description": "Lead description"
+          }
         },
-        "lastname": {
-          "type": "string",
-          "required": true,
-          "description": "Last name"
-        },
-        "subject": {
-          "type": "string",
-          "required": true,
-          "description": "Lead subject/topic"
-        },
-        "emailaddress1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary email address"
-        },
-        "telephone1": {
-          "type": "string",
-          "required": false,
-          "description": "Primary phone number"
-        },
-        "companyname": {
-          "type": "string",
-          "required": false,
-          "description": "Company name"
-        }
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+        "required": ["lastname", "subject"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_opportunity",
       "name": "Create Opportunity",
-      "description": "Create a new opportunity in Dynamics 365",
+      "description": "Create a new opportunity record",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Opportunity name"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Opportunity name"
+          },
+          "estimatedvalue": {
+            "type": "number",
+            "description": "Estimated revenue"
+          },
+          "estimatedclosedate": {
+            "type": "string",
+            "format": "date",
+            "description": "Estimated close date"
+          },
+          "closeprobability": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Close probability percentage"
+          },
+          "parentaccountid@odata.bind": {
+            "type": "string",
+            "description": "Associated account (use /accounts(accountid) format)"
+          },
+          "parentcontactid@odata.bind": {
+            "type": "string",
+            "description": "Associated contact (use /contacts(contactid) format)"
+          },
+          "salesstage": {
+            "type": "number",
+            "description": "Sales stage code"
+          },
+          "stepname": {
+            "type": "string",
+            "description": "Current pipeline phase"
+          },
+          "description": {
+            "type": "string",
+            "description": "Opportunity description"
+          }
         },
-        "estimatedvalue": {
-          "type": "number",
-          "required": false,
-          "description": "Estimated value"
-        },
-        "estimatedclosedate": {
-          "type": "string",
-          "required": false,
-          "description": "Estimated close date (ISO format)"
-        },
-        "parentaccountid": {
-          "type": "string",
-          "required": false,
-          "description": "Associated account ID"
-        },
-        "parentcontactid": {
-          "type": "string",
-          "required": false,
-          "description": "Associated contact ID"
-        }
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
-    },
-    {
-      "id": "add_activity_note",
-      "name": "Add Activity Note",
-      "description": "Add a note to a record in Dynamics 365",
-      "parameters": {
-        "subject": {
-          "type": "string",
-          "required": true,
-          "description": "Note subject"
-        },
-        "notetext": {
-          "type": "string",
-          "required": true,
-          "description": "Note content"
-        },
-        "objectid": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the record to attach note to"
-        },
-        "objecttypecode": {
-          "type": "string",
-          "required": true,
-          "description": "Type of record (account, contact, lead, opportunity)"
-        }
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+        "required": ["name"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -237,45 +397,70 @@
       "id": "account_created",
       "name": "Account Created",
       "description": "Triggered when a new account is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["Create"],
-        "entityTypes": ["account"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "industrycode": {
+            "type": "number",
+            "description": "Filter by industry"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
-    },
-    {
-      "id": "contact_created",
-      "name": "Contact Created", 
-      "description": "Triggered when a new contact is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["Create"],
-        "entityTypes": ["contact"]
-      },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "accountid": {"type": "string"},
+          "name": {"type": "string"},
+          "createdon": {"type": "string"}
+        }
+      }
     },
     {
       "id": "lead_created",
       "name": "Lead Created",
       "description": "Triggered when a new lead is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["Create"],
-        "entityTypes": ["lead"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "leadid": {"type": "string"},
+          "subject": {"type": "string"},
+          "fullname": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "opportunity_updated",
-      "name": "Opportunity Updated",
-      "description": "Triggered when an opportunity is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["Update"],
-        "entityTypes": ["opportunity"]
+      "id": "opportunity_won",
+      "name": "Opportunity Won",
+      "description": "Triggered when an opportunity is won",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["https://{{org}}.crm.dynamics.com/.default"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "opportunityid": {"type": "string"},
+          "name": {"type": "string"},
+          "actualvalue": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/accounts?$top=1"
+  }
 }

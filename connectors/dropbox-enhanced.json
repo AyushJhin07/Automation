@@ -1,93 +1,429 @@
 {
   "id": "dropbox-enhanced",
   "name": "Dropbox Enhanced",
-  "description": "Dropbox Enhanced integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "description": "Enhanced Dropbox cloud storage platform with advanced features",
+  "category": "File Storage",
+  "icon": "dropbox",
   "color": "#0061FF",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://www.dropbox.com/oauth2/authorize",
+      "tokenUrl": "https://api.dropboxapi.com/oauth2/token",
+      "scopes": ["files.content.write", "files.content.read", "files.metadata.write", "files.metadata.read", "sharing.write", "sharing.read"]
+    }
   },
-  "baseUrl": "https://api.dropbox.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.dropboxapi.com/2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Dropbox Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "account_info.read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Dropbox",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to Dropbox",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Destination path in Dropbox"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content (base64 encoded)"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["add", "overwrite", "update"],
+            "default": "add",
+            "description": "Write mode"
+          },
+          "autorename": {
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-rename if file exists"
+          },
+          "client_modified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Client modification time"
+          },
+          "mute": {
+            "type": "boolean",
+            "default": false,
+            "description": "Mute notifications"
+          },
+          "strict_conflict": {
+            "type": "boolean",
+            "default": false,
+            "description": "Force conflict resolution"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["path", "content"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "download_file",
+      "name": "Download File",
+      "description": "Download a file from Dropbox",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path in Dropbox"
+          },
+          "rev": {
+            "type": "string",
+            "description": "Specific revision to download"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_folder",
+      "name": "List Folder",
+      "description": "List contents of a folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "default": "",
+            "description": "Folder path to list"
+          },
+          "recursive": {
+            "type": "boolean",
+            "default": false,
+            "description": "List recursively"
+          },
+          "include_media_info": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include media info"
+          },
+          "include_deleted": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include deleted files"
+          },
+          "include_has_explicit_shared_members": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include sharing info"
+          },
+          "include_mounted_folders": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include mounted folders"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 10,
+            "description": "Maximum files to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create a new folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Folder path to create"
+          },
+          "autorename": {
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-rename if folder exists"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_file",
+      "name": "Delete File",
+      "description": "Delete a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to delete"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "move_file",
+      "name": "Move File",
+      "description": "Move a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_path": {
+            "type": "string",
+            "description": "Source path"
+          },
+          "to_path": {
+            "type": "string",
+            "description": "Destination path"
+          },
+          "allow_shared_folder": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow moving shared folders"
+          },
+          "autorename": {
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-rename if destination exists"
+          },
+          "allow_ownership_transfer": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow ownership transfer"
+          }
+        },
+        "required": ["from_path", "to_path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "copy_file",
+      "name": "Copy File",
+      "description": "Copy a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_path": {
+            "type": "string",
+            "description": "Source path"
+          },
+          "to_path": {
+            "type": "string",
+            "description": "Destination path"
+          },
+          "allow_shared_folder": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow copying shared folders"
+          },
+          "autorename": {
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-rename if destination exists"
+          },
+          "allow_ownership_transfer": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow ownership transfer"
+          }
+        },
+        "required": ["from_path", "to_path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_metadata",
+      "name": "Get Metadata",
+      "description": "Get file or folder metadata",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File or folder path"
+          },
+          "include_media_info": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include media information"
+          },
+          "include_deleted": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include deleted files"
+          },
+          "include_has_explicit_shared_members": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include sharing info"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_shared_link",
+      "name": "Create Shared Link",
+      "description": "Create a shared link for a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to share"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "requested_visibility": {"type": "string", "enum": ["public", "team_only", "password"]},
+              "link_password": {"type": "string"},
+              "expires": {"type": "string", "format": "date-time"}
+            },
+            "description": "Shared link settings"
+          },
+          "short_url": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create short URL"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search",
+      "name": "Search Files",
+      "description": "Search for files and folders",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "start": {
+            "type": "number",
+            "default": 0,
+            "description": "Starting index"
+          },
+          "max_results": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Maximum results"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["filename", "filename_and_content", "deleted_filename"],
+            "default": "filename",
+            "description": "Search mode"
+          },
+          "include_highlights": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include search highlights"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "file_uploaded",
+      "name": "File Uploaded",
+      "description": "Triggered when a file is uploaded",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path_prefix": {
+            "type": "string",
+            "description": "Monitor specific path"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "path_lower": {"type": "string"},
+          "name": {"type": "string"},
+          "size": {"type": "number"},
+          "client_modified": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "file_deleted",
+      "name": "File Deleted",
+      "description": "Triggered when a file is deleted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path_prefix": {
+            "type": "string",
+            "description": "Monitor specific path"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "path_lower": {"type": "string"},
+          "name": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "folder_shared",
+      "name": "Folder Shared",
+      "description": "Triggered when a folder is shared",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "shared_folder_id": {"type": "string"},
+          "name": {"type": "string"},
+          "access_type": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "POST",
+    "endpoint": "/users/get_current_account"
+  }
 }

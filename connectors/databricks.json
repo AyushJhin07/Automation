@@ -1,141 +1,352 @@
 {
   "id": "databricks",
   "name": "Databricks",
-  "description": "Databricks unified analytics platform",
+  "description": "Databricks unified analytics platform for big data and machine learning",
   "category": "Data Analytics",
-  "icon": "enterprise",
+  "icon": "databricks",
   "color": "#FF3621",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization",
+      "prefix": "Bearer"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://{workspace}.cloud.databricks.com/api/2.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Databricks and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Databricks",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Databricks",
+      "id": "list_clusters",
+      "name": "List Clusters",
+      "description": "List available clusters",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Databricks",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "can_use_client": {
+            "type": "string",
+            "description": "Client type filter"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Databricks",
+      "id": "get_cluster",
+      "name": "Get Cluster",
+      "description": "Get cluster information",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Databricks",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string",
+            "description": "Cluster ID"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["cluster_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Databricks",
+      "id": "start_cluster",
+      "name": "Start Cluster",
+      "description": "Start a cluster",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string",
+            "description": "Cluster ID to start"
+          }
+        },
+        "required": ["cluster_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "stop_cluster",
+      "name": "Stop Cluster",
+      "description": "Stop a cluster",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string",
+            "description": "Cluster ID to stop"
+          }
+        },
+        "required": ["cluster_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "submit_run",
+      "name": "Submit Run",
+      "description": "Submit a new job run",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string",
+            "description": "Name for the run"
+          },
+          "new_cluster": {
+            "type": "object",
+            "properties": {
+              "spark_version": {"type": "string"},
+              "node_type_id": {"type": "string"},
+              "num_workers": {"type": "number"}
+            },
+            "description": "New cluster configuration"
+          },
+          "existing_cluster_id": {
+            "type": "string",
+            "description": "Existing cluster ID"
+          },
+          "notebook_task": {
+            "type": "object",
+            "properties": {
+              "notebook_path": {"type": "string"},
+              "base_parameters": {"type": "object"}
+            },
+            "description": "Notebook task configuration"
+          },
+          "spark_jar_task": {
+            "type": "object",
+            "properties": {
+              "main_class_name": {"type": "string"},
+              "parameters": {"type": "array", "items": {"type": "string"}}
+            },
+            "description": "Spark JAR task configuration"
+          },
+          "spark_python_task": {
+            "type": "object",
+            "properties": {
+              "python_file": {"type": "string"},
+              "parameters": {"type": "array", "items": {"type": "string"}}
+            },
+            "description": "Spark Python task configuration"
+          },
+          "spark_submit_task": {
+            "type": "object",
+            "properties": {
+              "parameters": {"type": "array", "items": {"type": "string"}}
+            },
+            "description": "Spark submit task configuration"
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "description": "Job timeout in seconds"
+          },
+          "idempotency_token": {
+            "type": "string",
+            "description": "Idempotency token"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_run",
+      "name": "Get Run",
+      "description": "Get run information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "number",
+            "description": "Run ID"
+          },
+          "include_history": {
+            "type": "boolean",
+            "description": "Include run history"
+          }
+        },
+        "required": ["run_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "cancel_run",
+      "name": "Cancel Run",
+      "description": "Cancel a run",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "number",
+            "description": "Run ID to cancel"
+          }
+        },
+        "required": ["run_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_jobs",
+      "name": "List Jobs",
+      "description": "List jobs",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 25,
+            "default": 20,
+            "description": "Number of jobs to return"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Pagination offset"
+          },
+          "expand_tasks": {
+            "type": "boolean",
+            "description": "Include task details"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_job",
+      "name": "Create Job",
+      "description": "Create a new job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Job name"
+          },
+          "new_cluster": {
+            "type": "object",
+            "description": "New cluster configuration"
+          },
+          "existing_cluster_id": {
+            "type": "string",
+            "description": "Existing cluster ID"
+          },
+          "notebook_task": {
+            "type": "object",
+            "description": "Notebook task configuration"
+          },
+          "spark_jar_task": {
+            "type": "object",
+            "description": "Spark JAR task configuration"
+          },
+          "libraries": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Job libraries"
+          },
+          "email_notifications": {
+            "type": "object",
+            "properties": {
+              "on_start": {"type": "array", "items": {"type": "string"}},
+              "on_success": {"type": "array", "items": {"type": "string"}},
+              "on_failure": {"type": "array", "items": {"type": "string"}}
+            },
+            "description": "Email notification settings"
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "description": "Job timeout in seconds"
+          },
+          "max_retries": {
+            "type": "number",
+            "description": "Maximum retry attempts"
+          },
+          "min_retry_interval_millis": {
+            "type": "number",
+            "description": "Minimum retry interval in milliseconds"
+          },
+          "retry_on_timeout": {
+            "type": "boolean",
+            "description": "Retry on timeout"
+          },
+          "schedule": {
+            "type": "object",
+            "properties": {
+              "quartz_cron_expression": {"type": "string"},
+              "timezone_id": {"type": "string"}
+            },
+            "description": "Job schedule configuration"
+          },
+          "max_concurrent_runs": {
+            "type": "number",
+            "description": "Maximum concurrent runs"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Databricks",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "job_completed",
+      "name": "Job Completed",
+      "description": "Triggered when a job completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "number",
+            "description": "Filter by job ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "run_id": {"type": "number"},
+          "job_id": {"type": "number"},
+          "run_name": {"type": "string"},
+          "state": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Databricks",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "cluster_started",
+      "name": "Cluster Started",
+      "description": "Triggered when a cluster starts",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {"type": "string"},
+          "cluster_name": {"type": "string"},
+          "state": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/clusters/list"
+  }
 }

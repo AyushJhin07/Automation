@@ -1,111 +1,252 @@
 {
   "id": "bigcommerce",
   "name": "BigCommerce",
-  "category": "E-commerce",
-  "description": "BigCommerce integration for automated workflows",
+  "description": "BigCommerce e-commerce platform",
+  "category": "E-Commerce",
+  "icon": "bigcommerce",
+  "color": "#121118",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "store_v2_products",
-        "store_v2_orders"
-      ]
+      "type": "header",
+      "name": "X-Auth-Token"
     }
   },
+  "baseUrl": "https://api.bigcommerce.com/stores/{store_hash}/v3",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in BigCommerce",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to BigCommerce",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "store_v2_products",
-        "store_v2_orders"
-      ]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in BigCommerce",
+      "id": "create_product",
+      "name": "Create Product",
+      "description": "Create a new product",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Product name"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["physical", "digital"],
+            "description": "Product type"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Product SKU"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description"
+          },
+          "price": {
+            "type": "number",
+            "description": "Product price"
+          },
+          "weight": {
+            "type": "number",
+            "description": "Product weight"
+          },
+          "categories": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Category IDs"
+          },
+          "is_visible": {
+            "type": "boolean",
+            "default": true,
+            "description": "Product visibility"
+          },
+          "inventory_level": {
+            "type": "number",
+            "description": "Inventory level"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "store_v2_products",
-        "store_v2_orders"
-      ]
+        "required": ["name", "type", "price"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from BigCommerce",
+      "id": "update_product",
+      "name": "Update Product",
+      "description": "Update an existing product",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "store_v2_products",
-        "store_v2_orders"
-      ]
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "number",
+            "description": "Product ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product name"
+          },
+          "price": {
+            "type": "number",
+            "description": "Product price"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description"
+          },
+          "inventory_level": {
+            "type": "number",
+            "description": "Inventory level"
+          }
+        },
+        "required": ["product_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_product",
+      "name": "Get Product",
+      "description": "Retrieve a product by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "number",
+            "description": "Product ID"
+          }
+        },
+        "required": ["product_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_products",
+      "name": "List Products",
+      "description": "List products with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of products to return"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by product name"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Filter by SKU"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["physical", "digital"],
+            "description": "Filter by product type"
+          },
+          "categories:in": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Filter by category IDs"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a new order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "number",
+            "description": "Customer ID"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {"type": "number"},
+                "quantity": {"type": "number"}
+              }
+            },
+            "description": "Order products"
+          },
+          "billing_address": {
+            "type": "object",
+            "description": "Billing address"
+          },
+          "shipping_address": {
+            "type": "object",
+            "description": "Shipping address"
+          }
+        },
+        "required": ["products"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "order_created",
+      "name": "Order Created",
+      "description": "Triggered when a new order is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "store_v2_products",
-        "store_v2_orders"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "status": {"type": "string"},
+          "total": {"type": "string"},
+          "customer_id": {"type": "number"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "product_updated",
+      "name": "Product Updated",
+      "description": "Triggered when a product is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "store_v2_products",
-        "store_v2_orders"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "name": {"type": "string"},
+          "sku": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/store"
+  }
 }

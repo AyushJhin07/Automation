@@ -1,9 +1,9 @@
 {
   "id": "excel-online",
-  "name": "Excel Online",
-  "description": "Microsoft Excel Online spreadsheets",
+  "name": "Microsoft Excel Online",
+  "description": "Microsoft Excel Online spreadsheet application",
   "category": "Productivity",
-  "icon": "placeholder",
+  "icon": "excel",
   "color": "#217346",
   "version": "1.0.0",
   "authentication": {
@@ -11,178 +11,370 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": [
-        "https://graph.microsoft.com/Files.ReadWrite"
-      ]
+      "scopes": ["https://graph.microsoft.com/Files.ReadWrite"]
     }
   },
   "baseUrl": "https://graph.microsoft.com/v1.0",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Excel Online and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Excel Online",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_workbook",
+      "name": "Create Workbook",
+      "description": "Create a new Excel workbook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID where to create the workbook"
+          },
+          "parentPath": {
+            "type": "string",
+            "default": "/",
+            "description": "Parent folder path"
+          },
+          "name": {
+            "type": "string",
+            "description": "Workbook name"
+          }
+        },
+        "required": ["driveId", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_workbook",
+      "name": "Get Workbook",
+      "description": "Get workbook information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          }
+        },
+        "required": ["driveId", "itemId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_worksheets",
+      "name": "List Worksheets",
+      "description": "List worksheets in a workbook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          }
+        },
+        "required": ["driveId", "itemId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_worksheet",
+      "name": "Create Worksheet",
+      "description": "Create a new worksheet",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Worksheet name"
+          }
+        },
+        "required": ["driveId", "itemId", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_range",
+      "name": "Get Range",
+      "description": "Get values from a cell range",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "worksheetId": {
+            "type": "string",
+            "description": "Worksheet ID or name"
+          },
+          "address": {
+            "type": "string",
+            "description": "Cell range address (e.g., A1:C10)"
+          },
+          "valueOnly": {
+            "type": "boolean",
+            "default": true,
+            "description": "Return only values"
+          }
+        },
+        "required": ["driveId", "itemId", "worksheetId", "address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_range",
+      "name": "Update Range",
+      "description": "Update values in a cell range",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "worksheetId": {
+            "type": "string",
+            "description": "Worksheet ID or name"
+          },
+          "address": {
+            "type": "string",
+            "description": "Cell range address (e.g., A1:C10)"
+          },
+          "values": {
+            "type": "array",
+            "items": {"type": "array"},
+            "description": "2D array of values to set"
+          },
+          "numberFormat": {
+            "type": "array",
+            "items": {"type": "array"},
+            "description": "2D array of number formats"
+          }
+        },
+        "required": ["driveId", "itemId", "worksheetId", "address", "values"],
+        "additionalProperties": false
       }
     },
     {
       "id": "add_row",
       "name": "Add Row",
-      "description": "Add a row to an Excel worksheet",
+      "description": "Add a row to a table",
       "parameters": {
-        "workbookId": {
-          "type": "string",
-          "required": true,
-          "description": "Workbook ID"
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "worksheetId": {
+            "type": "string",
+            "description": "Worksheet ID or name"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "values": {
+            "type": "array",
+            "items": {"type": "array"},
+            "description": "Row values as 2D array"
+          },
+          "index": {
+            "type": "number",
+            "description": "Index where to insert row"
+          }
         },
-        "worksheet": {
-          "type": "string",
-          "required": true,
-          "description": "Worksheet name"
-        },
-        "values": {
-          "type": "array",
-          "required": true,
-          "description": "Array of cell values"
-        }
-      },
-      "requiredScopes": [
-        "Files.ReadWrite"
-      ]
+        "required": ["driveId", "itemId", "worksheetId", "tableId", "values"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_row",
-      "name": "Update Row",
-      "description": "Update a row in an Excel worksheet",
+      "id": "list_tables",
+      "name": "List Tables",
+      "description": "List tables in a worksheet",
       "parameters": {
-        "workbookId": {
-          "type": "string",
-          "required": true,
-          "description": "Workbook ID"
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "worksheetId": {
+            "type": "string",
+            "description": "Worksheet ID or name"
+          }
         },
-        "worksheet": {
-          "type": "string",
-          "required": true,
-          "description": "Worksheet name"
-        },
-        "rowIndex": {
-          "type": "number",
-          "required": true,
-          "description": "Row index (1-based)"
-        },
-        "values": {
-          "type": "array",
-          "required": true,
-          "description": "Array of new cell values"
-        }
-      },
-      "requiredScopes": [
-        "Files.ReadWrite"
-      ]
-    },
-    {
-      "id": "get_range",
-      "name": "Get Range",
-      "description": "Get values from a range in Excel",
-      "parameters": {
-        "workbookId": {
-          "type": "string",
-          "required": true,
-          "description": "Workbook ID"
-        },
-        "worksheet": {
-          "type": "string",
-          "required": true,
-          "description": "Worksheet name"
-        },
-        "rangeA1": {
-          "type": "string",
-          "required": true,
-          "description": "A1 notation range"
-        }
-      },
-      "requiredScopes": [
-        "Files.Read"
-      ]
+        "required": ["driveId", "itemId", "worksheetId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_table",
       "name": "Create Table",
-      "description": "Create a table in Excel",
+      "description": "Create a new table",
       "parameters": {
-        "workbookId": {
-          "type": "string",
-          "required": true,
-          "description": "Workbook ID"
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "worksheetId": {
+            "type": "string",
+            "description": "Worksheet ID or name"
+          },
+          "address": {
+            "type": "string",
+            "description": "Table range address"
+          },
+          "hasHeaders": {
+            "type": "boolean",
+            "default": true,
+            "description": "Table has headers"
+          }
         },
-        "worksheet": {
-          "type": "string",
-          "required": true,
-          "description": "Worksheet name"
+        "required": ["driveId", "itemId", "worksheetId", "address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_chart",
+      "name": "Create Chart",
+      "description": "Create a chart in the worksheet",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Drive ID"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Workbook item ID"
+          },
+          "worksheetId": {
+            "type": "string",
+            "description": "Worksheet ID or name"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ColumnClustered", "ColumnStacked", "Line", "Pie", "XYScatter", "Area"],
+            "description": "Chart type"
+          },
+          "sourceData": {
+            "type": "string",
+            "description": "Source data range"
+          },
+          "seriesBy": {
+            "type": "string",
+            "enum": ["Auto", "Columns", "Rows"],
+            "default": "Auto",
+            "description": "How series are arranged"
+          }
         },
-        "rangeA1": {
-          "type": "string",
-          "required": true,
-          "description": "Range for the table"
-        }
-      },
-      "requiredScopes": [
-        "Files.ReadWrite"
-      ]
+        "required": ["driveId", "itemId", "worksheetId", "type", "sourceData"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "row_added",
-      "name": "Row Added",
-      "description": "Triggered when a row is added",
+      "id": "workbook_modified",
+      "name": "Workbook Modified",
+      "description": "Triggered when a workbook is modified",
+      "type": "webhook",
       "parameters": {
-        "workbookId": {
-          "type": "string",
-          "required": true,
-          "description": "Workbook ID"
+        "type": "object",
+        "properties": {
+          "driveId": {
+            "type": "string",
+            "description": "Filter by drive"
+          }
         },
-        "worksheet": {
-          "type": "string",
-          "required": true,
-          "description": "Worksheet name"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Files.Read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "lastModifiedDateTime": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "row_updated",
-      "name": "Row Updated",
-      "description": "Triggered when a row is updated",
+      "id": "table_row_added",
+      "name": "Table Row Added",
+      "description": "Triggered when a row is added to a table",
+      "type": "webhook",
       "parameters": {
-        "workbookId": {
-          "type": "string",
-          "required": true,
-          "description": "Workbook ID"
+        "type": "object",
+        "properties": {
+          "tableId": {
+            "type": "string",
+            "description": "Filter by table"
+          }
         },
-        "worksheet": {
-          "type": "string",
-          "required": true,
-          "description": "Worksheet name"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Files.Read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "tableId": {"type": "string"},
+          "rowIndex": {"type": "number"},
+          "values": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/me/drive"
+  }
 }

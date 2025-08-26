@@ -1,93 +1,337 @@
 {
   "id": "expensify",
   "name": "Expensify",
-  "category": "Expenses",
-  "description": "Expensify integration for automated workflows",
+  "description": "Expensify expense management and reporting platform",
+  "category": "Finance",
+  "icon": "expensify",
+  "color": "#03D47C",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "type": "query",
+      "name": "partnerUserID"
     }
   },
+  "baseUrl": "https://integrations.expensify.com/Integration-Server/ExpensifyIntegrations",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Expensify",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Expensify",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Expensify",
+      "id": "create_expense",
+      "name": "Create Expense",
+      "description": "Create a new expense",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Expense amount in cents"
+          },
+          "currency": {
+            "type": "string",
+            "default": "USD",
+            "description": "Currency code"
+          },
+          "merchant": {
+            "type": "string",
+            "description": "Merchant name"
+          },
+          "created": {
+            "type": "string",
+            "format": "date",
+            "description": "Expense date (YYYY-MM-DD)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Expense category"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Expense tag"
+          },
+          "billable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Is expense billable"
+          },
+          "reimbursable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Is expense reimbursable"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Expense comment"
+          },
+          "receiptFilename": {
+            "type": "string",
+            "description": "Receipt filename"
+          },
+          "receiptData": {
+            "type": "string",
+            "description": "Receipt data (base64 encoded)"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": ["partnerUserSecret", "amount", "merchant", "created"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Expensify",
+      "id": "get_expense_reports",
+      "name": "Get Expense Reports",
+      "description": "Retrieve expense reports",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date filter (YYYY-MM-DD)"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "End date filter (YYYY-MM-DD)"
+          },
+          "reportState": {
+            "type": "string",
+            "enum": ["OPEN", "PROCESSING", "APPROVED", "REIMBURSED", "ARCHIVED"],
+            "description": "Filter by report state"
+          },
+          "policyID": {
+            "type": "string",
+            "description": "Filter by policy ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 25,
+            "description": "Maximum reports to return"
+          }
+        },
+        "required": ["partnerUserSecret"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_expense_report",
+      "name": "Get Expense Report",
+      "description": "Get a specific expense report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          },
+          "reportID": {
+            "type": "string",
+            "description": "Report ID"
+          },
+          "returnRandomFileName": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return random filename for export"
+          }
+        },
+        "required": ["partnerUserSecret", "reportID"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "export_report",
+      "name": "Export Report",
+      "description": "Export an expense report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          },
+          "reportIDList": {
+            "type": "string",
+            "description": "Comma-separated report IDs"
+          },
+          "template": {
+            "type": "string",
+            "description": "Export template code"
+          },
+          "fileExtension": {
+            "type": "string",
+            "enum": ["csv", "pdf"],
+            "default": "csv",
+            "description": "Export file format"
+          },
+          "onReceive": {
+            "type": "string",
+            "enum": ["returnRandomFileName", "markAsExported"],
+            "description": "Action on export"
+          }
+        },
+        "required": ["partnerUserSecret", "reportIDList"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_policies",
+      "name": "Get Policies",
+      "description": "Retrieve expense policies",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          }
+        },
+        "required": ["partnerUserSecret"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_policy_tags",
+      "name": "Create Policy Tags",
+      "description": "Create tags for a policy",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          },
+          "policyID": {
+            "type": "string",
+            "description": "Policy ID"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated tag names"
+          }
+        },
+        "required": ["partnerUserSecret", "policyID", "tags"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "upload_receipt",
+      "name": "Upload Receipt",
+      "description": "Upload a receipt file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "partnerUserSecret": {
+            "type": "string",
+            "description": "Partner user secret"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Receipt filename"
+          },
+          "receiptData": {
+            "type": "string",
+            "description": "Receipt data (base64 encoded)"
+          },
+          "transactionID": {
+            "type": "string",
+            "description": "Transaction ID to attach receipt to"
+          }
+        },
+        "required": ["partnerUserSecret", "filename", "receiptData"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_report_submitted",
+      "name": "Expense Report Submitted",
+      "description": "Triggered when an expense report is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policyID": {
+            "type": "string",
+            "description": "Filter by policy"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "reportID": {"type": "string"},
+          "reportName": {"type": "string"},
+          "total": {"type": "number"},
+          "state": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_report_approved",
+      "name": "Expense Report Approved",
+      "description": "Triggered when an expense report is approved",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "reportID": {"type": "string"},
+          "approver": {"type": "string"},
+          "approvedDate": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "expense_created",
+      "name": "Expense Created",
+      "description": "Triggered when a new expense is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "transactionID": {"type": "string"},
+          "amount": {"type": "number"},
+          "merchant": {"type": "string"},
+          "created": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "POST",
+    "endpoint": "/"
+  }
 }

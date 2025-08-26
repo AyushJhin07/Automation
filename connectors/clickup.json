@@ -1,48 +1,109 @@
 {
   "id": "clickup",
   "name": "ClickUp",
-  "description": "Project management and productivity platform",
+  "description": "ClickUp project management and productivity platform",
   "category": "Project Management",
-  "icon": "placeholder",
+  "icon": "clickup",
   "color": "#7B68EE",
   "version": "1.0.0",
   "authentication": {
-    "type": "api_key"
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Authorization"
+    }
   },
   "baseUrl": "https://api.clickup.com/api/v2",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to ClickUp",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_task",
       "name": "Create Task",
       "description": "Create a new task",
       "parameters": {
-        "list_id": {
-          "type": "string",
-          "required": true
-        },
-        "name": {
-          "type": "string",
-          "required": true
-        },
-        "description": {
-          "type": "string"
-        },
-        "assignees": {
-          "type": "array",
-          "items": {
-            "type": "string"
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID where task will be created"
+          },
+          "name": {
+            "type": "string",
+            "description": "Task name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Array of assignee user IDs"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of tag names"
+          },
+          "status": {
+            "type": "string",
+            "description": "Task status"
+          },
+          "priority": {
+            "type": "number",
+            "enum": [1, 2, 3, 4],
+            "description": "Task priority (1=urgent, 2=high, 3=normal, 4=low)"
+          },
+          "due_date": {
+            "type": "number",
+            "description": "Due date as Unix timestamp"
+          },
+          "due_date_time": {
+            "type": "boolean",
+            "description": "Include time in due date"
+          },
+          "time_estimate": {
+            "type": "number",
+            "description": "Time estimate in milliseconds"
+          },
+          "start_date": {
+            "type": "number",
+            "description": "Start date as Unix timestamp"
+          },
+          "start_date_time": {
+            "type": "boolean",
+            "description": "Include time in start date"
+          },
+          "notify_all": {
+            "type": "boolean",
+            "description": "Notify all team members"
+          },
+          "parent": {
+            "type": "string",
+            "description": "Parent task ID"
+          },
+          "links_to": {
+            "type": "string",
+            "description": "Task ID to link to"
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Custom field values"
           }
         },
-        "priority": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 4
-        }
+        "required": ["list_id", "name"],
+        "additionalProperties": false
       }
     },
     {
@@ -50,34 +111,252 @@
       "name": "Update Task",
       "description": "Update an existing task",
       "parameters": {
-        "task_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Task ID to update"
+          },
+          "name": {
+            "type": "string",
+            "description": "Task name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "status": {
+            "type": "string",
+            "description": "Task status"
+          },
+          "priority": {
+            "type": "number",
+            "enum": [1, 2, 3, 4],
+            "description": "Task priority"
+          },
+          "assignees": {
+            "type": "object",
+            "properties": {
+              "add": {"type": "array", "items": {"type": "number"}},
+              "rem": {"type": "array", "items": {"type": "number"}}
+            },
+            "description": "Assignees to add or remove"
+          },
+          "due_date": {
+            "type": "number",
+            "description": "Due date as Unix timestamp"
+          }
         },
-        "name": {
-          "type": "string"
+        "required": ["task_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_task",
+      "name": "Get Task",
+      "description": "Get task details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "custom_task_ids": {
+            "type": "boolean",
+            "description": "Use custom task IDs"
+          },
+          "team_id": {
+            "type": "number",
+            "description": "Team ID (required if using custom task IDs)"
+          },
+          "include_subtasks": {
+            "type": "boolean",
+            "description": "Include subtasks"
+          }
         },
-        "description": {
-          "type": "string"
+        "required": ["task_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_tasks",
+      "name": "Get Tasks",
+      "description": "Get tasks from a list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Include archived tasks"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "order_by": {
+            "type": "string",
+            "enum": ["id", "created", "updated", "due_date"],
+            "description": "Order by field"
+          },
+          "reverse": {
+            "type": "boolean",
+            "description": "Reverse order"
+          },
+          "subtasks": {
+            "type": "boolean",
+            "description": "Include subtasks"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by statuses"
+          },
+          "include_closed": {
+            "type": "boolean",
+            "description": "Include closed tasks"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Filter by assignees"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by tags"
+          },
+          "due_date_gt": {
+            "type": "number",
+            "description": "Due date greater than (Unix timestamp)"
+          },
+          "due_date_lt": {
+            "type": "number",
+            "description": "Due date less than (Unix timestamp)"
+          },
+          "date_created_gt": {
+            "type": "number",
+            "description": "Created date greater than (Unix timestamp)"
+          },
+          "date_created_lt": {
+            "type": "number",
+            "description": "Created date less than (Unix timestamp)"
+          },
+          "date_updated_gt": {
+            "type": "number",
+            "description": "Updated date greater than (Unix timestamp)"
+          },
+          "date_updated_lt": {
+            "type": "number",
+            "description": "Updated date less than (Unix timestamp)"
+          },
+          "date_done_gt": {
+            "type": "number",
+            "description": "Done date greater than (Unix timestamp)"
+          },
+          "date_done_lt": {
+            "type": "number",
+            "description": "Done date less than (Unix timestamp)"
+          }
         },
-        "status": {
-          "type": "string"
-        }
+        "required": ["list_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_task",
+      "name": "Delete Task",
+      "description": "Delete a task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Task ID to delete"
+          },
+          "custom_task_ids": {
+            "type": "boolean",
+            "description": "Use custom task IDs"
+          },
+          "team_id": {
+            "type": "number",
+            "description": "Team ID (required if using custom task IDs)"
+          }
+        },
+        "required": ["task_id"],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_comment",
       "name": "Create Comment",
-      "description": "Add a comment to a task",
+      "description": "Create a comment on a task",
       "parameters": {
-        "task_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "comment_text": {
+            "type": "string",
+            "description": "Comment text"
+          },
+          "assignee": {
+            "type": "number",
+            "description": "User ID to assign comment to"
+          },
+          "notify_all": {
+            "type": "boolean",
+            "description": "Notify all task members"
+          }
         },
-        "comment_text": {
-          "type": "string",
-          "required": true
-        }
+        "required": ["task_id", "comment_text"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Get lists from a folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "Folder ID"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Include archived lists"
+          }
+        },
+        "required": ["folder_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_spaces",
+      "name": "Get Spaces",
+      "description": "Get spaces from a team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "number",
+            "description": "Team ID"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Include archived spaces"
+          }
+        },
+        "required": ["team_id"],
+        "additionalProperties": false
       }
     }
   ],
@@ -85,24 +364,52 @@
     {
       "id": "task_created",
       "name": "Task Created",
-      "description": "Triggered when a task is created",
+      "description": "Triggered when a new task is created",
+      "type": "webhook",
       "parameters": {
-        "list_id": {
-          "type": "string"
-        }
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "Filter by list"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "webhookSupport": true
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {"type": "string"},
+          "name": {"type": "string"},
+          "status": {"type": "object"},
+          "creator": {"type": "object"}
+        }
+      }
     },
     {
       "id": "task_updated",
       "name": "Task Updated",
       "description": "Triggered when a task is updated",
+      "type": "webhook",
       "parameters": {
-        "task_id": {
-          "type": "string"
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "webhookSupport": true
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {"type": "string"},
+          "name": {"type": "string"},
+          "history_items": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }

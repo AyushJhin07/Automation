@@ -1,93 +1,169 @@
 {
   "id": "adyen",
   "name": "Adyen",
+  "description": "Adyen global payment processing platform",
   "category": "Payments",
-  "description": "Adyen integration for automated workflows",
+  "icon": "adyen",
+  "color": "#0ABF53",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
       "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "name": "X-API-Key"
     }
   },
+  "baseUrl": "https://checkout-test.adyen.com/v71",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Adyen",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Adyen",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Adyen",
+      "id": "create_payment",
+      "name": "Create Payment",
+      "description": "Create a payment",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "number"},
+              "currency": {"type": "string"}
+            },
+            "required": ["value", "currency"],
+            "description": "Payment amount"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Payment reference"
+          },
+          "paymentMethod": {
+            "type": "object",
+            "description": "Payment method details"
+          },
+          "returnUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Return URL"
+          },
+          "merchantAccount": {
+            "type": "string",
+            "description": "Merchant account"
+          },
+          "shopperReference": {
+            "type": "string",
+            "description": "Shopper reference"
+          },
+          "shopperEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Shopper email"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": ["amount", "reference", "paymentMethod", "returnUrl", "merchantAccount"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Adyen",
+      "id": "capture_payment",
+      "name": "Capture Payment",
+      "description": "Capture an authorized payment",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "originalReference": {
+            "type": "string",
+            "description": "Original payment reference"
+          },
+          "modificationAmount": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "number"},
+              "currency": {"type": "string"}
+            },
+            "description": "Amount to capture"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Capture reference"
+          },
+          "merchantAccount": {
+            "type": "string",
+            "description": "Merchant account"
+          }
+        },
+        "required": ["originalReference", "modificationAmount", "reference", "merchantAccount"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "refund_payment",
+      "name": "Refund Payment",
+      "description": "Refund a payment",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "originalReference": {
+            "type": "string",
+            "description": "Original payment reference"
+          },
+          "modificationAmount": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "number"},
+              "currency": {"type": "string"}
+            },
+            "description": "Amount to refund"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Refund reference"
+          },
+          "merchantAccount": {
+            "type": "string",
+            "description": "Merchant account"
+          }
+        },
+        "required": ["originalReference", "modificationAmount", "reference", "merchantAccount"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "payment_notification",
+      "name": "Payment Notification",
+      "description": "Triggered when a payment status changes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pspReference": {"type": "string"},
+          "originalReference": {"type": "string"},
+          "merchantReference": {"type": "string"},
+          "eventCode": {"type": "string"},
+          "success": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "POST",
+    "endpoint": "/paymentMethods"
+  }
 }

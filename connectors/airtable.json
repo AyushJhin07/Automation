@@ -1,8 +1,10 @@
 {
   "id": "airtable",
   "name": "Airtable",
-  "category": "database",
-  "description": "Airtable database platform with spreadsheet-like interface",
+  "description": "Airtable cloud-based database platform",
+  "category": "Database",
+  "icon": "airtable",
+  "color": "#18BFFF",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
@@ -12,173 +14,246 @@
       "prefix": "Bearer"
     }
   },
+  "baseUrl": "https://api.airtable.com/v0",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Airtable",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_record",
       "name": "Create Record",
-      "description": "Create new record in table",
+      "description": "Create a new record in a table",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Record fields as key-value pairs"
+          },
+          "typecast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically format data"
+          }
         },
-        "tableId": {
-          "type": "string",
-          "required": true,
-          "description": "Table ID"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Record fields"
-        }
-      },
-      "requiredScopes": [
-        "data:write"
-      ]
+        "required": ["baseId", "tableId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_record",
       "name": "Update Record",
-      "description": "Update existing record",
+      "description": "Update an existing record",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Updated fields"
+          },
+          "typecast": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically format data"
+          }
         },
-        "tableId": {
-          "type": "string",
-          "required": true,
-          "description": "Table ID"
-        },
-        "recordId": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Updated fields"
-        }
-      },
-      "requiredScopes": [
-        "data:write"
-      ]
+        "required": ["baseId", "tableId", "recordId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete record from table",
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Retrieve a specific record",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          }
         },
-        "tableId": {
-          "type": "string",
-          "required": true,
-          "description": "Table ID"
-        },
-        "recordId": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "data:write"
-      ]
+        "required": ["baseId", "tableId", "recordId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "list_records",
       "name": "List Records",
-      "description": "List records from table",
+      "description": "List records from a table",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include"
+          },
+          "filterByFormula": {
+            "type": "string",
+            "description": "Formula to filter records"
+          },
+          "maxRecords": {
+            "type": "number",
+            "maximum": 100,
+            "description": "Maximum number of records"
+          },
+          "pageSize": {
+            "type": "number",
+            "maximum": 100,
+            "description": "Page size"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {"type": "string"},
+                "direction": {"type": "string", "enum": ["asc", "desc"]}
+              }
+            },
+            "description": "Sort configuration"
+          },
+          "view": {
+            "type": "string",
+            "description": "View name"
+          }
         },
-        "tableId": {
-          "type": "string",
-          "required": true,
-          "description": "Table ID"
+        "required": ["baseId", "tableId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_record",
+      "name": "Delete Record",
+      "description": "Delete a record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID or name"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          }
         },
-        "maxRecords": {
-          "type": "number",
-          "required": false,
-          "description": "Maximum records",
-          "default": 100
-        },
-        "view": {
-          "type": "string",
-          "required": false,
-          "description": "View name"
-        },
-        "filterByFormula": {
-          "type": "string",
-          "required": false,
-          "description": "Filter formula"
-        }
-      },
-      "requiredScopes": [
-        "data:read"
-      ]
+        "required": ["baseId", "tableId", "recordId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "record_created",
       "name": "Record Created",
-      "description": "Trigger when new record is created",
+      "description": "Triggered when a new record is created",
+      "type": "webhook",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID to monitor"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID to monitor"
+          }
         },
-        "tableId": {
-          "type": "string",
-          "required": true,
-          "description": "Table ID"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "data:read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "fields": {"type": "object"},
+          "createdTime": {"type": "string"}
+        }
+      }
     },
     {
       "id": "record_updated",
       "name": "Record Updated",
-      "description": "Trigger when record is updated",
+      "description": "Triggered when a record is updated",
+      "type": "webhook",
       "parameters": {
-        "baseId": {
-          "type": "string",
-          "required": true,
-          "description": "Base ID"
+        "type": "object",
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "Base ID to monitor"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID to monitor"
+          }
         },
-        "tableId": {
-          "type": "string",
-          "required": true,
-          "description": "Table ID"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "data:read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "fields": {"type": "object"},
+          "createdTime": {"type": "string"}
+        }
+      }
     }
   ],
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 100,
-    "dailyLimit": 50000
-  },
-  "pricing": {
-    "tier": "premium",
-    "costPerExecution": 0.001
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/meta/bases"
   }
 }

@@ -1,96 +1,325 @@
 {
   "id": "concur",
   "name": "SAP Concur",
-  "category": "Travel & Expense",
-  "description": "SAP Concur integration for automated workflows",
+  "description": "SAP Concur travel and expense management platform",
+  "category": "Finance",
+  "icon": "concur",
+  "color": "#0F6AB4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "read",
-        "write"
-      ]
+      "authUrl": "https://www.concursolutions.com/net2/oauth2/Login.aspx",
+      "tokenUrl": "https://www.concursolutions.com/net2/oauth2/GetAccessToken.ashx",
+      "scopes": ["EXPRPT", "BANK", "TRVREQ"]
     }
   },
+  "baseUrl": "https://www.concursolutions.com/api/v3.0",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in SAP Concur",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to SAP Concur",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in SAP Concur",
+      "id": "get_expense_reports",
+      "name": "Get Expense Reports",
+      "description": "Retrieve expense reports",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of reports to return"
+          },
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset"
+          },
+          "user": {
+            "type": "string",
+            "description": "Filter by user login ID"
+          },
+          "paymentStatusCode": {
+            "type": "string",
+            "enum": ["NOT_PAID", "EXTRACTED", "PAID", "PAYC_SENT"],
+            "description": "Filter by payment status"
+          },
+          "approvalStatusCode": {
+            "type": "string",
+            "enum": ["A_AAFH", "A_ACCO", "A_APPR", "A_EXTF", "A_FILE", "A_NOTF", "A_PBDG", "A_PEND", "A_PVAL", "A_RESU", "A_RHLD", "A_SUBM", "A_TEXP", "A_TRVL"],
+            "description": "Filter by approval status"
+          },
+          "modifiedDateAfter": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by modification date"
+          },
+          "modifiedDateBefore": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by modification date"
+          },
+          "createDateAfter": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by creation date"
+          },
+          "createDateBefore": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter by creation date"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from SAP Concur",
+      "id": "get_expense_report",
+      "name": "Get Expense Report",
+      "description": "Get a specific expense report",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Expense report ID"
+          },
+          "user": {
+            "type": "string",
+            "description": "User login ID"
+          }
+        },
+        "required": ["reportId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_expense_report",
+      "name": "Create Expense Report",
+      "description": "Create a new expense report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "Report name"
+          },
+          "Purpose": {
+            "type": "string",
+            "description": "Business purpose"
+          },
+          "Comment": {
+            "type": "string",
+            "description": "Report comment"
+          },
+          "CurrencyCode": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "CountryCode": {
+            "type": "string",
+            "description": "Country code"
+          },
+          "PolicyID": {
+            "type": "string",
+            "description": "Policy ID"
+          },
+          "UserDefinedDate": {
+            "type": "string",
+            "format": "date",
+            "description": "User defined date"
+          }
+        },
+        "required": ["Name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_expense_entries",
+      "name": "Get Expense Entries",
+      "description": "Get expense entries for a report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Report ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of entries to return"
+          },
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset"
+          },
+          "user": {
+            "type": "string",
+            "description": "User login ID"
+          }
+        },
+        "required": ["reportId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_expense_entry",
+      "name": "Create Expense Entry",
+      "description": "Create a new expense entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Report ID"
+          },
+          "ExpenseTypeCode": {
+            "type": "string",
+            "description": "Expense type code"
+          },
+          "TransactionDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Transaction date"
+          },
+          "TransactionAmount": {
+            "type": "number",
+            "description": "Transaction amount"
+          },
+          "TransactionCurrencyCode": {
+            "type": "string",
+            "description": "Transaction currency"
+          },
+          "Description": {
+            "type": "string",
+            "description": "Expense description"
+          },
+          "VendorDescription": {
+            "type": "string",
+            "description": "Vendor description"
+          },
+          "LocationName": {
+            "type": "string",
+            "description": "Location name"
+          },
+          "Comment": {
+            "type": "string",
+            "description": "Entry comment"
+          }
+        },
+        "required": ["reportId", "ExpenseTypeCode", "TransactionDate", "TransactionAmount"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get user information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of users to return"
+          },
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset"
+          },
+          "primaryEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Filter by email"
+          },
+          "employeeID": {
+            "type": "string",
+            "description": "Filter by employee ID"
+          },
+          "loginID": {
+            "type": "string",
+            "description": "Filter by login ID"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Filter by last name"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Filter by active status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_report_submitted",
+      "name": "Expense Report Submitted",
+      "description": "Triggered when an expense report is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "Filter by user"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ID": {"type": "string"},
+          "Name": {"type": "string"},
+          "Total": {"type": "number"},
+          "ApprovalStatusCode": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_report_approved",
+      "name": "Expense Report Approved",
+      "description": "Triggered when an expense report is approved",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ID": {"type": "string"},
+          "Name": {"type": "string"},
+          "ApprovalStatusCode": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/common/users"
+  }
 }

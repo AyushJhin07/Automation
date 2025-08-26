@@ -1,141 +1,262 @@
 {
   "id": "bigquery",
-  "name": "BigQuery",
-  "description": "Google BigQuery data warehouse",
-  "category": "Data Analytics",
-  "icon": "enterprise",
+  "name": "Google BigQuery",
+  "description": "Google BigQuery data warehouse and analytics platform",
+  "category": "Database",
+  "icon": "bigquery",
   "color": "#4285F4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "scopes": ["https://www.googleapis.com/auth/bigquery"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://bigquery.googleapis.com/bigquery/v2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to BigQuery and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to BigQuery",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in BigQuery",
+      "id": "execute_query",
+      "name": "Execute Query",
+      "description": "Execute a SQL query",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in BigQuery",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Google Cloud Project ID"
+          },
+          "query": {
+            "type": "string",
+            "description": "SQL query to execute"
+          },
+          "useLegacySql": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use legacy SQL syntax"
+          },
+          "maxResults": {
+            "type": "number",
+            "description": "Maximum number of results"
+          },
+          "timeoutMs": {
+            "type": "number",
+            "description": "Query timeout in milliseconds"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": false,
+            "description": "Validate query without executing"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Query parameters"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["projectId", "query"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from BigQuery",
+      "id": "create_dataset",
+      "name": "Create Dataset",
+      "description": "Create a new dataset",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from BigQuery",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Dataset description"
+          },
+          "location": {
+            "type": "string",
+            "description": "Dataset location"
+          },
+          "defaultTableExpirationMs": {
+            "type": "string",
+            "description": "Default table expiration time"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["projectId", "datasetId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from BigQuery",
+      "id": "create_table",
+      "name": "Create Table",
+      "description": "Create a new table",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID"
+          },
+          "schema": {
+            "type": "object",
+            "properties": {
+              "fields": {
+                "type": "array",
+                "items": {"type": "object"}
+              }
+            },
+            "description": "Table schema"
+          },
+          "description": {
+            "type": "string",
+            "description": "Table description"
+          }
+        },
+        "required": ["projectId", "datasetId", "tableId", "schema"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "insert_rows",
+      "name": "Insert Rows",
+      "description": "Insert rows into a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "tableId": {
+            "type": "string",
+            "description": "Table ID"
+          },
+          "rows": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Rows to insert"
+          },
+          "ignoreUnknownValues": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ignore unknown values"
+          },
+          "skipInvalidRows": {
+            "type": "boolean",
+            "default": false,
+            "description": "Skip invalid rows"
+          }
+        },
+        "required": ["projectId", "datasetId", "tableId", "rows"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_datasets",
+      "name": "List Datasets",
+      "description": "List datasets in a project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "maxResults": {
+            "type": "number",
+            "description": "Maximum number of results"
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Include hidden datasets"
+          }
+        },
+        "required": ["projectId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tables",
+      "name": "List Tables",
+      "description": "List tables in a dataset",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "maxResults": {
+            "type": "number",
+            "description": "Maximum number of results"
+          }
+        },
+        "required": ["projectId", "datasetId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in BigQuery",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in BigQuery",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "job_completed",
+      "name": "Job Completed",
+      "description": "Triggered when a BigQuery job completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Filter by project"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {"type": "string"},
+          "status": {"type": "string"},
+          "projectId": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/projects"
+  }
 }

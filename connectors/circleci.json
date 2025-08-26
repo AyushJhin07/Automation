@@ -1,37 +1,137 @@
 {
   "id": "circleci",
   "name": "CircleCI",
-  "description": "Continuous integration and delivery platform",
-  "category": "Developer Tools",
-  "icon": "placeholder",
+  "description": "CircleCI continuous integration and delivery platform",
+  "category": "Development",
+  "icon": "circle-ci",
   "color": "#343434",
   "version": "1.0.0",
   "authentication": {
-    "type": "api_key"
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "Circle-Token"
+    }
   },
   "baseUrl": "https://circleci.com/api/v2",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to CircleCI",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "trigger_pipeline",
       "name": "Trigger Pipeline",
       "description": "Trigger a new pipeline",
       "parameters": {
-        "project_slug": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "project_slug": {
+            "type": "string",
+            "description": "Project slug (vcs-slug/org-name/repo-name)"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Branch to trigger pipeline for"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag to trigger pipeline for"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Pipeline parameters"
+          }
         },
-        "branch": {
-          "type": "string",
-          "default": "main"
+        "required": ["project_slug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_pipelines",
+      "name": "Get Pipelines",
+      "description": "Get project pipelines",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_slug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Filter by branch"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          }
         },
-        "parameters": {
-          "type": "object"
-        }
+        "required": ["project_slug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_pipeline",
+      "name": "Get Pipeline",
+      "description": "Get a specific pipeline",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline_id": {
+            "type": "string",
+            "description": "Pipeline ID"
+          }
+        },
+        "required": ["pipeline_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_workflows",
+      "name": "Get Workflows",
+      "description": "Get workflows for a pipeline",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline_id": {
+            "type": "string",
+            "description": "Pipeline ID"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          }
+        },
+        "required": ["pipeline_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_jobs",
+      "name": "Get Jobs",
+      "description": "Get jobs for a workflow",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow ID"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          }
+        },
+        "required": ["workflow_id"],
+        "additionalProperties": false
       }
     },
     {
@@ -39,10 +139,43 @@
       "name": "Cancel Workflow",
       "description": "Cancel a workflow",
       "parameters": {
-        "workflow_id": {
-          "type": "string",
-          "required": true
-        }
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow ID to cancel"
+          }
+        },
+        "required": ["workflow_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "rerun_workflow",
+      "name": "Rerun Workflow",
+      "description": "Rerun a workflow",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow ID to rerun"
+          },
+          "enable_ssh": {
+            "type": "boolean",
+            "description": "Enable SSH access"
+          },
+          "from_failed": {
+            "type": "boolean",
+            "description": "Rerun from failed jobs only"
+          },
+          "sparse_tree": {
+            "type": "boolean",
+            "description": "Rerun sparse tree"
+          }
+        },
+        "required": ["workflow_id"],
+        "additionalProperties": false
       }
     }
   ],
@@ -51,13 +184,52 @@
       "id": "workflow_completed",
       "name": "Workflow Completed",
       "description": "Triggered when a workflow completes",
+      "type": "webhook",
       "parameters": {
-        "project_slug": {
-          "type": "string",
-          "required": true
-        }
+        "type": "object",
+        "properties": {
+          "project_slug": {
+            "type": "string",
+            "description": "Filter by project"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "webhookSupport": true
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "status": {"type": "string"},
+          "project_slug": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "job_completed",
+      "name": "Job Completed",
+      "description": "Triggered when a job completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "job_name": {"type": "string"},
+          "job_number": {"type": "number"},
+          "status": {"type": "string"},
+          "workflow_id": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/me"
+  }
 }

@@ -1,8 +1,10 @@
 {
   "id": "docusign",
   "name": "DocuSign",
-  "category": "E-Signature",
-  "description": "DocuSign electronic signature and digital transaction management platform",
+  "description": "DocuSign digital signature and document management platform",
+  "category": "Document Management",
+  "icon": "docusign",
+  "color": "#FFB300",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
@@ -12,83 +14,285 @@
       "scopes": ["signature", "impersonation"]
     }
   },
+  "baseUrl": "https://na3.docusign.net/restapi/v2.1",
   "actions": [
     {
-      "id": "create_envelope_from_template",
-      "name": "Create Envelope from Template",
-      "description": "Create an envelope from a DocuSign template",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to DocuSign",
       "parameters": {
-        "templateId": {
-          "type": "string",
-          "required": true,
-          "description": "Template ID"
-        },
-        "emailSubject": {
-          "type": "string",
-          "required": true,
-          "description": "Email subject line"
-        },
-        "emailMessage": {
-          "type": "string",
-          "required": false,
-          "description": "Email message"
-        },
-        "templateRoles": {
-          "type": "array",
-          "required": true,
-          "description": "Array of template role objects with signer information"
-        },
-        "status": {
-          "type": "string",
-          "required": false,
-          "description": "Envelope status (sent, created, draft)"
-        }
-      },
-      "requiredScopes": ["signature", "impersonation"]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "send_envelope",
-      "name": "Send Envelope for Signature",
-      "description": "Send an envelope for signature",
+      "id": "create_envelope",
+      "name": "Create Envelope",
+      "description": "Create a new envelope for signature",
       "parameters": {
-        "envelopeId": {
-          "type": "string",
-          "required": true,
-          "description": "Envelope ID to send"
-        }
-      },
-      "requiredScopes": ["signature", "impersonation"]
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "emailSubject": {
+            "type": "string",
+            "description": "Email subject for the envelope"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["sent", "created", "draft"],
+            "default": "sent",
+            "description": "Envelope status"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "documentBase64": {"type": "string"},
+                "name": {"type": "string"},
+                "fileExtension": {"type": "string"},
+                "documentId": {"type": "string"}
+              },
+              "required": ["documentBase64", "name", "documentId"]
+            },
+            "description": "Documents to be signed"
+          },
+          "recipients": {
+            "type": "object",
+            "properties": {
+              "signers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "email": {"type": "string", "format": "email"},
+                    "name": {"type": "string"},
+                    "recipientId": {"type": "string"},
+                    "routingOrder": {"type": "string"},
+                    "tabs": {"type": "object"}
+                  },
+                  "required": ["email", "name", "recipientId"]
+                }
+              },
+              "carbonCopies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "email": {"type": "string", "format": "email"},
+                    "name": {"type": "string"},
+                    "recipientId": {"type": "string"}
+                  }
+                }
+              }
+            },
+            "description": "Envelope recipients"
+          },
+          "eventNotification": {
+            "type": "object",
+            "properties": {
+              "url": {"type": "string", "format": "uri"},
+              "loggingEnabled": {"type": "boolean"},
+              "requireAcknowledgment": {"type": "boolean"},
+              "envelopeEvents": {"type": "array", "items": {"type": "object"}},
+              "recipientEvents": {"type": "array", "items": {"type": "object"}}
+            },
+            "description": "Event notification settings"
+          }
+        },
+        "required": ["accountId", "emailSubject", "documents", "recipients"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_recipient_status",
-      "name": "Get Recipient Status",
-      "description": "Get the status of envelope recipients",
+      "id": "get_envelope",
+      "name": "Get Envelope",
+      "description": "Get envelope information",
       "parameters": {
-        "envelopeId": {
-          "type": "string",
-          "required": true,
-          "description": "Envelope ID"
-        }
-      },
-      "requiredScopes": ["signature", "impersonation"]
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "envelopeId": {
+            "type": "string",
+            "description": "Envelope ID"
+          },
+          "include": {
+            "type": "string",
+            "description": "Additional data to include"
+          }
+        },
+        "required": ["accountId", "envelopeId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_envelopes",
+      "name": "List Envelopes",
+      "description": "List envelopes in the account",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["sent", "delivered", "completed", "declined", "voided", "created", "deleted"],
+            "description": "Filter by envelope status"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date for envelope search"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date for envelope search"
+          },
+          "search_text": {
+            "type": "string",
+            "description": "Search text"
+          },
+          "start_position": {
+            "type": "number",
+            "description": "Starting position for pagination"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of envelopes to return"
+          },
+          "order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          },
+          "order_by": {
+            "type": "string",
+            "enum": ["status", "created", "sent", "subject"],
+            "description": "Sort field"
+          }
+        },
+        "required": ["accountId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_envelope_status",
+      "name": "Get Envelope Status",
+      "description": "Get the status of an envelope",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "envelopeId": {
+            "type": "string",
+            "description": "Envelope ID"
+          }
+        },
+        "required": ["accountId", "envelopeId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_recipients",
+      "name": "Get Recipients",
+      "description": "Get envelope recipients information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "envelopeId": {
+            "type": "string",
+            "description": "Envelope ID"
+          },
+          "include_tabs": {
+            "type": "boolean",
+            "description": "Include recipient tabs"
+          },
+          "include_extended": {
+            "type": "boolean",
+            "description": "Include extended recipient info"
+          }
+        },
+        "required": ["accountId", "envelopeId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "download_document",
       "name": "Download Document",
-      "description": "Download a completed document from an envelope",
+      "description": "Download a document from an envelope",
       "parameters": {
-        "envelopeId": {
-          "type": "string",
-          "required": true,
-          "description": "Envelope ID"
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "envelopeId": {
+            "type": "string",
+            "description": "Envelope ID"
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "certificate": {
+            "type": "boolean",
+            "description": "Include certificate"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": ["base64"],
+            "description": "Document encoding"
+          }
         },
-        "documentId": {
-          "type": "string",
-          "required": true,
-          "description": "Document ID"
-        }
-      },
-      "requiredScopes": ["signature", "impersonation"]
+        "required": ["accountId", "envelopeId", "documentId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "void_envelope",
+      "name": "Void Envelope",
+      "description": "Void an envelope",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "DocuSign account ID"
+          },
+          "envelopeId": {
+            "type": "string",
+            "description": "Envelope ID"
+          },
+          "voidedReason": {
+            "type": "string",
+            "description": "Reason for voiding"
+          }
+        },
+        "required": ["accountId", "envelopeId", "voidedReason"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -96,34 +300,70 @@
       "id": "envelope_completed",
       "name": "Envelope Completed",
       "description": "Triggered when an envelope is completed",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["envelope-completed"],
-        "entityTypes": ["envelope"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Filter by account"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["signature", "impersonation"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "envelopeId": {"type": "string"},
+          "status": {"type": "string"},
+          "completedDateTime": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "envelope_declined",
-      "name": "Envelope Declined",
-      "description": "Triggered when an envelope is declined",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["envelope-declined"],
-        "entityTypes": ["envelope"]
+      "id": "envelope_sent",
+      "name": "Envelope Sent",
+      "description": "Triggered when an envelope is sent",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["signature", "impersonation"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "envelopeId": {"type": "string"},
+          "status": {"type": "string"},
+          "sentDateTime": {"type": "string"}
+        }
+      }
     },
     {
       "id": "recipient_signed",
       "name": "Recipient Signed",
-      "description": "Triggered when a recipient signs an envelope",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["recipient-completed"],
-        "entityTypes": ["recipient"]
+      "description": "Triggered when a recipient signs",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["signature", "impersonation"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "envelopeId": {"type": "string"},
+          "recipientId": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/accounts"
+  }
 }

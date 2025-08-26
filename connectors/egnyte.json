@@ -1,96 +1,316 @@
 {
   "id": "egnyte",
   "name": "Egnyte",
+  "description": "Egnyte cloud file sharing and content collaboration platform",
   "category": "File Storage",
-  "description": "Egnyte integration for automated workflows",
+  "icon": "egnyte",
+  "color": "#00A651",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://{domain}.egnyte.com/puboauth/token",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "read",
-        "write"
-      ]
+      "tokenUrl": "https://{domain}.egnyte.com/puboauth/token",
+      "scopes": ["Egnyte.filesystem"]
     }
   },
+  "baseUrl": "https://{domain}.egnyte.com/pubapi/v1",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Egnyte",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Egnyte",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Egnyte",
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to Egnyte",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path to upload to"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content (base64 encoded)"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "default": false,
+            "description": "Overwrite existing file"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": ["path", "content"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Egnyte",
+      "id": "download_file",
+      "name": "Download File",
+      "description": "Download a file from Egnyte",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path to download"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_folder",
+      "name": "List Folder",
+      "description": "List files and folders in a directory",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "default": "/Shared",
+            "description": "Folder path to list"
+          },
+          "list_content": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include folder contents"
+          },
+          "list_custom_metadata": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include custom metadata"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create a new folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Folder path to create"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_file",
+      "name": "Delete File or Folder",
+      "description": "Delete a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to delete"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "move_file",
+      "name": "Move File or Folder",
+      "description": "Move a file or folder to a new location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source path"
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination path"
+          }
+        },
+        "required": ["source", "destination"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "copy_file",
+      "name": "Copy File or Folder",
+      "description": "Copy a file or folder to a new location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source path"
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination path"
+          }
+        },
+        "required": ["source", "destination"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_link",
+      "name": "Create Link",
+      "description": "Create a shareable link for a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to share"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["file", "folder"],
+            "description": "Link type"
+          },
+          "accessibility": {
+            "type": "string",
+            "enum": ["anyone", "password", "domain", "recipients"],
+            "default": "domain",
+            "description": "Link accessibility"
+          },
+          "expiry_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Link expiration date"
+          },
+          "send_email": {
+            "type": "boolean",
+            "default": false,
+            "description": "Send email notification"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Email recipients"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message to include with link"
+          }
+        },
+        "required": ["path", "type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search",
+      "name": "Search Files",
+      "description": "Search for files and folders",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "path": {
+            "type": "string",
+            "default": "/Shared",
+            "description": "Path to search within"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["file", "folder"],
+            "description": "Search for files or folders"
+          },
+          "modified_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Modified after date"
+          },
+          "modified_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Modified before date"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum results to return"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "file_uploaded",
+      "name": "File Uploaded",
+      "description": "Triggered when a file is uploaded",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Monitor specific path"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "name": {"type": "string"},
+          "size": {"type": "number"},
+          "modified": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "file_deleted",
+      "name": "File Deleted",
+      "description": "Triggered when a file is deleted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Monitor specific path"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "name": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/userinfo"
+  }
 }

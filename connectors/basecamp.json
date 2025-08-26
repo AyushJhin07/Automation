@@ -1,141 +1,236 @@
 {
   "id": "basecamp",
   "name": "Basecamp",
-  "description": "Basecamp project management and collaboration",
+  "description": "Basecamp project management and team collaboration platform",
   "category": "Project Management",
-  "icon": "enterprise",
-  "color": "#5CB85C",
+  "icon": "basecamp",
+  "color": "#1D2D35",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://launchpad.37signals.com/authorization/new",
+      "tokenUrl": "https://launchpad.37signals.com/authorization/token",
+      "scopes": []
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://3.basecampapi.com",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Basecamp and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Basecamp",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Basecamp",
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Basecamp",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["accountId", "name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Basecamp",
+      "id": "create_todo_list",
+      "name": "Create To-do List",
+      "description": "Create a new to-do list",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Basecamp",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "To-do list name"
+          },
+          "description": {
+            "type": "string",
+            "description": "To-do list description"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["accountId", "projectId", "name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Basecamp",
+      "id": "create_todo",
+      "name": "Create To-do",
+      "description": "Create a new to-do item",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "todoListId": {
+            "type": "string",
+            "description": "To-do list ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "To-do content"
+          },
+          "description": {
+            "type": "string",
+            "description": "To-do description"
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Assignee IDs"
+          },
+          "due_on": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          }
+        },
+        "required": ["accountId", "projectId", "todoListId", "content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_message",
+      "name": "Create Message",
+      "description": "Create a new message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Message subject"
+          },
+          "content": {
+            "type": "string",
+            "description": "Message content"
+          }
+        },
+        "required": ["accountId", "projectId", "subject", "content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to a project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "file": {
+            "type": "string",
+            "description": "File data or URL"
+          },
+          "filename": {
+            "type": "string",
+            "description": "File name"
+          },
+          "description": {
+            "type": "string",
+            "description": "File description"
+          }
+        },
+        "required": ["accountId", "projectId", "file", "filename"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Basecamp",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "todo_completed",
+      "name": "To-do Completed",
+      "description": "Triggered when a to-do is completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Filter by project"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "content": {"type": "string"},
+          "completed": {"type": "boolean"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Basecamp",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "project_created",
+      "name": "Project Created",
+      "description": "Triggered when a new project is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/authorization.json"
+  }
 }

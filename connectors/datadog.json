@@ -1,80 +1,326 @@
 {
   "id": "datadog",
   "name": "Datadog",
-  "description": "Monitoring and analytics platform",
+  "description": "Datadog monitoring and analytics platform",
   "category": "Monitoring",
-  "icon": "placeholder",
+  "icon": "datadog",
   "color": "#632CA6",
   "version": "1.0.0",
   "authentication": {
-    "type": "api_key"
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "DD-API-KEY"
+    }
   },
   "baseUrl": "https://api.datadoghq.com/api/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
-      "id": "create_event",
-      "name": "Create Event",
-      "description": "Create a new event",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Datadog",
       "parameters": {
-        "title": {
-          "type": "string",
-          "required": true
-        },
-        "text": {
-          "type": "string",
-          "required": true
-        },
-        "alert_type": {
-          "type": "string",
-          "enum": [
-            "error",
-            "warning",
-            "info",
-            "success"
-          ]
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "post_metric",
-      "name": "Post Metric",
-      "description": "Submit metrics data",
+      "id": "submit_metrics",
+      "name": "Submit Metrics",
+      "description": "Submit metrics to Datadog",
       "parameters": {
-        "metric": {
-          "type": "string",
-          "required": true
-        },
-        "points": {
-          "type": "array",
-          "required": true
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
+        "type": "object",
+        "properties": {
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {"type": "string"},
+                "points": {"type": "array", "items": {"type": "array"}},
+                "type": {"type": "string", "enum": ["gauge", "rate", "count"]},
+                "interval": {"type": "number"},
+                "host": {"type": "string"},
+                "tags": {"type": "array", "items": {"type": "string"}},
+                "unit": {"type": "string"}
+              },
+              "required": ["metric", "points"]
+            },
+            "description": "Metrics data series"
           }
-        }
+        },
+        "required": ["series"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_metrics",
+      "name": "Query Metrics",
+      "description": "Query metrics from Datadog",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Metric query string"
+          },
+          "from": {
+            "type": "number",
+            "description": "Start timestamp (Unix epoch)"
+          },
+          "to": {
+            "type": "number",
+            "description": "End timestamp (Unix epoch)"
+          }
+        },
+        "required": ["query", "from", "to"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Create an event in Datadog",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Event title"
+          },
+          "text": {
+            "type": "string",
+            "description": "Event description"
+          },
+          "date_happened": {
+            "type": "number",
+            "description": "Event timestamp (Unix epoch)"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["normal", "low"],
+            "description": "Event priority"
+          },
+          "host": {
+            "type": "string",
+            "description": "Host associated with the event"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Event tags"
+          },
+          "alert_type": {
+            "type": "string",
+            "enum": ["error", "warning", "info", "success"],
+            "description": "Alert type"
+          },
+          "aggregation_key": {
+            "type": "string",
+            "description": "Aggregation key"
+          },
+          "source_type_name": {
+            "type": "string",
+            "description": "Source type"
+          }
+        },
+        "required": ["title", "text"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_events",
+      "name": "Get Events",
+      "description": "Retrieve events from Datadog",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "description": "Start timestamp (Unix epoch)"
+          },
+          "end": {
+            "type": "number",
+            "description": "End timestamp (Unix epoch)"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["normal", "low"],
+            "description": "Filter by priority"
+          },
+          "sources": {
+            "type": "string",
+            "description": "Comma-separated list of sources"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          },
+          "unaggregated": {
+            "type": "boolean",
+            "description": "Return unaggregated events"
+          }
+        },
+        "required": ["start", "end"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_monitor",
+      "name": "Create Monitor",
+      "description": "Create a monitor in Datadog",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["metric alert", "service check", "event alert", "process alert", "log alert", "anomaly", "outlier", "forecast"],
+            "description": "Monitor type"
+          },
+          "query": {
+            "type": "string",
+            "description": "Monitor query"
+          },
+          "name": {
+            "type": "string",
+            "description": "Monitor name"
+          },
+          "message": {
+            "type": "string",
+            "description": "Monitor message"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Monitor tags"
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "thresholds": {"type": "object"},
+              "notify_audit": {"type": "boolean"},
+              "timeout_h": {"type": "number"},
+              "evaluation_delay": {"type": "number"}
+            },
+            "description": "Monitor options"
+          },
+          "multi": {
+            "type": "boolean",
+            "description": "Multi-alert monitor"
+          },
+          "restricted_roles": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Restricted roles"
+          }
+        },
+        "required": ["type", "query", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_monitors",
+      "name": "Get Monitors",
+      "description": "List monitors",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "group_states": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["Alert", "Ignored", "No Data", "OK", "Skipped", "Unknown", "Warn"]},
+            "description": "Filter by group states"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by monitor name"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by tags"
+          },
+          "monitor_tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by monitor tags"
+          },
+          "with_downtimes": {
+            "type": "boolean",
+            "description": "Include downtime info"
+          },
+          "id_offset": {
+            "type": "number",
+            "description": "Pagination offset"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Page size"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "alert_triggered",
-      "name": "Alert Triggered",
-      "description": "Triggered when an alert fires",
-      "parameters": {},
-      "webhookSupport": true
+      "id": "monitor_alert",
+      "name": "Monitor Alert",
+      "description": "Triggered when a monitor alerts",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "monitor_id": {
+            "type": "number",
+            "description": "Filter by monitor ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "name": {"type": "string"},
+          "query": {"type": "string"},
+          "state": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "metric_threshold",
+      "name": "Metric Threshold",
+      "description": "Triggered when metric crosses threshold",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "metric": {"type": "string"},
+          "value": {"type": "number"},
+          "threshold": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/validate"
+  }
 }

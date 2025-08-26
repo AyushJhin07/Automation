@@ -1,141 +1,262 @@
 {
   "id": "calendly",
   "name": "Calendly",
+  "description": "Calendly scheduling automation platform",
   "category": "Scheduling",
-  "description": "Calendly scheduling platform for booking meetings and appointments",
+  "icon": "calendly",
+  "color": "#006BFF",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://auth.calendly.com/oauth/authorize",
       "tokenUrl": "https://auth.calendly.com/oauth/token",
-      "scopes": ["read", "write"]
+      "scopes": ["default"]
     }
   },
+  "baseUrl": "https://api.calendly.com",
   "actions": [
     {
-      "id": "list_event_types",
-      "name": "List Event Types",
-      "description": "List available event types",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Calendly",
       "parameters": {
-        "user": {
-          "type": "string",
-          "required": true,
-          "description": "User URI"
-        },
-        "count": {
-          "type": "number",
-          "required": false,
-          "description": "Number of results to return"
-        }
-      },
-      "requiredScopes": ["read"]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "create_scheduling_link",
-      "name": "Create Scheduling Link",
-      "description": "Create a one-time scheduling link",
+      "id": "get_scheduled_events",
+      "name": "Get Scheduled Events",
+      "description": "Retrieve scheduled events",
       "parameters": {
-        "resource_uri": {
-          "type": "string",
-          "required": true,
-          "description": "Event type URI"
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "User URI"
+          },
+          "organization": {
+            "type": "string",
+            "description": "Organization URI"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of events to return"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["start_time:asc", "start_time:desc"],
+            "description": "Sort order"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "canceled"],
+            "description": "Event status filter"
+          },
+          "min_start_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Minimum start time filter"
+          },
+          "max_start_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Maximum start time filter"
+          }
         },
-        "max_event_count": {
-          "type": "number",
-          "required": false,
-          "description": "Maximum number of events"
-        },
-        "expires_at": {
-          "type": "string",
-          "required": false,
-          "description": "Link expiration time (ISO format)"
-        }
-      },
-      "requiredScopes": ["write"]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "cancel_event",
-      "name": "Cancel Event",
+      "id": "get_event_invitees",
+      "name": "Get Event Invitees",
+      "description": "Get invitees for a scheduled event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_uuid": {
+            "type": "string",
+            "description": "Event UUID"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of invitees to return"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Filter by email"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "canceled"],
+            "description": "Invitee status filter"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["created_at:asc", "created_at:desc"],
+            "description": "Sort order"
+          }
+        },
+        "required": ["event_uuid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user_info",
+      "name": "Get User Info",
+      "description": "Get user information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_uuid": {
+            "type": "string",
+            "description": "User UUID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_event_types",
+      "name": "Get Event Types",
+      "description": "Get user's event types",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "User URI"
+          },
+          "organization": {
+            "type": "string",
+            "description": "Organization URI"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of event types to return"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["name:asc", "name:desc"],
+            "description": "Sort order"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Filter by active status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "cancel_scheduled_event",
+      "name": "Cancel Scheduled Event",
       "description": "Cancel a scheduled event",
       "parameters": {
-        "uuid": {
-          "type": "string",
-          "required": true,
-          "description": "Event UUID"
+        "type": "object",
+        "properties": {
+          "event_uuid": {
+            "type": "string",
+            "description": "Event UUID to cancel"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Cancellation reason"
+          }
         },
-        "reason": {
-          "type": "string",
-          "required": false,
-          "description": "Cancellation reason"
-        }
-      },
-      "requiredScopes": ["write"]
-    },
-    {
-      "id": "list_events",
-      "name": "List Events",
-      "description": "List scheduled events",
-      "parameters": {
-        "user": {
-          "type": "string",
-          "required": false,
-          "description": "User URI"
-        },
-        "organization": {
-          "type": "string",
-          "required": false,
-          "description": "Organization URI"
-        },
-        "min_start_time": {
-          "type": "string",
-          "required": false,
-          "description": "Minimum start time (ISO format)"
-        },
-        "max_start_time": {
-          "type": "string",
-          "required": false,
-          "description": "Maximum start time (ISO format)"
-        }
-      },
-      "requiredScopes": ["read"]
-    },
-    {
-      "id": "fetch_invitees",
-      "name": "Fetch Event Invitees",
-      "description": "Get invitees for a specific event",
-      "parameters": {
-        "uuid": {
-          "type": "string",
-          "required": true,
-          "description": "Event UUID"
-        }
-      },
-      "requiredScopes": ["read"]
+        "required": ["event_uuid"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "invitee_created",
       "name": "Invitee Created",
-      "description": "Triggered when a new invitee is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["invitee.created"],
-        "entityTypes": ["invitee"]
+      "description": "Triggered when someone schedules a meeting",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "Filter by user URI"
+          },
+          "organization": {
+            "type": "string",
+            "description": "Filter by organization URI"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["read"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "time": {"type": "string"},
+          "created_at": {"type": "string"},
+          "updated_at": {"type": "string"},
+          "payload": {"type": "object"}
+        }
+      }
     },
     {
       "id": "invitee_canceled",
       "name": "Invitee Canceled",
-      "description": "Triggered when an invitee cancels",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["invitee.canceled"],
-        "entityTypes": ["invitee"]
+      "description": "Triggered when a meeting is canceled",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "Filter by user URI"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["read"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {"type": "string"},
+          "time": {"type": "string"},
+          "payload": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

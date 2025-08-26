@@ -1,33 +1,30 @@
 {
   "id": "box",
   "name": "Box",
-  "description": "Cloud content management and file sharing service",
-  "category": "File Storage",
-  "icon": "placeholder",
+  "description": "Box cloud storage and collaboration platform",
+  "category": "Storage",
+  "icon": "box",
   "color": "#0061D5",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://account.box.com/api/oauth2/authorize",
+      "tokenUrl": "https://api.box.com/oauth2/token",
+      "scopes": ["root_readwrite", "root_readonly"]
+    }
   },
   "baseUrl": "https://api.box.com/2.0",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Box and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "root_readwrite"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Box",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -35,18 +32,54 @@
       "name": "Upload File",
       "description": "Upload a file to Box",
       "parameters": {
-        "parent_folder_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "parent_id": {
+            "type": "string",
+            "default": "0",
+            "description": "Parent folder ID (0 for root)"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "file_content": {
+            "type": "string",
+            "description": "File content or URL"
+          },
+          "content_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Content creation date"
+          },
+          "content_modified_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Content modification date"
+          }
         },
-        "file_name": {
-          "type": "string",
-          "required": true
+        "required": ["file_name", "file_content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "download_file",
+      "name": "Download File",
+      "description": "Download a file from Box",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "File ID"
+          },
+          "version": {
+            "type": "string",
+            "description": "File version"
+          }
         },
-        "file_content": {
-          "type": "string",
-          "required": true
-        }
+        "required": ["file_id"],
+        "additionalProperties": false
       }
     },
     {
@@ -54,34 +87,153 @@
       "name": "Create Folder",
       "description": "Create a new folder",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Folder name"
+          },
+          "parent_id": {
+            "type": "string",
+            "default": "0",
+            "description": "Parent folder ID"
+          }
         },
-        "parent_folder_id": {
-          "type": "string",
-          "required": true
-        }
+        "required": ["name"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "share_file",
-      "name": "Share File",
-      "description": "Create a shared link for a file",
+      "id": "get_file_info",
+      "name": "Get File Info",
+      "description": "Get file information",
       "parameters": {
-        "file_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "File ID"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields"
+          }
         },
-        "access_level": {
-          "type": "string",
-          "enum": [
-            "open",
-            "company",
-            "collaborators"
-          ],
-          "default": "open"
-        }
+        "required": ["file_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_folder_items",
+      "name": "List Folder Items",
+      "description": "List items in a folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "default": "0",
+            "description": "Folder ID"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of items to return"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Starting point for pagination"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search",
+      "name": "Search",
+      "description": "Search for files and folders",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "file_extensions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File extensions to filter"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["file", "folder"],
+            "description": "Item type filter"
+          },
+          "content_types": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Content types to filter"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 30,
+            "description": "Number of results"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_shared_link",
+      "name": "Create Shared Link",
+      "description": "Create a shared link for a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "File or folder ID"
+          },
+          "item_type": {
+            "type": "string",
+            "enum": ["file", "folder"],
+            "description": "Item type"
+          },
+          "access": {
+            "type": "string",
+            "enum": ["open", "company", "collaborators"],
+            "description": "Access level"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password protection"
+          },
+          "unshared_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration date"
+          },
+          "can_download": {
+            "type": "boolean",
+            "description": "Allow downloads"
+          },
+          "can_preview": {
+            "type": "boolean",
+            "description": "Allow previews"
+          }
+        },
+        "required": ["item_id", "item_type"],
+        "additionalProperties": false
       }
     }
   ],
@@ -90,12 +242,51 @@
       "id": "file_uploaded",
       "name": "File Uploaded",
       "description": "Triggered when a file is uploaded",
+      "type": "webhook",
       "parameters": {
-        "folder_id": {
-          "type": "string"
-        }
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "Filter by folder"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "webhookSupport": true
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "created_by": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "file_deleted",
+      "name": "File Deleted",
+      "description": "Triggered when a file is deleted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "id": {"type": "string"},
+          "name": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

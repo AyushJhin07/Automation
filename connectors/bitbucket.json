@@ -1,149 +1,285 @@
 {
   "id": "bitbucket",
   "name": "Bitbucket",
-  "description": "Git-based source code repository hosting service",
-  "category": "Developer Tools",
-  "icon": "placeholder",
+  "description": "Bitbucket Git repository hosting and collaboration platform",
+  "category": "Development",
+  "icon": "bitbucket",
   "color": "#0052CC",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://bitbucket.org/site/oauth2/authorize",
+      "tokenUrl": "https://bitbucket.org/site/oauth2/access_token",
+      "scopes": ["repositories", "issues", "pullrequests"]
+    }
   },
   "baseUrl": "https://api.bitbucket.org/2.0",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Bitbucket and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "account"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
-      }
-    },
-    {
-      "id": "create_repository",
-      "name": "Create Repository",
-      "description": "Create a new repository",
+      "description": "Test the connection to Bitbucket",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Repository name"
-        },
-        "description": {
-          "type": "string",
-          "description": "Repository description"
-        },
-        "is_private": {
-          "type": "boolean",
-          "default": false
-        }
-      },
-      "requiredScopes": [
-        "repositories:write"
-      ]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_issue",
       "name": "Create Issue",
       "description": "Create a new issue",
       "parameters": {
-        "repo_slug": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "repo_slug": {
+            "type": "string",
+            "description": "Repository slug"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "content": {
+            "type": "object",
+            "properties": {
+              "raw": {"type": "string"},
+              "markup": {"type": "string", "enum": ["markdown", "creole", "plaintext"]}
+            },
+            "description": "Issue content"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["bug", "enhancement", "proposal", "task"],
+            "description": "Issue kind"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["trivial", "minor", "major", "critical", "blocker"],
+            "description": "Issue priority"
+          },
+          "assignee": {
+            "type": "object",
+            "properties": {
+              "account_id": {"type": "string"}
+            },
+            "description": "Issue assignee"
+          }
         },
-        "title": {
-          "type": "string",
-          "required": true
-        },
-        "content": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "string",
-          "enum": [
-            "trivial",
-            "minor",
-            "major",
-            "critical",
-            "blocker"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "issues:write"
-      ]
+        "required": ["workspace", "repo_slug", "title"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_pull_request",
       "name": "Create Pull Request",
       "description": "Create a new pull request",
       "parameters": {
-        "repo_slug": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "repo_slug": {
+            "type": "string",
+            "description": "Repository slug"
+          },
+          "title": {
+            "type": "string",
+            "description": "Pull request title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Pull request description"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "branch": {"type": "object", "properties": {"name": {"type": "string"}}}
+            },
+            "description": "Source branch"
+          },
+          "destination": {
+            "type": "object",
+            "properties": {
+              "branch": {"type": "object", "properties": {"name": {"type": "string"}}}
+            },
+            "description": "Destination branch"
+          },
+          "reviewers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "account_id": {"type": "string"}
+              }
+            },
+            "description": "Pull request reviewers"
+          },
+          "close_source_branch": {
+            "type": "boolean",
+            "description": "Close source branch after merge"
+          }
         },
-        "title": {
-          "type": "string",
-          "required": true
+        "required": ["workspace", "repo_slug", "title", "source", "destination"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_repository",
+      "name": "Get Repository",
+      "description": "Get repository information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "repo_slug": {
+            "type": "string",
+            "description": "Repository slug"
+          }
         },
-        "source_branch": {
-          "type": "string",
-          "required": true
+        "required": ["workspace", "repo_slug"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_repositories",
+      "name": "List Repositories",
+      "description": "List repositories for a workspace",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["owner", "admin", "contributor", "member"],
+            "description": "Filter by role"
+          },
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["created_on", "updated_on", "name"],
+            "description": "Sort field"
+          }
         },
-        "destination_branch": {
-          "type": "string",
-          "required": true
+        "required": ["workspace"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_webhook",
+      "name": "Create Webhook",
+      "description": "Create a repository webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "repo_slug": {
+            "type": "string",
+            "description": "Repository slug"
+          },
+          "description": {
+            "type": "string",
+            "description": "Webhook description"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Webhook URL"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether webhook is active"
+          },
+          "events": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Events to trigger webhook"
+          }
         },
-        "description": {
-          "type": "string"
-        }
-      },
-      "requiredScopes": [
-        "pullrequests:write"
-      ]
+        "required": ["workspace", "repo_slug", "url", "events"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "repository_push",
-      "name": "Repository Push",
+      "id": "push",
+      "name": "Push",
       "description": "Triggered when code is pushed to repository",
+      "type": "webhook",
       "parameters": {
-        "repo_slug": {
-          "type": "string",
-          "required": true
-        }
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Filter by workspace"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Filter by repository"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "webhookSupport": true,
-      "requiredScopes": [
-        "repositories:read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "repository": {"type": "object"},
+          "push": {"type": "object"},
+          "actor": {"type": "object"}
+        }
+      }
     },
     {
       "id": "pull_request_created",
       "name": "Pull Request Created",
       "description": "Triggered when a pull request is created",
+      "type": "webhook",
       "parameters": {
-        "repo_slug": {
-          "type": "string",
-          "required": true
-        }
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Filter by workspace"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "webhookSupport": true,
-      "requiredScopes": [
-        "pullrequests:read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pullrequest": {"type": "object"},
+          "repository": {"type": "object"},
+          "actor": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }

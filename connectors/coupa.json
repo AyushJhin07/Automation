@@ -1,141 +1,338 @@
 {
   "id": "coupa",
   "name": "Coupa",
-  "description": "Coupa business spend management",
-  "category": "Procurement",
-  "icon": "enterprise",
-  "color": "#F89C0E",
+  "description": "Coupa procurement and spend management platform",
+  "category": "Finance",
+  "icon": "coupa",
+  "color": "#FF6B1A",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "type": "header",
+      "name": "X-COUPA-API-KEY"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://{instance}.coupacloud.com/api",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Coupa and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Coupa",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Coupa",
+      "id": "get_purchase_orders",
+      "name": "Get Purchase Orders",
+      "description": "Retrieve purchase orders",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Coupa",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of purchase orders to return"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Pagination offset"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "pending_approval", "approved", "pending_receipt", "received", "closed"],
+            "description": "Filter by status"
+          },
+          "exported": {
+            "type": "boolean",
+            "description": "Filter by export status"
+          },
+          "supplier-id": {
+            "type": "number",
+            "description": "Filter by supplier ID"
+          },
+          "created-at[gt]": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created after date"
+          },
+          "created-at[lt]": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created before date"
+          },
+          "updated-at[gt]": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Updated after date"
+          },
+          "updated-at[lt]": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Updated before date"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Coupa",
+      "id": "get_purchase_order",
+      "name": "Get Purchase Order",
+      "description": "Get a specific purchase order",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Coupa",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Purchase order ID"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Coupa",
+      "id": "create_purchase_order",
+      "name": "Create Purchase Order",
+      "description": "Create a new purchase order",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "requisition-header": {
+            "type": "object",
+            "properties": {
+              "requested-by": {"type": "object"},
+              "ship-to-address": {"type": "object"},
+              "supplier": {"type": "object"},
+              "currency": {"type": "object"}
+            },
+            "description": "Purchase order header information"
+          },
+          "order-lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {"type": "string"},
+                "quantity": {"type": "number"},
+                "price": {"type": "number"},
+                "total": {"type": "number"},
+                "currency": {"type": "object"}
+              }
+            },
+            "description": "Order line items"
+          }
+        },
+        "required": ["requisition-header"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_suppliers",
+      "name": "Get Suppliers",
+      "description": "Retrieve suppliers",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of suppliers to return"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Pagination offset"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by supplier name"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive"],
+            "description": "Filter by status"
+          },
+          "created-at[gt]": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created after date"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_supplier",
+      "name": "Create Supplier",
+      "description": "Create a new supplier",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Supplier name"
+          },
+          "display-name": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive"],
+            "description": "Supplier status"
+          },
+          "supplier-addresses": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Supplier addresses"
+          },
+          "primary-contact": {
+            "type": "object",
+            "properties": {
+              "email": {"type": "string", "format": "email"},
+              "name-given": {"type": "string"},
+              "name-family": {"type": "string"}
+            },
+            "description": "Primary contact information"
+          },
+          "payment-terms": {
+            "type": "object",
+            "description": "Payment terms"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoices",
+      "name": "Get Invoices",
+      "description": "Retrieve invoices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of invoices to return"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Pagination offset"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "pending_approval", "approved", "paid", "voided"],
+            "description": "Filter by status"
+          },
+          "supplier-id": {
+            "type": "number",
+            "description": "Filter by supplier ID"
+          },
+          "created-at[gt]": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created after date"
+          },
+          "invoice-date[gt]": {
+            "type": "string",
+            "format": "date",
+            "description": "Invoice date after"
+          },
+          "invoice-date[lt]": {
+            "type": "string",
+            "format": "date",
+            "description": "Invoice date before"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "approve_invoice",
+      "name": "Approve Invoice",
+      "description": "Approve an invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Invoice ID"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Approval comment"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Coupa",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "purchase_order_approved",
+      "name": "Purchase Order Approved",
+      "description": "Triggered when a purchase order is approved",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "number",
+            "description": "Filter by supplier"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "po-number": {"type": "string"},
+          "status": {"type": "string"},
+          "total": {"type": "number"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Coupa",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "invoice_received",
+      "name": "Invoice Received",
+      "description": "Triggered when an invoice is received",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "invoice-number": {"type": "string"},
+          "status": {"type": "string"},
+          "total": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users"
+  }
 }
