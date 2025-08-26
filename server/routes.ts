@@ -2767,6 +2767,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== PHASE 4 ENTERPRISE FEATURES API =====
+  
+  // LLM Orchestration
+  app.post('/api/llm/orchestrate', async (req, res) => {
+    try {
+      const { llmOrchestrator } = await import('./llm/enterprise/LLMOrchestrator');
+      const { model, messages, context, nodeTypes } = req.body;
+      
+      const result = await llmOrchestrator.orchestrateRequest({
+        model,
+        messages,
+        context,
+        nodeTypes
+      });
+      
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error('LLM orchestration error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Vector Database Management
+  app.post('/api/vector/upsert', async (req, res) => {
+    try {
+      const { vectorDatabaseManager } = await import('./llm/enterprise/VectorDatabaseManager');
+      const { documents, indexName } = req.body;
+      
+      const result = await vectorDatabaseManager.upsert(documents, indexName);
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error('Vector upsert error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/vector/search', async (req, res) => {
+    try {
+      const { vectorDatabaseManager } = await import('./llm/enterprise/VectorDatabaseManager');
+      const { query, indexName } = req.body;
+      
+      const results = await vectorDatabaseManager.search(query, indexName);
+      res.json({ success: true, results });
+    } catch (error) {
+      console.error('Vector search error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Fine-tuning Pipeline
+  app.post('/api/llm/fine-tune/start', async (req, res) => {
+    try {
+      const { llmFineTuningPipeline } = await import('./llm/enterprise/LLMFineTuningPipeline');
+      const { name, baseModel, provider, datasetId, config, createdBy } = req.body;
+      
+      const job = await llmFineTuningPipeline.startFineTuning(
+        name, baseModel, provider, datasetId, config, createdBy
+      );
+      
+      res.json({ success: true, job });
+    } catch (error) {
+      console.error('Fine-tuning start error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/llm/fine-tune/jobs', async (req, res) => {
+    try {
+      const { llmFineTuningPipeline } = await import('./llm/enterprise/LLMFineTuningPipeline');
+      const jobs = llmFineTuningPipeline.listJobs();
+      res.json({ success: true, jobs });
+    } catch (error) {
+      console.error('Fine-tuning jobs error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Enterprise Security
+  app.post('/api/security/assess', async (req, res) => {
+    try {
+      const { enterpriseSecurityManager } = await import('./llm/enterprise/EnterpriseSecurityManager');
+      const { prompt, context, userId, userLocation, metadata } = req.body;
+      
+      const assessment = await enterpriseSecurityManager.assessSecurity({
+        prompt, context, userId, userLocation, metadata
+      });
+      
+      res.json({ success: true, assessment });
+    } catch (error) {
+      console.error('Security assessment error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Multi-modal LLM
+  app.post('/api/llm/multimodal', async (req, res) => {
+    try {
+      const { multiModalLLMManager } = await import('./llm/enterprise/MultiModalLLMManager');
+      const request = req.body;
+      
+      const result = await multiModalLLMManager.processMultiModalRequest(request);
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error('Multi-modal processing error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Phase 4 Consolidated Features
+  app.post('/api/llm/collaborative', async (req, res) => {
+    try {
+      const { phase4EnterpriseFeatures } = await import('./llm/enterprise/Phase4ConsolidatedFeatures');
+      const { task, prompt, context } = req.body;
+      
+      const result = await phase4EnterpriseFeatures.collaborativeAI.executeCollaborativeTask(task, prompt, context);
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error('Collaborative AI error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/marketplace/search', async (req, res) => {
+    try {
+      const { phase4EnterpriseFeatures } = await import('./llm/enterprise/Phase4ConsolidatedFeatures');
+      const query = req.query;
+      
+      const results = phase4EnterpriseFeatures.marketplace.searchMarketplace(query as any);
+      res.json({ success: true, results });
+    } catch (error) {
+      console.error('Marketplace search error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/governance/evaluate', async (req, res) => {
+    try {
+      const { phase4EnterpriseFeatures } = await import('./llm/enterprise/Phase4ConsolidatedFeatures');
+      const { request, context } = req.body;
+      
+      const evaluation = await phase4EnterpriseFeatures.governance.evaluateRequest(request, context);
+      res.json({ success: true, evaluation });
+    } catch (error) {
+      console.error('Governance evaluation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/optimization/optimize', async (req, res) => {
+    try {
+      const { phase4EnterpriseFeatures } = await import('./llm/enterprise/Phase4ConsolidatedFeatures');
+      const { workflow, performanceData } = req.body;
+      
+      const optimization = await phase4EnterpriseFeatures.autoOptimization.optimizeWorkflow(workflow, performanceData);
+      res.json({ success: true, optimization });
+    } catch (error) {
+      console.error('Auto-optimization error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/enterprise/analytics', async (req, res) => {
+    try {
+      const { phase4EnterpriseFeatures } = await import('./llm/enterprise/Phase4ConsolidatedFeatures');
+      const analytics = phase4EnterpriseFeatures.getEnterpriseAnalytics();
+      res.json({ success: true, analytics });
+    } catch (error) {
+      console.error('Enterprise analytics error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
