@@ -1,9 +1,9 @@
 {
   "id": "asana-enhanced",
   "name": "Asana Enhanced",
-  "description": "Enhanced Asana project management",
+  "description": "Enhanced Asana project management with advanced task and project operations",
   "category": "Project Management",
-  "icon": "placeholder",
+  "icon": "asana",
   "color": "#273347",
   "version": "1.0.0",
   "authentication": {
@@ -11,7 +11,7 @@
     "config": {
       "authUrl": "https://app.asana.com/-/oauth_authorize",
       "tokenUrl": "https://app.asana.com/-/oauth_token",
-      "scopes": []
+      "scopes": ["default"]
     }
   },
   "baseUrl": "https://app.asana.com/api/1.0",
@@ -25,14 +25,11 @@
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Asana Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "default"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -40,226 +37,457 @@
       "name": "Create Task",
       "description": "Create a new task in a project",
       "parameters": {
-        "projectId": {
-          "type": "string",
-          "required": true,
-          "description": "Project ID"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Task name"
+          },
+          "projects": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Project IDs to add the task to"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Assignee user ID or email"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description/notes"
+          },
+          "due_on": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date (YYYY-MM-DD)"
+          },
+          "due_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Due date and time (ISO 8601)"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "normal", "high"],
+            "description": "Task priority"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tag IDs to apply to the task"
+          },
+          "followers": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "User IDs to follow the task"
+          },
+          "parent": {
+            "type": "string",
+            "description": "Parent task ID (for subtasks)"
+          }
         },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Task name"
-        },
-        "assignee": {
-          "type": "string",
-          "required": false,
-          "description": "Assignee user ID"
-        },
-        "dueOn": {
-          "type": "string",
-          "required": false,
-          "description": "Due date (YYYY-MM-DD)"
-        }
-      },
-      "requiredScopes": []
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_task",
       "name": "Update Task",
       "description": "Update an existing task",
       "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Task ID"
+        "type": "object",
+        "properties": {
+          "task_gid": {
+            "type": "string",
+            "description": "Task global ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Task name"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Assignee user ID or email"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description/notes"
+          },
+          "due_on": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date (YYYY-MM-DD)"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Mark task as completed"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "normal", "high"],
+            "description": "Task priority"
+          }
         },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": []
+        "required": ["task_gid"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "move_task",
-      "name": "Move Task",
-      "description": "Move a task to a different section",
+      "id": "get_task",
+      "name": "Get Task",
+      "description": "Retrieve details of a specific task",
       "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Task ID"
+        "type": "object",
+        "properties": {
+          "task_gid": {
+            "type": "string",
+            "description": "Task global ID"
+          },
+          "opt_fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          }
         },
-        "sectionId": {
-          "type": "string",
-          "required": true,
-          "description": "Target section ID"
-        }
-      },
-      "requiredScopes": []
+        "required": ["task_gid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tasks",
+      "name": "List Tasks",
+      "description": "List tasks in a project or assigned to a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Project ID to filter tasks"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "User ID to filter tasks by assignee"
+          },
+          "workspace": {
+            "type": "string",
+            "description": "Workspace ID"
+          },
+          "completed_since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter completed tasks since this date"
+          },
+          "modified_since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter tasks modified since this date"
+          },
+          "limit": {
+            "type": "number",
+            "default": 50,
+            "maximum": 100,
+            "description": "Number of tasks to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "workspace": {
+            "type": "string",
+            "description": "Workspace ID"
+          },
+          "team": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "color": {
+            "type": "string",
+            "enum": ["dark-pink", "dark-green", "dark-blue", "dark-red", "dark-teal", "dark-brown", "dark-orange", "dark-purple", "dark-warm-gray", "light-pink", "light-green", "light-blue", "light-red", "light-teal", "light-yellow", "light-orange", "light-purple", "light-warm-gray"],
+            "description": "Project color"
+          },
+          "layout": {
+            "type": "string",
+            "enum": ["list", "board"],
+            "description": "Project layout"
+          },
+          "privacy_setting": {
+            "type": "string",
+            "enum": ["public_to_workspace", "public_to_team", "private"],
+            "description": "Project privacy setting"
+          }
+        },
+        "required": ["name", "workspace"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_project",
+      "name": "Update Project",
+      "description": "Update an existing project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_gid": {
+            "type": "string",
+            "description": "Project global ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "color": {
+            "type": "string",
+            "description": "Project color"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Archive/unarchive the project"
+          }
+        },
+        "required": ["project_gid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "List Projects",
+      "description": "List projects in a workspace or team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "string",
+            "description": "Workspace ID"
+          },
+          "team": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Include archived projects"
+          },
+          "limit": {
+            "type": "number",
+            "default": 50,
+            "description": "Number of projects to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_task_to_project",
+      "name": "Add Task to Project",
+      "description": "Add an existing task to a project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_gid": {
+            "type": "string",
+            "description": "Task global ID"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project ID to add the task to"
+          },
+          "insert_after": {
+            "type": "string",
+            "description": "Task ID to insert after"
+          },
+          "insert_before": {
+            "type": "string",
+            "description": "Task ID to insert before"
+          }
+        },
+        "required": ["task_gid", "project"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_subtask",
+      "name": "Create Subtask",
+      "description": "Create a subtask under a parent task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string",
+            "description": "Parent task ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Subtask name"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Assignee user ID"
+          },
+          "due_on": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          }
+        },
+        "required": ["parent", "name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "add_comment",
       "name": "Add Comment",
       "description": "Add a comment to a task",
       "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Task ID"
+        "type": "object",
+        "properties": {
+          "task_gid": {
+            "type": "string",
+            "description": "Task global ID"
+          },
+          "text": {
+            "type": "string",
+            "description": "Comment text"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "description": "Pin the comment"
+          }
         },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Comment text"
-        }
-      },
-      "requiredScopes": []
+        "required": ["task_gid", "text"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "assign_task",
-      "name": "Assign Task",
-      "description": "Assign a task to a user",
+      "id": "list_workspaces",
+      "name": "List Workspaces",
+      "description": "List available workspaces",
       "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Task ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "default": 50,
+            "description": "Number of workspaces to return"
+          }
         },
-        "assignee": {
-          "type": "string",
-          "required": true,
-          "description": "Assignee user ID"
-        }
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "add_subtask",
-      "name": "Add Subtask",
-      "description": "Add a subtask to a task",
-      "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Parent task ID"
-        },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Subtask name"
-        }
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "add_tag",
-      "name": "Add Tag",
-      "description": "Add a tag to a task",
-      "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Task ID"
-        },
-        "tagId": {
-          "type": "string",
-          "required": true,
-          "description": "Tag ID"
-        }
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "set_due_date",
-      "name": "Set Due Date",
-      "description": "Set due date for a task",
-      "parameters": {
-        "taskId": {
-          "type": "string",
-          "required": true,
-          "description": "Task ID"
-        },
-        "dueOn": {
-          "type": "string",
-          "required": true,
-          "description": "Due date (YYYY-MM-DD)"
-        }
-      },
-      "requiredScopes": []
-    },
-    {
-      "id": "create_section",
-      "name": "Create Section",
-      "description": "Create a new section in a project",
-      "parameters": {
-        "projectId": {
-          "type": "string",
-          "required": true,
-          "description": "Project ID"
-        },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Section name"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "task_created",
       "name": "Task Created",
-      "description": "Triggered when a task is created",
+      "description": "Triggered when a new task is created",
+      "type": "webhook",
       "parameters": {
-        "projectId": {
-          "type": "string",
-          "required": true,
-          "description": "Project ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Filter by specific project"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Filter by specific assignee"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "task_updated",
-      "name": "Task Updated",
-      "description": "Triggered when a task is updated",
-      "parameters": {
-        "projectId": {
-          "type": "string",
-          "required": true,
-          "description": "Project ID to monitor"
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "gid": {"type": "string"},
+          "name": {"type": "string"},
+          "assignee": {"type": "object"},
+          "projects": {"type": "array"},
+          "due_on": {"type": "string"},
+          "created_at": {"type": "string"}
         }
-      },
-      "requiredScopes": []
+      }
     },
     {
       "id": "task_completed",
       "name": "Task Completed",
-      "description": "Triggered when a task is completed",
+      "description": "Triggered when a task is marked as completed",
+      "type": "webhook",
       "parameters": {
-        "projectId": {
-          "type": "string",
-          "required": true,
-          "description": "Project ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Filter by specific project"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "gid": {"type": "string"},
+          "name": {"type": "string"},
+          "completed_at": {"type": "string"},
+          "assignee": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "comment_added",
-      "name": "Comment Added",
-      "description": "Triggered when a comment is added",
+      "id": "task_updated",
+      "name": "Task Updated",
+      "description": "Triggered when a task is modified",
+      "type": "webhook",
       "parameters": {
-        "projectId": {
-          "type": "string",
-          "required": true,
-          "description": "Project ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Filter by specific project"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Specific fields to watch for changes"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "gid": {"type": "string"},
+          "name": {"type": "string"},
+          "modified_at": {"type": "string"},
+          "changes": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

@@ -1,196 +1,680 @@
 {
   "id": "github",
   "name": "GitHub",
-  "category": "development",
-  "description": "GitHub version control and collaboration platform",
+  "description": "GitHub integration for repository management, issues, pull requests, and workflow automation",
+  "category": "Development",
+  "icon": "github",
+  "color": "#171515",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "repo",
-        "issues",
-        "pull_requests"
-      ]
+      "authUrl": "https://github.com/login/oauth/authorize",
+      "tokenUrl": "https://github.com/login/oauth/access_token",
+      "scopes": ["repo", "read:user", "user:email"]
     }
+  },
+  "baseUrl": "https://api.github.com",
+  "rateLimits": {
+    "requestsPerHour": 5000,
+    "requestsPerMinute": 200
   },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to GitHub and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "user:read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_issue",
       "name": "Create Issue",
-      "description": "Create new GitHub issue",
+      "description": "Create a new issue in a repository",
       "parameters": {
-        "owner": {
-          "type": "string",
-          "required": true,
-          "description": "Repository owner"
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (username or organization)"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "body": {
+            "type": "string",
+            "description": "Issue body/description"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of usernames to assign to the issue"
+          },
+          "milestone": {
+            "type": "number",
+            "description": "Milestone number"
+          },
+          "labels": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of label names"
+          }
         },
-        "repo": {
-          "type": "string",
-          "required": true,
-          "description": "Repository name"
+        "required": ["owner", "repo", "title"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_issue",
+      "name": "Update Issue",
+      "description": "Update an existing issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "issue_number": {
+            "type": "number",
+            "description": "Issue number"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "body": {
+            "type": "string",
+            "description": "Issue body"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["open", "closed"],
+            "description": "Issue state"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of usernames to assign"
+          },
+          "labels": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of label names"
+          }
         },
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Issue title"
+        "required": ["owner", "repo", "issue_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_issue",
+      "name": "Get Issue",
+      "description": "Get details of a specific issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "issue_number": {
+            "type": "number",
+            "description": "Issue number"
+          }
         },
-        "body": {
-          "type": "string",
-          "required": false,
-          "description": "Issue description"
+        "required": ["owner", "repo", "issue_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_issues",
+      "name": "List Issues",
+      "description": "List repository issues with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["open", "closed", "all"],
+            "default": "open",
+            "description": "Issue state filter"
+          },
+          "labels": {
+            "type": "string",
+            "description": "Comma-separated list of labels"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Filter by assignee username"
+          },
+          "creator": {
+            "type": "string",
+            "description": "Filter by creator username"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["created", "updated", "comments"],
+            "default": "created",
+            "description": "Sort field"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort direction"
+          },
+          "per_page": {
+            "type": "number",
+            "default": 30,
+            "maximum": 100,
+            "description": "Number of items per page"
+          }
         },
-        "labels": {
-          "type": "array",
-          "required": false,
-          "description": "Issue labels"
-        },
-        "assignees": {
-          "type": "array",
-          "required": false,
-          "description": "Issue assignees"
-        }
-      },
-      "requiredScopes": [
-        "issues"
-      ]
+        "required": ["owner", "repo"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_pull_request",
       "name": "Create Pull Request",
-      "description": "Create new pull request",
+      "description": "Create a new pull request",
       "parameters": {
-        "owner": {
-          "type": "string",
-          "required": true,
-          "description": "Repository owner"
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "title": {
+            "type": "string",
+            "description": "Pull request title"
+          },
+          "head": {
+            "type": "string",
+            "description": "Branch or commit SHA to merge from"
+          },
+          "base": {
+            "type": "string",
+            "description": "Branch to merge into"
+          },
+          "body": {
+            "type": "string",
+            "description": "Pull request body/description"
+          },
+          "draft": {
+            "type": "boolean",
+            "description": "Create as draft pull request"
+          },
+          "maintainer_can_modify": {
+            "type": "boolean",
+            "description": "Allow maintainers to modify the pull request"
+          }
         },
-        "repo": {
-          "type": "string",
-          "required": true,
-          "description": "Repository name"
-        },
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "PR title"
-        },
-        "head": {
-          "type": "string",
-          "required": true,
-          "description": "Head branch"
-        },
-        "base": {
-          "type": "string",
-          "required": true,
-          "description": "Base branch"
-        },
-        "body": {
-          "type": "string",
-          "required": false,
-          "description": "PR description"
-        }
-      },
-      "requiredScopes": [
-        "pull_requests"
-      ]
+        "required": ["owner", "repo", "title", "head", "base"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_comment",
-      "name": "Add Comment",
-      "description": "Add comment to issue or PR",
+      "id": "update_pull_request",
+      "name": "Update Pull Request",
+      "description": "Update an existing pull request",
       "parameters": {
-        "owner": {
-          "type": "string",
-          "required": true,
-          "description": "Repository owner"
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "pull_number": {
+            "type": "number",
+            "description": "Pull request number"
+          },
+          "title": {
+            "type": "string",
+            "description": "Pull request title"
+          },
+          "body": {
+            "type": "string",
+            "description": "Pull request body"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["open", "closed"],
+            "description": "Pull request state"
+          },
+          "base": {
+            "type": "string",
+            "description": "Branch to merge into"
+          }
         },
-        "repo": {
-          "type": "string",
-          "required": true,
-          "description": "Repository name"
+        "required": ["owner", "repo", "pull_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "merge_pull_request",
+      "name": "Merge Pull Request",
+      "description": "Merge a pull request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "pull_number": {
+            "type": "number",
+            "description": "Pull request number"
+          },
+          "commit_title": {
+            "type": "string",
+            "description": "Merge commit title"
+          },
+          "commit_message": {
+            "type": "string",
+            "description": "Merge commit message"
+          },
+          "merge_method": {
+            "type": "string",
+            "enum": ["merge", "squash", "rebase"],
+            "default": "merge",
+            "description": "Merge method"
+          }
         },
-        "issueNumber": {
-          "type": "number",
-          "required": true,
-          "description": "Issue/PR number"
+        "required": ["owner", "repo", "pull_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_pull_requests",
+      "name": "List Pull Requests",
+      "description": "List repository pull requests",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["open", "closed", "all"],
+            "default": "open",
+            "description": "Pull request state filter"
+          },
+          "head": {
+            "type": "string",
+            "description": "Filter by head branch"
+          },
+          "base": {
+            "type": "string",
+            "description": "Filter by base branch"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["created", "updated", "popularity", "long-running"],
+            "default": "created",
+            "description": "Sort field"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort direction"
+          }
         },
-        "body": {
-          "type": "string",
-          "required": true,
-          "description": "Comment body"
-        }
-      },
-      "requiredScopes": [
-        "issues"
-      ]
+        "required": ["owner", "repo"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_comment",
+      "name": "Create Comment",
+      "description": "Create a comment on an issue or pull request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "issue_number": {
+            "type": "number",
+            "description": "Issue or pull request number"
+          },
+          "body": {
+            "type": "string",
+            "description": "Comment body"
+          }
+        },
+        "required": ["owner", "repo", "issue_number", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_repository",
+      "name": "Get Repository",
+      "description": "Get repository information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          }
+        },
+        "required": ["owner", "repo"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_repositories",
+      "name": "List Repositories",
+      "description": "List repositories for the authenticated user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string",
+            "enum": ["all", "public", "private"],
+            "default": "all",
+            "description": "Repository visibility filter"
+          },
+          "affiliation": {
+            "type": "string",
+            "enum": ["owner", "collaborator", "organization_member"],
+            "default": "owner",
+            "description": "Repository affiliation filter"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["all", "owner", "public", "private", "member"],
+            "default": "all",
+            "description": "Repository type filter"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["created", "updated", "pushed", "full_name"],
+            "default": "full_name",
+            "description": "Sort field"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "asc",
+            "description": "Sort direction"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_webhook",
+      "name": "Create Webhook",
+      "description": "Create a repository webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Webhook URL"
+          },
+          "events": {
+            "type": "array",
+            "items": {"type": "string"},
+            "default": ["push"],
+            "description": "List of events to trigger webhook"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["json", "form"],
+            "default": "json",
+            "description": "Content type for webhook payload"
+          },
+          "secret": {
+            "type": "string",
+            "description": "Secret for webhook signature verification"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether webhook is active"
+          }
+        },
+        "required": ["owner", "repo", "url"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "issue_opened",
       "name": "Issue Opened",
-      "description": "Trigger when issue is opened",
+      "description": "Triggered when a new issue is opened",
+      "type": "webhook",
       "parameters": {
-        "owner": {
-          "type": "string",
-          "required": true,
-          "description": "Repository owner"
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner to filter"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name to filter"
+          },
+          "labels": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by specific labels"
+          }
         },
-        "repo": {
-          "type": "string",
-          "required": true,
-          "description": "Repository name"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "issues"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string"},
+          "number": {"type": "number"},
+          "issue": {"type": "object"},
+          "repository": {"type": "object"},
+          "sender": {"type": "object"}
+        }
+      }
     },
     {
       "id": "pull_request_opened",
       "name": "Pull Request Opened",
-      "description": "Trigger when PR is opened",
+      "description": "Triggered when a new pull request is opened",
+      "type": "webhook",
       "parameters": {
-        "owner": {
-          "type": "string",
-          "required": true,
-          "description": "Repository owner"
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner to filter"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name to filter"
+          },
+          "base_branch": {
+            "type": "string",
+            "description": "Filter by target branch"
+          }
         },
-        "repo": {
-          "type": "string",
-          "required": true,
-          "description": "Repository name"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "pull_requests"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string"},
+          "number": {"type": "number"},
+          "pull_request": {"type": "object"},
+          "repository": {"type": "object"},
+          "sender": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "push",
+      "name": "Push",
+      "description": "Triggered when commits are pushed to a repository",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner to filter"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name to filter"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Filter by specific branch"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ref": {"type": "string"},
+          "before": {"type": "string"},
+          "after": {"type": "string"},
+          "commits": {"type": "array"},
+          "repository": {"type": "object"},
+          "pusher": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "issue_closed",
+      "name": "Issue Closed",
+      "description": "Triggered when an issue is closed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner to filter"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name to filter"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string"},
+          "issue": {"type": "object"},
+          "repository": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "pull_request_merged",
+      "name": "Pull Request Merged",
+      "description": "Triggered when a pull request is merged",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner to filter"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name to filter"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string"},
+          "pull_request": {"type": "object"},
+          "repository": {"type": "object"}
+        }
+      }
     }
   ],
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 5000,
-    "dailyLimit": 5000
-  },
-  "pricing": {
-    "tier": "free",
-    "costPerExecution": 0
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
   }
 }
