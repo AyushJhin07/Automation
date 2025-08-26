@@ -29,6 +29,7 @@ import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
+import { AIParameterEditor } from './AIParameterEditor';
 import { 
   Plus,
   Play,
@@ -1338,37 +1339,50 @@ const GraphEditorContent = () => {
               />
             </div>
             
-            {/* Parameters */}
+            {/* Parameters - AI-as-a-Field */}
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">Parameters</label>
-              <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300 mb-3 block flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Smart Parameters
+                <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                  AI-Powered
+                </Badge>
+              </label>
+              <div className="space-y-4">
                 {Object.entries(selectedNode.data.params || {}).map(([key, value]) => (
-                  <div key={key}>
-                    <label className="text-xs text-slate-400 mb-1 block">{key}</label>
-                    <Input
-                      value={String(value)}
-                      onChange={(e) => {
-                        setNodes((nds) =>
-                          nds.map((n) =>
-                            n.id === selectedNode.id
-                              ? { 
-                                  ...n, 
-                                  data: { 
-                                    ...n.data, 
-                                    params: { 
-                                      ...n.data.params, 
-                                      [key]: e.target.value 
-                                    } 
+                  <AIParameterEditor
+                    key={key}
+                    paramName={key}
+                    value={value}
+                    onChange={(newValue) => {
+                      setNodes((nds) =>
+                        nds.map((n) =>
+                          n.id === selectedNode.id
+                            ? { 
+                                ...n, 
+                                data: { 
+                                  ...n.data, 
+                                  params: { 
+                                    ...n.data.params, 
+                                    [key]: newValue 
                                   } 
-                                }
-                              : n
-                          )
-                        );
-                      }}
-                      className="bg-slate-800 border-slate-600 text-white text-sm"
-                    />
-                  </div>
+                                } 
+                              }
+                            : n
+                        )
+                      );
+                    }}
+                    availableNodes={nodes
+                      .filter(n => n.id !== selectedNode.id) // Exclude current node
+                      .map(n => ({ id: n.id, label: n.data.label || n.id }))
+                    }
+                  />
                 ))}
+                {Object.keys(selectedNode.data.params || {}).length === 0 && (
+                  <div className="text-center py-4 text-slate-400 text-sm">
+                    No parameters configured for this node
+                  </div>
+                )}
               </div>
             </div>
             

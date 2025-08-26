@@ -272,3 +272,34 @@ export interface LogEntry {
   message: string;
   data?: any;
 }
+
+// ===== AI-AS-A-FIELD TYPES (Phase 2) =====
+// Allows every parameter to be Static, AI-powered, or Reference-based
+
+export type ParamValue =
+  | string | number | boolean | null | Record<string, any> | any[]
+  | EvaluatedValue;
+
+export type EvaluatedValue =
+  | { mode: 'static'; value: any }
+  | { mode: 'ref'; nodeId: string; path: string }
+  | {
+      mode: 'llm';
+      provider: 'openai' | 'anthropic' | 'google';
+      model: string;
+      prompt: string;
+      system?: string;
+      temperature?: number;
+      maxTokens?: number;
+      jsonSchema?: any;
+      cacheTtlSec?: number;
+    };
+
+// Context for parameter resolution
+export interface ParameterContext {
+  nodeOutputs: Record<string, any>;
+  currentNodeId: string;
+  workflowId: string;
+  userId?: string;
+  executionId: string;
+}

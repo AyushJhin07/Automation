@@ -4,8 +4,9 @@
  * server-side execution capabilities, especially for LLM nodes
  */
 
-import { NodeGraph, GraphNode } from '../../shared/nodeGraphSchema';
+import { NodeGraph, GraphNode, ParameterContext } from '../../shared/nodeGraphSchema';
 import { runLLMGenerate, runLLMExtract, runLLMClassify, runLLMToolCall } from '../nodes/llm/executeLLM';
+import { resolveAllParams } from './ParameterResolver';
 
 export interface ExecutionContext {
   outputs: Record<string, any>;
@@ -13,6 +14,7 @@ export interface ExecutionContext {
   userId?: string;
   workflowId: string;
   startTime: Date;
+  executionId: string;
 }
 
 export interface ExecutionResult {
@@ -30,12 +32,15 @@ export class WorkflowRuntime {
    */
   async executeWorkflow(graph: NodeGraph, initialData: any = {}, userId?: string): Promise<ExecutionResult> {
     const startTime = new Date();
+    const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    
     const context: ExecutionContext = {
       outputs: {},
       prevOutput: initialData,
       userId,
       workflowId: graph.id,
-      startTime
+      startTime,
+      executionId
     };
 
     console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
@@ -93,8 +98,16 @@ export class WorkflowRuntime {
    * Execute a single node
    */
   private async executeNode(node: GraphNode, context: ExecutionContext): Promise<any> {
-    // Resolve node parameters (for future AI-as-a-field support)
-    const resolvedParams = await this.resolveParameters(node.data, context);
+    // Resolve node parameters using AI-as-a-field ParameterResolver
+    const paramContext: ParameterContext = {
+      nodeOutputs: context.outputs,
+      currentNodeId: node.id,
+      workflowId: context.workflowId,
+      userId: context.userId,
+      executionId: context.executionId
+    };
+    
+    const resolvedParams = await resolveAllParams(node.data, paramContext);
     
     // Execute based on node type
     switch (node.type) {
@@ -133,14 +146,7 @@ export class WorkflowRuntime {
     }
   }
 
-  /**
-   * Resolve node parameters (placeholder for future AI-as-a-field support)
-   */
-  private async resolveParameters(params: any, context: ExecutionContext): Promise<any> {
-    // For now, just return the parameters as-is
-    // In Phase 2, this will handle AI-powered parameter resolution
-    return params;
-  }
+
 
   /**
    * Execute HTTP request node
