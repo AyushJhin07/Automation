@@ -2569,6 +2569,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== PHASE 3 LLM ADVANCED FEATURES API =====
+  
+  // Smart suggestions
+  app.get('/api/llm/suggestions', async (req, res) => {
+    try {
+      const { smartSuggestionsEngine } = await import('./llm/LLMAdvancedFeatures');
+      const context = req.query;
+      const suggestions = await smartSuggestionsEngine.generateSuggestions(context);
+      res.json({ success: true, suggestions });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Real-time LLM streaming
+  app.post('/api/llm/stream', async (req, res) => {
+    try {
+      const { realTimeLLMExecutor } = await import('./llm/LLMAdvancedFeatures');
+      const { request } = req.body;
+      
+      // Set up Server-Sent Events
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+
+      const result = await realTimeLLMExecutor.streamLLMResponse(request, (chunk) => {
+        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      });
+
+      res.write(`data: ${JSON.stringify({ status: 'complete', fullText: result })}\n\n`);
+      res.end();
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // LLM debugging traces
+  app.get('/api/llm/traces', async (req, res) => {
+    try {
+      const { llmDebugTracer } = await import('./llm/LLMAdvancedFeatures');
+      const { nodeId, limit } = req.query;
+      const traces = llmDebugTracer.getTraces(nodeId as string, Number(limit) || 50);
+      const analytics = llmDebugTracer.getTraceAnalytics();
+      res.json({ success: true, traces, analytics });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Conditional logic evaluation
+  app.post('/api/llm/evaluate-condition', async (req, res) => {
+    try {
+      const { conditionalLogicEngine } = await import('./llm/LLMAdvancedFeatures');
+      const { condition, context, useLLM } = req.body;
+      const result = await conditionalLogicEngine.evaluateCondition(condition, context, useLLM);
+      res.json({ success: true, result });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Dynamic schema generation
+  app.post('/api/llm/generate-schema', async (req, res) => {
+    try {
+      const { dynamicSchemaGenerator } = await import('./llm/LLMAdvancedFeatures');
+      const { description, examples } = req.body;
+      const result = await dynamicSchemaGenerator.generateSchema(description, examples);
+      res.json({ success: true, result });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Intelligent error analysis
+  app.post('/api/llm/analyze-error', async (req, res) => {
+    try {
+      const { intelligentErrorHandler } = await import('./llm/LLMAdvancedFeatures');
+      const { error, context } = req.body;
+      const analysis = await intelligentErrorHandler.analyzeAndSuggestFix(new Error(error.message), context);
+      res.json({ success: true, analysis });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Auto workflow generation
+  app.post('/api/llm/generate-workflow', async (req, res) => {
+    try {
+      const { autoWorkflowGenerator } = await import('./llm/LLMAdvancedFeatures');
+      const { description } = req.body;
+      const result = await autoWorkflowGenerator.generateWorkflow(description);
+      res.json({ success: true, result });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // LLM templates
+  app.get('/api/llm/templates', async (req, res) => {
+    try {
+      const { llmTemplateManager } = await import('./llm/LLMTemplates');
+      const { category, tags, search } = req.query;
+      const templates = llmTemplateManager.getTemplates({
+        category: category as string,
+        tags: tags ? (tags as string).split(',') : undefined,
+        search: search as string
+      });
+      const categories = llmTemplateManager.getCategories();
+      res.json({ success: true, templates, categories });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Render LLM template
+  app.post('/api/llm/render-template', async (req, res) => {
+    try {
+      const { llmTemplateManager } = await import('./llm/LLMTemplates');
+      const { templateId, variables } = req.body;
+      const result = llmTemplateManager.renderTemplate(templateId, variables);
+      res.json({ success: true, result });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // LLM analytics and usage metrics
+  app.get('/api/llm/analytics', async (req, res) => {
+    try {
+      const { llmAnalytics } = await import('./llm/LLMAnalytics');
+      const since = req.query.since ? Number(req.query.since) : undefined;
+      const userId = req.query.userId as string;
+      
+      const metrics = userId 
+        ? llmAnalytics.getUserMetrics(userId, since)
+        : llmAnalytics.getUsageMetrics(since);
+      
+      const dashboard = llmAnalytics.getDashboardData();
+      res.json({ success: true, metrics, dashboard });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // RAG document management
+  app.post('/api/llm/rag/add-documents', async (req, res) => {
+    try {
+      const { advancedRAG } = await import('./llm/AdvancedRAG');
+      const { urls, workflowId, userId } = req.body;
+      const documents = await advancedRAG.addDocumentsFromUrls(urls, workflowId, userId);
+      res.json({ success: true, documents, count: documents.length });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // RAG search
+  app.post('/api/llm/rag/search', async (req, res) => {
+    try {
+      const { advancedRAG } = await import('./llm/AdvancedRAG');
+      const query = req.body;
+      const results = await advancedRAG.search(query);
+      res.json({ success: true, results });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Provider fallback status
+  app.get('/api/llm/fallback/status', async (req, res) => {
+    try {
+      const { llmFallbackManager } = await import('./llm/LLMFallbackManager');
+      const status = llmFallbackManager.getProviderStatus();
+      const recommendations = llmFallbackManager.getProviderRecommendations();
+      res.json({ success: true, status, recommendations });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Memory management
+  app.get('/api/llm/memory/context', async (req, res) => {
+    try {
+      const { llmMemoryManager } = await import('./llm/LLMMemoryManager');
+      const { query, workflowId, userId } = req.query;
+      const context = await llmMemoryManager.getEnhancedContext(
+        query as string, 
+        workflowId as string, 
+        userId as string
+      );
+      res.json({ success: true, context });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
