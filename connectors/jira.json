@@ -33,14 +33,11 @@
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Jira and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read:user"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -49,207 +46,176 @@
       "description": "Create a new issue in Jira",
       "endpoint": "/rest/api/3/issue",
       "method": "POST",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": true,
-          "description": "Project key (e.g., PROJ)"
-        },
-        "summary": {
-          "type": "string",
-          "required": true,
-          "description": "Issue summary/title"
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Issue description"
-        },
-        "issueType": {
-          "type": "string",
-          "required": true,
-          "enum": [
-            "Bug",
-            "Task",
-            "Story",
-            "Epic",
-            "Subtask"
-          ],
-          "description": "Type of issue to create"
-        },
-        "priority": {
-          "type": "string",
-          "required": false,
-          "enum": [
-            "Highest",
-            "High",
-            "Medium",
-            "Low",
-            "Lowest"
-          ],
-          "default": "Medium",
-          "description": "Issue priority"
-        },
-        "assignee": {
-          "type": "string",
-          "required": false,
-          "description": "Assignee account ID or email"
-        },
-        "reporter": {
-          "type": "string",
-          "required": false,
-          "description": "Reporter account ID or email"
-        },
-        "labels": {
-          "type": "array",
-          "required": false,
-          "items": {
-            "type": "string"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string",
+            "description": "Project key (e.g., PROJ)"
           },
-          "description": "Array of labels to add to the issue"
-        },
-        "components": {
-          "type": "array",
-          "required": false,
-          "items": {
-            "type": "string"
+          "summary": {
+            "type": "string",
+            "description": "Issue summary/title"
           },
-          "description": "Array of component names"
-        },
-        "fixVersions": {
-          "type": "array",
-          "required": false,
-          "items": {
-            "type": "string"
+          "description": {
+            "type": "string",
+            "description": "Issue description"
           },
-          "description": "Array of fix version names"
+          "issueType": {
+            "type": "string",
+            "enum": ["Bug", "Task", "Story", "Epic", "Subtask"],
+            "description": "Type of issue to create"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["Highest", "High", "Medium", "Low", "Lowest"],
+            "default": "Medium",
+            "description": "Issue priority"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Assignee account ID or email"
+          },
+          "reporter": {
+            "type": "string",
+            "description": "Reporter account ID or email"
+          },
+          "labels": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Issue labels"
+          },
+          "components": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Component IDs or names"
+          },
+          "fixVersions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fix version IDs or names"
+          },
+          "customFields": {
+            "type": "object",
+            "description": "Custom field values as key-value pairs"
+          }
         },
-        "dueDate": {
-          "type": "string",
-          "required": false,
-          "format": "date",
-          "description": "Due date (YYYY-MM-DD)"
-        }
-      },
-      "responseFields": [
-        "id",
-        "key",
-        "self"
-      ],
-      "requiredScopes": [
-        "write:jira-work"
-      ]
+        "required": ["projectKey", "summary", "issueType"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_issue",
       "name": "Update Issue",
-      "description": "Update an existing issue in Jira",
+      "description": "Update an existing issue",
       "endpoint": "/rest/api/3/issue/{issueIdOrKey}",
       "method": "PUT",
-      "params": {
-        "issueIdOrKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue ID or key (e.g., PROJ-123)"
-        },
-        "summary": {
-          "type": "string",
-          "required": false,
-          "description": "Issue summary/title"
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Issue description"
-        },
-        "assignee": {
-          "type": "string",
-          "required": false,
-          "description": "Assignee account ID or email"
-        },
-        "priority": {
-          "type": "string",
-          "required": false,
-          "enum": [
-            "Highest",
-            "High",
-            "Medium",
-            "Low",
-            "Lowest"
-          ],
-          "description": "Issue priority"
-        },
-        "labels": {
-          "type": "array",
-          "required": false,
-          "items": {
-            "type": "string"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key (e.g., PROJ-123)"
           },
-          "description": "Array of labels"
+          "summary": {
+            "type": "string",
+            "description": "Issue summary/title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Issue description"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Assignee account ID or email"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["Highest", "High", "Medium", "Low", "Lowest"],
+            "description": "Issue priority"
+          },
+          "status": {
+            "type": "string",
+            "description": "Issue status (e.g., In Progress, Done)"
+          },
+          "labels": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Issue labels"
+          },
+          "customFields": {
+            "type": "object",
+            "description": "Custom field values as key-value pairs"
+          }
         },
-        "dueDate": {
-          "type": "string",
-          "required": false,
-          "format": "date",
-          "description": "Due date (YYYY-MM-DD)"
-        }
-      },
-      "responseFields": [
-        "id",
-        "key",
-        "self"
-      ],
-      "requiredScopes": [
-        "write:jira-work"
-      ]
+        "required": ["issueIdOrKey"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "transition_issue",
-      "name": "Transition Issue",
-      "description": "Transition an issue to a different status",
-      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/transitions",
-      "method": "POST",
-      "params": {
-        "issueIdOrKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue ID or key (e.g., PROJ-123)"
+      "id": "get_issue",
+      "name": "Get Issue",
+      "description": "Retrieve details of a specific issue",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key (e.g., PROJ-123)"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          },
+          "expand": {
+            "type": "string",
+            "description": "Comma-separated list of parameters to expand"
+          }
         },
-        "transitionId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the transition to perform"
+        "required": ["issueIdOrKey"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_issues",
+      "name": "Search Issues",
+      "description": "Search for issues using JQL",
+      "endpoint": "/rest/api/3/search",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "jql": {
+            "type": "string",
+            "description": "JQL query string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to return for each issue"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Parameters to expand"
+          },
+          "maxResults": {
+            "type": "number",
+            "default": 50,
+            "maximum": 100,
+            "description": "Maximum number of results to return"
+          },
+          "startAt": {
+            "type": "number",
+            "default": 0,
+            "description": "Index of the first result to return"
+          }
         },
-        "comment": {
-          "type": "string",
-          "required": false,
-          "description": "Comment to add during transition"
-        },
-        "assignee": {
-          "type": "string",
-          "required": false,
-          "description": "New assignee account ID"
-        },
-        "resolution": {
-          "type": "string",
-          "required": false,
-          "enum": [
-            "Fixed",
-            "Won't Fix",
-            "Duplicate",
-            "Incomplete",
-            "Cannot Reproduce",
-            "Done"
-          ],
-          "description": "Resolution when closing issue"
-        }
-      },
-      "responseFields": [
-        "transition"
-      ],
-      "requiredScopes": [
-        "write:jira-work"
-      ]
+        "required": ["jql"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "add_comment",
@@ -257,156 +223,59 @@
       "description": "Add a comment to an issue",
       "endpoint": "/rest/api/3/issue/{issueIdOrKey}/comment",
       "method": "POST",
-      "params": {
-        "issueIdOrKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue ID or key (e.g., PROJ-123)"
-        },
-        "body": {
-          "type": "string",
-          "required": true,
-          "description": "Comment text"
-        },
-        "visibility": {
-          "type": "string",
-          "required": false,
-          "enum": [
-            "all",
-            "internal"
-          ],
-          "default": "all",
-          "description": "Comment visibility"
-        }
-      },
-      "responseFields": [
-        "id",
-        "self",
-        "body",
-        "created"
-      ],
-      "requiredScopes": [
-        "write:jira-work"
-      ]
-    },
-    {
-      "id": "create_project",
-      "name": "Create Project",
-      "description": "Create a new project in Jira",
-      "endpoint": "/rest/api/3/project",
-      "method": "POST",
-      "params": {
-        "key": {
-          "type": "string",
-          "required": true,
-          "pattern": "^[A-Z][A-Z0-9_]*$",
-          "description": "Project key (uppercase letters, numbers, underscores)"
-        },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Project name"
-        },
-        "projectTypeKey": {
-          "type": "string",
-          "required": true,
-          "enum": [
-            "software",
-            "service_desk",
-            "business"
-          ],
-          "description": "Type of project"
-        },
-        "projectTemplateKey": {
-          "type": "string",
-          "required": false,
-          "enum": [
-            "com.pyxis.greenhopper.jira:gh-simplified-agility-kanban",
-            "com.pyxis.greenhopper.jira:gh-simplified-agility-scrum",
-            "com.atlassian.servicedesk:simplified-it-service-desk"
-          ],
-          "description": "Project template"
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Project description"
-        },
-        "leadAccountId": {
-          "type": "string",
-          "required": true,
-          "description": "Account ID of the project lead"
-        },
-        "url": {
-          "type": "string",
-          "required": false,
-          "format": "url",
-          "description": "Project URL"
-        },
-        "assigneeType": {
-          "type": "string",
-          "required": false,
-          "enum": [
-            "PROJECT_LEAD",
-            "UNASSIGNED"
-          ],
-          "default": "PROJECT_LEAD",
-          "description": "Default assignee for new issues"
-        }
-      },
-      "responseFields": [
-        "id",
-        "key",
-        "self"
-      ],
-      "requiredScopes": [
-        "manage:jira-project"
-      ]
-    },
-    {
-      "id": "search_issues",
-      "name": "Search Issues",
-      "description": "Search for issues using JQL (Jira Query Language)",
-      "endpoint": "/rest/api/3/search",
-      "method": "GET",
-      "params": {
-        "jql": {
-          "type": "string",
-          "required": true,
-          "description": "JQL query string (e.g., 'project = PROJ AND status = Open')"
-        },
-        "maxResults": {
-          "type": "number",
-          "required": false,
-          "default": 50,
-          "minimum": 1,
-          "maximum": 100,
-          "description": "Maximum number of results to return"
-        },
-        "startAt": {
-          "type": "number",
-          "required": false,
-          "default": 0,
-          "description": "Starting index for pagination"
-        },
-        "fields": {
-          "type": "array",
-          "required": false,
-          "items": {
-            "type": "string"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
           },
-          "description": "Specific fields to return"
-        }
-      },
-      "responseFields": [
-        "issues",
-        "total",
-        "maxResults",
-        "startAt"
-      ],
-      "requiredScopes": [
-        "read:jira-work"
-      ]
+          "body": {
+            "type": "string",
+            "description": "Comment text content"
+          },
+          "visibility": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["group", "role"]},
+              "value": {"type": "string"}
+            },
+            "description": "Comment visibility restrictions"
+          }
+        },
+        "required": ["issueIdOrKey", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "transition_issue",
+      "name": "Transition Issue",
+      "description": "Transition an issue to a different status",
+      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/transitions",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "transitionId": {
+            "type": "string",
+            "description": "ID of the transition to execute"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Optional comment for the transition"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Field values to set during transition"
+          }
+        },
+        "required": ["issueIdOrKey", "transitionId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "assign_issue",
@@ -414,173 +283,150 @@
       "description": "Assign an issue to a user",
       "endpoint": "/rest/api/3/issue/{issueIdOrKey}/assignee",
       "method": "PUT",
-      "params": {
-        "issueKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue key or ID"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "Account ID of the user to assign"
+          }
         },
-        "accountId": {
-          "type": "string",
-          "required": true,
-          "description": "Account ID of assignee"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
+        "required": ["issueIdOrKey", "accountId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_watcher",
-      "name": "Add Watcher",
-      "description": "Add a watcher to an issue",
-      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/watchers",
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new Jira project",
+      "endpoint": "/rest/api/3/project",
       "method": "POST",
-      "params": {
-        "issueKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue key or ID"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Project key (2-10 uppercase characters)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "projectTypeKey": {
+            "type": "string",
+            "enum": ["software", "service_desk", "business"],
+            "description": "Type of project to create"
+          },
+          "projectTemplateKey": {
+            "type": "string",
+            "description": "Template key for project creation"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "leadAccountId": {
+            "type": "string",
+            "description": "Account ID of the project lead"
+          }
         },
-        "accountId": {
-          "type": "string",
-          "required": true,
-          "description": "Account ID of watcher"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
+        "required": ["key", "name", "projectTypeKey"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_attachment",
-      "name": "Add Attachment",
-      "description": "Add an attachment to an issue",
-      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/attachments",
+      "id": "get_project",
+      "name": "Get Project",
+      "description": "Get details of a specific project",
+      "endpoint": "/rest/api/3/project/{projectIdOrKey}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectIdOrKey": {
+            "type": "string",
+            "description": "Project ID or key"
+          },
+          "expand": {
+            "type": "string",
+            "description": "Comma-separated list of parameters to expand"
+          }
+        },
+        "required": ["projectIdOrKey"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "List Projects",
+      "description": "Get a list of all projects",
+      "endpoint": "/rest/api/3/project",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expand": {
+            "type": "string",
+            "description": "Comma-separated list of parameters to expand"
+          },
+          "recent": {
+            "type": "number",
+            "description": "Number of recent projects to return"
+          },
+          "properties": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Project properties to filter by"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_version",
+      "name": "Create Version",
+      "description": "Create a new version in a project",
+      "endpoint": "/rest/api/3/version",
       "method": "POST",
-      "params": {
-        "issueKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue key or ID"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Version name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Version description"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "released": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the version is released"
+          },
+          "archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the version is archived"
+          },
+          "releaseDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Release date (YYYY-MM-DD)"
+          }
         },
-        "file": {
-          "type": "string",
-          "required": true,
-          "description": "File to attach"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
-    },
-    {
-      "id": "link_issues",
-      "name": "Link Issues",
-      "description": "Create a link between two issues",
-      "endpoint": "/rest/api/3/issueLink",
-      "method": "POST",
-      "params": {
-        "inwardIssue": {
-          "type": "string",
-          "required": true,
-          "description": "Key of inward issue"
-        },
-        "outwardIssue": {
-          "type": "string",
-          "required": true,
-          "description": "Key of outward issue"
-        },
-        "linkType": {
-          "type": "string",
-          "required": true,
-          "description": "Link type name"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
-    },
-    {
-      "id": "add_label",
-      "name": "Add Label",
-      "description": "Add a label to an issue",
-      "endpoint": "/rest/api/3/issue/{issueIdOrKey}",
-      "method": "PUT",
-      "params": {
-        "issueKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue key or ID"
-        },
-        "label": {
-          "type": "string",
-          "required": true,
-          "description": "Label to add"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
-    },
-    {
-      "id": "add_worklog",
-      "name": "Add Worklog",
-      "description": "Log work on an issue",
-      "endpoint": "/rest/api/3/issue/{issueIdOrKey}/worklog",
-      "method": "POST",
-      "params": {
-        "issueKey": {
-          "type": "string",
-          "required": true,
-          "description": "Issue key or ID"
-        },
-        "timeSpent": {
-          "type": "string",
-          "required": true,
-          "description": "Time spent (e.g., '1h 30m')"
-        },
-        "comment": {
-          "type": "string",
-          "required": false,
-          "description": "Work description"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
-    },
-    {
-      "id": "create_subtask",
-      "name": "Create Subtask",
-      "description": "Create a subtask for an issue",
-      "endpoint": "/rest/api/3/issue",
-      "method": "POST",
-      "params": {
-        "parentKey": {
-          "type": "string",
-          "required": true,
-          "description": "Parent issue key"
-        },
-        "summary": {
-          "type": "string",
-          "required": true,
-          "description": "Subtask summary"
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Subtask description"
-        },
-        "assignee": {
-          "type": "string",
-          "required": false,
-          "description": "Assignee account ID"
-        }
-      },
-      "requiredScopes": [
-        "write:jira-work"
-      ]
+        "required": ["name", "projectId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -589,167 +435,145 @@
       "name": "Issue Created",
       "description": "Triggered when a new issue is created",
       "type": "webhook",
-      "eventType": "jira:issue_created",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": false,
-          "description": "Specific project to monitor"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string",
+            "description": "Filter by specific project key"
+          },
+          "issueType": {
+            "type": "string",
+            "description": "Filter by issue type"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Filter by assignee account ID"
+          }
         },
-        "issueType": {
-          "type": "string",
-          "required": false,
-          "description": "Specific issue type to monitor"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "outputFields": [
-        "issue",
-        "user",
-        "timestamp"
-      ],
-      "requiredScopes": [
-        "read:jira-work"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "key": {"type": "string"},
+          "summary": {"type": "string"},
+          "description": {"type": "string"},
+          "issueType": {"type": "string"},
+          "priority": {"type": "string"},
+          "status": {"type": "string"},
+          "assignee": {"type": "string"},
+          "reporter": {"type": "string"},
+          "created": {"type": "string"},
+          "projectKey": {"type": "string"}
+        }
+      }
     },
     {
       "id": "issue_updated",
       "name": "Issue Updated",
       "description": "Triggered when an issue is updated",
       "type": "webhook",
-      "eventType": "jira:issue_updated",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": false,
-          "description": "Specific project to monitor"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string",
+            "description": "Filter by specific project key"
+          },
+          "fieldsToWatch": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Specific fields to watch for changes"
+          }
         },
-        "fieldChanged": {
-          "type": "string",
-          "required": false,
-          "description": "Specific field to monitor for changes"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "outputFields": [
-        "issue",
-        "user",
-        "changelog",
-        "timestamp"
-      ],
-      "requiredScopes": [
-        "read:jira-work"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "key": {"type": "string"},
+          "changelog": {"type": "object"},
+          "updated": {"type": "string"},
+          "user": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "issue_transitioned",
+      "id": "issue_status_changed",
       "name": "Issue Status Changed",
       "description": "Triggered when an issue status changes",
       "type": "webhook",
-      "eventType": "jira:issue_updated",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": false,
-          "description": "Specific project to monitor"
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string",
+            "description": "Filter by specific project key"
+          },
+          "fromStatus": {
+            "type": "string",
+            "description": "Watch for transitions from this status"
+          },
+          "toStatus": {
+            "type": "string",
+            "description": "Watch for transitions to this status"
+          }
         },
-        "fromStatus": {
-          "type": "string",
-          "required": false,
-          "description": "Previous status to monitor"
-        },
-        "toStatus": {
-          "type": "string",
-          "required": false,
-          "description": "New status to monitor"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "outputFields": [
-        "issue",
-        "user",
-        "fromStatus",
-        "toStatus",
-        "timestamp"
-      ],
-      "requiredScopes": [
-        "read:jira-work"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "key": {"type": "string"},
+          "fromStatus": {"type": "string"},
+          "toStatus": {"type": "string"},
+          "transitionDate": {"type": "string"},
+          "user": {"type": "string"}
+        }
+      }
     },
     {
       "id": "comment_added",
       "name": "Comment Added",
       "description": "Triggered when a comment is added to an issue",
       "type": "webhook",
-      "eventType": "comment_created",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": false,
-          "description": "Specific project to monitor"
-        }
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string",
+            "description": "Filter by specific project key"
+          },
+          "issueType": {
+            "type": "string",
+            "description": "Filter by issue type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "outputFields": [
-        "issue",
-        "comment",
-        "user",
-        "timestamp"
-      ],
-      "requiredScopes": [
-        "read:jira-work"
-      ]
-    },
-    {
-      "id": "issue_deleted",
-      "name": "Issue Deleted",
-      "description": "Triggered when an issue is deleted",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by project key"
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "key": {"type": "string"},
+          "commentId": {"type": "string"},
+          "commentBody": {"type": "string"},
+          "author": {"type": "string"},
+          "created": {"type": "string"}
         }
-      },
-      "requiredScopes": [
-        "read:jira-work"
-      ]
-    },
-    {
-      "id": "issue_commented",
-      "name": "Issue Commented",
-      "description": "Triggered when a comment is added to an issue",
-      "params": {
-        "projectKey": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by project key"
-        }
-      },
-      "requiredScopes": [
-        "read:jira-work"
-      ]
-    },
-    {
-      "id": "sprint_started",
-      "name": "Sprint Started",
-      "description": "Triggered when a sprint is started",
-      "params": {
-        "boardId": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by board ID"
-        }
-      },
-      "requiredScopes": [
-        "read:jira-work"
-      ]
+      }
     }
   ],
   "testConnection": {
-    "endpoint": "/rest/api/3/myself",
     "method": "GET",
-    "expectedResponse": {
-      "accountId": "string",
-      "active": true
-    }
-  },
-  "documentation": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/",
-  "supportContact": "https://community.developer.atlassian.com/"
+    "endpoint": "/rest/api/3/myself"
+  }
 }
