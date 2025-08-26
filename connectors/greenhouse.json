@@ -1,165 +1,547 @@
 {
   "id": "greenhouse",
   "name": "Greenhouse",
-  "description": "Greenhouse applicant tracking system",
-  "category": "Recruitment",
-  "icon": "users",
-  "color": "#00A76B",
+  "description": "Greenhouse ATS for recruiting and hiring management",
+  "category": "HR",
+  "icon": "greenhouse",
+  "color": "#5CB85C",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "basic",
-      "username": "{api_key}",
-      "password": ""
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Basic"
     }
   },
   "baseUrl": "https://harvest.greenhouse.io/v1",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 20000
-  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Greenhouse",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_candidates",
+      "name": "List Candidates",
+      "description": "List all candidates",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100,
+            "description": "Number of candidates per page"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "created_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return candidates created before this timestamp"
+          },
+          "created_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return candidates created after this timestamp"
+          },
+          "updated_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return candidates updated before this timestamp"
+          },
+          "updated_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return candidates updated after this timestamp"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_candidate",
+      "name": "Get Candidate",
+      "description": "Get a specific candidate",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Candidate ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_candidate",
       "name": "Create Candidate",
       "description": "Create a new candidate",
       "parameters": {
-        "firstName": {
-          "type": "string",
-          "required": true,
-          "description": "First name"
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "company": {
+            "type": "string",
+            "description": "Current company"
+          },
+          "title": {
+            "type": "string",
+            "description": "Current title"
+          },
+          "phone_numbers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string"},
+                "type": {"type": "string", "enum": ["home", "work", "mobile", "skype", "other"]}
+              }
+            },
+            "description": "Phone numbers"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string"},
+                "type": {"type": "string", "enum": ["home", "work", "other"]}
+              }
+            },
+            "description": "Addresses"
+          },
+          "email_addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string", "format": "email"},
+                "type": {"type": "string", "enum": ["personal", "work", "other"]}
+              }
+            },
+            "description": "Email addresses"
+          },
+          "website_addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string", "format": "uri"},
+                "type": {"type": "string", "enum": ["personal", "company", "portfolio", "blog", "social", "other"]}
+              }
+            },
+            "description": "Website addresses"
+          },
+          "social_media_addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string"}
+              }
+            },
+            "description": "Social media addresses"
+          },
+          "recruiter": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "number"},
+              "email": {"type": "string", "format": "email"}
+            },
+            "description": "Recruiter information"
+          },
+          "coordinator": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "number"},
+              "email": {"type": "string", "format": "email"}
+            },
+            "description": "Coordinator information"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          },
+          "activity_feed_notes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "body": {"type": "string"},
+                "user_id": {"type": "number"},
+                "private": {"type": "boolean", "default": false},
+                "visibility": {"type": "string", "enum": ["admin_only", "private", "public"]}
+              }
+            },
+            "description": "Activity feed notes"
+          }
         },
-        "lastName": {
-          "type": "string",
-          "required": true,
-          "description": "Last name"
-        },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Email address"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Phone number"
-        }
-      },
-      "requiredScopes": [
-        "candidates:write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_candidate",
       "name": "Update Candidate",
-      "description": "Update candidate information",
+      "description": "Update an existing candidate",
       "parameters": {
-        "candidateId": {
-          "type": "string",
-          "required": true,
-          "description": "Candidate ID"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Candidate ID"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "company": {
+            "type": "string",
+            "description": "Current company"
+          },
+          "title": {
+            "type": "string",
+            "description": "Current title"
+          },
+          "recruiter": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "number"},
+              "email": {"type": "string", "format": "email"}
+            },
+            "description": "Recruiter information"
+          },
+          "coordinator": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "number"},
+              "email": {"type": "string", "format": "email"}
+            },
+            "description": "Coordinator information"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          }
         },
-        "updates": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "candidates:write"
-      ]
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "advance_stage",
-      "name": "Advance Stage",
-      "description": "Move candidate to next stage",
+      "id": "list_jobs",
+      "name": "List Jobs",
+      "description": "List all jobs",
       "parameters": {
-        "applicationId": {
-          "type": "string",
-          "required": true,
-          "description": "Application ID"
+        "type": "object",
+        "properties": {
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100,
+            "description": "Number of jobs per page"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "created_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return jobs created before this timestamp"
+          },
+          "created_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return jobs created after this timestamp"
+          },
+          "updated_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return jobs updated before this timestamp"
+          },
+          "updated_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return jobs updated after this timestamp"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "closed", "draft"],
+            "description": "Filter by job status"
+          }
         },
-        "stageId": {
-          "type": "string",
-          "required": true,
-          "description": "Target stage ID"
-        }
-      },
-      "requiredScopes": [
-        "applications:write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "schedule_interview",
-      "name": "Schedule Interview",
-      "description": "Schedule an interview",
+      "id": "get_job",
+      "name": "Get Job",
+      "description": "Get a specific job",
       "parameters": {
-        "applicationId": {
-          "type": "string",
-          "required": true,
-          "description": "Application ID"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Job ID"
+          }
         },
-        "interviewerId": {
-          "type": "string",
-          "required": true,
-          "description": "Interviewer ID"
-        },
-        "startTime": {
-          "type": "string",
-          "required": true,
-          "description": "Interview start time"
-        },
-        "endTime": {
-          "type": "string",
-          "required": true,
-          "description": "Interview end time"
-        }
-      },
-      "requiredScopes": [
-        "interviews:write"
-      ]
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_note",
-      "name": "Add Note",
-      "description": "Add note to candidate",
+      "id": "list_applications",
+      "name": "List Applications",
+      "description": "List job applications",
       "parameters": {
-        "candidateId": {
-          "type": "string",
-          "required": true,
-          "description": "Candidate ID"
+        "type": "object",
+        "properties": {
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100,
+            "description": "Number of applications per page"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "created_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return applications created before this timestamp"
+          },
+          "created_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return applications created after this timestamp"
+          },
+          "last_activity_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Return applications with activity after this timestamp"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "rejected", "hired"],
+            "description": "Filter by application status"
+          },
+          "job_id": {
+            "type": "number",
+            "description": "Filter by job ID"
+          }
         },
-        "message": {
-          "type": "string",
-          "required": true,
-          "description": "Note content"
-        }
-      },
-      "requiredScopes": [
-        "candidates:write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_application",
+      "name": "Get Application",
+      "description": "Get a specific application",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Application ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "advance_application",
+      "name": "Advance Application",
+      "description": "Move application to next stage",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Application ID"
+          },
+          "from_stage_id": {
+            "type": "number",
+            "description": "Current stage ID"
+          },
+          "to_stage_id": {
+            "type": "number",
+            "description": "Target stage ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "reject_application",
+      "name": "Reject Application",
+      "description": "Reject an application",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Application ID"
+          },
+          "rejection_reason_id": {
+            "type": "number",
+            "description": "Rejection reason ID"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Rejection notes"
+          },
+          "rejection_email": {
+            "type": "object",
+            "properties": {
+              "send_email_at": {"type": "string", "format": "date-time"},
+              "email_template_id": {"type": "number"}
+            },
+            "description": "Email to send to candidate"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "unreject_application",
+      "name": "Unreject Application",
+      "description": "Unreject an application",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Application ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "candidate_created",
       "name": "Candidate Created",
-      "description": "Triggered when a candidate is created",
-      "parameters": {},
-      "requiredScopes": [
-        "candidates:read"
-      ]
+      "description": "Triggered when a new candidate is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "first_name": {"type": "string"},
+          "last_name": {"type": "string"},
+          "company": {"type": "string"},
+          "title": {"type": "string"},
+          "email_addresses": {"type": "array"},
+          "phone_numbers": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "application_updated",
-      "name": "Application Updated",
-      "description": "Triggered when an application is updated",
-      "parameters": {},
-      "requiredScopes": [
-        "applications:read"
-      ]
+      "id": "application_stage_changed",
+      "name": "Application Stage Changed",
+      "description": "Triggered when an application stage changes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "number",
+            "description": "Filter by specific job"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "application": {"type": "object"},
+          "previous_stage": {"type": "object"},
+          "current_stage": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "application_hired",
+      "name": "Application Hired",
+      "description": "Triggered when a candidate is hired",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "application": {"type": "object"},
+          "candidate": {"type": "object"},
+          "job": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users"
+  }
 }

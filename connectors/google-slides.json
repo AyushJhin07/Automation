@@ -1,41 +1,30 @@
 {
   "id": "google-slides",
   "name": "Google Slides",
-  "description": "Google Slides presentation creation and editing platform",
+  "description": "Google Slides for presentation creation and collaboration",
   "category": "Productivity",
-  "icon": "presentation",
-  "color": "#F9AB00",
+  "icon": "google-slides",
+  "color": "#FBBC04",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/presentations",
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/presentations"]
     }
   },
   "baseUrl": "https://slides.googleapis.com/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 100000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Google Slides and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Google Slides",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -43,228 +32,259 @@
       "name": "Create Presentation",
       "description": "Create a new Google Slides presentation",
       "parameters": {
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Title of the presentation"
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Presentation title"
+          }
         },
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "ID of folder to create in"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations",
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_slide",
-      "name": "Add Slide",
-      "description": "Add a new slide to the presentation",
+      "id": "get_presentation",
+      "name": "Get Presentation",
+      "description": "Get presentation details",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          }
         },
-        "layout": {
-          "type": "string",
-          "required": false,
-          "description": "Layout for the slide",
-          "options": [
-            "BLANK",
-            "CAPTION_ONLY",
-            "TITLE",
-            "TITLE_AND_BODY",
-            "TITLE_AND_TWO_COLUMNS"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations"
-      ]
+        "required": ["presentationId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "duplicate_slide",
-      "name": "Duplicate Slide",
-      "description": "Duplicate an existing slide",
+      "id": "batch_update",
+      "name": "Batch Update",
+      "description": "Execute batch updates on presentation",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "requests": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Array of batch update requests"
+          },
+          "writeControl": {
+            "type": "object",
+            "properties": {
+              "requiredRevisionId": {"type": "string"}
+            },
+            "description": "Write control settings"
+          }
         },
-        "slideObjectId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the slide to duplicate"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations"
-      ]
+        "required": ["presentationId", "requests"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "insert_textbox",
-      "name": "Insert Text Box",
-      "description": "Insert a text box into a slide",
+      "id": "create_slide",
+      "name": "Create Slide",
+      "description": "Create a new slide",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "slideLayoutReference": {
+            "type": "object",
+            "properties": {
+              "predefinedLayout": {
+                "type": "string",
+                "enum": ["BLANK", "CAPTION_ONLY", "TITLE", "TITLE_AND_BODY", "TITLE_AND_TWO_COLUMNS", "TITLE_ONLY", "SECTION_HEADER", "SECTION_TITLE_AND_DESCRIPTION", "ONE_COLUMN_TEXT", "MAIN_POINT", "BIG_NUMBER"],
+                "description": "Predefined layout"
+              },
+              "layoutId": {"type": "string"}
+            },
+            "description": "Slide layout reference"
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Object ID for the slide"
+          },
+          "insertionIndex": {
+            "type": "number",
+            "description": "Index to insert slide at"
+          },
+          "placeholderIdMappings": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Placeholder ID mappings"
+          }
         },
-        "slideObjectId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the slide"
-        },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Text content"
-        },
-        "x": {
-          "type": "number",
-          "required": true,
-          "description": "X position"
-        },
-        "y": {
-          "type": "number",
-          "required": true,
-          "description": "Y position"
-        },
-        "w": {
-          "type": "number",
-          "required": true,
-          "description": "Width"
-        },
-        "h": {
-          "type": "number",
-          "required": true,
-          "description": "Height"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations"
-      ]
+        "required": ["presentationId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "insert_image",
-      "name": "Insert Image",
-      "description": "Insert an image into a slide",
+      "id": "delete_object",
+      "name": "Delete Object",
+      "description": "Delete an object from presentation",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Object ID to delete"
+          }
         },
-        "slideObjectId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the slide"
-        },
-        "imageUrl": {
-          "type": "string",
-          "required": true,
-          "description": "URL of the image"
-        },
-        "x": {
-          "type": "number",
-          "required": true,
-          "description": "X position"
-        },
-        "y": {
-          "type": "number",
-          "required": true,
-          "description": "Y position"
-        },
-        "w": {
-          "type": "number",
-          "required": true,
-          "description": "Width"
-        },
-        "h": {
-          "type": "number",
-          "required": true,
-          "description": "Height"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations"
-      ]
+        "required": ["presentationId", "objectId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_text",
-      "name": "Update Text",
-      "description": "Update text in a shape",
+      "id": "insert_text",
+      "name": "Insert Text",
+      "description": "Insert text into a text box or shape",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Object ID to insert text into"
+          },
+          "text": {
+            "type": "string",
+            "description": "Text to insert"
+          },
+          "insertionIndex": {
+            "type": "number",
+            "default": 0,
+            "description": "Character index to insert at"
+          }
         },
-        "shapeId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the shape"
-        },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "New text content"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations"
-      ]
+        "required": ["presentationId", "objectId", "text"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "export_pdf",
-      "name": "Export as PDF",
-      "description": "Export the presentation as PDF",
+      "id": "replace_all_text",
+      "name": "Replace All Text",
+      "description": "Replace all instances of text",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations.readonly"
-      ]
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "containsText": {
+            "type": "object",
+            "properties": {
+              "text": {"type": "string"},
+              "matchCase": {"type": "boolean", "default": false}
+            },
+            "description": "Text to find and replace"
+          },
+          "replaceText": {
+            "type": "string",
+            "description": "Replacement text"
+          },
+          "pageObjectIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Limit replacement to specific slides"
+          }
+        },
+        "required": ["presentationId", "containsText", "replaceText"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "share_presentation",
-      "name": "Share Presentation",
-      "description": "Share the presentation with a user",
+      "id": "create_shape",
+      "name": "Create Shape",
+      "description": "Create a shape on a slide",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the presentation"
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Slide ID to add shape to"
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Object ID for the shape"
+          },
+          "shapeType": {
+            "type": "string",
+            "enum": ["TEXT_BOX", "RECTANGLE", "ROUND_RECTANGLE", "ELLIPSE", "ARC", "BENT_ARROW", "BENT_UP_ARROW", "BEVEL", "BLOCK_ARC", "BRACE_PAIR", "BRACKET_PAIR", "CAN", "CHEVRON", "CHORD", "CLOUD", "CORNER", "CUBE", "CURVED_DOWN_ARROW", "CURVED_LEFT_ARROW", "CURVED_RIGHT_ARROW", "CURVED_UP_ARROW", "DECAGON", "DIAGONAL_STRIPE", "DIAMOND", "DODECAGON", "DONUT", "DOUBLE_WAVE", "DOWN_ARROW", "DOWN_ARROW_CALLOUT", "FOLDED_CORNER", "FRAME", "HALF_FRAME", "HEART", "HEPTAGON", "HEXAGON", "HOME_PLATE", "HORIZONTAL_SCROLL", "IRREGULAR_SEAL_1", "IRREGULAR_SEAL_2", "LEFT_ARROW", "LEFT_ARROW_CALLOUT", "LEFT_BRACE", "LEFT_BRACKET", "LEFT_RIGHT_ARROW", "LEFT_RIGHT_ARROW_CALLOUT", "LEFT_RIGHT_UP_ARROW", "LEFT_UP_ARROW", "LIGHTNING_BOLT", "MATH_DIVIDE", "MATH_EQUAL", "MATH_MINUS", "MATH_MULTIPLY", "MATH_NOT_EQUAL", "MATH_PLUS", "MOON", "NONE", "NO_SMOKING", "NOTCHED_RIGHT_ARROW", "OCTAGON", "PARALLELOGRAM", "PENTAGON", "PIE", "PLAQUE", "PLUS", "QUAD_ARROW", "QUAD_ARROW_CALLOUT", "RIBBON", "RIBBON_2", "RIGHT_ARROW", "RIGHT_ARROW_CALLOUT", "RIGHT_BRACE", "RIGHT_BRACKET", "RIGHT_TRIANGLE", "ROUND_1_RECTANGLE", "ROUND_2_DIAGONAL_RECTANGLE", "ROUND_2_SAME_RECTANGLE", "SMILEY_FACE", "SNIP_1_RECTANGLE", "SNIP_2_DIAGONAL_RECTANGLE", "SNIP_2_SAME_RECTANGLE", "SNIP_ROUND_RECTANGLE", "STAR_10", "STAR_12", "STAR_16", "STAR_24", "STAR_32", "STAR_4", "STAR_5", "STAR_6", "STAR_7", "STAR_8", "STRIPED_RIGHT_ARROW", "SUN", "TRAPEZOID", "TRIANGLE", "UP_ARROW", "UP_ARROW_CALLOUT", "UP_DOWN_ARROW", "UTURN_ARROW", "VERTICAL_SCROLL", "WAVE", "WEDGE_ELLIPSE_CALLOUT", "WEDGE_RECTANGLE_CALLOUT", "WEDGE_ROUND_RECTANGLE_CALLOUT"],
+            "description": "Shape type"
+          },
+          "elementProperties": {
+            "type": "object",
+            "properties": {
+              "pageObjectId": {"type": "string"},
+              "size": {"type": "object"},
+              "transform": {"type": "object"}
+            },
+            "description": "Element properties"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Email to share with"
+        "required": ["presentationId", "pageId", "objectId", "shapeType"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_image",
+      "name": "Create Image",
+      "description": "Create an image on a slide",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Presentation ID"
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Slide ID to add image to"
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Object ID for the image"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Image URL"
+          },
+          "elementProperties": {
+            "type": "object",
+            "properties": {
+              "pageObjectId": {"type": "string"},
+              "size": {"type": "object"},
+              "transform": {"type": "object"}
+            },
+            "description": "Element properties"
+          }
         },
-        "role": {
-          "type": "string",
-          "required": true,
-          "description": "Role to assign",
-          "options": [
-            "reader",
-            "writer",
-            "commenter"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": ["presentationId", "pageId", "objectId", "url"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -272,46 +292,53 @@
       "id": "presentation_created",
       "name": "Presentation Created",
       "description": "Triggered when a new presentation is created",
+      "type": "webhook",
       "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor specific folder only"
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
-    },
-    {
-      "id": "slide_added",
-      "name": "Slide Added",
-      "description": "Triggered when a slide is added",
-      "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of presentation to monitor"
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentationId": {"type": "string"},
+          "title": {"type": "string"},
+          "locale": {"type": "string"},
+          "revisionId": {"type": "string"},
+          "pageSize": {"type": "object"}
         }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations.readonly"
-      ]
+      }
     },
     {
       "id": "presentation_updated",
       "name": "Presentation Updated",
-      "description": "Triggered when presentation is updated",
+      "description": "Triggered when a presentation is updated",
+      "type": "webhook",
       "parameters": {
-        "presentationId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of presentation to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "presentationId": {
+            "type": "string",
+            "description": "Filter by specific presentation"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/presentations.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentationId": {"type": "string"},
+          "title": {"type": "string"},
+          "revisionId": {"type": "string"},
+          "slides": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/presentations/test"
+  }
 }

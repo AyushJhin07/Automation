@@ -1,0 +1,537 @@
+{
+  "id": "monday",
+  "name": "Monday.com",
+  "description": "Monday.com work operating system for team collaboration and project management",
+  "category": "Project Management",
+  "icon": "monday",
+  "color": "#FF3D57",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
+  },
+  "baseUrl": "https://api.monday.com/v2",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Monday.com",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_item",
+      "name": "Create Item",
+      "description": "Create a new item in a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Board ID"
+          },
+          "group_id": {
+            "type": "string",
+            "description": "Group ID within the board"
+          },
+          "item_name": {
+            "type": "string",
+            "description": "Name of the item"
+          },
+          "column_values": {
+            "type": "object",
+            "description": "Column values as JSON object"
+          },
+          "create_labels_if_missing": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create labels if they don't exist"
+          }
+        },
+        "required": ["board_id", "item_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_item",
+      "name": "Update Item",
+      "description": "Update an existing item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "number",
+            "description": "Item ID"
+          },
+          "column_values": {
+            "type": "object",
+            "description": "Column values to update"
+          },
+          "create_labels_if_missing": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create labels if they don't exist"
+          }
+        },
+        "required": ["item_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_items",
+      "name": "Get Items",
+      "description": "Get items from a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Board ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 25,
+            "description": "Number of items to return"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "newest_first": {
+            "type": "boolean",
+            "default": false,
+            "description": "Order by newest first"
+          },
+          "exclude_nonactive": {
+            "type": "boolean",
+            "default": false,
+            "description": "Exclude non-active items"
+          }
+        },
+        "required": ["board_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_board",
+      "name": "Create Board",
+      "description": "Create a new board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_name": {
+            "type": "string",
+            "description": "Name of the board"
+          },
+          "board_kind": {
+            "type": "string",
+            "enum": ["public", "private", "share"],
+            "default": "public",
+            "description": "Board visibility"
+          },
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "template_id": {
+            "type": "number",
+            "description": "Template ID to use"
+          },
+          "folder_id": {
+            "type": "number",
+            "description": "Folder ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Board description"
+          }
+        },
+        "required": ["board_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_boards",
+      "name": "Get Boards",
+      "description": "Get boards from workspace",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_ids": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Workspace IDs to filter by"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of boards to return"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "order_by": {
+            "type": "string",
+            "enum": ["created_at", "used_at"],
+            "description": "Order by field"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_group",
+      "name": "Create Group",
+      "description": "Create a new group in a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Board ID"
+          },
+          "group_name": {
+            "type": "string",
+            "description": "Name of the group"
+          },
+          "group_color": {
+            "type": "string",
+            "enum": ["#037f4c", "#00c875", "#9cd326", "#cab641", "#ffcb00", "#784bd1", "#a25ddc", "#0086c0", "#579bfc", "#66ccff", "#bb3354", "#e2445c", "#ff158a", "#ff5ac4", "#ff642e", "#fdab3d", "#7f5347", "#c4c4c4", "#808080"],
+            "description": "Group color"
+          },
+          "relative_position_after": {
+            "type": "string",
+            "description": "Position after this group ID"
+          }
+        },
+        "required": ["board_id", "group_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_column",
+      "name": "Create Column",
+      "description": "Create a new column in a board",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Board ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Column title"
+          },
+          "column_type": {
+            "type": "string",
+            "enum": ["text", "long_text", "numbers", "rating", "status", "dropdown", "people", "timeline", "date", "checkbox", "email", "phone", "link", "file", "tags", "hour", "week", "location", "creation_log", "country", "auto_number", "last_updated", "formula", "dependency", "progress", "mirror", "button"],
+            "description": "Column type"
+          },
+          "description": {
+            "type": "string",
+            "description": "Column description"
+          },
+          "defaults": {
+            "type": "object",
+            "description": "Default column settings"
+          }
+        },
+        "required": ["board_id", "title", "column_type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_update",
+      "name": "Create Update",
+      "description": "Create an update (comment) on an item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "number",
+            "description": "Item ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Update body text"
+          },
+          "parent_id": {
+            "type": "number",
+            "description": "Parent update ID for replies"
+          }
+        },
+        "required": ["item_id", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get users from account",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of users to return"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "newest_first": {
+            "type": "boolean",
+            "default": false,
+            "description": "Order by newest first"
+          },
+          "non_guests": {
+            "type": "boolean",
+            "default": false,
+            "description": "Exclude guest users"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_workspaces",
+      "name": "Get Workspaces",
+      "description": "Get workspaces from account",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of workspaces to return"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "order_by": {
+            "type": "string",
+            "enum": ["created_at"],
+            "description": "Order by field"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "duplicate_item",
+      "name": "Duplicate Item",
+      "description": "Duplicate an existing item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Board ID"
+          },
+          "item_id": {
+            "type": "number",
+            "description": "Item ID to duplicate"
+          },
+          "with_updates": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include updates in duplication"
+          }
+        },
+        "required": ["board_id", "item_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "archive_item",
+      "name": "Archive Item",
+      "description": "Archive an item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "number",
+            "description": "Item ID"
+          }
+        },
+        "required": ["item_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_item",
+      "name": "Delete Item",
+      "description": "Delete an item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "number",
+            "description": "Item ID"
+          }
+        },
+        "required": ["item_id"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "item_created",
+      "name": "Item Created",
+      "description": "Triggered when a new item is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Filter by specific board"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "item_id": {"type": "number"},
+          "item_name": {"type": "string"},
+          "board_id": {"type": "number"},
+          "group_id": {"type": "string"},
+          "column_values": {"type": "array"},
+          "created_at": {"type": "string"},
+          "creator_id": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "item_updated",
+      "name": "Item Updated",
+      "description": "Triggered when an item is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Filter by specific board"
+          },
+          "column_id": {
+            "type": "string",
+            "description": "Filter by specific column"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "item_id": {"type": "number"},
+          "board_id": {"type": "number"},
+          "column_id": {"type": "string"},
+          "previous_value": {"type": "object"},
+          "value": {"type": "object"},
+          "changed_at": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "item_deleted",
+      "name": "Item Deleted",
+      "description": "Triggered when an item is deleted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Filter by specific board"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "item_id": {"type": "number"},
+          "board_id": {"type": "number"},
+          "item_name": {"type": "string"},
+          "deleted_at": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "column_value_changed",
+      "name": "Column Value Changed",
+      "description": "Triggered when a column value changes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "board_id": {
+            "type": "number",
+            "description": "Filter by specific board"
+          },
+          "column_id": {
+            "type": "string",
+            "description": "Filter by specific column"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "item_id": {"type": "number"},
+          "board_id": {"type": "number"},
+          "column_id": {"type": "string"},
+          "column_type": {"type": "string"},
+          "previous_value": {"type": "object"},
+          "value": {"type": "object"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "POST",
+    "endpoint": "/",
+    "body": {
+      "query": "query { me { id name } }"
+    }
+  }
+}

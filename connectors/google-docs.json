@@ -1,266 +1,294 @@
 {
   "id": "google-docs",
   "name": "Google Docs",
-  "description": "Google Docs document creation and editing platform",
+  "description": "Google Docs for document creation and collaboration",
   "category": "Productivity",
-  "icon": "file-text",
+  "icon": "google-docs",
   "color": "#4285F4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/documents",
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/documents"]
     }
   },
   "baseUrl": "https://docs.googleapis.com/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 100000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Google Docs and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Google Docs",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_document",
       "name": "Create Document",
-      "description": "Create a new Google Docs document",
+      "description": "Create a new Google Doc",
       "parameters": {
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Title of the document"
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Document title"
+          }
         },
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "ID of the folder to create the document in"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents",
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "append_text",
-      "name": "Append Text",
-      "description": "Append text to the end of a document",
+      "id": "get_document",
+      "name": "Get Document",
+      "description": "Get document content",
       "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document"
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "includeTabsContent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include tabs content"
+          }
         },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Text to append"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents"
-      ]
+        "required": ["documentId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "batch_update",
+      "name": "Batch Update",
+      "description": "Batch update document with requests",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "requests": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Array of batch update requests"
+          },
+          "writeControl": {
+            "type": "object",
+            "properties": {
+              "requiredRevisionId": {"type": "string"},
+              "targetRevisionId": {"type": "string"}
+            },
+            "description": "Write control settings"
+          }
+        },
+        "required": ["documentId", "requests"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "insert_text",
+      "name": "Insert Text",
+      "description": "Insert text at specified location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "text": {
+            "type": "string",
+            "description": "Text to insert"
+          },
+          "index": {
+            "type": "number",
+            "default": 1,
+            "description": "Character index to insert at"
+          },
+          "segmentId": {
+            "type": "string",
+            "description": "Segment ID for tab-specific insertion"
+          }
+        },
+        "required": ["documentId", "text"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "replace_text",
       "name": "Replace Text",
-      "description": "Find and replace text in a document",
+      "description": "Replace all instances of text",
       "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document"
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "replaceText": {
+            "type": "string",
+            "description": "New text"
+          },
+          "containsText": {
+            "type": "object",
+            "properties": {
+              "text": {"type": "string"},
+              "matchCase": {"type": "boolean", "default": false}
+            },
+            "description": "Text to find and replace"
+          },
+          "tabId": {
+            "type": "string",
+            "description": "Tab ID for tab-specific replacement"
+          }
         },
-        "find": {
-          "type": "string",
-          "required": true,
-          "description": "Text to find"
+        "required": ["documentId", "replaceText", "containsText"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_content_range",
+      "name": "Delete Content Range",
+      "description": "Delete content in specified range",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "startIndex": {"type": "number"},
+              "endIndex": {"type": "number"},
+              "segmentId": {"type": "string"}
+            },
+            "description": "Range to delete"
+          }
         },
-        "replace": {
-          "type": "string",
-          "required": true,
-          "description": "Text to replace with"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents"
-      ]
+        "required": ["documentId", "range"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "insert_table",
       "name": "Insert Table",
       "description": "Insert a table into the document",
       "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document"
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "rows": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Number of rows"
+          },
+          "columns": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Number of columns"
+          },
+          "index": {
+            "type": "number",
+            "default": 1,
+            "description": "Index to insert table at"
+          },
+          "segmentId": {
+            "type": "string",
+            "description": "Segment ID for tab-specific insertion"
+          }
         },
-        "rows": {
-          "type": "number",
-          "required": true,
-          "description": "Number of rows in the table"
-        },
-        "cols": {
-          "type": "number",
-          "required": true,
-          "description": "Number of columns in the table"
-        },
-        "location": {
-          "type": "number",
-          "required": false,
-          "description": "Index location to insert the table"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents"
-      ]
+        "required": ["documentId", "rows", "columns"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_heading",
-      "name": "Add Heading",
-      "description": "Add a heading to the document",
+      "id": "insert_image",
+      "name": "Insert Image",
+      "description": "Insert an image into the document",
       "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document"
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "Image URI"
+          },
+          "index": {
+            "type": "number",
+            "default": 1,
+            "description": "Index to insert image at"
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Object ID for the image"
+          },
+          "segmentId": {
+            "type": "string",
+            "description": "Segment ID for tab-specific insertion"
+          }
         },
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Heading text"
-        },
-        "level": {
-          "type": "number",
-          "required": true,
-          "description": "Heading level (1-6)",
-          "options": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ]
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents"
-      ]
+        "required": ["documentId", "uri"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_image_from_url",
-      "name": "Add Image from URL",
-      "description": "Insert an image from a URL into the document",
+      "id": "update_text_style",
+      "name": "Update Text Style",
+      "description": "Update text formatting and style",
       "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document"
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "startIndex": {"type": "number"},
+              "endIndex": {"type": "number"},
+              "segmentId": {"type": "string"}
+            },
+            "description": "Range to style"
+          },
+          "textStyle": {
+            "type": "object",
+            "properties": {
+              "bold": {"type": "boolean"},
+              "italic": {"type": "boolean"},
+              "underline": {"type": "boolean"},
+              "strikethrough": {"type": "boolean"},
+              "fontSize": {"type": "object"},
+              "foregroundColor": {"type": "object"},
+              "backgroundColor": {"type": "object"}
+            },
+            "description": "Text style properties"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Fields to update"
+          }
         },
-        "imageUrl": {
-          "type": "string",
-          "required": true,
-          "description": "URL of the image to insert"
-        },
-        "location": {
-          "type": "number",
-          "required": false,
-          "description": "Index location to insert the image"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents"
-      ]
-    },
-    {
-      "id": "export_pdf",
-      "name": "Export as PDF",
-      "description": "Export the document as a PDF",
-      "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document to export"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents.readonly"
-      ]
-    },
-    {
-      "id": "duplicate",
-      "name": "Duplicate Document",
-      "description": "Create a copy of the document",
-      "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document to duplicate"
-        },
-        "newTitle": {
-          "type": "string",
-          "required": false,
-          "description": "Title for the new document"
-        },
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "ID of the folder for the duplicate"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.file"
-      ]
-    },
-    {
-      "id": "share_document",
-      "name": "Share Document",
-      "description": "Share the document with a user",
-      "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document to share"
-        },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Email address to share with"
-        },
-        "role": {
-          "type": "string",
-          "required": true,
-          "description": "Role to assign",
-          "options": [
-            "reader",
-            "writer",
-            "commenter"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": ["documentId", "range", "textStyle"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -268,31 +296,52 @@
       "id": "document_created",
       "name": "Document Created",
       "description": "Triggered when a new document is created",
+      "type": "webhook",
       "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor documents in specific folder only"
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "documentId": {"type": "string"},
+          "title": {"type": "string"},
+          "body": {"type": "object"},
+          "revisionId": {"type": "string"}
+        }
+      }
     },
     {
       "id": "document_updated",
       "name": "Document Updated",
       "description": "Triggered when a document is updated",
+      "type": "webhook",
       "parameters": {
-        "docId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the document to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Filter by specific document"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/documents.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "documentId": {"type": "string"},
+          "title": {"type": "string"},
+          "body": {"type": "object"},
+          "revisionId": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/documents/test"
+  }
 }

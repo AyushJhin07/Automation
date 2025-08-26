@@ -1,253 +1,366 @@
 {
   "id": "gmail-enhanced",
   "name": "Gmail Enhanced",
-  "description": "Enhanced Gmail email management with advanced features",
+  "description": "Enhanced Gmail with advanced email management features",
   "category": "Email",
-  "icon": "mail",
+  "icon": "gmail",
   "color": "#EA4335",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/gmail.modify",
-        "https://www.googleapis.com/auth/gmail.compose",
-        "https://www.googleapis.com/auth/gmail.labels"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/gmail.modify", "https://www.googleapis.com/auth/gmail.labels"]
     }
   },
   "baseUrl": "https://gmail.googleapis.com/gmail/v1",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 1000000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Gmail Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Gmail",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "send",
+      "id": "send_email",
       "name": "Send Email",
-      "description": "Send a new email",
+      "description": "Send an email message",
       "parameters": {
-        "to": {
-          "type": "string",
-          "required": true,
-          "description": "Recipient email addresses (comma-separated)"
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Recipient email addresses"
+          },
+          "cc": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "CC email addresses"
+          },
+          "bcc": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "BCC email addresses"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "body": {
+            "type": "string",
+            "description": "Email body (HTML or plain text)"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filename": {"type": "string"},
+                "data": {"type": "string"},
+                "mimeType": {"type": "string"}
+              }
+            },
+            "description": "Email attachments"
+          },
+          "replyTo": {
+            "type": "string",
+            "format": "email",
+            "description": "Reply-to address"
+          },
+          "isHtml": {
+            "type": "boolean",
+            "default": false,
+            "description": "Email body is HTML"
+          }
         },
-        "subject": {
-          "type": "string",
-          "required": true,
-          "description": "Email subject"
-        },
-        "bodyText": {
-          "type": "string",
-          "required": false,
-          "description": "Plain text body"
-        },
-        "bodyHtml": {
-          "type": "string",
-          "required": false,
-          "description": "HTML body"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.compose"
-      ]
+        "required": ["to", "subject", "body"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "reply",
-      "name": "Reply to Email",
-      "description": "Reply to an email thread",
+      "id": "get_message",
+      "name": "Get Message",
+      "description": "Get a specific email message",
       "parameters": {
-        "threadId": {
-          "type": "string",
-          "required": true,
-          "description": "Thread ID to reply to"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "id": {
+            "type": "string",
+            "description": "Message ID"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["minimal", "full", "raw", "metadata"],
+            "default": "full",
+            "description": "Message format"
+          },
+          "metadataHeaders": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Headers to include when format is metadata"
+          }
         },
-        "bodyText": {
-          "type": "string",
-          "required": false,
-          "description": "Plain text reply"
-        },
-        "bodyHtml": {
-          "type": "string",
-          "required": false,
-          "description": "HTML reply"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.compose"
-      ]
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "forward",
-      "name": "Forward Email",
-      "description": "Forward an email",
+      "id": "list_messages",
+      "name": "List Messages",
+      "description": "List email messages",
       "parameters": {
-        "msgId": {
-          "type": "string",
-          "required": true,
-          "description": "Message ID to forward"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Label IDs to filter by"
+          },
+          "includeSpamTrash": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include spam and trash"
+          },
+          "maxResults": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100,
+            "description": "Maximum results to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          }
         },
-        "to": {
-          "type": "string",
-          "required": true,
-          "description": "Forward to email addresses"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.compose"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "modify_message",
+      "name": "Modify Message",
+      "description": "Modify message labels",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "id": {
+            "type": "string",
+            "description": "Message ID"
+          },
+          "addLabelIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Label IDs to add"
+          },
+          "removeLabelIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Label IDs to remove"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_message",
+      "name": "Delete Message",
+      "description": "Delete a message permanently",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "id": {
+            "type": "string",
+            "description": "Message ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_draft",
       "name": "Create Draft",
-      "description": "Create an email draft",
+      "description": "Create a draft email",
       "parameters": {
-        "to": {
-          "type": "string",
-          "required": true,
-          "description": "Recipient email"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "to": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Recipient email addresses"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "body": {
+            "type": "string",
+            "description": "Email body"
+          }
         },
-        "subject": {
-          "type": "string",
-          "required": true,
-          "description": "Email subject"
-        },
-        "body": {
-          "type": "string",
-          "required": true,
-          "description": "Email body"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.compose"
-      ]
+        "required": ["to", "subject", "body"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "send_draft",
-      "name": "Send Draft",
-      "description": "Send an existing draft",
+      "id": "list_labels",
+      "name": "List Labels",
+      "description": "List all labels",
       "parameters": {
-        "draftId": {
-          "type": "string",
-          "required": true,
-          "description": "Draft ID to send"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.compose"
-      ]
-    },
-    {
-      "id": "add_label",
-      "name": "Add Label",
-      "description": "Add a label to a message",
-      "parameters": {
-        "msgId": {
-          "type": "string",
-          "required": true,
-          "description": "Message ID"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          }
         },
-        "label": {
-          "type": "string",
-          "required": true,
-          "description": "Label name"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.modify"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "remove_label",
-      "name": "Remove Label",
-      "description": "Remove a label from a message",
+      "id": "create_label",
+      "name": "Create Label",
+      "description": "Create a new label",
       "parameters": {
-        "msgId": {
-          "type": "string",
-          "required": true,
-          "description": "Message ID"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "name": {
+            "type": "string",
+            "description": "Label name"
+          },
+          "messageListVisibility": {
+            "type": "string",
+            "enum": ["show", "hide"],
+            "default": "show",
+            "description": "Message list visibility"
+          },
+          "labelListVisibility": {
+            "type": "string",
+            "enum": ["labelShow", "labelShowIfUnread", "labelHide"],
+            "default": "labelShow",
+            "description": "Label list visibility"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["system", "user"],
+            "default": "user",
+            "description": "Label type"
+          },
+          "color": {
+            "type": "object",
+            "properties": {
+              "textColor": {"type": "string"},
+              "backgroundColor": {"type": "string"}
+            },
+            "description": "Label color"
+          }
         },
-        "label": {
-          "type": "string",
-          "required": true,
-          "description": "Label name"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.modify"
-      ]
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "mark_read",
-      "name": "Mark as Read",
-      "description": "Mark a message as read",
+      "id": "search_messages",
+      "name": "Search Messages",
+      "description": "Advanced message search",
       "parameters": {
-        "msgId": {
-          "type": "string",
-          "required": true,
-          "description": "Message ID"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.modify"
-      ]
-    },
-    {
-      "id": "mark_unread",
-      "name": "Mark as Unread",
-      "description": "Mark a message as unread",
-      "parameters": {
-        "msgId": {
-          "type": "string",
-          "required": true,
-          "description": "Message ID"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.modify"
-      ]
-    },
-    {
-      "id": "batch_modify",
-      "name": "Batch Modify",
-      "description": "Batch modify multiple messages",
-      "parameters": {
-        "messageIds": {
-          "type": "array",
-          "required": true,
-          "description": "Array of message IDs"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "default": "me",
+            "description": "User's email address or 'me'"
+          },
+          "query": {
+            "type": "string",
+            "description": "Gmail search query"
+          },
+          "from": {
+            "type": "string",
+            "description": "From email address"
+          },
+          "to": {
+            "type": "string",
+            "description": "To email address"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject contains"
+          },
+          "hasAttachment": {
+            "type": "boolean",
+            "description": "Has attachment"
+          },
+          "isUnread": {
+            "type": "boolean",
+            "description": "Is unread"
+          },
+          "dateAfter": {
+            "type": "string",
+            "format": "date",
+            "description": "After date (YYYY/MM/DD)"
+          },
+          "dateBefore": {
+            "type": "string",
+            "format": "date",
+            "description": "Before date (YYYY/MM/DD)"
+          },
+          "maxResults": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100,
+            "description": "Maximum results"
+          }
         },
-        "add": {
-          "type": "array",
-          "required": false,
-          "description": "Labels to add"
-        },
-        "remove": {
-          "type": "array",
-          "required": false,
-          "description": "Labels to remove"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.modify"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -255,66 +368,55 @@
       "id": "new_email",
       "name": "New Email",
       "description": "Triggered when a new email is received",
+      "type": "webhook",
       "parameters": {
-        "query": {
-          "type": "string",
-          "required": false,
-          "description": "Gmail search query filter"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ]
-    },
-    {
-      "id": "label_added",
-      "name": "Label Added",
-      "description": "Triggered when a specific label is added",
-      "parameters": {
-        "label": {
-          "type": "string",
-          "required": true,
-          "description": "Label to monitor"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ]
-    },
-    {
-      "id": "attachment_received",
-      "name": "Attachment Received",
-      "description": "Triggered when an email with attachment is received",
-      "parameters": {
-        "minSizeKb": {
-          "type": "number",
-          "required": false,
-          "description": "Minimum attachment size in KB"
+        "type": "object",
+        "properties": {
+          "labelIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by labels"
+          },
+          "query": {
+            "type": "string",
+            "description": "Gmail search query filter"
+          }
         },
-        "query": {
-          "type": "string",
-          "required": false,
-          "description": "Additional Gmail query filter"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "threadId": {"type": "string"},
+          "snippet": {"type": "string"},
+          "payload": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "thread_updated",
-      "name": "Thread Updated",
-      "description": "Triggered when an email thread is updated",
+      "id": "email_starred",
+      "name": "Email Starred",
+      "description": "Triggered when an email is starred",
+      "type": "webhook",
       "parameters": {
-        "query": {
-          "type": "string",
-          "required": false,
-          "description": "Gmail search query filter"
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "labelIds": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me/profile"
+  }
 }

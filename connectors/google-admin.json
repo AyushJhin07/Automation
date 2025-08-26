@@ -1,41 +1,30 @@
 {
   "id": "google-admin",
   "name": "Google Admin",
-  "description": "Google Admin Directory for user and group management",
+  "description": "Google Workspace Admin SDK for user and domain management",
   "category": "Admin",
-  "icon": "users",
-  "color": "#EA4335",
+  "icon": "google",
+  "color": "#4285F4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/admin.directory.user",
-        "https://www.googleapis.com/auth/admin.directory.group"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user", "https://www.googleapis.com/auth/admin.directory.group"]
     }
   },
   "baseUrl": "https://admin.googleapis.com/admin/directory/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 50000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Google Admin and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Google Admin",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -43,230 +32,324 @@
       "name": "Create User",
       "description": "Create a new user account",
       "parameters": {
-        "primaryEmail": {
-          "type": "string",
-          "required": true,
-          "description": "Primary email address"
+        "type": "object",
+        "properties": {
+          "primaryEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary email address"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "givenName": {"type": "string"},
+              "familyName": {"type": "string"}
+            },
+            "description": "User's name"
+          },
+          "password": {
+            "type": "string",
+            "description": "User password"
+          },
+          "changePasswordAtNextLogin": {
+            "type": "boolean",
+            "default": true,
+            "description": "Force password change on next login"
+          },
+          "orgUnitPath": {
+            "type": "string",
+            "default": "/",
+            "description": "Organizational unit path"
+          },
+          "suspended": {
+            "type": "boolean",
+            "default": false,
+            "description": "Account suspended status"
+          },
+          "recoveryEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Recovery email address"
+          },
+          "recoveryPhone": {
+            "type": "string",
+            "description": "Recovery phone number"
+          }
         },
-        "name": {
-          "type": "object",
-          "required": true,
-          "description": "Name object with givenName and familyName"
+        "required": ["primaryEmail", "name", "password"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userKey": {
+            "type": "string",
+            "description": "User email or ID"
+          },
+          "projection": {
+            "type": "string",
+            "enum": ["basic", "custom", "full"],
+            "default": "full",
+            "description": "Fields to include"
+          },
+          "customFieldMask": {
+            "type": "string",
+            "description": "Custom fields to include"
+          },
+          "viewType": {
+            "type": "string",
+            "enum": ["admin_view", "domain_public"],
+            "default": "admin_view",
+            "description": "View type"
+          }
         },
-        "password": {
-          "type": "string",
-          "required": true,
-          "description": "User password"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user"
-      ]
+        "required": ["userKey"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_user",
       "name": "Update User",
-      "description": "Update user account",
+      "description": "Update user information",
       "parameters": {
-        "userKey": {
-          "type": "string",
-          "required": true,
-          "description": "User key or email"
+        "type": "object",
+        "properties": {
+          "userKey": {
+            "type": "string",
+            "description": "User email or ID"
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "givenName": {"type": "string"},
+              "familyName": {"type": "string"}
+            },
+            "description": "Updated name"
+          },
+          "suspended": {
+            "type": "boolean",
+            "description": "Suspend/unsuspend user"
+          },
+          "orgUnitPath": {
+            "type": "string",
+            "description": "New organizational unit"
+          },
+          "password": {
+            "type": "string",
+            "description": "New password"
+          },
+          "changePasswordAtNextLogin": {
+            "type": "boolean",
+            "description": "Force password change"
+          }
         },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user"
-      ]
-    },
-    {
-      "id": "suspend_user",
-      "name": "Suspend User",
-      "description": "Suspend or unsuspend user account",
-      "parameters": {
-        "userKey": {
-          "type": "string",
-          "required": true,
-          "description": "User key or email"
-        },
-        "suspended": {
-          "type": "boolean",
-          "required": false,
-          "description": "Suspend status",
-          "default": true
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user"
-      ]
+        "required": ["userKey"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "delete_user",
       "name": "Delete User",
-      "description": "Delete user account",
+      "description": "Delete a user account",
       "parameters": {
-        "userKey": {
-          "type": "string",
-          "required": true,
-          "description": "User key or email"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user"
-      ]
+        "type": "object",
+        "properties": {
+          "userKey": {
+            "type": "string",
+            "description": "User email or ID"
+          }
+        },
+        "required": ["userKey"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List users in the domain",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "default": "my_customer",
+            "description": "Customer ID"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domain name"
+          },
+          "maxResults": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 100,
+            "description": "Maximum results"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": ["email", "familyName", "givenName"],
+            "description": "Sort field"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["ASCENDING", "DESCENDING"],
+            "description": "Sort order"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "projection": {
+            "type": "string",
+            "enum": ["basic", "custom", "full"],
+            "default": "full",
+            "description": "Fields to include"
+          },
+          "showDeleted": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include deleted users"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_group",
       "name": "Create Group",
       "description": "Create a new group",
       "parameters": {
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Group email address"
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Group email address"
+          },
+          "name": {
+            "type": "string",
+            "description": "Group name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Group description"
+          }
         },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Group name"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.group"
-      ]
+        "required": ["email", "name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_member_to_group",
-      "name": "Add Member to Group",
-      "description": "Add member to a group",
+      "id": "add_group_member",
+      "name": "Add Group Member",
+      "description": "Add a member to a group",
       "parameters": {
-        "groupKey": {
-          "type": "string",
-          "required": true,
-          "description": "Group key or email"
+        "type": "object",
+        "properties": {
+          "groupKey": {
+            "type": "string",
+            "description": "Group email or ID"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Member email address"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["MEMBER", "MANAGER", "OWNER"],
+            "default": "MEMBER",
+            "description": "Member role"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["CUSTOMER", "EXTERNAL", "GROUP", "USER"],
+            "default": "USER",
+            "description": "Member type"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Member email"
-        },
-        "role": {
-          "type": "string",
-          "required": false,
-          "description": "Member role",
-          "options": [
-            "MEMBER",
-            "MANAGER",
-            "OWNER"
-          ],
-          "default": "MEMBER"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.group.member"
-      ]
+        "required": ["groupKey", "email"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "remove_member_from_group",
-      "name": "Remove Member from Group",
-      "description": "Remove member from a group",
+      "id": "remove_group_member",
+      "name": "Remove Group Member",
+      "description": "Remove a member from a group",
       "parameters": {
-        "groupKey": {
-          "type": "string",
-          "required": true,
-          "description": "Group key or email"
+        "type": "object",
+        "properties": {
+          "groupKey": {
+            "type": "string",
+            "description": "Group email or ID"
+          },
+          "memberKey": {
+            "type": "string",
+            "description": "Member email or ID"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Member email"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.group.member"
-      ]
-    },
-    {
-      "id": "list_users",
-      "name": "List Users",
-      "description": "List domain users",
-      "parameters": {
-        "domain": {
-          "type": "string",
-          "required": false,
-          "description": "Domain to search"
-        },
-        "query": {
-          "type": "string",
-          "required": false,
-          "description": "Search query"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user.readonly"
-      ]
-    },
-    {
-      "id": "list_groups",
-      "name": "List Groups",
-      "description": "List domain groups",
-      "parameters": {
-        "userKey": {
-          "type": "string",
-          "required": false,
-          "description": "User key for groups"
-        },
-        "domain": {
-          "type": "string",
-          "required": false,
-          "description": "Domain to search"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.group.readonly"
-      ]
+        "required": ["groupKey", "memberKey"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "user_created",
       "name": "User Created",
-      "description": "Triggered when a user is created",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user.readonly"
-      ]
+      "description": "Triggered when a new user is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "orgUnitPath": {
+            "type": "string",
+            "description": "Filter by organizational unit"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "primaryEmail": {"type": "string"},
+          "name": {"type": "object"},
+          "orgUnitPath": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "user_updated",
-      "name": "User Updated",
-      "description": "Triggered when a user is updated",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.user.readonly"
-      ]
-    },
-    {
-      "id": "group_created",
-      "name": "Group Created",
-      "description": "Triggered when a group is created",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.group.readonly"
-      ]
-    },
-    {
-      "id": "group_member_added",
-      "name": "Group Member Added",
-      "description": "Triggered when a member is added to a group",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/admin.directory.group.member.readonly"
-      ]
+      "id": "user_suspended",
+      "name": "User Suspended",
+      "description": "Triggered when a user is suspended",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "primaryEmail": {"type": "string"},
+          "suspended": {"type": "boolean"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users?customer=my_customer&maxResults=1"
+  }
 }

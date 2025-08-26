@@ -1,40 +1,30 @@
 {
   "id": "google-forms",
   "name": "Google Forms",
-  "description": "Google Forms survey and data collection platform",
+  "description": "Google Forms for survey and form creation",
   "category": "Productivity",
-  "icon": "file-text",
+  "icon": "google-forms",
   "color": "#673AB7",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/forms"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/forms", "https://www.googleapis.com/auth/forms.responses.readonly"]
     }
   },
   "baseUrl": "https://forms.googleapis.com/v1",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 50000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Google Forms and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Google Forms",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -42,145 +32,301 @@
       "name": "Create Form",
       "description": "Create a new Google Form",
       "parameters": {
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Form title"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms"
-      ]
+        "type": "object",
+        "properties": {
+          "info": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "description": {"type": "string"},
+              "documentTitle": {"type": "string"}
+            },
+            "description": "Form information"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_form",
+      "name": "Get Form",
+      "description": "Get form details and questions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          }
+        },
+        "required": ["formId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "batch_update",
+      "name": "Batch Update Form",
+      "description": "Batch update form with requests",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "requests": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Array of batch update requests"
+          },
+          "includeFormInResponse": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include updated form in response"
+          },
+          "writeControl": {
+            "type": "object",
+            "properties": {
+              "requiredRevisionId": {"type": "string"},
+              "targetRevisionId": {"type": "string"}
+            },
+            "description": "Write control settings"
+          }
+        },
+        "required": ["formId", "requests"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "add_question",
       "name": "Add Question",
-      "description": "Add a question to a form",
+      "description": "Add a question to the form",
       "parameters": {
-        "formId": {
-          "type": "string",
-          "required": true,
-          "description": "Form ID"
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "item": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "description": {"type": "string"},
+              "questionItem": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "type": "object",
+                    "properties": {
+                      "questionId": {"type": "string"},
+                      "required": {"type": "boolean"},
+                      "choiceQuestion": {"type": "object"},
+                      "textQuestion": {"type": "object"},
+                      "scaleQuestion": {"type": "object"}
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Question item to add"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "index": {"type": "number"}
+            },
+            "description": "Location to insert question"
+          }
         },
-        "type": {
-          "type": "string",
-          "required": true,
-          "description": "Question type",
-          "options": [
-            "TEXT",
-            "PARAGRAPH_TEXT",
-            "MULTIPLE_CHOICE",
-            "CHECKBOX",
-            "DROPDOWN"
-          ]
-        },
-        "questionJson": {
-          "type": "object",
-          "required": true,
-          "description": "Question configuration"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms"
-      ]
+        "required": ["formId", "item"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_question",
-      "name": "Update Question",
-      "description": "Update a form question",
+      "id": "update_form_info",
+      "name": "Update Form Info",
+      "description": "Update form title and description",
       "parameters": {
-        "formId": {
-          "type": "string",
-          "required": true,
-          "description": "Form ID"
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "info": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "description": {"type": "string"},
+              "documentTitle": {"type": "string"}
+            },
+            "description": "Updated form information"
+          },
+          "updateMask": {
+            "type": "string",
+            "description": "Fields to update"
+          }
         },
-        "questionId": {
-          "type": "string",
-          "required": true,
-          "description": "Question ID"
-        },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms"
-      ]
+        "required": ["formId", "info"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_responses",
-      "name": "Get Responses",
-      "description": "Get form responses",
+      "id": "delete_item",
+      "name": "Delete Item",
+      "description": "Delete an item from the form",
       "parameters": {
-        "formId": {
-          "type": "string",
-          "required": true,
-          "description": "Form ID"
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "index": {"type": "number"}
+            },
+            "description": "Location of item to delete"
+          }
         },
-        "sinceTimestamp": {
-          "type": "string",
-          "required": false,
-          "description": "Get responses since timestamp"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms.responses.readonly"
-      ]
+        "required": ["formId", "location"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "export_to_sheet",
-      "name": "Export to Sheet",
-      "description": "Export form responses to Google Sheets",
+      "id": "list_responses",
+      "name": "List Responses",
+      "description": "List form responses",
       "parameters": {
-        "formId": {
-          "type": "string",
-          "required": true,
-          "description": "Form ID"
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Response filter"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "default": 200,
+            "description": "Number of responses to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          }
         },
-        "spreadsheetId": {
-          "type": "string",
-          "required": true,
-          "description": "Target spreadsheet ID"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms",
-        "https://www.googleapis.com/auth/spreadsheets"
-      ]
+        "required": ["formId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_response",
+      "name": "Get Response",
+      "description": "Get a specific form response",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "responseId": {
+            "type": "string",
+            "description": "Response ID"
+          }
+        },
+        "required": ["formId", "responseId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_settings",
+      "name": "Update Settings",
+      "description": "Update form settings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Form ID"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "quizSettings": {"type": "object"},
+              "submitSettings": {"type": "object"}
+            },
+            "description": "Form settings"
+          },
+          "updateMask": {
+            "type": "string",
+            "description": "Fields to update"
+          }
+        },
+        "required": ["formId", "settings"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "response_received",
-      "name": "Response Received",
-      "description": "Triggered when a form response is received",
+      "id": "form_response",
+      "name": "Form Response",
+      "description": "Triggered when a new response is submitted",
+      "type": "webhook",
       "parameters": {
-        "formId": {
-          "type": "string",
-          "required": true,
-          "description": "Form ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "formId": {
+            "type": "string",
+            "description": "Filter by specific form"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms.responses.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "formId": {"type": "string"},
+          "responseId": {"type": "string"},
+          "answers": {"type": "object"},
+          "createTime": {"type": "string"},
+          "lastSubmittedTime": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "form_updated",
-      "name": "Form Updated",
-      "description": "Triggered when a form is updated",
+      "id": "form_created",
+      "name": "Form Created",
+      "description": "Triggered when a new form is created",
+      "type": "webhook",
       "parameters": {
-        "formId": {
-          "type": "string",
-          "required": true,
-          "description": "Form ID to monitor"
-        }
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/forms.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "formId": {"type": "string"},
+          "info": {"type": "object"},
+          "revisionId": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/forms"
+  }
 }

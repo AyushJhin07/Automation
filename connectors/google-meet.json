@@ -1,144 +1,316 @@
 {
   "id": "google-meet",
   "name": "Google Meet",
-  "description": "Google Meet video conferencing platform",
+  "description": "Google Meet for video conferencing and meetings",
   "category": "Communication",
-  "icon": "video",
-  "color": "#34A853",
+  "icon": "google-meet",
+  "color": "#00ACC1",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/calendar"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/meetings.space.created", "https://www.googleapis.com/auth/meetings.space.readonly"]
     }
   },
-  "baseUrl": "https://www.googleapis.com/calendar/v3",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 50000
-  },
+  "baseUrl": "https://meet.googleapis.com/v2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Google Meet and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Google Meet",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_link",
-      "name": "Create Meeting Link",
-      "description": "Create a new Google Meet link",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar"
-      ]
-    },
-    {
-      "id": "add_participant",
-      "name": "Add Participant",
-      "description": "Add participant to meeting",
+      "id": "create_space",
+      "name": "Create Space",
+      "description": "Create a new meeting space",
       "parameters": {
-        "eventId": {
-          "type": "string",
-          "required": true,
-          "description": "Event ID"
+        "type": "object",
+        "properties": {
+          "config": {
+            "type": "object",
+            "properties": {
+              "accessType": {
+                "type": "string",
+                "enum": ["OPEN", "TRUSTED", "RESTRICTED"],
+                "default": "TRUSTED",
+                "description": "Access type for the space"
+              },
+              "entryPointAccess": {
+                "type": "string",
+                "enum": ["ALL", "CREATOR_APP_ONLY"],
+                "default": "ALL",
+                "description": "Entry point access"
+              }
+            },
+            "description": "Space configuration"
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Participant email"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_participants",
-      "name": "Get Participants",
-      "description": "Get meeting participants",
+      "id": "get_space",
+      "name": "Get Space",
+      "description": "Get meeting space details",
       "parameters": {
-        "eventId": {
-          "type": "string",
-          "required": true,
-          "description": "Event ID"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar.readonly"
-      ]
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Space name (spaces/SPACE_ID)"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "end_meeting",
-      "name": "End Meeting",
-      "description": "End a Google Meet meeting",
+      "id": "end_active_conference",
+      "name": "End Active Conference",
+      "description": "End the active conference in a space",
       "parameters": {
-        "eventId": {
-          "type": "string",
-          "required": true,
-          "description": "Event ID"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar"
-      ]
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Space name (spaces/SPACE_ID)"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_recording",
-      "name": "Get Recording",
-      "description": "Get meeting recording",
+      "id": "list_conference_records",
+      "name": "List Conference Records",
+      "description": "List conference records for a space",
       "parameters": {
-        "eventId": {
-          "type": "string",
-          "required": true,
-          "description": "Event ID"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar.readonly"
-      ]
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string",
+            "description": "Parent space (spaces/SPACE_ID)"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of records to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": ["parent"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_conference_record",
+      "name": "Get Conference Record",
+      "description": "Get a specific conference record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Conference record name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_participants",
+      "name": "List Participants",
+      "description": "List participants in a conference",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string",
+            "description": "Conference record name"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of participants to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": ["parent"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_participant",
+      "name": "Get Participant",
+      "description": "Get details about a specific participant",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Participant name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_participant_sessions",
+      "name": "List Participant Sessions",
+      "description": "List sessions for a participant",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string",
+            "description": "Participant name"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of sessions to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": ["parent"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_participant_session",
+      "name": "Get Participant Session",
+      "description": "Get details about a participant session",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Participant session name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "meeting_created",
-      "name": "Meeting Created",
-      "description": "Triggered when a meeting is created",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar.readonly"
-      ]
+      "id": "space_created",
+      "name": "Space Created",
+      "description": "Triggered when a meeting space is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "meetingUri": {"type": "string"},
+          "meetingCode": {"type": "string"},
+          "config": {"type": "object"},
+          "activeConference": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "meeting_started",
-      "name": "Meeting Started",
-      "description": "Triggered when a meeting starts",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar.readonly"
-      ]
+      "id": "conference_started",
+      "name": "Conference Started",
+      "description": "Triggered when a conference starts",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "space": {
+            "type": "string",
+            "description": "Filter by specific space"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "startTime": {"type": "string"},
+          "endTime": {"type": "string"},
+          "space": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "recording_ready",
-      "name": "Recording Ready",
-      "description": "Triggered when recording is ready",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/calendar.readonly"
-      ]
+      "id": "participant_joined",
+      "name": "Participant Joined",
+      "description": "Triggered when a participant joins",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "space": {
+            "type": "string",
+            "description": "Filter by specific space"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "signedinUser": {"type": "object"},
+          "anonymousUser": {"type": "object"},
+          "phoneUser": {"type": "object"},
+          "earliestStartTime": {"type": "string"},
+          "latestEndTime": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/spaces"
+  }
 }

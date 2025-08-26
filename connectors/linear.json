@@ -1,93 +1,492 @@
 {
   "id": "linear",
   "name": "Linear",
-  "description": "Linear integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "description": "Linear issue tracking and project management for modern teams",
+  "category": "Project Management",
+  "icon": "linear",
   "color": "#5E6AD2",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
   },
-  "baseUrl": "https://api.linear.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.linear.app/graphql",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Linear and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Linear",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_issue",
+      "name": "Create Issue",
+      "description": "Create a new issue",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Issue description"
+          },
+          "teamId": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "assigneeId": {
+            "type": "string",
+            "description": "Assignee user ID"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "Priority level (0-4, where 0 is none, 1 is urgent, 2 is high, 3 is medium, 4 is low)"
+          },
+          "stateId": {
+            "type": "string",
+            "description": "Workflow state ID"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of label IDs"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent issue ID for sub-issues"
+          },
+          "estimate": {
+            "type": "number",
+            "description": "Issue estimate (story points)"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["title", "teamId"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "update_issue",
+      "name": "Update Issue",
+      "description": "Update an existing issue",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Issue ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Issue description"
+          },
+          "assigneeId": {
+            "type": "string",
+            "description": "Assignee user ID"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "Priority level"
+          },
+          "stateId": {
+            "type": "string",
+            "description": "Workflow state ID"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of label IDs"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "estimate": {
+            "type": "number",
+            "description": "Issue estimate"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_issue",
+      "name": "Get Issue",
+      "description": "Get a specific issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Issue ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_issues",
+      "name": "List Issues",
+      "description": "List issues with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by team ID"
+          },
+          "assigneeId": {
+            "type": "string",
+            "description": "Filter by assignee ID"
+          },
+          "stateId": {
+            "type": "string",
+            "description": "Filter by state ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "labelId": {
+            "type": "string",
+            "description": "Filter by label ID"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "Filter by priority"
+          },
+          "first": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of issues to return"
+          },
+          "after": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": ["createdAt", "updatedAt", "priority", "title"],
+            "description": "Sort field"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_comment",
+      "name": "Create Comment",
+      "description": "Add a comment to an issue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "string",
+            "description": "Issue ID"
+          },
+          "body": {
+            "type": "string",
+            "description": "Comment body"
+          }
+        },
+        "required": ["issueId", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_teams",
+      "name": "List Teams",
+      "description": "List all teams",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of teams to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List all users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of users to return"
+          },
+          "includeDisabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include disabled users"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "teamIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of team IDs"
+          },
+          "leadId": {
+            "type": "string",
+            "description": "Project lead user ID"
+          },
+          "targetDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Target completion date"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["planned", "started", "paused", "completed", "canceled"],
+            "default": "planned",
+            "description": "Project state"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "List Projects",
+      "description": "List all projects",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of projects to return"
+          },
+          "includeArchived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include archived projects"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_workflow_states",
+      "name": "List Workflow States",
+      "description": "List workflow states for a team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "first": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of states to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_labels",
+      "name": "List Labels",
+      "description": "List all labels",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by team ID"
+          },
+          "first": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 250,
+            "default": 50,
+            "description": "Number of labels to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "issue_created",
+      "name": "Issue Created",
+      "description": "Triggered when a new issue is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by specific team"
+          },
+          "labelId": {
+            "type": "string",
+            "description": "Filter by specific label"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "identifier": {"type": "string"},
+          "priority": {"type": "number"},
+          "estimate": {"type": "number"},
+          "team": {"type": "object"},
+          "assignee": {"type": "object"},
+          "state": {"type": "object"},
+          "labels": {"type": "array"},
+          "createdAt": {"type": "string"},
+          "updatedAt": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "issue_updated",
+      "name": "Issue Updated",
+      "description": "Triggered when an issue is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by specific team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "updatedAt": {"type": "string"},
+          "previousValues": {"type": "object"},
+          "changedValues": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "issue_completed",
+      "name": "Issue Completed",
+      "description": "Triggered when an issue is completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by specific team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "identifier": {"type": "string"},
+          "completedAt": {"type": "string"},
+          "assignee": {"type": "object"},
+          "team": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "POST",
+    "endpoint": "/",
+    "body": {
+      "query": "query { viewer { id name } }"
+    }
+  }
 }

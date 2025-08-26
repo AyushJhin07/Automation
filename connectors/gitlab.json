@@ -1,93 +1,278 @@
 {
   "id": "gitlab",
-  "name": "Gitlab",
-  "description": "Gitlab integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "name": "GitLab",
+  "description": "GitLab DevOps platform for repository management and CI/CD",
+  "category": "Developer Tools",
+  "icon": "gitlab",
   "color": "#FC6D26",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://gitlab.com/oauth/authorize",
+      "tokenUrl": "https://gitlab.com/oauth/token",
+      "scopes": ["api", "read_user", "read_repository"]
+    }
   },
-  "baseUrl": "https://api.gitlab.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://gitlab.com/api/v4",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Gitlab and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read_user"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to GitLab",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_issue",
+      "name": "Create Issue",
+      "description": "Create a new issue in a project",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Project ID or path"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Issue description"
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "User IDs to assign"
+          },
+          "milestone_id": {
+            "type": "number",
+            "description": "Milestone ID"
+          },
+          "labels": {
+            "type": "string",
+            "description": "Comma-separated label names"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date"
+          },
+          "weight": {
+            "type": "number",
+            "description": "Issue weight"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["id", "title"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "create_merge_request",
+      "name": "Create Merge Request",
+      "description": "Create a new merge request",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Project ID or path"
+          },
+          "source_branch": {
+            "type": "string",
+            "description": "Source branch"
+          },
+          "target_branch": {
+            "type": "string",
+            "description": "Target branch"
+          },
+          "title": {
+            "type": "string",
+            "description": "Merge request title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Merge request description"
+          },
+          "assignee_id": {
+            "type": "number",
+            "description": "Assignee user ID"
+          },
+          "milestone_id": {
+            "type": "number",
+            "description": "Milestone ID"
+          },
+          "labels": {
+            "type": "string",
+            "description": "Comma-separated label names"
+          },
+          "remove_source_branch": {
+            "type": "boolean",
+            "default": false,
+            "description": "Remove source branch when merged"
+          },
+          "squash": {
+            "type": "boolean",
+            "default": false,
+            "description": "Squash commits when merging"
+          }
+        },
+        "required": ["id", "source_branch", "target_branch", "title"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "path": {
+            "type": "string",
+            "description": "Project path"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "internal", "public"],
+            "default": "private",
+            "description": "Project visibility"
+          },
+          "issues_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable issues"
+          },
+          "merge_requests_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable merge requests"
+          },
+          "wiki_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable wiki"
+          },
+          "snippets_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable snippets"
+          },
+          "namespace_id": {
+            "type": "number",
+            "description": "Namespace ID"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "List Projects",
+      "description": "List user projects",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "description": "Include archived projects"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "internal", "private"],
+            "description": "Filter by visibility"
+          },
+          "order_by": {
+            "type": "string",
+            "enum": ["id", "name", "path", "created_at", "updated_at", "last_activity_at"],
+            "description": "Order by field"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "push_events",
+      "name": "Push Events",
+      "description": "Triggered on push events",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "number",
+            "description": "Filter by project"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "object_kind": {"type": "string"},
+          "project": {"type": "object"},
+          "commits": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "merge_request_events",
+      "name": "Merge Request Events", 
+      "description": "Triggered on merge request events",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "object_kind": {"type": "string"},
+          "object_attributes": {"type": "object"},
+          "project": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }

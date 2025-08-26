@@ -1,40 +1,30 @@
 {
   "id": "google-contacts",
   "name": "Google Contacts",
-  "description": "Google Contacts (People API) for contact management",
-  "category": "Productivity",
-  "icon": "users",
+  "description": "Google Contacts for managing people and contact information",
+  "category": "CRM",
+  "icon": "google-contacts",
   "color": "#4285F4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": [
-        "https://www.googleapis.com/auth/contacts"
-      ]
+      "scopes": ["https://www.googleapis.com/auth/contacts"]
     }
   },
   "baseUrl": "https://people.googleapis.com/v1",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 100000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Google Contacts and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Google Contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -42,101 +32,337 @@
       "name": "Create Contact",
       "description": "Create a new contact",
       "parameters": {
-        "names": {
-          "type": "array",
-          "required": true,
-          "description": "Array of name objects"
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "givenName": {"type": "string"},
+                "familyName": {"type": "string"},
+                "displayName": {"type": "string"}
+              }
+            },
+            "description": "Contact names"
+          },
+          "emailAddresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string", "format": "email"},
+                "type": {"type": "string"}
+              }
+            },
+            "description": "Email addresses"
+          },
+          "phoneNumbers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string"},
+                "type": {"type": "string"}
+              }
+            },
+            "description": "Phone numbers"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "formattedValue": {"type": "string"},
+                "type": {"type": "string"},
+                "streetAddress": {"type": "string"},
+                "city": {"type": "string"},
+                "region": {"type": "string"},
+                "postalCode": {"type": "string"},
+                "country": {"type": "string"}
+              }
+            },
+            "description": "Addresses"
+          },
+          "organizations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "title": {"type": "string"},
+                "department": {"type": "string"}
+              }
+            },
+            "description": "Organizations"
+          },
+          "biographies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string"}
+              }
+            },
+            "description": "Biography"
+          }
         },
-        "emailAddresses": {
-          "type": "array",
-          "required": true,
-          "description": "Array of email objects"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contact",
+      "name": "Get Contact",
+      "description": "Get a specific contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resourceName": {
+            "type": "string",
+            "description": "Contact resource name"
+          },
+          "personFields": {
+            "type": "string",
+            "default": "names,emailAddresses,phoneNumbers",
+            "description": "Fields to include"
+          }
         },
-        "phoneNumbers": {
-          "type": "array",
-          "required": false,
-          "description": "Array of phone number objects"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/contacts"
-      ]
+        "required": ["resourceName"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_contact",
       "name": "Update Contact",
       "description": "Update an existing contact",
       "parameters": {
-        "resourceName": {
-          "type": "string",
-          "required": true,
-          "description": "Contact resource name"
+        "type": "object",
+        "properties": {
+          "resourceName": {
+            "type": "string",
+            "description": "Contact resource name"
+          },
+          "updatePersonFields": {
+            "type": "string",
+            "description": "Fields to update"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "givenName": {"type": "string"},
+                "familyName": {"type": "string"},
+                "displayName": {"type": "string"}
+              }
+            },
+            "description": "Updated names"
+          },
+          "emailAddresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string", "format": "email"},
+                "type": {"type": "string"}
+              }
+            },
+            "description": "Updated email addresses"
+          },
+          "phoneNumbers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {"type": "string"},
+                "type": {"type": "string"}
+              }
+            },
+            "description": "Updated phone numbers"
+          }
         },
-        "fields": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/contacts"
-      ]
+        "required": ["resourceName"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "delete_contact",
       "name": "Delete Contact",
       "description": "Delete a contact",
       "parameters": {
-        "resourceName": {
-          "type": "string",
-          "required": true,
-          "description": "Contact resource name"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/contacts"
-      ]
+        "type": "object",
+        "properties": {
+          "resourceName": {
+            "type": "string",
+            "description": "Contact resource name"
+          }
+        },
+        "required": ["resourceName"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "search",
-      "name": "Search Contacts",
-      "description": "Search for contacts",
+      "id": "list_contacts",
+      "name": "List Contacts",
+      "description": "List contacts",
       "parameters": {
-        "query": {
-          "type": "string",
-          "required": true,
-          "description": "Search query"
+        "type": "object",
+        "properties": {
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of contacts to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          },
+          "personFields": {
+            "type": "string",
+            "default": "names,emailAddresses,phoneNumbers",
+            "description": "Fields to include"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", "LAST_NAME_ASCENDING"],
+            "description": "Sort order"
+          }
         },
-        "pageSize": {
-          "type": "number",
-          "required": false,
-          "description": "Number of results",
-          "default": 10
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/contacts.readonly"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_contacts",
+      "name": "Search Contacts",
+      "description": "Search contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30,
+            "default": 10,
+            "description": "Number of contacts to return"
+          },
+          "readMask": {
+            "type": "string",
+            "default": "names,emailAddresses,phoneNumbers",
+            "description": "Fields to include"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_contact_group",
+      "name": "Create Contact Group",
+      "description": "Create a new contact group",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Group name"
+          },
+          "readGroupFields": {
+            "type": "string",
+            "default": "name,memberCount",
+            "description": "Fields to return"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_contact_groups",
+      "name": "List Contact Groups",
+      "description": "List contact groups",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pageSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 30,
+            "description": "Number of groups to return"
+          },
+          "pageToken": {
+            "type": "string",
+            "description": "Page token for pagination"
+          },
+          "groupFields": {
+            "type": "string",
+            "default": "name,memberCount",
+            "description": "Fields to include"
+          },
+          "syncToken": {
+            "type": "string",
+            "description": "Sync token for incremental updates"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "contact_added",
-      "name": "Contact Added",
-      "description": "Triggered when a contact is added",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/contacts.readonly"
-      ]
+      "id": "contact_created",
+      "name": "Contact Created",
+      "description": "Triggered when a new contact is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "resourceName": {"type": "string"},
+          "names": {"type": "array"},
+          "emailAddresses": {"type": "array"},
+          "phoneNumbers": {"type": "array"}
+        }
+      }
     },
     {
       "id": "contact_updated",
       "name": "Contact Updated",
       "description": "Triggered when a contact is updated",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/contacts.readonly"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "resourceName": {"type": "string"},
+          "names": {"type": "array"},
+          "emailAddresses": {"type": "array"},
+          "phoneNumbers": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/people/me?personFields=names"
+  }
 }
