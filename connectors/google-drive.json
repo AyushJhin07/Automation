@@ -29,14 +29,11 @@
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Google Drive and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -44,264 +41,304 @@
       "name": "Create File",
       "description": "Create a new file in Google Drive",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Name of the file to create"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the file to create"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "application/vnd.google-apps.document",
+              "application/vnd.google-apps.spreadsheet",
+              "application/vnd.google-apps.presentation",
+              "text/plain",
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+              "application/json"
+            ],
+            "description": "MIME type of the file"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "ID of the parent folder"
+          },
+          "contentBase64": {
+            "type": "string",
+            "description": "Base64-encoded file content"
+          }
         },
-        "mimeType": {
-          "type": "string",
-          "required": true,
-          "description": "MIME type of the file",
-          "options": [
-            "application/vnd.google-apps.document",
-            "application/vnd.google-apps.spreadsheet",
-            "application/vnd.google-apps.presentation",
-            "text/plain",
-            "application/pdf"
-          ]
-        },
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "ID of the parent folder"
-        },
-        "contentBase64": {
-          "type": "string",
-          "required": false,
-          "description": "Base64-encoded file content"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": ["name", "mimeType"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "upload_base64",
-      "name": "Upload Base64 File",
-      "description": "Upload a file from base64 content",
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload a file to Google Drive",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Name of the file"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the file"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "ID of the parent folder"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content (base64 encoded)"
+          },
+          "mimeType": {
+            "type": "string",
+            "description": "MIME type of the file"
+          }
         },
-        "folderId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the destination folder"
-        },
-        "mimeType": {
-          "type": "string",
-          "required": true,
-          "description": "MIME type of the file"
-        },
-        "base64": {
-          "type": "string",
-          "required": true,
-          "description": "Base64-encoded file content"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": ["name", "content"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "copy_file",
-      "name": "Copy File",
-      "description": "Copy a file to another location",
+      "id": "get_file",
+      "name": "Get File",
+      "description": "Get file metadata and content",
       "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the file to copy"
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to retrieve"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          }
         },
-        "targetFolderId": {
-          "type": "string",
-          "required": false,
-          "description": "ID of the target folder"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive"
-      ]
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "move_file",
-      "name": "Move File",
-      "description": "Move a file to another folder",
+      "id": "download_file",
+      "name": "Download File",
+      "description": "Download file content",
       "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the file to move"
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to download"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["pdf", "docx", "xlsx", "pptx", "txt", "html", "odt"],
+            "description": "Export format for Google Workspace files"
+          }
         },
-        "targetFolderId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the target folder"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive"
-      ]
-    },
-    {
-      "id": "share_file",
-      "name": "Share File",
-      "description": "Share a file with a user",
-      "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the file to share"
-        },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Email address of the user to share with"
-        },
-        "role": {
-          "type": "string",
-          "required": true,
-          "description": "Role to assign",
-          "options": [
-            "reader",
-            "writer",
-            "commenter",
-            "owner"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive"
-      ]
-    },
-    {
-      "id": "set_permissions",
-      "name": "Set Permissions",
-      "description": "Set permissions for a file",
-      "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the file"
-        },
-        "permissions": {
-          "type": "array",
-          "required": true,
-          "description": "Array of permission objects"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive"
-      ]
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "list_files",
       "name": "List Files",
-      "description": "List files in Drive",
+      "description": "List files in Google Drive",
       "parameters": {
-        "q": {
-          "type": "string",
-          "required": false,
-          "description": "Query string to filter files"
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "ID of the folder to list (optional)"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query (e.g., 'name contains \"report\"')"
+          },
+          "maxResults": {
+            "type": "number",
+            "default": 100,
+            "maximum": 1000,
+            "description": "Maximum number of files to return"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": ["createdTime", "folder", "modifiedByMeTime", "modifiedTime", "name", "quotaBytesUsed", "recency", "sharedWithMeTime", "starred", "viewedByMeTime"],
+            "description": "Sort order"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          }
         },
-        "pageSize": {
-          "type": "number",
-          "required": false,
-          "description": "Maximum number of files to return",
-          "default": 10
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
-    },
-    {
-      "id": "find_files",
-      "name": "Find Files",
-      "description": "Find files by name or type",
-      "parameters": {
-        "nameContains": {
-          "type": "string",
-          "required": false,
-          "description": "Text that the file name should contain"
-        },
-        "mimeType": {
-          "type": "string",
-          "required": false,
-          "description": "MIME type to filter by"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
-    },
-    {
-      "id": "export_pdf",
-      "name": "Export as PDF",
-      "description": "Export a Google Workspace file as PDF",
-      "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the file to export"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.readonly"
-      ]
-    },
-    {
-      "id": "delete_file",
-      "name": "Delete File",
-      "description": "Delete a file from Drive",
-      "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": true,
-          "description": "ID of the file to delete"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_folder",
       "name": "Create Folder",
-      "description": "Create a new folder",
+      "description": "Create a new folder in Google Drive",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Name of the folder"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the folder"
+          },
+          "parentFolderId": {
+            "type": "string",
+            "description": "ID of the parent folder"
+          }
         },
-        "parentFolderId": {
-          "type": "string",
-          "required": false,
-          "description": "ID of the parent folder"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.file"
-      ]
+        "required": ["name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "watch_changes",
-      "name": "Watch Changes",
-      "description": "Set up a watch for changes in Drive",
+      "id": "move_file",
+      "name": "Move File",
+      "description": "Move a file to a different folder",
       "parameters": {
-        "pageToken": {
-          "type": "string",
-          "required": false,
-          "description": "Page token for starting the watch"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive"
-      ]
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to move"
+          },
+          "newParentId": {
+            "type": "string",
+            "description": "ID of the new parent folder"
+          },
+          "removeParents": {
+            "type": "string",
+            "description": "Comma-separated list of parent IDs to remove"
+          }
+        },
+        "required": ["fileId", "newParentId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "copy_file",
+      "name": "Copy File",
+      "description": "Create a copy of a file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to copy"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name for the copied file"
+          },
+          "parentFolderId": {
+            "type": "string",
+            "description": "ID of the parent folder for the copy"
+          }
+        },
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_file",
+      "name": "Delete File",
+      "description": "Delete a file permanently",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to delete"
+          }
+        },
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "share_file",
+      "name": "Share File",
+      "description": "Share a file with users or make it public",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to share"
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address of the user to share with"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["reader", "writer", "commenter", "owner"],
+            "default": "reader",
+            "description": "Permission role for the user"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["user", "group", "domain", "anyone"],
+            "default": "user",
+            "description": "Type of permission"
+          },
+          "sendNotificationEmail": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to send notification email"
+          }
+        },
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_file_permissions",
+      "name": "Get File Permissions",
+      "description": "Get sharing permissions for a file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file"
+          }
+        },
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_file_metadata",
+      "name": "Update File Metadata",
+      "description": "Update file metadata like name, description",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "ID of the file to update"
+          },
+          "name": {
+            "type": "string",
+            "description": "New name for the file"
+          },
+          "description": {
+            "type": "string",
+            "description": "New description for the file"
+          }
+        },
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -309,90 +346,94 @@
       "id": "file_created",
       "name": "File Created",
       "description": "Triggered when a new file is created",
+      "type": "webhook",
       "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor files in specific folder only"
-        }
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Monitor specific folder (optional)"
+          },
+          "mimeType": {
+            "type": "string",
+            "description": "Filter by file type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "fileId": {"type": "string"},
+          "name": {"type": "string"},
+          "mimeType": {"type": "string"},
+          "size": {"type": "number"},
+          "createdTime": {"type": "string"},
+          "modifiedTime": {"type": "string"},
+          "webViewLink": {"type": "string"}
+        }
+      }
     },
     {
       "id": "file_updated",
       "name": "File Updated",
-      "description": "Triggered when a file is updated",
+      "description": "Triggered when a file is modified",
+      "type": "webhook",
       "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor files in specific folder only"
-        }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
-    },
-    {
-      "id": "file_moved",
-      "name": "File Moved",
-      "description": "Triggered when a file is moved between folders",
-      "parameters": {
-        "fromFolderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor moves from specific folder"
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Monitor specific folder (optional)"
+          },
+          "fileId": {
+            "type": "string",
+            "description": "Monitor specific file (optional)"
+          }
         },
-        "toFolderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor moves to specific folder"
-        }
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
-    },
-    {
-      "id": "file_trashed",
-      "name": "File Trashed",
-      "description": "Triggered when a file is moved to trash",
-      "parameters": {},
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "fileId": {"type": "string"},
+          "name": {"type": "string"},
+          "modifiedTime": {"type": "string"},
+          "lastModifyingUser": {"type": "object"}
+        }
+      }
     },
     {
       "id": "file_shared",
       "name": "File Shared",
       "description": "Triggered when a file is shared",
+      "type": "webhook",
       "parameters": {
-        "fileId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor specific file only"
-        }
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Monitor specific folder (optional)"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
-    },
-    {
-      "id": "folder_created",
-      "name": "Folder Created",
-      "description": "Triggered when a new folder is created",
-      "parameters": {
-        "parentFolderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor folders created in specific parent"
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "fileId": {"type": "string"},
+          "name": {"type": "string"},
+          "sharedWithUser": {"type": "string"},
+          "permissionId": {"type": "string"}
         }
-      },
-      "requiredScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly"
-      ]
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/about"
+  }
 }
