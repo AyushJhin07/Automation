@@ -3553,6 +3553,629 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced Observability API
+  app.post('/api/observability/events', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const { type, severity, source, title, message, details, correlationContext, metadata, tags } = req.body;
+      
+      const event = observabilityManager.logEvent({
+        type,
+        severity,
+        source,
+        title,
+        message,
+        details,
+        correlationContext,
+        metadata,
+        tags
+      });
+      
+      res.json({ success: true, event });
+    } catch (error) {
+      console.error('Event logging error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/observability/events/search', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const query = {
+        query: req.query.q as string,
+        correlationId: req.query.correlationId as string,
+        traceId: req.query.traceId as string,
+        userId: req.query.userId as string,
+        workflowId: req.query.workflowId as string,
+        executionId: req.query.executionId as string,
+        nodeId: req.query.nodeId as string,
+        connectorId: req.query.connectorId as string,
+        type: req.query.type ? (req.query.type as string).split(',') : undefined,
+        severity: req.query.severity ? (req.query.severity as string).split(',') : undefined,
+        source: req.query.source ? (req.query.source as string).split(',') : undefined,
+        tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
+        startTime: req.query.startTime ? new Date(req.query.startTime as string) : undefined,
+        endTime: req.query.endTime ? new Date(req.query.endTime as string) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
+        sortBy: req.query.sortBy as any,
+        sortOrder: req.query.sortOrder as any
+      };
+      
+      const result = observabilityManager.searchEvents(query);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error('Event search error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/observability/correlation', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const { userId, workflowId, executionId, sessionId, requestId, metadata, tags, parentContext } = req.body;
+      
+      const context = observabilityManager.createCorrelationContext({
+        userId,
+        workflowId,
+        executionId,
+        sessionId,
+        requestId,
+        metadata,
+        tags,
+        parentContext
+      });
+      
+      res.json({ success: true, context });
+    } catch (error) {
+      console.error('Correlation context creation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.put('/api/observability/correlation/:correlationId/complete', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const { correlationId } = req.params;
+      
+      observabilityManager.completeCorrelationContext(correlationId);
+      res.json({ success: true, message: 'Correlation context completed' });
+    } catch (error) {
+      console.error('Correlation completion error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/observability/traces/:traceId/analyze', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const { traceId } = req.params;
+      
+      const analysis = observabilityManager.analyzeTrace(traceId);
+      res.json({ success: true, analysis });
+    } catch (error) {
+      console.error('Trace analysis error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/observability/metrics', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const { start, end } = req.query;
+      
+      const timeframe = start && end ? {
+        start: new Date(start as string),
+        end: new Date(end as string)
+      } : undefined;
+      
+      const metrics = observabilityManager.getMetrics(timeframe);
+      res.json({ success: true, metrics });
+    } catch (error) {
+      console.error('Metrics error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/observability/alerts', async (req, res) => {
+    try {
+      const { observabilityManager } = await import('./core/ObservabilityManager');
+      const { name, description, query, condition, actions, createdBy } = req.body;
+      
+      const rule = observabilityManager.createAlertRule({
+        name,
+        description,
+        query,
+        condition,
+        actions,
+        createdBy
+      });
+      
+      res.json({ success: true, rule });
+    } catch (error) {
+      console.error('Alert rule creation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Guided Onboarding API
+  app.post('/api/onboarding/profile', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const { userId, userType, experience, goals, industry, teamSize, useCases, preferences } = req.body;
+      
+      const profile = onboardingManager.createProfile({
+        userId,
+        userType,
+        experience,
+        goals,
+        industry,
+        teamSize,
+        useCases,
+        preferences
+      });
+      
+      res.json({ success: true, profile });
+    } catch (error) {
+      console.error('Onboarding profile creation error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/onboarding/:userId/recommendations', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const { userId } = req.params;
+      
+      const recommendations = onboardingManager.getRecommendations(userId);
+      res.json({ success: true, recommendations });
+    } catch (error) {
+      console.error('Onboarding recommendations error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/onboarding/:userId/flows/:flowId/start', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const { userId, flowId } = req.params;
+      
+      const progress = onboardingManager.startFlow(userId, flowId);
+      res.json({ success: true, progress });
+    } catch (error) {
+      console.error('Onboarding flow start error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/onboarding/:userId/flows/:flowId/steps/:stepId/complete', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const { userId, flowId, stepId } = req.params;
+      const { data } = req.body;
+      
+      const result = onboardingManager.completeStep(userId, flowId, stepId, data);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error('Onboarding step completion error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/onboarding/:userId/flows/:flowId/steps/:stepId/skip', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const { userId, flowId, stepId } = req.params;
+      
+      const progress = onboardingManager.skipStep(userId, flowId, stepId);
+      res.json({ success: true, progress });
+    } catch (error) {
+      console.error('Onboarding step skip error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/onboarding/:userId/progress', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const { userId } = req.params;
+      
+      const progress = onboardingManager.getUserProgress(userId);
+      res.json({ success: true, progress });
+    } catch (error) {
+      console.error('Onboarding progress error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/onboarding/tutorials', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const filters = {
+        category: req.query.category as any,
+        difficulty: req.query.difficulty as any,
+        tag: req.query.tag as string,
+        userId: req.query.userId as string
+      };
+      
+      const tutorials = onboardingManager.getTutorials(filters);
+      res.json({ success: true, tutorials });
+    } catch (error) {
+      console.error('Tutorials fetch error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/onboarding/analytics', async (req, res) => {
+    try {
+      const { onboardingManager } = await import('./core/OnboardingManager');
+      const analytics = onboardingManager.getAnalytics();
+      res.json({ success: true, analytics });
+    } catch (error) {
+      console.error('Onboarding analytics error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==========================================
+  // PERFORMANCE OPTIMIZATION API
+  // ==========================================
+
+  // Record a performance metric
+  app.post('/api/performance/metrics', async (req, res) => {
+    try {
+      const { source, type, value, unit, context, tags, metadata } = req.body;
+      
+      if (!source || !type || value === undefined || !unit) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Source, type, value, and unit are required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      performanceManager.recordMetric({
+        source,
+        type,
+        value,
+        unit,
+        context,
+        tags,
+        metadata
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Metric recorded successfully' 
+      });
+    } catch (error) {
+      console.error('Error recording performance metric:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to record performance metric' 
+      });
+    }
+  });
+
+  // Get from cache
+  app.get('/api/performance/cache/:key', async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { tags } = req.query;
+      
+      if (!key) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Cache key is required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const value = performanceManager.getFromCache(
+        key, 
+        tags ? tags.toString().split(',') : undefined
+      );
+      
+      res.json({ 
+        success: true, 
+        key,
+        value,
+        found: value !== null
+      });
+    } catch (error) {
+      console.error('Error getting from cache:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get from cache' 
+      });
+    }
+  });
+
+  // Set cache
+  app.post('/api/performance/cache/:key', async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { value, ttl, tags, dependencies } = req.body;
+      
+      if (!key || value === undefined) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Cache key and value are required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      performanceManager.setCache(key, value, {
+        ttl,
+        tags,
+        dependencies
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Cache set successfully',
+        key
+      });
+    } catch (error) {
+      console.error('Error setting cache:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to set cache' 
+      });
+    }
+  });
+
+  // Invalidate cache
+  app.delete('/api/performance/cache', async (req, res) => {
+    try {
+      const { pattern, trigger, scope } = req.query;
+      
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const invalidated = performanceManager.invalidateCache(
+        pattern?.toString(),
+        trigger?.toString(),
+        scope?.toString()
+      );
+      
+      res.json({ 
+        success: true, 
+        invalidated,
+        message: `Invalidated ${invalidated} cache entries`
+      });
+    } catch (error) {
+      console.error('Error invalidating cache:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to invalidate cache' 
+      });
+    }
+  });
+
+  // Create real-time connection
+  app.post('/api/performance/connections', async (req, res) => {
+    try {
+      const { userId, sessionId, connectionType, metadata } = req.body;
+      
+      if (!userId || !sessionId || !connectionType) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'UserId, sessionId, and connectionType are required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const connection = performanceManager.createConnection({
+        userId,
+        sessionId,
+        connectionType,
+        metadata
+      });
+      
+      res.json({ 
+        success: true, 
+        connection 
+      });
+    } catch (error) {
+      console.error('Error creating real-time connection:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to create real-time connection' 
+      });
+    }
+  });
+
+  // Subscribe to channel
+  app.post('/api/performance/connections/:connectionId/subscribe', async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      const { channel } = req.body;
+      
+      if (!connectionId || !channel) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'ConnectionId and channel are required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      performanceManager.subscribe(connectionId, channel);
+      
+      res.json({ 
+        success: true, 
+        message: `Subscribed to channel ${channel}` 
+      });
+    } catch (error) {
+      console.error('Error subscribing to channel:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to subscribe to channel' 
+      });
+    }
+  });
+
+  // Emit real-time event
+  app.post('/api/performance/events', async (req, res) => {
+    try {
+      const { type, channel, payload, targetUsers, targetSessions, priority, ttl } = req.body;
+      
+      if (!type || !channel || !payload) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Type, channel, and payload are required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      performanceManager.emitRealTimeEvent({
+        type,
+        channel,
+        payload,
+        targetUsers,
+        targetSessions,
+        priority,
+        ttl
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Event emitted successfully' 
+      });
+    } catch (error) {
+      console.error('Error emitting real-time event:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to emit real-time event' 
+      });
+    }
+  });
+
+  // Analyze performance and get optimization suggestions
+  app.get('/api/performance/analyze', async (req, res) => {
+    try {
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const optimizations = performanceManager.analyzePerformance();
+      
+      res.json({ 
+        success: true, 
+        optimizations 
+      });
+    } catch (error) {
+      console.error('Error analyzing performance:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to analyze performance' 
+      });
+    }
+  });
+
+  // Get current performance snapshot
+  app.get('/api/performance/snapshot', async (req, res) => {
+    try {
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const snapshot = performanceManager.getPerformanceSnapshot();
+      
+      res.json({ 
+        success: true, 
+        snapshot 
+      });
+    } catch (error) {
+      console.error('Error getting performance snapshot:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get performance snapshot' 
+      });
+    }
+  });
+
+  // Acquire resource from pool
+  app.post('/api/performance/resources/:poolName/acquire', async (req, res) => {
+    try {
+      const { poolName } = req.params;
+      
+      if (!poolName) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Pool name is required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const resource = await performanceManager.acquireResource(poolName);
+      
+      res.json({ 
+        success: true, 
+        resource,
+        poolName
+      });
+    } catch (error) {
+      console.error('Error acquiring resource:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: `Failed to acquire resource: ${error.message}` 
+      });
+    }
+  });
+
+  // Release resource to pool
+  app.post('/api/performance/resources/:poolName/release', async (req, res) => {
+    try {
+      const { poolName } = req.params;
+      const { resource } = req.body;
+      
+      if (!poolName || !resource) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Pool name and resource are required' 
+        });
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      await performanceManager.releaseResource(poolName, resource);
+      
+      res.json({ 
+        success: true, 
+        message: 'Resource released successfully',
+        poolName
+      });
+    } catch (error) {
+      console.error('Error releasing resource:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: `Failed to release resource: ${error.message}` 
+      });
+    }
+  });
+
+  // Get comprehensive performance analytics
+  app.get('/api/performance/analytics', async (req, res) => {
+    try {
+      const { timeframe } = req.query;
+      
+      let timeframeObj = undefined;
+      if (timeframe) {
+        const [start, end] = timeframe.toString().split(',');
+        timeframeObj = { 
+          start: new Date(start), 
+          end: new Date(end) 
+        };
+      }
+
+      const { performanceManager } = await import('./core/PerformanceManager');
+      const analytics = performanceManager.getAnalytics(timeframeObj);
+      
+      res.json({ 
+        success: true, 
+        analytics 
+      });
+    } catch (error) {
+      console.error('Error getting performance analytics:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get performance analytics' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
