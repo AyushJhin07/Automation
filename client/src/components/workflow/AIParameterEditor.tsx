@@ -118,16 +118,16 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
 
   const getModeColor = (mode: ParamMode) => {
     switch (mode) {
-      case 'static': return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
-      case 'llm': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-      case 'ref': return 'bg-green-500/20 text-green-300 border-green-500/30';
+      case 'static': return 'bg-slate-100 text-slate-700 border-slate-300';
+      case 'llm': return 'bg-blue-100 text-blue-700 border-blue-300';
+      case 'ref': return 'bg-green-100 text-green-700 border-green-300';
     }
   };
 
   return (
     <div className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between">
-        <label className="text-xs text-slate-400 font-medium">{paramName}</label>
+        <label className="text-sm font-medium text-slate-700">{paramName}</label>
         <div className="flex items-center gap-1">
           <Badge variant="outline" className={`text-xs px-2 py-1 ${getModeColor(currentValue.mode)}`}>
             {getModeIcon(currentValue.mode)}
@@ -138,7 +138,7 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+              className="h-6 w-6 p-0 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
             >
               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </Button>
@@ -157,7 +157,7 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
             className={`flex-1 text-xs h-8 ${
               currentValue.mode === mode 
                 ? getModeColor(mode) 
-                : 'bg-slate-800/50 border-slate-600/50 text-slate-400 hover:bg-slate-700/50'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
             {getModeIcon(mode)}
@@ -175,7 +175,7 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
             value={currentValue.value || ''}
             onChange={(e) => handleValueUpdate({ value: e.target.value })}
             placeholder={`Enter ${paramName}...`}
-            className="bg-slate-800 border-slate-600 text-white text-sm"
+            className="bg-white border-slate-300 text-slate-900 text-sm focus:border-blue-500 focus:ring-blue-500/20"
           />
         </div>
       )}
@@ -185,12 +185,12 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Node</label>
+              <label className="text-xs text-slate-600 block mb-1">Node</label>
               <Select
                 value={currentValue.nodeId || ''}
                 onValueChange={(nodeId) => handleValueUpdate({ nodeId })}
               >
-                <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-600">
+                <SelectTrigger className="h-8 text-xs bg-white border-slate-300">
                   <SelectValue placeholder="Select node" />
                 </SelectTrigger>
                 <SelectContent>
@@ -203,23 +203,23 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
               </Select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Path</label>
+              <label className="text-xs text-slate-600 block mb-1">Path</label>
               <Input
                 value={currentValue.path || '$'}
                 onChange={(e) => handleValueUpdate({ path: e.target.value })}
                 placeholder="$.field.path"
-                className="h-8 text-xs bg-slate-800 border-slate-600 text-white"
+                className="h-8 text-xs bg-white border-slate-300 text-slate-900"
               />
             </div>
           </div>
           {isExpanded && (
-            <Card className="bg-slate-800/50 border-slate-600/50">
+            <Card className="bg-green-50 border-green-200">
               <CardContent className="p-3">
-                <div className="text-xs text-slate-400 space-y-1">
+                <div className="text-xs text-green-800 space-y-1">
                   <div><strong>Examples:</strong></div>
-                  <div>• <code>$</code> - entire output</div>
-                  <div>• <code>email.subject</code> - nested field</div>
-                  <div>• <code>items.0.name</code> - array index</div>
+                  <div>• <code className="bg-green-100 px-1 rounded">$</code> - entire output</div>
+                  <div>• <code className="bg-green-100 px-1 rounded">email.subject</code> - nested field</div>
+                  <div>• <code className="bg-green-100 px-1 rounded">items.0.name</code> - array index</div>
                 </div>
               </CardContent>
             </Card>
@@ -232,7 +232,7 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
         <div className="space-y-2">
           {/* Prompt */}
           <div>
-            <label className="text-xs text-slate-500 block mb-1">
+            <label className="text-xs text-slate-600 block mb-1">
               <Sparkles className="w-3 h-3 inline mr-1" />
               AI Prompt
             </label>
@@ -241,19 +241,19 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
               onChange={(e) => handleValueUpdate({ prompt: e.target.value })}
               placeholder={`Generate ${paramName} based on context...`}
               rows={2}
-              className="bg-slate-800 border-slate-600 text-white text-sm resize-none"
+              className="bg-white border-slate-300 text-slate-900 text-sm resize-none focus:border-blue-500 focus:ring-blue-500/20"
             />
           </div>
 
           {/* Provider & Model */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Provider</label>
+              <label className="text-xs text-slate-600 block mb-1">Provider</label>
               <Select
                 value={currentValue.provider || 'openai'}
                 onValueChange={(provider) => handleValueUpdate({ provider: provider as any })}
               >
-                <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-600">
+                <SelectTrigger className="h-8 text-xs bg-white border-slate-300">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -264,12 +264,12 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
               </Select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Model</label>
+              <label className="text-xs text-slate-600 block mb-1">Model</label>
               <Select
                 value={currentValue.model || 'openai:gpt-4o-mini'}
                 onValueChange={(model) => handleValueUpdate({ model })}
               >
-                <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-600">
+                <SelectTrigger className="h-8 text-xs bg-white border-slate-300">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -299,29 +299,29 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
 
           {/* Advanced Settings */}
           {isExpanded && (
-            <Card className="bg-slate-800/50 border-slate-600/50">
+            <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-3 space-y-3">
-                <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                <div className="flex items-center gap-2 text-xs text-blue-800 mb-2">
                   <Settings className="w-3 h-3" />
                   <span>Advanced Settings</span>
                 </div>
                 
                 {/* System Prompt */}
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">System Prompt</label>
+                  <label className="text-xs text-slate-600 block mb-1">System Prompt</label>
                   <Textarea
                     value={currentValue.system || ''}
                     onChange={(e) => handleValueUpdate({ system: e.target.value })}
                     placeholder="You are a helpful assistant..."
                     rows={2}
-                    className="bg-slate-700 border-slate-600 text-white text-xs resize-none"
+                    className="bg-white border-slate-300 text-slate-900 text-xs resize-none"
                   />
                 </div>
 
                 {/* Temperature & Max Tokens */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-slate-500 block mb-1">Temperature</label>
+                    <label className="text-xs text-slate-600 block mb-1">Temperature</label>
                     <Input
                       type="number"
                       min="0"
@@ -329,40 +329,40 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
                       step="0.1"
                       value={currentValue.temperature || 0.2}
                       onChange={(e) => handleValueUpdate({ temperature: parseFloat(e.target.value) })}
-                      className="h-7 text-xs bg-slate-700 border-slate-600 text-white"
+                      className="h-7 text-xs bg-white border-slate-300 text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 block mb-1">Max Tokens</label>
+                    <label className="text-xs text-slate-600 block mb-1">Max Tokens</label>
                     <Input
                       type="number"
                       min="1"
                       max="4000"
                       value={currentValue.maxTokens || 512}
                       onChange={(e) => handleValueUpdate({ maxTokens: parseInt(e.target.value) })}
-                      className="h-7 text-xs bg-slate-700 border-slate-600 text-white"
+                      className="h-7 text-xs bg-white border-slate-300 text-slate-900"
                     />
                   </div>
                 </div>
 
                 {/* Cache TTL */}
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Cache Duration (seconds)</label>
+                  <label className="text-xs text-slate-600 block mb-1">Cache Duration (seconds)</label>
                   <Input
                     type="number"
                     min="0"
                     max="3600"
                     value={currentValue.cacheTtlSec || 300}
                     onChange={(e) => handleValueUpdate({ cacheTtlSec: parseInt(e.target.value) })}
-                    className="h-7 text-xs bg-slate-700 border-slate-600 text-white"
+                    className="h-7 text-xs bg-white border-slate-300 text-slate-900"
                   />
                 </div>
 
                 {/* Template Syntax Help */}
-                <div className="text-xs text-slate-400 space-y-1">
+                <div className="text-xs text-blue-800 space-y-1">
                   <div><strong>Template Syntax:</strong></div>
-                  <div>• <code>{`{{ref:nodeId.field}}`}</code> - reference node output</div>
-                  <div>• <code>{`{{ref:nodeId}}`}</code> - entire node output</div>
+                  <div>• <code className="bg-blue-100 px-1 rounded">{`{{ref:nodeId.field}}`}</code> - reference node output</div>
+                  <div>• <code className="bg-blue-100 px-1 rounded">{`{{ref:nodeId}}`}</code> - entire node output</div>
                 </div>
               </CardContent>
             </Card>

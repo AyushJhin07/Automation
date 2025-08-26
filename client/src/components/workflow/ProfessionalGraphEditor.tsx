@@ -1288,118 +1288,172 @@ const GraphEditorContent = () => {
         </ReactFlow>
       </div>
       
-      {/* Node Properties Panel */}
+      {/* Node Properties Panel - Enterprise Design */}
       {selectedNode && (
-        <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Node Properties</h3>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setSelectedNode(null)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-4 h-4" />
-            </Button>
+        <div className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <Settings className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Node Properties</h3>
+                  <p className="text-xs text-blue-100 mt-0.5">{selectedNode.type}</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedNode(null)}
+                className="text-white/70 hover:text-white hover:bg-white/20 transition-all duration-200"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">Label</label>
-              <Input
-                value={selectedNode.data.label || ''}
-                onChange={(e) => {
-                  setNodes((nds) =>
-                    nds.map((n) =>
-                      n.id === selectedNode.id
-                        ? { ...n, data: { ...n.data, label: e.target.value } }
-                        : n
-                    )
-                  );
-                }}
-                className="bg-slate-800 border-slate-600 text-white"
-              />
+
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <label className="text-sm font-semibold text-slate-700 mb-3 block flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-slate-500" />
+                  Label
+                </label>
+                <Input
+                  value={selectedNode.data.label || ''}
+                  onChange={(e) => {
+                    setNodes((nds) =>
+                      nds.map((n) =>
+                        n.id === selectedNode.id
+                          ? { ...n, data: { ...n.data, label: e.target.value } }
+                          : n
+                      )
+                    );
+                  }}
+                  className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+                  placeholder="Enter node label..."
+                />
+              </div>
+              
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <label className="text-sm font-semibold text-slate-700 mb-3 block flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-slate-500" />
+                  Description
+                </label>
+                <Textarea
+                  value={selectedNode.data.description || ''}
+                  onChange={(e) => {
+                    setNodes((nds) =>
+                      nds.map((n) =>
+                        n.id === selectedNode.id
+                          ? { ...n, data: { ...n.data, description: e.target.value } }
+                          : n
+                      )
+                    );
+                  }}
+                  className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none"
+                  placeholder="Describe what this node does..."
+                  rows={3}
+                />
+              </div>
             </div>
             
-            <div>
-              <label className="text-sm font-medium text-slate-300 mb-2 block">Description</label>
-              <Textarea
-                value={selectedNode.data.description || ''}
-                onChange={(e) => {
-                  setNodes((nds) =>
-                    nds.map((n) =>
-                      n.id === selectedNode.id
-                        ? { ...n, data: { ...n.data, description: e.target.value } }
-                        : n
-                    )
-                  );
-                }}
-                className="bg-slate-800 border-slate-600 text-white"
-                rows={3}
-              />
-            </div>
-            
-            {/* Parameters - AI-as-a-Field */}
-            <div>
-              <label className="text-sm font-medium text-slate-300 mb-3 block flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Smart Parameters
-                <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
-                  AI-Powered
-                </Badge>
-              </label>
+            {/* Smart Parameters Section */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500 rounded-lg">
+                    <Sparkles className="w-4 h-4 text-white" />
+                  </div>
+                  Smart Parameters
+                </label>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-300 text-xs font-medium px-2 py-1">
+                    <Brain className="w-3 h-3 mr-1" />
+                    AI-Powered
+                  </Badge>
+                </div>
+              </div>
+              
               <div className="space-y-4">
                 {Object.entries(selectedNode.data.params || {}).map(([key, value]) => (
-                  <AIParameterEditor
-                    key={key}
-                    paramName={key}
-                    value={value}
-                    onChange={(newValue) => {
-                      setNodes((nds) =>
-                        nds.map((n) =>
-                          n.id === selectedNode.id
-                            ? { 
-                                ...n, 
-                                data: { 
-                                  ...n.data, 
-                                  params: { 
-                                    ...n.data.params, 
-                                    [key]: newValue 
+                  <div key={key} className="bg-white/70 rounded-lg border border-blue-200/50 p-3">
+                    <AIParameterEditor
+                      paramName={key}
+                      value={value}
+                      onChange={(newValue) => {
+                        setNodes((nds) =>
+                          nds.map((n) =>
+                            n.id === selectedNode.id
+                              ? { 
+                                  ...n, 
+                                  data: { 
+                                    ...n.data, 
+                                    params: { 
+                                      ...n.data.params, 
+                                      [key]: newValue 
+                                    } 
                                   } 
-                                } 
-                              }
-                            : n
-                        )
-                      );
-                    }}
-                    availableNodes={nodes
-                      .filter(n => n.id !== selectedNode.id) // Exclude current node
-                      .map(n => ({ id: n.id, label: n.data.label || n.id }))
-                    }
-                  />
+                                }
+                              : n
+                          )
+                        );
+                      }}
+                      availableNodes={nodes
+                        .filter(n => n.id !== selectedNode.id)
+                        .map(n => ({ id: n.id, label: n.data.label || n.id }))
+                      }
+                      className="enterprise-param-editor"
+                    />
+                  </div>
                 ))}
                 {Object.keys(selectedNode.data.params || {}).length === 0 && (
-                  <div className="text-center py-4 text-slate-400 text-sm">
-                    No parameters configured for this node
+                  <div className="text-center py-6 text-slate-500">
+                    <Box className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm font-medium">No parameters configured</p>
+                    <p className="text-xs text-slate-400 mt-1">Parameters will appear here when available</p>
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Actions */}
-            <div className="pt-4 border-t border-slate-700">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
-                  setSelectedNode(null);
-                }}
-                className="w-full bg-red-600/10 text-red-400 border-red-600/30 hover:bg-red-600/20"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Node
-              </Button>
+            {/* Node Actions */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <label className="text-sm font-semibold text-slate-700 mb-3 block flex items-center gap-2">
+                <Activity className="w-4 h-4 text-slate-500" />
+                Actions
+              </label>
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Copy node functionality could be added here
+                    console.log('Copy node:', selectedNode.id);
+                  }}
+                  className="w-full bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 hover:border-slate-400 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicate Node
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
+                    setSelectedNode(null);
+                  }}
+                  className="w-full bg-red-50 text-red-600 border-red-300 hover:bg-red-100 hover:border-red-400 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Node
+                </Button>
+              </div>
             </div>
           </div>
         </div>
