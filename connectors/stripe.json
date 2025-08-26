@@ -1,8 +1,10 @@
 {
   "id": "stripe",
   "name": "Stripe",
-  "category": "payments",
   "description": "Stripe payment processing platform with comprehensive financial operations",
+  "category": "Payments",
+  "icon": "stripe",
+  "color": "#635BFF",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
@@ -12,172 +14,466 @@
       "prefix": "Bearer"
     }
   },
+  "baseUrl": "https://api.stripe.com/v1",
+  "rateLimits": {
+    "requestsPerSecond": 100,
+    "requestsPerMinute": 6000
+  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Stripe and verify API key",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_customer",
       "name": "Create Customer",
-      "description": "Create a new customer",
+      "description": "Create a new customer in Stripe",
       "parameters": {
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Customer email"
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Customer email address"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer full name"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Customer phone number"
+          },
+          "description": {
+            "type": "string",
+            "description": "Customer description"
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "line1": {"type": "string"},
+              "line2": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "postal_code": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Customer address"
+          },
+          "shipping": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "address": {"type": "object"}
+            },
+            "description": "Customer shipping information"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Custom metadata key-value pairs"
+          },
+          "payment_method": {
+            "type": "string",
+            "description": "Default payment method ID"
+          },
+          "balance": {
+            "type": "number",
+            "description": "Customer account balance in cents"
+          },
+          "tax_exempt": {
+            "type": "string",
+            "enum": ["none", "exempt", "reverse"],
+            "description": "Customer tax exemption status"
+          }
         },
-        "name": {
-          "type": "string",
-          "required": false,
-          "description": "Customer name"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Customer phone"
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Customer description"
-        },
-        "metadata": {
-          "type": "object",
-          "required": false,
-          "description": "Custom metadata"
-        }
-      },
-      "requiredScopes": [
-        "read_write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_payment_intent",
       "name": "Create Payment Intent",
-      "description": "Create a payment intent",
+      "description": "Create a payment intent for processing payments",
       "parameters": {
-        "amount": {
-          "type": "number",
-          "required": true,
-          "description": "Payment amount in cents"
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Payment amount in smallest currency unit (e.g., cents)"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Three-letter ISO currency code (e.g., usd, eur)"
+          },
+          "customer": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Payment description"
+          },
+          "payment_method": {
+            "type": "string",
+            "description": "Payment method ID"
+          },
+          "payment_method_types": {
+            "type": "array",
+            "items": {"type": "string"},
+            "default": ["card"],
+            "description": "Allowed payment method types"
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to confirm the payment intent immediately"
+          },
+          "receipt_email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address for receipt"
+          },
+          "setup_future_usage": {
+            "type": "string",
+            "enum": ["on_session", "off_session"],
+            "description": "Setup for future usage"
+          },
+          "shipping": {
+            "type": "object",
+            "description": "Shipping information"
+          },
+          "statement_descriptor": {
+            "type": "string",
+            "description": "Statement descriptor"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Custom metadata"
+          }
         },
-        "currency": {
-          "type": "string",
-          "required": true,
-          "description": "Currency code",
-          "default": "usd"
-        },
-        "customerId": {
-          "type": "string",
-          "required": false,
-          "description": "Customer ID"
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Payment description"
-        },
-        "metadata": {
-          "type": "object",
-          "required": false,
-          "description": "Custom metadata"
-        }
-      },
-      "requiredScopes": [
-        "read_write"
-      ]
+        "required": ["amount", "currency"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_subscription",
       "name": "Create Subscription",
-      "description": "Create a subscription",
+      "description": "Create a recurring subscription for a customer",
       "parameters": {
-        "customerId": {
-          "type": "string",
-          "required": true,
-          "description": "Customer ID"
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "price": {"type": "string"},
+                "quantity": {"type": "number"}
+              }
+            },
+            "description": "Subscription items with prices and quantities"
+          },
+          "trial_period_days": {
+            "type": "number",
+            "description": "Number of trial days"
+          },
+          "default_payment_method": {
+            "type": "string",
+            "description": "Default payment method ID"
+          },
+          "collection_method": {
+            "type": "string",
+            "enum": ["charge_automatically", "send_invoice"],
+            "default": "charge_automatically",
+            "description": "Collection method"
+          },
+          "days_until_due": {
+            "type": "number",
+            "description": "Days until invoice is due (for send_invoice)"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Custom metadata"
+          },
+          "proration_behavior": {
+            "type": "string",
+            "enum": ["create_prorations", "none", "always_invoice"],
+            "description": "Proration behavior"
+          },
+          "coupon": {
+            "type": "string",
+            "description": "Coupon ID to apply"
+          }
         },
-        "priceId": {
-          "type": "string",
-          "required": true,
-          "description": "Price ID"
-        },
-        "trialPeriodDays": {
-          "type": "number",
-          "required": false,
-          "description": "Trial period in days"
-        },
-        "metadata": {
-          "type": "object",
-          "required": false,
-          "description": "Custom metadata"
-        }
-      },
-      "requiredScopes": [
-        "read_write"
-      ]
+        "required": ["customer", "items"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_refund",
       "name": "Create Refund",
-      "description": "Create a refund",
+      "description": "Create a refund for a payment",
       "parameters": {
-        "paymentIntentId": {
-          "type": "string",
-          "required": true,
-          "description": "Payment intent ID"
+        "type": "object",
+        "properties": {
+          "payment_intent": {
+            "type": "string",
+            "description": "Payment Intent ID to refund"
+          },
+          "charge": {
+            "type": "string",
+            "description": "Charge ID to refund (alternative to payment_intent)"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Refund amount in cents (omit for full refund)"
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["duplicate", "fraudulent", "requested_by_customer"],
+            "description": "Reason for the refund"
+          },
+          "refund_application_fee": {
+            "type": "boolean",
+            "description": "Whether to refund the application fee"
+          },
+          "reverse_transfer": {
+            "type": "boolean",
+            "description": "Whether to reverse the transfer"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Custom metadata"
+          }
         },
-        "amount": {
-          "type": "number",
-          "required": false,
-          "description": "Refund amount in cents"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "retrieve_customer",
+      "name": "Retrieve Customer",
+      "description": "Retrieve a customer by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Customer ID"
+          }
         },
-        "reason": {
-          "type": "string",
-          "required": false,
-          "description": "Refund reason",
-          "options": [
-            "duplicate",
-            "fraudulent",
-            "requested_by_customer"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "read_write"
-      ]
+        "required": ["customer_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_payment_intents",
+      "name": "List Payment Intents",
+      "description": "List payment intents with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of results to return"
+          },
+          "starting_after": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "ending_before": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "created": {
+            "type": "object",
+            "description": "Filter by creation date"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_subscription",
+      "name": "Update Subscription",
+      "description": "Update an existing subscription",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "description": "Subscription ID"
+          },
+          "items": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Updated subscription items"
+          },
+          "default_payment_method": {
+            "type": "string",
+            "description": "Updated default payment method"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Updated metadata"
+          },
+          "proration_behavior": {
+            "type": "string",
+            "enum": ["create_prorations", "none", "always_invoice"],
+            "description": "Proration behavior"
+          }
+        },
+        "required": ["subscription_id"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "payment_succeeded",
       "name": "Payment Succeeded",
-      "description": "Trigger when payment is successful",
+      "description": "Triggered when a payment is successfully processed",
+      "type": "webhook",
       "parameters": {
-        "minAmount": {
-          "type": "number",
-          "required": false,
-          "description": "Minimum amount filter"
-        }
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Filter by specific customer"
+          },
+          "amount_threshold": {
+            "type": "number",
+            "description": "Minimum payment amount to trigger"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "read_write"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "customer": {"type": "string"},
+          "description": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "payment_failed",
+      "name": "Payment Failed",
+      "description": "Triggered when a payment fails",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Filter by specific customer"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "customer": {"type": "string"},
+          "last_payment_error": {"type": "object"}
+        }
+      }
     },
     {
       "id": "subscription_created",
       "name": "Subscription Created",
-      "description": "Trigger when new subscription is created",
-      "parameters": {},
-      "requiredScopes": [
-        "read_write"
-      ]
+      "description": "Triggered when a new subscription is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Filter by specific customer"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "customer": {"type": "string"},
+          "status": {"type": "string"},
+          "items": {"type": "object"},
+          "current_period_start": {"type": "number"},
+          "current_period_end": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "invoice_payment_succeeded",
+      "name": "Invoice Payment Succeeded",
+      "description": "Triggered when an invoice payment succeeds",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Filter by specific customer"
+          },
+          "subscription_id": {
+            "type": "string",
+            "description": "Filter by specific subscription"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "object": {"type": "string"},
+          "customer": {"type": "string"},
+          "subscription": {"type": "string"},
+          "amount_paid": {"type": "number"},
+          "currency": {"type": "string"}
+        }
+      }
     }
   ],
-  "rateLimits": {
-    "requestsPerSecond": 25,
-    "requestsPerMinute": 100,
-    "dailyLimit": 1000000
-  },
-  "pricing": {
-    "tier": "premium",
-    "costPerExecution": 0.001
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/account"
   }
 }

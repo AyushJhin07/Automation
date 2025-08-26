@@ -1,57 +1,309 @@
 {
   "id": "paypal",
   "name": "PayPal",
-  "category": "Payments",
   "description": "PayPal payment processing and digital wallet platform",
+  "category": "Payments",
+  "icon": "paypal",
+  "color": "#003087",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://www.paypal.com/signin/authorize",
       "tokenUrl": "https://api-m.paypal.com/v1/oauth2/token",
-      "scopes": ["https://uri.paypal.com/services/payments/payment"]
+      "scopes": ["https://uri.paypal.com/services/payments/payment", "https://uri.paypal.com/services/payments/refund"]
     }
+  },
+  "baseUrl": "https://api-m.paypal.com",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 300
   },
   "actions": [
     {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to PayPal and verify authentication",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "create_order",
       "name": "Create Order",
-      "description": "Create a PayPal order",
+      "description": "Create a PayPal order for payment processing",
       "parameters": {
-        "intent": {"type": "string", "required": true, "description": "Order intent (CAPTURE/AUTHORIZE)"},
-        "purchase_units": {"type": "array", "required": true, "description": "Purchase units"},
-        "application_context": {"type": "object", "required": false, "description": "Application context"}
-      },
-      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": ["CAPTURE", "AUTHORIZE"],
+            "description": "Order intent - CAPTURE for immediate payment, AUTHORIZE for delayed capture"
+          },
+          "purchase_units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "object",
+                  "properties": {
+                    "currency_code": {"type": "string"},
+                    "value": {"type": "string"}
+                  },
+                  "required": ["currency_code", "value"]
+                },
+                "description": {"type": "string"},
+                "custom_id": {"type": "string"},
+                "invoice_id": {"type": "string"},
+                "soft_descriptor": {"type": "string"},
+                "items": {
+                  "type": "array",
+                  "items": {"type": "object"}
+                },
+                "shipping": {"type": "object"},
+                "payments": {"type": "object"}
+              },
+              "required": ["amount"]
+            },
+            "description": "Array of purchase units for the order"
+          },
+          "application_context": {
+            "type": "object",
+            "properties": {
+              "brand_name": {"type": "string"},
+              "locale": {"type": "string"},
+              "landing_page": {
+                "type": "string",
+                "enum": ["LOGIN", "BILLING", "NO_PREFERENCE"]
+              },
+              "shipping_preference": {
+                "type": "string",
+                "enum": ["GET_FROM_FILE", "NO_SHIPPING", "SET_PROVIDED_ADDRESS"]
+              },
+              "user_action": {
+                "type": "string",
+                "enum": ["CONTINUE", "PAY_NOW"]
+              },
+              "payment_method": {
+                "type": "object",
+                "properties": {
+                  "payer_selected": {"type": "string"},
+                  "payee_preferred": {
+                    "type": "string",
+                    "enum": ["UNRESTRICTED", "IMMEDIATE_PAYMENT_REQUIRED"]
+                  }
+                }
+              },
+              "return_url": {"type": "string", "format": "uri"},
+              "cancel_url": {"type": "string", "format": "uri"}
+            },
+            "description": "Application context for the order"
+          },
+          "payer": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "object"},
+              "email_address": {"type": "string", "format": "email"},
+              "payer_id": {"type": "string"},
+              "address": {"type": "object"}
+            },
+            "description": "Payer information"
+          }
+        },
+        "required": ["intent", "purchase_units"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "capture_order",
       "name": "Capture Order",
-      "description": "Capture payment for an order",
+      "description": "Capture payment for an authorized order",
       "parameters": {
-        "id": {"type": "string", "required": true, "description": "Order ID"}
-      },
-      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Order ID to capture"
+          },
+          "payment_source": {
+            "type": "object",
+            "description": "Payment source information"
+          }
+        },
+        "required": ["order_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_order",
+      "name": "Get Order",
+      "description": "Retrieve order details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Order ID to retrieve"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          }
+        },
+        "required": ["order_id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "refund_capture",
       "name": "Refund Capture",
       "description": "Refund a captured payment",
       "parameters": {
-        "capture_id": {"type": "string", "required": true, "description": "Capture ID"},
-        "amount": {"type": "object", "required": false, "description": "Refund amount"},
-        "note_to_payer": {"type": "string", "required": false, "description": "Note to payer"}
-      },
-      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+        "type": "object",
+        "properties": {
+          "capture_id": {
+            "type": "string",
+            "description": "Capture ID to refund"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "currency_code": {"type": "string"},
+              "value": {"type": "string"}
+            },
+            "description": "Refund amount (omit for full refund)"
+          },
+          "note_to_payer": {
+            "type": "string",
+            "description": "Note to include with the refund"
+          },
+          "invoice_id": {
+            "type": "string",
+            "description": "Invoice ID for the refund"
+          }
+        },
+        "required": ["capture_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_transaction",
-      "name": "Get Transaction",
-      "description": "Get transaction details",
+      "id": "create_payment",
+      "name": "Create Payment",
+      "description": "Create a direct payment (legacy API)",
       "parameters": {
-        "transaction_id": {"type": "string", "required": true, "description": "Transaction ID"}
-      },
-      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": ["sale", "authorize", "order"],
+            "description": "Payment intent"
+          },
+          "payer": {
+            "type": "object",
+            "properties": {
+              "payment_method": {
+                "type": "string",
+                "enum": ["credit_card", "paypal"]
+              },
+              "funding_instruments": {"type": "array"}
+            },
+            "description": "Payer information"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "amount": {"type": "object"},
+                "description": {"type": "string"},
+                "invoice_number": {"type": "string"},
+                "custom": {"type": "string"},
+                "payment_options": {"type": "object"},
+                "soft_descriptor": {"type": "string"},
+                "item_list": {"type": "object"}
+              }
+            },
+            "description": "Transaction details"
+          },
+          "redirect_urls": {
+            "type": "object",
+            "properties": {
+              "return_url": {"type": "string", "format": "uri"},
+              "cancel_url": {"type": "string", "format": "uri"}
+            },
+            "description": "Redirect URLs for payment completion"
+          }
+        },
+        "required": ["intent", "payer", "transactions"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_payment",
+      "name": "Get Payment",
+      "description": "Retrieve payment details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string",
+            "description": "Payment ID to retrieve"
+          }
+        },
+        "required": ["payment_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_payments",
+      "name": "List Payments",
+      "description": "List payments with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 10,
+            "description": "Number of payments to return"
+          },
+          "start_id": {
+            "type": "string",
+            "description": "Starting payment ID for pagination"
+          },
+          "start_index": {
+            "type": "number",
+            "description": "Starting index for pagination"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time filter (RFC 3339)"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End time filter (RFC 3339)"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": ["create_time", "update_time"],
+            "description": "Sort field"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -59,17 +311,112 @@
       "id": "payment_sale_completed",
       "name": "Payment Sale Completed",
       "description": "Triggered when a payment sale is completed",
-      "parameters": {},
-      "webhook": {"eventTypes": ["PAYMENT.SALE.COMPLETED"], "entityTypes": ["payment"]},
-      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount_threshold": {
+            "type": "number",
+            "description": "Minimum payment amount to trigger"
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "Filter by currency code"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "event_type": {"type": "string"},
+          "create_time": {"type": "string"},
+          "resource_type": {"type": "string"},
+          "resource": {"type": "object"},
+          "summary": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "payment_refunded",
-      "name": "Payment Refunded",
+      "id": "payment_sale_refunded",
+      "name": "Payment Sale Refunded",
       "description": "Triggered when a payment is refunded",
-      "parameters": {},
-      "webhook": {"eventTypes": ["PAYMENT.SALE.REFUNDED"], "entityTypes": ["payment"]},
-      "requiredScopes": ["https://uri.paypal.com/services/payments/payment"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount_threshold": {
+            "type": "number",
+            "description": "Minimum refund amount to trigger"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "event_type": {"type": "string"},
+          "create_time": {"type": "string"},
+          "resource_type": {"type": "string"},
+          "resource": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "payment_order_created",
+      "name": "Payment Order Created",
+      "description": "Triggered when a new payment order is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": ["CAPTURE", "AUTHORIZE"],
+            "description": "Filter by order intent"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "event_type": {"type": "string"},
+          "resource": {"type": "object"},
+          "links": {"type": "array"}
+        }
+      }
+    },
+    {
+      "id": "checkout_order_approved",
+      "name": "Checkout Order Approved",
+      "description": "Triggered when a checkout order is approved by the payer",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "event_type": {"type": "string"},
+          "resource": {"type": "object"},
+          "links": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/v1/identity/oauth2/userinfo?schema=paypalv1.1"
+  }
 }

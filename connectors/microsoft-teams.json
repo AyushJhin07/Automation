@@ -1,93 +1,389 @@
 {
   "id": "microsoft-teams",
   "name": "Microsoft Teams",
-  "description": "Microsoft Teams integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#999999",
+  "description": "Microsoft Teams integration for messaging, meetings, and collaboration",
+  "category": "Communication",
+  "icon": "microsoft-teams",
+  "color": "#464EB8",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": ["https://graph.microsoft.com/Team.ReadBasic.All", "https://graph.microsoft.com/Channel.ReadWrite.All", "https://graph.microsoft.com/ChatMessage.Send"]
+    }
   },
-  "baseUrl": "https://api.microsoft-teams.com",
+  "baseUrl": "https://graph.microsoft.com/v1.0",
   "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 600,
+    "dailyLimit": 50000
   },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Microsoft Teams and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "send_message",
+      "name": "Send Message",
+      "description": "Send a message to a Teams channel",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "channel_id": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message content"
+          },
+          "message_type": {
+            "type": "string",
+            "enum": ["message", "systemEventMessage"],
+            "default": "message",
+            "description": "Type of message"
+          },
+          "importance": {
+            "type": "string",
+            "enum": ["normal", "high", "urgent"],
+            "default": "normal",
+            "description": "Message importance"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Message attachments"
+          },
+          "mentions": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "User mentions in the message"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["team_id", "channel_id", "message"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "send_chat_message",
+      "name": "Send Chat Message",
+      "description": "Send a message to a Teams chat",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "description": "Chat ID"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message content"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["text", "html"],
+            "default": "text",
+            "description": "Content type of the message"
+          },
+          "importance": {
+            "type": "string",
+            "enum": ["normal", "high", "urgent"],
+            "default": "normal",
+            "description": "Message importance"
+          }
+        },
+        "required": ["chat_id", "message"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_team",
+      "name": "Create Team",
+      "description": "Create a new Microsoft Teams team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "description": "Team display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Team description"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"],
+            "default": "private",
+            "description": "Team visibility"
+          },
+          "template": {
+            "type": "string",
+            "description": "Team template ID"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "user_id": {"type": "string"},
+                "roles": {"type": "array", "items": {"type": "string"}}
+              }
+            },
+            "description": "Initial team members"
+          }
+        },
+        "required": ["display_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_channel",
+      "name": "Create Channel",
+      "description": "Create a new channel in a team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Channel display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Channel description"
+          },
+          "membership_type": {
+            "type": "string",
+            "enum": ["standard", "private"],
+            "default": "standard",
+            "description": "Channel membership type"
+          }
+        },
+        "required": ["team_id", "display_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_teams",
+      "name": "List Teams",
+      "description": "List all teams the user is a member of",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999,
+            "default": 50,
+            "description": "Number of teams to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of teams to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_channels",
+      "name": "List Channels",
+      "description": "List channels in a team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          }
+        },
+        "required": ["team_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_team_member",
+      "name": "Add Team Member",
+      "description": "Add a member to a team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Team ID"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "User ID to add"
+          },
+          "roles": {
+            "type": "array",
+            "items": {"type": "string"},
+            "default": ["member"],
+            "description": "Roles to assign to the user"
+          }
+        },
+        "required": ["team_id", "user_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_meeting",
+      "name": "Create Meeting",
+      "description": "Create a Teams meeting",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Meeting subject"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Meeting start time (ISO 8601)"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Meeting end time (ISO 8601)"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string"},
+                "type": {"type": "string", "enum": ["required", "optional"]}
+              }
+            },
+            "description": "Meeting attendees"
+          },
+          "location": {
+            "type": "string",
+            "description": "Meeting location"
+          },
+          "body": {
+            "type": "string",
+            "description": "Meeting body/description"
+          }
+        },
+        "required": ["subject", "start_time", "end_time"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "message_posted",
+      "name": "Message Posted",
+      "description": "Triggered when a message is posted in a channel",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Filter by specific team"
+          },
+          "channel_id": {
+            "type": "string",
+            "description": "Filter by specific channel"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "messageType": {"type": "string"},
+          "createdDateTime": {"type": "string"},
+          "from": {"type": "object"},
+          "body": {"type": "object"},
+          "attachments": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "team_created",
+      "name": "Team Created",
+      "description": "Triggered when a new team is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "displayName": {"type": "string"},
+          "description": {"type": "string"},
+          "createdDateTime": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "member_added",
+      "name": "Member Added",
+      "description": "Triggered when a member is added to a team",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Filter by specific team"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "userId": {"type": "string"},
+          "displayName": {"type": "string"},
+          "roles": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/me"
+  }
 }
