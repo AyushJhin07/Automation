@@ -362,13 +362,13 @@ export function registerAIWorkflowRoutes(app: express.Application) {
   // Generate workflow with AI model selection
   app.post('/api/ai/generate-workflow', async (req, res) => {
     try {
-      const { prompt, userId, preferredModel, apiKey } = req.body;
+      const { prompt, userId, preferredModel, apiKey, answers } = req.body;
       
       if (!prompt || !userId) {
         return res.status(400).json({ error: 'Prompt and userId are required' });
       }
 
-      console.log(`Generating workflow for user ${userId} with prompt: "${prompt}"`);
+      console.log(`🚀 AI Workflow Request from user ${userId}: "${prompt}"`);
       
       // If client provided an API key, temporarily override the environment
       if (apiKey) {
@@ -376,6 +376,32 @@ export function registerAIWorkflowRoutes(app: express.Application) {
         process.env.OPENAI_API_KEY = apiKey;
         process.env.CLAUDE_API_KEY = apiKey;
       }
+
+      // STEP 1: Check if we need to ask follow-up questions
+      if (!answers || Object.keys(answers).length === 0) {
+        console.log('🤔 No answers provided, checking if clarification needed...');
+        
+        // Use the sophisticated prompt analysis to determine if questions are needed
+        const needsQuestions = await shouldAskQuestions(prompt);
+        
+        if (needsQuestions.shouldAsk) {
+          console.log('📝 Generating follow-up questions...');
+          const questions = await generateFollowUpQuestions(prompt);
+          
+          return res.json({
+            success: true,
+            needsQuestions: true,
+            questions: questions,
+            prompt: prompt,
+            reasoning: needsQuestions.reasoning
+          });
+        }
+        
+        console.log('✅ Prompt is clear enough, proceeding with direct generation...');
+      }
+
+      // STEP 2: Generate workflow (either directly or with answers)
+      console.log('🔧 Generating workflow...');
       
       // Analyze prompt with multiple AI models
       const analysis = await MultiAIService.analyzeWorkflowPrompt(prompt);
@@ -389,7 +415,8 @@ export function registerAIWorkflowRoutes(app: express.Application) {
         aiAnalysis: analysis,
         modelUsed: analysis.modelUsed,
         processingTime: analysis.processingTime,
-        confidence: analysis.confidence
+        confidence: analysis.confidence,
+        usedAnswers: answers || null
       });
       
     } catch (error) {
@@ -1331,6 +1358,161 @@ function runOnce() {
 `;
 
   return code;
+}
+
+// ===== FOLLOW-UP QUESTIONS LOGIC =====
+
+async function shouldAskQuestions(prompt: string): Promise<{shouldAsk: boolean, reasoning: string}> {
+  const lowerPrompt = prompt.toLowerCase().trim();
+  
+  // Sophisticated analysis to determine if questions are needed
+  const vaguenessIndicators = [
+    lowerPrompt.length < 20, // Very short prompts
+    !lowerPrompt.includes('gmail') && !lowerPrompt.includes('sheet') && !lowerPrompt.includes('calendar'), // No specific apps
+    lowerPrompt.includes('automate') && lowerPrompt.split(' ').length < 8, // Generic automation request
+    !lowerPrompt.includes('when') && !lowerPrompt.includes('if') && !lowerPrompt.includes('trigger'), // No trigger info
+    lowerPrompt.includes('something') || lowerPrompt.includes('stuff') || lowerPrompt.includes('things'), // Vague terms
+    lowerPrompt.includes('help me') && !lowerPrompt.includes('how to') // Generic help request
+  ];
+  
+  const vaguenessScore = vaguenessIndicators.filter(Boolean).length;
+  
+  // Complex automations that need clarification
+  const complexityIndicators = [
+    lowerPrompt.includes('different') || lowerPrompt.includes('various'), // Multiple scenarios
+    lowerPrompt.includes('condition') || lowerPrompt.includes('if'), // Conditional logic
+    lowerPrompt.includes('integrate') || lowerPrompt.includes('connect'), // Integration needs
+    lowerPrompt.includes('custom') || lowerPrompt.includes('specific'), // Customization needs
+    lowerPrompt.includes('team') || lowerPrompt.includes('multiple'), // Multi-user scenarios
+  ];
+  
+  const complexityScore = complexityIndicators.filter(Boolean).length;
+  
+  // Always ask questions for one-liner prompts without specifics
+  if (lowerPrompt.split(' ').length <= 6 && vaguenessScore >= 2) {
+    return {
+      shouldAsk: true,
+      reasoning: 'Prompt is too brief and lacks essential details for automation setup'
+    };
+  }
+  
+  // Ask questions for vague or complex requests
+  if (vaguenessScore >= 2 || complexityScore >= 1) {
+    return {
+      shouldAsk: true,
+      reasoning: 'Prompt needs clarification for triggers, conditions, and specific requirements'
+    };
+  }
+  
+  // For testing: Ask questions for simple automation requests
+  if (lowerPrompt.includes('automate') || lowerPrompt.includes('automation') || lowerPrompt.split(' ').length <= 8) {
+    return {
+      shouldAsk: true,
+      reasoning: 'Building custom automation requires specific configuration details'
+    };
+  }
+  
+  // Don't ask questions for clear, specific prompts
+  return {
+    shouldAsk: false,
+    reasoning: 'Prompt contains sufficient detail for direct workflow generation'
+  };
+}
+
+async function generateFollowUpQuestions(prompt: string): Promise<any[]> {
+  const lowerPrompt = prompt.toLowerCase();
+  const questions: any[] = [];
+  
+  // Always ask about triggers for automation
+  questions.push({
+    id: 'trigger_type',
+    text: 'What should trigger this automation?',
+    type: 'choice',
+    choices: [
+      'Time-based (daily, weekly, etc.)',
+      'New email arrives',
+      'Google Sheet is updated', 
+      'Form submission',
+      'Webhook/External event',
+      'Manual execution only'
+    ],
+    required: true,
+    category: 'trigger'
+  });
+  
+  // Ask about data sources if not specified
+  if (!lowerPrompt.includes('gmail') && !lowerPrompt.includes('sheet') && !lowerPrompt.includes('form')) {
+    questions.push({
+      id: 'data_source',
+      text: 'Where will the data come from?',
+      type: 'choice', 
+      choices: [
+        'Gmail emails',
+        'Google Sheets',
+        'Google Forms',
+        'External API',
+        'Google Drive files',
+        'Calendar events'
+      ],
+      required: true,
+      category: 'data'
+    });
+  }
+  
+  // Ask about output/actions
+  questions.push({
+    id: 'output_action',
+    text: 'What should happen when the automation runs?',
+    type: 'choice',
+    choices: [
+      'Add data to Google Sheets',
+      'Send email notifications',
+      'Create calendar events',
+      'Save files to Drive',
+      'Call external API',
+      'Generate reports'
+    ],
+    required: true,
+    category: 'action'
+  });
+  
+  // Ask about filtering/conditions
+  questions.push({
+    id: 'conditions',
+    text: 'Should this automation run for all items or only specific ones?',
+    type: 'choice',
+    choices: [
+      'Run for everything',
+      'Only for emails with specific keywords',
+      'Only during business hours',
+      'Only for certain file types',
+      'Custom conditions based on data',
+      'Let me specify filters'
+    ],
+    required: false,
+    category: 'filtering'
+  });
+  
+  // Ask about timing if time-based
+  if (lowerPrompt.includes('schedule') || lowerPrompt.includes('daily') || lowerPrompt.includes('weekly')) {
+    questions.push({
+      id: 'schedule',
+      text: 'How often should this automation run?',
+      type: 'choice',
+      choices: [
+        'Every 5 minutes',
+        'Hourly',
+        'Daily at specific time',
+        'Weekly',
+        'Monthly',
+        'Custom schedule'
+      ],
+      required: false,
+      category: 'timing'
+    });
+  }
+  
+  return questions.slice(0, 5); // Maximum 5 questions as per best practices
 }
 
 export { MultiAIService };

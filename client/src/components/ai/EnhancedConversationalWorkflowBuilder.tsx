@@ -335,7 +335,7 @@ You can try:
     }
   };
 
-  const generateCompleteWorkflow = async (prompt: string) => {
+  const generateCompleteWorkflow = async (prompt: string, answers: Record<string, string> = {}) => {
     try {
       setProcessingStep('🤔 Understanding your request...');
       
@@ -366,7 +366,8 @@ You can try:
           prompt: prompt,
           userId: 'demo-user', // For demo purposes
           preferredModel: selectedModel,
-          apiKey: apiKeyToSend
+          apiKey: apiKeyToSend,
+          answers: answers
         })
       });
 
@@ -383,7 +384,7 @@ You can try:
       console.log('🤖 API Response received:', result.tokensUsed || 0, 'tokens');
 
       // Handle clarification response (questions)
-      if (Object.keys(questionAnswers).length === 0 && result.questions) {
+      if ((Object.keys(questionAnswers).length === 0 && result.questions) || result.needsQuestions) {
         const questions: Question[] = result.questions.map((q: any, index: number) => ({
           id: q.id || `question_${index}`,
           text: q.text,
@@ -509,7 +510,7 @@ ${result.description}
     setIsProcessing(true);
 
     try {
-      await generateCompleteWorkflow(originalPrompt);
+      await generateCompleteWorkflow(originalPrompt, questionAnswers);
     } catch (error) {
       console.error('Error with answers:', error);
       addMessage({
@@ -518,6 +519,7 @@ ${result.description}
       });
     } finally {
       setIsProcessing(false);
+      setQuestionAnswers({}); // Reset answers after workflow generation
     }
   };
 
