@@ -354,6 +354,7 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       const workflow = await generateWorkflowFromAnalysis(analysis, prompt);
       
       res.json({
+        success: true,
         ...workflow,
         aiAnalysis: analysis,
         modelUsed: analysis.modelUsed,
@@ -364,6 +365,7 @@ export function registerAIWorkflowRoutes(app: express.Application) {
     } catch (error) {
       console.error('Error generating workflow:', error);
       res.status(500).json({ 
+        success: false,
         error: 'Failed to generate workflow',
         fallback: true
       });
