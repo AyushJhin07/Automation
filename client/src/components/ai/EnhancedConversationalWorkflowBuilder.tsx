@@ -356,43 +356,19 @@ You can try:
       // Only send apiKey if we have a local one, otherwise let server use its own
       const apiKeyToSend = currentApiKey || undefined;
 
-      // Use the new workflow API pipeline
-      let response;
-      
-      if (Object.keys(questionAnswers).length === 0) {
-        // Step 1: Clarify intent and get questions
-        response = await fetch('/api/workflow/clarify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prompt: prompt,
-            context: {},
-            model: selectedModel,
-            apiKey: apiKeyToSend
-          })
-        });
-      } else {
-        // Step 2: Generate complete workflow with answers
-        response = await fetch('/api/workflow/generate-complete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prompt: prompt,
-            answers: questionAnswers,
-            model: selectedModel,
-            apiKey: apiKeyToSend,
-            options: {
-              projectName: `Automation_${Date.now()}`,
-              includeLogging: true,
-              includeErrorHandling: true
-            }
-          })
-        });
-      }
+      // Use the public AI workflow generation API
+      const response = await fetch('/api/ai/generate-workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          userId: 'demo-user', // For demo purposes
+          preferredModel: selectedModel,
+          apiKey: apiKeyToSend
+        })
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

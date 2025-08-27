@@ -332,13 +332,20 @@ export function registerAIWorkflowRoutes(app: express.Application) {
   // Generate workflow with AI model selection
   app.post('/api/ai/generate-workflow', async (req, res) => {
     try {
-      const { prompt, userId, preferredModel } = req.body;
+      const { prompt, userId, preferredModel, apiKey } = req.body;
       
       if (!prompt || !userId) {
         return res.status(400).json({ error: 'Prompt and userId are required' });
       }
 
       console.log(`Generating workflow for user ${userId} with prompt: "${prompt}"`);
+      
+      // If client provided an API key, temporarily override the environment
+      if (apiKey) {
+        process.env.GEMINI_API_KEY = apiKey;
+        process.env.OPENAI_API_KEY = apiKey;
+        process.env.CLAUDE_API_KEY = apiKey;
+      }
       
       // Analyze prompt with multiple AI models
       const analysis = await MultiAIService.analyzeWorkflowPrompt(prompt);
