@@ -453,7 +453,7 @@ Please answer these questions in the form below:`,
 ${result.description}
 
 📊 **Workflow Stats:**
-• **Nodes:** ${workflow.nodes.length} (${workflow.nodes.filter(n => n.type?.startsWith('trigger.')).length} triggers, ${workflow.nodes.filter(n => n.type?.startsWith('action.')).length} actions)
+• **Nodes:** ${workflow.nodes.length} (${workflow.nodes.filter(n => n.function?.includes('search') || n.function?.includes('monitor')).length} triggers, ${workflow.nodes.filter(n => n.function?.includes('append') || n.function?.includes('create') || n.function?.includes('update')).length} actions)
 • **Complexity:** ${result.complexity}
 • **Estimated Value:** ${result.estimatedValue}
 
@@ -654,9 +654,34 @@ Need help? I can guide you through each step!`
                       <Button
                         size="sm"
                         onClick={() => {
-                          // Save workflow to localStorage and open Graph Editor
-                          localStorage.setItem('ai_generated_workflow', JSON.stringify(message.data));
-                          window.open('/graph-editor?from=ai-builder', '_blank');
+                          // Convert AI workflow to Graph Editor format
+                          const graphData = {
+                            id: message.data.id,
+                            name: message.data.title,
+                            description: message.data.description,
+                            nodes: message.data.nodes.map((node: any) => ({
+                              id: node.id,
+                              type: node.app.toLowerCase().replace(/\s+/g, '-'),
+                              position: node.position,
+                              data: {
+                                label: node.function || node.app,
+                                app: node.app,
+                                function: node.function,
+                                parameters: node.parameters || {},
+                                ...node
+                              }
+                            })),
+                            edges: message.data.connections.map((conn: any) => ({
+                              id: conn.id,
+                              source: conn.source,
+                              target: conn.target,
+                              type: 'default'
+                            }))
+                          };
+                          
+                          // Save to localStorage and redirect
+                          localStorage.setItem('ai_generated_workflow', JSON.stringify(graphData));
+                          window.location.href = '/graph-builder';
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >
@@ -888,11 +913,11 @@ Need help? I can guide you through each step!`
                   </div>
                   
                   <div>
-                    <h4 className="font-medium mb-2">Connections ({workflowResult.workflow.graph.edges.length})</h4>
+                    <h4 className="font-medium mb-2">Connections ({workflowResult.workflow.graph.connections.length})</h4>
                     <div className="space-y-1">
-                      {workflowResult.workflow.graph.edges.map((edge, index) => (
+                      {workflowResult.workflow.graph.connections.map((connection, index) => (
                         <div key={index} className="text-sm bg-slate-700 p-2 rounded">
-                          {edge.from} → {edge.to}
+                          {connection.source} → {connection.target}
                         </div>
                       ))}
                     </div>
@@ -926,23 +951,21 @@ Need help? I can guide you through each step!`
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {workflowResult.code.files.map(file => (
-                  <div key={file.path} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-white">{file.path}</h4>
-                      <Button
-                        size="sm"
-                        onClick={() => handleCopyCode(file.content)}
-                        className="bg-slate-700 hover:bg-slate-600"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <pre className="bg-slate-900 p-4 rounded text-sm overflow-x-auto text-green-400">
-                      <code>{file.content}</code>
-                    </pre>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-white">Code.gs</h4>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCopyCode(workflowResult.code)}
+                      className="bg-slate-700 hover:bg-slate-600"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
                   </div>
-                ))}
+                  <pre className="bg-slate-900 p-4 rounded text-sm overflow-x-auto text-green-400">
+                    <code>{workflowResult.code}</code>
+                  </pre>
+                </div>
               </div>
             </CardContent>
           </Card>

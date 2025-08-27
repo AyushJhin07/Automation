@@ -611,21 +611,71 @@ function getColorForApp(app: string): string {
 }
 
 function generateIntelligentTitle(intent: string, prompt: string): string {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  // Smart title generation based on prompt content
+  if (lowerPrompt.includes('gmail') && lowerPrompt.includes('invoice') && lowerPrompt.includes('sheet')) {
+    return 'Gmail Invoice Monitor';
+  }
+  if (lowerPrompt.includes('gmail') && lowerPrompt.includes('sheet')) {
+    return 'Gmail to Sheets Automation';
+  }
+  if (lowerPrompt.includes('email') && lowerPrompt.includes('respond')) {
+    return 'Smart Email Auto-Responder';
+  }
+  if (lowerPrompt.includes('lead') && lowerPrompt.includes('follow')) {
+    return 'Lead Follow-up Automation';
+  }
+  if (lowerPrompt.includes('calendar') && lowerPrompt.includes('meet')) {
+    return 'Meeting Scheduler';
+  }
+  if (lowerPrompt.includes('form') && lowerPrompt.includes('sheet')) {
+    return 'Form to Sheets Connector';
+  }
+  if (lowerPrompt.includes('monitor') && lowerPrompt.includes('email')) {
+    return 'Email Monitoring System';
+  }
+  if (lowerPrompt.includes('backup') || lowerPrompt.includes('sync')) {
+    return 'Data Sync Automation';
+  }
+  if (lowerPrompt.includes('notification') || lowerPrompt.includes('alert')) {
+    return 'Smart Notification System';
+  }
+  
+  // Fallback to intent-based titles
   const titleMap: Record<string, string> = {
-    'email_auto_responder': 'Automatic Email Responder',
+    'email_auto_responder': 'Smart Email Auto-Responder',
     'email_monitoring': 'Email Monitoring System',
-    'email_tracking': 'Smart Email Tracking System',
-    'lead_followup': 'Automated Lead Follow-up',
-    'lead_capture': 'Lead Capture Automation',
+    'email_tracking': 'Email Tracking System',
+    'lead_followup': 'Lead Follow-up Automation',
+    'lead_capture': 'Lead Capture System',
     'order_processing': 'Order Processing Automation',
     'notification_system': 'Smart Notification System',
     'data_synchronization': 'Data Sync Automation',
-    'file_organization': 'Intelligent File Organization',
+    'file_organization': 'File Organization System',
     'reporting_automation': 'Automated Reporting System',
-    'custom_workflow': 'Custom Workflow Automation'
+    'custom_workflow': 'Custom Automation Workflow'
   };
   
-  return titleMap[intent] || `AI-Generated Automation: ${prompt.substring(0, 50)}...`;
+  if (titleMap[intent]) {
+    return titleMap[intent];
+  }
+  
+  // Clean and capitalize the prompt
+  const cleanPrompt = prompt
+    .replace(/^(i want to|i need to|please|can you|help me|create|build|make)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Capitalize first letter of each word for shorter prompts
+  if (cleanPrompt.length < 50) {
+    const titleWords = cleanPrompt.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    );
+    return titleWords.join(' ') || 'Custom Automation Workflow';
+  }
+  
+  return `AI-Generated Automation: ${cleanPrompt.substring(0, 40)}...`;
 }
 
 function generateDescription(prompt: string): string {

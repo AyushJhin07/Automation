@@ -1021,36 +1021,41 @@ const GraphEditorContent = () => {
   }, [nodes.length]);
 
   const loadWorkflowIntoGraph = (workflowData: any) => {
-    if (!workflowData.workflow?.graph) return;
+    // Handle both new AI format and old workflow format
+    const isNewAIFormat = workflowData.nodes && workflowData.edges;
     
-    const graph = workflowData.workflow.graph;
+    if (!isNewAIFormat && !workflowData.workflow?.graph) return;
+    
+    const graphData = isNewAIFormat ? workflowData : workflowData.workflow.graph;
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
     
-    // Convert NodeGraph to ReactFlow nodes
-    graph.nodes.forEach((node: any, index: number) => {
-      const nodeType = node.type.startsWith('trigger.') ? 'trigger' :
-                      node.type.startsWith('action.') ? 'action' : 'transform';
+    // Convert to ReactFlow nodes
+    graphData.nodes.forEach((node: any, index: number) => {
+      const nodeType = node.function?.includes('search') || node.function?.includes('monitor') ? 'trigger' :
+                      node.function?.includes('append') || node.function?.includes('create') || node.function?.includes('update') ? 'action' : 
+                      'transform';
       
       newNodes.push({
         id: node.id,
         type: nodeType,
         position: node.position || { x: 100 + index * 250, y: 200 },
         data: {
-          label: node.label,
-          description: node.type,
-          app: node.app || 'Unknown',
-          params: node.params || {}
+          label: node.data?.label || node.function || node.app || 'Unknown',
+          description: node.type || node.app,
+          app: node.data?.app || node.app || 'Unknown',
+          params: node.data?.parameters || node.parameters || {}
         }
       });
     });
     
-    // Convert edges
-    graph.edges.forEach((edge: any) => {
+    // Convert edges/connections
+    const connections = graphData.edges || graphData.connections || [];
+    connections.forEach((edge: any) => {
       newEdges.push({
-        id: `edge-${edge.from}-${edge.to}`,
-        source: edge.from,
-        target: edge.to,
+        id: edge.id || `edge-${edge.source}-${edge.target}`,
+        source: edge.source || edge.from,
+        target: edge.target || edge.to,
         type: 'animated',
         animated: true,
         style: { stroke: '#3b82f6', strokeWidth: 2 },
@@ -1063,7 +1068,8 @@ const GraphEditorContent = () => {
     
     // Show success message
     setTimeout(() => {
-      alert(`✅ Loaded AI-generated workflow: "${graph.name}"\n\nNodes: ${newNodes.length}\nConnections: ${newEdges.length}`);
+      const workflowName = graphData.name || workflowData.title || 'AI Workflow';
+      alert(`✅ Loaded AI-generated workflow: "${workflowName}"\n\nNodes: ${newNodes.length}\nConnections: ${newEdges.length}`);
     }, 500);
   };
   
