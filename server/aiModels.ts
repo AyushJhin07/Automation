@@ -26,7 +26,9 @@ interface AIAnalysisResult {
 
 // Model name mapping constants for consistency
 const MODEL_MAP = {
-  gemini: 'gemini-1.5-flash', // Use latest Gemini model
+  gemini: 'gemini-2.0-flash-exp', // Use latest Gemini model (experimental 2.0)
+  gemini_stable: 'gemini-1.5-flash-8b', // Stable newer version
+  gemini_fallback: 'gemini-1.5-flash', // Fallback to 1.5 if needed
   claude: 'claude-3-5-haiku-20241022', // Use latest Claude model
   openai: 'gpt-4o-mini-2024-07-18' // Use latest GPT model
 };
@@ -36,12 +38,20 @@ class MultiAIService {
   private static getModels(): AIModelConfig[] {
     return [
       {
-        name: 'Gemini 1.5 Flash',
+        name: 'Gemini 2.0 Flash (Experimental)',
         provider: 'gemini',
         costPerToken: 0.00025, // Much cheaper than OpenAI
         maxTokens: 32000,
         apiKey: process.env.GEMINI_API_KEY,
         endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini}:generateContent`
+      },
+      {
+        name: 'Gemini 1.5 Flash 8B',
+        provider: 'gemini',
+        costPerToken: 0.00015, // Even cheaper for 8B model
+        maxTokens: 32000,
+        apiKey: process.env.GEMINI_API_KEY,
+        endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini_stable}:generateContent`
       },
       {
         name: 'Claude 3.5 Haiku',
@@ -116,9 +126,6 @@ class MultiAIService {
       throw new Error('Gemini API key not configured');
     }
 
-    console.log("Gemini API call with endpoint:", model.endpoint);
-    console.log("Gemini API key prefix:", model.apiKey.slice(0, 6)); // log first 6 chars only
-
     const systemPrompt = `You are an automation expert. Analyze the user's workflow request and return a JSON response with:
 
 🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.
@@ -132,44 +139,67 @@ class MultiAIService {
   "confidence": 0.95
 }`;
 
-    try {
-      // Use correct Gemini endpoint pattern (query parameter auth, not header)
-      const response = await fetch(`${model.endpoint}?key=${model.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `${systemPrompt}\n\nUser Request: "${prompt}"`
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-          }
-        })
-      });
+    // Try multiple Gemini models with fallback
+    const modelVariants = [
+      { name: 'Gemini 2.0 Flash (Experimental)', endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini}:generateContent` },
+      { name: 'Gemini 1.5 Flash 8B', endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini_stable}:generateContent` },
+      { name: 'Gemini 1.5 Flash (Fallback)', endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini_fallback}:generateContent` }
+    ];
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Gemini API error: ${response.status} - ${errorData}`);
+    let lastError: Error | null = null;
+
+    for (const variant of modelVariants) {
+      try {
+        console.log(`🚀 Trying ${variant.name}...`);
+        console.log("Endpoint:", variant.endpoint);
+        console.log("API key prefix:", model.apiKey.slice(0, 6));
+
+        const response = await fetch(`${variant.endpoint}?key=${model.apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `${systemPrompt}\n\nUser Request: "${prompt}"`
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 2048,
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.warn(`❌ ${variant.name} failed: ${response.status} - ${errorData}`);
+          lastError = new Error(`${variant.name} error: ${response.status} - ${errorData}`);
+          continue; // Try next model
+        }
+
+        const data = await response.json();
+        const aiResponse = data.candidates[0].content.parts[0].text;
+        
+        // Parse JSON response from Gemini
+        const parsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
+        
+        console.log(`✅ Success with ${variant.name}!`);
+        return parsed;
+        
+      } catch (error) {
+        console.warn(`❌ ${variant.name} failed:`, error);
+        lastError = error as Error;
+        continue; // Try next model
       }
-
-      const data = await response.json();
-      const aiResponse = data.candidates[0].content.parts[0].text;
-      
-      // Parse JSON response from Gemini
-      const parsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
-      return parsed;
-      
-    } catch (error) {
-      console.error('Gemini API call failed:', error);
-      throw error;
     }
+
+    // If all models failed, throw the last error
+    console.error('🚨 All Gemini models failed!');
+    throw lastError || new Error('All Gemini model variants failed');
   }
 
   private static async callClaude(model: AIModelConfig, prompt: string): Promise<Omit<AIAnalysisResult, 'processingTime' | 'modelUsed'>> {
