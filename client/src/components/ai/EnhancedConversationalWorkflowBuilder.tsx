@@ -423,12 +423,18 @@ Please answer these questions in the form below:`,
       // Create workflow result from new API response
       const workflowData = {
         workflow: {
-          graph: result.graph || null,
+          graph: {
+            id: result.id,
+            name: result.title,
+            description: result.description,
+            nodes: result.nodes || [],
+            connections: result.connections || []
+          },
           validation: result.validation || { valid: true, errors: [], warnings: [] }
         },
-        code: result.files ? result.files.find((f: any) => f.name === 'Code.js')?.content || 'No code generated' : 'No code generated',
+        code: result.appsScriptCode || 'No code generated',
         files: result.files || [],
-        rationale: result.rationale || 'Generated automation workflow',
+        rationale: result.description || 'Generated automation workflow',
         deploymentInstructions: result.deploymentInstructions || ''
       };
 
@@ -444,22 +450,21 @@ Please answer these questions in the form below:`,
         content: `✅ **Workflow Generated Successfully!**
 
 **"${workflow.name}"**
-${result.workflow.rationale}
+${result.description}
 
 📊 **Workflow Stats:**
-• **Nodes:** ${workflow.nodes.length} (${workflow.nodes.filter(n => n.type.startsWith('trigger.')).length} triggers, ${workflow.nodes.filter(n => n.type.startsWith('action.')).length} actions)
+• **Nodes:** ${workflow.nodes.length} (${workflow.nodes.filter(n => n.type?.startsWith('trigger.')).length} triggers, ${workflow.nodes.filter(n => n.type?.startsWith('action.')).length} actions)
 • **Complexity:** ${result.complexity}
 • **Estimated Value:** ${result.estimatedValue}
 
 🔍 **Validation:**
-• **Status:** ${validation.isValid ? '✅ Valid' : '❌ Has Errors'}
-• **Warnings:** ${validation.warnings.length}
-• **Required Scopes:** ${workflow.scopes.length}
+• **Status:** ${validation.valid ? '✅ Valid' : '❌ Has Errors'}
+• **Warnings:** ${validation.warnings?.length || 0}
+• **Errors:** ${validation.errors?.length || 0}
 
 📝 **Generated Code:**
-• **Files:** ${result.code.stats.fileCount}
-• **Lines of Code:** ${result.code.stats.totalLines}
-• **Entry Point:** ${result.code.entry}
+• **Lines of Code:** ${result.appsScriptCode?.split('\n').length || 0}
+• **Ready for Google Apps Script**
 
 🚀 **Ready for Deployment!**`,
         type: 'workflow',
