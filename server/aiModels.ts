@@ -32,44 +32,47 @@ const MODEL_MAP = {
 };
 
 class MultiAIService {
-  private static models: AIModelConfig[] = [
-    {
-      name: 'Gemini 1.5 Flash',
-      provider: 'gemini',
-      costPerToken: 0.00025, // Much cheaper than OpenAI
-      maxTokens: 32000,
-      apiKey: process.env.GEMINI_API_KEY,
-      endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini}:generateContent`
-    },
-    {
-      name: 'Claude 3.5 Haiku',
-      provider: 'claude',
-      costPerToken: 0.00025, // Anthropic pricing
-      maxTokens: 200000,
-      apiKey: process.env.CLAUDE_API_KEY,
-      endpoint: 'https://api.anthropic.com/v1/messages'
-    },
-    {
-      name: 'GPT-4o Mini',
-      provider: 'openai',
-      costPerToken: 0.00015, // OpenAI's cheaper model
-      maxTokens: 128000,
-      apiKey: process.env.OPENAI_API_KEY,
-      endpoint: 'https://api.openai.com/v1/chat/completions'
-    },
-    {
-      name: 'Local Fallback',
-      provider: 'local',
-      costPerToken: 0, // Free fallback
-      maxTokens: Infinity,
-    }
-  ];
+  // Get models dynamically to avoid API key caching issues
+  private static getModels(): AIModelConfig[] {
+    return [
+      {
+        name: 'Gemini 1.5 Flash',
+        provider: 'gemini',
+        costPerToken: 0.00025, // Much cheaper than OpenAI
+        maxTokens: 32000,
+        apiKey: process.env.GEMINI_API_KEY,
+        endpoint: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_MAP.gemini}:generateContent`
+      },
+      {
+        name: 'Claude 3.5 Haiku',
+        provider: 'claude',
+        costPerToken: 0.00025, // Anthropic pricing
+        maxTokens: 200000,
+        apiKey: process.env.CLAUDE_API_KEY,
+        endpoint: 'https://api.anthropic.com/v1/messages'
+      },
+      {
+        name: 'GPT-4o Mini',
+        provider: 'openai',
+        costPerToken: 0.00015, // OpenAI's cheaper model
+        maxTokens: 128000,
+        apiKey: process.env.OPENAI_API_KEY,
+        endpoint: 'https://api.openai.com/v1/chat/completions'
+      },
+      {
+        name: 'Local Fallback',
+        provider: 'local',
+        costPerToken: 0, // Free fallback
+        maxTokens: Infinity,
+      }
+    ];
+  }
 
   public static async analyzeWorkflowPrompt(prompt: string): Promise<AIAnalysisResult> {
     const startTime = Date.now();
     
     // Try models in order of cost efficiency
-    for (const model of this.models) {
+    for (const model of this.getModels()) {
       try {
         console.log(`Trying ${model.name} for workflow analysis...`);
         
@@ -298,7 +301,7 @@ class MultiAIService {
   }
 
   public static async getAvailableModels(): Promise<AIModelConfig[]> {
-    return this.models.filter(model => 
+    return this.getModels().filter(model => 
       model.provider === 'local' || 
       (model.apiKey && model.apiKey.length > 0)
     );
@@ -308,8 +311,8 @@ class MultiAIService {
     const tokenCount = Math.ceil(prompt.length / 4); // Rough token estimation
     
     const selectedModel = modelName 
-      ? this.models.find(m => m.name === modelName)
-      : this.models[0]; // Default to cheapest (Gemini)
+      ? this.getModels().find(m => m.name === modelName)
+      : this.getModels()[0]; // Default to cheapest (Gemini)
     
     if (!selectedModel) {
       return { cost: 0, model: 'Local Fallback' };

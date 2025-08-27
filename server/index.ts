@@ -1,5 +1,12 @@
 // Load environment variables FIRST
 import './env';
+
+// Log LLM API key presence for debugging
+console.log('🔑 LLM API Keys:', { 
+  GEMINI: !!process.env.GEMINI_API_KEY, 
+  OPENAI: !!process.env.OPENAI_API_KEY, 
+  CLAUDE: !!process.env.CLAUDE_API_KEY 
+});
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
