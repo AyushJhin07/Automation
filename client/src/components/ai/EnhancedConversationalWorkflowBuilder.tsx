@@ -353,6 +353,9 @@ You can try:
         throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
       }
 
+      // Only send apiKey if we have a local one, otherwise let server use its own
+      const apiKeyToSend = currentApiKey || undefined;
+
       // Use the new workflow API pipeline
       let response;
       
@@ -367,7 +370,7 @@ You can try:
             prompt: prompt,
             context: {},
             model: selectedModel,
-            apiKey: currentApiKey
+            apiKey: apiKeyToSend
           })
         });
       } else {
@@ -381,7 +384,7 @@ You can try:
             prompt: prompt,
             answers: questionAnswers,
             model: selectedModel,
-            apiKey: currentApiKey,
+            apiKey: apiKeyToSend,
             options: {
               projectName: `Automation_${Date.now()}`,
               includeLogging: true,

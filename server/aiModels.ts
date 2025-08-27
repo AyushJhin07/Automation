@@ -112,8 +112,12 @@ class MultiAIService {
 
   private static async callGemini(model: AIModelConfig, prompt: string): Promise<Omit<AIAnalysisResult, 'processingTime' | 'modelUsed'>> {
     if (!model.apiKey) {
+      console.error("Gemini API key is missing in model config");
       throw new Error('Gemini API key not configured');
     }
+
+    console.log("Gemini API call with endpoint:", model.endpoint);
+    console.log("Gemini API key prefix:", model.apiKey.slice(0, 6)); // log first 6 chars only
 
     const systemPrompt = `You are an automation expert. Analyze the user's workflow request and return a JSON response with:
 
