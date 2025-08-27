@@ -1,8 +1,10 @@
 {
   "id": "surveymonkey",
   "name": "SurveyMonkey",
-  "category": "Surveys",
-  "description": "SurveyMonkey integration for automated workflows",
+  "description": "Online survey development cloud-based software for creating and running surveys",
+  "category": "Customer Feedback",
+  "icon": "surveymonkey",
+  "color": "#00BF6F",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
@@ -12,106 +14,696 @@
       "scopes": [
         "surveys_read",
         "surveys_write",
-        "responses_read"
+        "responses_read",
+        "responses_write_detail",
+        "collectors_read",
+        "collectors_write",
+        "contacts_read",
+        "contacts_write",
+        "users_read"
       ]
     }
   },
+  "baseUrl": "https://api.surveymonkey.com/v3",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in SurveyMonkey",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to SurveyMonkey",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "surveys_read",
-        "surveys_write",
-        "responses_read"
-      ]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in SurveyMonkey",
+      "id": "create_survey",
+      "name": "Create Survey",
+      "description": "Create a new survey",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Survey title"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "Survey nickname"
+          },
+          "language": {
+            "type": "string",
+            "default": "en",
+            "description": "Survey language code"
+          },
+          "question_count": {
+            "type": "number",
+            "description": "Number of questions in the survey"
+          },
+          "page_count": {
+            "type": "number",
+            "description": "Number of pages in the survey"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "Folder ID to organize the survey"
+          },
+          "template_id": {
+            "type": "string",
+            "description": "Template ID to create survey from"
+          },
+          "from_survey_id": {
+            "type": "string",
+            "description": "Survey ID to copy from"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "surveys_read",
-        "surveys_write",
-        "responses_read"
-      ]
+        "required": ["title"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from SurveyMonkey",
+      "id": "get_survey",
+      "name": "Get Survey",
+      "description": "Get details of a survey",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "surveys_read",
-        "surveys_write",
-        "responses_read"
-      ]
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          }
+        },
+        "required": ["survey_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_survey",
+      "name": "Update Survey",
+      "description": "Update survey details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Survey title"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "Survey nickname"
+          },
+          "language": {
+            "type": "string",
+            "description": "Survey language code"
+          },
+          "footer": {
+            "type": "boolean",
+            "description": "Whether to show footer"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "Folder ID to move survey to"
+          }
+        },
+        "required": ["survey_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_survey",
+      "name": "Delete Survey",
+      "description": "Delete a survey",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          }
+        },
+        "required": ["survey_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_surveys",
+      "name": "List Surveys",
+      "description": "List all surveys",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 50,
+            "description": "Number of surveys per page"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": ["title", "date_modified", "num_responses"],
+            "description": "Sort criteria"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["ASC", "DESC"],
+            "default": "DESC",
+            "description": "Sort order"
+          },
+          "start_modified_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter surveys modified after this date"
+          },
+          "end_modified_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter surveys modified before this date"
+          },
+          "title": {
+            "type": "string",
+            "description": "Filter by survey title"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["response_count", "date_created", "date_modified", "language", "question_count", "analyze_url", "preview"]
+            },
+            "description": "Additional fields to include"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "Filter by folder ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_survey_responses",
+      "name": "Get Survey Responses",
+      "description": "Get responses for a survey",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of responses per page"
+          },
+          "start_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter responses created after this date"
+          },
+          "end_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter responses created before this date"
+          },
+          "start_modified_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter responses modified after this date"
+          },
+          "end_modified_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter responses modified before this date"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "partial", "overquota", "disqualified"],
+            "description": "Filter by response status"
+          },
+          "email": {
+            "type": "string",
+            "description": "Filter by respondent email"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "Filter by respondent first name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Filter by respondent last name"
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "Filter by IP address"
+          },
+          "custom": {
+            "type": "string",
+            "description": "Filter by custom value"
+          },
+          "total_time_max": {
+            "type": "number",
+            "description": "Filter by maximum completion time in seconds"
+          },
+          "total_time_min": {
+            "type": "number",
+            "description": "Filter by minimum completion time in seconds"
+          },
+          "total_time_units": {
+            "type": "string",
+            "enum": ["seconds", "minutes", "hours"],
+            "description": "Time units for total_time filters"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["ASC", "DESC"],
+            "default": "DESC",
+            "description": "Sort order"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": ["date_modified"],
+            "description": "Sort criteria"
+          }
+        },
+        "required": ["survey_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_response_details",
+      "name": "Get Response Details",
+      "description": "Get detailed response data",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "response_id": {
+            "type": "string",
+            "description": "Response ID"
+          }
+        },
+        "required": ["survey_id", "response_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_collector",
+      "name": "Create Collector",
+      "description": "Create a new collector for a survey",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["weblink", "email"],
+            "description": "Collector type"
+          },
+          "name": {
+            "type": "string",
+            "description": "Collector name"
+          },
+          "thank_you_message": {
+            "type": "string",
+            "description": "Thank you message shown after completion"
+          },
+          "disqualification_message": {
+            "type": "string",
+            "description": "Message shown when respondent is disqualified"
+          },
+          "close_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when collector should close"
+          },
+          "closed_page_message": {
+            "type": "string",
+            "description": "Message shown when collector is closed"
+          },
+          "redirect_url": {
+            "type": "string",
+            "description": "URL to redirect to after completion"
+          },
+          "display_survey_results": {
+            "type": "boolean",
+            "description": "Whether to display survey results to respondents"
+          },
+          "edit_response_type": {
+            "type": "string",
+            "enum": ["until_complete", "never", "always"],
+            "description": "When respondents can edit their responses"
+          },
+          "anonymous_type": {
+            "type": "string",
+            "enum": ["not_anonymous", "partially_anonymous", "fully_anonymous"],
+            "description": "Level of anonymity"
+          },
+          "allow_multiple_responses": {
+            "type": "boolean",
+            "description": "Whether to allow multiple responses from same respondent"
+          },
+          "include_survey_url": {
+            "type": "boolean",
+            "description": "Whether to include survey URL in email invitations"
+          }
+        },
+        "required": ["survey_id", "type"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_collector",
+      "name": "Get Collector",
+      "description": "Get collector details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collector_id": {
+            "type": "string",
+            "description": "Collector ID"
+          }
+        },
+        "required": ["collector_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_collectors",
+      "name": "List Collectors",
+      "description": "List collectors for a survey",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 50,
+            "description": "Number of collectors per page"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": ["date_modified", "date_created"],
+            "description": "Sort criteria"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["ASC", "DESC"],
+            "default": "DESC",
+            "description": "Sort order"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by collector name"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter collectors created after this date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter collectors created before this date"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["type", "status", "date_created", "date_modified", "url"]
+            },
+            "description": "Additional fields to include"
+          }
+        },
+        "required": ["survey_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "description": "Contact's first name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Contact's last name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Contact's email address"
+          },
+          "custom_field_1": {
+            "type": "string",
+            "description": "Custom field 1 value"
+          },
+          "custom_field_2": {
+            "type": "string",
+            "description": "Custom field 2 value"
+          },
+          "custom_field_3": {
+            "type": "string",
+            "description": "Custom field 3 value"
+          }
+        },
+        "required": ["email"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contact",
+      "name": "Get Contact",
+      "description": "Get contact details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "description": "Contact ID"
+          }
+        },
+        "required": ["contact_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_contacts",
+      "name": "List Contacts",
+      "description": "List all contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 50,
+            "description": "Number of contacts per page"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": ["date_modified", "date_created", "email", "first_name", "last_name"],
+            "description": "Sort criteria"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["ASC", "DESC"],
+            "default": "ASC",
+            "description": "Sort order"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "Filter by first name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Filter by last name"
+          },
+          "email": {
+            "type": "string",
+            "description": "Filter by email"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "survey_response_completed",
+      "name": "Survey Response Completed",
+      "description": "Triggered when a survey response is completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID to monitor"
+          },
+          "collector_id": {
+            "type": "string",
+            "description": "Collector ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "surveys_read",
-        "surveys_write",
-        "responses_read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "survey_id": {"type": "string"},
+          "collector_id": {"type": "string"},
+          "response_id": {"type": "string"},
+          "status": {"type": "string"},
+          "date_created": {"type": "string"},
+          "date_modified": {"type": "string"},
+          "logic_path": {"type": "object"},
+          "metadata": {"type": "object"},
+          "page_path": {"type": "array"},
+          "recipient_id": {"type": "string"},
+          "collection_mode": {"type": "string"},
+          "custom_value": {"type": "string"},
+          "edit_url": {"type": "string"},
+          "analyze_url": {"type": "string"},
+          "total_time": {"type": "number"},
+          "custom_variables": {"type": "object"},
+          "ip_address": {"type": "string"},
+          "pages": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "survey_created",
+      "name": "Survey Created",
+      "description": "Triggered when a new survey is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "surveys_read",
-        "surveys_write",
-        "responses_read"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "nickname": {"type": "string"},
+          "language": {"type": "string"},
+          "question_count": {"type": "number"},
+          "page_count": {"type": "number"},
+          "date_created": {"type": "string"},
+          "date_modified": {"type": "string"},
+          "summary": {"type": "string"},
+          "analyze_url": {"type": "string"},
+          "edit_url": {"type": "string"},
+          "collect_url": {"type": "string"},
+          "preview": {"type": "string"},
+          "category": {"type": "string"},
+          "folder_id": {"type": "string"},
+          "buttons_text": {"type": "object"},
+          "is_owner": {"type": "boolean"},
+          "footer": {"type": "boolean"},
+          "theme": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "collector_created",
+      "name": "Collector Created",
+      "description": "Triggered when a new collector is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "description": "Survey ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "date_created": {"type": "string"},
+          "date_modified": {"type": "string"},
+          "url": {"type": "string"},
+          "open": {"type": "boolean"},
+          "type": {"type": "string"},
+          "display_survey_results": {"type": "boolean"},
+          "edit_response_type": {"type": "string"},
+          "anonymous_type": {"type": "string"},
+          "allow_multiple_responses": {"type": "boolean"},
+          "redirect_type": {"type": "string"},
+          "redirect_url": {"type": "string"},
+          "thank_you_message": {"type": "string"},
+          "disqualification_message": {"type": "string"},
+          "closed_page_message": {"type": "string"},
+          "close_date": {"type": "string"},
+          "password_enabled": {"type": "boolean"},
+          "sender_email": {"type": "string"},
+          "include_survey_url": {"type": "boolean"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

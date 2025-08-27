@@ -1,96 +1,224 @@
 {
   "id": "netsuite",
   "name": "NetSuite",
+  "description": "Oracle NetSuite cloud-based ERP and business management suite",
   "category": "ERP",
-  "description": "NetSuite integration for automated workflows",
+  "icon": "netsuite",
+  "color": "#F80000",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "read",
-        "write"
-      ]
+      "authUrl": "https://system.netsuite.com/app/login/oauth2/authorize.nl",
+      "tokenUrl": "https://system.netsuite.com/app/login/oauth2/token.nl",
+      "scopes": ["restlets", "rest_webservices"]
     }
   },
+  "baseUrl": "https://{account}.suitetalk.api.netsuite.com/services/rest",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in NetSuite",
+      "id": "test_connection",
+      "name": "Test Connection", 
+      "description": "Test the connection to NetSuite",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in NetSuite",
+      "id": "get_customers",
+      "name": "Get Customers",
+      "description": "Get list of customers",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of customers to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of customers to skip"
+          },
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from NetSuite",
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "subsidiary": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"}
+            },
+            "description": "Subsidiary reference"
+          },
+          "currency": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"}
+            },
+            "description": "Currency reference"
+          }
+        },
+        "required": ["companyName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_items",
+      "name": "Get Items",
+      "description": "Get list of items",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of items to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of items to skip"
+          },
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_sales_order",
+      "name": "Create Sales Order",
+      "description": "Create a new sales order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"}
+            },
+            "description": "Customer reference"
+          },
+          "tranDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Transaction date"
+          },
+          "item": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "type": "object",
+                  "properties": {
+                    "id": {"type": "string"}
+                  }
+                },
+                "quantity": {"type": "number"},
+                "rate": {"type": "number"}
+              }
+            },
+            "description": "Line items"
+          }
+        },
+        "required": ["entity"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoices",
+      "name": "Get Invoices",
+      "description": "Get list of invoices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of invoices to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of invoices to skip"
+          },
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "customer_created",
+      "name": "Customer Created",
+      "description": "Triggered when a new customer is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "companyName": {"type": "string"},
+          "email": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/record/v1/customer"
+  }
 }

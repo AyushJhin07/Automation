@@ -11,7 +11,24 @@
     "config": {
       "authUrl": "https://slack.com/oauth/v2/authorize",
       "tokenUrl": "https://slack.com/api/oauth.v2.access",
-      "scopes": ["chat:write", "channels:read", "users:read", "files:write", "reactions:write"]
+      "scopes": [
+        "channels:read",
+        "channels:write",
+        "chat:write",
+        "chat:write.public",
+        "files:write",
+        "im:read",
+        "im:write",
+        "mpim:read",
+        "mpim:write",
+        "reactions:read",
+        "reactions:write",
+        "users:read",
+        "users:read.email",
+        "team:read",
+        "groups:read",
+        "groups:write"
+      ]
     }
   },
   "baseUrl": "https://slack.com/api",
@@ -28,9 +45,9 @@
       }
     },
     {
-      "id": "post_message",
-      "name": "Post Message",
-      "description": "Post a message to a channel",
+      "id": "send_message",
+      "name": "Send Message",
+      "description": "Send a message to a channel",
       "parameters": {
         "type": "object",
         "properties": {
@@ -42,52 +59,213 @@
             "type": "string",
             "description": "Message text"
           },
-          "blocks": {
-            "type": "array",
-            "description": "Block kit structured message"
-          },
-          "attachments": {
-            "type": "array",
-            "description": "Message attachments"
-          },
-          "thread_ts": {
-            "type": "string",
-            "description": "Thread timestamp for reply"
-          },
           "username": {
             "type": "string",
-            "description": "Bot username"
+            "description": "Username to use for the message"
           },
           "icon_emoji": {
             "type": "string",
-            "description": "Bot emoji icon"
+            "description": "Emoji to use as the icon for this message"
           },
           "icon_url": {
             "type": "string",
-            "description": "Bot icon URL"
+            "description": "URL to an image to use as the icon for this message"
           },
           "link_names": {
             "type": "boolean",
-            "default": false,
-            "description": "Auto-link channel names and usernames"
+            "description": "Find and link channel names and usernames"
+          },
+          "unfurl_links": {
+            "type": "boolean",
+            "description": "Enable unfurling of primarily text-based content"
+          },
+          "unfurl_media": {
+            "type": "boolean",
+            "description": "Disable unfurling of media content"
           },
           "parse": {
             "type": "string",
             "enum": ["full", "none"],
-            "description": "Parse mode"
+            "description": "Change how messages are treated"
           },
           "reply_broadcast": {
             "type": "boolean",
-            "default": false,
-            "description": "Broadcast thread reply to channel"
+            "description": "Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Provide another message's ts value to make this message a reply"
+          },
+          "mrkdwn": {
+            "type": "boolean",
+            "default": true,
+            "description": "Disable Slack markup parsing by setting to false"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "A JSON-based array of structured blocks",
+            "items": {
+              "type": "object"
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "description": "A JSON-based array of structured attachments",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": ["channel", "text"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_direct_message",
+      "name": "Send Direct Message",
+      "description": "Send a direct message to a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "User ID or username"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text"
+          },
+          "username": {
+            "type": "string",
+            "description": "Username to use for the message"
+          },
+          "icon_emoji": {
+            "type": "string",
+            "description": "Emoji to use as the icon for this message"
+          },
+          "icon_url": {
+            "type": "string",
+            "description": "URL to an image to use as the icon for this message"
+          },
+          "link_names": {
+            "type": "boolean",
+            "description": "Find and link channel names and usernames"
           },
           "unfurl_links": {
             "type": "boolean",
-            "description": "Unfurl links"
+            "description": "Enable unfurling of primarily text-based content"
           },
           "unfurl_media": {
             "type": "boolean",
-            "description": "Unfurl media"
+            "description": "Disable unfurling of media content"
+          },
+          "parse": {
+            "type": "string",
+            "enum": ["full", "none"],
+            "description": "Change how messages are treated"
+          },
+          "mrkdwn": {
+            "type": "boolean",
+            "default": true,
+            "description": "Disable Slack markup parsing by setting to false"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "A JSON-based array of structured blocks",
+            "items": {
+              "type": "object"
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "description": "A JSON-based array of structured attachments",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": ["user", "text"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_channel",
+      "name": "Create Channel",
+      "description": "Create a new channel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the channel"
+          },
+          "is_private": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create a private channel instead of a public one"
+          },
+          "team_id": {
+            "type": "string",
+            "description": "Encoded team id to create the channel in"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "invite_user_to_channel",
+      "name": "Invite User to Channel",
+      "description": "Invite a user to a channel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "user": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["channel", "user"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_channel_history",
+      "name": "Get Channel History",
+      "description": "Fetch a conversation's history of messages and events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Paginate through collections of data by setting cursor equal to the next_cursor attribute"
+          },
+          "inclusive": {
+            "type": "boolean",
+            "description": "Include messages with latest or oldest timestamp in results"
+          },
+          "latest": {
+            "type": "string",
+            "description": "End of time range of messages to include in results"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of messages to return"
+          },
+          "oldest": {
+            "type": "string",
+            "description": "Start of time range of messages to include in results"
           }
         },
         "required": ["channel"],
@@ -95,42 +273,133 @@
       }
     },
     {
-      "id": "reply_in_thread",
-      "name": "Reply in Thread",
-      "description": "Reply to a message in a thread",
+      "id": "upload_file",
+      "name": "Upload File",
+      "description": "Upload or create a file",
       "parameters": {
         "type": "object",
         "properties": {
-          "channel": {
+          "channels": {
             "type": "string",
-            "description": "Channel ID or name"
+            "description": "Comma-separated list of channel names or IDs where the file will be shared"
+          },
+          "content": {
+            "type": "string",
+            "description": "File contents via a POST variable"
+          },
+          "file": {
+            "type": "string",
+            "description": "File contents via multipart/form-data"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Filename of file"
+          },
+          "filetype": {
+            "type": "string",
+            "description": "A file type identifier"
+          },
+          "initial_comment": {
+            "type": "string",
+            "description": "The message text introducing the file in specified channels"
           },
           "thread_ts": {
             "type": "string",
-            "description": "Thread timestamp to reply to"
+            "description": "Provide another message's ts value to upload this file as a reply"
           },
-          "text": {
+          "title": {
             "type": "string",
-            "description": "Reply text"
+            "description": "Title of file"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_reaction",
+      "name": "Add Reaction",
+      "description": "Add a reaction to a message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel where the message to add reaction to was posted"
           },
-          "blocks": {
-            "type": "array",
-            "description": "Block kit structured message"
+          "name": {
+            "type": "string",
+            "description": "Reaction (emoji) name"
           },
-          "reply_broadcast": {
+          "timestamp": {
+            "type": "string",
+            "description": "Timestamp of the message to add reaction to"
+          }
+        },
+        "required": ["channel", "name", "timestamp"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user_info",
+      "name": "Get User Info",
+      "description": "Get information about a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "include_locale": {
+            "type": "boolean",
+            "description": "Set this to true to receive the locale for this user"
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_channels",
+      "name": "List Channels",
+      "description": "List all channels in a Slack team",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Paginate through collections of data by setting cursor equal to the next_cursor attribute"
+          },
+          "exclude_archived": {
             "type": "boolean",
             "default": false,
-            "description": "Broadcast reply to channel"
+            "description": "Exclude archived channels from the list"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Number of channels to return"
+          },
+          "team_id": {
+            "type": "string",
+            "description": "Encoded team id to list channels in"
+          },
+          "types": {
+            "type": "string",
+            "description": "Mix and match channel types by providing a comma-separated list of any combination of public_channel, private_channel, mpim, im"
           }
         },
-        "required": ["channel", "thread_ts"],
+        "required": [],
         "additionalProperties": false
       }
     },
     {
-      "id": "update_message",
-      "name": "Update Message",
-      "description": "Update an existing message",
+      "id": "set_channel_topic",
+      "name": "Set Channel Topic",
+      "description": "Set the topic for a channel",
       "parameters": {
         "type": "object",
         "properties": {
@@ -138,31 +407,35 @@
             "type": "string",
             "description": "Channel ID"
           },
-          "ts": {
+          "topic": {
             "type": "string",
-            "description": "Message timestamp"
-          },
-          "text": {
-            "type": "string",
-            "description": "New message text"
-          },
-          "blocks": {
-            "type": "array",
-            "description": "New block kit message"
-          },
-          "attachments": {
-            "type": "array",
-            "description": "New attachments"
+            "description": "The new topic"
           }
         },
-        "required": ["channel", "ts"],
+        "required": ["channel", "topic"],
         "additionalProperties": false
       }
     },
     {
-      "id": "delete_message",
-      "name": "Delete Message",
-      "description": "Delete a message",
+      "id": "archive_channel",
+      "name": "Archive Channel",
+      "description": "Archive a channel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          }
+        },
+        "required": ["channel"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "pin_message",
+      "name": "Pin Message",
+      "description": "Pin an item to a channel",
       "parameters": {
         "type": "object",
         "properties": {
@@ -170,12 +443,12 @@
             "type": "string",
             "description": "Channel ID"
           },
-          "ts": {
+          "timestamp": {
             "type": "string",
-            "description": "Message timestamp"
+            "description": "Timestamp of the message to pin"
           }
         },
-        "required": ["channel", "ts"],
+        "required": ["channel", "timestamp"],
         "additionalProperties": false
       }
     },
@@ -196,244 +469,129 @@
           },
           "post_at": {
             "type": "number",
-            "description": "Unix timestamp when to send"
+            "description": "Unix timestamp representing when the message should be posted"
+          },
+          "username": {
+            "type": "string",
+            "description": "Username to use for the message"
+          },
+          "icon_emoji": {
+            "type": "string",
+            "description": "Emoji to use as the icon for this message"
+          },
+          "icon_url": {
+            "type": "string",
+            "description": "URL to an image to use as the icon for this message"
+          },
+          "link_names": {
+            "type": "boolean",
+            "description": "Find and link channel names and usernames"
+          },
+          "unfurl_links": {
+            "type": "boolean",
+            "description": "Enable unfurling of primarily text-based content"
+          },
+          "unfurl_media": {
+            "type": "boolean",
+            "description": "Disable unfurling of media content"
+          },
+          "parse": {
+            "type": "string",
+            "enum": ["full", "none"],
+            "description": "Change how messages are treated"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Provide another message's ts value to make this message a reply"
+          },
+          "reply_broadcast": {
+            "type": "boolean",
+            "description": "Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel"
           },
           "blocks": {
             "type": "array",
-            "description": "Block kit structured message"
+            "description": "A JSON-based array of structured blocks",
+            "items": {
+              "type": "object"
+            }
           },
-          "thread_ts": {
-            "type": "string",
-            "description": "Thread timestamp for reply"
-          }
-        },
-        "required": ["channel", "post_at"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "add_reaction",
-      "name": "Add Reaction",
-      "description": "Add emoji reaction to a message",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Channel ID"
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Message timestamp"
-          },
-          "name": {
-            "type": "string",
-            "description": "Emoji name (without colons)"
-          }
-        },
-        "required": ["channel", "timestamp", "name"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "remove_reaction",
-      "name": "Remove Reaction",
-      "description": "Remove emoji reaction from a message",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Channel ID"
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Message timestamp"
-          },
-          "name": {
-            "type": "string",
-            "description": "Emoji name (without colons)"
-          }
-        },
-        "required": ["channel", "timestamp", "name"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "set_topic",
-      "name": "Set Channel Topic",
-      "description": "Set the topic for a channel",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Channel ID"
-          },
-          "topic": {
-            "type": "string",
-            "description": "New channel topic"
-          }
-        },
-        "required": ["channel", "topic"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "set_purpose",
-      "name": "Set Channel Purpose",
-      "description": "Set the purpose for a channel",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Channel ID"
-          },
-          "purpose": {
-            "type": "string",
-            "description": "New channel purpose"
-          }
-        },
-        "required": ["channel", "purpose"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "invite_user",
-      "name": "Invite User to Channel",
-      "description": "Invite a user to a channel",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Channel ID"
-          },
-          "users": {
+          "attachments": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "User IDs to invite"
+            "description": "A JSON-based array of structured attachments",
+            "items": {
+              "type": "object"
+            }
           }
         },
-        "required": ["channel", "users"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "kick_user",
-      "name": "Remove User from Channel",
-      "description": "Remove a user from a channel",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Channel ID"
-          },
-          "user": {
-            "type": "string",
-            "description": "User ID to remove"
-          }
-        },
-        "required": ["channel", "user"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "upload_file",
-      "name": "Upload File",
-      "description": "Upload a file to Slack",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channels": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Channel IDs to share file to"
-          },
-          "content": {
-            "type": "string",
-            "description": "File content (for text files)"
-          },
-          "file": {
-            "type": "string",
-            "description": "File path or URL"
-          },
-          "filename": {
-            "type": "string",
-            "description": "Filename"
-          },
-          "filetype": {
-            "type": "string",
-            "description": "File type"
-          },
-          "initial_comment": {
-            "type": "string",
-            "description": "Initial comment"
-          },
-          "thread_ts": {
-            "type": "string",
-            "description": "Thread timestamp"
-          },
-          "title": {
-            "type": "string",
-            "description": "File title"
-          }
-        },
-        "required": [],
+        "required": ["channel", "text", "post_at"],
         "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "message_posted",
-      "name": "Message Posted",
-      "description": "Triggered when a message is posted to a channel",
+      "id": "new_message",
+      "name": "New Message",
+      "description": "Triggered when a new message is posted to a channel",
       "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Filter by specific channel"
+            "description": "Channel ID to monitor"
           },
           "user": {
             "type": "string",
-            "description": "Filter by specific user"
+            "description": "User ID to filter messages from specific user"
           },
-          "keyword": {
-            "type": "string",
-            "description": "Filter by keyword in message"
+          "exclude_bots": {
+            "type": "boolean",
+            "default": true,
+            "description": "Exclude messages from bots"
           }
         },
-        "required": [],
+        "required": ["channel"],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
+          "type": {"type": "string"},
+          "subtype": {"type": "string"},
           "channel": {"type": "string"},
           "user": {"type": "string"},
           "text": {"type": "string"},
           "ts": {"type": "string"},
+          "team": {"type": "string"},
           "thread_ts": {"type": "string"},
-          "type": {"type": "string"}
+          "parent_user_id": {"type": "string"},
+          "blocks": {"type": "array"},
+          "attachments": {"type": "array"},
+          "files": {"type": "array"},
+          "upload": {"type": "boolean"},
+          "display_as_bot": {"type": "boolean"},
+          "username": {"type": "string"},
+          "bot_id": {"type": "string"},
+          "app_id": {"type": "string"},
+          "edited": {"type": "object"},
+          "client_msg_id": {"type": "string"},
+          "reactions": {"type": "array"}
         }
       }
     },
     {
-      "id": "message_edited",
-      "name": "Message Edited",
-      "description": "Triggered when a message is edited",
+      "id": "new_channel",
+      "name": "New Channel",
+      "description": "Triggered when a new channel is created",
       "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Filter by specific channel"
+          "include_private": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include private channels"
           }
         },
         "required": [],
@@ -442,11 +600,107 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
-          "text": {"type": "string"},
-          "ts": {"type": "string"},
-          "edited": {"type": "object"}
+          "type": {"type": "string"},
+          "channel": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"},
+              "is_channel": {"type": "boolean"},
+              "is_group": {"type": "boolean"},
+              "is_im": {"type": "boolean"},
+              "is_mpim": {"type": "boolean"},
+              "is_private": {"type": "boolean"},
+              "created": {"type": "number"},
+              "is_archived": {"type": "boolean"},
+              "is_general": {"type": "boolean"},
+              "unlinked": {"type": "number"},
+              "name_normalized": {"type": "string"},
+              "is_shared": {"type": "boolean"},
+              "is_org_shared": {"type": "boolean"},
+              "is_member": {"type": "boolean"},
+              "is_pending_ext_shared": {"type": "boolean"},
+              "pending_shared": {"type": "array"},
+              "context_team_id": {"type": "string"},
+              "updated": {"type": "number"},
+              "parent_conversation": {"type": "string"},
+              "creator": {"type": "string"},
+              "is_ext_shared": {"type": "boolean"},
+              "shared_team_ids": {"type": "array"},
+              "pending_connected_team_ids": {"type": "array"},
+              "is_pending_ext_shared_private": {"type": "boolean"},
+              "topic": {"type": "object"},
+              "purpose": {"type": "object"},
+              "previous_names": {"type": "array"},
+              "num_members": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "new_file",
+      "name": "New File",
+      "description": "Triggered when a file is uploaded",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel ID to monitor for file uploads"
+          },
+          "user": {
+            "type": "string",
+            "description": "User ID to filter files from specific user"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "file_id": {"type": "string"},
+          "user_id": {"type": "string"},
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "created": {"type": "number"},
+              "timestamp": {"type": "number"},
+              "name": {"type": "string"},
+              "title": {"type": "string"},
+              "mimetype": {"type": "string"},
+              "filetype": {"type": "string"},
+              "pretty_type": {"type": "string"},
+              "user": {"type": "string"},
+              "editable": {"type": "boolean"},
+              "size": {"type": "number"},
+              "mode": {"type": "string"},
+              "is_external": {"type": "boolean"},
+              "external_type": {"type": "string"},
+              "is_public": {"type": "boolean"},
+              "public_url_shared": {"type": "boolean"},
+              "display_as_bot": {"type": "boolean"},
+              "username": {"type": "string"},
+              "url_private": {"type": "string"},
+              "url_private_download": {"type": "string"},
+              "permalink": {"type": "string"},
+              "permalink_public": {"type": "string"},
+              "edit_link": {"type": "string"},
+              "preview": {"type": "string"},
+              "preview_highlight": {"type": "string"},
+              "lines": {"type": "number"},
+              "lines_more": {"type": "number"},
+              "preview_is_truncated": {"type": "boolean"},
+              "channels": {"type": "array"},
+              "groups": {"type": "array"},
+              "ims": {"type": "array"},
+              "has_rich_preview": {"type": "boolean"}
+            }
+          }
         }
       }
     },
@@ -460,11 +714,11 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Filter by specific channel"
+            "description": "Channel ID to monitor"
           },
-          "emoji": {
+          "reaction": {
             "type": "string",
-            "description": "Filter by specific emoji"
+            "description": "Specific reaction emoji to monitor"
           }
         },
         "required": [],
@@ -476,178 +730,15 @@
           "type": {"type": "string"},
           "user": {"type": "string"},
           "reaction": {"type": "string"},
-          "item": {"type": "object"},
-          "event_ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "reaction_removed",
-      "name": "Reaction Removed",
-      "description": "Triggered when a reaction is removed from a message",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Filter by specific channel"
+          "item": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string"},
+              "channel": {"type": "string"},
+              "ts": {"type": "string"}
+            }
           },
-          "emoji": {
-            "type": "string",
-            "description": "Filter by specific emoji"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "user": {"type": "string"},
-          "reaction": {"type": "string"},
-          "item": {"type": "object"},
-          "event_ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "user_joined",
-      "name": "User Joined Channel",
-      "description": "Triggered when a user joins a channel",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Filter by specific channel"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "user": {"type": "string"},
-          "channel": {"type": "string"},
-          "ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "user_left",
-      "name": "User Left Channel",
-      "description": "Triggered when a user leaves a channel",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Filter by specific channel"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "user": {"type": "string"},
-          "channel": {"type": "string"},
-          "ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "file_shared",
-      "name": "File Shared",
-      "description": "Triggered when a file is shared",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "channel": {
-            "type": "string",
-            "description": "Filter by specific channel"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "file": {"type": "object"},
-          "user_id": {"type": "string"},
-          "event_ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "channel_created",
-      "name": "Channel Created",
-      "description": "Triggered when a channel is created",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "channel": {"type": "object"},
-          "event_ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "channel_archived",
-      "name": "Channel Archived",
-      "description": "Triggered when a channel is archived",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
-          "event_ts": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "channel_unarchived",
-      "name": "Channel Unarchived",
-      "description": "Triggered when a channel is unarchived",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string"},
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
+          "item_user": {"type": "string"},
           "event_ts": {"type": "string"}
         }
       }

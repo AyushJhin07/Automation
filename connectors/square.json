@@ -1,111 +1,322 @@
 {
   "id": "square",
   "name": "Square",
-  "category": "Payments",
-  "description": "Square integration for automated workflows",
+  "description": "Payment processing and point-of-sale solutions for businesses",
+  "category": "E-commerce",
+  "icon": "square",
+  "color": "#3E4348",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://connect.squareupsandbox.com/oauth2/authorize",
-      "tokenUrl": "https://connect.squareup.com/oauth2/token",
-      "scopes": [
-        "PAYMENTS_READ",
-        "PAYMENTS_WRITE"
-      ]
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Bearer {api_key}"
     }
   },
+  "baseUrl": "https://connect.squareup.com/v2",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Square",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Square",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "PAYMENTS_READ",
-        "PAYMENTS_WRITE"
-      ]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Square",
+      "id": "create_payment",
+      "name": "Create Payment",
+      "description": "Create a new payment",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "description": "The ID of the payment source (card nonce, gift card, etc.)"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Unique string to ensure idempotency"
+          },
+          "amount_money": {
+            "type": "object",
+            "properties": {
+              "amount": {"type": "number", "description": "Amount in smallest currency unit"},
+              "currency": {"type": "string", "description": "Currency code (e.g., USD)"}
+            },
+            "required": ["amount", "currency"],
+            "description": "Payment amount"
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Location ID"
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "External reference ID"
+          },
+          "note": {
+            "type": "string",
+            "description": "Payment note"
+          },
+          "autocomplete": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to complete the payment automatically"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "PAYMENTS_READ",
-        "PAYMENTS_WRITE"
-      ]
+        "required": ["source_id", "idempotency_key", "amount_money"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Square",
+      "id": "get_payment",
+      "name": "Get Payment",
+      "description": "Get details of a payment",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "PAYMENTS_READ",
-        "PAYMENTS_WRITE"
-      ]
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string",
+            "description": "Payment ID"
+          }
+        },
+        "required": ["payment_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_payments",
+      "name": "List Payments",
+      "description": "List payments",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "begin_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time for filtering payments"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End time for filtering payments"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["ASC", "DESC"],
+            "description": "Sort order"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Location ID filter"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_refund",
+      "name": "Create Refund",
+      "description": "Create a refund for a payment",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "description": "Unique string to ensure idempotency"
+          },
+          "amount_money": {
+            "type": "object",
+            "properties": {
+              "amount": {"type": "number"},
+              "currency": {"type": "string"}
+            },
+            "required": ["amount", "currency"],
+            "description": "Refund amount"
+          },
+          "payment_id": {
+            "type": "string",
+            "description": "Payment ID to refund"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for refund"
+          }
+        },
+        "required": ["idempotency_key", "amount_money", "payment_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "given_name": {
+            "type": "string",
+            "description": "Customer's given name"
+          },
+          "family_name": {
+            "type": "string",
+            "description": "Customer's family name"
+          },
+          "company_name": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "email_address": {
+            "type": "string",
+            "format": "email",
+            "description": "Customer email address"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Customer phone number"
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "External reference ID"
+          },
+          "note": {
+            "type": "string",
+            "description": "Note about the customer"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_customer",
+      "name": "Get Customer",
+      "description": "Get customer details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Customer ID"
+          }
+        },
+        "required": ["customer_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a new order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "description": "Unique string to ensure idempotency"
+          },
+          "order": {
+            "type": "object",
+            "properties": {
+              "location_id": {"type": "string"},
+              "reference_id": {"type": "string"},
+              "line_items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "quantity": {"type": "string"},
+                    "base_price_money": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {"type": "number"},
+                        "currency": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "required": ["location_id"],
+            "description": "Order details"
+          }
+        },
+        "required": ["idempotency_key", "order"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "payment_created",
+      "name": "Payment Created",
+      "description": "Triggered when a new payment is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "Location ID to filter payments"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "PAYMENTS_READ",
-        "PAYMENTS_WRITE"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant_id": {"type": "string"},
+          "location_id": {"type": "string"},
+          "type": {"type": "string"},
+          "event_id": {"type": "string"},
+          "created_at": {"type": "string"},
+          "data": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "order_created",
+      "name": "Order Created",
+      "description": "Triggered when a new order is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "Location ID to filter orders"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "PAYMENTS_READ",
-        "PAYMENTS_WRITE"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant_id": {"type": "string"},
+          "location_id": {"type": "string"},
+          "type": {"type": "string"},
+          "event_id": {"type": "string"},
+          "created_at": {"type": "string"},
+          "data": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/locations"
+  }
 }

@@ -1,96 +1,348 @@
 {
   "id": "sageintacct",
   "name": "Sage Intacct",
-  "category": "ERP/Accounting",
-  "description": "Sage Intacct integration for automated workflows",
+  "description": "Sage Intacct cloud-based financial management and accounting software",
+  "category": "Accounting",
+  "icon": "sage",
+  "color": "#A1C739",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "basic",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "read",
-        "write"
-      ]
+      "usernameField": "user_id",
+      "passwordField": "user_password"
     }
   },
+  "baseUrl": "https://api.intacct.com/ia/xml/xmlgw.phtml",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Sage Intacct",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Sage Intacct",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Sage Intacct",
+      "id": "get_customers",
+      "name": "Get Customers",
+      "description": "Get list of customers",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "maxitems": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 100,
+            "description": "Maximum number of customers to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of customers to skip"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Sage Intacct",
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "customerid": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "displaycontact": {
+            "type": "object",
+            "properties": {
+              "contactname": {"type": "string"},
+              "companyname": {"type": "string"},
+              "mailaddress": {
+                "type": "object",
+                "properties": {
+                  "address1": {"type": "string"},
+                  "address2": {"type": "string"},
+                  "city": {"type": "string"},
+                  "state": {"type": "string"},
+                  "zip": {"type": "string"},
+                  "country": {"type": "string"}
+                }
+              },
+              "phone1": {"type": "string"},
+              "email1": {"type": "string", "format": "email"}
+            },
+            "description": "Display contact information"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive"],
+            "default": "active",
+            "description": "Customer status"
+          },
+          "billto": {
+            "type": "object",
+            "properties": {
+              "contactname": {"type": "string"},
+              "companyname": {"type": "string"},
+              "mailaddress": {
+                "type": "object",
+                "properties": {
+                  "address1": {"type": "string"},
+                  "city": {"type": "string"},
+                  "state": {"type": "string"},
+                  "zip": {"type": "string"}
+                }
+              }
+            },
+            "description": "Bill to contact information"
+          },
+          "shipto": {
+            "type": "object",
+            "properties": {
+              "contactname": {"type": "string"},
+              "companyname": {"type": "string"},
+              "mailaddress": {
+                "type": "object",
+                "properties": {
+                  "address1": {"type": "string"},
+                  "city": {"type": "string"},
+                  "state": {"type": "string"},
+                  "zip": {"type": "string"}
+                }
+              }
+            },
+            "description": "Ship to contact information"
+          }
+        },
+        "required": ["customerid", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_vendors",
+      "name": "Get Vendors",
+      "description": "Get list of vendors",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "maxitems": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 100,
+            "description": "Maximum number of vendors to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of vendors to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_invoice",
+      "name": "Create Invoice",
+      "description": "Create a new invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerid": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "datecreated": {
+            "type": "string",
+            "format": "date",
+            "description": "Invoice date"
+          },
+          "termname": {
+            "type": "string",
+            "description": "Payment terms"
+          },
+          "invoiceitems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "glaccountno": {"type": "string"},
+                "amount": {"type": "number"},
+                "memo": {"type": "string"},
+                "locationid": {"type": "string"},
+                "departmentid": {"type": "string"}
+              },
+              "required": ["glaccountno", "amount"]
+            },
+            "description": "Invoice line items"
+          },
+          "description": {
+            "type": "string",
+            "description": "Invoice description"
+          },
+          "externalid": {
+            "type": "string",
+            "description": "External ID"
+          }
+        },
+        "required": ["customerid", "datecreated", "invoiceitems"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_invoices",
+      "name": "Get Invoices",
+      "description": "Get list of invoices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "maxitems": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 100,
+            "description": "Maximum number of invoices to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of invoices to skip"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_bill",
+      "name": "Create Bill",
+      "description": "Create a new bill",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vendorid": {
+            "type": "string",
+            "description": "Vendor ID"
+          },
+          "datecreated": {
+            "type": "string",
+            "format": "date",
+            "description": "Bill date"
+          },
+          "termname": {
+            "type": "string",
+            "description": "Payment terms"
+          },
+          "billitems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "glaccountno": {"type": "string"},
+                "amount": {"type": "number"},
+                "memo": {"type": "string"},
+                "locationid": {"type": "string"},
+                "departmentid": {"type": "string"}
+              },
+              "required": ["glaccountno", "amount"]
+            },
+            "description": "Bill line items"
+          },
+          "description": {
+            "type": "string",
+            "description": "Bill description"
+          }
+        },
+        "required": ["vendorid", "datecreated", "billitems"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_gl_accounts",
+      "name": "Get GL Accounts",
+      "description": "Get chart of accounts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "maxitems": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 100,
+            "description": "Maximum number of accounts to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of accounts to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "invoice_created",
+      "name": "Invoice Created",
+      "description": "Triggered when a new invoice is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customerid": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "recordno": {"type": "string"},
+          "customerid": {"type": "string"},
+          "customername": {"type": "string"},
+          "totalentered": {"type": "number"},
+          "datecreated": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "POST",
+    "endpoint": "/",
+    "body": {
+      "function": "get_list",
+      "object": "customer"
+    }
+  }
 }

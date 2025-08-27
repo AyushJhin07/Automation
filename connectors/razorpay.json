@@ -1,93 +1,237 @@
 {
   "id": "razorpay",
   "name": "Razorpay",
-  "description": "Razorpay integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#3395FF",
+  "description": "Razorpay payment gateway and financial services platform",
+  "category": "Payments",
+  "icon": "razorpay",
+  "color": "#528FF0",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "basic",
+    "config": {
+      "usernameField": "key_id",
+      "passwordField": "key_secret"
+    }
   },
-  "baseUrl": "https://api.razorpay.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.razorpay.com/v1",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Razorpay and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Razorpay",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a new order",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 100,
+            "description": "Amount in smallest currency unit (e.g., paise)"
+          },
+          "currency": {
+            "type": "string",
+            "default": "INR",
+            "description": "Currency code"
+          },
+          "receipt": {
+            "type": "string",
+            "description": "Receipt identifier"
+          },
+          "notes": {
+            "type": "object",
+            "description": "Additional notes"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["amount"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "get_orders",
+      "name": "Get Orders",
+      "description": "Get list of orders",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "number",
+            "description": "Start timestamp"
+          },
+          "to": {
+            "type": "number",
+            "description": "End timestamp"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of orders to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of orders to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_payments",
+      "name": "Get Payments",
+      "description": "Get list of payments",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "number",
+            "description": "Start timestamp"
+          },
+          "to": {
+            "type": "number",
+            "description": "End timestamp"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Number of payments to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of payments to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "capture_payment",
+      "name": "Capture Payment",
+      "description": "Capture an authorized payment",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string",
+            "description": "Payment ID"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 100,
+            "description": "Amount to capture"
+          },
+          "currency": {
+            "type": "string",
+            "default": "INR",
+            "description": "Currency code"
+          }
+        },
+        "required": ["payment_id", "amount"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_refund",
+      "name": "Create Refund",
+      "description": "Create a refund",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string",
+            "description": "Payment ID"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 100,
+            "description": "Amount to refund"
+          },
+          "speed": {
+            "type": "string",
+            "enum": ["normal", "optimum"],
+            "default": "normal",
+            "description": "Refund speed"
+          },
+          "notes": {
+            "type": "object",
+            "description": "Additional notes"
+          },
+          "receipt": {
+            "type": "string",
+            "description": "Receipt identifier"
+          }
+        },
+        "required": ["payment_id"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "payment_captured",
+      "name": "Payment Captured",
+      "description": "Triggered when a payment is captured",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "payment_failed",
+      "name": "Payment Failed",
+      "description": "Triggered when a payment fails",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "status": {"type": "string"},
+          "error_code": {"type": "string"},
+          "error_description": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/payments"
+  }
 }

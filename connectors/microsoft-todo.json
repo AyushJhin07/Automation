@@ -1,141 +1,316 @@
 {
   "id": "microsoft-todo",
   "name": "Microsoft To Do",
-  "description": "Microsoft To Do task management",
+  "description": "Microsoft To Do task management and productivity application",
   "category": "Productivity",
-  "icon": "enterprise",
-  "color": "#2564CF",
+  "icon": "microsoft-todo",
+  "color": "#0078D4",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
-    "config": {}
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": ["https://graph.microsoft.com/Tasks.ReadWrite"]
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://graph.microsoft.com/v1.0/me/todo",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Microsoft To Do and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Microsoft To Do",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Microsoft To Do",
+      "id": "get_task_lists",
+      "name": "Get Task Lists",
+      "description": "Get all task lists",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Microsoft To Do",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Number of lists to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of lists to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "$orderby": {
+            "type": "string",
+            "description": "OData order by expression"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Microsoft To Do",
+      "id": "create_task_list",
+      "name": "Create Task List",
+      "description": "Create a new task list",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Microsoft To Do",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Task list name"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["displayName"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Microsoft To Do",
+      "id": "get_tasks",
+      "name": "Get Tasks",
+      "description": "Get tasks from a list",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Task list ID"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Number of tasks to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of tasks to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "$orderby": {
+            "type": "string",
+            "description": "OData order by expression"
+          }
+        },
+        "required": ["listId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Task list ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "content": {"type": "string"},
+              "contentType": {"type": "string", "enum": ["text", "html"]}
+            },
+            "description": "Task body content"
+          },
+          "dueDateTime": {
+            "type": "object",
+            "properties": {
+              "dateTime": {"type": "string", "format": "date-time"},
+              "timeZone": {"type": "string"}
+            },
+            "description": "Due date and time"
+          },
+          "reminderDateTime": {
+            "type": "object",
+            "properties": {
+              "dateTime": {"type": "string", "format": "date-time"},
+              "timeZone": {"type": "string"}
+            },
+            "description": "Reminder date and time"
+          },
+          "importance": {
+            "type": "string",
+            "enum": ["low", "normal", "high"],
+            "default": "normal",
+            "description": "Task importance"
+          },
+          "categories": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Task categories"
+          }
+        },
+        "required": ["listId", "title"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_task",
+      "name": "Update Task",
+      "description": "Update an existing task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Task list ID"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "content": {"type": "string"},
+              "contentType": {"type": "string", "enum": ["text", "html"]}
+            },
+            "description": "Task body content"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["notStarted", "inProgress", "completed", "waitingOnOthers", "deferred"],
+            "description": "Task status"
+          },
+          "importance": {
+            "type": "string",
+            "enum": ["low", "normal", "high"],
+            "description": "Task importance"
+          },
+          "dueDateTime": {
+            "type": "object",
+            "properties": {
+              "dateTime": {"type": "string", "format": "date-time"},
+              "timeZone": {"type": "string"}
+            },
+            "description": "Due date and time"
+          }
+        },
+        "required": ["listId", "taskId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "complete_task",
+      "name": "Complete Task",
+      "description": "Mark a task as completed",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Task list ID"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task ID"
+          }
+        },
+        "required": ["listId", "taskId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_task",
+      "name": "Delete Task",
+      "description": "Delete a task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Task list ID"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task ID"
+          }
+        },
+        "required": ["listId", "taskId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Microsoft To Do",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "task_created",
+      "name": "Task Created",
+      "description": "Triggered when a new task is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Filter by list ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "status": {"type": "string"},
+          "importance": {"type": "string"},
+          "createdDateTime": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Microsoft To Do",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "task_completed",
+      "name": "Task Completed",
+      "description": "Triggered when a task is completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "description": "Filter by list ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "completedDateTime": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/lists"
+  }
 }

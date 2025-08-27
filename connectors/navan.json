@@ -1,93 +1,251 @@
 {
   "id": "navan",
-  "name": "Navan (TripActions)",
-  "category": "Travel",
-  "description": "Navan (TripActions) integration for automated workflows",
+  "name": "Navan",
+  "description": "Navan travel and expense management platform",
+  "category": "Finance",
+  "icon": "navan",
+  "color": "#6C5CE7",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
     }
   },
+  "baseUrl": "https://api.navan.com/v1",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Navan (TripActions)",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Navan",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Navan (TripActions)",
+      "id": "get_expenses",
+      "name": "Get Expenses",
+      "description": "Get list of expenses",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of expenses to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of expenses to skip"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "PAID"],
+            "description": "Filter by expense status"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter expenses from this date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter expenses until this date"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Navan (TripActions)",
+      "id": "create_expense",
+      "name": "Create Expense",
+      "description": "Create a new expense",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Expense amount"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "merchant": {
+            "type": "string",
+            "description": "Merchant name"
+          },
+          "category": {
+            "type": "string",
+            "description": "Expense category"
+          },
+          "description": {
+            "type": "string",
+            "description": "Expense description"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Expense date"
+          },
+          "receipt_url": {
+            "type": "string",
+            "description": "Receipt image URL"
+          }
+        },
+        "required": ["user_id", "amount", "currency", "merchant", "category"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_trips",
+      "name": "Get Trips",
+      "description": "Get list of trips",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of trips to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of trips to skip"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["REQUESTED", "APPROVED", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+            "description": "Filter by trip status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_trip",
+      "name": "Create Trip",
+      "description": "Create a new trip",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Trip title"
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Trip purpose"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Trip start date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Trip end date"
+          },
+          "destination": {
+            "type": "string",
+            "description": "Trip destination"
+          }
+        },
+        "required": ["user_id", "title", "start_date", "end_date"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of users to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of users to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "expense_submitted",
+      "name": "Expense Submitted",
+      "description": "Triggered when an expense is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "user_id": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

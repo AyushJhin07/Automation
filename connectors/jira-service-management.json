@@ -1,141 +1,602 @@
 {
   "id": "jira-service-management",
   "name": "Jira Service Management",
-  "description": "Atlassian Jira Service Management",
-  "category": "ITSM",
-  "icon": "enterprise",
+  "description": "Atlassian Jira Service Management IT service management platform",
+  "category": "IT Service Management",
+  "icon": "jira",
   "color": "#0052CC",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "basic",
+    "config": {
+      "usernameField": "email",
+      "passwordField": "apiToken"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://your-domain.atlassian.net/rest/servicedeskapi",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Jira Service Management and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Jira Service Management",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Jira Service Management",
+      "id": "get_service_desks",
+      "name": "Get Service Desks",
+      "description": "Get list of service desks",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Jira Service Management",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Jira Service Management",
+      "id": "get_service_desk",
+      "name": "Get Service Desk",
+      "description": "Get service desk details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Jira Service Management",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["serviceDeskId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Jira Service Management",
+      "id": "get_request_types",
+      "name": "Get Request Types",
+      "description": "Get request types for a service desk",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          },
+          "searchQuery": {
+            "type": "string",
+            "description": "Search query to filter request types"
+          }
+        },
+        "required": ["serviceDeskId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_customer_request",
+      "name": "Create Customer Request",
+      "description": "Create a new customer request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID"
+          },
+          "requestTypeId": {
+            "type": "string",
+            "description": "Request type ID"
+          },
+          "requestFieldValues": {
+            "type": "object",
+            "description": "Field values for the request"
+          },
+          "raiseOnBehalfOf": {
+            "type": "string",
+            "description": "Email address to raise request on behalf of"
+          },
+          "requestParticipants": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of participant email addresses"
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["email", "portal", "api"],
+            "default": "api",
+            "description": "Channel through which request was created"
+          }
+        },
+        "required": ["serviceDeskId", "requestTypeId", "requestFieldValues"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_customer_request",
+      "name": "Get Customer Request",
+      "description": "Get customer request details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "expand": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["participant", "status", "sla", "requestType", "serviceDesk", "attachment", "action", "comment"]
+            },
+            "description": "Additional data to include"
+          }
+        },
+        "required": ["issueIdOrKey"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_customer_requests",
+      "name": "Get Customer Requests",
+      "description": "Get list of customer requests",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID filter"
+          },
+          "requestStatus": {
+            "type": "string",
+            "enum": ["OPEN", "WAITING_FOR_SUPPORT", "WAITING_FOR_CUSTOMER", "CLOSED"],
+            "description": "Request status filter"
+          },
+          "requestTypeId": {
+            "type": "string",
+            "description": "Request type ID filter"
+          },
+          "requestOwnership": {
+            "type": "string",
+            "enum": ["OWNED", "PARTICIPATED"],
+            "description": "Request ownership filter"
+          },
+          "searchTerm": {
+            "type": "string",
+            "description": "Search term"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          },
+          "expand": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Additional data to include"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "transition_customer_request",
+      "name": "Transition Customer Request",
+      "description": "Transition customer request status",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "id": {
+            "type": "string",
+            "description": "Transition ID"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment for the transition"
+          },
+          "additionalComment": {
+            "type": "object",
+            "properties": {
+              "body": {"type": "string"},
+              "public": {"type": "boolean"}
+            },
+            "description": "Additional comment details"
+          }
+        },
+        "required": ["issueIdOrKey", "id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_customer_request_comment",
+      "name": "Add Customer Request Comment",
+      "description": "Add comment to customer request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "body": {
+            "type": "string",
+            "description": "Comment body"
+          },
+          "public": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether comment is public"
+          }
+        },
+        "required": ["issueIdOrKey", "body"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_customer_request_comments",
+      "name": "Get Customer Request Comments",
+      "description": "Get comments for customer request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "public": {
+            "type": "boolean",
+            "description": "Filter by public/internal comments"
+          },
+          "internal": {
+            "type": "boolean",
+            "description": "Filter by internal comments"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          }
+        },
+        "required": ["issueIdOrKey"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_attachment",
+      "name": "Add Attachment",
+      "description": "Add attachment to customer request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID"
+          },
+          "fileName": {
+            "type": "string",
+            "description": "File name"
+          },
+          "fileContent": {
+            "type": "string",
+            "description": "Base64 encoded file content"
+          },
+          "public": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether attachment is public"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment for the attachment"
+          }
+        },
+        "required": ["issueIdOrKey", "serviceDeskId", "fileName", "fileContent"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_sla_information",
+      "name": "Get SLA Information",
+      "description": "Get SLA information for customer request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "description": "Issue ID or key"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          }
+        },
+        "required": ["issueIdOrKey"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_organizations",
+      "name": "Get Organizations",
+      "description": "Get list of organizations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Customer email address"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Customer display name"
+          }
+        },
+        "required": ["email", "displayName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_queue",
+      "name": "Get Queue",
+      "description": "Get queue for service desk",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Service desk ID"
+          },
+          "queueId": {
+            "type": "string",
+            "description": "Queue ID"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Starting index"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Number of results to return"
+          }
+        },
+        "required": ["serviceDeskId", "queueId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Jira Service Management",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "customer_request_created",
+      "name": "Customer Request Created",
+      "description": "Triggered when a new customer request is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Filter by service desk ID"
+          },
+          "requestTypeId": {
+            "type": "string",
+            "description": "Filter by request type ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "issueKey": {"type": "string"},
+          "requestTypeId": {"type": "string"},
+          "serviceDeskId": {"type": "string"},
+          "createdDate": {"type": "string"},
+          "reporter": {"type": "object"},
+          "requestFieldValues": {"type": "object"},
+          "currentStatus": {"type": "object"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Jira Service Management",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "customer_request_status_changed",
+      "name": "Customer Request Status Changed",
+      "description": "Triggered when customer request status changes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Filter by service desk ID"
+          },
+          "statusCategory": {
+            "type": "string",
+            "enum": ["OPEN", "WAITING_FOR_SUPPORT", "WAITING_FOR_CUSTOMER", "CLOSED"],
+            "description": "Filter by status category"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "issueKey": {"type": "string"},
+          "currentStatus": {"type": "object"},
+          "previousStatus": {"type": "object"},
+          "transitionDate": {"type": "string"},
+          "serviceDeskId": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "customer_request_commented",
+      "name": "Customer Request Commented",
+      "description": "Triggered when a comment is added to customer request",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Filter by service desk ID"
+          },
+          "publicOnly": {
+            "type": "boolean",
+            "description": "Filter only public comments"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "issueKey": {"type": "string"},
+          "commentId": {"type": "string"},
+          "commentBody": {"type": "string"},
+          "isPublic": {"type": "boolean"},
+          "author": {"type": "object"},
+          "created": {"type": "string"},
+          "serviceDeskId": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "sla_breached",
+      "name": "SLA Breached",
+      "description": "Triggered when an SLA is breached",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "description": "Filter by service desk ID"
+          },
+          "slaName": {
+            "type": "string",
+            "description": "Filter by SLA name"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": {"type": "string"},
+          "issueKey": {"type": "string"},
+          "slaId": {"type": "string"},
+          "slaName": {"type": "string"},
+          "breachTime": {"type": "string"},
+          "remainingTime": {"type": "object"},
+          "serviceDeskId": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/info"
+  }
 }

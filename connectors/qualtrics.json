@@ -1,93 +1,336 @@
 {
   "id": "qualtrics",
   "name": "Qualtrics",
+  "description": "Qualtrics experience management and survey platform",
   "category": "Surveys",
-  "description": "Qualtrics integration for automated workflows",
+  "icon": "qualtrics",
+  "color": "#00B2CA",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "apiKeyLocation": "header",
+      "apiKeyName": "X-API-TOKEN"
     }
   },
+  "baseUrl": "https://your-datacenter.qualtrics.com/API/v3",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Qualtrics",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Qualtrics",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Qualtrics",
+      "id": "get_surveys",
+      "name": "Get Surveys",
+      "description": "Get list of surveys",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of surveys to skip"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of surveys to return"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Qualtrics",
+      "id": "get_survey",
+      "name": "Get Survey",
+      "description": "Get survey details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "description": "Survey ID"
+          }
+        },
+        "required": ["surveyId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_survey",
+      "name": "Create Survey",
+      "description": "Create a new survey",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "SurveyName": {
+            "type": "string",
+            "description": "Survey name"
+          },
+          "Language": {
+            "type": "string",
+            "default": "EN",
+            "description": "Survey language"
+          },
+          "ProjectCategory": {
+            "type": "string",
+            "default": "CORE",
+            "description": "Project category"
+          }
+        },
+        "required": ["SurveyName"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_responses",
+      "name": "Get Responses",
+      "description": "Get survey responses",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "skipToken": {
+            "type": "string",
+            "description": "Pagination token"
+          },
+          "useLabels": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use labels instead of values"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2500,
+            "default": 100,
+            "description": "Number of responses to return"
+          },
+          "includedQuestionIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Include specific question IDs"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start date filter"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End date filter"
+          }
+        },
+        "required": ["surveyId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_distribution",
+      "name": "Create Distribution",
+      "description": "Create a distribution for sending surveys",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "linkType": {
+            "type": "string",
+            "enum": ["Individual", "Multiple", "Anonymous"],
+            "description": "Link type"
+          },
+          "description": {
+            "type": "string",
+            "description": "Distribution description"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["CreateDistribution"],
+            "default": "CreateDistribution",
+            "description": "Action type"
+          }
+        },
+        "required": ["surveyId", "linkType"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contacts",
+      "name": "Get Contacts",
+      "description": "Get contacts from directory",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directoryId": {
+            "type": "string",
+            "description": "Directory ID"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of contacts to skip"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of contacts to return"
+          }
+        },
+        "required": ["directoryId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directoryId": {
+            "type": "string",
+            "description": "Directory ID"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language preference"
+          },
+          "unsubscribed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Unsubscribed status"
+          },
+          "embeddedData": {
+            "type": "object",
+            "description": "Additional embedded data"
+          }
+        },
+        "required": ["directoryId", "email"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_survey",
+      "name": "Send Survey",
+      "description": "Send survey to contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "description": "Survey ID"
+          },
+          "sendDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Send date (optional, defaults to now)"
+          },
+          "fromEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "From email address"
+          },
+          "fromName": {
+            "type": "string",
+            "description": "From name"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "messageId": {
+            "type": "string",
+            "description": "Message template ID"
+          },
+          "mailingListId": {
+            "type": "string",
+            "description": "Mailing list ID"
+          },
+          "contactId": {
+            "type": "string",
+            "description": "Individual contact ID"
+          },
+          "embeddedData": {
+            "type": "object",
+            "description": "Embedded data"
+          }
+        },
+        "required": ["surveyId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "response_created",
+      "name": "Response Created",
+      "description": "Triggered when a new survey response is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "surveyId": {
+            "type": "string",
+            "description": "Filter by survey ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "responseId": {"type": "string"},
+          "surveyId": {"type": "string"},
+          "ipAddress": {"type": "string"},
+          "progress": {"type": "number"},
+          "duration": {"type": "number"},
+          "finished": {"type": "boolean"},
+          "recordedDate": {"type": "string"},
+          "responses": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/whoami"
+  }
 }

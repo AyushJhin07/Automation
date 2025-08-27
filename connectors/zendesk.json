@@ -1,33 +1,30 @@
 {
   "id": "zendesk",
   "name": "Zendesk",
-  "description": "Customer service and engagement platform",
+  "description": "Customer service platform for support ticket management",
   "category": "Customer Support",
-  "icon": "placeholder",
-  "color": "#999999",
+  "icon": "zendesk",
+  "color": "#03363D",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Basic {api_key}"
+    }
   },
   "baseUrl": "https://{subdomain}.zendesk.com/api/v2",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Zendesk and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Zendesk",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -35,32 +32,77 @@
       "name": "Create Ticket",
       "description": "Create a new support ticket",
       "parameters": {
-        "subject": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "object",
+            "properties": {
+              "subject": {"type": "string"},
+              "comment": {
+                "type": "object",
+                "properties": {
+                  "body": {"type": "string"},
+                  "html_body": {"type": "string"},
+                  "public": {"type": "boolean", "default": true}
+                },
+                "required": ["body"]
+              },
+              "requester": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "email": {"type": "string", "format": "email"}
+                }
+              },
+              "submitter_id": {"type": "number"},
+              "assignee_id": {"type": "number"},
+              "group_id": {"type": "number"},
+              "collaborator_ids": {"type": "array", "items": {"type": "number"}},
+              "follower_ids": {"type": "array", "items": {"type": "number"}},
+              "email_cc_ids": {"type": "array", "items": {"type": "number"}},
+              "organization_id": {"type": "number"},
+              "external_id": {"type": "string"},
+              "type": {"type": "string", "enum": ["problem", "incident", "question", "task"]},
+              "priority": {"type": "string", "enum": ["urgent", "high", "normal", "low"]},
+              "status": {"type": "string", "enum": ["new", "open", "pending", "hold", "solved", "closed"]},
+              "recipient": {"type": "string"},
+              "requester_id": {"type": "number"},
+              "brand_id": {"type": "number"},
+              "due_at": {"type": "string", "format": "date-time"},
+              "ticket_form_id": {"type": "number"},
+              "is_public": {"type": "boolean", "default": true},
+              "tags": {"type": "array", "items": {"type": "string"}},
+              "custom_fields": {"type": "array", "items": {"type": "object"}},
+              "via": {"type": "object"},
+              "problem_id": {"type": "number"},
+              "forum_topic_id": {"type": "number"}
+            },
+            "required": ["subject", "comment"],
+            "additionalProperties": false
+          }
         },
-        "comment": {
-          "type": "object",
-          "required": true
+        "required": ["ticket"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_ticket",
+      "name": "Get Ticket",
+      "description": "Get ticket details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Ticket ID"
+          },
+          "include": {
+            "type": "string",
+            "description": "Related objects to include (e.g., users, groups, organizations)"
+          }
         },
-        "priority": {
-          "type": "string",
-          "enum": [
-            "low",
-            "normal",
-            "high",
-            "urgent"
-          ]
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "problem",
-            "incident",
-            "question",
-            "task"
-          ]
-        }
+        "required": ["id"],
+        "additionalProperties": false
       }
     },
     {
@@ -68,24 +110,143 @@
       "name": "Update Ticket",
       "description": "Update an existing ticket",
       "parameters": {
-        "ticket_id": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Ticket ID"
+          },
+          "ticket": {
+            "type": "object",
+            "properties": {
+              "subject": {"type": "string"},
+              "comment": {
+                "type": "object",
+                "properties": {
+                  "body": {"type": "string"},
+                  "html_body": {"type": "string"},
+                  "public": {"type": "boolean", "default": true},
+                  "author_id": {"type": "number"}
+                }
+              },
+              "assignee_id": {"type": "number"},
+              "group_id": {"type": "number"},
+              "collaborator_ids": {"type": "array", "items": {"type": "number"}},
+              "follower_ids": {"type": "array", "items": {"type": "number"}},
+              "email_cc_ids": {"type": "array", "items": {"type": "number"}},
+              "organization_id": {"type": "number"},
+              "external_id": {"type": "string"},
+              "type": {"type": "string", "enum": ["problem", "incident", "question", "task"]},
+              "priority": {"type": "string", "enum": ["urgent", "high", "normal", "low"]},
+              "status": {"type": "string", "enum": ["new", "open", "pending", "hold", "solved", "closed"]},
+              "due_at": {"type": "string", "format": "date-time"},
+              "tags": {"type": "array", "items": {"type": "string"}},
+              "custom_fields": {"type": "array", "items": {"type": "object"}},
+              "problem_id": {"type": "number"},
+              "additional_collaborators": {"type": "array", "items": {"type": "object"}},
+              "safe_update": {"type": "boolean", "default": false}
+            }
+          }
         },
-        "status": {
-          "type": "string",
-          "enum": [
-            "new",
-            "open",
-            "pending",
-            "hold",
-            "solved",
-            "closed"
-          ]
+        "required": ["id", "ticket"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_ticket",
+      "name": "Delete Ticket",
+      "description": "Delete a ticket",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Ticket ID"
+          }
         },
-        "comment": {
-          "type": "object"
-        }
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tickets",
+      "name": "List Tickets",
+      "description": "List tickets with optional filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sort_by": {
+            "type": "string",
+            "enum": ["assignee", "assignee.name", "created_at", "group", "id", "locale", "requester", "requester.name", "status", "subject", "updated_at"],
+            "description": "Sort field"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "asc",
+            "description": "Sort order"
+          },
+          "include": {
+            "type": "string",
+            "description": "Related objects to include"
+          },
+          "page[size]": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of tickets per page"
+          },
+          "page[after]": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "page[before]": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_tickets",
+      "name": "Search Tickets",
+      "description": "Search tickets using query parameters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query (e.g., 'type:ticket status:open')"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": ["created_at", "updated_at", "priority", "status", "ticket_type"],
+            "description": "Sort field"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort order"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 15,
+            "description": "Number of results per page"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Page number"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
       }
     },
     {
@@ -93,23 +254,164 @@
       "name": "Create User",
       "description": "Create a new user",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "alias": {"type": "string"},
+              "active": {"type": "boolean", "default": true},
+              "verified": {"type": "boolean", "default": false},
+              "shared": {"type": "boolean", "default": false},
+              "shared_agent": {"type": "boolean", "default": false},
+              "locale": {"type": "string"},
+              "locale_id": {"type": "number"},
+              "time_zone": {"type": "string"},
+              "last_login_at": {"type": "string", "format": "date-time"},
+              "phone": {"type": "string"},
+              "shared_phone_number": {"type": "string"},
+              "photo": {"type": "object"},
+              "role_type": {"type": "number"},
+              "role": {"type": "string", "enum": ["end-user", "agent", "admin"]},
+              "custom_role_id": {"type": "number"},
+              "moderator": {"type": "boolean", "default": false},
+              "ticket_restriction": {"type": "string", "enum": ["assigned", "groups", "organization", "requested", "none"]},
+              "only_private_comments": {"type": "boolean", "default": false},
+              "tags": {"type": "array", "items": {"type": "string"}},
+              "details": {"type": "string"},
+              "notes": {"type": "string"},
+              "organization_id": {"type": "number"},
+              "default_group_id": {"type": "number"},
+              "signature": {"type": "string"},
+              "user_fields": {"type": "object"},
+              "external_id": {"type": "string"}
+            },
+            "required": ["name", "email"],
+            "additionalProperties": false
+          }
         },
-        "email": {
-          "type": "string",
-          "required": true
+        "required": ["user"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "User ID"
+          },
+          "include": {
+            "type": "string",
+            "description": "Related objects to include"
+          }
         },
-        "role": {
-          "type": "string",
-          "enum": [
-            "end-user",
-            "agent",
-            "admin"
-          ],
-          "default": "end-user"
-        }
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_user",
+      "name": "Update User",
+      "description": "Update user details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "User ID"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "alias": {"type": "string"},
+              "active": {"type": "boolean"},
+              "verified": {"type": "boolean"},
+              "shared": {"type": "boolean"},
+              "shared_agent": {"type": "boolean"},
+              "locale": {"type": "string"},
+              "locale_id": {"type": "number"},
+              "time_zone": {"type": "string"},
+              "phone": {"type": "string"},
+              "role": {"type": "string", "enum": ["end-user", "agent", "admin"]},
+              "custom_role_id": {"type": "number"},
+              "moderator": {"type": "boolean"},
+              "ticket_restriction": {"type": "string", "enum": ["assigned", "groups", "organization", "requested", "none"]},
+              "only_private_comments": {"type": "boolean"},
+              "tags": {"type": "array", "items": {"type": "string"}},
+              "details": {"type": "string"},
+              "notes": {"type": "string"},
+              "organization_id": {"type": "number"},
+              "default_group_id": {"type": "number"},
+              "signature": {"type": "string"},
+              "user_fields": {"type": "object"},
+              "external_id": {"type": "string"}
+            }
+          }
+        },
+        "required": ["id", "user"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List users with optional filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["end-user", "agent", "admin"],
+            "description": "Filter by user role"
+          },
+          "role[]": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["end-user", "agent", "admin"]},
+            "description": "Filter by multiple roles"
+          },
+          "permission_set": {
+            "type": "number",
+            "description": "Filter by permission set ID"
+          },
+          "external_id": {
+            "type": "string",
+            "description": "Filter by external ID"
+          },
+          "page[size]": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of users per page"
+          },
+          "page[after]": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "page[before]": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort criteria"
+          },
+          "include": {
+            "type": "string",
+            "description": "Related objects to include"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
@@ -117,16 +419,153 @@
     {
       "id": "ticket_created",
       "name": "Ticket Created",
-      "description": "Triggered when a ticket is created",
-      "parameters": {},
-      "webhookSupport": true
+      "description": "Triggered when a new ticket is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "number",
+            "description": "Filter by assignee ID"
+          },
+          "group_id": {
+            "type": "number",
+            "description": "Filter by group ID"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "normal", "low"],
+            "description": "Filter by priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["new", "open", "pending", "hold", "solved", "closed"],
+            "description": "Filter by status"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["problem", "incident", "question", "task"],
+            "description": "Filter by ticket type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "number"},
+              "url": {"type": "string"},
+              "external_id": {"type": "string"},
+              "created_at": {"type": "string"},
+              "updated_at": {"type": "string"},
+              "type": {"type": "string"},
+              "subject": {"type": "string"},
+              "raw_subject": {"type": "string"},
+              "description": {"type": "string"},
+              "priority": {"type": "string"},
+              "status": {"type": "string"},
+              "recipient": {"type": "string"},
+              "requester_id": {"type": "number"},
+              "submitter_id": {"type": "number"},
+              "assignee_id": {"type": "number"},
+              "organization_id": {"type": "number"},
+              "group_id": {"type": "number"},
+              "collaborator_ids": {"type": "array"},
+              "follower_ids": {"type": "array"},
+              "email_cc_ids": {"type": "array"},
+              "forum_topic_id": {"type": "number"},
+              "problem_id": {"type": "number"},
+              "has_incidents": {"type": "boolean"},
+              "is_public": {"type": "boolean"},
+              "due_at": {"type": "string"},
+              "tags": {"type": "array"},
+              "custom_fields": {"type": "array"},
+              "satisfaction_rating": {"type": "object"},
+              "sharing_agreement_ids": {"type": "array"},
+              "fields": {"type": "array"},
+              "followup_ids": {"type": "array"},
+              "ticket_form_id": {"type": "number"},
+              "brand_id": {"type": "number"},
+              "allow_channelback": {"type": "boolean"},
+              "allow_attachments": {"type": "boolean"}
+            }
+          }
+        }
+      }
     },
     {
-      "id": "ticket_solved",
-      "name": "Ticket Solved",
-      "description": "Triggered when a ticket is marked as solved",
-      "parameters": {},
-      "webhookSupport": true
+      "id": "ticket_updated",
+      "name": "Ticket Updated",
+      "description": "Triggered when a ticket is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "number",
+            "description": "Filter by assignee ID"
+          },
+          "group_id": {
+            "type": "number",
+            "description": "Filter by group ID"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "normal", "low"],
+            "description": "Filter by priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["new", "open", "pending", "hold", "solved", "closed"],
+            "description": "Filter by status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ticket": {"type": "object"},
+          "audit": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "user_created",
+      "name": "User Created",
+      "description": "Triggered when a new user is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["end-user", "agent", "admin"],
+            "description": "Filter by user role"
+          },
+          "organization_id": {
+            "type": "number",
+            "description": "Filter by organization ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "user": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/account/settings.json"
+  }
 }

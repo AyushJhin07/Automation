@@ -1,141 +1,492 @@
 {
   "id": "opsgenie",
   "name": "Opsgenie",
-  "description": "Opsgenie incident management platform",
-  "category": "Incident Management",
-  "icon": "enterprise",
-  "color": "#1B2A4E",
+  "description": "Atlassian Opsgenie incident management and alerting platform",
+  "category": "Monitoring",
+  "icon": "opsgenie",
+  "color": "#172B4D",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "GenieKey"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.opsgenie.com/v2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Opsgenie and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Opsgenie",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Opsgenie",
+      "id": "create_alert",
+      "name": "Create Alert",
+      "description": "Create a new alert",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Opsgenie",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Alert message"
+          },
+          "alias": {
+            "type": "string",
+            "description": "Alert alias for deduplication"
+          },
+          "description": {
+            "type": "string",
+            "description": "Alert description"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "default": "P3",
+            "description": "Alert priority"
+          },
+          "source": {
+            "type": "string",
+            "description": "Alert source"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Alert tags"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional alert details"
+          },
+          "entity": {
+            "type": "string",
+            "description": "Entity related to alert"
+          },
+          "user": {
+            "type": "string",
+            "description": "User creating the alert"
+          },
+          "note": {
+            "type": "string",
+            "description": "Additional note"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": ["message"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from Opsgenie",
+      "id": "get_alert",
+      "name": "Get Alert",
+      "description": "Get alert details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from Opsgenie",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "Alert ID or tiny ID"
+          },
+          "identifierType": {
+            "type": "string",
+            "enum": ["id", "tiny", "alias"],
+            "default": "id",
+            "description": "Identifier type"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["identifier"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from Opsgenie",
+      "id": "close_alert",
+      "name": "Close Alert",
+      "description": "Close an alert",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "Alert ID or tiny ID"
+          },
+          "identifierType": {
+            "type": "string",
+            "enum": ["id", "tiny", "alias"],
+            "default": "id",
+            "description": "Identifier type"
+          },
+          "user": {
+            "type": "string",
+            "description": "User closing the alert"
+          },
+          "note": {
+            "type": "string",
+            "description": "Close note"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source of the close action"
+          }
+        },
+        "required": ["identifier"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "acknowledge_alert",
+      "name": "Acknowledge Alert",
+      "description": "Acknowledge an alert",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "Alert ID or tiny ID"
+          },
+          "identifierType": {
+            "type": "string",
+            "enum": ["id", "tiny", "alias"],
+            "default": "id",
+            "description": "Identifier type"
+          },
+          "user": {
+            "type": "string",
+            "description": "User acknowledging the alert"
+          },
+          "note": {
+            "type": "string",
+            "description": "Acknowledge note"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source of the acknowledge action"
+          }
+        },
+        "required": ["identifier"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_alerts",
+      "name": "List Alerts",
+      "description": "List alerts with filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "searchIdentifier": {
+            "type": "string",
+            "description": "Search by identifier"
+          },
+          "searchIdentifierType": {
+            "type": "string",
+            "enum": ["id", "tiny", "alias"],
+            "description": "Search identifier type"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of alerts to skip"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of alerts to return"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["createdAt", "updatedAt", "tinyId", "alias", "message", "status", "acknowledged", "isSeen", "snoozed"],
+            "default": "createdAt",
+            "description": "Sort field"
+          },
+          "order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort order"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_note_to_alert",
+      "name": "Add Note to Alert",
+      "description": "Add a note to an alert",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "Alert ID or tiny ID"
+          },
+          "identifierType": {
+            "type": "string",
+            "enum": ["id", "tiny", "alias"],
+            "default": "id",
+            "description": "Identifier type"
+          },
+          "note": {
+            "type": "string",
+            "description": "Note content"
+          },
+          "user": {
+            "type": "string",
+            "description": "User adding the note"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source of the note"
+          }
+        },
+        "required": ["identifier", "note"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "assign_alert",
+      "name": "Assign Alert",
+      "description": "Assign an alert to a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "Alert ID or tiny ID"
+          },
+          "identifierType": {
+            "type": "string",
+            "enum": ["id", "tiny", "alias"],
+            "default": "id",
+            "description": "Identifier type"
+          },
+          "owner": {
+            "type": "object",
+            "properties": {
+              "username": {"type": "string"},
+              "id": {"type": "string"}
+            },
+            "description": "Owner to assign alert to"
+          },
+          "user": {
+            "type": "string",
+            "description": "User performing the assignment"
+          },
+          "note": {
+            "type": "string",
+            "description": "Assignment note"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source of the assignment"
+          }
+        },
+        "required": ["identifier", "owner"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_teams",
+      "name": "Get Teams",
+      "description": "Get list of teams",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of teams to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of teams to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_schedules",
+      "name": "Get Schedules",
+      "description": "Get list of schedules",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of schedules to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of schedules to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_on_calls",
+      "name": "Get On-Calls",
+      "description": "Get current on-call information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scheduleIdentifier": {
+            "type": "string",
+            "description": "Schedule ID or name"
+          },
+          "scheduleIdentifierType": {
+            "type": "string",
+            "enum": ["id", "name"],
+            "default": "id",
+            "description": "Schedule identifier type"
+          },
+          "flat": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return flat list of on-calls"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date to check on-calls for"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in Opsgenie",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "alert_created",
+      "name": "Alert Created",
+      "description": "Triggered when a new alert is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "description": "Filter by priority"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by tags"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "tinyId": {"type": "string"},
+          "alias": {"type": "string"},
+          "message": {"type": "string"},
+          "status": {"type": "string"},
+          "acknowledged": {"type": "boolean"},
+          "isSeen": {"type": "boolean"},
+          "tags": {"type": "array"},
+          "snoozed": {"type": "boolean"},
+          "count": {"type": "number"},
+          "lastOccurredAt": {"type": "string"},
+          "createdAt": {"type": "string"},
+          "updatedAt": {"type": "string"},
+          "source": {"type": "string"},
+          "owner": {"type": "string"},
+          "priority": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in Opsgenie",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "alert_acknowledged",
+      "name": "Alert Acknowledged",
+      "description": "Triggered when an alert is acknowledged",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "description": "Filter by priority"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "tinyId": {"type": "string"},
+          "alias": {"type": "string"},
+          "message": {"type": "string"},
+          "acknowledgedBy": {"type": "string"},
+          "acknowledgedAt": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "alert_closed",
+      "name": "Alert Closed",
+      "description": "Triggered when an alert is closed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "description": "Filter by priority"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "tinyId": {"type": "string"},
+          "alias": {"type": "string"},
+          "message": {"type": "string"},
+          "closedBy": {"type": "string"},
+          "closedAt": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/account"
+  }
 }

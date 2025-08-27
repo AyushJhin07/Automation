@@ -1,183 +1,585 @@
 {
   "id": "snowflake",
   "name": "Snowflake",
-  "description": "Snowflake cloud data platform",
-  "category": "Data Analytics",
-  "icon": "enterprise",
+  "description": "Cloud data platform for data warehousing, data lakes, data engineering, data science, and secure data sharing",
+  "category": "Data & Analytics",
+  "icon": "snowflake",
   "color": "#29B5E8",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://{account}.snowflakecomputing.com/oauth/authorize",
-      "tokenUrl": "https://{account}.snowflakecomputing.com/oauth/token-request",
-      "scopes": [
-        "session:role:any"
-      ]
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Bearer {api_key}"
     }
   },
-  "baseUrl": "https://{account}.snowflakecomputing.com/api/v2",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://{account_identifier}.snowflakecomputing.com/api/v2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Snowflake and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Snowflake",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
       "id": "execute_query",
       "name": "Execute Query",
-      "description": "Execute a SQL query in Snowflake",
+      "description": "Execute a SQL query",
       "parameters": {
-        "sql": {
-          "type": "string",
-          "required": true,
-          "description": "SQL query to execute"
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string",
+            "description": "SQL query to execute"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "warehouse": {
+            "type": "string",
+            "description": "Warehouse name"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role to use for the query"
+          },
+          "timeout": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 3600,
+            "default": 30,
+            "description": "Query timeout in seconds"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Query parameters for parameterized queries"
+          }
         },
-        "warehouse": {
-          "type": "string",
-          "required": false,
-          "description": "Warehouse to use"
-        },
-        "database": {
-          "type": "string",
-          "required": false,
-          "description": "Database to use"
-        },
-        "schema": {
-          "type": "string",
-          "required": false,
-          "description": "Schema to use"
-        },
-        "timeout": {
-          "type": "number",
-          "required": false,
-          "description": "Query timeout in seconds",
-          "default": 300
-        }
-      },
-      "requiredScopes": [
-        "query:execute"
-      ]
+        "required": ["sql"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "copy_into_table",
-      "name": "Copy Into Table",
-      "description": "Load data into a Snowflake table",
+      "id": "create_table",
+      "name": "Create Table",
+      "description": "Create a new table",
       "parameters": {
-        "table_name": {
-          "type": "string",
-          "required": true,
-          "description": "Target table name"
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "type": {"type": "string"},
+                "nullable": {"type": "boolean", "default": true},
+                "default": {"type": "string"},
+                "comment": {"type": "string"}
+              },
+              "required": ["name", "type"]
+            },
+            "description": "Table columns definition"
+          },
+          "cluster_by": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Clustering keys"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Table comment"
+          }
         },
-        "stage_location": {
-          "type": "string",
-          "required": true,
-          "description": "Stage location of files"
+        "required": ["table_name", "columns"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "insert_data",
+      "name": "Insert Data",
+      "description": "Insert data into a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "data": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Array of objects representing rows to insert"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to overwrite existing data"
+          }
         },
-        "file_format": {
-          "type": "string",
-          "required": false,
-          "description": "File format name"
+        "required": ["table_name", "data"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "load_data_from_stage",
+      "name": "Load Data from Stage",
+      "description": "Load data from a stage into a table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Target table name"
+          },
+          "stage_name": {
+            "type": "string",
+            "description": "Stage name"
+          },
+          "file_pattern": {
+            "type": "string",
+            "description": "File pattern to match"
+          },
+          "file_format": {
+            "type": "string",
+            "description": "File format name or options"
+          },
+          "copy_options": {
+            "type": "object",
+            "description": "COPY command options"
+          }
         },
-        "copy_options": {
-          "type": "object",
-          "required": false,
-          "description": "Additional copy options"
-        }
-      },
-      "requiredScopes": [
-        "data:write"
-      ]
+        "required": ["table_name", "stage_name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_stage",
       "name": "Create Stage",
-      "description": "Create a new stage for data loading",
+      "description": "Create a new stage",
       "parameters": {
-        "stage_name": {
-          "type": "string",
-          "required": true,
-          "description": "Stage name"
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "stage_name": {
+            "type": "string",
+            "description": "Stage name"
+          },
+          "stage_type": {
+            "type": "string",
+            "enum": ["internal", "external"],
+            "default": "internal",
+            "description": "Stage type"
+          },
+          "url": {
+            "type": "string",
+            "description": "External stage URL (for external stages)"
+          },
+          "credentials": {
+            "type": "object",
+            "description": "Stage credentials (for external stages)"
+          },
+          "file_format": {
+            "type": "string",
+            "description": "Default file format"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Stage comment"
+          }
         },
-        "stage_type": {
-          "type": "string",
-          "required": true,
-          "description": "Stage type",
-          "options": [
-            "internal",
-            "external"
-          ]
-        },
-        "location": {
-          "type": "string",
-          "required": false,
-          "description": "External stage location"
-        },
-        "credentials": {
-          "type": "object",
-          "required": false,
-          "description": "Cloud credentials"
-        }
-      },
-      "requiredScopes": [
-        "stage:create"
-      ]
+        "required": ["stage_name"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_table_data",
-      "name": "Get Table Data",
-      "description": "Retrieve data from a Snowflake table",
+      "id": "list_databases",
+      "name": "List Databases",
+      "description": "List all databases",
       "parameters": {
-        "table_name": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Pattern to filter database names"
+          }
         },
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of rows to return",
-          "default": 1000
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_schemas",
+      "name": "List Schemas",
+      "description": "List schemas in a database",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Pattern to filter schema names"
+          }
         },
-        "where_clause": {
-          "type": "string",
-          "required": false,
-          "description": "WHERE clause filter"
+        "required": ["database"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tables",
+      "name": "List Tables",
+      "description": "List tables in a schema",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Pattern to filter table names"
+          }
         },
-        "order_by": {
-          "type": "string",
-          "required": false,
-          "description": "ORDER BY clause"
-        }
-      },
-      "requiredScopes": [
-        "data:read"
-      ]
+        "required": ["database", "schema"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "describe_table",
+      "name": "Describe Table",
+      "description": "Get table schema information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name"
+          }
+        },
+        "required": ["table_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_warehouse",
+      "name": "Create Warehouse",
+      "description": "Create a new warehouse",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_name": {
+            "type": "string",
+            "description": "Warehouse name"
+          },
+          "warehouse_size": {
+            "type": "string",
+            "enum": ["X-SMALL", "SMALL", "MEDIUM", "LARGE", "X-LARGE", "2X-LARGE", "3X-LARGE", "4X-LARGE"],
+            "default": "X-SMALL",
+            "description": "Warehouse size"
+          },
+          "auto_suspend": {
+            "type": "number",
+            "minimum": 60,
+            "default": 600,
+            "description": "Auto-suspend time in seconds"
+          },
+          "auto_resume": {
+            "type": "boolean",
+            "default": true,
+            "description": "Auto-resume setting"
+          },
+          "initially_suspended": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to create the warehouse in suspended state"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Warehouse comment"
+          }
+        },
+        "required": ["warehouse_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_warehouses",
+      "name": "List Warehouses",
+      "description": "List all warehouses",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Pattern to filter warehouse names"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create a new user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "User name"
+          },
+          "password": {
+            "type": "string",
+            "description": "User password"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "default_warehouse": {
+            "type": "string",
+            "description": "Default warehouse"
+          },
+          "default_namespace": {
+            "type": "string",
+            "description": "Default namespace (database.schema)"
+          },
+          "default_role": {
+            "type": "string",
+            "description": "Default role"
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether user must change password on first login"
+          },
+          "disabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether user is disabled"
+          },
+          "comment": {
+            "type": "string",
+            "description": "User comment"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "grant_role",
+      "name": "Grant Role",
+      "description": "Grant a role to a user or another role",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Role to grant"
+          },
+          "to_user": {
+            "type": "string",
+            "description": "User to grant role to"
+          },
+          "to_role": {
+            "type": "string",
+            "description": "Role to grant role to"
+          }
+        },
+        "required": ["role"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "task_completed",
-      "name": "Task Completed",
-      "description": "Triggered when a Snowflake task completes",
-      "parameters": {},
-      "requiredScopes": [
-        "task:read"
-      ]
+      "id": "data_loaded",
+      "name": "Data Loaded",
+      "description": "Triggered when data is loaded into a table",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database to monitor"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema to monitor"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "database": {"type": "string"},
+          "schema": {"type": "string"},
+          "table_name": {"type": "string"},
+          "rows_loaded": {"type": "number"},
+          "rows_parsed": {"type": "number"},
+          "load_time": {"type": "string"},
+          "status": {"type": "string"},
+          "error_count": {"type": "number"},
+          "first_error": {"type": "string"},
+          "file_name": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "query_completed",
+      "name": "Query Completed",
+      "description": "Triggered when a query completes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database to monitor"
+          },
+          "warehouse": {
+            "type": "string",
+            "description": "Warehouse to monitor"
+          },
+          "user_name": {
+            "type": "string",
+            "description": "User to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query_id": {"type": "string"},
+          "query_text": {"type": "string"},
+          "user_name": {"type": "string"},
+          "role_name": {"type": "string"},
+          "warehouse_name": {"type": "string"},
+          "database_name": {"type": "string"},
+          "schema_name": {"type": "string"},
+          "query_type": {"type": "string"},
+          "session_id": {"type": "string"},
+          "start_time": {"type": "string"},
+          "end_time": {"type": "string"},
+          "total_elapsed_time": {"type": "number"},
+          "bytes_scanned": {"type": "number"},
+          "rows_produced": {"type": "number"},
+          "compilation_time": {"type": "number"},
+          "execution_time": {"type": "number"},
+          "queued_provisioning_time": {"type": "number"},
+          "queued_repair_time": {"type": "number"},
+          "queued_overload_time": {"type": "number"},
+          "transaction_blocked_time": {"type": "number"},
+          "outbound_data_transfer_cloud": {"type": "string"},
+          "outbound_data_transfer_region": {"type": "string"},
+          "outbound_data_transfer_bytes": {"type": "number"},
+          "inbound_data_transfer_cloud": {"type": "string"},
+          "inbound_data_transfer_region": {"type": "string"},
+          "inbound_data_transfer_bytes": {"type": "number"},
+          "credits_used_cloud_services": {"type": "number"},
+          "release_version": {"type": "string"},
+          "external_function_total_invocations": {"type": "number"},
+          "external_function_total_sent_rows": {"type": "number"},
+          "external_function_total_received_rows": {"type": "number"},
+          "external_function_total_sent_bytes": {"type": "number"},
+          "external_function_total_received_bytes": {"type": "number"},
+          "query_load_percent": {"type": "number"},
+          "is_client_generated_statement": {"type": "boolean"},
+          "query_acceleration_bytes_scanned": {"type": "number"},
+          "query_acceleration_partitions_scanned": {"type": "number"},
+          "query_acceleration_upper_limit_scale_factor": {"type": "number"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/accounts/current"
+  }
 }

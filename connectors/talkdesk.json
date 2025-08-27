@@ -1,0 +1,605 @@
+{
+  "id": "talkdesk",
+  "name": "Talkdesk",
+  "description": "Cloud-based contact center software solution",
+  "category": "Customer Support",
+  "icon": "talkdesk",
+  "color": "#00D4AA",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Bearer {api_key}"
+    }
+  },
+  "baseUrl": "https://api.talkdeskapp.com",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Talkdesk",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Contact name"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Contact phone number"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Contact email address"
+          },
+          "company": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Contact tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_contact",
+      "name": "Update Contact",
+      "description": "Update an existing contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "description": "Contact ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Contact name"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Contact phone number"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Contact email address"
+          },
+          "company": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Contact tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          }
+        },
+        "required": ["contact_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_contact",
+      "name": "Get Contact",
+      "description": "Get contact details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "description": "Contact ID"
+          }
+        },
+        "required": ["contact_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_contacts",
+      "name": "List Contacts",
+      "description": "List all contacts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of contacts per page"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Filter by tag"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_call",
+      "name": "Create Call",
+      "description": "Create a new outbound call",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Phone number to call"
+          },
+          "from": {
+            "type": "string",
+            "description": "Caller ID phone number"
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "Agent ID to handle the call"
+          },
+          "contact_id": {
+            "type": "string",
+            "description": "Associated contact ID"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values for the call"
+          }
+        },
+        "required": ["to", "agent_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_call",
+      "name": "Get Call",
+      "description": "Get call details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "call_id": {
+            "type": "string",
+            "description": "Call ID"
+          }
+        },
+        "required": ["call_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_calls",
+      "name": "List Calls",
+      "description": "List calls with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of calls per page"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date filter (YYYY-MM-DD)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date filter (YYYY-MM-DD)"
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "Filter by agent ID"
+          },
+          "contact_id": {
+            "type": "string",
+            "description": "Filter by contact ID"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["inbound", "outbound"],
+            "description": "Call direction filter"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "missed", "abandoned", "failed"],
+            "description": "Call status filter"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_ticket",
+      "name": "Create Ticket",
+      "description": "Create a new support ticket",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Ticket subject"
+          },
+          "description": {
+            "type": "string",
+            "description": "Ticket description"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "default": "medium",
+            "description": "Ticket priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "pending", "resolved", "closed"],
+            "default": "open",
+            "description": "Ticket status"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "Agent ID to assign ticket to"
+          },
+          "contact_id": {
+            "type": "string",
+            "description": "Associated contact ID"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Ticket tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          }
+        },
+        "required": ["subject", "description"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_ticket",
+      "name": "Update Ticket",
+      "description": "Update an existing ticket",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "Ticket ID"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Ticket subject"
+          },
+          "description": {
+            "type": "string",
+            "description": "Ticket description"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "description": "Ticket priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "pending", "resolved", "closed"],
+            "description": "Ticket status"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "Agent ID to assign ticket to"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Ticket tags"
+          },
+          "custom_fields": {
+            "type": "object",
+            "description": "Custom field values"
+          }
+        },
+        "required": ["ticket_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_ticket",
+      "name": "Get Ticket",
+      "description": "Get ticket details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "Ticket ID"
+          }
+        },
+        "required": ["ticket_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tickets",
+      "name": "List Tickets",
+      "description": "List tickets with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of tickets per page"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "pending", "resolved", "closed"],
+            "description": "Filter by status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "description": "Filter by priority"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "Filter by assignee ID"
+          },
+          "contact_id": {
+            "type": "string",
+            "description": "Filter by contact ID"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Filter by tag"
+          },
+          "created_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter tickets created after this date"
+          },
+          "created_before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Filter tickets created before this date"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_agent",
+      "name": "Get Agent",
+      "description": "Get agent details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "description": "Agent ID"
+          }
+        },
+        "required": ["agent_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_agents",
+      "name": "List Agents",
+      "description": "List all agents",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of agents per page"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive"],
+            "description": "Filter by agent status"
+          },
+          "role": {
+            "type": "string",
+            "description": "Filter by agent role"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "call_ended",
+      "name": "Call Ended",
+      "description": "Triggered when a call ends",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "description": "Filter by agent ID"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["inbound", "outbound"],
+            "description": "Filter by call direction"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "call_id": {"type": "string"},
+          "direction": {"type": "string"},
+          "from": {"type": "string"},
+          "to": {"type": "string"},
+          "agent_id": {"type": "string"},
+          "contact_id": {"type": "string"},
+          "duration": {"type": "number"},
+          "status": {"type": "string"},
+          "start_time": {"type": "string"},
+          "end_time": {"type": "string"},
+          "disposition": {"type": "string"},
+          "recording_url": {"type": "string"},
+          "custom_fields": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "ticket_created",
+      "name": "Ticket Created",
+      "description": "Triggered when a new ticket is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignee_id": {
+            "type": "string",
+            "description": "Filter by assignee ID"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"],
+            "description": "Filter by priority"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {"type": "string"},
+          "subject": {"type": "string"},
+          "description": {"type": "string"},
+          "priority": {"type": "string"},
+          "status": {"type": "string"},
+          "assignee_id": {"type": "string"},
+          "contact_id": {"type": "string"},
+          "created_at": {"type": "string"},
+          "updated_at": {"type": "string"},
+          "tags": {"type": "array"},
+          "custom_fields": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "ticket_status_changed",
+      "name": "Ticket Status Changed",
+      "description": "Triggered when a ticket status changes",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_status": {
+            "type": "string",
+            "enum": ["open", "pending", "resolved", "closed"],
+            "description": "Filter by previous status"
+          },
+          "to_status": {
+            "type": "string",
+            "enum": ["open", "pending", "resolved", "closed"],
+            "description": "Filter by new status"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "Filter by assignee ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {"type": "string"},
+          "subject": {"type": "string"},
+          "previous_status": {"type": "string"},
+          "new_status": {"type": "string"},
+          "priority": {"type": "string"},
+          "assignee_id": {"type": "string"},
+          "contact_id": {"type": "string"},
+          "updated_at": {"type": "string"},
+          "updated_by": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/api/v1/agents/me"
+  }
+}

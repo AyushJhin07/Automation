@@ -1,141 +1,226 @@
 {
   "id": "newrelic",
   "name": "New Relic",
-  "description": "New Relic application performance monitoring",
+  "description": "New Relic application performance monitoring and observability platform",
   "category": "Monitoring",
-  "icon": "enterprise",
+  "icon": "newrelic",
   "color": "#008C99",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
-    "config": {}
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "X-Api-Key"
+    }
   },
-  "baseUrl": "https://api.example.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.newrelic.com/v2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to New Relic and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to New Relic",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in New Relic",
+      "id": "get_applications",
+      "name": "Get Applications",
+      "description": "Get list of applications",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in New Relic",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "host": {"type": "string"},
+              "language": {"type": "string"},
+              "ids": {"type": "array", "items": {"type": "number"}}
+            },
+            "description": "Filter criteria"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Page number"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": [
-        "write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a record from New Relic",
+      "id": "get_application_metrics",
+      "name": "Get Application Metrics", 
+      "description": "Get metrics for an application",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "list_records",
-      "name": "List Records",
-      "description": "List records from New Relic",
-      "parameters": {
-        "limit": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "number",
+            "description": "Application ID"
+          },
+          "names": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Metric names to retrieve"
+          },
+          "values": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Metric values to retrieve"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End time"
+          },
+          "period": {
+            "type": "number",
+            "description": "Period in seconds"
+          }
         },
-        "filter": {
-          "type": "object",
-          "required": false,
-          "description": "Filter criteria"
-        }
-      },
-      "requiredScopes": [
-        "read"
-      ]
+        "required": ["application_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "delete_record",
-      "name": "Delete Record",
-      "description": "Delete a record from New Relic",
+      "id": "get_alerts",
+      "name": "Get Alerts",
+      "description": "Get list of alert policies",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": [
-        "delete"
-      ]
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "enabled": {"type": "boolean"},
+              "ids": {"type": "array", "items": {"type": "number"}}
+            },
+            "description": "Filter criteria"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Page number"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_alert_policy",
+      "name": "Create Alert Policy",
+      "description": "Create a new alert policy",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "incident_preference": {"type": "string", "enum": ["PER_POLICY", "PER_CONDITION", "PER_CONDITION_AND_TARGET"]}
+            },
+            "required": ["name"],
+            "description": "Alert policy details"
+          }
+        },
+        "required": ["policy"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_violations",
+      "name": "Get Violations",
+      "description": "Get list of violations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "object",
+            "properties": {
+              "start_date": {"type": "string", "format": "date-time"},
+              "end_date": {"type": "string", "format": "date-time"},
+              "only_open": {"type": "boolean"}
+            },
+            "description": "Filter criteria"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Page number"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "execute_nrql",
+      "name": "Execute NRQL Query",
+      "description": "Execute a NRQL query",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nrql": {
+            "type": "string",
+            "description": "NRQL query string"
+          },
+          "timeout": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 120,
+            "default": 10,
+            "description": "Query timeout in seconds"
+          }
+        },
+        "required": ["nrql"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created in New Relic",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated in New Relic",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ]
+      "id": "alert_triggered",
+      "name": "Alert Triggered",
+      "description": "Triggered when an alert condition is violated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "number",
+            "description": "Filter by policy ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "account_id": {"type": "number"},
+          "policy_name": {"type": "string"},
+          "condition_name": {"type": "string"},
+          "incident_url": {"type": "string"},
+          "severity": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/applications.json"
+  }
 }

@@ -1,219 +1,287 @@
 {
   "id": "servicenow",
   "name": "ServiceNow",
-  "description": "ServiceNow IT service management platform",
-  "category": "ITSM",
-  "icon": "enterprise",
-  "color": "#62D84E",
+  "description": "ServiceNow cloud-based IT service management platform",
+  "category": "IT Service Management",
+  "icon": "servicenow",
+  "color": "#80CD28",
   "version": "1.0.0",
   "authentication": {
     "type": "basic",
     "config": {
-      "username": "{username}",
-      "password": "{password}"
+      "usernameField": "username",
+      "passwordField": "password"
     }
   },
-  "baseUrl": "https://{instance}.service-now.com/api/now",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://your-instance.service-now.com/api/now",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to ServiceNow",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_incident",
       "name": "Create Incident",
-      "description": "Create a new incident in ServiceNow",
+      "description": "Create a new incident",
       "parameters": {
-        "short_description": {
-          "type": "string",
-          "required": true,
-          "description": "Brief summary of the incident"
+        "type": "object",
+        "properties": {
+          "short_description": {
+            "type": "string",
+            "description": "Short description of the incident"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description"
+          },
+          "caller_id": {
+            "type": "string",
+            "description": "Caller user ID"
+          },
+          "category": {
+            "type": "string",
+            "description": "Incident category"
+          },
+          "subcategory": {
+            "type": "string",
+            "description": "Incident subcategory"
+          },
+          "urgency": {
+            "type": "string",
+            "enum": ["1", "2", "3"],
+            "description": "Urgency level (1=High, 2=Medium, 3=Low)"
+          },
+          "impact": {
+            "type": "string",
+            "enum": ["1", "2", "3"],
+            "description": "Impact level (1=High, 2=Medium, 3=Low)"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["1", "2", "3", "4", "5"],
+            "description": "Priority level"
+          },
+          "assignment_group": {
+            "type": "string",
+            "description": "Assignment group"
+          },
+          "assigned_to": {
+            "type": "string",
+            "description": "Assigned user"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location"
+          },
+          "configuration_item": {
+            "type": "string",
+            "description": "Configuration item"
+          }
         },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Detailed description"
+        "required": ["short_description"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_incidents",
+      "name": "Get Incidents",
+      "description": "Get list of incidents",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sysparm_query": {
+            "type": "string",
+            "description": "Query filter"
+          },
+          "sysparm_limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000,
+            "default": 100,
+            "description": "Maximum number of records"
+          },
+          "sysparm_offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of records to skip"
+          },
+          "sysparm_fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          },
+          "sysparm_display_value": {
+            "type": "string",
+            "enum": ["true", "false", "all"],
+            "default": "false",
+            "description": "Return display values"
+          }
         },
-        "urgency": {
-          "type": "string",
-          "required": false,
-          "description": "Incident urgency",
-          "options": [
-            "1",
-            "2",
-            "3"
-          ]
-        },
-        "impact": {
-          "type": "string",
-          "required": false,
-          "description": "Incident impact",
-          "options": [
-            "1",
-            "2",
-            "3"
-          ]
-        },
-        "caller_id": {
-          "type": "string",
-          "required": false,
-          "description": "User who reported the incident"
-        },
-        "assignment_group": {
-          "type": "string",
-          "required": false,
-          "description": "Group to assign incident to"
-        }
-      },
-      "requiredScopes": [
-        "incident_write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_incident",
       "name": "Update Incident",
       "description": "Update an existing incident",
       "parameters": {
-        "incident_id": {
-          "type": "string",
-          "required": true,
-          "description": "Incident sys_id"
+        "type": "object",
+        "properties": {
+          "sys_id": {
+            "type": "string",
+            "description": "Incident sys_id"
+          },
+          "short_description": {
+            "type": "string",
+            "description": "Short description"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["1", "2", "3", "6", "7", "8"],
+            "description": "Incident state"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["1", "2", "3", "4", "5"],
+            "description": "Priority level"
+          },
+          "assignment_group": {
+            "type": "string",
+            "description": "Assignment group"
+          },
+          "assigned_to": {
+            "type": "string",
+            "description": "Assigned user"
+          },
+          "work_notes": {
+            "type": "string",
+            "description": "Work notes"
+          },
+          "close_code": {
+            "type": "string",
+            "description": "Close code"
+          },
+          "close_notes": {
+            "type": "string",
+            "description": "Close notes"
+          }
         },
-        "state": {
-          "type": "string",
-          "required": false,
-          "description": "Incident state",
-          "options": [
-            "New",
-            "In Progress",
-            "Resolved",
-            "Closed"
-          ]
-        },
-        "work_notes": {
-          "type": "string",
-          "required": false,
-          "description": "Work notes to add"
-        },
-        "resolution_code": {
-          "type": "string",
-          "required": false,
-          "description": "Resolution code"
-        },
-        "resolution_notes": {
-          "type": "string",
-          "required": false,
-          "description": "Resolution notes"
-        }
-      },
-      "requiredScopes": [
-        "incident_write"
-      ]
-    },
-    {
-      "id": "resolve_incident",
-      "name": "Resolve Incident",
-      "description": "Resolve an incident",
-      "parameters": {
-        "incident_id": {
-          "type": "string",
-          "required": true,
-          "description": "Incident sys_id"
-        },
-        "resolution_code": {
-          "type": "string",
-          "required": true,
-          "description": "Resolution code"
-        },
-        "resolution_notes": {
-          "type": "string",
-          "required": true,
-          "description": "Resolution notes"
-        },
-        "close_notes": {
-          "type": "string",
-          "required": false,
-          "description": "Close notes"
-        }
-      },
-      "requiredScopes": [
-        "incident_write"
-      ]
+        "required": ["sys_id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_change_request",
       "name": "Create Change Request",
       "description": "Create a new change request",
       "parameters": {
-        "short_description": {
-          "type": "string",
-          "required": true,
-          "description": "Brief summary of the change"
+        "type": "object",
+        "properties": {
+          "short_description": {
+            "type": "string",
+            "description": "Short description"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["standard", "normal", "emergency"],
+            "description": "Change type"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["1", "2", "3", "4"],
+            "description": "Priority level"
+          },
+          "risk": {
+            "type": "string",
+            "enum": ["1", "2", "3", "4"],
+            "description": "Risk level"
+          },
+          "impact": {
+            "type": "string",
+            "enum": ["1", "2", "3"],
+            "description": "Impact level"
+          },
+          "requested_by": {
+            "type": "string",
+            "description": "Requested by user"
+          },
+          "assignment_group": {
+            "type": "string",
+            "description": "Assignment group"
+          },
+          "assigned_to": {
+            "type": "string",
+            "description": "Assigned user"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Planned start date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Planned end date"
+          },
+          "implementation_plan": {
+            "type": "string",
+            "description": "Implementation plan"
+          },
+          "backout_plan": {
+            "type": "string",
+            "description": "Backout plan"
+          },
+          "test_plan": {
+            "type": "string",
+            "description": "Test plan"
+          }
         },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Detailed description"
-        },
-        "type": {
-          "type": "string",
-          "required": false,
-          "description": "Change type",
-          "options": [
-            "Standard",
-            "Normal",
-            "Emergency"
-          ]
-        },
-        "risk": {
-          "type": "string",
-          "required": false,
-          "description": "Risk level",
-          "options": [
-            "High",
-            "Moderate",
-            "Low"
-          ]
-        },
-        "implementation_plan": {
-          "type": "string",
-          "required": false,
-          "description": "Implementation plan"
-        }
-      },
-      "requiredScopes": [
-        "change_write"
-      ]
+        "required": ["short_description"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "approve_request",
-      "name": "Approve Request",
-      "description": "Approve a change request or other approval",
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
       "parameters": {
-        "request_id": {
-          "type": "string",
-          "required": true,
-          "description": "Request sys_id"
+        "type": "object",
+        "properties": {
+          "sysparm_query": {
+            "type": "string",
+            "description": "Query filter"
+          },
+          "sysparm_limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000,
+            "default": 100,
+            "description": "Maximum number of records"
+          },
+          "sysparm_fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to return"
+          }
         },
-        "state": {
-          "type": "string",
-          "required": true,
-          "description": "Approval state",
-          "options": [
-            "approved",
-            "rejected"
-          ]
-        },
-        "comments": {
-          "type": "string",
-          "required": false,
-          "description": "Approval comments"
-        }
-      },
-      "requiredScopes": [
-        "approval_write"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -221,19 +289,72 @@
       "id": "incident_created",
       "name": "Incident Created",
       "description": "Triggered when a new incident is created",
-      "parameters": {},
-      "requiredScopes": [
-        "incident_read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignment_group": {
+            "type": "string",
+            "description": "Filter by assignment group"
+          },
+          "priority": {
+            "type": "string",
+            "description": "Filter by priority"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sys_id": {"type": "string"},
+          "number": {"type": "string"},
+          "short_description": {"type": "string"},
+          "state": {"type": "string"},
+          "priority": {"type": "string"},
+          "urgency": {"type": "string"},
+          "impact": {"type": "string"},
+          "caller_id": {"type": "string"},
+          "assignment_group": {"type": "string"},
+          "assigned_to": {"type": "string"},
+          "opened_at": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "change_request_created",
-      "name": "Change Request Created",
-      "description": "Triggered when a new change request is created",
-      "parameters": {},
-      "requiredScopes": [
-        "change_read"
-      ]
+      "id": "incident_updated",
+      "name": "Incident Updated",
+      "description": "Triggered when an incident is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assignment_group": {
+            "type": "string",
+            "description": "Filter by assignment group"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sys_id": {"type": "string"},
+          "number": {"type": "string"},
+          "short_description": {"type": "string"},
+          "state": {"type": "string"},
+          "priority": {"type": "string"},
+          "assignment_group": {"type": "string"},
+          "assigned_to": {"type": "string"},
+          "updated_on": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/table/incident?sysparm_limit=1"
+  }
 }

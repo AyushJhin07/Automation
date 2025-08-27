@@ -1,0 +1,793 @@
+{
+  "id": "teamwork",
+  "name": "Teamwork",
+  "description": "Project management and team collaboration platform",
+  "category": "Project Management",
+  "icon": "teamwork",
+  "color": "#5BB75B",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Basic {api_key}"
+    }
+  },
+  "baseUrl": "https://{domain}.teamwork.com",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Teamwork",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "company_id": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "category_id": {
+            "type": "string",
+            "description": "Project category ID"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Project start date (YYYY-MM-DD)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Project end date (YYYY-MM-DD)"
+          },
+          "budget": {
+            "type": "number",
+            "description": "Project budget"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "archived", "template"],
+            "default": "active",
+            "description": "Project status"
+          },
+          "privacy": {
+            "type": "string",
+            "enum": ["open", "private"],
+            "default": "open",
+            "description": "Project privacy setting"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_project",
+      "name": "Update Project",
+      "description": "Update an existing project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description"
+          },
+          "company_id": {
+            "type": "string",
+            "description": "Company ID"
+          },
+          "category_id": {
+            "type": "string",
+            "description": "Project category ID"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Project start date (YYYY-MM-DD)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Project end date (YYYY-MM-DD)"
+          },
+          "budget": {
+            "type": "number",
+            "description": "Project budget"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "archived", "template"],
+            "description": "Project status"
+          },
+          "privacy": {
+            "type": "string",
+            "enum": ["open", "private"],
+            "description": "Project privacy setting"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          }
+        },
+        "required": ["project_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_project",
+      "name": "Get Project",
+      "description": "Get project details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          }
+        },
+        "required": ["project_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "List Projects",
+      "description": "List all projects",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["active", "archived", "template", "all"],
+            "default": "active",
+            "description": "Filter by project status"
+          },
+          "company_id": {
+            "type": "string",
+            "description": "Filter by company ID"
+          },
+          "category_id": {
+            "type": "string",
+            "description": "Filter by category ID"
+          },
+          "created_after": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter projects created after date (YYYY-MM-DD)"
+          },
+          "created_before": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter projects created before date (YYYY-MM-DD)"
+          },
+          "updated_after": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter projects updated after date (YYYY-MM-DD)"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 25,
+            "description": "Number of projects per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_task",
+      "name": "Create Task",
+      "description": "Create a new task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Task name/content"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "User ID of the person responsible for the task"
+          },
+          "task_list_id": {
+            "type": "string",
+            "description": "Task list ID"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "default": "medium",
+            "description": "Task priority"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Task due date (YYYY-MM-DD)"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Task start date (YYYY-MM-DD)"
+          },
+          "estimated_minutes": {
+            "type": "number",
+            "description": "Estimated time in minutes"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          },
+          "private": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the task is private"
+          }
+        },
+        "required": ["project_id", "content"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_task",
+      "name": "Update Task",
+      "description": "Update an existing task",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Task ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Task name/content"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "User ID of the person responsible for the task"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Task priority"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Task due date (YYYY-MM-DD)"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Task start date (YYYY-MM-DD)"
+          },
+          "estimated_minutes": {
+            "type": "number",
+            "description": "Estimated time in minutes"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          },
+          "private": {
+            "type": "boolean",
+            "description": "Whether the task is private"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Whether the task is completed"
+          }
+        },
+        "required": ["task_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_task",
+      "name": "Get Task",
+      "description": "Get task details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Task ID"
+          }
+        },
+        "required": ["task_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tasks",
+      "name": "List Tasks",
+      "description": "List tasks with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "task_list_id": {
+            "type": "string",
+            "description": "Filter by task list ID"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "Filter by responsible person ID"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Filter by completion status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Filter by priority"
+          },
+          "due_date_from": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks with due date from (YYYY-MM-DD)"
+          },
+          "due_date_to": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks with due date to (YYYY-MM-DD)"
+          },
+          "created_after": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks created after date (YYYY-MM-DD)"
+          },
+          "created_before": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks created before date (YYYY-MM-DD)"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 25,
+            "description": "Number of tasks per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_time_entry",
+      "name": "Create Time Entry",
+      "description": "Create a new time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Task ID (optional)"
+          },
+          "person_id": {
+            "type": "string",
+            "description": "Person ID who logged the time"
+          },
+          "description": {
+            "type": "string",
+            "description": "Time entry description"
+          },
+          "hours": {
+            "type": "number",
+            "description": "Number of hours"
+          },
+          "minutes": {
+            "type": "number",
+            "description": "Number of minutes"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of time entry (YYYY-MM-DD)"
+          },
+          "time": {
+            "type": "string",
+            "description": "Time of entry (HH:MM)"
+          },
+          "is_billable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether time is billable"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          }
+        },
+        "required": ["project_id", "person_id", "description", "hours", "date"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_time_entry",
+      "name": "Get Time Entry",
+      "description": "Get time entry details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_entry_id": {
+            "type": "string",
+            "description": "Time entry ID"
+          }
+        },
+        "required": ["time_entry_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_time_entries",
+      "name": "List Time Entries",
+      "description": "List time entries with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Filter by task ID"
+          },
+          "person_id": {
+            "type": "string",
+            "description": "Filter by person ID"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter entries from date (YYYY-MM-DD)"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter entries to date (YYYY-MM-DD)"
+          },
+          "billable": {
+            "type": "boolean",
+            "description": "Filter by billable status"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 25,
+            "description": "Number of entries per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_milestone",
+      "name": "Create Milestone",
+      "description": "Create a new milestone",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Milestone title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Milestone description"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "description": "Milestone deadline (YYYY-MM-DD)"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "Person responsible for the milestone"
+          },
+          "notify_everyone": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to notify all project members"
+          },
+          "private": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the milestone is private"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated list of tags"
+          }
+        },
+        "required": ["project_id", "title"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_milestones",
+      "name": "List Milestones",
+      "description": "List milestones for a project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Filter by completion status"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "Filter by responsible person ID"
+          },
+          "deadline_from": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter milestones with deadline from (YYYY-MM-DD)"
+          },
+          "deadline_to": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter milestones with deadline to (YYYY-MM-DD)"
+          }
+        },
+        "required": ["project_id"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "project_created",
+      "name": "Project Created",
+      "description": "Triggered when a new project is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "company_id": {
+            "type": "string",
+            "description": "Filter by company ID"
+          },
+          "category_id": {
+            "type": "string",
+            "description": "Filter by category ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "company_id": {"type": "string"},
+          "category_id": {"type": "string"},
+          "start_date": {"type": "string"},
+          "end_date": {"type": "string"},
+          "status": {"type": "string"},
+          "privacy": {"type": "string"},
+          "created_at": {"type": "string"},
+          "created_by": {"type": "string"},
+          "budget": {"type": "number"},
+          "tags": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "task_created",
+      "name": "Task Created",
+      "description": "Triggered when a new task is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "Filter by responsible person ID"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Filter by priority"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {"type": "string"},
+          "project_id": {"type": "string"},
+          "content": {"type": "string"},
+          "description": {"type": "string"},
+          "responsible_party_id": {"type": "string"},
+          "task_list_id": {"type": "string"},
+          "priority": {"type": "string"},
+          "due_date": {"type": "string"},
+          "start_date": {"type": "string"},
+          "estimated_minutes": {"type": "number"},
+          "created_at": {"type": "string"},
+          "created_by": {"type": "string"},
+          "tags": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "task_completed",
+      "name": "Task Completed",
+      "description": "Triggered when a task is marked as completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "responsible_party_id": {
+            "type": "string",
+            "description": "Filter by responsible person ID"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Filter by priority"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {"type": "string"},
+          "project_id": {"type": "string"},
+          "content": {"type": "string"},
+          "responsible_party_id": {"type": "string"},
+          "priority": {"type": "string"},
+          "due_date": {"type": "string"},
+          "completed_at": {"type": "string"},
+          "completed_by": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "time_entry_created",
+      "name": "Time Entry Created",
+      "description": "Triggered when a new time entry is logged",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "person_id": {
+            "type": "string",
+            "description": "Filter by person ID"
+          },
+          "billable": {
+            "type": "boolean",
+            "description": "Filter by billable status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "time_entry_id": {"type": "string"},
+          "project_id": {"type": "string"},
+          "task_id": {"type": "string"},
+          "person_id": {"type": "string"},
+          "description": {"type": "string"},
+          "hours": {"type": "number"},
+          "minutes": {"type": "number"},
+          "date": {"type": "string"},
+          "time": {"type": "string"},
+          "is_billable": {"type": "boolean"},
+          "created_at": {"type": "string"},
+          "tags": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/authenticate.json"
+  }
+}

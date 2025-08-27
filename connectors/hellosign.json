@@ -1,138 +1,541 @@
 {
   "id": "hellosign",
-  "name": "Dropbox Sign (HelloSign)",
-  "category": "E-Signature",
-  "description": "Dropbox Sign (formerly HelloSign) electronic signature platform",
+  "name": "HelloSign",
+  "description": "HelloSign electronic signature and document workflow platform",
+  "category": "Documents",
+  "icon": "hellosign",
+  "color": "#F26130",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://app.hellosign.com/oauth/authorize",
-      "tokenUrl": "https://api.hellosign.com/v3/oauth/token",
-      "scopes": ["basic_account_info", "request_signature"]
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Basic"
     }
   },
+  "baseUrl": "https://api.hellosign.com/v3",
   "actions": [
     {
-      "id": "create_signature_request",
-      "name": "Create Signature Request",
-      "description": "Create a new signature request",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to HelloSign",
       "parameters": {
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Signature request title"
-        },
-        "subject": {
-          "type": "string",
-          "required": false,
-          "description": "Email subject"
-        },
-        "message": {
-          "type": "string",
-          "required": false,
-          "description": "Email message"
-        },
-        "signers": {
-          "type": "array",
-          "required": true,
-          "description": "Array of signer objects"
-        },
-        "files": {
-          "type": "array",
-          "required": true,
-          "description": "Array of file objects"
-        }
-      },
-      "requiredScopes": ["request_signature"]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "use_template",
-      "name": "Create Request from Template",
-      "description": "Create a signature request using a template",
+      "id": "get_account",
+      "name": "Get Account",
+      "description": "Get account information",
       "parameters": {
-        "template_id": {
-          "type": "string",
-          "required": true,
-          "description": "Template ID"
-        },
-        "title": {
-          "type": "string",
-          "required": true,
-          "description": "Signature request title"
-        },
-        "signers": {
-          "type": "array",
-          "required": true,
-          "description": "Array of signer objects"
-        },
-        "custom_fields": {
-          "type": "array",
-          "required": false,
-          "description": "Custom field values"
-        }
-      },
-      "requiredScopes": ["request_signature"]
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_file",
-      "name": "Get File",
-      "description": "Download files from a signature request",
+      "id": "send_signature_request",
+      "name": "Send Signature Request",
+      "description": "Send a signature request",
       "parameters": {
-        "signature_request_id": {
-          "type": "string",
-          "required": true,
-          "description": "Signature request ID"
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the signature request"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject of the signature request email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Custom message for the signature request"
+          },
+          "signers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email_address": {"type": "string", "format": "email"},
+                "name": {"type": "string"},
+                "order": {"type": "number", "minimum": 0}
+              },
+              "required": ["email_address", "name"]
+            },
+            "description": "List of signers"
+          },
+          "cc_email_addresses": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "CC email addresses"
+          },
+          "files": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File URLs or base64 encoded files"
+          },
+          "file_urls": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "URLs of files to be signed"
+          },
+          "use_text_tags": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable text tags for form fields"
+          },
+          "hide_text_tags": {
+            "type": "boolean",
+            "default": false,
+            "description": "Hide text tags after parsing"
+          },
+          "allow_decline": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow signers to decline"
+          },
+          "allow_reassign": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow signers to reassign"
+          },
+          "reminders": {
+            "type": "object",
+            "properties": {
+              "days": {"type": "number", "minimum": 1},
+              "enabled": {"type": "boolean"}
+            },
+            "description": "Reminder settings"
+          },
+          "expires_at": {
+            "type": "number",
+            "description": "Unix timestamp when request expires"
+          },
+          "form_fields_per_document": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_index": {"type": "number", "minimum": 0},
+                "form_fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "api_id": {"type": "string"},
+                      "name": {"type": "string"},
+                      "type": {"type": "string", "enum": ["signature", "text", "date", "checkbox", "dropdown", "hyperlink", "initials", "radio"]},
+                      "x": {"type": "number", "minimum": 0},
+                      "y": {"type": "number", "minimum": 0},
+                      "width": {"type": "number", "minimum": 1},
+                      "height": {"type": "number", "minimum": 1},
+                      "required": {"type": "boolean"},
+                      "signer": {"type": "number", "minimum": 0}
+                    },
+                    "required": ["api_id", "name", "type", "x", "y", "width", "height", "signer"]
+                  }
+                }
+              }
+            },
+            "description": "Form fields for each document"
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "value": {"type": "string"}
+              }
+            },
+            "description": "Custom fields"
+          }
         },
-        "file_type": {
-          "type": "string",
-          "required": false,
-          "description": "File type (pdf, zip)"
-        }
-      },
-      "requiredScopes": ["basic_account_info"]
+        "required": ["signers"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "list_requests",
+      "id": "get_signature_request",
+      "name": "Get Signature Request",
+      "description": "Get signature request details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {
+            "type": "string",
+            "description": "Signature request ID"
+          }
+        },
+        "required": ["signature_request_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_signature_requests",
       "name": "List Signature Requests",
       "description": "List signature requests",
       "parameters": {
-        "account_id": {
-          "type": "string",
-          "required": false,
-          "description": "Account ID"
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "Account ID filter"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of results per page"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          }
         },
-        "page": {
-          "type": "number",
-          "required": false,
-          "description": "Page number"
-        }
-      },
-      "requiredScopes": ["basic_account_info"]
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "remind_signature_request",
+      "name": "Remind Signature Request",
+      "description": "Send reminder for signature request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {
+            "type": "string",
+            "description": "Signature request ID"
+          },
+          "email_address": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address to remind"
+          }
+        },
+        "required": ["signature_request_id", "email_address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "cancel_signature_request",
+      "name": "Cancel Signature Request",
+      "description": "Cancel a signature request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {
+            "type": "string",
+            "description": "Signature request ID"
+          }
+        },
+        "required": ["signature_request_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "download_files",
+      "name": "Download Files",
+      "description": "Download signed files",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {
+            "type": "string",
+            "description": "Signature request ID"
+          },
+          "file_type": {
+            "type": "string",
+            "enum": ["pdf", "zip"],
+            "default": "pdf",
+            "description": "File type to download"
+          }
+        },
+        "required": ["signature_request_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_embedded_signature_request",
+      "name": "Create Embedded Signature Request",
+      "description": "Create embedded signature request",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "description": "Client ID for embedded signing"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the signature request"
+          },
+          "signers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email_address": {"type": "string", "format": "email"},
+                "name": {"type": "string"}
+              },
+              "required": ["email_address", "name"]
+            },
+            "description": "List of signers"
+          },
+          "files": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File URLs or base64 encoded files"
+          },
+          "test_mode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Test mode"
+          }
+        },
+        "required": ["client_id", "signers"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_embedded_sign_url",
+      "name": "Get Embedded Sign URL",
+      "description": "Get embedded signing URL",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "signature_id": {
+            "type": "string",
+            "description": "Signature ID"
+          }
+        },
+        "required": ["signature_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_template",
+      "name": "Create Template",
+      "description": "Create a reusable template",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Template title"
+          },
+          "signer_roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "order": {"type": "number", "minimum": 0}
+              },
+              "required": ["name"]
+            },
+            "description": "Signer roles"
+          },
+          "cc_roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"}
+              },
+              "required": ["name"]
+            },
+            "description": "CC roles"
+          },
+          "files": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File URLs or base64 encoded files"
+          },
+          "merge_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "type": {"type": "string", "enum": ["text", "checkbox"]}
+              }
+            },
+            "description": "Merge fields"
+          }
+        },
+        "required": ["title", "signer_roles"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_template",
+      "name": "Get Template",
+      "description": "Get template details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "description": "Template ID"
+          }
+        },
+        "required": ["template_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_with_template",
+      "name": "Send with Template",
+      "description": "Send signature request using template",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "description": "Template ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the signature request"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject of the signature request email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Custom message"
+          },
+          "signers": {
+            "type": "object",
+            "description": "Signer assignments by role"
+          },
+          "ccs": {
+            "type": "object",
+            "description": "CC assignments by role"
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "value": {"type": "string"}
+              }
+            },
+            "description": "Custom field values"
+          }
+        },
+        "required": ["template_id", "signers"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "signature_request_signed",
-      "name": "Signature Request Signed",
-      "description": "Triggered when a signature request is signed",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["signature_request_signed"],
-        "entityTypes": ["signature_request"]
+      "id": "signature_request_sent",
+      "name": "Signature Request Sent",
+      "description": "Triggered when a signature request is sent",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "Filter by account ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["basic_account_info"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {"type": "string"},
+          "title": {"type": "string"},
+          "subject": {"type": "string"},
+          "message": {"type": "string"},
+          "is_complete": {"type": "boolean"},
+          "has_error": {"type": "boolean"},
+          "custom_fields": {"type": "array"},
+          "response_data": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "signature_request_all_signed",
-      "name": "All Signatures Complete",
-      "description": "Triggered when all signatures are complete",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": ["signature_request_all_signed"],
-        "entityTypes": ["signature_request"]
+      "id": "signature_request_signed",
+      "name": "Signature Request Signed",
+      "description": "Triggered when a signature request is signed by all parties",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "Filter by account ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": ["basic_account_info"]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {"type": "string"},
+          "title": {"type": "string"},
+          "is_complete": {"type": "boolean"},
+          "final_copy_uri": {"type": "string"},
+          "files_url": {"type": "string"},
+          "signing_url": {"type": "string"},
+          "details_url": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "signature_request_declined",
+      "name": "Signature Request Declined",
+      "description": "Triggered when a signature request is declined",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "Filter by account ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "signature_request_id": {"type": "string"},
+          "title": {"type": "string"},
+          "is_complete": {"type": "boolean"},
+          "declined_by": {"type": "string"},
+          "decline_reason": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/account"
+  }
 }

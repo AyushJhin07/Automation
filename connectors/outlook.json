@@ -1,93 +1,367 @@
 {
   "id": "outlook",
-  "name": "Outlook",
-  "description": "Outlook integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#999999",
+  "name": "Microsoft Outlook",
+  "description": "Microsoft Outlook email and calendar management service",
+  "category": "Email",
+  "icon": "outlook",
+  "color": "#0078D4",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": ["https://graph.microsoft.com/Mail.ReadWrite", "https://graph.microsoft.com/Calendars.ReadWrite"]
+    }
   },
-  "baseUrl": "https://api.outlook.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://graph.microsoft.com/v1.0/me",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Outlook and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Outlook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "send_email",
+      "name": "Send Email",
+      "description": "Send an email",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "contentType": {"type": "string", "enum": ["Text", "HTML"], "default": "HTML"},
+              "content": {"type": "string"}
+            },
+            "required": ["content"],
+            "description": "Email body"
+          },
+          "toRecipients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emailAddress": {
+                  "type": "object",
+                  "properties": {
+                    "address": {"type": "string", "format": "email"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["address"]
+                }
+              },
+              "required": ["emailAddress"]
+            },
+            "description": "To recipients"
+          },
+          "ccRecipients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emailAddress": {
+                  "type": "object",
+                  "properties": {
+                    "address": {"type": "string", "format": "email"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["address"]
+                }
+              },
+              "required": ["emailAddress"]
+            },
+            "description": "CC recipients"
+          },
+          "bccRecipients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emailAddress": {
+                  "type": "object",
+                  "properties": {
+                    "address": {"type": "string", "format": "email"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["address"]
+                }
+              },
+              "required": ["emailAddress"]
+            },
+            "description": "BCC recipients"
+          },
+          "importance": {
+            "type": "string",
+            "enum": ["low", "normal", "high"],
+            "default": "normal",
+            "description": "Email importance"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "contentBytes": {"type": "string"},
+                "contentType": {"type": "string"}
+              },
+              "required": ["name", "contentBytes"]
+            },
+            "description": "Email attachments"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["subject", "body", "toRecipients"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "get_emails",
+      "name": "Get Emails",
+      "description": "Get emails from inbox",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of emails to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of emails to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "$orderby": {
+            "type": "string",
+            "description": "OData order by expression"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Folder ID to get emails from"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Create a calendar event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Event subject"
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "contentType": {"type": "string", "enum": ["Text", "HTML"], "default": "HTML"},
+              "content": {"type": "string"}
+            },
+            "description": "Event body"
+          },
+          "start": {
+            "type": "object",
+            "properties": {
+              "dateTime": {"type": "string", "format": "date-time"},
+              "timeZone": {"type": "string"}
+            },
+            "required": ["dateTime"],
+            "description": "Event start time"
+          },
+          "end": {
+            "type": "object",
+            "properties": {
+              "dateTime": {"type": "string", "format": "date-time"},
+              "timeZone": {"type": "string"}
+            },
+            "required": ["dateTime"],
+            "description": "Event end time"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "displayName": {"type": "string"},
+              "address": {"type": "object"}
+            },
+            "description": "Event location"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emailAddress": {
+                  "type": "object",
+                  "properties": {
+                    "address": {"type": "string", "format": "email"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["address"]
+                },
+                "type": {"type": "string", "enum": ["required", "optional", "resource"]}
+              },
+              "required": ["emailAddress"]
+            },
+            "description": "Event attendees"
+          },
+          "isAllDay": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether event is all day"
+          },
+          "recurrence": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "object",
+                "properties": {
+                  "type": {"type": "string", "enum": ["daily", "weekly", "absoluteMonthly", "relativeMonthly", "absoluteYearly", "relativeYearly"]},
+                  "interval": {"type": "number", "minimum": 1},
+                  "month": {"type": "number", "minimum": 1, "maximum": 12},
+                  "dayOfMonth": {"type": "number", "minimum": 1, "maximum": 31},
+                  "daysOfWeek": {"type": "array", "items": {"type": "string"}}
+                }
+              },
+              "range": {
+                "type": "object",
+                "properties": {
+                  "type": {"type": "string", "enum": ["endDate", "noEnd", "numbered"]},
+                  "startDate": {"type": "string", "format": "date"},
+                  "endDate": {"type": "string", "format": "date"},
+                  "numberOfOccurrences": {"type": "number", "minimum": 1}
+                }
+              }
+            },
+            "description": "Recurrence pattern"
+          }
+        },
+        "required": ["subject", "start", "end"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_events",
+      "name": "Get Events",
+      "description": "Get calendar events",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of events to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of events to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "$orderby": {
+            "type": "string",
+            "description": "OData order by expression"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_event",
+      "name": "Delete Event",
+      "description": "Delete a calendar event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Event ID"
+          }
+        },
+        "required": ["eventId"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "email_received",
+      "name": "Email Received",
+      "description": "Triggered when a new email is received",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Filter by folder ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "subject": {"type": "string"},
+          "from": {"type": "object"},
+          "receivedDateTime": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "event_created",
+      "name": "Event Created",
+      "description": "Triggered when a new event is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "subject": {"type": "string"},
+          "start": {"type": "object"},
+          "end": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/mailboxSettings"
+  }
 }

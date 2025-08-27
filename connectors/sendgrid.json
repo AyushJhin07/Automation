@@ -1,93 +1,310 @@
 {
   "id": "sendgrid",
-  "name": "Sendgrid",
-  "description": "Sendgrid integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "name": "SendGrid",
+  "description": "SendGrid email delivery service and marketing platform",
+  "category": "Email",
+  "icon": "sendgrid",
   "color": "#1A82E2",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
   },
-  "baseUrl": "https://api.sendgrid.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.sendgrid.com/v3",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Sendgrid and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to SendGrid",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "send_email",
+      "name": "Send Email",
+      "description": "Send an email",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "personalizations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "email": {"type": "string", "format": "email"},
+                      "name": {"type": "string"}
+                    },
+                    "required": ["email"]
+                  }
+                },
+                "cc": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "email": {"type": "string", "format": "email"},
+                      "name": {"type": "string"}
+                    }
+                  }
+                },
+                "bcc": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "email": {"type": "string", "format": "email"},
+                      "name": {"type": "string"}
+                    }
+                  }
+                },
+                "subject": {"type": "string"},
+                "substitutions": {"type": "object"},
+                "custom_args": {"type": "object"}
+              },
+              "required": ["to"]
+            },
+            "description": "Email personalizations"
+          },
+          "from": {
+            "type": "object",
+            "properties": {
+              "email": {"type": "string", "format": "email"},
+              "name": {"type": "string"}
+            },
+            "required": ["email"],
+            "description": "From address"
+          },
+          "reply_to": {
+            "type": "object",
+            "properties": {
+              "email": {"type": "string", "format": "email"},
+              "name": {"type": "string"}
+            },
+            "description": "Reply to address"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {"type": "string", "enum": ["text/plain", "text/html"]},
+                "value": {"type": "string"}
+              },
+              "required": ["type", "value"]
+            },
+            "description": "Email content"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {"type": "string"},
+                "filename": {"type": "string"},
+                "type": {"type": "string"},
+                "disposition": {"type": "string", "enum": ["attachment", "inline"]},
+                "content_id": {"type": "string"}
+              },
+              "required": ["content", "filename"]
+            },
+            "description": "Email attachments"
+          },
+          "template_id": {
+            "type": "string",
+            "description": "Template ID"
+          },
+          "categories": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Email categories"
+          },
+          "send_at": {
+            "type": "number",
+            "description": "Unix timestamp to send email"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["personalizations", "from", "subject", "content"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "add_contact",
+      "name": "Add Contact",
+      "description": "Add a contact to a list",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "list_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List IDs to add contact to"
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"},
+                "first_name": {"type": "string"},
+                "last_name": {"type": "string"},
+                "custom_fields": {"type": "object"}
+              },
+              "required": ["email"]
+            },
+            "description": "Contacts to add"
+          }
+        },
+        "required": ["contacts"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Get contact lists",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of lists to return"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Page token for pagination"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_list",
+      "name": "Create List",
+      "description": "Create a new contact list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "List name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_templates",
+      "name": "Get Templates",
+      "description": "Get email templates",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "generations": {
+            "type": "string",
+            "enum": ["legacy", "dynamic"],
+            "description": "Template generation type"
+          },
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 10,
+            "description": "Number of templates to return"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Page token for pagination"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "email_delivered",
+      "name": "Email Delivered",
+      "description": "Triggered when an email is delivered",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by email category"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "event": {"type": "string"},
+          "category": {"type": "array"},
+          "sg_event_id": {"type": "string"},
+          "sg_message_id": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "email_opened",
+      "name": "Email Opened",
+      "description": "Triggered when an email is opened",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by email category"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "event": {"type": "string"},
+          "category": {"type": "array"},
+          "sg_event_id": {"type": "string"},
+          "sg_message_id": {"type": "string"},
+          "useragent": {"type": "string"},
+          "ip": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user/profile"
+  }
 }

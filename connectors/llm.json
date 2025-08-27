@@ -1,195 +1,168 @@
 {
   "id": "llm",
-  "name": "Large Language Model",
-  "category": "AI",
-  "description": "Leverage AI models for text generation, data extraction, classification, and tool calling",
-  "auth": { "type": "none" },
+  "name": "LLM (Large Language Model)",
+  "description": "Large Language Model integration for AI-powered text generation and processing",
+  "category": "AI/ML",
+  "icon": "brain",
+  "color": "#8B5CF6",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
+    }
+  },
+  "baseUrl": "https://api.openai.com/v1",
   "actions": [
     {
-      "id": "generate",
+      "id": "generate_text",
       "name": "Generate Text",
-      "description": "Prompt the model and return generated text content",
+      "description": "Generate text using a language model",
       "parameters": {
         "type": "object",
         "properties": {
-          "provider": { 
-            "type": "string", 
-            "enum": ["openai", "anthropic", "google"],
-            "description": "LLM provider to use"
-          },
-          "model": { 
+          "prompt": {
             "type": "string",
-            "description": "Model identifier (e.g., openai:gpt-4o-mini)"
+            "description": "Input prompt for text generation"
           },
-          "system": { 
+          "model": {
             "type": "string",
-            "description": "System prompt to guide the model's behavior"
+            "enum": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "claude-3-opus", "claude-3-sonnet"],
+            "default": "gpt-3.5-turbo",
+            "description": "Language model to use"
           },
-          "prompt": { 
-            "type": "string",
-            "description": "Main prompt for text generation"
-          },
-          "temperature": { 
-            "type": "number", 
-            "minimum": 0, 
-            "maximum": 2, 
-            "default": 0.2,
-            "description": "Controls randomness (0 = deterministic, 2 = very creative)"
-          },
-          "maxTokens": { 
-            "type": "number", 
-            "default": 1024,
+          "max_tokens": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4096,
+            "default": 1000,
             "description": "Maximum number of tokens to generate"
-          },
-          "rag": { 
-            "type": "object", 
-            "properties": { 
-              "urls": { 
-                "type": "array", 
-                "items": { "type": "string" },
-                "description": "URLs to fetch and include as context"
-              }, 
-              "usePriorNodeData": { 
-                "type": "boolean",
-                "description": "Include data from previous workflow nodes"
-              }
-            },
-            "description": "Retrieval Augmented Generation settings"
-          }
-        },
-        "required": ["provider", "model", "prompt"]
-      }
-    },
-    {
-      "id": "extract",
-      "name": "Extract Structured Data",
-      "description": "Extract structured data from text using JSON schema",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "provider": { 
-            "type": "string", 
-            "enum": ["openai", "anthropic", "google"],
-            "description": "LLM provider to use"
-          },
-          "model": { 
-            "type": "string",
-            "description": "Model identifier that supports JSON output"
-          },
-          "system": { 
-            "type": "string",
-            "description": "System prompt for extraction guidance"
-          },
-          "prompt": { 
-            "type": "string",
-            "description": "Text content to extract data from"
-          },
-          "jsonSchema": { 
-            "type": "object",
-            "description": "JSON schema defining the structure to extract"
-          },
-          "temperature": { 
-            "type": "number", 
-            "default": 0.0,
-            "minimum": 0,
-            "maximum": 1,
-            "description": "Lower temperature for more consistent extraction"
-          },
-          "maxTokens": { 
-            "type": "number", 
-            "default": 1024,
-            "description": "Maximum tokens for the extracted JSON"
-          }
-        },
-        "required": ["provider", "model", "prompt", "jsonSchema"]
-      }
-    },
-    {
-      "id": "classify",
-      "name": "Classify Text",
-      "description": "Classify text into predefined categories",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "provider": { 
-            "type": "string", 
-            "enum": ["openai", "anthropic", "google"],
-            "description": "LLM provider to use"
-          },
-          "model": { 
-            "type": "string",
-            "description": "Model identifier for classification"
-          },
-          "prompt": { 
-            "type": "string",
-            "description": "Text content to classify"
-          },
-          "classes": { 
-            "type": "array", 
-            "items": { "type": "string" },
-            "description": "List of possible classification labels"
-          },
-          "system": {
-            "type": "string",
-            "description": "Additional context for classification"
-          }
-        },
-        "required": ["provider", "model", "prompt", "classes"]
-      }
-    },
-    {
-      "id": "tool_call",
-      "name": "Call Tool / Function",
-      "description": "Let the model choose and execute a tool/function based on the prompt",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "provider": { 
-            "type": "string",
-            "enum": ["openai", "anthropic", "google"],
-            "description": "LLM provider to use"
-          },
-          "model": { 
-            "type": "string",
-            "description": "Model identifier that supports tool calling"
-          },
-          "system": { 
-            "type": "string",
-            "description": "System instructions for tool selection"
-          },
-          "prompt": { 
-            "type": "string",
-            "description": "User request that may require tool usage"
-          },
-          "tools": { 
-            "type": "array", 
-            "items": { 
-              "type": "object",
-              "properties": {
-                "name": { "type": "string" },
-                "description": { "type": "string" },
-                "parameters": { "type": "object" }
-              },
-              "required": ["name", "description", "parameters"]
-            },
-            "description": "Available tools the model can choose from"
           },
           "temperature": {
             "type": "number",
-            "default": 0.2,
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7,
+            "description": "Sampling temperature for randomness"
+          },
+          "top_p": {
+            "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "Temperature for tool selection"
+            "default": 1,
+            "description": "Nucleus sampling parameter"
           },
-          "maxTokens": {
+          "frequency_penalty": {
             "type": "number",
-            "default": 1024,
-            "description": "Maximum tokens for the response"
+            "minimum": -2,
+            "maximum": 2,
+            "default": 0,
+            "description": "Frequency penalty for token repetition"
+          },
+          "presence_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2,
+            "default": 0,
+            "description": "Presence penalty for new topics"
+          },
+          "stop_sequences": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Stop sequences to end generation"
+          },
+          "system_message": {
+            "type": "string",
+            "description": "System message to set behavior"
           }
         },
-        "required": ["provider", "model", "prompt", "tools"]
+        "required": ["prompt"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "chat_completion",
+      "name": "Chat Completion",
+      "description": "Complete a chat conversation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+                "content": {"type": "string"}
+              },
+              "required": ["role", "content"]
+            },
+            "description": "Conversation messages"
+          },
+          "model": {
+            "type": "string",
+            "enum": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "claude-3-opus", "claude-3-sonnet"],
+            "default": "gpt-3.5-turbo",
+            "description": "Language model to use"
+          },
+          "max_tokens": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4096,
+            "default": 1000,
+            "description": "Maximum number of tokens to generate"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7,
+            "description": "Sampling temperature"
+          },
+          "stream": {
+            "type": "boolean",
+            "default": false,
+            "description": "Stream the response"
+          }
+        },
+        "required": ["messages"],
+        "additionalProperties": false
       }
     }
   ],
-  "triggers": []
+  "triggers": [
+    {
+      "id": "text_generated",
+      "name": "Text Generated",
+      "description": "Triggered when text generation is completed",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Filter by model used"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "model": {"type": "string"},
+          "generated_text": {"type": "string"},
+          "usage": {"type": "object"},
+          "created": {"type": "number"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/models"
+  }
 }

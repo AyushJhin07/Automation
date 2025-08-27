@@ -1,9 +1,9 @@
 {
   "id": "onedrive",
   "name": "OneDrive",
-  "description": "Microsoft OneDrive cloud storage",
-  "category": "Cloud Storage",
-  "icon": "placeholder",
+  "description": "Microsoft OneDrive cloud storage and file sharing service",
+  "category": "Storage",
+  "icon": "onedrive",
   "color": "#0078D4",
   "version": "1.0.0",
   "authentication": {
@@ -11,30 +11,55 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": [
-        "https://graph.microsoft.com/Files.ReadWrite"
-      ]
+      "scopes": ["https://graph.microsoft.com/Files.ReadWrite"]
     }
   },
-  "baseUrl": "https://graph.microsoft.com/v1.0",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://graph.microsoft.com/v1.0/me/drive",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to OneDrive and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to OneDrive",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_files",
+      "name": "Get Files",
+      "description": "Get files from a folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Folder ID (defaults to root)"
+          },
+          "$top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Number of items to return"
+          },
+          "$skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of items to skip"
+          },
+          "$filter": {
+            "type": "string",
+            "description": "OData filter expression"
+          },
+          "$orderby": {
+            "type": "string",
+            "description": "OData order by expression"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -42,116 +67,142 @@
       "name": "Upload File",
       "description": "Upload a file to OneDrive",
       "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": true,
-          "description": "Folder ID"
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "description": "File name"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content (base64 encoded)"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Folder ID to upload to"
+          },
+          "conflictBehavior": {
+            "type": "string",
+            "enum": ["rename", "replace", "fail"],
+            "default": "rename",
+            "description": "Behavior when file exists"
+          }
         },
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "File name"
-        },
-        "base64": {
-          "type": "string",
-          "required": true,
-          "description": "Base64 encoded file content"
-        }
-      },
-      "requiredScopes": [
-        "Files.ReadWrite"
-      ]
+        "required": ["fileName", "content"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "download_file",
       "name": "Download File",
       "description": "Download a file from OneDrive",
       "parameters": {
-        "itemId": {
-          "type": "string",
-          "required": true,
-          "description": "File item ID"
-        }
-      },
-      "requiredScopes": [
-        "Files.Read"
-      ]
-    },
-    {
-      "id": "move_file",
-      "name": "Move File",
-      "description": "Move a file to another folder",
-      "parameters": {
-        "itemId": {
-          "type": "string",
-          "required": true,
-          "description": "File item ID"
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "File ID"
+          }
         },
-        "targetFolderId": {
-          "type": "string",
-          "required": true,
-          "description": "Target folder ID"
-        }
-      },
-      "requiredScopes": [
-        "Files.ReadWrite"
-      ]
+        "required": ["fileId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "share_link",
-      "name": "Create Share Link",
+      "id": "create_folder",
+      "name": "Create Folder",
+      "description": "Create a new folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Folder name"
+          },
+          "parentFolderId": {
+            "type": "string",
+            "description": "Parent folder ID"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_file",
+      "name": "Delete File",
+      "description": "Delete a file or folder",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "description": "File or folder ID"
+          }
+        },
+        "required": ["itemId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "share_file",
+      "name": "Share File",
       "description": "Create a sharing link for a file",
       "parameters": {
-        "itemId": {
-          "type": "string",
-          "required": true,
-          "description": "File item ID"
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "description": "File or folder ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["view", "edit"],
+            "default": "view",
+            "description": "Permission type"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["anonymous", "organization"],
+            "default": "anonymous",
+            "description": "Link scope"
+          }
         },
-        "type": {
-          "type": "string",
-          "required": true,
-          "description": "Link type",
-          "options": [
-            "view",
-            "edit"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "Files.ReadWrite"
-      ]
+        "required": ["itemId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "file_created",
-      "name": "File Created",
-      "description": "Triggered when a file is created",
+      "id": "file_uploaded",
+      "name": "File Uploaded",
+      "description": "Triggered when a file is uploaded",
+      "type": "webhook",
       "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor specific folder"
-        }
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Filter by folder ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Files.Read"
-      ]
-    },
-    {
-      "id": "file_updated",
-      "name": "File Updated",
-      "description": "Triggered when a file is updated",
-      "parameters": {
-        "folderId": {
-          "type": "string",
-          "required": false,
-          "description": "Monitor specific folder"
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "size": {"type": "number"},
+          "createdDateTime": {"type": "string"}
         }
-      },
-      "requiredScopes": [
-        "Files.Read"
-      ]
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/"
+  }
 }

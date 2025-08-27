@@ -1,93 +1,164 @@
 {
   "id": "mailchimp-enhanced",
   "name": "Mailchimp Enhanced",
-  "description": "Mailchimp Enhanced integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "description": "Enhanced Mailchimp email marketing and automation platform",
+  "category": "Marketing",
+  "icon": "mailchimp",
   "color": "#FFE01B",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "apikey"
+    }
   },
-  "baseUrl": "https://api.mailchimp.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://us1.api.mailchimp.com/3.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Mailchimp Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "basic"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Mailchimp",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "get_lists",
+      "name": "Get Lists",
+      "description": "Get all lists in the account",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10,
+            "description": "Number of lists to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of lists to skip"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "add_list_member",
+      "name": "Add List Member",
+      "description": "Add a new member to a list",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "email_address": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "description": "Subscription status"
+          }
+        },
+        "required": ["list_id", "email_address", "status"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_campaign",
+      "name": "Create Campaign",
+      "description": "Create a new campaign",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "description": "Campaign type"
+          },
+          "recipients": {
+            "type": "object",
+            "properties": {
+              "list_id": {"type": "string"}
+            },
+            "required": ["list_id"],
+            "description": "Campaign recipients"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "subject_line": {"type": "string"},
+              "from_name": {"type": "string"},
+              "reply_to": {"type": "string", "format": "email"}
+            },
+            "required": ["subject_line", "from_name", "reply_to"],
+            "description": "Campaign settings"
+          }
+        },
+        "required": ["type", "recipients", "settings"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_campaign",
+      "name": "Send Campaign",
+      "description": "Send a campaign",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "description": "Campaign ID"
+          }
+        },
+        "required": ["campaign_id"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "subscriber_added",
+      "name": "Subscriber Added",
+      "description": "Triggered when a new subscriber is added",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "Filter by list ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email_address": {"type": "string"},
+          "status": {"type": "string"},
+          "list_id": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/ping"
+  }
 }

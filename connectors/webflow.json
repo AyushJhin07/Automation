@@ -1,0 +1,437 @@
+{
+  "id": "webflow",
+  "name": "Webflow",
+  "description": "Visual web design platform for building responsive websites",
+  "category": "Website Builders",
+  "icon": "webflow",
+  "color": "#4353FF",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Bearer {api_key}"
+    }
+  },
+  "baseUrl": "https://api.webflow.com",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Webflow",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_sites",
+      "name": "List Sites",
+      "description": "List all sites",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_site",
+      "name": "Get Site",
+      "description": "Get site details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID"
+          }
+        },
+        "required": ["site_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_collections",
+      "name": "List Collections",
+      "description": "List collections for a site",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID"
+          }
+        },
+        "required": ["site_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_collection",
+      "name": "Get Collection",
+      "description": "Get collection details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID"
+          }
+        },
+        "required": ["collection_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_collection_items",
+      "name": "List Collection Items",
+      "description": "List items in a collection",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of items to skip"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Number of items to return"
+          }
+        },
+        "required": ["collection_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_collection_item",
+      "name": "Get Collection Item",
+      "description": "Get a specific collection item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID"
+          },
+          "item_id": {
+            "type": "string",
+            "description": "Item ID"
+          }
+        },
+        "required": ["collection_id", "item_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_collection_item",
+      "name": "Create Collection Item",
+      "description": "Create a new collection item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Item field values"
+          },
+          "live": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to publish the item live"
+          }
+        },
+        "required": ["collection_id", "fields"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_collection_item",
+      "name": "Update Collection Item",
+      "description": "Update an existing collection item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID"
+          },
+          "item_id": {
+            "type": "string",
+            "description": "Item ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Updated field values"
+          },
+          "live": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to publish the changes live"
+          }
+        },
+        "required": ["collection_id", "item_id", "fields"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_collection_item",
+      "name": "Delete Collection Item",
+      "description": "Delete a collection item",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID"
+          },
+          "item_id": {
+            "type": "string",
+            "description": "Item ID"
+          },
+          "live": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to delete from live site"
+          }
+        },
+        "required": ["collection_id", "item_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "publish_site",
+      "name": "Publish Site",
+      "description": "Publish site changes",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "domains": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Domains to publish to"
+          }
+        },
+        "required": ["site_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_webhooks",
+      "name": "List Webhooks",
+      "description": "List webhooks for a site",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID"
+          }
+        },
+        "required": ["site_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_webhook",
+      "name": "Create Webhook",
+      "description": "Create a new webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "triggerType": {
+            "type": "string",
+            "enum": ["form_submission", "site_publish", "ecomm_new_order", "ecomm_order_changed", "ecomm_inventory_changed", "membership_user_account_added", "membership_user_account_updated", "collection_item_created", "collection_item_changed", "collection_item_deleted"],
+            "description": "Webhook trigger type"
+          },
+          "url": {
+            "type": "string",
+            "description": "Webhook URL"
+          },
+          "filter": {
+            "type": "object",
+            "description": "Optional filter criteria"
+          }
+        },
+        "required": ["site_id", "triggerType", "url"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_webhook",
+      "name": "Delete Webhook",
+      "description": "Delete a webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "webhook_id": {
+            "type": "string",
+            "description": "Webhook ID"
+          }
+        },
+        "required": ["site_id", "webhook_id"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "form_submission",
+      "name": "Form Submission",
+      "description": "Triggered when a form is submitted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID to monitor"
+          },
+          "form_id": {
+            "type": "string",
+            "description": "Form ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "_id": {"type": "string"},
+          "name": {"type": "string"},
+          "email": {"type": "string"},
+          "data": {"type": "object"},
+          "d": {"type": "string"},
+          "site": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "collection_item_created",
+      "name": "Collection Item Created",
+      "description": "Triggered when a collection item is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID to monitor"
+          },
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "_cid": {"type": "string"},
+          "_id": {"type": "string"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "_archived": {"type": "boolean"},
+          "_draft": {"type": "boolean"},
+          "created-on": {"type": "string"},
+          "updated-on": {"type": "string"},
+          "published-on": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "collection_item_changed",
+      "name": "Collection Item Changed",
+      "description": "Triggered when a collection item is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID to monitor"
+          },
+          "collection_id": {
+            "type": "string",
+            "description": "Collection ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "_cid": {"type": "string"},
+          "_id": {"type": "string"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "_archived": {"type": "boolean"},
+          "_draft": {"type": "boolean"},
+          "created-on": {"type": "string"},
+          "updated-on": {"type": "string"},
+          "published-on": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "site_published",
+      "name": "Site Published",
+      "description": "Triggered when a site is published",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "Site ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "site": {"type": "string"},
+          "publishTime": {"type": "string"},
+          "domains": {"type": "array"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/sites"
+  }
+}

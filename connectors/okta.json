@@ -2,141 +2,230 @@
   "id": "okta",
   "name": "Okta",
   "description": "Okta identity and access management platform",
-  "category": "Identity Management",
-  "icon": "shield",
+  "category": "Security",
+  "icon": "okta",
   "color": "#007DC1",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "SSWS"
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "SSWS"
     }
   },
   "baseUrl": "https://your-domain.okta.com/api/v1",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 50000
-  },
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Okta",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 200,
+            "description": "Number of users to return"
+          },
+          "after": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_user",
       "name": "Create User",
-      "description": "Create a new user in Okta",
+      "description": "Create a new user",
       "parameters": {
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "User email address"
+        "type": "object",
+        "properties": {
+          "profile": {
+            "type": "object",
+            "properties": {
+              "firstName": {"type": "string"},
+              "lastName": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "login": {"type": "string"},
+              "mobilePhone": {"type": "string"}
+            },
+            "required": ["firstName", "lastName", "email", "login"],
+            "description": "User profile"
+          },
+          "credentials": {
+            "type": "object",
+            "properties": {
+              "password": {
+                "type": "object",
+                "properties": {
+                  "value": {"type": "string"}
+                }
+              },
+              "recovery_question": {
+                "type": "object",
+                "properties": {
+                  "question": {"type": "string"},
+                  "answer": {"type": "string"}
+                }
+              }
+            },
+            "description": "User credentials"
+          },
+          "activate": {
+            "type": "boolean",
+            "default": true,
+            "description": "Activate user immediately"
+          }
         },
-        "firstName": {
-          "type": "string",
-          "required": true,
-          "description": "First name"
-        },
-        "lastName": {
-          "type": "string",
-          "required": true,
-          "description": "Last name"
-        },
-        "login": {
-          "type": "string",
-          "required": true,
-          "description": "User login"
-        },
-        "password": {
-          "type": "string",
-          "required": false,
-          "description": "User password"
-        }
-      },
-      "requiredScopes": [
-        "users:create"
-      ]
+        "required": ["profile"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_user",
       "name": "Update User",
       "description": "Update an existing user",
       "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "profile": {
+            "type": "object",
+            "properties": {
+              "firstName": {"type": "string"},
+              "lastName": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "mobilePhone": {"type": "string"}
+            },
+            "description": "User profile updates"
+          }
         },
-        "profile": {
-          "type": "object",
-          "required": true,
-          "description": "User profile data"
-        }
-      },
-      "requiredScopes": [
-        "users:manage"
-      ]
+        "required": ["userId", "profile"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "deactivate_user",
       "name": "Deactivate User",
-      "description": "Deactivate a user account",
+      "description": "Deactivate a user",
       "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID"
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "sendEmail": {
+            "type": "boolean",
+            "default": false,
+            "description": "Send deactivation email"
+          }
         },
-        "sendEmail": {
-          "type": "boolean",
-          "required": false,
-          "description": "Send deactivation email",
-          "default": false
-        }
-      },
-      "requiredScopes": [
-        "users:manage"
-      ]
+        "required": ["userId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "assign_group",
-      "name": "Assign Group",
-      "description": "Assign a user to a group",
+      "id": "get_groups",
+      "name": "Get Groups",
+      "description": "Get list of groups",
       "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID"
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 200,
+            "description": "Number of groups to return"
+          }
         },
-        "groupId": {
-          "type": "string",
-          "required": true,
-          "description": "Group ID"
-        }
-      },
-      "requiredScopes": [
-        "groups:manage"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "reset_password",
-      "name": "Reset Password",
-      "description": "Reset user password",
+      "id": "add_user_to_group",
+      "name": "Add User to Group",
+      "description": "Add a user to a group",
       "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID"
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Group ID"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
         },
-        "sendEmail": {
-          "type": "boolean",
-          "required": false,
-          "description": "Send reset email",
-          "default": true
-        }
-      },
-      "requiredScopes": [
-        "users:manage"
-      ]
+        "required": ["groupId", "userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_applications",
+      "name": "Get Applications",
+      "description": "Get list of applications",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 200,
+            "description": "Number of applications to return"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -144,28 +233,25 @@
       "id": "user_created",
       "name": "User Created",
       "description": "Triggered when a new user is created",
-      "parameters": {},
-      "requiredScopes": [
-        "users:read"
-      ]
-    },
-    {
-      "id": "user_suspended",
-      "name": "User Suspended",
-      "description": "Triggered when a user is suspended",
-      "parameters": {},
-      "requiredScopes": [
-        "users:read"
-      ]
-    },
-    {
-      "id": "group_assigned",
-      "name": "Group Assigned",
-      "description": "Triggered when a user is assigned to a group",
-      "parameters": {},
-      "requiredScopes": [
-        "groups:read"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "status": {"type": "string"},
+          "profile": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

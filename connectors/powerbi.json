@@ -1,9 +1,9 @@
 {
   "id": "powerbi",
   "name": "Power BI",
-  "description": "Microsoft Power BI business analytics",
+  "description": "Microsoft Power BI business analytics service",
   "category": "Analytics",
-  "icon": "placeholder",
+  "icon": "powerbi",
   "color": "#F2C811",
   "version": "1.0.0",
   "authentication": {
@@ -11,108 +11,120 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": [
-        "https://analysis.windows.net/powerbi/api/Dataset.ReadWrite.All"
-      ]
+      "scopes": ["https://analysis.windows.net/powerbi/api/.default"]
     }
   },
-  "baseUrl": "https://api.powerbi.com/v1.0",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.powerbi.com/v1.0/myorg",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Power BI and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Power BI",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "query_dataset",
-      "name": "Query Dataset",
-      "description": "Query a Power BI dataset",
+      "id": "get_datasets",
+      "name": "Get Datasets",
+      "description": "Get list of datasets",
       "parameters": {
-        "datasetId": {
-          "type": "string",
-          "required": true,
-          "description": "Dataset ID"
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
         },
-        "sql": {
-          "type": "string",
-          "required": true,
-          "description": "SQL query"
-        }
-      },
-      "requiredScopes": [
-        "Dataset.Read.All"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "trigger_refresh",
-      "name": "Trigger Refresh",
-      "description": "Trigger a dataset refresh",
+      "id": "refresh_dataset",
+      "name": "Refresh Dataset",
+      "description": "Trigger dataset refresh",
       "parameters": {
-        "datasetId": {
-          "type": "string",
-          "required": true,
-          "description": "Dataset ID"
-        }
-      },
-      "requiredScopes": [
-        "Dataset.ReadWrite.All"
-      ]
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
+        },
+        "required": ["datasetId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_rows",
-      "name": "Add Rows",
-      "description": "Add rows to a dataset table",
+      "id": "get_reports",
+      "name": "Get Reports",
+      "description": "Get list of reports",
       "parameters": {
-        "datasetId": {
-          "type": "string",
-          "required": true,
-          "description": "Dataset ID"
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
         },
-        "tableName": {
-          "type": "string",
-          "required": true,
-          "description": "Table name"
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dashboards",
+      "name": "Get Dashboards",
+      "description": "Get list of dashboards",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          }
         },
-        "rows": {
-          "type": "array",
-          "required": true,
-          "description": "Array of row objects"
-        }
-      },
-      "requiredScopes": [
-        "Dataset.ReadWrite.All"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "dataset_refresh_completed",
-      "name": "Dataset Refresh Completed",
+      "id": "dataset_refreshed",
+      "name": "Dataset Refreshed",
       "description": "Triggered when a dataset refresh completes",
+      "type": "webhook",
       "parameters": {
-        "datasetId": {
-          "type": "string",
-          "required": true,
-          "description": "Dataset ID to monitor"
-        }
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Filter by workspace ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "Dataset.Read.All"
-      ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "datasetId": {"type": "string"},
+          "refreshType": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/groups"
+  }
 }

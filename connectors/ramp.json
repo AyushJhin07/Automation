@@ -1,96 +1,180 @@
 {
   "id": "ramp",
   "name": "Ramp",
-  "category": "Spend Management",
-  "description": "Ramp integration for automated workflows",
+  "description": "Ramp corporate card and expense management platform",
+  "category": "Finance",
+  "icon": "ramp",
+  "color": "#7C3AED",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2",
+    "type": "api_key",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "read",
-        "write"
-      ]
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyPrefix": "Bearer"
     }
   },
+  "baseUrl": "https://api.ramp.com/v1",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Ramp",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Ramp",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Ramp",
+      "id": "get_transactions",
+      "name": "Get Transactions",
+      "description": "Get list of transactions",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of transactions to return"
+          },
+          "start": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter transactions from this date"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter transactions to this date"
+          },
+          "card_id": {
+            "type": "string",
+            "description": "Filter by card ID"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "Filter by user ID"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Ramp",
+      "id": "get_cards",
+      "name": "Get Cards",
+      "description": "Get list of cards",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of cards to return"
+          },
+          "start": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_users",
+      "name": "Get Users",
+      "description": "Get list of users",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of users to return"
+          },
+          "start": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create a new user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["CARDHOLDER", "ADMIN", "BOOKKEEPER"],
+            "description": "User role"
+          }
+        },
+        "required": ["first_name", "last_name", "email", "role"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "transaction_created",
+      "name": "Transaction Created",
+      "description": "Triggered when a new transaction is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "Filter by card ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
-    },
-    {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
-      },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "amount": {"type": "number"},
+          "card_id": {"type": "string"},
+          "user_transaction_date": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/users/me"
+  }
 }

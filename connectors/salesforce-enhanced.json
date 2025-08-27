@@ -1,33 +1,46 @@
 {
   "id": "salesforce-enhanced",
   "name": "Salesforce Enhanced",
-  "description": "Salesforce Enhanced integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#999999",
-  "version": "1.0.0",
+  "description": "Enhanced Salesforce CRM with advanced features and capabilities",
+  "category": "CRM",
+  "icon": "salesforce",
+  "color": "#00A1E0",
+  "version": "2.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://login.salesforce.com/services/oauth2/authorize",
+      "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
+      "scopes": ["full", "refresh_token"]
+    }
   },
-  "baseUrl": "https://api.salesforce.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://your-instance.salesforce.com/services/data/v58.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Salesforce Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "api"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Salesforce",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_records",
+      "name": "Query Records",
+      "description": "Execute SOQL query",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "SOQL query string"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
       }
     },
     {
@@ -35,11 +48,19 @@
       "name": "Create Record",
       "description": "Create a new record",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type (e.g., Account, Contact, Lead)"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Record fields"
+          }
+        },
+        "required": ["sobjectType", "fields"],
+        "additionalProperties": false
       }
     },
     {
@@ -47,28 +68,122 @@
       "name": "Update Record",
       "description": "Update an existing record",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Fields to update"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["sobjectType", "recordId", "fields"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_record",
+      "name": "Delete Record",
+      "description": "Delete a record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          }
+        },
+        "required": ["sobjectType", "recordId"],
+        "additionalProperties": false
       }
     },
     {
       "id": "get_record",
       "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "description": "Get a record by ID",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to retrieve"
+          }
+        },
+        "required": ["sobjectType", "recordId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "upsert_record",
+      "name": "Upsert Record",
+      "description": "Create or update a record using external ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type"
+          },
+          "externalIdField": {
+            "type": "string",
+            "description": "External ID field name"
+          },
+          "externalId": {
+            "type": "string",
+            "description": "External ID value"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Record fields"
+          }
+        },
+        "required": ["sobjectType", "externalIdField", "externalId", "fields"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "execute_apex",
+      "name": "Execute Apex",
+      "description": "Execute Apex REST service",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "apexClass": {
+            "type": "string",
+            "description": "Apex class name"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE"],
+            "default": "POST",
+            "description": "HTTP method"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Parameters to pass"
+          }
+        },
+        "required": ["apexClass"],
+        "additionalProperties": false
       }
     }
   ],
@@ -77,17 +192,55 @@
       "id": "record_created",
       "name": "Record Created",
       "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "Filter by SObject type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "Id": {"type": "string"},
+          "sobjectType": {"type": "string"},
+          "fields": {"type": "object"}
+        }
+      }
     },
     {
       "id": "record_updated",
       "name": "Record Updated",
       "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "Filter by SObject type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "Id": {"type": "string"},
+          "sobjectType": {"type": "string"},
+          "fields": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/limits"
+  }
 }

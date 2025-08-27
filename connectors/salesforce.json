@@ -1,241 +1,141 @@
 {
   "id": "salesforce",
   "name": "Salesforce",
-  "category": "crm",
-  "description": "Salesforce CRM platform with comprehensive sales and customer management",
+  "description": "Salesforce customer relationship management platform",
+  "category": "CRM",
+  "icon": "salesforce",
+  "color": "#00A1E0",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://api.example.com/oauth/authorize",
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "scopes": [
-        "api",
-        "refresh_token",
-        "full"
-      ]
+      "authUrl": "https://login.salesforce.com/services/oauth2/authorize",
+      "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
+      "scopes": ["full", "refresh_token"]
     }
   },
+  "baseUrl": "https://your-instance.salesforce.com/services/data/v58.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Salesforce and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "api"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Salesforce",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_lead",
-      "name": "Create Lead",
-      "description": "Create a new lead in Salesforce",
+      "id": "create_record",
+      "name": "Create Record",
+      "description": "Create a new record",
       "parameters": {
-        "firstName": {
-          "type": "string",
-          "required": true,
-          "description": "Lead first name"
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type (e.g., Account, Contact, Lead)"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Record fields"
+          }
         },
-        "lastName": {
-          "type": "string",
-          "required": true,
-          "description": "Lead last name"
-        },
-        "email": {
-          "type": "string",
-          "required": true,
-          "description": "Lead email"
-        },
-        "company": {
-          "type": "string",
-          "required": true,
-          "description": "Lead company"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Lead phone"
-        },
-        "status": {
-          "type": "string",
-          "required": false,
-          "description": "Lead status",
-          "options": [
-            "New",
-            "Working",
-            "Qualified",
-            "Unqualified"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "api"
-      ]
+        "required": ["sobjectType", "fields"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "create_opportunity",
-      "name": "Create Opportunity",
-      "description": "Create a new sales opportunity",
+      "id": "update_record",
+      "name": "Update Record",
+      "description": "Update an existing record",
       "parameters": {
-        "name": {
-          "type": "string",
-          "required": true,
-          "description": "Opportunity name"
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "object",
+            "description": "Fields to update"
+          }
         },
-        "accountId": {
-          "type": "string",
-          "required": true,
-          "description": "Account ID"
-        },
-        "amount": {
-          "type": "number",
-          "required": false,
-          "description": "Opportunity amount"
-        },
-        "closeDate": {
-          "type": "string",
-          "required": true,
-          "description": "Expected close date"
-        },
-        "stageName": {
-          "type": "string",
-          "required": true,
-          "description": "Sales stage"
-        }
-      },
-      "requiredScopes": [
-        "api"
-      ]
+        "required": ["sobjectType", "recordId", "fields"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_contact",
-      "name": "Update Contact",
-      "description": "Update contact information",
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a record by ID",
       "parameters": {
-        "contactId": {
-          "type": "string",
-          "required": true,
-          "description": "Contact ID"
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "SObject type"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "Record ID"
+          }
         },
-        "firstName": {
-          "type": "string",
-          "required": false,
-          "description": "First name"
-        },
-        "lastName": {
-          "type": "string",
-          "required": false,
-          "description": "Last name"
-        },
-        "email": {
-          "type": "string",
-          "required": false,
-          "description": "Email address"
-        },
-        "phone": {
-          "type": "string",
-          "required": false,
-          "description": "Phone number"
-        }
-      },
-      "requiredScopes": [
-        "api"
-      ]
+        "required": ["sobjectType", "recordId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "create_task",
-      "name": "Create Task",
-      "description": "Create a new task",
+      "id": "query_records",
+      "name": "Query Records",
+      "description": "Execute SOQL query",
       "parameters": {
-        "subject": {
-          "type": "string",
-          "required": true,
-          "description": "Task subject"
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "SOQL query string"
+          }
         },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "Task description"
-        },
-        "whoId": {
-          "type": "string",
-          "required": false,
-          "description": "Related contact/lead ID"
-        },
-        "whatId": {
-          "type": "string",
-          "required": false,
-          "description": "Related account/opportunity ID"
-        },
-        "activityDate": {
-          "type": "string",
-          "required": false,
-          "description": "Due date"
-        },
-        "priority": {
-          "type": "string",
-          "required": false,
-          "description": "Task priority",
-          "options": [
-            "High",
-            "Normal",
-            "Low"
-          ]
-        }
-      },
-      "requiredScopes": [
-        "api"
-      ]
+        "required": ["query"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "lead_created",
-      "name": "Lead Created",
-      "description": "Trigger when new lead is created",
+      "id": "record_created",
+      "name": "Record Created",
+      "description": "Triggered when a record is created",
+      "type": "webhook",
       "parameters": {
-        "source": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by lead source"
-        }
+        "type": "object",
+        "properties": {
+          "sobjectType": {
+            "type": "string",
+            "description": "Filter by SObject type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": [
-        "api"
-      ]
-    },
-    {
-      "id": "opportunity_closed",
-      "name": "Opportunity Closed",
-      "description": "Trigger when opportunity is closed",
-      "parameters": {
-        "stage": {
-          "type": "string",
-          "required": false,
-          "description": "Filter by stage",
-          "options": [
-            "Closed Won",
-            "Closed Lost"
-          ]
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "Id": {"type": "string"},
+          "sobjectType": {"type": "string"}
         }
-      },
-      "requiredScopes": [
-        "api"
-      ]
+      }
     }
   ],
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 100,
-    "dailyLimit": 100000
-  },
-  "pricing": {
-    "tier": "premium",
-    "costPerExecution": 0.002
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/limits"
   }
 }

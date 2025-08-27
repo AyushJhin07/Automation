@@ -1,0 +1,747 @@
+{
+  "id": "toggl",
+  "name": "Toggl Track",
+  "description": "Time tracking software for teams and individuals",
+  "category": "Time Tracking",
+  "icon": "toggl",
+  "color": "#E57CD8",
+  "version": "1.0.0",
+  "authentication": {
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Basic {api_key}"
+    }
+  },
+  "baseUrl": "https://api.track.toggl.com/api/v9",
+  "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Toggl",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "start_time_entry",
+      "name": "Start Time Entry",
+      "description": "Start a new time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Time entry description"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Project ID"
+          },
+          "task_id": {
+            "type": "number",
+            "description": "Task ID"
+          },
+          "billable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the time entry is billable"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time (ISO 8601 format)"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Duration in seconds (for completed entries)"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of tags"
+          },
+          "created_with": {
+            "type": "string",
+            "description": "Name of the client/application"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "stop_time_entry",
+      "name": "Stop Time Entry",
+      "description": "Stop the currently running time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_time_entry",
+      "name": "Create Time Entry",
+      "description": "Create a completed time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Time entry description"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Project ID"
+          },
+          "task_id": {
+            "type": "number",
+            "description": "Task ID"
+          },
+          "billable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the time entry is billable"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time (ISO 8601 format)"
+          },
+          "stop": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Stop time (ISO 8601 format)"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Duration in seconds"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of tags"
+          },
+          "created_with": {
+            "type": "string",
+            "description": "Name of the client/application"
+          }
+        },
+        "required": ["workspace_id", "start", "duration"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_time_entry",
+      "name": "Update Time Entry",
+      "description": "Update an existing time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "time_entry_id": {
+            "type": "number",
+            "description": "Time entry ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Time entry description"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Project ID"
+          },
+          "task_id": {
+            "type": "number",
+            "description": "Task ID"
+          },
+          "billable": {
+            "type": "boolean",
+            "description": "Whether the time entry is billable"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time (ISO 8601 format)"
+          },
+          "stop": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Stop time (ISO 8601 format)"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Duration in seconds"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of tags"
+          }
+        },
+        "required": ["workspace_id", "time_entry_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_time_entry",
+      "name": "Delete Time Entry",
+      "description": "Delete a time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "time_entry_id": {
+            "type": "number",
+            "description": "Time entry ID"
+          }
+        },
+        "required": ["workspace_id", "time_entry_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_time_entry",
+      "name": "Get Time Entry",
+      "description": "Get details of a specific time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "time_entry_id": {
+            "type": "number",
+            "description": "Time entry ID"
+          }
+        },
+        "required": ["workspace_id", "time_entry_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_time_entries",
+      "name": "List Time Entries",
+      "description": "List time entries with optional filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "user_id": {
+            "type": "number",
+            "description": "User ID to filter entries"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Project ID to filter entries"
+          },
+          "client_id": {
+            "type": "number",
+            "description": "Client ID to filter entries"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date filter (YYYY-MM-DD)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date filter (YYYY-MM-DD)"
+          },
+          "since": {
+            "type": "number",
+            "description": "Unix timestamp to get entries modified since"
+          },
+          "before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Get entries before this date (ISO 8601)"
+          },
+          "after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Get entries after this date (ISO 8601)"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_current_time_entry",
+      "name": "Get Current Time Entry",
+      "description": "Get the currently running time entry",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "client_id": {
+            "type": "number",
+            "description": "Client ID"
+          },
+          "is_private": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether the project is private"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether the project is active"
+          },
+          "color": {
+            "type": "string",
+            "description": "Project color (hex format)"
+          },
+          "billable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the project is billable by default"
+          },
+          "template": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the project is a template"
+          },
+          "auto_estimates": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to enable auto estimates"
+          },
+          "estimated_hours": {
+            "type": "number",
+            "description": "Estimated hours for the project"
+          },
+          "rate": {
+            "type": "number",
+            "description": "Hourly rate for the project"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code (e.g., USD, EUR)"
+          }
+        },
+        "required": ["workspace_id", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_project",
+      "name": "Update Project",
+      "description": "Update an existing project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Project ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "client_id": {
+            "type": "number",
+            "description": "Client ID"
+          },
+          "is_private": {
+            "type": "boolean",
+            "description": "Whether the project is private"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the project is active"
+          },
+          "color": {
+            "type": "string",
+            "description": "Project color (hex format)"
+          },
+          "billable": {
+            "type": "boolean",
+            "description": "Whether the project is billable by default"
+          },
+          "template": {
+            "type": "boolean",
+            "description": "Whether the project is a template"
+          },
+          "auto_estimates": {
+            "type": "boolean",
+            "description": "Whether to enable auto estimates"
+          },
+          "estimated_hours": {
+            "type": "number",
+            "description": "Estimated hours for the project"
+          },
+          "rate": {
+            "type": "number",
+            "description": "Hourly rate for the project"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code (e.g., USD, EUR)"
+          }
+        },
+        "required": ["workspace_id", "project_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_project",
+      "name": "Get Project",
+      "description": "Get details of a specific project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Project ID"
+          }
+        },
+        "required": ["workspace_id", "project_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_projects",
+      "name": "List Projects",
+      "description": "List all projects in a workspace",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Filter by active status"
+          },
+          "since": {
+            "type": "number",
+            "description": "Unix timestamp to get projects modified since"
+          },
+          "billable": {
+            "type": "boolean",
+            "description": "Filter by billable status"
+          },
+          "user_ids": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "List of user IDs to filter by project membership"
+          },
+          "client_ids": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "List of client IDs to filter by"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_client",
+      "name": "Create Client",
+      "description": "Create a new client",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Client name"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Client notes"
+          }
+        },
+        "required": ["workspace_id", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_clients",
+      "name": "List Clients",
+      "description": "List all clients in a workspace",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          },
+          "since": {
+            "type": "number",
+            "description": "Unix timestamp to get clients modified since"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_workspace",
+      "name": "Get Workspace",
+      "description": "Get workspace details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Workspace ID"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_workspaces",
+      "name": "List Workspaces",
+      "description": "List all workspaces for the current user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "since": {
+            "type": "number",
+            "description": "Unix timestamp to get workspaces modified since"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "time_entry_created",
+      "name": "Time Entry Created",
+      "description": "Triggered when a new time entry is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Filter by workspace ID"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Filter by project ID"
+          },
+          "user_id": {
+            "type": "number",
+            "description": "Filter by user ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "workspace_id": {"type": "number"},
+          "project_id": {"type": "number"},
+          "task_id": {"type": "number"},
+          "billable": {"type": "boolean"},
+          "start": {"type": "string"},
+          "stop": {"type": "string"},
+          "duration": {"type": "number"},
+          "description": {"type": "string"},
+          "tags": {"type": "array"},
+          "tag_ids": {"type": "array"},
+          "duronly": {"type": "boolean"},
+          "at": {"type": "string"},
+          "server_deleted_at": {"type": "string"},
+          "user_id": {"type": "number"},
+          "uid": {"type": "number"},
+          "wid": {"type": "number"},
+          "pid": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "time_entry_updated",
+      "name": "Time Entry Updated",
+      "description": "Triggered when a time entry is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Filter by workspace ID"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Filter by project ID"
+          },
+          "user_id": {
+            "type": "number",
+            "description": "Filter by user ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "workspace_id": {"type": "number"},
+          "project_id": {"type": "number"},
+          "task_id": {"type": "number"},
+          "billable": {"type": "boolean"},
+          "start": {"type": "string"},
+          "stop": {"type": "string"},
+          "duration": {"type": "number"},
+          "description": {"type": "string"},
+          "tags": {"type": "array"},
+          "at": {"type": "string"},
+          "user_id": {"type": "number"}
+        }
+      }
+    },
+    {
+      "id": "time_entry_deleted",
+      "name": "Time Entry Deleted",
+      "description": "Triggered when a time entry is deleted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Filter by workspace ID"
+          },
+          "project_id": {
+            "type": "number",
+            "description": "Filter by project ID"
+          },
+          "user_id": {
+            "type": "number",
+            "description": "Filter by user ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "workspace_id": {"type": "number"},
+          "user_id": {"type": "number"},
+          "deleted_at": {"type": "string"}
+        }
+      }
+    },
+    {
+      "id": "project_created",
+      "name": "Project Created",
+      "description": "Triggered when a new project is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "number",
+            "description": "Filter by workspace ID"
+          },
+          "client_id": {
+            "type": "number",
+            "description": "Filter by client ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "workspace_id": {"type": "number"},
+          "client_id": {"type": "number"},
+          "name": {"type": "string"},
+          "is_private": {"type": "boolean"},
+          "active": {"type": "boolean"},
+          "at": {"type": "string"},
+          "created_at": {"type": "string"},
+          "server_deleted_at": {"type": "string"},
+          "color": {"type": "string"},
+          "billable": {"type": "boolean"},
+          "template": {"type": "boolean"},
+          "auto_estimates": {"type": "boolean"},
+          "estimated_hours": {"type": "number"},
+          "rate": {"type": "number"},
+          "currency": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/me"
+  }
+}
