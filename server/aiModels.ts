@@ -126,17 +126,29 @@ class MultiAIService {
       throw new Error('Gemini API key not configured');
     }
 
-    const systemPrompt = `You are an automation expert. Analyze the user's workflow request and return a JSON response with:
+    const systemPrompt = `You are an expert Google Apps Script automation consultant. Carefully analyze the user's request and extract specific automation requirements.
 
-🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.
+🚨 CRITICAL: Runtime is Google Apps Script ONLY. Use only: Gmail, Google Sheets, Calendar, Drive, UrlFetchApp, PropertiesService, ScriptApp triggers.
 
+ANALYZE THE REQUEST THOROUGHLY:
+- What specific trigger should start the automation?
+- What data sources are involved?
+- What specific actions should be performed?
+- What conditions or filters apply?
+- What is the expected outcome?
+
+If the user provided clarification answers, prioritize those specifications over assumptions.
+
+Return JSON:
 {
-  "intent": "email_tracking|lead_followup|file_organization|custom_automation",
-  "requiredApps": ["Gmail", "Google Sheets", etc.],
-  "suggestedFunctions": ["Search Emails", "Append Row", etc.],
+  "intent": "specific_intent_based_on_request",
+  "requiredApps": ["Specific apps mentioned by user"],
+  "suggestedFunctions": ["Functions matching user's exact needs"],
   "complexity": "Simple|Medium|Complex",
-  "estimatedValue": "$X,XXX/month time savings",
-  "confidence": 0.95
+  "estimatedValue": "$X,XXX/month time savings", 
+  "confidence": 0.95,
+  "triggerType": "time|email|sheet|form|manual",
+  "specificRequirements": "Detailed description of what user wants"
 }`;
 
     // Try multiple Gemini models with fallback
@@ -403,11 +415,32 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       // STEP 2: Generate workflow (either directly or with answers)
       console.log('🔧 Generating workflow...');
       
-      // Analyze prompt with multiple AI models
-      const analysis = await MultiAIService.analyzeWorkflowPrompt(prompt);
+      let enhancedPrompt = prompt;
+      
+      // If we have answers, incorporate them into the workflow generation
+      if (answers && Object.keys(answers).length > 0) {
+        console.log('📝 Incorporating user answers:', answers);
+        
+        // Create an enhanced prompt that includes the user's specific answers
+        const answerSummary = Object.entries(answers)
+          .map(([questionId, answer]) => `${questionId}: ${answer}`)
+          .join('\n');
+        
+        enhancedPrompt = `${prompt}
+
+User's specific requirements based on clarification:
+${answerSummary}
+
+Build the automation according to these exact specifications provided by the user.`;
+        
+        console.log('🎯 Enhanced prompt with answers:', enhancedPrompt);
+      }
+      
+      // Analyze prompt with multiple AI models (using enhanced prompt if we have answers)
+      const analysis = await MultiAIService.analyzeWorkflowPrompt(enhancedPrompt);
       
       // Generate workflow structure
-      const workflow = await generateWorkflowFromAnalysis(analysis, prompt);
+      const workflow = await generateWorkflowFromAnalysis(analysis, enhancedPrompt);
       
       res.json({
         success: true,
@@ -1363,156 +1396,171 @@ function runOnce() {
 // ===== FOLLOW-UP QUESTIONS LOGIC =====
 
 async function shouldAskQuestions(prompt: string): Promise<{shouldAsk: boolean, reasoning: string}> {
-  const lowerPrompt = prompt.toLowerCase().trim();
-  
-  // Sophisticated analysis to determine if questions are needed
-  const vaguenessIndicators = [
-    lowerPrompt.length < 20, // Very short prompts
-    !lowerPrompt.includes('gmail') && !lowerPrompt.includes('sheet') && !lowerPrompt.includes('calendar'), // No specific apps
-    lowerPrompt.includes('automate') && lowerPrompt.split(' ').length < 8, // Generic automation request
-    !lowerPrompt.includes('when') && !lowerPrompt.includes('if') && !lowerPrompt.includes('trigger'), // No trigger info
-    lowerPrompt.includes('something') || lowerPrompt.includes('stuff') || lowerPrompt.includes('things'), // Vague terms
-    lowerPrompt.includes('help me') && !lowerPrompt.includes('how to') // Generic help request
-  ];
-  
-  const vaguenessScore = vaguenessIndicators.filter(Boolean).length;
-  
-  // Complex automations that need clarification
-  const complexityIndicators = [
-    lowerPrompt.includes('different') || lowerPrompt.includes('various'), // Multiple scenarios
-    lowerPrompt.includes('condition') || lowerPrompt.includes('if'), // Conditional logic
-    lowerPrompt.includes('integrate') || lowerPrompt.includes('connect'), // Integration needs
-    lowerPrompt.includes('custom') || lowerPrompt.includes('specific'), // Customization needs
-    lowerPrompt.includes('team') || lowerPrompt.includes('multiple'), // Multi-user scenarios
-  ];
-  
-  const complexityScore = complexityIndicators.filter(Boolean).length;
-  
-  // Always ask questions for one-liner prompts without specifics
-  if (lowerPrompt.split(' ').length <= 6 && vaguenessScore >= 2) {
+  // Use LLM to intelligently determine if questions are needed
+  try {
+    const analysisPrompt = `You are an expert Google Apps Script automation consultant. Analyze this user request and determine if you have enough information to build a complete automation.
+
+User Request: "${prompt}"
+
+Consider these critical factors:
+1. Is the trigger clearly specified? (when should it run?)
+2. Are the data sources clearly defined? (what data to process?)
+3. Are the actions clearly defined? (what should happen?)
+4. Are any conditions or filters specified?
+5. Is the automation scope clear?
+
+Respond with JSON only:
+{
+  "needsQuestions": true/false,
+  "reasoning": "Brief explanation",
+  "missingInfo": ["trigger", "data_source", "actions", "conditions"] // only include what's missing
+}
+
+Examples:
+- "automate my emails" → needs questions (vague, missing trigger, actions)
+- "Monitor Gmail for invoices and save them to Sheet every hour" → no questions (clear trigger, source, action)
+- "create automation" → needs questions (completely vague)`;
+
+    // Use the Gemini model to analyze
+    const models = MultiAIService.getModels();
+    const geminiModel = models.find(m => m.provider === 'gemini');
+    
+    if (!geminiModel?.apiKey) {
+      // Fallback to simple heuristics if no API key
+      return {
+        shouldAsk: prompt.split(' ').length <= 8,
+        reasoning: 'Simple heuristic analysis'
+      };
+    }
+
+    const response = await fetch(`${geminiModel.endpoint}?key=${geminiModel.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: analysisPrompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+      })
+    });
+
+    if (!response.ok) throw new Error('Analysis failed');
+    
+    const data = await response.json();
+    const aiResponse = data.candidates[0].content.parts[0].text;
+    const parsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
+    
     return {
-      shouldAsk: true,
-      reasoning: 'Prompt is too brief and lacks essential details for automation setup'
+      shouldAsk: parsed.needsQuestions,
+      reasoning: parsed.reasoning
+    };
+    
+  } catch (error) {
+    console.error('LLM analysis failed, using fallback:', error);
+    // Fallback to simple heuristics
+    return {
+      shouldAsk: prompt.split(' ').length <= 8 || prompt.toLowerCase().includes('automate'),
+      reasoning: 'Fallback analysis - prompt appears to need clarification'
     };
   }
-  
-  // Ask questions for vague or complex requests
-  if (vaguenessScore >= 2 || complexityScore >= 1) {
-    return {
-      shouldAsk: true,
-      reasoning: 'Prompt needs clarification for triggers, conditions, and specific requirements'
-    };
-  }
-  
-  // For testing: Ask questions for simple automation requests
-  if (lowerPrompt.includes('automate') || lowerPrompt.includes('automation') || lowerPrompt.split(' ').length <= 8) {
-    return {
-      shouldAsk: true,
-      reasoning: 'Building custom automation requires specific configuration details'
-    };
-  }
-  
-  // Don't ask questions for clear, specific prompts
-  return {
-    shouldAsk: false,
-    reasoning: 'Prompt contains sufficient detail for direct workflow generation'
-  };
 }
 
 async function generateFollowUpQuestions(prompt: string): Promise<any[]> {
-  const lowerPrompt = prompt.toLowerCase();
-  const questions: any[] = [];
-  
-  // Always ask about triggers for automation
-  questions.push({
-    id: 'trigger_type',
-    text: 'What should trigger this automation?',
-    type: 'choice',
-    choices: [
-      'Time-based (daily, weekly, etc.)',
-      'New email arrives',
-      'Google Sheet is updated', 
-      'Form submission',
-      'Webhook/External event',
-      'Manual execution only'
-    ],
-    required: true,
-    category: 'trigger'
-  });
-  
-  // Ask about data sources if not specified
-  if (!lowerPrompt.includes('gmail') && !lowerPrompt.includes('sheet') && !lowerPrompt.includes('form')) {
-    questions.push({
-      id: 'data_source',
-      text: 'Where will the data come from?',
-      type: 'choice', 
-      choices: [
-        'Gmail emails',
-        'Google Sheets',
-        'Google Forms',
-        'External API',
-        'Google Drive files',
-        'Calendar events'
-      ],
-      required: true,
-      category: 'data'
+  // Use LLM to generate intelligent, context-aware questions
+  try {
+    const questionPrompt = `You are an expert Google Apps Script automation consultant. The user wants to create an automation but their request needs clarification.
+
+User's Request: "${prompt}"
+
+Your job: Generate 3-5 specific, intelligent questions to understand what they want to build. Make questions relevant to their specific request, not generic.
+
+Consider what's missing:
+- If they mention "emails" but not when → ask about timing/triggers
+- If they mention "data" but not where → ask about source location  
+- If they mention "automate" but not what → ask about specific actions
+- If they mention apps but not how → ask about the process
+
+Respond with JSON only:
+{
+  "questions": [
+    {
+      "id": "specific_id",
+      "text": "Specific question based on their request",
+      "type": "choice", 
+      "choices": ["Relevant option 1", "Relevant option 2", "Relevant option 3", "Relevant option 4"],
+      "required": true,
+      "category": "trigger|data|action|conditions|timing"
+    }
+  ]
+}
+
+EXAMPLES:
+
+For "automate my emails":
+- "What specific email activity should trigger this automation?" 
+- "What should happen when the trigger occurs?"
+- "Which emails should be processed?"
+
+For "connect my sheet to calendar":
+- "When should calendar events be created?"
+- "Which sheet data should be used for events?"
+- "What event details should be included?"
+
+Generate questions that are SPECIFIC to "${prompt}", not generic automation questions.`;
+
+    // Use the Gemini model to generate questions
+    const models = MultiAIService.getModels();
+    const geminiModel = models.find(m => m.provider === 'gemini');
+    
+    if (!geminiModel?.apiKey) {
+      // Fallback to basic questions if no API key
+      return [{
+        id: 'basic_trigger',
+        text: 'What should trigger this automation?',
+        type: 'choice',
+        choices: ['Time-based', 'Event-based', 'Manual trigger'],
+        required: true,
+        category: 'trigger'
+      }];
+    }
+
+    const response = await fetch(`${geminiModel.endpoint}?key=${geminiModel.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: questionPrompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1500 }
+      })
     });
+
+    if (!response.ok) throw new Error('Question generation failed');
+    
+    const data = await response.json();
+    const aiResponse = data.candidates[0].content.parts[0].text;
+    const parsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
+    
+    return parsed.questions || [];
+    
+  } catch (error) {
+    console.error('LLM question generation failed, using fallback:', error);
+    // Fallback to basic questions
+    return [
+      {
+        id: 'trigger_type',
+        text: 'What should trigger this automation?',
+        type: 'choice',
+        choices: ['New email arrives', 'Time schedule', 'Sheet update', 'Manual run'],
+        required: true,
+        category: 'trigger'
+      },
+      {
+        id: 'action_type', 
+        text: 'What should the automation do?',
+        type: 'choice',
+        choices: ['Process emails', 'Update sheets', 'Send notifications', 'Generate reports'],
+        required: true,
+        category: 'action'
+      }
+    ];
   }
-  
-  // Ask about output/actions
-  questions.push({
-    id: 'output_action',
-    text: 'What should happen when the automation runs?',
-    type: 'choice',
-    choices: [
-      'Add data to Google Sheets',
-      'Send email notifications',
-      'Create calendar events',
-      'Save files to Drive',
-      'Call external API',
-      'Generate reports'
-    ],
-    required: true,
-    category: 'action'
-  });
-  
-  // Ask about filtering/conditions
-  questions.push({
-    id: 'conditions',
-    text: 'Should this automation run for all items or only specific ones?',
-    type: 'choice',
-    choices: [
-      'Run for everything',
-      'Only for emails with specific keywords',
-      'Only during business hours',
-      'Only for certain file types',
-      'Custom conditions based on data',
-      'Let me specify filters'
-    ],
-    required: false,
-    category: 'filtering'
-  });
-  
-  // Ask about timing if time-based
-  if (lowerPrompt.includes('schedule') || lowerPrompt.includes('daily') || lowerPrompt.includes('weekly')) {
-    questions.push({
-      id: 'schedule',
-      text: 'How often should this automation run?',
-      type: 'choice',
-      choices: [
-        'Every 5 minutes',
-        'Hourly',
-        'Daily at specific time',
-        'Weekly',
-        'Monthly',
-        'Custom schedule'
-      ],
-      required: false,
-      category: 'timing'
-    });
-  }
-  
-  return questions.slice(0, 5); // Maximum 5 questions as per best practices
 }
 
 export { MultiAIService };
