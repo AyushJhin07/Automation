@@ -223,6 +223,7 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [apiKeys, setApiKeys] = useState<{gemini?: string; claude?: string; openai?: string}>({});
   const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
+  const [serverModels, setServerModels] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load API keys from localStorage
@@ -234,6 +235,29 @@ export default function EnhancedConversationalWorkflowBuilder() {
     };
     setApiKeys(savedKeys);
   }, []);
+
+  // On mount, ask the server which models are available
+  useEffect(() => {
+    fetch('/api/ai/models')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => setServerModels(data?.models ?? []))
+      .catch(() => setServerModels([]));
+  }, []);
+
+  // Helper functions for server-aware API key checking
+  const providerOf = (modelId: string) => {
+    const id = (modelId || '').toLowerCase();
+    if (id.includes('gemini')) return 'gemini';
+    if (id.includes('claude')) return 'claude';
+    if (id.includes('gpt') || id.includes('openai') || id.includes('4o')) return 'openai';
+    return 'gemini'; // sensible default
+  };
+
+  const serverHasProvider = (provider: 'gemini' | 'claude' | 'openai') =>
+    serverModels.some((m) =>
+      (m.provider && m.provider.toLowerCase() === provider) ||
+      (m.name && m.name.toLowerCase().includes(provider))
+    );
 
   useEffect(() => {
     // Add welcome message
@@ -316,11 +340,16 @@ You can try:
       setProcessingStep('🤔 Understanding your request...');
       
       // Get API key for selected model
-      const currentApiKey = selectedModel === 'gemini-1.5-flash' ? apiKeys.gemini :
-                           selectedModel === 'claude-3.5-haiku' ? apiKeys.claude :
-                           selectedModel === 'gpt-4o-mini' ? apiKeys.openai : '';
+      const provider = providerOf(selectedModel);
+      const currentApiKey =
+        provider === 'gemini'  ? (apiKeys.gemini  || '') :
+        provider === 'claude'  ? (apiKeys.claude  || '') :
+        provider === 'openai'  ? (apiKeys.openai  || '') : '';
 
-      if (!currentApiKey) {
+      const serverHasIt = serverHasProvider(provider);
+
+      // Allow server-side keys OR local keys
+      if (!currentApiKey && !serverHasIt) {
         throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
       }
 
@@ -578,11 +607,16 @@ Need help? I can guide you through each step!`
               <Code className="w-3 h-3 mr-1" />
               Real Code
             </Badge>
-            {!apiKeys[selectedModel.split('-')[0] as keyof typeof apiKeys] && (
-              <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
-                ⚠️ API Key Required
-              </Badge>
-            )}
+            {(() => {
+              const provider = providerOf(selectedModel);
+              const hasLocal = !!apiKeys[provider as keyof typeof apiKeys];
+              const hasServer = serverHasProvider(provider as any);
+              return (!hasLocal && !hasServer) ? (
+                <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
+                  ⚠️ API Key Required
+                </Badge>
+              ) : null;
+            })()}
           </div>
         </div>
       </div>
