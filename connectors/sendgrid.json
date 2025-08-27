@@ -1,7 +1,7 @@
 {
   "id": "sendgrid",
   "name": "SendGrid",
-  "description": "SendGrid email delivery service and marketing platform",
+  "description": "Email delivery platform for transactional and marketing emails with advanced analytics",
   "category": "Email",
   "icon": "sendgrid",
   "color": "#1A82E2",
@@ -11,7 +11,7 @@
     "config": {
       "apiKeyLocation": "header",
       "apiKeyName": "Authorization",
-      "apiKeyPrefix": "Bearer"
+      "apiKeyValue": "Bearer {api_key}"
     }
   },
   "baseUrl": "https://api.sendgrid.com/v3",
@@ -47,7 +47,8 @@
                       "email": {"type": "string", "format": "email"},
                       "name": {"type": "string"}
                     },
-                    "required": ["email"]
+                    "required": ["email"],
+                    "additionalProperties": false
                   }
                 },
                 "cc": {
@@ -57,7 +58,8 @@
                     "properties": {
                       "email": {"type": "string", "format": "email"},
                       "name": {"type": "string"}
-                    }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "bcc": {
@@ -67,16 +69,20 @@
                     "properties": {
                       "email": {"type": "string", "format": "email"},
                       "name": {"type": "string"}
-                    }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "subject": {"type": "string"},
+                "headers": {"type": "object"},
                 "substitutions": {"type": "object"},
-                "custom_args": {"type": "object"}
+                "dynamic_template_data": {"type": "object"},
+                "custom_args": {"type": "object"},
+                "send_at": {"type": "number"}
               },
-              "required": ["to"]
-            },
-            "description": "Email personalizations"
+              "required": ["to"],
+              "additionalProperties": false
+            }
           },
           "from": {
             "type": "object",
@@ -85,7 +91,7 @@
               "name": {"type": "string"}
             },
             "required": ["email"],
-            "description": "From address"
+            "additionalProperties": false
           },
           "reply_to": {
             "type": "object",
@@ -93,7 +99,18 @@
               "email": {"type": "string", "format": "email"},
               "name": {"type": "string"}
             },
-            "description": "Reply to address"
+            "additionalProperties": false
+          },
+          "reply_to_list": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"},
+                "name": {"type": "string"}
+              },
+              "additionalProperties": false
+            }
           },
           "subject": {
             "type": "string",
@@ -107,9 +124,9 @@
                 "type": {"type": "string", "enum": ["text/plain", "text/html"]},
                 "value": {"type": "string"}
               },
-              "required": ["type", "value"]
-            },
-            "description": "Email content"
+              "required": ["type", "value"],
+              "additionalProperties": false
+            }
           },
           "attachments": {
             "type": "array",
@@ -119,35 +136,170 @@
                 "content": {"type": "string"},
                 "filename": {"type": "string"},
                 "type": {"type": "string"},
-                "disposition": {"type": "string", "enum": ["attachment", "inline"]},
+                "disposition": {"type": "string", "enum": ["inline", "attachment"]},
                 "content_id": {"type": "string"}
               },
-              "required": ["content", "filename"]
-            },
-            "description": "Email attachments"
+              "required": ["content", "filename"],
+              "additionalProperties": false
+            }
           },
           "template_id": {
             "type": "string",
-            "description": "Template ID"
+            "description": "Dynamic template ID"
+          },
+          "headers": {
+            "type": "object",
+            "description": "Custom headers"
           },
           "categories": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Email categories"
+            "description": "Categories for analytics"
+          },
+          "custom_args": {
+            "type": "object",
+            "description": "Custom arguments"
           },
           "send_at": {
             "type": "number",
-            "description": "Unix timestamp to send email"
+            "description": "Unix timestamp to send at"
+          },
+          "batch_id": {
+            "type": "string",
+            "description": "Batch ID for cancellation"
+          },
+          "asm": {
+            "type": "object",
+            "properties": {
+              "group_id": {"type": "number"},
+              "groups_to_display": {"type": "array", "items": {"type": "number"}}
+            },
+            "additionalProperties": false
+          },
+          "ip_pool_name": {
+            "type": "string",
+            "description": "IP pool name"
+          },
+          "mail_settings": {
+            "type": "object",
+            "properties": {
+              "bypass_list_management": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"}
+                },
+                "additionalProperties": false
+              },
+              "footer": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"},
+                  "text": {"type": "string"},
+                  "html": {"type": "string"}
+                },
+                "additionalProperties": false
+              },
+              "sandbox_mode": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "tracking_settings": {
+            "type": "object",
+            "properties": {
+              "click_tracking": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"},
+                  "enable_text": {"type": "boolean"}
+                },
+                "additionalProperties": false
+              },
+              "open_tracking": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"},
+                  "substitution_tag": {"type": "string"}
+                },
+                "additionalProperties": false
+              },
+              "subscription_tracking": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"},
+                  "text": {"type": "string"},
+                  "html": {"type": "string"},
+                  "substitution_tag": {"type": "string"}
+                },
+                "additionalProperties": false
+              },
+              "ganalytics": {
+                "type": "object",
+                "properties": {
+                  "enable": {"type": "boolean"},
+                  "utm_source": {"type": "string"},
+                  "utm_medium": {"type": "string"},
+                  "utm_term": {"type": "string"},
+                  "utm_content": {"type": "string"},
+                  "utm_campaign": {"type": "string"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         },
-        "required": ["personalizations", "from", "subject", "content"],
+        "required": ["personalizations", "from"],
         "additionalProperties": false
       }
     },
     {
-      "id": "add_contact",
-      "name": "Add Contact",
-      "description": "Add a contact to a list",
+      "id": "get_email_stats",
+      "name": "Get Email Stats",
+      "description": "Get email statistics",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD)"
+          },
+          "aggregated_by": {
+            "type": "string",
+            "enum": ["day", "week", "month"],
+            "description": "Aggregation period"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": ["start_date"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Add a contact to marketing lists",
       "parameters": {
         "type": "object",
         "properties": {
@@ -164,11 +316,18 @@
                 "email": {"type": "string", "format": "email"},
                 "first_name": {"type": "string"},
                 "last_name": {"type": "string"},
+                "phone_number": {"type": "string"},
+                "address_line_1": {"type": "string"},
+                "address_line_2": {"type": "string"},
+                "city": {"type": "string"},
+                "state_province_region": {"type": "string"},
+                "postal_code": {"type": "string"},
+                "country": {"type": "string"},
                 "custom_fields": {"type": "object"}
               },
-              "required": ["email"]
-            },
-            "description": "Contacts to add"
+              "required": ["email"],
+              "additionalProperties": false
+            }
           }
         },
         "required": ["contacts"],
@@ -178,7 +337,7 @@
     {
       "id": "get_lists",
       "name": "Get Lists",
-      "description": "Get contact lists",
+      "description": "Get marketing lists",
       "parameters": {
         "type": "object",
         "properties": {
@@ -186,8 +345,7 @@
             "type": "number",
             "minimum": 1,
             "maximum": 1000,
-            "default": 10,
-            "description": "Number of lists to return"
+            "default": 100
           },
           "page_token": {
             "type": "string",
@@ -201,7 +359,7 @@
     {
       "id": "create_list",
       "name": "Create List",
-      "description": "Create a new contact list",
+      "description": "Create a new marketing list",
       "parameters": {
         "type": "object",
         "properties": {
@@ -215,30 +373,31 @@
       }
     },
     {
-      "id": "get_templates",
-      "name": "Get Templates",
-      "description": "Get email templates",
+      "id": "send_test_email",
+      "name": "Send Test Email",
+      "description": "Send a test email for a dynamic template",
       "parameters": {
         "type": "object",
         "properties": {
-          "generations": {
+          "template_id": {
             "type": "string",
-            "enum": ["legacy", "dynamic"],
-            "description": "Template generation type"
+            "description": "Template ID"
           },
-          "page_size": {
+          "version_id": {
+            "type": "string",
+            "description": "Template version ID"
+          },
+          "emails": {
+            "type": "array",
+            "items": {"type": "string", "format": "email"},
+            "description": "Email addresses to send test to"
+          },
+          "sender_id": {
             "type": "number",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 10,
-            "description": "Number of templates to return"
-          },
-          "page_token": {
-            "type": "string",
-            "description": "Page token for pagination"
+            "description": "Sender ID"
           }
         },
-        "required": [],
+        "required": ["template_id", "emails"],
         "additionalProperties": false
       }
     }
@@ -254,7 +413,7 @@
         "properties": {
           "category": {
             "type": "string",
-            "description": "Filter by email category"
+            "description": "Filter by category"
           }
         },
         "required": [],
@@ -265,10 +424,17 @@
         "properties": {
           "email": {"type": "string"},
           "timestamp": {"type": "number"},
+          "smtp-id": {"type": "string"},
           "event": {"type": "string"},
           "category": {"type": "array"},
           "sg_event_id": {"type": "string"},
-          "sg_message_id": {"type": "string"}
+          "sg_message_id": {"type": "string"},
+          "response": {"type": "string"},
+          "attempt": {"type": "string"},
+          "useragent": {"type": "string"},
+          "ip": {"type": "string"},
+          "url": {"type": "string"},
+          "asm_group_id": {"type": "number"}
         }
       }
     },
@@ -282,7 +448,7 @@
         "properties": {
           "category": {
             "type": "string",
-            "description": "Filter by email category"
+            "description": "Filter by category"
           }
         },
         "required": [],
@@ -301,10 +467,41 @@
           "ip": {"type": "string"}
         }
       }
+    },
+    {
+      "id": "email_clicked",
+      "name": "Email Clicked",
+      "description": "Triggered when a link in an email is clicked",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by category"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "event": {"type": "string"},
+          "category": {"type": "array"},
+          "sg_event_id": {"type": "string"},
+          "sg_message_id": {"type": "string"},
+          "useragent": {"type": "string"},
+          "ip": {"type": "string"},
+          "url": {"type": "string"}
+        }
+      }
     }
   ],
   "testConnection": {
     "method": "GET",
-    "endpoint": "/user/profile"
+    "endpoint": "/user/account"
   }
 }

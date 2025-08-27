@@ -1,20 +1,20 @@
 {
   "id": "magento",
   "name": "Magento",
-  "description": "Adobe Magento e-commerce platform for online stores and marketplaces",
+  "description": "E-commerce platform for creating online stores and marketplaces",
   "category": "E-commerce",
   "icon": "magento",
-  "color": "#FF6900",
+  "color": "#EE672F",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
       "apiKeyLocation": "header",
       "apiKeyName": "Authorization",
-      "apiKeyPrefix": "Bearer"
+      "apiKeyValue": "Bearer {api_key}"
     }
   },
-  "baseUrl": "https://your-domain.com/rest/V1",
+  "baseUrl": "https://{domain}/rest/V1",
   "actions": [
     {
       "id": "test_connection",
@@ -28,51 +28,89 @@
       }
     },
     {
-      "id": "get_products",
-      "name": "Get Products",
-      "description": "Get list of products",
+      "id": "create_product",
+      "name": "Create Product",
+      "description": "Create a new product",
       "parameters": {
         "type": "object",
         "properties": {
-          "searchCriteria": {
+          "product": {
             "type": "object",
             "properties": {
-              "filterGroups": {
+              "sku": {
+                "type": "string",
+                "description": "Product SKU"
+              },
+              "name": {
+                "type": "string",
+                "description": "Product name"
+              },
+              "attribute_set_id": {
+                "type": "number",
+                "description": "Attribute set ID"
+              },
+              "price": {
+                "type": "number",
+                "description": "Product price"
+              },
+              "status": {
+                "type": "number",
+                "enum": [1, 2],
+                "description": "Product status (1=enabled, 2=disabled)"
+              },
+              "visibility": {
+                "type": "number",
+                "enum": [1, 2, 3, 4],
+                "description": "Product visibility"
+              },
+              "type_id": {
+                "type": "string",
+                "enum": ["simple", "configurable", "grouped", "virtual", "bundle", "downloadable"],
+                "description": "Product type"
+              },
+              "weight": {
+                "type": "number",
+                "description": "Product weight"
+              },
+              "extension_attributes": {
+                "type": "object",
+                "properties": {
+                  "website_ids": {
+                    "type": "array",
+                    "items": {"type": "number"}
+                  },
+                  "category_links": {
+                    "type": "array",
+                    "items": {"type": "object"}
+                  },
+                  "stock_item": {
+                    "type": "object",
+                    "properties": {
+                      "qty": {"type": "number"},
+                      "is_in_stock": {"type": "boolean"}
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "custom_attributes": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "filters": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "field": {"type": "string"},
-                          "value": {"type": "string"},
-                          "conditionType": {"type": "string", "enum": ["eq", "neq", "like", "nlike", "in", "nin", "gt", "lt", "gteq", "lteq"]}
-                        }
-                      }
-                    }
-                  }
+                    "attribute_code": {"type": "string"},
+                    "value": {"type": "string"}
+                  },
+                  "additionalProperties": false
                 }
-              },
-              "sortOrders": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "field": {"type": "string"},
-                    "direction": {"type": "string", "enum": ["ASC", "DESC"]}
-                  }
-                }
-              },
-              "pageSize": {"type": "number", "minimum": 1, "maximum": 5000, "default": 20},
-              "currentPage": {"type": "number", "minimum": 1, "default": 1}
+              }
             },
-            "description": "Search criteria for filtering products"
+            "required": ["sku", "name", "attribute_set_id", "price", "status", "type_id"],
+            "additionalProperties": false
           }
         },
-        "required": [],
+        "required": ["product"],
         "additionalProperties": false
       }
     },
@@ -89,85 +127,18 @@
           },
           "editMode": {
             "type": "boolean",
-            "default": false,
-            "description": "Edit mode flag"
+            "description": "Whether to retrieve product in edit mode"
           },
           "storeId": {
             "type": "number",
-            "description": "Store view ID"
+            "description": "Store ID"
           },
           "forceReload": {
             "type": "boolean",
-            "default": false,
-            "description": "Force reload from database"
+            "description": "Whether to force reload"
           }
         },
         "required": ["sku"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_product",
-      "name": "Create Product",
-      "description": "Create a new product",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "product": {
-            "type": "object",
-            "properties": {
-              "sku": {"type": "string"},
-              "name": {"type": "string"},
-              "attribute_set_id": {"type": "number"},
-              "price": {"type": "number", "minimum": 0},
-              "status": {"type": "number", "enum": [1, 2]},
-              "visibility": {"type": "number", "enum": [1, 2, 3, 4]},
-              "type_id": {"type": "string", "enum": ["simple", "configurable", "grouped", "virtual", "bundle", "downloadable"]},
-              "weight": {"type": "number", "minimum": 0},
-              "extension_attributes": {
-                "type": "object",
-                "properties": {
-                  "category_links": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "position": {"type": "number"},
-                        "category_id": {"type": "string"}
-                      }
-                    }
-                  },
-                  "stock_item": {
-                    "type": "object",
-                    "properties": {
-                      "qty": {"type": "number", "minimum": 0},
-                      "is_in_stock": {"type": "boolean"},
-                      "manage_stock": {"type": "boolean"}
-                    }
-                  }
-                }
-              },
-              "custom_attributes": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "attribute_code": {"type": "string"},
-                    "value": {"type": ["string", "number", "array"]}
-                  }
-                }
-              }
-            },
-            "required": ["sku", "name", "attribute_set_id", "price", "status", "type_id"],
-            "description": "Product data"
-          },
-          "saveOptions": {
-            "type": "boolean",
-            "default": false,
-            "description": "Save options flag"
-          }
-        },
-        "required": ["product"],
         "additionalProperties": false
       }
     },
@@ -186,27 +157,17 @@
             "type": "object",
             "properties": {
               "name": {"type": "string"},
-              "price": {"type": "number", "minimum": 0},
+              "price": {"type": "number"},
               "status": {"type": "number", "enum": [1, 2]},
               "visibility": {"type": "number", "enum": [1, 2, 3, 4]},
-              "weight": {"type": "number", "minimum": 0},
-              "custom_attributes": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "attribute_code": {"type": "string"},
-                    "value": {"type": ["string", "number", "array"]}
-                  }
-                }
-              }
+              "weight": {"type": "number"},
+              "custom_attributes": {"type": "array"}
             },
-            "description": "Product data to update"
+            "additionalProperties": false
           },
           "saveOptions": {
             "type": "boolean",
-            "default": false,
-            "description": "Save options flag"
+            "description": "Whether to save options"
           }
         },
         "required": ["sku", "product"],
@@ -216,7 +177,7 @@
     {
       "id": "delete_product",
       "name": "Delete Product",
-      "description": "Delete a product",
+      "description": "Delete a product by SKU",
       "parameters": {
         "type": "object",
         "properties": {
@@ -230,9 +191,9 @@
       }
     },
     {
-      "id": "get_orders",
-      "name": "Get Orders",
-      "description": "Get list of orders",
+      "id": "search_products",
+      "name": "Search Products",
+      "description": "Search for products",
       "parameters": {
         "type": "object",
         "properties": {
@@ -241,30 +202,55 @@
             "properties": {
               "filterGroups": {
                 "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "filters": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "field": {"type": "string"},
-                          "value": {"type": "string"},
-                          "conditionType": {"type": "string"}
-                        }
-                      }
-                    }
-                  }
-                }
+                "items": {"type": "object"}
               },
-              "pageSize": {"type": "number", "minimum": 1, "maximum": 5000, "default": 20},
-              "currentPage": {"type": "number", "minimum": 1, "default": 1}
+              "sortOrders": {
+                "type": "array",
+                "items": {"type": "object"}
+              },
+              "pageSize": {"type": "number", "minimum": 1},
+              "currentPage": {"type": "number", "minimum": 1}
             },
-            "description": "Search criteria for filtering orders"
+            "additionalProperties": false
           }
         },
         "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a new order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "object",
+            "properties": {
+              "customer_email": {"type": "string", "format": "email"},
+              "customer_firstname": {"type": "string"},
+              "customer_lastname": {"type": "string"},
+              "billing_address": {"type": "object"},
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sku": {"type": "string"},
+                    "qty": {"type": "number", "minimum": 1},
+                    "price": {"type": "number"}
+                  },
+                  "required": ["sku", "qty"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["customer_email", "items"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["entity"],
         "additionalProperties": false
       }
     },
@@ -285,119 +271,6 @@
       }
     },
     {
-      "id": "create_order",
-      "name": "Create Order",
-      "description": "Create a new order",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "entity": {
-            "type": "object",
-            "properties": {
-              "base_currency_code": {"type": "string"},
-              "base_discount_amount": {"type": "number"},
-              "base_grand_total": {"type": "number"},
-              "base_shipping_amount": {"type": "number"},
-              "base_subtotal": {"type": "number"},
-              "base_tax_amount": {"type": "number"},
-              "billing_address": {
-                "type": "object",
-                "properties": {
-                  "city": {"type": "string"},
-                  "country_id": {"type": "string"},
-                  "firstname": {"type": "string"},
-                  "lastname": {"type": "string"},
-                  "postcode": {"type": "string"},
-                  "region": {"type": "string"},
-                  "street": {"type": "array", "items": {"type": "string"}},
-                  "telephone": {"type": "string"}
-                }
-              },
-              "items": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "base_price": {"type": "number"},
-                    "qty_ordered": {"type": "number"},
-                    "sku": {"type": "string"},
-                    "name": {"type": "string"}
-                  }
-                }
-              },
-              "payment": {
-                "type": "object",
-                "properties": {
-                  "method": {"type": "string"}
-                }
-              },
-              "shipping_description": {"type": "string"},
-              "state": {"type": "string"},
-              "status": {"type": "string"}
-            },
-            "description": "Order entity data"
-          }
-        },
-        "required": ["entity"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_customers",
-      "name": "Get Customers",
-      "description": "Get list of customers",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "searchCriteria": {
-            "type": "object",
-            "properties": {
-              "filterGroups": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "filters": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "field": {"type": "string"},
-                          "value": {"type": "string"},
-                          "conditionType": {"type": "string"}
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "pageSize": {"type": "number", "minimum": 1, "maximum": 5000, "default": 20},
-              "currentPage": {"type": "number", "minimum": 1, "default": 1}
-            },
-            "description": "Search criteria for filtering customers"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_customer",
-      "name": "Get Customer",
-      "description": "Get customer details",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "customerId": {
-            "type": "number",
-            "description": "Customer ID"
-          }
-        },
-        "required": ["customerId"],
-        "additionalProperties": false
-      }
-    },
-    {
       "id": "create_customer",
       "name": "Create Customer",
       "description": "Create a new customer",
@@ -410,180 +283,42 @@
               "email": {"type": "string", "format": "email"},
               "firstname": {"type": "string"},
               "lastname": {"type": "string"},
-              "group_id": {"type": "number"},
               "store_id": {"type": "number"},
               "website_id": {"type": "number"},
               "addresses": {
                 "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "defaultShipping": {"type": "boolean"},
-                    "defaultBilling": {"type": "boolean"},
-                    "firstname": {"type": "string"},
-                    "lastname": {"type": "string"},
-                    "street": {"type": "array", "items": {"type": "string"}},
-                    "city": {"type": "string"},
-                    "country_id": {"type": "string"},
-                    "region": {
-                      "type": "object",
-                      "properties": {
-                        "region_code": {"type": "string"},
-                        "region": {"type": "string"},
-                        "region_id": {"type": "number"}
-                      }
-                    },
-                    "postcode": {"type": "string"},
-                    "telephone": {"type": "string"}
-                  }
-                }
-              },
-              "custom_attributes": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "attribute_code": {"type": "string"},
-                    "value": {"type": "string"}
-                  }
-                }
+                "items": {"type": "object"}
               }
             },
             "required": ["email", "firstname", "lastname"],
-            "description": "Customer data"
+            "additionalProperties": false
           },
           "password": {
             "type": "string",
             "description": "Customer password"
+          },
+          "redirectUrl": {
+            "type": "string",
+            "description": "Redirect URL after creation"
           }
         },
         "required": ["customer"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_categories",
-      "name": "Get Categories",
-      "description": "Get category tree",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "rootCategoryId": {
-            "type": "number",
-            "description": "Root category ID"
-          },
-          "depth": {
-            "type": "number",
-            "minimum": 1,
-            "description": "Tree depth"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_inventory",
-      "name": "Get Inventory",
-      "description": "Get stock item information",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "productSku": {
-            "type": "string",
-            "description": "Product SKU"
-          }
-        },
-        "required": ["productSku"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "update_inventory",
-      "name": "Update Inventory",
-      "description": "Update stock item",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "productSku": {
-            "type": "string",
-            "description": "Product SKU"
-          },
-          "stockItem": {
-            "type": "object",
-            "properties": {
-              "qty": {"type": "number", "minimum": 0},
-              "is_in_stock": {"type": "boolean"},
-              "manage_stock": {"type": "boolean"},
-              "min_qty": {"type": "number"},
-              "use_config_min_qty": {"type": "boolean"},
-              "min_sale_qty": {"type": "number"},
-              "max_sale_qty": {"type": "number"},
-              "is_qty_decimal": {"type": "boolean"},
-              "backorders": {"type": "number"},
-              "notify_stock_qty": {"type": "number"}
-            },
-            "description": "Stock item data"
-          }
-        },
-        "required": ["productSku", "stockItem"],
         "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "order_created",
-      "name": "Order Created",
-      "description": "Triggered when a new order is created",
+      "id": "product_created",
+      "name": "Product Created",
+      "description": "Triggered when a new product is created",
       "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
-          "status": {
-            "type": "string",
-            "description": "Filter by order status"
-          },
-          "storeId": {
+          "store_id": {
             "type": "number",
             "description": "Filter by store ID"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "entity_id": {"type": "number"},
-          "increment_id": {"type": "string"},
-          "state": {"type": "string"},
-          "status": {"type": "string"},
-          "store_id": {"type": "number"},
-          "customer_email": {"type": "string"},
-          "customer_firstname": {"type": "string"},
-          "customer_lastname": {"type": "string"},
-          "base_grand_total": {"type": "number"},
-          "grand_total": {"type": "number"},
-          "created_at": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "product_saved",
-      "name": "Product Saved",
-      "description": "Triggered when a product is created or updated",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "type_id": {
-            "type": "string",
-            "description": "Filter by product type"
-          },
-          "status": {
-            "type": "number",
-            "description": "Filter by product status"
           }
         },
         "required": [],
@@ -600,23 +335,18 @@
           "status": {"type": "number"},
           "visibility": {"type": "number"},
           "type_id": {"type": "string"},
-          "created_at": {"type": "string"},
-          "updated_at": {"type": "string"}
+          "created_at": {"type": "string"}
         }
       }
     },
     {
-      "id": "customer_created",
-      "name": "Customer Created",
-      "description": "Triggered when a new customer is created",
+      "id": "order_created",
+      "name": "Order Created",
+      "description": "Triggered when a new order is created",
       "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
-          "group_id": {
-            "type": "number",
-            "description": "Filter by customer group"
-          },
           "store_id": {
             "type": "number",
             "description": "Filter by store ID"
@@ -628,15 +358,14 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "email": {"type": "string"},
-          "firstname": {"type": "string"},
-          "lastname": {"type": "string"},
-          "group_id": {"type": "number"},
-          "store_id": {"type": "number"},
-          "website_id": {"type": "number"},
-          "created_at": {"type": "string"},
-          "updated_at": {"type": "string"}
+          "entity_id": {"type": "number"},
+          "increment_id": {"type": "string"},
+          "customer_email": {"type": "string"},
+          "customer_firstname": {"type": "string"},
+          "customer_lastname": {"type": "string"},
+          "grand_total": {"type": "number"},
+          "status": {"type": "string"},
+          "created_at": {"type": "string"}
         }
       }
     }

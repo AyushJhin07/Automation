@@ -1,7 +1,7 @@
 {
   "id": "mailchimp-enhanced",
   "name": "Mailchimp Enhanced",
-  "description": "Enhanced Mailchimp email marketing and automation platform",
+  "description": "Enhanced email marketing platform with advanced automation, segmentation, and analytics features",
   "category": "Marketing",
   "icon": "mailchimp",
   "color": "#FFE01B",
@@ -11,10 +11,10 @@
     "config": {
       "apiKeyLocation": "header",
       "apiKeyName": "Authorization",
-      "apiKeyPrefix": "apikey"
+      "apiKeyValue": "Bearer {api_key}"
     }
   },
-  "baseUrl": "https://us1.api.mailchimp.com/3.0",
+  "baseUrl": "https://{dc}.api.mailchimp.com/3.0",
   "actions": [
     {
       "id": "test_connection",
@@ -28,34 +28,9 @@
       }
     },
     {
-      "id": "get_lists",
-      "name": "Get Lists",
-      "description": "Get all lists in the account",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "count": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 1000,
-            "default": 10,
-            "description": "Number of lists to return"
-          },
-          "offset": {
-            "type": "number",
-            "minimum": 0,
-            "default": 0,
-            "description": "Number of lists to skip"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "add_list_member",
-      "name": "Add List Member",
-      "description": "Add a new member to a list",
+      "id": "add_subscriber",
+      "name": "Add Subscriber",
+      "description": "Add a new subscriber to a list",
       "parameters": {
         "type": "object",
         "properties": {
@@ -66,47 +41,275 @@
           "email_address": {
             "type": "string",
             "format": "email",
-            "description": "Email address"
+            "description": "Subscriber email address"
           },
           "status": {
             "type": "string",
             "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
-            "description": "Subscription status"
+            "default": "subscribed",
+            "description": "Subscriber status"
+          },
+          "merge_fields": {
+            "type": "object",
+            "properties": {
+              "FNAME": {"type": "string"},
+              "LNAME": {"type": "string"}
+            },
+            "additionalProperties": true,
+            "description": "Merge fields"
+          },
+          "interests": {
+            "type": "object",
+            "additionalProperties": {"type": "boolean"},
+            "description": "Interest categories"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language preference"
+          },
+          "vip": {
+            "type": "boolean",
+            "description": "VIP status"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {"type": "number"},
+              "longitude": {"type": "number"}
+            },
+            "additionalProperties": false
+          },
+          "marketing_permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "marketing_permission_id": {"type": "string"},
+                "enabled": {"type": "boolean"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "ip_signup": {
+            "type": "string",
+            "description": "IP address when user signed up"
+          },
+          "timestamp_signup": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when user signed up"
+          },
+          "ip_opt": {
+            "type": "string",
+            "description": "IP address when user confirmed opt-in"
+          },
+          "timestamp_opt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when user confirmed opt-in"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tags for the subscriber"
           }
         },
-        "required": ["list_id", "email_address", "status"],
+        "required": ["list_id", "email_address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_subscriber",
+      "name": "Update Subscriber",
+      "description": "Update an existing subscriber",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "subscriber_hash": {
+            "type": "string",
+            "description": "MD5 hash of subscriber email"
+          },
+          "email_address": {
+            "type": "string",
+            "format": "email",
+            "description": "Subscriber email address"
+          },
+          "status_if_new": {
+            "type": "string",
+            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "description": "Status if subscriber is new"
+          },
+          "merge_fields": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Merge fields"
+          },
+          "interests": {
+            "type": "object",
+            "additionalProperties": {"type": "boolean"},
+            "description": "Interest categories"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language preference"
+          },
+          "vip": {
+            "type": "boolean",
+            "description": "VIP status"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {"type": "number"},
+              "longitude": {"type": "number"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["list_id", "subscriber_hash"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_subscriber",
+      "name": "Get Subscriber",
+      "description": "Get subscriber details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "subscriber_hash": {
+            "type": "string",
+            "description": "MD5 hash of subscriber email"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include"
+          },
+          "exclude_fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to exclude"
+          }
+        },
+        "required": ["list_id", "subscriber_hash"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_subscriber",
+      "name": "Delete Subscriber",
+      "description": "Remove a subscriber from a list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "List ID"
+          },
+          "subscriber_hash": {
+            "type": "string",
+            "description": "MD5 hash of subscriber email"
+          }
+        },
+        "required": ["list_id", "subscriber_hash"],
         "additionalProperties": false
       }
     },
     {
       "id": "create_campaign",
       "name": "Create Campaign",
-      "description": "Create a new campaign",
+      "description": "Create a new email campaign",
       "parameters": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
             "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "default": "regular",
             "description": "Campaign type"
           },
           "recipients": {
             "type": "object",
             "properties": {
-              "list_id": {"type": "string"}
+              "list_id": {"type": "string"},
+              "segment_opts": {"type": "object"}
             },
             "required": ["list_id"],
-            "description": "Campaign recipients"
+            "additionalProperties": false
           },
           "settings": {
             "type": "object",
             "properties": {
               "subject_line": {"type": "string"},
+              "preview_text": {"type": "string"},
+              "title": {"type": "string"},
               "from_name": {"type": "string"},
-              "reply_to": {"type": "string", "format": "email"}
+              "reply_to": {"type": "string", "format": "email"},
+              "use_conversation": {"type": "boolean"},
+              "to_name": {"type": "string"},
+              "folder_id": {"type": "string"},
+              "authenticate": {"type": "boolean"},
+              "auto_footer": {"type": "boolean"},
+              "inline_css": {"type": "boolean"},
+              "auto_tweet": {"type": "boolean"},
+              "auto_fb_post": {"type": "array"},
+              "fb_comments": {"type": "boolean"},
+              "timewarp": {"type": "boolean"},
+              "template_id": {"type": "number"},
+              "drag_and_drop": {"type": "boolean"}
             },
             "required": ["subject_line", "from_name", "reply_to"],
-            "description": "Campaign settings"
+            "additionalProperties": false
+          },
+          "variate_settings": {
+            "type": "object",
+            "properties": {
+              "winning_criteria": {"type": "string"},
+              "wait_time": {"type": "number"},
+              "test_size": {"type": "number"},
+              "subject_lines": {"type": "array"}
+            },
+            "additionalProperties": false
+          },
+          "tracking": {
+            "type": "object",
+            "properties": {
+              "opens": {"type": "boolean", "default": true},
+              "html_clicks": {"type": "boolean", "default": true},
+              "text_clicks": {"type": "boolean", "default": false},
+              "goal_tracking": {"type": "boolean", "default": false},
+              "ecomm360": {"type": "boolean", "default": false},
+              "google_analytics": {"type": "string"},
+              "clicktale": {"type": "string"}
+            },
+            "additionalProperties": false
+          },
+          "rss_opts": {
+            "type": "object",
+            "properties": {
+              "feed_url": {"type": "string"},
+              "frequency": {"type": "string"},
+              "schedule": {"type": "object"}
+            },
+            "additionalProperties": false
+          },
+          "social_card": {
+            "type": "object",
+            "properties": {
+              "image_url": {"type": "string"},
+              "description": {"type": "string"},
+              "title": {"type": "string"}
+            },
+            "additionalProperties": false
           }
         },
         "required": ["type", "recipients", "settings"],
@@ -128,13 +331,152 @@
         "required": ["campaign_id"],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "schedule_campaign",
+      "name": "Schedule Campaign",
+      "description": "Schedule a campaign to be sent",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "description": "Campaign ID"
+          },
+          "schedule_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When to send the campaign (ISO 8601)"
+          },
+          "timewarp": {
+            "type": "boolean",
+            "description": "Whether to use timewarp"
+          },
+          "batch_delivery": {
+            "type": "object",
+            "properties": {
+              "batch_delay": {"type": "number"},
+              "batch_count": {"type": "number"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["campaign_id", "schedule_time"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_automation",
+      "name": "Create Automation",
+      "description": "Create a new automation workflow",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipients": {
+            "type": "object",
+            "properties": {
+              "list_id": {"type": "string"},
+              "store_id": {"type": "string"}
+            },
+            "required": ["list_id"],
+            "additionalProperties": false
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "from_name": {"type": "string"},
+              "reply_to": {"type": "string", "format": "email"},
+              "use_conversation": {"type": "boolean"},
+              "to_name": {"type": "string"},
+              "authenticate": {"type": "boolean"},
+              "auto_footer": {"type": "boolean"},
+              "inline_css": {"type": "boolean"}
+            },
+            "required": ["title", "from_name", "reply_to"],
+            "additionalProperties": false
+          },
+          "tracking": {
+            "type": "object",
+            "properties": {
+              "opens": {"type": "boolean", "default": true},
+              "html_clicks": {"type": "boolean", "default": true},
+              "text_clicks": {"type": "boolean", "default": false},
+              "goal_tracking": {"type": "boolean", "default": false},
+              "ecomm360": {"type": "boolean", "default": false},
+              "google_analytics": {"type": "string"},
+              "clicktale": {"type": "string"}
+            },
+            "additionalProperties": false
+          },
+          "trigger_settings": {
+            "type": "object",
+            "properties": {
+              "workflow_type": {"type": "string"},
+              "send_immediately": {"type": "boolean"},
+              "trigger_on_import": {"type": "boolean"},
+              "runtime": {"type": "object"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["recipients", "settings"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_automation_subscriber",
+      "name": "Add Automation Subscriber",
+      "description": "Add a subscriber to an automation workflow",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "Automation workflow ID"
+          },
+          "email_address": {
+            "type": "string",
+            "format": "email",
+            "description": "Subscriber email address"
+          }
+        },
+        "required": ["workflow_id", "email_address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_campaign_reports",
+      "name": "Get Campaign Reports",
+      "description": "Get campaign performance reports",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "description": "Campaign ID"
+          },
+          "fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to include"
+          },
+          "exclude_fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to exclude"
+          }
+        },
+        "required": ["campaign_id"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
       "id": "subscriber_added",
       "name": "Subscriber Added",
-      "description": "Triggered when a new subscriber is added",
+      "description": "Triggered when a new subscriber is added to a list",
       "type": "webhook",
       "parameters": {
         "type": "object",
@@ -150,9 +492,112 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email_address": {"type": "string"},
-          "status": {"type": "string"},
-          "list_id": {"type": "string"}
+          "type": {"type": "string"},
+          "fired_at": {"type": "string"},
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "email": {"type": "string"},
+              "email_type": {"type": "string"},
+              "status": {"type": "string"},
+              "merge_fields": {"type": "object"},
+              "interests": {"type": "object"},
+              "stats": {"type": "object"},
+              "ip_signup": {"type": "string"},
+              "timestamp_signup": {"type": "string"},
+              "ip_opt": {"type": "string"},
+              "timestamp_opt": {"type": "string"},
+              "member_rating": {"type": "number"},
+              "last_changed": {"type": "string"},
+              "language": {"type": "string"},
+              "vip": {"type": "boolean"},
+              "email_client": {"type": "string"},
+              "location": {"type": "object"},
+              "list_id": {"type": "string"},
+              "unique_email_id": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "subscriber_updated",
+      "name": "Subscriber Updated",
+      "description": "Triggered when a subscriber's information is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "Filter by list ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "fired_at": {"type": "string"},
+          "data": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "campaign_sent",
+      "name": "Campaign Sent",
+      "description": "Triggered when a campaign is sent",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "list_id": {
+            "type": "string",
+            "description": "Filter by list ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "fired_at": {"type": "string"},
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "web_id": {"type": "number"},
+              "list_id": {"type": "string"},
+              "folder_id": {"type": "string"},
+              "template_id": {"type": "number"},
+              "content_type": {"type": "string"},
+              "title": {"type": "string"},
+              "type": {"type": "string"},
+              "create_time": {"type": "string"},
+              "archive_url": {"type": "string"},
+              "long_archive_url": {"type": "string"},
+              "status": {"type": "string"},
+              "emails_sent": {"type": "number"},
+              "send_time": {"type": "string"},
+              "content_type": {"type": "string"},
+              "needs_block_refresh": {"type": "boolean"},
+              "resendable": {"type": "boolean"},
+              "recipients": {"type": "object"},
+              "settings": {"type": "object"},
+              "variate_settings": {"type": "object"},
+              "tracking": {"type": "object"},
+              "rss_opts": {"type": "object"},
+              "ab_split_opts": {"type": "object"},
+              "social_card": {"type": "object"},
+              "report_summary": {"type": "object"},
+              "delivery_status": {"type": "object"}
+            }
+          }
         }
       }
     }

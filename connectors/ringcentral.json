@@ -1,17 +1,17 @@
 {
   "id": "ringcentral",
   "name": "RingCentral",
-  "description": "RingCentral cloud communications and VoIP platform",
+  "description": "Cloud-based communications platform for voice, video, messaging, and contact center solutions",
   "category": "Communication",
   "icon": "ringcentral",
-  "color": "#FF6900",
+  "color": "#FF8800",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://platform.ringcentral.com/restapi/oauth/authorize",
       "tokenUrl": "https://platform.ringcentral.com/restapi/oauth/token",
-      "scopes": ["ReadMessages", "SMS", "CallLog"]
+      "scopes": ["ReadMessages", "SMS", "InternalMessages", "ReadAccounts", "ReadCallLog", "ReadContacts", "RingOut", "EditCallLog", "Meetings", "ReadCallRecording"]
     }
   },
   "baseUrl": "https://platform.ringcentral.com/restapi/v1.0",
@@ -40,7 +40,7 @@
               "phoneNumber": {"type": "string"}
             },
             "required": ["phoneNumber"],
-            "description": "From phone number"
+            "additionalProperties": false
           },
           "to": {
             "type": "array",
@@ -49,9 +49,9 @@
               "properties": {
                 "phoneNumber": {"type": "string"}
               },
-              "required": ["phoneNumber"]
-            },
-            "description": "To phone numbers"
+              "required": ["phoneNumber"],
+              "additionalProperties": false
+            }
           },
           "text": {
             "type": "string",
@@ -65,48 +65,52 @@
     {
       "id": "get_messages",
       "name": "Get Messages",
-      "description": "Get list of messages",
+      "description": "Get message list",
       "parameters": {
         "type": "object",
         "properties": {
-          "accountId": {
-            "type": "string",
-            "default": "~",
-            "description": "Account ID"
-          },
-          "extensionId": {
-            "type": "string",
-            "default": "~",
-            "description": "Extension ID"
-          },
           "messageType": {
             "type": "array",
-            "items": {"type": "string", "enum": ["SMS", "Pager", "Voicemail", "Fax"]},
-            "description": "Filter by message type"
+            "items": {"type": "string", "enum": ["Fax", "SMS", "VoiceMail", "Pager"]},
+            "description": "Message types to filter"
           },
-          "readStatus": {
-            "type": "string",
-            "enum": ["Read", "Unread"],
-            "description": "Filter by read status"
+          "availability": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["Alive", "Deleted", "Purged"]},
+            "description": "Message availability"
           },
-          "direction": {
+          "conversationId": {
             "type": "string",
-            "enum": ["Inbound", "Outbound"],
-            "description": "Filter by direction"
+            "description": "Conversation ID"
           },
           "dateFrom": {
             "type": "string",
             "format": "date-time",
-            "description": "Start date filter"
+            "description": "Start date"
           },
           "dateTo": {
             "type": "string",
             "format": "date-time",
-            "description": "End date filter"
+            "description": "End date"
           },
-          "phoneNumber": {
-            "type": "string",
-            "description": "Filter by phone number"
+          "direction": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["Inbound", "Outbound"]},
+            "description": "Message direction"
+          },
+          "distinctConversations": {
+            "type": "boolean",
+            "description": "Whether to return distinct conversations"
+          },
+          "messageStatus": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["Queued", "Sent", "Received", "DeliveryFailed", "SendingFailed", "Delivered"]},
+            "description": "Message status"
+          },
+          "readStatus": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["Read", "Unread"]},
+            "description": "Read status"
           },
           "page": {
             "type": "number",
@@ -119,7 +123,7 @@
             "minimum": 1,
             "maximum": 1000,
             "default": 100,
-            "description": "Records per page"
+            "description": "Messages per page"
           }
         },
         "required": [],
@@ -133,29 +137,23 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "accountId": {
+          "extensionNumber": {
             "type": "string",
-            "default": "~",
-            "description": "Account ID"
-          },
-          "extensionId": {
-            "type": "string",
-            "default": "~",
-            "description": "Extension ID"
+            "description": "Extension number"
           },
           "phoneNumber": {
             "type": "string",
-            "description": "Filter by phone number"
+            "description": "Phone number"
           },
           "direction": {
-            "type": "string",
-            "enum": ["Inbound", "Outbound"],
-            "description": "Filter by call direction"
+            "type": "array",
+            "items": {"type": "string", "enum": ["Inbound", "Outbound"]},
+            "description": "Call direction"
           },
           "type": {
-            "type": "string",
-            "enum": ["Voice", "Fax"],
-            "description": "Filter by call type"
+            "type": "array",
+            "items": {"type": "string", "enum": ["Voice", "Fax"]},
+            "description": "Call type"
           },
           "view": {
             "type": "string",
@@ -163,28 +161,35 @@
             "default": "Simple",
             "description": "View type"
           },
+          "withRecording": {
+            "type": "boolean",
+            "description": "Filter by recording availability"
+          },
+          "recordingType": {
+            "type": "string",
+            "enum": ["Automatic", "OnDemand"],
+            "description": "Recording type"
+          },
           "dateFrom": {
             "type": "string",
             "format": "date-time",
-            "description": "Start date filter"
+            "description": "Start date"
           },
           "dateTo": {
             "type": "string",
             "format": "date-time",
-            "description": "End date filter"
+            "description": "End date"
           },
           "page": {
             "type": "number",
             "minimum": 1,
-            "default": 1,
-            "description": "Page number"
+            "default": 1
           },
           "perPage": {
             "type": "number",
             "minimum": 1,
             "maximum": 1000,
-            "default": 100,
-            "description": "Records per page"
+            "default": 100
           }
         },
         "required": [],
@@ -194,107 +199,157 @@
     {
       "id": "make_call",
       "name": "Make Call",
-      "description": "Initiate a call",
+      "description": "Make a RingOut call",
       "parameters": {
         "type": "object",
         "properties": {
-          "accountId": {
-            "type": "string",
-            "default": "~",
-            "description": "Account ID"
-          },
-          "extensionId": {
-            "type": "string",
-            "default": "~",
-            "description": "Extension ID"
-          },
           "from": {
             "type": "object",
             "properties": {
               "phoneNumber": {"type": "string"},
-              "extensionNumber": {"type": "string"}
+              "forwardingNumberId": {"type": "string"}
             },
-            "description": "From number"
+            "additionalProperties": false
           },
           "to": {
             "type": "object",
             "properties": {
-              "phoneNumber": {"type": "string"},
-              "extensionNumber": {"type": "string"}
+              "phoneNumber": {"type": "string"}
             },
             "required": ["phoneNumber"],
-            "description": "To number"
+            "additionalProperties": false
           },
           "callerId": {
             "type": "object",
             "properties": {
               "phoneNumber": {"type": "string"}
             },
-            "description": "Caller ID"
+            "additionalProperties": false
           },
           "playPrompt": {
             "type": "boolean",
-            "default": false,
-            "description": "Play greeting prompt"
+            "description": "Whether to play prompt"
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"}
+            },
+            "additionalProperties": false
           }
         },
-        "required": ["to"],
+        "required": ["from", "to"],
         "additionalProperties": false
       }
     },
     {
-      "id": "get_extensions",
-      "name": "Get Extensions",
-      "description": "Get list of extensions",
+      "id": "create_meeting",
+      "name": "Create Meeting",
+      "description": "Create a video meeting",
       "parameters": {
         "type": "object",
         "properties": {
-          "accountId": {
+          "topic": {
             "type": "string",
-            "default": "~",
-            "description": "Account ID"
+            "description": "Meeting topic"
           },
-          "page": {
-            "type": "number",
-            "minimum": 1,
-            "default": 1,
-            "description": "Page number"
-          },
-          "perPage": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 1000,
-            "default": 100,
-            "description": "Records per page"
-          },
-          "status": {
+          "meetingType": {
             "type": "string",
-            "enum": ["Enabled", "Disabled", "NotActivated"],
-            "description": "Filter by status"
+            "enum": ["Instant", "Scheduled", "ScheduledRecurring", "InstantRecurring"],
+            "default": "Scheduled",
+            "description": "Meeting type"
           },
-          "type": {
+          "schedule": {
+            "type": "object",
+            "properties": {
+              "startTime": {"type": "string", "format": "date-time"},
+              "durationInMinutes": {"type": "number", "minimum": 1},
+              "timeZone": {"type": "object"}
+            },
+            "additionalProperties": false
+          },
+          "password": {
             "type": "string",
-            "enum": ["User", "FaxUser", "VirtualUser", "DigitalUser", "Department", "Announcement", "Voicemail", "SharedLinesGroup", "PagingOnly", "IvrMenu", "ApplicationExtension", "ParkLocation", "Bot"],
-            "description": "Filter by extension type"
+            "description": "Meeting password"
+          },
+          "host": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"}
+            },
+            "additionalProperties": false
+          },
+          "allowJoinBeforeHost": {
+            "type": "boolean",
+            "description": "Allow join before host"
+          },
+          "startHostVideo": {
+            "type": "boolean",
+            "description": "Start with host video"
+          },
+          "startParticipantsVideo": {
+            "type": "boolean",
+            "description": "Start with participants video"
+          },
+          "audioOptions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Audio options"
+          },
+          "recurrence": {
+            "type": "object",
+            "properties": {
+              "schedule": {"type": "object"},
+              "until": {"type": "string", "format": "date-time"}
+            },
+            "additionalProperties": false
           }
         },
+        "required": ["topic"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_account_info",
+      "name": "Get Account Info",
+      "description": "Get account information",
+      "parameters": {
+        "type": "object",
+        "properties": {},
         "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_extension_info",
+      "name": "Get Extension Info",
+      "description": "Get extension information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "extensionId": {
+            "type": "string",
+            "description": "Extension ID"
+          }
+        },
+        "required": ["extensionId"],
         "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "sms_received",
-      "name": "SMS Received",
-      "description": "Triggered when an SMS is received",
+      "id": "message_received",
+      "name": "Message Received",
+      "description": "Triggered when a new message is received",
       "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
-          "extensionId": {
+          "messageType": {
             "type": "string",
-            "description": "Filter by extension ID"
+            "enum": ["SMS", "Fax", "VoiceMail"],
+            "description": "Filter by message type"
           }
         },
         "required": [],
@@ -303,20 +358,26 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "from": {"type": "object"},
-          "to": {"type": "array"},
-          "subject": {"type": "string"},
-          "creationTime": {"type": "string"},
-          "readStatus": {"type": "string"},
-          "direction": {"type": "string"}
+          "uuid": {"type": "string"},
+          "event": {"type": "string"},
+          "timestamp": {"type": "string"},
+          "subscriptionId": {"type": "string"},
+          "ownerId": {"type": "string"},
+          "body": {
+            "type": "object",
+            "properties": {
+              "extensionId": {"type": "number"},
+              "lastUpdated": {"type": "string"},
+              "changes": {"type": "array"}
+            }
+          }
         }
       }
     },
     {
-      "id": "call_log_created",
-      "name": "Call Log Created",
-      "description": "Triggered when a new call log entry is created",
+      "id": "call_started",
+      "name": "Call Started",
+      "description": "Triggered when a call starts",
       "type": "webhook",
       "parameters": {
         "type": "object",
@@ -332,16 +393,10 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "sessionId": {"type": "string"},
-          "startTime": {"type": "string"},
-          "duration": {"type": "number"},
-          "type": {"type": "string"},
-          "direction": {"type": "string"},
-          "action": {"type": "string"},
-          "result": {"type": "string"},
-          "from": {"type": "object"},
-          "to": {"type": "object"}
+          "uuid": {"type": "string"},
+          "event": {"type": "string"},
+          "timestamp": {"type": "string"},
+          "body": {"type": "object"}
         }
       }
     }

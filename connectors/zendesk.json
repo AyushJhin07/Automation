@@ -45,14 +45,16 @@
                   "html_body": {"type": "string"},
                   "public": {"type": "boolean", "default": true}
                 },
-                "required": ["body"]
+                "required": ["body"],
+                "additionalProperties": false
               },
               "requester": {
                 "type": "object",
                 "properties": {
                   "name": {"type": "string"},
                   "email": {"type": "string", "format": "email"}
-                }
+                },
+                "additionalProperties": false
               },
               "submitter_id": {"type": "number"},
               "assignee_id": {"type": "number"},

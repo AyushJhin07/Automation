@@ -1,7 +1,7 @@
 {
   "id": "outlook",
   "name": "Microsoft Outlook",
-  "description": "Microsoft Outlook email and calendar management service",
+  "description": "Email and calendar management through Microsoft Outlook and Office 365",
   "category": "Email",
   "icon": "outlook",
   "color": "#0078D4",
@@ -11,10 +11,16 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://graph.microsoft.com/Mail.ReadWrite", "https://graph.microsoft.com/Calendars.ReadWrite"]
+      "scopes": [
+        "https://graph.microsoft.com/Mail.ReadWrite",
+        "https://graph.microsoft.com/Mail.Send",
+        "https://graph.microsoft.com/Calendars.ReadWrite",
+        "https://graph.microsoft.com/Contacts.ReadWrite",
+        "https://graph.microsoft.com/User.Read"
+      ]
     }
   },
-  "baseUrl": "https://graph.microsoft.com/v1.0/me",
+  "baseUrl": "https://graph.microsoft.com/v1.0",
   "actions": [
     {
       "id": "test_connection",
@@ -34,128 +40,181 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "subject": {
-            "type": "string",
-            "description": "Email subject"
-          },
-          "body": {
+          "message": {
             "type": "object",
             "properties": {
-              "contentType": {"type": "string", "enum": ["Text", "HTML"], "default": "HTML"},
-              "content": {"type": "string"}
-            },
-            "required": ["content"],
-            "description": "Email body"
-          },
-          "toRecipients": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "emailAddress": {
+              "subject": {"type": "string"},
+              "body": {
+                "type": "object",
+                "properties": {
+                  "contentType": {"type": "string", "enum": ["Text", "HTML"], "default": "HTML"},
+                  "content": {"type": "string"}
+                },
+                "required": ["content"],
+                "additionalProperties": false
+              },
+              "toRecipients": {
+                "type": "array",
+                "items": {
                   "type": "object",
                   "properties": {
-                    "address": {"type": "string", "format": "email"},
-                    "name": {"type": "string"}
+                    "emailAddress": {
+                      "type": "object",
+                      "properties": {
+                        "address": {"type": "string", "format": "email"},
+                        "name": {"type": "string"}
+                      },
+                      "required": ["address"],
+                      "additionalProperties": false
+                    }
                   },
-                  "required": ["address"]
+                  "required": ["emailAddress"],
+                  "additionalProperties": false
                 }
               },
-              "required": ["emailAddress"]
-            },
-            "description": "To recipients"
-          },
-          "ccRecipients": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "emailAddress": {
+              "ccRecipients": {
+                "type": "array",
+                "items": {
                   "type": "object",
                   "properties": {
-                    "address": {"type": "string", "format": "email"},
-                    "name": {"type": "string"}
+                    "emailAddress": {
+                      "type": "object",
+                      "properties": {
+                        "address": {"type": "string", "format": "email"},
+                        "name": {"type": "string"}
+                      },
+                      "required": ["address"],
+                      "additionalProperties": false
+                    }
                   },
-                  "required": ["address"]
+                  "additionalProperties": false
                 }
               },
-              "required": ["emailAddress"]
-            },
-            "description": "CC recipients"
-          },
-          "bccRecipients": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "emailAddress": {
+              "bccRecipients": {
+                "type": "array",
+                "items": {
                   "type": "object",
                   "properties": {
-                    "address": {"type": "string", "format": "email"},
-                    "name": {"type": "string"}
+                    "emailAddress": {
+                      "type": "object",
+                      "properties": {
+                        "address": {"type": "string", "format": "email"},
+                        "name": {"type": "string"}
+                      },
+                      "required": ["address"],
+                      "additionalProperties": false
+                    }
                   },
-                  "required": ["address"]
+                  "additionalProperties": false
                 }
               },
-              "required": ["emailAddress"]
-            },
-            "description": "BCC recipients"
-          },
-          "importance": {
-            "type": "string",
-            "enum": ["low", "normal", "high"],
-            "default": "normal",
-            "description": "Email importance"
-          },
-          "attachments": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {"type": "string"},
-                "contentBytes": {"type": "string"},
-                "contentType": {"type": "string"}
+              "replyTo": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "properties": {
+                        "address": {"type": "string", "format": "email"},
+                        "name": {"type": "string"}
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
               },
-              "required": ["name", "contentBytes"]
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@odata.type": {"type": "string"},
+                    "name": {"type": "string"},
+                    "contentBytes": {"type": "string"},
+                    "contentType": {"type": "string"},
+                    "contentId": {"type": "string"},
+                    "isInline": {"type": "boolean"}
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "importance": {
+                "type": "string",
+                "enum": ["Low", "Normal", "High"],
+                "default": "Normal"
+              },
+              "inferenceClassification": {
+                "type": "string",
+                "enum": ["Focused", "Other"]
+              },
+              "internetMessageHeaders": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "value": {"type": "string"}
+                  },
+                  "additionalProperties": false
+                }
+              }
             },
-            "description": "Email attachments"
+            "required": ["subject", "body", "toRecipients"],
+            "additionalProperties": false
+          },
+          "saveToSentItems": {
+            "type": "boolean",
+            "default": true
           }
         },
-        "required": ["subject", "body", "toRecipients"],
+        "required": ["message"],
         "additionalProperties": false
       }
     },
     {
-      "id": "get_emails",
-      "name": "Get Emails",
-      "description": "Get emails from inbox",
+      "id": "get_messages",
+      "name": "Get Messages",
+      "description": "Get email messages",
       "parameters": {
         "type": "object",
         "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Folder ID (default: inbox)"
+          },
           "$top": {
             "type": "number",
             "minimum": 1,
             "maximum": 1000,
             "default": 10,
-            "description": "Number of emails to return"
+            "description": "Number of messages to return"
           },
           "$skip": {
             "type": "number",
             "minimum": 0,
-            "default": 0,
-            "description": "Number of emails to skip"
-          },
-          "$filter": {
-            "type": "string",
-            "description": "OData filter expression"
+            "description": "Number of messages to skip"
           },
           "$orderby": {
             "type": "string",
-            "description": "OData order by expression"
+            "description": "Order by field"
           },
-          "folderId": {
+          "$filter": {
             "type": "string",
-            "description": "Folder ID to get emails from"
+            "description": "Filter expression"
+          },
+          "$search": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "$select": {
+            "type": "string",
+            "description": "Select specific fields"
+          },
+          "$expand": {
+            "type": "string",
+            "description": "Expand related data"
           }
         },
         "required": [],
@@ -163,9 +222,89 @@
       }
     },
     {
-      "id": "create_event",
-      "name": "Create Event",
-      "description": "Create a calendar event",
+      "id": "get_message",
+      "name": "Get Message",
+      "description": "Get a specific email message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Message ID"
+          },
+          "$select": {
+            "type": "string",
+            "description": "Select specific fields"
+          },
+          "$expand": {
+            "type": "string",
+            "description": "Expand related data"
+          }
+        },
+        "required": ["messageId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "reply_to_message",
+      "name": "Reply to Message",
+      "description": "Reply to an email message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Message ID to reply to"
+          },
+          "message": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "object",
+                "properties": {
+                  "contentType": {"type": "string", "enum": ["Text", "HTML"]},
+                  "content": {"type": "string"}
+                },
+                "required": ["content"],
+                "additionalProperties": false
+              },
+              "toRecipients": {
+                "type": "array",
+                "items": {"type": "object"}
+              }
+            },
+            "required": ["body"],
+            "additionalProperties": false
+          },
+          "comment": {
+            "type": "string",
+            "description": "Reply comment"
+          }
+        },
+        "required": ["messageId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_message",
+      "name": "Delete Message",
+      "description": "Delete an email message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Message ID"
+          }
+        },
+        "required": ["messageId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_calendar_event",
+      "name": "Create Calendar Event",
+      "description": "Create a new calendar event",
       "parameters": {
         "type": "object",
         "properties": {
@@ -176,10 +315,10 @@
           "body": {
             "type": "object",
             "properties": {
-              "contentType": {"type": "string", "enum": ["Text", "HTML"], "default": "HTML"},
+              "contentType": {"type": "string", "enum": ["Text", "HTML"]},
               "content": {"type": "string"}
             },
-            "description": "Event body"
+            "additionalProperties": false
           },
           "start": {
             "type": "object",
@@ -188,7 +327,7 @@
               "timeZone": {"type": "string"}
             },
             "required": ["dateTime"],
-            "description": "Event start time"
+            "additionalProperties": false
           },
           "end": {
             "type": "object",
@@ -197,15 +336,16 @@
               "timeZone": {"type": "string"}
             },
             "required": ["dateTime"],
-            "description": "Event end time"
+            "additionalProperties": false
           },
           "location": {
             "type": "object",
             "properties": {
               "displayName": {"type": "string"},
-              "address": {"type": "object"}
+              "address": {"type": "object"},
+              "coordinates": {"type": "object"}
             },
-            "description": "Event location"
+            "additionalProperties": false
           },
           "attendees": {
             "type": "array",
@@ -218,43 +358,45 @@
                     "address": {"type": "string", "format": "email"},
                     "name": {"type": "string"}
                   },
-                  "required": ["address"]
+                  "required": ["address"],
+                  "additionalProperties": false
                 },
                 "type": {"type": "string", "enum": ["required", "optional", "resource"]}
               },
-              "required": ["emailAddress"]
-            },
-            "description": "Event attendees"
+              "required": ["emailAddress"],
+              "additionalProperties": false
+            }
           },
           "isAllDay": {
             "type": "boolean",
-            "default": false,
-            "description": "Whether event is all day"
+            "default": false
           },
           "recurrence": {
             "type": "object",
             "properties": {
-              "pattern": {
-                "type": "object",
-                "properties": {
-                  "type": {"type": "string", "enum": ["daily", "weekly", "absoluteMonthly", "relativeMonthly", "absoluteYearly", "relativeYearly"]},
-                  "interval": {"type": "number", "minimum": 1},
-                  "month": {"type": "number", "minimum": 1, "maximum": 12},
-                  "dayOfMonth": {"type": "number", "minimum": 1, "maximum": 31},
-                  "daysOfWeek": {"type": "array", "items": {"type": "string"}}
-                }
-              },
-              "range": {
-                "type": "object",
-                "properties": {
-                  "type": {"type": "string", "enum": ["endDate", "noEnd", "numbered"]},
-                  "startDate": {"type": "string", "format": "date"},
-                  "endDate": {"type": "string", "format": "date"},
-                  "numberOfOccurrences": {"type": "number", "minimum": 1}
-                }
-              }
+              "pattern": {"type": "object"},
+              "range": {"type": "object"}
             },
-            "description": "Recurrence pattern"
+            "additionalProperties": false
+          },
+          "reminderMinutesBeforeStart": {
+            "type": "number",
+            "description": "Reminder time in minutes"
+          },
+          "importance": {
+            "type": "string",
+            "enum": ["Low", "Normal", "High"],
+            "default": "Normal"
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": ["Normal", "Personal", "Private", "Confidential"],
+            "default": "Normal"
+          },
+          "showAs": {
+            "type": "string",
+            "enum": ["Free", "Tentative", "Busy", "Oof", "WorkingElsewhere", "Unknown"],
+            "default": "Busy"
           }
         },
         "required": ["subject", "start", "end"],
@@ -262,32 +404,42 @@
       }
     },
     {
-      "id": "get_events",
-      "name": "Get Events",
+      "id": "get_calendar_events",
+      "name": "Get Calendar Events",
       "description": "Get calendar events",
       "parameters": {
         "type": "object",
         "properties": {
+          "calendarId": {
+            "type": "string",
+            "description": "Calendar ID"
+          },
           "$top": {
             "type": "number",
             "minimum": 1,
             "maximum": 1000,
-            "default": 10,
-            "description": "Number of events to return"
+            "default": 10
           },
           "$skip": {
             "type": "number",
-            "minimum": 0,
-            "default": 0,
-            "description": "Number of events to skip"
-          },
-          "$filter": {
-            "type": "string",
-            "description": "OData filter expression"
+            "minimum": 0
           },
           "$orderby": {
+            "type": "string"
+          },
+          "$filter": {
+            "type": "string"
+          },
+          "$select": {
+            "type": "string"
+          },
+          "startDateTime": {
             "type": "string",
-            "description": "OData order by expression"
+            "format": "date-time"
+          },
+          "endDateTime": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [],
@@ -295,26 +447,86 @@
       }
     },
     {
-      "id": "delete_event",
-      "name": "Delete Event",
-      "description": "Delete a calendar event",
+      "id": "create_contact",
+      "name": "Create Contact",
+      "description": "Create a new contact",
       "parameters": {
         "type": "object",
         "properties": {
-          "eventId": {
+          "givenName": {
             "type": "string",
-            "description": "Event ID"
+            "description": "First name"
+          },
+          "surname": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "emailAddresses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "address": {"type": "string", "format": "email"},
+                "name": {"type": "string"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "businessPhones": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "homePhones": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "mobilePhone": {
+            "type": "string"
+          },
+          "jobTitle": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "officeLocation": {
+            "type": "string"
+          },
+          "homeAddress": {
+            "type": "object",
+            "properties": {
+              "street": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "postalCode": {"type": "string"},
+              "countryOrRegion": {"type": "string"}
+            },
+            "additionalProperties": false
+          },
+          "businessAddress": {
+            "type": "object",
+            "properties": {
+              "street": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "postalCode": {"type": "string"},
+              "countryOrRegion": {"type": "string"}
+            },
+            "additionalProperties": false
           }
         },
-        "required": ["eventId"],
+        "required": [],
         "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "email_received",
-      "name": "Email Received",
+      "id": "new_email",
+      "name": "New Email",
       "description": "Triggered when a new email is received",
       "type": "webhook",
       "parameters": {
@@ -331,37 +543,119 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "subject": {"type": "string"},
-          "from": {"type": "object"},
-          "receivedDateTime": {"type": "string"}
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "createdDateTime": {"type": "string"},
+                "lastModifiedDateTime": {"type": "string"},
+                "changeKey": {"type": "string"},
+                "categories": {"type": "array"},
+                "receivedDateTime": {"type": "string"},
+                "sentDateTime": {"type": "string"},
+                "hasAttachments": {"type": "boolean"},
+                "internetMessageId": {"type": "string"},
+                "subject": {"type": "string"},
+                "bodyPreview": {"type": "string"},
+                "importance": {"type": "string"},
+                "parentFolderId": {"type": "string"},
+                "conversationId": {"type": "string"},
+                "conversationIndex": {"type": "string"},
+                "isDeliveryReceiptRequested": {"type": "boolean"},
+                "isReadReceiptRequested": {"type": "boolean"},
+                "isRead": {"type": "boolean"},
+                "isDraft": {"type": "boolean"},
+                "webLink": {"type": "string"},
+                "inferenceClassification": {"type": "string"},
+                "body": {"type": "object"},
+                "sender": {"type": "object"},
+                "from": {"type": "object"},
+                "toRecipients": {"type": "array"},
+                "ccRecipients": {"type": "array"},
+                "bccRecipients": {"type": "array"},
+                "replyTo": {"type": "array"},
+                "flag": {"type": "object"}
+              }
+            }
+          }
         }
       }
     },
     {
-      "id": "event_created",
-      "name": "Event Created",
-      "description": "Triggered when a new event is created",
+      "id": "calendar_event_created",
+      "name": "Calendar Event Created",
+      "description": "Triggered when a new calendar event is created",
       "type": "webhook",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "description": "Filter by calendar ID"
+          }
+        },
         "required": [],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "subject": {"type": "string"},
-          "start": {"type": "object"},
-          "end": {"type": "object"}
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "createdDateTime": {"type": "string"},
+                "lastModifiedDateTime": {"type": "string"},
+                "changeKey": {"type": "string"},
+                "categories": {"type": "array"},
+                "originalStartTimeZone": {"type": "string"},
+                "originalEndTimeZone": {"type": "string"},
+                "iCalUId": {"type": "string"},
+                "reminderMinutesBeforeStart": {"type": "number"},
+                "isReminderOn": {"type": "boolean"},
+                "hasAttachments": {"type": "boolean"},
+                "subject": {"type": "string"},
+                "bodyPreview": {"type": "string"},
+                "importance": {"type": "string"},
+                "sensitivity": {"type": "string"},
+                "isAllDay": {"type": "boolean"},
+                "isCancelled": {"type": "boolean"},
+                "isOrganizer": {"type": "boolean"},
+                "responseRequested": {"type": "boolean"},
+                "seriesMasterId": {"type": "string"},
+                "showAs": {"type": "string"},
+                "type": {"type": "string"},
+                "webLink": {"type": "string"},
+                "onlineMeetingUrl": {"type": "string"},
+                "isOnlineMeeting": {"type": "boolean"},
+                "onlineMeetingProvider": {"type": "string"},
+                "allowNewTimeProposals": {"type": "boolean"},
+                "occurrenceId": {"type": "string"},
+                "isDraft": {"type": "boolean"},
+                "hideAttendees": {"type": "boolean"},
+                "responseStatus": {"type": "object"},
+                "body": {"type": "object"},
+                "start": {"type": "object"},
+                "end": {"type": "object"},
+                "location": {"type": "object"},
+                "locations": {"type": "array"},
+                "recurrence": {"type": "object"},
+                "attendees": {"type": "array"},
+                "organizer": {"type": "object"},
+                "onlineMeeting": {"type": "object"}
+              }
+            }
+          }
         }
       }
     }
   ],
   "testConnection": {
     "method": "GET",
-    "endpoint": "/mailboxSettings"
+    "endpoint": "/me"
   }
 }

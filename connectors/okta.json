@@ -1,7 +1,7 @@
 {
   "id": "okta",
   "name": "Okta",
-  "description": "Okta identity and access management platform",
+  "description": "Identity and access management platform for secure authentication and user management",
   "category": "Security",
   "icon": "okta",
   "color": "#007DC1",
@@ -11,10 +11,10 @@
     "config": {
       "apiKeyLocation": "header",
       "apiKeyName": "Authorization",
-      "apiKeyPrefix": "SSWS"
+      "apiKeyValue": "SSWS {api_key}"
     }
   },
-  "baseUrl": "https://your-domain.okta.com/api/v1",
+  "baseUrl": "https://{domain}.okta.com/api/v1",
   "actions": [
     {
       "id": "test_connection",
@@ -23,37 +23,6 @@
       "parameters": {
         "type": "object",
         "properties": {},
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_users",
-      "name": "Get Users",
-      "description": "Get list of users",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "q": {
-            "type": "string",
-            "description": "Search query"
-          },
-          "filter": {
-            "type": "string",
-            "description": "Filter expression"
-          },
-          "limit": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 200,
-            "description": "Number of users to return"
-          },
-          "after": {
-            "type": "string",
-            "description": "Cursor for pagination"
-          }
-        },
         "required": [],
         "additionalProperties": false
       }
@@ -72,10 +41,36 @@
               "lastName": {"type": "string"},
               "email": {"type": "string", "format": "email"},
               "login": {"type": "string"},
-              "mobilePhone": {"type": "string"}
+              "mobilePhone": {"type": "string"},
+              "secondEmail": {"type": "string", "format": "email"},
+              "middleName": {"type": "string"},
+              "honorificPrefix": {"type": "string"},
+              "honorificSuffix": {"type": "string"},
+              "title": {"type": "string"},
+              "displayName": {"type": "string"},
+              "nickName": {"type": "string"},
+              "profileUrl": {"type": "string"},
+              "primaryPhone": {"type": "string"},
+              "streetAddress": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "zipCode": {"type": "string"},
+              "countryCode": {"type": "string"},
+              "postalAddress": {"type": "string"},
+              "preferredLanguage": {"type": "string"},
+              "locale": {"type": "string"},
+              "timezone": {"type": "string"},
+              "userType": {"type": "string"},
+              "employeeNumber": {"type": "string"},
+              "costCenter": {"type": "string"},
+              "organization": {"type": "string"},
+              "division": {"type": "string"},
+              "department": {"type": "string"},
+              "managerId": {"type": "string"},
+              "manager": {"type": "string"}
             },
             "required": ["firstName", "lastName", "email", "login"],
-            "description": "User profile"
+            "additionalProperties": false
           },
           "credentials": {
             "type": "object",
@@ -84,22 +79,46 @@
                 "type": "object",
                 "properties": {
                   "value": {"type": "string"}
-                }
+                },
+                "additionalProperties": false
               },
               "recovery_question": {
                 "type": "object",
                 "properties": {
                   "question": {"type": "string"},
                   "answer": {"type": "string"}
-                }
+                },
+                "additionalProperties": false
+              },
+              "provider": {
+                "type": "object",
+                "properties": {
+                  "type": {"type": "string", "enum": ["OKTA", "ACTIVE_DIRECTORY", "LDAP", "FEDERATION", "SOCIAL"]},
+                  "name": {"type": "string"}
+                },
+                "additionalProperties": false
               }
             },
-            "description": "User credentials"
+            "additionalProperties": false
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Group IDs to assign user to"
           },
           "activate": {
             "type": "boolean",
             "default": true,
-            "description": "Activate user immediately"
+            "description": "Whether to activate the user"
+          },
+          "provider": {
+            "type": "boolean",
+            "description": "Whether to create user in provider"
+          },
+          "nextLogin": {
+            "type": "string",
+            "enum": ["changePassword"],
+            "description": "Action to take on next login"
           }
         },
         "required": ["profile"],
@@ -107,9 +126,25 @@
       }
     },
     {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get user details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID or login"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "update_user",
       "name": "Update User",
-      "description": "Update an existing user",
+      "description": "Update user information",
       "parameters": {
         "type": "object",
         "properties": {
@@ -123,12 +158,24 @@
               "firstName": {"type": "string"},
               "lastName": {"type": "string"},
               "email": {"type": "string", "format": "email"},
-              "mobilePhone": {"type": "string"}
+              "login": {"type": "string"},
+              "mobilePhone": {"type": "string"},
+              "title": {"type": "string"},
+              "department": {"type": "string"},
+              "manager": {"type": "string"}
             },
-            "description": "User profile updates"
+            "additionalProperties": false
+          },
+          "credentials": {
+            "type": "object",
+            "properties": {
+              "password": {"type": "object"},
+              "recovery_question": {"type": "object"}
+            },
+            "additionalProperties": false
           }
         },
-        "required": ["userId", "profile"],
+        "required": ["userId"],
         "additionalProperties": false
       }
     },
@@ -146,7 +193,7 @@
           "sendEmail": {
             "type": "boolean",
             "default": false,
-            "description": "Send deactivation email"
+            "description": "Whether to send deactivation email"
           }
         },
         "required": ["userId"],
@@ -154,9 +201,62 @@
       }
     },
     {
-      "id": "get_groups",
-      "name": "Get Groups",
-      "description": "Get list of groups",
+      "id": "activate_user",
+      "name": "Activate User",
+      "description": "Activate a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "sendEmail": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to send activation email"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "suspend_user",
+      "name": "Suspend User",
+      "description": "Suspend a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "unsuspend_user",
+      "name": "Unsuspend User",
+      "description": "Unsuspend a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List users with optional filters",
       "parameters": {
         "type": "object",
         "properties": {
@@ -164,16 +264,33 @@
             "type": "string",
             "description": "Search query"
           },
-          "filter": {
+          "after": {
             "type": "string",
-            "description": "Filter expression"
+            "description": "Cursor for pagination"
           },
           "limit": {
             "type": "number",
             "minimum": 1,
             "maximum": 200,
             "default": 200,
-            "description": "Number of groups to return"
+            "description": "Number of users to return"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search expression"
+          },
+          "sortBy": {
+            "type": "string",
+            "description": "Sort field"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
           }
         },
         "required": [],
@@ -201,9 +318,50 @@
       }
     },
     {
-      "id": "get_applications",
-      "name": "Get Applications",
-      "description": "Get list of applications",
+      "id": "remove_user_from_group",
+      "name": "Remove User from Group",
+      "description": "Remove a user from a group",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Group ID"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": ["groupId", "userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_group",
+      "name": "Create Group",
+      "description": "Create a new group",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"}
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["profile"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_groups",
+      "name": "List Groups",
+      "description": "List groups",
       "parameters": {
         "type": "object",
         "properties": {
@@ -211,19 +369,81 @@
             "type": "string",
             "description": "Search query"
           },
-          "filter": {
+          "after": {
             "type": "string",
-            "description": "Filter expression"
+            "description": "Cursor for pagination"
           },
           "limit": {
             "type": "number",
             "minimum": 1,
-            "maximum": 200,
-            "default": 200,
-            "description": "Number of applications to return"
+            "maximum": 10000,
+            "default": 10000,
+            "description": "Number of groups to return"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter expression"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search expression"
+          },
+          "sortBy": {
+            "type": "string",
+            "description": "Sort field"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          },
+          "expand": {
+            "type": "string",
+            "description": "Additional data to include"
           }
         },
         "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "reset_password",
+      "name": "Reset Password",
+      "description": "Reset user password",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "sendEmail": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to send reset email"
+          }
+        },
+        "required": ["userId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "expire_password",
+      "name": "Expire Password",
+      "description": "Expire user password to force reset",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "tempPassword": {
+            "type": "boolean",
+            "description": "Whether to generate temporary password"
+          }
+        },
+        "required": ["userId"],
         "additionalProperties": false
       }
     }
@@ -236,6 +456,62 @@
       "type": "webhook",
       "parameters": {
         "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Filter by group ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventType": {"type": "string"},
+          "version": {"type": "string"},
+          "source": {"type": "string"},
+          "eventId": {"type": "string"},
+          "published": {"type": "string"},
+          "data": {
+            "type": "object",
+            "properties": {
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "uuid": {"type": "string"},
+                    "published": {"type": "string"},
+                    "eventType": {"type": "string"},
+                    "version": {"type": "string"},
+                    "displayMessage": {"type": "string"},
+                    "severity": {"type": "string"},
+                    "client": {"type": "object"},
+                    "actor": {"type": "object"},
+                    "outcome": {"type": "object"},
+                    "target": {"type": "array"},
+                    "transaction": {"type": "object"},
+                    "debugContext": {"type": "object"},
+                    "legacyEventType": {"type": "string"},
+                    "authenticationContext": {"type": "object"},
+                    "securityContext": {"type": "object"},
+                    "insertionTimestamp": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "user_activated",
+      "name": "User Activated",
+      "description": "Triggered when a user is activated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
         "properties": {},
         "required": [],
         "additionalProperties": false
@@ -243,9 +519,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "status": {"type": "string"},
-          "profile": {"type": "object"}
+          "eventType": {"type": "string"},
+          "data": {"type": "object"}
+        }
+      }
+    },
+    {
+      "id": "user_deactivated",
+      "name": "User Deactivated",
+      "description": "Triggered when a user is deactivated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "eventType": {"type": "string"},
+          "data": {"type": "object"}
         }
       }
     }
