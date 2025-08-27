@@ -1,63 +1,447 @@
 {
   "id": "webex",
-  "name": "Webex",
+  "name": "Cisco Webex",
+  "description": "Video conferencing and collaboration platform for meetings and team communication",
   "category": "Communication",
-  "description": "Cisco Webex collaboration and video conferencing platform",
+  "icon": "webex",
+  "color": "#00BCEB",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://webexapis.com/v1/authorize",
       "tokenUrl": "https://webexapis.com/v1/access_token",
-      "scopes": ["spark:all"]
+      "scopes": [
+        "spark:people_read",
+        "spark:rooms_read", 
+        "spark:rooms_write",
+        "spark:memberships_read",
+        "spark:memberships_write",
+        "spark:messages_read",
+        "spark:messages_write",
+        "meeting:schedules_read",
+        "meeting:schedules_write"
+      ]
     }
   },
+  "baseUrl": "https://webexapis.com/v1",
   "actions": [
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Webex",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
     {
       "id": "create_room",
       "name": "Create Room",
-      "description": "Create a new Webex room",
+      "description": "Create a new room",
       "parameters": {
-        "title": {"type": "string", "required": true, "description": "Room title"},
-        "teamId": {"type": "string", "required": false, "description": "Team ID"},
-        "type": {"type": "string", "required": false, "description": "Room type (group/direct)"}
-      },
-      "requiredScopes": ["spark:all"]
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Room title"
+          },
+          "teamId": {
+            "type": "string",
+            "description": "Team ID to associate room with"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["group", "direct"],
+            "default": "group",
+            "description": "Room type"
+          },
+          "isLocked": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether room is locked"
+          },
+          "isPublic": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether room is public"
+          },
+          "isAnnouncementOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether room is announcement only"
+          }
+        },
+        "required": ["title"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "post_message",
-      "name": "Post Message",
-      "description": "Post a message to a Webex room",
+      "id": "get_room",
+      "name": "Get Room",
+      "description": "Get room details",
       "parameters": {
-        "roomId": {"type": "string", "required": true, "description": "Room ID"},
-        "text": {"type": "string", "required": false, "description": "Message text"},
-        "markdown": {"type": "string", "required": false, "description": "Message in markdown"},
-        "files": {"type": "array", "required": false, "description": "File attachments"}
-      },
-      "requiredScopes": ["spark:all"]
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "description": "Room ID"
+          }
+        },
+        "required": ["roomId"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "add_member",
-      "name": "Add Room Member",
-      "description": "Add a member to a Webex room",
+      "id": "list_rooms",
+      "name": "List Rooms",
+      "description": "List rooms",
       "parameters": {
-        "roomId": {"type": "string", "required": true, "description": "Room ID"},
-        "personEmail": {"type": "string", "required": true, "description": "Person email"},
-        "isModerator": {"type": "boolean", "required": false, "description": "Is moderator"}
-      },
-      "requiredScopes": ["spark:all"]
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "description": "Filter by team ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["group", "direct"],
+            "description": "Filter by room type"
+          },
+          "sortBy": {
+            "type": "string",
+            "enum": ["id", "lastactivity", "created"],
+            "default": "lastactivity",
+            "description": "Sort criteria"
+          },
+          "max": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Maximum number of rooms"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "send_message",
+      "name": "Send Message",
+      "description": "Send a message to a room",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "description": "Room ID"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent message ID for replies"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Message in markdown format"
+          },
+          "html": {
+            "type": "string",
+            "description": "Message in HTML format"
+          },
+          "files": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File URLs to attach"
+          },
+          "toPersonId": {
+            "type": "string",
+            "description": "Person ID for direct message"
+          },
+          "toPersonEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Person email for direct message"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_message",
+      "name": "Get Message",
+      "description": "Get message details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Message ID"
+          }
+        },
+        "required": ["messageId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_messages",
+      "name": "List Messages",
+      "description": "List messages in a room",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "description": "Room ID"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent message ID"
+          },
+          "mentionedPeople": {
+            "type": "string",
+            "description": "Filter by mentioned people"
+          },
+          "before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Messages before this date"
+          },
+          "beforeMessage": {
+            "type": "string",
+            "description": "Messages before this message ID"
+          },
+          "max": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 50,
+            "description": "Maximum number of messages"
+          }
+        },
+        "required": ["roomId"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "create_meeting",
       "name": "Create Meeting",
-      "description": "Create a Webex meeting",
+      "description": "Schedule a new meeting",
       "parameters": {
-        "title": {"type": "string", "required": true, "description": "Meeting title"},
-        "start": {"type": "string", "required": true, "description": "Start time (ISO format)"},
-        "end": {"type": "string", "required": true, "description": "End time (ISO format)"},
-        "invitees": {"type": "array", "required": false, "description": "Meeting invitees"}
-      },
-      "requiredScopes": ["spark:all"]
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Meeting title"
+          },
+          "agenda": {
+            "type": "string",
+            "description": "Meeting agenda"
+          },
+          "password": {
+            "type": "string",
+            "description": "Meeting password"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Meeting start time (ISO 8601)"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Meeting end time (ISO 8601)"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Meeting timezone"
+          },
+          "recurrence": {
+            "type": "string",
+            "description": "Recurrence pattern"
+          },
+          "enabledAutoRecordMeeting": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to auto-record meeting"
+          },
+          "allowAnyUserToBeCoHost": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether any user can be co-host"
+          },
+          "enabledJoinBeforeHost": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether users can join before host"
+          },
+          "enableConnectAudioBeforeHost": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether audio connects before host"
+          },
+          "joinBeforeHostMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 15,
+            "description": "Minutes before host can join"
+          },
+          "excludePassword": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to exclude password from invite"
+          },
+          "publicMeeting": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether meeting is public"
+          },
+          "reminderTime": {
+            "type": "number",
+            "description": "Reminder time in minutes"
+          },
+          "unlockedMeetingJoinSecurity": {
+            "type": "string",
+            "enum": ["allowJoin", "allowJoinWithLobby", "blockFromJoin"],
+            "description": "Join security for unlocked meetings"
+          },
+          "sessionTypeId": {
+            "type": "number",
+            "description": "Session type ID"
+          },
+          "enabledWebcastView": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to enable webcast view"
+          },
+          "panelists": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"},
+                "displayName": {"type": "string"}
+              }
+            },
+            "description": "Meeting panelists"
+          },
+          "invitees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {"type": "string", "format": "email"},
+                "displayName": {"type": "string"},
+                "coHost": {"type": "boolean"}
+              }
+            },
+            "description": "Meeting invitees"
+          }
+        },
+        "required": ["title", "start", "end"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_meeting",
+      "name": "Get Meeting",
+      "description": "Get meeting details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meetingId": {
+            "type": "string",
+            "description": "Meeting ID"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Whether to get current meeting instance"
+          },
+          "hostEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Host email filter"
+          }
+        },
+        "required": ["meetingId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_meetings",
+      "name": "List Meetings",
+      "description": "List meetings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "meetingNumber": {
+            "type": "string",
+            "description": "Meeting number filter"
+          },
+          "webLink": {
+            "type": "string",
+            "description": "Web link filter"
+          },
+          "roomId": {
+            "type": "string",
+            "description": "Room ID filter"
+          },
+          "meetingType": {
+            "type": "string",
+            "enum": ["meeting", "webinar", "personalRoomMeeting"],
+            "description": "Meeting type filter"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["active", "scheduled", "ready", "lobby", "inProgress", "ended", "missed"],
+            "description": "Meeting state filter"
+          },
+          "scheduledType": {
+            "type": "string",
+            "enum": ["meeting", "webinar", "personalRoomMeeting"],
+            "description": "Scheduled type filter"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Whether to get current meetings"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start date filter"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End date filter"
+          },
+          "hostEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Host email filter"
+          },
+          "siteUrl": {
+            "type": "string",
+            "description": "Site URL filter"
+          },
+          "max": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Maximum number of meetings"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -65,17 +449,90 @@
       "id": "message_created",
       "name": "Message Created",
       "description": "Triggered when a new message is created",
-      "parameters": {},
-      "webhook": {"eventTypes": ["created"], "entityTypes": ["messages"]},
-      "requiredScopes": ["spark:all"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "description": "Filter by room ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "roomId": {"type": "string"},
+          "roomType": {"type": "string"},
+          "text": {"type": "string"},
+          "personId": {"type": "string"},
+          "personEmail": {"type": "string"},
+          "created": {"type": "string"},
+          "mentionedPeople": {"type": "array"},
+          "mentionedGroups": {"type": "array"}
+        }
+      }
+    },
+    {
+      "id": "room_created",
+      "name": "Room Created",
+      "description": "Triggered when a new room is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "type": {"type": "string"},
+          "isLocked": {"type": "boolean"},
+          "teamId": {"type": "string"},
+          "creatorId": {"type": "string"},
+          "created": {"type": "string"}
+        }
+      }
     },
     {
       "id": "meeting_started",
       "name": "Meeting Started",
       "description": "Triggered when a meeting starts",
-      "parameters": {},
-      "webhook": {"eventTypes": ["started"], "entityTypes": ["meetings"]},
-      "requiredScopes": ["spark:all"]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hostEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Filter by host email"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "meetingNumber": {"type": "string"},
+          "title": {"type": "string"},
+          "hostUserId": {"type": "string"},
+          "hostEmail": {"type": "string"},
+          "start": {"type": "string"},
+          "end": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/people/me"
+  }
 }

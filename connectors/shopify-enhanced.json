@@ -177,6 +177,7 @@
               "seo_description": {"type": "string"}
             },
             "required": ["title"],
+            "additionalProperties": false,
             "description": "Product data"
           }
         },
@@ -361,6 +362,7 @@
               "currency": {"type": "string"}
             },
             "required": ["line_items"],
+            "additionalProperties": false,
             "description": "Order data"
           }
         },
@@ -545,6 +547,7 @@
               "format": {"type": "string", "enum": ["json", "xml"], "default": "json"}
             },
             "required": ["topic", "address"],
+            "additionalProperties": false,
             "description": "Webhook data"
           }
         },

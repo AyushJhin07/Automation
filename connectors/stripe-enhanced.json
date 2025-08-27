@@ -1,93 +1,205 @@
 {
   "id": "stripe-enhanced",
   "name": "Stripe Enhanced",
-  "description": "Stripe Enhanced integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#008CDD",
-  "version": "1.0.0",
+  "description": "Enhanced Stripe payment processing with advanced subscription and invoicing features",
+  "category": "Payments",
+  "icon": "stripe",
+  "color": "#635BFF",
+  "version": "2.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Bearer {api_key}"
+    }
   },
-  "baseUrl": "https://api.stripe.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://api.stripe.com/v1",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Stripe Enhanced and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Stripe",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_customer",
+      "name": "Create Customer",
+      "description": "Create a new customer",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Customer email"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Customer description"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Set of key-value pairs for storing additional information"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "create_payment_intent",
+      "name": "Create Payment Intent",
+      "description": "Create a new payment intent",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Amount in smallest currency unit"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Three-letter ISO currency code"
+          },
+          "customer": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Payment description"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Set of key-value pairs for storing additional information"
+          }
+        },
+        "required": ["amount", "currency"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_subscription",
+      "name": "Create Subscription",
+      "description": "Create a new subscription",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "price": {"type": "string"},
+                "quantity": {"type": "number", "minimum": 1}
+              },
+              "required": ["price"],
+              "additionalProperties": false
+            },
+            "description": "Subscription items"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Set of key-value pairs for storing additional information"
+          }
+        },
+        "required": ["customer", "items"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_invoice",
+      "name": "Create Invoice",
+      "description": "Create a new invoice",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "description": "Customer ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Invoice description"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Set of key-value pairs for storing additional information"
+          }
+        },
+        "required": ["customer"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "customer_created",
+      "name": "Customer Created",
+      "description": "Triggered when a new customer is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "email": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "created": {"type": "number"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "payment_intent_succeeded",
+      "name": "Payment Intent Succeeded",
+      "description": "Triggered when a payment intent succeeds",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string",
+            "description": "Filter by customer ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "amount": {"type": "number"},
+          "currency": {"type": "string"},
+          "customer": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/account"
+  }
 }

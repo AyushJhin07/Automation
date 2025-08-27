@@ -1,93 +1,661 @@
 {
   "id": "woocommerce",
-  "name": "Woocommerce",
-  "description": "Woocommerce integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
+  "name": "WooCommerce",
+  "description": "Open-source e-commerce platform for WordPress websites",
+  "category": "E-commerce",
+  "icon": "woocommerce",
   "color": "#96588A",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "api_key",
+    "config": {
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Basic {api_key}"
+    }
   },
-  "baseUrl": "https://api.woocommerce.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://{domain}/wp-json/wc/v3",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Woocommerce and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to WooCommerce",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record",
+      "id": "create_product",
+      "name": "Create Product",
+      "description": "Create a new product",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      }
-    },
-    {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record",
-      "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Product name"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["simple", "grouped", "external", "variable"],
+            "default": "simple",
+            "description": "Product type"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "pending", "private", "publish"],
+            "default": "publish",
+            "description": "Product status"
+          },
+          "featured": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether product is featured"
+          },
+          "catalog_visibility": {
+            "type": "string",
+            "enum": ["visible", "catalog", "search", "hidden"],
+            "default": "visible",
+            "description": "Catalog visibility"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description"
+          },
+          "short_description": {
+            "type": "string",
+            "description": "Product short description"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Product SKU"
+          },
+          "price": {
+            "type": "string",
+            "description": "Product price"
+          },
+          "regular_price": {
+            "type": "string",
+            "description": "Product regular price"
+          },
+          "sale_price": {
+            "type": "string",
+            "description": "Product sale price"
+          },
+          "manage_stock": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to manage stock"
+          },
+          "stock_quantity": {
+            "type": "number",
+            "description": "Stock quantity"
+          },
+          "stock_status": {
+            "type": "string",
+            "enum": ["instock", "outofstock", "onbackorder"],
+            "default": "instock",
+            "description": "Stock status"
+          },
+          "weight": {
+            "type": "string",
+            "description": "Product weight"
+          },
+          "dimensions": {
+            "type": "object",
+            "properties": {
+              "length": {"type": "string"},
+              "width": {"type": "string"},
+              "height": {"type": "string"}
+            },
+            "description": "Product dimensions"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "number"}
+              }
+            },
+            "description": "Product categories"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "number"}
+              }
+            },
+            "description": "Product tags"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "src": {"type": "string"},
+                "alt": {"type": "string"}
+              }
+            },
+            "description": "Product images"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["name"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "get_product",
+      "name": "Get Product",
+      "description": "Get product details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Product ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_product",
+      "name": "Update Product",
+      "description": "Update an existing product",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Product ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product name"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "pending", "private", "publish"],
+            "description": "Product status"
+          },
+          "price": {
+            "type": "string",
+            "description": "Product price"
+          },
+          "stock_quantity": {
+            "type": "number",
+            "description": "Stock quantity"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_products",
+      "name": "List Products",
+      "description": "List all products",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "string",
+            "enum": ["view", "edit"],
+            "default": "view",
+            "description": "Request context"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Products per page"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created after date"
+          },
+          "before": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created before date"
+          },
+          "include": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Product IDs to include"
+          },
+          "exclude": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Product IDs to exclude"
+          },
+          "parent": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Parent product IDs"
+          },
+          "parent_exclude": {
+            "type": "array",
+            "items": {"type": "number"},
+            "description": "Parent product IDs to exclude"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Product slug"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["any", "draft", "pending", "private", "publish"],
+            "default": "any",
+            "description": "Product status"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["simple", "grouped", "external", "variable"],
+            "description": "Product type"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Product SKU"
+          },
+          "featured": {
+            "type": "boolean",
+            "description": "Whether product is featured"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category slug"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag slug"
+          },
+          "shipping_class": {
+            "type": "string",
+            "description": "Shipping class slug"
+          },
+          "attribute": {
+            "type": "string",
+            "description": "Attribute slug"
+          },
+          "attribute_term": {
+            "type": "string",
+            "description": "Attribute term slug"
+          },
+          "tax_class": {
+            "type": "string",
+            "description": "Tax class"
+          },
+          "min_price": {
+            "type": "string",
+            "description": "Minimum price"
+          },
+          "max_price": {
+            "type": "string",
+            "description": "Maximum price"
+          },
+          "stock_status": {
+            "type": "string",
+            "enum": ["instock", "outofstock", "onbackorder"],
+            "description": "Stock status"
+          },
+          "orderby": {
+            "type": "string",
+            "enum": ["date", "id", "include", "title", "slug", "price", "popularity", "rating", "menu_order"],
+            "default": "date",
+            "description": "Sort field"
+          },
+          "order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort order"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_order",
+      "name": "Create Order",
+      "description": "Create a new order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_method": {
+            "type": "string",
+            "description": "Payment method ID"
+          },
+          "payment_method_title": {
+            "type": "string",
+            "description": "Payment method title"
+          },
+          "set_paid": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to mark order as paid"
+          },
+          "billing": {
+            "type": "object",
+            "properties": {
+              "first_name": {"type": "string"},
+              "last_name": {"type": "string"},
+              "company": {"type": "string"},
+              "address_1": {"type": "string"},
+              "address_2": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "postcode": {"type": "string"},
+              "country": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "phone": {"type": "string"}
+            },
+            "description": "Billing address"
+          },
+          "shipping": {
+            "type": "object",
+            "properties": {
+              "first_name": {"type": "string"},
+              "last_name": {"type": "string"},
+              "company": {"type": "string"},
+              "address_1": {"type": "string"},
+              "address_2": {"type": "string"},
+              "city": {"type": "string"},
+              "state": {"type": "string"},
+              "postcode": {"type": "string"},
+              "country": {"type": "string"}
+            },
+            "description": "Shipping address"
+          },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {"type": "number"},
+                "variation_id": {"type": "number"},
+                "quantity": {"type": "number", "minimum": 1},
+                "name": {"type": "string"},
+                "sku": {"type": "string"},
+                "price": {"type": "string"}
+              },
+              "required": ["product_id", "quantity"]
+            },
+            "description": "Order line items"
+          },
+          "shipping_lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "method_id": {"type": "string"},
+                "method_title": {"type": "string"},
+                "total": {"type": "string"}
+              }
+            },
+            "description": "Shipping lines"
+          },
+          "fee_lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "total": {"type": "string"}
+              }
+            },
+            "description": "Fee lines"
+          },
+          "coupon_lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {"type": "string"}
+              }
+            },
+            "description": "Coupon lines"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed", "trash"],
+            "default": "pending",
+            "description": "Order status"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "customer_id": {
+            "type": "number",
+            "description": "Customer ID"
+          },
+          "customer_note": {
+            "type": "string",
+            "description": "Customer note"
+          },
+          "meta_data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {"type": "string"},
+                "value": {"type": "string"}
+              }
+            },
+            "description": "Meta data"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_order",
+      "name": "Get Order",
+      "description": "Get order details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Order ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_order",
+      "name": "Update Order",
+      "description": "Update an existing order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Order ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed", "trash"],
+            "description": "Order status"
+          },
+          "customer_note": {
+            "type": "string",
+            "description": "Customer note"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "order_created",
+      "name": "Order Created",
+      "description": "Triggered when a new order is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed"],
+            "description": "Filter by order status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "parent_id": {"type": "number"},
+          "status": {"type": "string"},
+          "currency": {"type": "string"},
+          "date_created": {"type": "string"},
+          "date_modified": {"type": "string"},
+          "discount_total": {"type": "string"},
+          "discount_tax": {"type": "string"},
+          "shipping_total": {"type": "string"},
+          "shipping_tax": {"type": "string"},
+          "cart_tax": {"type": "string"},
+          "total": {"type": "string"},
+          "total_tax": {"type": "string"},
+          "prices_include_tax": {"type": "boolean"},
+          "customer_id": {"type": "number"},
+          "customer_ip_address": {"type": "string"},
+          "customer_user_agent": {"type": "string"},
+          "customer_note": {"type": "string"},
+          "billing": {"type": "object"},
+          "shipping": {"type": "object"},
+          "payment_method": {"type": "string"},
+          "payment_method_title": {"type": "string"},
+          "transaction_id": {"type": "string"},
+          "date_paid": {"type": "string"},
+          "date_completed": {"type": "string"},
+          "cart_hash": {"type": "string"},
+          "number": {"type": "string"},
+          "meta_data": {"type": "array"},
+          "line_items": {"type": "array"},
+          "tax_lines": {"type": "array"},
+          "shipping_lines": {"type": "array"},
+          "fee_lines": {"type": "array"},
+          "coupon_lines": {"type": "array"},
+          "refunds": {"type": "array"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "id": "product_created",
+      "name": "Product Created",
+      "description": "Triggered when a new product is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["simple", "grouped", "external", "variable"],
+            "description": "Filter by product type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "number"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "permalink": {"type": "string"},
+          "date_created": {"type": "string"},
+          "date_modified": {"type": "string"},
+          "type": {"type": "string"},
+          "status": {"type": "string"},
+          "featured": {"type": "boolean"},
+          "catalog_visibility": {"type": "string"},
+          "description": {"type": "string"},
+          "short_description": {"type": "string"},
+          "sku": {"type": "string"},
+          "price": {"type": "string"},
+          "regular_price": {"type": "string"},
+          "sale_price": {"type": "string"},
+          "date_on_sale_from": {"type": "string"},
+          "date_on_sale_to": {"type": "string"},
+          "price_html": {"type": "string"},
+          "on_sale": {"type": "boolean"},
+          "purchasable": {"type": "boolean"},
+          "total_sales": {"type": "number"},
+          "virtual": {"type": "boolean"},
+          "downloadable": {"type": "boolean"},
+          "download_limit": {"type": "number"},
+          "download_expiry": {"type": "number"},
+          "external_url": {"type": "string"},
+          "button_text": {"type": "string"},
+          "tax_status": {"type": "string"},
+          "tax_class": {"type": "string"},
+          "manage_stock": {"type": "boolean"},
+          "stock_quantity": {"type": "number"},
+          "stock_status": {"type": "string"},
+          "backorders": {"type": "string"},
+          "backorders_allowed": {"type": "boolean"},
+          "backordered": {"type": "boolean"},
+          "sold_individually": {"type": "boolean"},
+          "weight": {"type": "string"},
+          "dimensions": {"type": "object"},
+          "shipping_required": {"type": "boolean"},
+          "shipping_taxable": {"type": "boolean"},
+          "shipping_class": {"type": "string"},
+          "shipping_class_id": {"type": "number"},
+          "reviews_allowed": {"type": "boolean"},
+          "average_rating": {"type": "string"},
+          "rating_count": {"type": "number"},
+          "related_ids": {"type": "array"},
+          "upsell_ids": {"type": "array"},
+          "cross_sell_ids": {"type": "array"},
+          "parent_id": {"type": "number"},
+          "purchase_note": {"type": "string"},
+          "categories": {"type": "array"},
+          "tags": {"type": "array"},
+          "images": {"type": "array"},
+          "attributes": {"type": "array"},
+          "default_attributes": {"type": "array"},
+          "variations": {"type": "array"},
+          "grouped_products": {"type": "array"},
+          "menu_order": {"type": "number"},
+          "meta_data": {"type": "array"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/system_status"
+  }
 }

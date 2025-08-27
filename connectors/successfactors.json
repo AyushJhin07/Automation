@@ -1,133 +1,167 @@
 {
   "id": "successfactors",
-  "name": "SuccessFactors",
-  "description": "SAP SuccessFactors human experience management",
-  "category": "HR Management",
-  "icon": "users",
+  "name": "SAP SuccessFactors",
+  "description": "Human capital management suite for talent management and HR processes",
+  "category": "HR",
+  "icon": "successfactors",
   "color": "#0073E7",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://api4.successfactors.com/oauth/authorize",
-      "tokenUrl": "https://api4.successfactors.com/oauth/token",
-      "scopes": [
-        "employee_profile",
-        "employee_central"
-      ]
+      "authUrl": "https://{datacenter}.successfactors.com/oauth/authorize",
+      "tokenUrl": "https://{datacenter}.successfactors.com/oauth/token",
+      "scopes": ["read", "write"]
     }
   },
-  "baseUrl": "https://api4.successfactors.com/odata/v2",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 20000
-  },
+  "baseUrl": "https://{datacenter}.successfactors.com/odata/v2",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to SuccessFactors and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to SuccessFactors",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_employee",
+      "name": "Get Employee",
+      "description": "Get employee details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Employee user ID"
+          }
+        },
+        "required": ["user_id"],
+        "additionalProperties": false
       }
     },
     {
       "id": "create_employee",
       "name": "Create Employee",
-      "description": "Create a new employee in SuccessFactors",
+      "description": "Create a new employee",
       "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "Unique user ID"
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Employee user ID"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "hire_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Hire date"
+          },
+          "job_title": {
+            "type": "string",
+            "description": "Job title"
+          },
+          "department": {
+            "type": "string",
+            "description": "Department"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Manager user ID"
+          }
         },
-        "personalInfo": {
-          "type": "object",
-          "required": true,
-          "description": "Personal information"
-        },
-        "employmentInfo": {
-          "type": "object",
-          "required": true,
-          "description": "Employment details"
-        }
-      },
-      "requiredScopes": [
-        "employee_central"
-      ]
+        "required": ["user_id", "first_name", "last_name"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "update_employee",
       "name": "Update Employee",
       "description": "Update employee information",
       "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID"
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Employee user ID"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "job_title": {
+            "type": "string",
+            "description": "Job title"
+          },
+          "department": {
+            "type": "string",
+            "description": "Department"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Manager user ID"
+          }
         },
-        "updates": {
-          "type": "object",
-          "required": true,
-          "description": "Fields to update"
-        }
-      },
-      "requiredScopes": [
-        "employee_central"
-      ]
-    },
-    {
-      "id": "terminate_employee",
-      "name": "Terminate Employee",
-      "description": "Terminate an employee",
-      "parameters": {
-        "userId": {
-          "type": "string",
-          "required": true,
-          "description": "User ID"
-        },
-        "terminationDate": {
-          "type": "string",
-          "required": true,
-          "description": "Termination date"
-        },
-        "reason": {
-          "type": "string",
-          "required": false,
-          "description": "Termination reason"
-        }
-      },
-      "requiredScopes": [
-        "employee_central"
-      ]
+        "required": ["user_id"],
+        "additionalProperties": false
+      }
     },
     {
       "id": "list_employees",
       "name": "List Employees",
-      "description": "Retrieve list of employees",
+      "description": "List employees with optional filters",
       "parameters": {
-        "filter": {
-          "type": "string",
-          "required": false,
-          "description": "OData filter expression"
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          },
+          "manager_id": {
+            "type": "string",
+            "description": "Filter by manager"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of employees to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of employees to skip"
+          }
         },
-        "top": {
-          "type": "number",
-          "required": false,
-          "description": "Number of records to return",
-          "default": 100
-        }
-      },
-      "requiredScopes": [
-        "employee_profile"
-      ]
+        "required": [],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -135,19 +169,60 @@
       "id": "employee_created",
       "name": "Employee Created",
       "description": "Triggered when a new employee is created",
-      "parameters": {},
-      "requiredScopes": [
-        "employee_profile"
-      ]
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {"type": "string"},
+          "first_name": {"type": "string"},
+          "last_name": {"type": "string"},
+          "email": {"type": "string"},
+          "hire_date": {"type": "string"},
+          "job_title": {"type": "string"},
+          "department": {"type": "string"},
+          "manager_id": {"type": "string"}
+        }
+      }
     },
     {
       "id": "employee_updated",
       "name": "Employee Updated",
-      "description": "Triggered when employee data is updated",
-      "parameters": {},
-      "requiredScopes": [
-        "employee_profile"
-      ]
+      "description": "Triggered when employee information is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "description": "Filter by department"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {"type": "string"},
+          "updated_fields": {"type": "array"},
+          "updated_at": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/User"
+  }
 }

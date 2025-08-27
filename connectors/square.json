@@ -49,6 +49,7 @@
               "currency": {"type": "string", "description": "Currency code (e.g., USD)"}
             },
             "required": ["amount", "currency"],
+            "additionalProperties": false,
             "description": "Payment amount"
           },
           "location_id": {
@@ -142,6 +143,7 @@
               "currency": {"type": "string"}
             },
             "required": ["amount", "currency"],
+            "additionalProperties": false,
             "description": "Refund amount"
           },
           "payment_id": {
@@ -249,6 +251,7 @@
               }
             },
             "required": ["location_id"],
+            "additionalProperties": false,
             "description": "Order details"
           }
         },

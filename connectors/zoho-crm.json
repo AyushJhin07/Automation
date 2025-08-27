@@ -1,33 +1,30 @@
 {
   "id": "zoho-crm",
-  "name": "Zoho Crm",
-  "description": "Zoho Crm integration for automation workflows",
-  "category": "Business Apps",
-  "icon": "placeholder",
-  "color": "#E94D36",
+  "name": "Zoho CRM",
+  "description": "Customer relationship management platform for sales, marketing, and customer support",
+  "category": "CRM",
+  "icon": "zoho-crm",
+  "color": "#D34836",
   "version": "1.0.0",
   "authentication": {
-    "type": "oauth2"
+    "type": "oauth2",
+    "config": {
+      "authUrl": "https://accounts.zoho.com/oauth/v2/auth",
+      "tokenUrl": "https://accounts.zoho.com/oauth/v2/token",
+      "scopes": ["ZohoCRM.modules.ALL", "ZohoCRM.settings.ALL", "ZohoCRM.bulk.ALL", "ZohoCRM.notifications.ALL"]
+    }
   },
-  "baseUrl": "https://api.zoho-crm.com",
-  "rateLimits": {
-    "requestsPerSecond": 5,
-    "requestsPerMinute": 300,
-    "dailyLimit": 10000
-  },
+  "baseUrl": "https://www.zohoapis.com/crm/v3",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Zoho Crm and verify authentication",
-      "parameters": {},
-      "requiredScopes": [
-        "read"
-      ],
-      "rateLimits": {
-        "requests": 10,
-        "period": "1m",
-        "scope": "user"
+      "description": "Test the connection to Zoho CRM",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       }
     },
     {
@@ -35,11 +32,60 @@
       "name": "Create Record",
       "description": "Create a new record",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "data": {
+            "type": "object",
+            "description": "Record data"
+          },
+          "duplicate_check_fields": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fields to check for duplicates"
+          },
+          "apply_feature_execution": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Features to apply"
+          },
+          "trigger": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Triggers to execute"
+          }
+        },
+        "required": ["module", "data"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_record",
+      "name": "Get Record",
+      "description": "Get a specific record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to retrieve"
+          }
+        },
+        "required": ["module", "record_id"],
+        "additionalProperties": false
       }
     },
     {
@@ -47,28 +93,283 @@
       "name": "Update Record",
       "description": "Update an existing record",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "data": {
+            "type": "object",
+            "description": "Updated record data"
+          },
+          "apply_feature_execution": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Features to apply"
+          },
+          "trigger": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Triggers to execute"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated data"
-        }
+        "required": ["module", "record_id", "data"],
+        "additionalProperties": false
       }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Retrieve a specific record",
+      "id": "delete_record",
+      "name": "Delete Record",
+      "description": "Delete a record",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "wf_trigger": {
+            "type": "boolean",
+            "description": "Whether to trigger workflow"
+          }
+        },
+        "required": ["module", "record_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_records",
+      "name": "Search Records",
+      "description": "Search records using criteria",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "criteria": {
+            "type": "string",
+            "description": "Search criteria"
+          },
+          "email": {
+            "type": "string",
+            "description": "Search by email"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Search by phone"
+          },
+          "word": {
+            "type": "string",
+            "description": "Search by word"
+          },
+          "converted": {
+            "type": "string",
+            "enum": ["true", "false", "both"],
+            "description": "Filter by conversion status"
+          },
+          "approved": {
+            "type": "string",
+            "enum": ["true", "false", "both"],
+            "description": "Filter by approval status"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 200,
+            "description": "Records per page"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to retrieve"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          },
+          "sort_by": {
+            "type": "string",
+            "description": "Field to sort by"
+          }
+        },
+        "required": ["module"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_records",
+      "name": "List Records",
+      "description": "List records from a module",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of fields to retrieve"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort order"
+          },
+          "sort_by": {
+            "type": "string",
+            "description": "Field to sort by"
+          },
+          "converted": {
+            "type": "string",
+            "enum": ["true", "false", "both"],
+            "description": "Filter by conversion status"
+          },
+          "approved": {
+            "type": "string",
+            "enum": ["true", "false", "both"],
+            "description": "Filter by approval status"
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 200,
+            "description": "Records per page"
+          },
+          "cvid": {
+            "type": "string",
+            "description": "Custom view ID"
+          },
+          "territory_id": {
+            "type": "string",
+            "description": "Territory ID"
+          },
+          "include_child": {
+            "type": "boolean",
+            "description": "Whether to include child records"
+          }
+        },
+        "required": ["module"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "convert_lead",
+      "name": "Convert Lead",
+      "description": "Convert a lead to contact/account/deal",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lead_id": {
+            "type": "string",
+            "description": "Lead ID to convert"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "overwrite": {"type": "boolean"},
+              "notify_lead_owner": {"type": "boolean"},
+              "notify_new_entity_owner": {"type": "boolean"},
+              "Accounts": {"type": "object"},
+              "Contacts": {"type": "object"},
+              "Deals": {"type": "object"}
+            },
+            "description": "Conversion data"
+          },
+          "assign_to": {
+            "type": "string",
+            "description": "User ID to assign converted records to"
+          }
+        },
+        "required": ["lead_id", "data"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "upload_attachment",
+      "name": "Upload Attachment",
+      "description": "Upload an attachment to a record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "file": {
+            "type": "string",
+            "description": "File content (base64 encoded)"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "File name"
+          }
+        },
+        "required": ["module", "record_id", "file", "file_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_note",
+      "name": "Add Note",
+      "description": "Add a note to a record",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module name"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "note_title": {
+            "type": "string",
+            "description": "Note title"
+          },
+          "note_content": {
+            "type": "string",
+            "description": "Note content"
+          }
+        },
+        "required": ["module", "record_id", "note_title", "note_content"],
+        "additionalProperties": false
       }
     }
   ],
@@ -76,18 +377,87 @@
     {
       "id": "record_created",
       "name": "Record Created",
-      "description": "Triggered when a record is created",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "description": "Triggered when a new record is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "module": {"type": "string"},
+          "operation": {"type": "string"},
+          "resource_uri": {"type": "string"},
+          "token": {"type": "string"},
+          "affected_fields": {"type": "array"},
+          "ids": {"type": "array"}
+        }
+      }
     },
     {
       "id": "record_updated",
       "name": "Record Updated",
       "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhookSupport": true,
-      "pollingInterval": "5m"
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "description": "Module to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "module": {"type": "string"},
+          "operation": {"type": "string"},
+          "resource_uri": {"type": "string"},
+          "token": {"type": "string"},
+          "affected_fields": {"type": "array"},
+          "ids": {"type": "array"}
+        }
+      }
+    },
+    {
+      "id": "lead_converted",
+      "name": "Lead Converted",
+      "description": "Triggered when a lead is converted",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "module": {"type": "string"},
+          "operation": {"type": "string"},
+          "converted_detail": {"type": "object"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/org"
+  }
 }

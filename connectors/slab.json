@@ -1,93 +1,263 @@
 {
   "id": "slab",
   "name": "Slab",
+  "description": "Modern team wiki and knowledge base for creating and sharing documentation",
   "category": "Knowledge Base",
-  "description": "Slab integration for automated workflows",
+  "icon": "slab",
+  "color": "#007AFF",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",
     "config": {
-      "type": "header",
-      "name": "Authorization",
-      "prefix": "Bearer"
+      "apiKeyLocation": "header",
+      "apiKeyName": "Authorization",
+      "apiKeyValue": "Bearer {api_key}"
     }
   },
+  "baseUrl": "https://api.slab.com/v1",
   "actions": [
     {
-      "id": "create_record",
-      "name": "Create Record",
-      "description": "Create a new record in Slab",
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Slab",
       "parameters": {
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Record data"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "update_record",
-      "name": "Update Record",
-      "description": "Update an existing record in Slab",
+      "id": "create_post",
+      "name": "Create Post",
+      "description": "Create a new post",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Post title"
+          },
+          "content": {
+            "type": "string",
+            "description": "Post content in Markdown"
+          },
+          "topic_id": {
+            "type": "string",
+            "description": "Topic ID to create post in"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "Parent post ID for creating a sub-post"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["team", "organization", "public"],
+            "default": "team",
+            "description": "Post visibility"
+          }
         },
-        "data": {
-          "type": "object",
-          "required": true,
-          "description": "Updated record data"
-        }
-      },
-      "requiredScopes": []
+        "required": ["title", "content", "topic_id"],
+        "additionalProperties": false
+      }
     },
     {
-      "id": "get_record",
-      "name": "Get Record",
-      "description": "Get a record from Slab",
+      "id": "get_post",
+      "name": "Get Post",
+      "description": "Get post details",
       "parameters": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Record ID"
-        }
-      },
-      "requiredScopes": []
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Post ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_post",
+      "name": "Update Post",
+      "description": "Update an existing post",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Post ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Post title"
+          },
+          "content": {
+            "type": "string",
+            "description": "Post content in Markdown"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["team", "organization", "public"],
+            "description": "Post visibility"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_post",
+      "name": "Delete Post",
+      "description": "Delete a post",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Post ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "search_posts",
+      "name": "Search Posts",
+      "description": "Search for posts",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "topic_id": {
+            "type": "string",
+            "description": "Topic ID to search within"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_topics",
+      "name": "List Topics",
+      "description": "List all topics",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Number of topics to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of topics to skip"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_topic",
+      "name": "Get Topic",
+      "description": "Get topic details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Topic ID"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
     {
-      "id": "record_created",
-      "name": "Record Created",
-      "description": "Triggered when a new record is created",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "created"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "post_created",
+      "name": "Post Created",
+      "description": "Triggered when a new post is created",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "description": "Filter by topic ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "content": {"type": "string"},
+          "topic_id": {"type": "string"},
+          "author": {"type": "object"},
+          "created_at": {"type": "string"},
+          "updated_at": {"type": "string"}
+        }
+      }
     },
     {
-      "id": "record_updated",
-      "name": "Record Updated",
-      "description": "Triggered when a record is updated",
-      "parameters": {},
-      "webhook": {
-        "eventTypes": [
-          "updated"
-        ],
-        "entityTypes": [
-          "record"
-        ]
+      "id": "post_updated",
+      "name": "Post Updated",
+      "description": "Triggered when a post is updated",
+      "type": "webhook",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "description": "Filter by topic ID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "requiredScopes": []
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "content": {"type": "string"},
+          "topic_id": {"type": "string"},
+          "author": {"type": "object"},
+          "updated_at": {"type": "string"}
+        }
+      }
     }
-  ]
+  ],
+  "testConnection": {
+    "method": "GET",
+    "endpoint": "/user"
+  }
 }

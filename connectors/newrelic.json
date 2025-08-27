@@ -133,6 +133,7 @@
               "incident_preference": {"type": "string", "enum": ["PER_POLICY", "PER_CONDITION", "PER_CONDITION_AND_TARGET"]}
             },
             "required": ["name"],
+            "additionalProperties": false,
             "description": "Alert policy details"
           }
         },
