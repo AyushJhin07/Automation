@@ -393,19 +393,16 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       if (!answers || Object.keys(answers).length === 0) {
         console.log('🤔 No answers provided, checking if clarification needed...');
         
-        // Use the sophisticated prompt analysis to determine if questions are needed
-        const needsQuestions = await shouldAskQuestions(prompt);
-        
-        if (needsQuestions.shouldAsk) {
-          console.log('📝 Generating follow-up questions...');
+        // Use deterministic hard check first (fast and reliable)
+        if (needsClarificationHardCheck(prompt)) {
+          console.log('📝 Hard check determined questions needed - generating...');
           const questions = await generateFollowUpQuestions(prompt);
           
           return res.json({
             success: true,
             needsQuestions: true,
             questions: questions,
-            prompt: prompt,
-            reasoning: needsQuestions.reasoning
+            modelUsed: 'Gemini 2.0 Flash (questions)'
           });
         }
         
@@ -421,17 +418,9 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       if (answers && Object.keys(answers).length > 0) {
         console.log('📝 Incorporating user answers:', answers);
         
-        // Create an enhanced prompt that includes the user's specific answers
-        const answerSummary = Object.entries(answers)
-          .map(([questionId, answer]) => `${questionId}: ${answer}`)
-          .join('\n');
-        
-        enhancedPrompt = `${prompt}
-
-User's specific requirements based on clarification:
-${answerSummary}
-
-Build the automation according to these exact specifications provided by the user.`;
+        // Create normalized answer summary as ChatGPT suggested
+        const lines = Object.entries(answers).map(([k, v]) => `- ${k}: ${v}`);
+        enhancedPrompt = `${prompt}\n\nAdditional clarifications:\n${lines.join('\n')}`;
         
         console.log('🎯 Enhanced prompt with answers:', enhancedPrompt);
       }
@@ -441,6 +430,14 @@ Build the automation according to these exact specifications provided by the use
       
       // Generate workflow structure
       const workflow = await generateWorkflowFromAnalysis(analysis, enhancedPrompt);
+      
+      // Enforce Apps Script only at the output (guard-rail)
+      if (workflow.appsScriptCode && violatesAppsScriptOnly(workflow.appsScriptCode)) {
+        return res.status(422).json({
+          success: false,
+          error: 'Model produced non–Apps Script code. Please refine answers or try again.'
+        });
+      }
       
       res.json({
         success: true,
@@ -1395,6 +1392,26 @@ function runOnce() {
 
 // ===== FOLLOW-UP QUESTIONS LOGIC =====
 
+function needsClarificationHardCheck(prompt: string) {
+  const p = prompt.toLowerCase();
+
+  // must mention at least one GWS app or "http/endpoint/scrape" style target
+  const hasApp =
+    /(gmail|sheet|sheets|calendar|drive|docs|slides|forms|meet|apps\s*script)/.test(p);
+  // must state a verb for start or an event
+  const hasTrigger =
+    /(when|on|if|every|cron|time-based|new email|form submit|row added|label|folder)/.test(p);
+  // must have a destination/action
+  const hasAction =
+    /(log|append|create|send|reply|move|label|post|export|backup|summariz|classif|extract)/.test(p);
+
+  return !(hasApp && hasTrigger && hasAction);
+}
+
+function violatesAppsScriptOnly(code: string) {
+  return /(?:import\s|\brequire\(|axios|fs\.|child_process|process\.env|fetch\(|new\sXMLHttpRequest)/i.test(code);
+}
+
 async function shouldAskQuestions(prompt: string): Promise<{shouldAsk: boolean, reasoning: string}> {
   // Use LLM to intelligently determine if questions are needed
   try {
@@ -1466,45 +1483,24 @@ Examples:
 async function generateFollowUpQuestions(prompt: string): Promise<any[]> {
   // Use LLM to generate intelligent, context-aware questions
   try {
-    const questionPrompt = `You are an expert Google Apps Script automation consultant. The user wants to create an automation but their request needs clarification.
+    const appHints = detectAppsFromPrompt(prompt); // you already import this
+    const appList = appHints?.join(', ') || 'Google Workspace apps';
 
-User's Request: "${prompt}"
+    const questionPrompt = `You are an expert Google Apps Script solution architect.
+We are building an automation ONLY with Google Apps Script (UrlFetchApp for external APIs, OAuth2 library for OAuth). 
+No Node.js, Python or servers.
 
-Your job: Generate 3-5 specific, intelligent questions to understand what they want to build. Make questions relevant to their specific request, not generic.
+User's request: "${prompt}"
 
-Consider what's missing:
-- If they mention "emails" but not when → ask about timing/triggers
-- If they mention "data" but not where → ask about source location  
-- If they mention "automate" but not what → ask about specific actions
-- If they mention apps but not how → ask about the process
-
-Respond with JSON only:
-{
-  "questions": [
-    {
-      "id": "specific_id",
-      "text": "Specific question based on their request",
-      "type": "choice", 
-      "choices": ["Relevant option 1", "Relevant option 2", "Relevant option 3", "Relevant option 4"],
-      "required": true,
-      "category": "trigger|data|action|conditions|timing"
-    }
-  ]
-}
-
-EXAMPLES:
-
-For "automate my emails":
-- "What specific email activity should trigger this automation?" 
-- "What should happen when the trigger occurs?"
-- "Which emails should be processed?"
-
-For "connect my sheet to calendar":
-- "When should calendar events be created?"
-- "Which sheet data should be used for events?"
-- "What event details should be included?"
-
-Generate questions that are SPECIFIC to "${prompt}", not generic automation questions.`;
+1) Identify missing details that BLOCK building a working GAS automation.
+2) Ask 3–5 concrete questions to capture those details. DO NOT be generic.
+3) Focus strictly on triggers, filters/conditions, exact data fields, destinations, scopes, schedule, and error handling.
+4) Tailor questions to these apps if relevant: ${appList}.
+5) Respond as strict JSON array:
+[
+  { "id": "trigger", "text": "...", "type": "choice|text", "choices": ["..."], "required": true, "category": "trigger" },
+  ...
+]`;
 
     // Use the Gemini model to generate questions
     const models = MultiAIService.getModels();
@@ -1537,7 +1533,8 @@ Generate questions that are SPECIFIC to "${prompt}", not generic automation ques
     const aiResponse = data.candidates[0].content.parts[0].text;
     const parsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
     
-    return parsed.questions || [];
+    // ChatGPT's format expects direct array, not object with questions property
+    return Array.isArray(parsed) ? parsed : (parsed.questions || []);
     
   } catch (error) {
     console.error('LLM question generation failed, using fallback:', error);

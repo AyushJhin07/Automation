@@ -226,6 +226,10 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [serverModels, setServerModels] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Add safe helpers to avoid runtime errors
+  const safeGraph = (g?: any) => g || { nodes: [], connections: [] };
+  const safeEdges = (g?: any) => (g?.connections ?? g?.edges ?? []);
+
   // Load API keys from localStorage
   useEffect(() => {
     const savedKeys = {
@@ -663,7 +667,7 @@ Need help? I can guide you through each step!`
                             id: message.data.id,
                             name: message.data.title,
                             description: message.data.description,
-                            nodes: message.data.nodes.map((node: any) => ({
+                            nodes: (message.data.nodes || []).map((node: any) => ({
                               id: node.id,
                               type: node.app.toLowerCase().replace(/\s+/g, '-'),
                               position: node.position,
@@ -675,7 +679,7 @@ Need help? I can guide you through each step!`
                                 ...node
                               }
                             })),
-                            edges: message.data.connections.map((conn: any) => ({
+                            edges: (message.data.connections || []).map((conn: any) => ({
                               id: conn.id,
                               source: conn.source,
                               target: conn.target,
@@ -683,9 +687,9 @@ Need help? I can guide you through each step!`
                             }))
                           };
                           
-                          // Save to localStorage and redirect
+                          // Save to localStorage and redirect with correct route + flag
                           localStorage.setItem('ai_generated_workflow', JSON.stringify(graphData));
-                          window.location.href = '/graph-builder';
+                          window.location.href = '/graph-builder?from=ai-builder';
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >
@@ -917,9 +921,9 @@ Need help? I can guide you through each step!`
                   </div>
                   
                   <div>
-                    <h4 className="font-medium mb-2">Connections ({workflowResult.workflow.graph.connections.length})</h4>
+                    <h4 className="font-medium mb-2">Connections ({safeEdges(workflowResult?.workflow?.graph).length})</h4>
                     <div className="space-y-1">
-                      {workflowResult.workflow.graph.connections.map((connection, index) => (
+                      {safeEdges(workflowResult?.workflow?.graph).map((connection, index) => (
                         <div key={index} className="text-sm bg-slate-700 p-2 rounded">
                           {connection.source} → {connection.target}
                         </div>
