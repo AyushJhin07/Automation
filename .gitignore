@@ -4,9 +4,3 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
-
-# Environment variables (sensitive data)
-.env
-.env.local
-.env.production
-.env.staging
