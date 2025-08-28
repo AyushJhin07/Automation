@@ -426,6 +426,10 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       
       // Enforce Apps Script only at the output (guard-rail)
       if (workflow.appsScriptCode && violatesAppsScriptOnly(workflow.appsScriptCode)) {
+        console.error('🚫 Apps Script violation detected in code:');
+        console.error('Code length:', workflow.appsScriptCode.length);
+        console.error('First 200 chars:', workflow.appsScriptCode.substring(0, 200));
+        
         return res.status(422).json({
           success: false,
           error: 'Model produced non–Apps Script code. Please refine answers or try again.'
@@ -1402,7 +1406,24 @@ function needsClarificationHardCheck(prompt: string) {
 }
 
 function violatesAppsScriptOnly(code: string) {
-  return /(?:import\s|\brequire\(|axios|fs\.|child_process|process\.env|fetch\(|new\sXMLHttpRequest)/i.test(code);
+  // Check for non-GAS patterns while allowing UrlFetchApp.fetch()
+  const hasUrlFetchApp = /UrlFetchApp\.fetch\s*\(/i.test(code);
+  const hasForbiddenFetch = /\bfetch\s*\(/i.test(code);
+  
+  const violations = [
+    /\bimport\s+/i,                    // ES6 imports
+    /\brequire\s*\(/i,                 // Node.js require
+    /\baxios\b/i,                      // axios library
+    /\bfs\./i,                         // Node.js filesystem
+    /\bchild_process\b/i,              // Node.js child_process
+    /\bprocess\.env\b/i,               // Node.js process.env
+    /\bnew\s+XMLHttpRequest\b/i        // XMLHttpRequest
+  ];
+  
+  // Check fetch separately - allow only if it's UrlFetchApp.fetch
+  const hasBadFetch = hasForbiddenFetch && !hasUrlFetchApp;
+  
+  return violations.some(pattern => pattern.test(code)) || hasBadFetch;
 }
 
 function buildWorkflowFromAnswers(answers: any, originalPrompt: string) {
