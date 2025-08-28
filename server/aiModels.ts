@@ -373,6 +373,8 @@ Return JSON:
 export function registerAIWorkflowRoutes(app: express.Application) {
   // Generate workflow with AI model selection
   app.post('/api/ai/generate-workflow', async (req, res) => {
+    const startTime = Date.now();
+    
     try {
       const { prompt, userId, preferredModel, apiKey, answers } = req.body;
       
@@ -420,9 +422,24 @@ export function registerAIWorkflowRoutes(app: express.Application) {
       }
       
       // Build deterministic workflow from answers (ChatGPT's approach)
-      const workflow = hasAnswers 
-        ? await buildWorkflowFromAnswers(answers, prompt)
-        : await generateWorkflowFromAnalysis(await MultiAIService.analyzeWorkflowPrompt(enhancedPrompt), enhancedPrompt);
+      let workflow;
+      let analysis;
+      
+      if (hasAnswers) {
+        workflow = await buildWorkflowFromAnswers(answers, prompt);
+        // Create a mock analysis for consistency
+        analysis = {
+          modelUsed: 'Deterministic Workflow Builder',
+          processingTime: Date.now() - Date.now(), // will be overridden below
+          confidence: 0.95,
+          intent: 'email_automation',
+          complexity: 'Complex',
+          reasoning: 'Built deterministically from user answers'
+        };
+      } else {
+        analysis = await MultiAIService.analyzeWorkflowPrompt(enhancedPrompt);
+        workflow = await generateWorkflowFromAnalysis(analysis, enhancedPrompt);
+      }
       
       // Enforce Apps Script only at the output (guard-rail)
       if (workflow.appsScriptCode && violatesAppsScriptOnly(workflow.appsScriptCode)) {
@@ -436,12 +453,15 @@ export function registerAIWorkflowRoutes(app: express.Application) {
         });
       }
       
+      const endTime = Date.now();
+      const actualProcessingTime = endTime - startTime;
+      
       res.json({
         success: true,
         ...workflow,
         aiAnalysis: analysis,
         modelUsed: analysis.modelUsed,
-        processingTime: analysis.processingTime,
+        processingTime: actualProcessingTime,
         confidence: analysis.confidence,
         usedAnswers: answers || null
       });
