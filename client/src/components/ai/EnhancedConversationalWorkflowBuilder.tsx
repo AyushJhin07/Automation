@@ -569,7 +569,6 @@ I've opened Google Apps Script for you. Here's what to do:
 
 Need help? I can guide you through each step!`
         });
-      }
     }
   };
 
