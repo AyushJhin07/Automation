@@ -269,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== GRAPH COMPILER ROUTES =====
 
   app.post('/api/workflow/compile',
-    authenticateToken,
+    process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken,
     checkQuota(1),
     securityService.validateInput([
       { field: 'graph', type: 'json', required: true }
@@ -287,8 +287,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== DEPLOYMENT ROUTES =====
 
   app.post('/api/workflow/deploy',
-    authenticateToken,
-    proOrHigher, // Deployment requires Pro plan or higher
+    process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken,
+    process.env.NODE_ENV === 'development' ? optionalAuth : proOrHigher, // Pro plan only in production
     checkQuota(1),
     securityService.validateInput([
       { field: 'files', type: 'array', required: true }

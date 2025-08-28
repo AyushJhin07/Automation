@@ -3,6 +3,13 @@ import { connections, users, db } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
 
+class ConnectionServiceError extends Error {
+  constructor(message: string, public statusCode: number = 500) {
+    super(message);
+    this.name = 'ConnectionServiceError';
+  }
+}
+
 export interface CreateConnectionRequest {
   userId: string;
   name: string;
@@ -48,7 +55,10 @@ export class ConnectionService {
 
   private ensureDb() {
     if (!this.db) {
-      throw new Error('Database not available. Set DATABASE_URL or enable dev fallback.');
+      if (process.env.NODE_ENV === 'development') {
+        throw new ConnectionServiceError('Database not available in development mode. Set DATABASE_URL to enable database features.', 501);
+      }
+      throw new Error('Database not available. Set DATABASE_URL.');
     }
   }
 

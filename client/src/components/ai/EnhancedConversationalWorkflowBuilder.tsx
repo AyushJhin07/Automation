@@ -182,24 +182,25 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
         <Button
           size="sm"
           onClick={() => {
-            // Generate and download code using automation script generator
+            // Generate and download code using automation script generator with answers
             fetch('/api/automation/generate-script', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 nodes: workflowData.workflow?.graph?.nodes || workflowData.nodes || [],
-                edges: workflowData.workflow?.graph?.connections || workflowData.connections || []
+                edges: workflowData.workflow?.graph?.connections || workflowData.connections || [],
+                answers: workflowData.usedAnswers || {} // Pass the user's answers
               })
             })
             .then(response => response.json())
             .then(result => {
               if (result.success) {
-                const codeContent = result.files.find((f: any) => f.path === 'Code.js')?.content || '';
+                const codeContent = result.script || '';
                 const blob = new Blob([codeContent], { type: 'text/javascript' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'automation-code.js';
+                a.download = 'gmail-automation.gs';
                 a.click();
                 URL.revokeObjectURL(url);
               }

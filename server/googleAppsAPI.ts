@@ -1113,6 +1113,192 @@ function getResponses() {
     }
   }
 
+  // Generate optimized script from user answers
+  static generateFromAnswers(answers: any, nodes: any[], edges: any[]): string {
+    // Extract key information from answers
+    const extractInfo = () => {
+      const gmailLabel = this.extractValue(answers, ['label', 'gmail_label', 'trigger_label']) || 'Inbox';
+      const keywords = this.extractKeywords(answers);
+      const sheetInfo = this.extractSheetInfo(answers);
+      const frequency = this.extractFrequency(answers);
+      
+      return { gmailLabel, keywords, sheetInfo, frequency };
+    };
+    
+    const { gmailLabel, keywords, sheetInfo, frequency } = extractInfo();
+    
+    return `/**
+ * Gmail → Sheets Automation
+ * Generated from AI Builder answers
+ * 
+ * Monitors: ${gmailLabel}
+ * Keywords: ${keywords.join(', ') || 'any'}
+ * Sheet: ${sheetInfo.spreadsheetId}
+ * Frequency: Every ${frequency} minutes
+ */
+
+function main() {
+  try {
+    console.log('🚀 Starting Gmail automation...');
+    
+    const labelName = ${JSON.stringify(gmailLabel)};
+    const keywords = ${JSON.stringify(keywords)};
+    const sheetId = ${JSON.stringify(sheetInfo.spreadsheetId)};
+    const sheetName = ${JSON.stringify(sheetInfo.sheetName)};
+    
+    // Build Gmail search query
+    let query = 'is:unread';
+    if (labelName !== 'Inbox') {
+      query += \` label:"\${labelName}"\`;
+    }
+    if (keywords.length > 0) {
+      query += \` (\${keywords.map(k => \`subject:"\${k}"\`).join(' OR ')})\`;
+    }
+    
+    console.log('Search query:', query);
+    const threads = GmailApp.search(query, 0, 50);
+    console.log(\`Found \${threads.length} emails\`);
+    
+    if (threads.length === 0) {
+      console.log('No emails to process');
+      return;
+    }
+    
+    // Open Google Sheet
+    const sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName) || 
+                  SpreadsheetApp.openById(sheetId).getSheets()[0];
+    
+    let processedCount = 0;
+    
+    // Process each email thread
+    threads.forEach((thread, index) => {
+      try {
+        const messages = thread.getMessages();
+        const latestMessage = messages[messages.length - 1];
+        
+        const subject = latestMessage.getSubject() || '';
+        const from = latestMessage.getFrom() || '';
+        const body = latestMessage.getPlainBody() || '';
+        const date = latestMessage.getDate();
+        
+        console.log(\`Processing: "\${subject}"\`);
+        
+        // Append to sheet
+        const rowData = [
+          subject,
+          from,
+          Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+          body.substring(0, 500) // Truncate long emails
+        ];
+        
+        sheet.appendRow(rowData);
+        thread.markAsRead();
+        processedCount++;
+        
+      } catch (emailError) {
+        console.error(\`Error processing email \${index + 1}:\`, emailError);
+      }
+    });
+    
+    console.log(\`✅ Processed \${processedCount} emails successfully\`);
+    
+  } catch (error) {
+    console.error('❌ Gmail automation error:', error);
+    
+    // Send error notification
+    try {
+      GmailApp.sendEmail(
+        Session.getActiveUser().getEmail(),
+        'Gmail Automation Error',
+        \`Your Gmail automation encountered an error: \${error.toString()}\`
+      );
+    } catch (notificationError) {
+      console.error('Failed to send error notification:', notificationError);
+    }
+  }
+}
+
+function setupTriggers() {
+  console.log('Setting up automation triggers...');
+  
+  // Delete existing triggers to avoid duplicates
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'main') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // Create time-based trigger
+  ScriptApp.newTrigger('main')
+    .timeBased()
+    .everyMinutes(${frequency})
+    .create();
+    
+  console.log(\`✅ Trigger set up: runs every \${${frequency}} minutes\`);
+}
+
+function runOnce() {
+  console.log('🧪 Running Gmail automation manually...');
+  main();
+}`;
+  }
+
+  // Helper methods for answer extraction
+  private static extractValue(answers: any, keys: string[]): string | null {
+    for (const key of keys) {
+      for (const [answerKey, value] of Object.entries(answers)) {
+        if (answerKey.toLowerCase().includes(key.toLowerCase()) && typeof value === 'string') {
+          return value;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static extractKeywords(answers: any): string[] {
+    const keywords: string[] = [];
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('keyword') || key.toLowerCase().includes('filter')) {
+        if (typeof value === 'string') {
+          // Extract keywords from text like "product, Return, Missing"
+          keywords.push(...value.split(',').map(k => k.trim()).filter(Boolean));
+        }
+      }
+    }
+    return keywords;
+  }
+
+  private static extractSheetInfo(answers: any): { spreadsheetId: string; sheetName: string } {
+    let spreadsheetId = '';
+    let sheetName = 'Sheet1';
+    
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('sheet') && typeof value === 'string') {
+        if (value.includes('docs.google.com/spreadsheets')) {
+          const match = value.match(/\/d\/([a-zA-Z0-9-_]+)/);
+          if (match) spreadsheetId = match[1];
+        } else if (value.length > 10 && !value.includes(' ')) {
+          spreadsheetId = value;
+        }
+      }
+    }
+    
+    return { spreadsheetId, sheetName };
+  }
+
+  private static extractFrequency(answers: any): number {
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('frequency') && typeof value === 'string') {
+        const match = value.match(/(\d+)\s*min/i);
+        if (match) {
+          return Math.max(1, Math.min(60, parseInt(match[1], 10)));
+        }
+      }
+    }
+    return 5; // Default: every 5 minutes
+  }
+
   // Generate complete script with all functions
   static generateCompleteScript(nodes: any[], edges: any[]): string {
     let script = `
@@ -1247,13 +1433,16 @@ export function registerGoogleAppsRoutes(app: Express): void {
   // Generate script endpoint
   app.post('/api/automation/generate-script', (req: Request, res: Response) => {
     try {
-      const { nodes, edges } = req.body;
+      const { nodes, edges, answers } = req.body;
       
       if (!nodes || !Array.isArray(nodes)) {
         return res.status(400).json({ error: 'Invalid nodes data' });
       }
       
-      const script = GoogleAppsScriptAPI.generateCompleteScript(nodes, edges || []);
+      // If answers are provided, generate optimized script
+      const script = answers 
+        ? GoogleAppsScriptAPI.generateFromAnswers(answers, nodes, edges || [])
+        : GoogleAppsScriptAPI.generateCompleteScript(nodes, edges || []);
       
       res.json({ 
         success: true, 
