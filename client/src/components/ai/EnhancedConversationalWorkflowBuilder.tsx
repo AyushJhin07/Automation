@@ -73,9 +73,10 @@ interface WorkflowResult {
 
 // Visual Workflow Preview Component
 const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
-  if (!workflowData?.workflow?.graph) return null;
-
-  const graph = workflowData.workflow.graph;
+  // Handle both old and new data structures
+  const graph = workflowData?.workflow?.graph || workflowData;
+  
+  if (!graph || !graph.nodes) return null;
   
   const getNodeIcon = (nodeType: string, app: string) => {
     if (nodeType.includes('gmail') || app === 'Gmail') return Mail;
@@ -903,27 +904,27 @@ Need help? I can guide you through each step!`
             <CardContent>
               <div className="space-y-4 text-white">
                 <div>
-                  <h3 className="font-semibold text-lg">{workflowResult.workflow.graph.name}</h3>
-                  <p className="text-slate-400">{workflowResult.workflow.rationale}</p>
+                  <h3 className="font-semibold text-lg">{workflowResult.title || 'Generated Workflow'}</h3>
+                  <p className="text-slate-400">{workflowResult.description || 'AI-generated automation workflow'}</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-medium mb-2">Nodes ({workflowResult.workflow.graph.nodes.length})</h4>
+                    <h4 className="font-medium mb-2">Nodes ({(workflowResult.nodes || []).length})</h4>
                     <div className="space-y-1">
-                      {workflowResult.workflow.graph.nodes.map(node => (
+                      {(workflowResult.nodes || []).map(node => (
                         <div key={node.id} className="text-sm bg-slate-700 p-2 rounded">
-                          <div className="font-medium">{node.label}</div>
-                          <div className="text-slate-400">{node.type}</div>
+                          <div className="font-medium">{node.functionName || node.app}</div>
+                          <div className="text-slate-400">{node.app} • {node.function}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium mb-2">Connections ({safeEdges(workflowResult?.workflow?.graph).length})</h4>
+                    <h4 className="font-medium mb-2">Connections ({(workflowResult.connections || []).length})</h4>
                     <div className="space-y-1">
-                      {safeEdges(workflowResult?.workflow?.graph).map((connection, index) => (
+                      {(workflowResult.connections || []).map((connection, index) => (
                         <div key={index} className="text-sm bg-slate-700 p-2 rounded">
                           {connection.source} → {connection.target}
                         </div>
