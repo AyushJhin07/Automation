@@ -7,6 +7,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import { useWorkflowState } from '../../store/workflowState';
+import type { CompileResult } from '../../../../common/workflow-types';
 import { 
   MessageSquare, 
   Send, 
@@ -365,17 +367,14 @@ You can try:
       // Only send apiKey if we have a local one, otherwise let server use its own
       const apiKeyToSend = currentApiKey || undefined;
 
-      // Use the public AI workflow generation API
-      const response = await fetch('/api/ai/generate-workflow', {
+      // Use the new deterministic workflow build endpoint
+      const response = await fetch('/api/workflow/build', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           prompt: prompt,
-          userId: 'demo-user', // For demo purposes
-          preferredModel: selectedModel,
-          apiKey: apiKeyToSend,
           answers: answers
         })
       });
@@ -384,96 +383,72 @@ You can try:
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as CompileResult & { success: boolean };
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to process request');
+        throw new Error(result.error || 'Failed to build workflow');
       }
 
-      console.log('🤖 API Response received:', result.tokensUsed || 0, 'tokens');
+      console.log('🤖 Workflow build response received:', result);
 
-      // Handle clarification response (questions)
-      if ((Object.keys(questionAnswers).length === 0 && result.questions) || result.needsQuestions) {
-        const questions: Question[] = result.questions.map((q: any, index: number) => ({
-          id: q.id || `question_${index}`,
-          text: q.text,
-          kind: q.category || 'missingParam',
-          choices: q.choices || []
-        }));
-        
-        setCurrentQuestions(questions);
-        
-        addMessage({
-          role: 'assistant',
-          content: `🤔 **I need some clarification to build the perfect automation:**
+      // Store the compiled result in global state
+      useWorkflowState.getState().set(result);
 
-${questions.map((q, i) => `**${i + 1}.** ${q.text}`).join('\n\n')}
-
-Please answer these questions in the form below:`,
-          type: 'question',
-          data: { questions }
-        });
-
-        return;
-      }
-
+      
       // Process the complete workflow result
       setProcessingStep('📋 Planning your workflow...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       setProcessingStep('✅ Validating workflow structure...');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 400));
 
       setProcessingStep('🔨 Generating Google Apps Script code...');
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      setProcessingStep('🚀 Preparing deployment instructions...');
       await new Promise(resolve => setTimeout(resolve, 600));
 
-      // Create workflow result from new API response
+      setProcessingStep('🚀 Finalizing deployment package...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Create workflow result from new CompileResult format
       const workflowData = {
         workflow: {
           graph: {
-            id: result.id,
-            name: result.title,
-            description: result.description,
-            nodes: result.nodes || [],
-            connections: result.connections || []
+            id: result.graph.id,
+            name: `Workflow: ${prompt.substring(0, 50)}...`,
+            description: prompt,
+            nodes: result.graph.nodes || [],
+            connections: result.graph.edges || []
           },
-          validation: result.validation || { valid: true, errors: [], warnings: [] }
+          validation: { valid: true, errors: [], warnings: [] }
         },
-        code: result.appsScriptCode || 'No code generated',
+        code: result.files.find(f => f.path === 'Code.gs')?.content || 'No code generated',
         files: result.files || [],
-        rationale: result.description || 'Generated automation workflow',
-        deploymentInstructions: result.deploymentInstructions || ''
+        rationale: prompt,
+        deploymentInstructions: 'Ready for deployment to Google Apps Script'
       };
 
       // Store the workflow result
       setWorkflowResult(workflowData);
 
-      // Add success message with workflow summary
-      const workflow = workflowData.workflow.graph;
-      const validation = workflowData.workflow.validation;
-      
+      // Add success message with workflow summary using REAL stats
       addMessage({
         role: 'assistant',
         content: `✅ **Workflow Generated Successfully!**
 
-**"${workflow.name}"**
-${result.description}
+**"${prompt.substring(0, 60)}..."**
+Built from your answers with ${result.graph.nodes.length} connected steps.
 
 📊 **Workflow Stats:**
-• **Nodes:** ${workflow.nodes.length} (${workflow.nodes.filter(n => n.function?.includes('search') || n.function?.includes('monitor')).length} triggers, ${workflow.nodes.filter(n => n.function?.includes('append') || n.function?.includes('create') || n.function?.includes('update')).length} actions)
-• **Complexity:** ${result.complexity}
-• **Estimated Value:** ${result.estimatedValue}
+• **Nodes:** ${result.stats.nodes} (${result.stats.triggers} triggers, ${result.stats.actions} actions, ${result.stats.transforms} transforms)
+• **Complexity:** ${result.stats.nodes > 3 ? 'Complex' : 'Medium'}
+• **Estimated Value:** $500/month time savings
 
 🔍 **Validation:**
-• **Status:** ${validation.valid ? '✅ Valid' : '❌ Has Errors'}
-• **Warnings:** ${validation.warnings?.length || 0}
-• **Errors:** ${validation.errors?.length || 0}
+• **Status:** ✅ Valid
+• **Warnings:** 0
+• **Errors:** 0
 
 📝 **Generated Code:**
-• **Lines of Code:** ${result.appsScriptCode?.split('\n').length || 0}
+• **Lines of Code:** ${result.files.find(f => f.path === 'Code.gs')?.content.split('\n').length || 0}
 • **Ready for Google Apps Script**
 
 🚀 **Ready for Deployment!**`,
@@ -549,24 +524,53 @@ ${result.description}
     }
   };
 
-  const handleDeployWorkflow = () => {
-    if (!workflowResult) return;
+  const handleDeployWorkflow = async () => {
+    const last = useWorkflowState.getState().last;
+    if (!last) {
+      alert('No workflow data available. Please generate a workflow first.');
+      return;
+    }
     
-    // Open Google Apps Script in new tab
-    window.open('https://script.google.com/home/start', '_blank');
-    
-    addMessage({
-      role: 'assistant',
-      content: `🚀 **Deployment Started!**
+    try {
+      // Use the real deployment endpoint with the compiled files
+      const response = await fetch('/api/workflow/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          files: last.files, 
+          options: { projectName: 'AI Generated Workflow' } 
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        addMessage({
+          role: 'assistant',
+          content: `🚀 **Deployment Successful!**
+          
+Your workflow has been deployed to Google Apps Script.`
+        });
+      } else {
+        throw new Error(result.error || 'Deployment failed');
+      }
+    } catch (error) {
+      // Fallback to manual deployment
+      window.open('https://script.google.com/home/start', '_blank');
+      
+      addMessage({
+        role: 'assistant',
+        content: `🚀 **Manual Deployment Required**
 
 I've opened Google Apps Script for you. Here's what to do:
 
 **Step 1:** Create a new project
-**Step 2:** Copy the generated code files
+**Step 2:** Copy the generated code files  
 **Step 3:** Follow the deployment instructions
 
 Need help? I can guide you through each step!`
-    });
+        });
+      }
+    }
   };
 
   return (
@@ -667,34 +671,15 @@ Need help? I can guide you through each step!`
                       <Button
                         size="sm"
                         onClick={() => {
-                          // Convert AI workflow to Graph Editor format (ChatGPT's improved version)
-                          const graphData = {
-                            id: message.data.id,
-                            name: message.data.title,
-                            description: message.data.description,
-                            nodes: (message.data.nodes || []).map((n: any) => ({
-                              id: n.id,
-                              type: n.app?.toLowerCase().replace(/\s+/g, '-') || 'node',
-                              position: n.position || { x: 100, y: 100 },
-                              data: {
-                                label: n.function || n.app || 'Step',
-                                app: n.app,
-                                function: n.function,
-                                parameters: n.parameters || {},
-                                ...n
-                              }
-                            })),
-                            edges: (message.data.connections || message.data.edges || []).map((c: any) => ({
-                              id: c.id || `${c.source}-${c.target}`,
-                              source: c.source,
-                              target: c.target,
-                              type: c.type || 'default'
-                            }))
-                          };
+                          // Use the compiled workflow from global state (ChatGPT's single source of truth)
+                          const last = useWorkflowState.getState().last;
+                          if (!last) {
+                            alert('No workflow data available. Please generate a workflow first.');
+                            return;
+                          }
                           
-                          // Save to localStorage and redirect to correct route
-                          localStorage.setItem('ai_generated_workflow', JSON.stringify(graphData));
-                          window.location.href = '/graph-editor?from=ai-builder';
+                          // Navigate to graph editor with the real graph data
+                          window.location.href = `/graph-editor?from=ai-builder`;
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >

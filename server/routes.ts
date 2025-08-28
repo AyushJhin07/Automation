@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
+import { workflowBuildRouter } from "./routes/workflow.build";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -51,6 +52,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
   registerAIWorkflowRoutes(app);
+  
+  // New workflow build routes
+  app.use('/api/workflow', workflowBuildRouter);
 
   // ===== AUTHENTICATION ROUTES =====
   

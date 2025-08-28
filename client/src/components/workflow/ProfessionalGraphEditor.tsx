@@ -999,19 +999,70 @@ const GraphEditorContent = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('from') === 'ai-builder') {
-      const savedWorkflow = localStorage.getItem('ai_generated_workflow');
-      if (savedWorkflow) {
-        try {
-          const workflowData = JSON.parse(savedWorkflow);
-          loadWorkflowIntoGraph(workflowData);
-          localStorage.removeItem('ai_generated_workflow'); // Clean up
-          setShowWelcomeModal(false); // Hide welcome modal when loading AI workflow
-        } catch (error) {
-          console.error('Failed to load AI-generated workflow:', error);
+      // Use ChatGPT's single source of truth approach
+      try {
+        const savedCompile = localStorage.getItem('lastCompile');
+        if (savedCompile) {
+          const compileResult = JSON.parse(savedCompile);
+          const graph = compileResult.graph;
+          
+          if (graph && graph.nodes) {
+            // Convert ChatGPT's WorkflowGraph format to ReactFlow format
+            const reactFlowNodes = graph.nodes.map((node: any) => ({
+              id: node.id,
+              type: 'customNode',
+              position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
+              data: {
+                label: node.name,
+                app: node.app,
+                function: node.op,
+                parameters: node.params,
+                nodeType: node.type,
+                icon: getIconForApp(node.app),
+                color: getColorForApp(node.app)
+              }
+            }));
+            
+            const reactFlowEdges = graph.edges.map((edge: any) => ({
+              id: edge.id,
+              source: edge.from,
+              target: edge.to,
+              type: 'smoothstep'
+            }));
+            
+            setNodes(reactFlowNodes);
+            setEdges(reactFlowEdges);
+            setShowWelcomeModal(false);
+            
+            console.log('✅ Loaded real AI-generated workflow:', graph);
+          }
         }
+      } catch (error) {
+        console.error('Failed to load AI-generated workflow:', error);
       }
     }
-  }, []);
+  }, [setNodes, setEdges]);
+  
+  // Helper functions for node styling
+  const getIconForApp = (app: string) => {
+    const icons = {
+      'gmail': '📧',
+      'sheets': '📊',
+      'core': '⚙️',
+      'transform': '🔄'
+    };
+    return icons[app.toLowerCase()] || '🔧';
+  };
+  
+  const getColorForApp = (app: string) => {
+    const colors = {
+      'gmail': '#EA4335',
+      'sheets': '#34A853',
+      'core': '#9AA0A6',
+      'transform': '#FF6D01'
+    };
+    return colors[app.toLowerCase()] || '#9AA0A6';
+  };
 
   // Auto-close welcome modal when nodes are added
   useEffect(() => {
