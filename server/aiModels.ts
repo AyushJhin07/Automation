@@ -389,24 +389,18 @@ export function registerAIWorkflowRoutes(app: express.Application) {
         process.env.CLAUDE_API_KEY = apiKey;
       }
 
-      // STEP 1: Check if we need to ask follow-up questions
+      // STEP 1: Always ask clarifying questions first (conversational approach)
       if (!answers || Object.keys(answers).length === 0) {
-        console.log('🤔 No answers provided, checking if clarification needed...');
+        console.log('🤔 No answers provided - always asking clarifying questions...');
         
-        // Use deterministic hard check first (fast and reliable)
-        if (needsClarificationHardCheck(prompt)) {
-          console.log('📝 Hard check determined questions needed - generating...');
-          const questions = await generateFollowUpQuestions(prompt);
-          
-          return res.json({
-            success: true,
-            needsQuestions: true,
-            questions: questions,
-            modelUsed: 'Gemini 2.0 Flash (questions)'
-          });
-        }
+        const questions = await generateFollowUpQuestions(prompt);
         
-        console.log('✅ Prompt is clear enough, proceeding with direct generation...');
+        return res.json({
+          success: true,
+          needsQuestions: true,
+          questions: questions,
+          modelUsed: 'Gemini 2.0 Flash (questions)'
+        });
       }
 
       // STEP 2: Generate workflow (either directly or with answers)
@@ -1487,16 +1481,18 @@ async function generateFollowUpQuestions(prompt: string): Promise<any[]> {
     const appList = appHints?.join(', ') || 'Google Workspace apps';
 
     const questionPrompt = `You are an expert Google Apps Script solution architect.
-We are building an automation ONLY with Google Apps Script (UrlFetchApp for external APIs, OAuth2 library for OAuth). 
-No Node.js, Python or servers.
+We are building an automation ONLY in Google Apps Script (UrlFetchApp for external APIs, OAuth2 library for OAuth). No Node.js/Python/servers.
 
-User's request: "${prompt}"
+User request: "${prompt}"
 
-1) Identify missing details that BLOCK building a working GAS automation.
-2) Ask 3–5 concrete questions to capture those details. DO NOT be generic.
-3) Focus strictly on triggers, filters/conditions, exact data fields, destinations, scopes, schedule, and error handling.
-4) Tailor questions to these apps if relevant: ${appList}.
-5) Respond as strict JSON array:
+Return 3–5 highly specific questions that BLOCK implementation if unanswered. Focus ONLY on:
+- trigger specifics (event, schedule, Gmail label/query, Form submit, Drive folder, etc.)
+- filters/conditions/exclusions
+- exact fields to read/write
+- destination details (Sheet ID/range, Calendar, Drive folder)
+- permissions/scopes and frequency/error handling
+
+Respond as strict JSON array:
 [
   { "id": "trigger", "text": "...", "type": "choice|text", "choices": ["..."], "required": true, "category": "trigger" },
   ...
@@ -1531,7 +1527,20 @@ User's request: "${prompt}"
     
     const data = await response.json();
     const aiResponse = data.candidates[0].content.parts[0].text;
-    const parsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ''));
+    
+    // Robust JSON parsing with fallback as ChatGPT suggested
+    let parsed;
+    try {
+      const raw = aiResponse.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(raw);
+    } catch {
+      // Fallback questions if parsing fails
+      parsed = [
+        { id: 'trigger', text: 'What should trigger this automation?', type: 'text', required: true, category: 'trigger' },
+        { id: 'filter', text: 'Any filters/conditions (e.g., subject contains, label, folder)?', type: 'text', required: false, category: 'filter' },
+        { id: 'destination', text: 'Where should we write the output (Sheet ID and range)?', type: 'text', required: true, category: 'destination' }
+      ];
+    }
     
     // ChatGPT's format expects direct array, not object with questions property
     return Array.isArray(parsed) ? parsed : (parsed.questions || []);

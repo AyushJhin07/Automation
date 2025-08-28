@@ -662,34 +662,34 @@ Need help? I can guide you through each step!`
                       <Button
                         size="sm"
                         onClick={() => {
-                          // Convert AI workflow to Graph Editor format
+                          // Convert AI workflow to Graph Editor format (ChatGPT's improved version)
                           const graphData = {
                             id: message.data.id,
                             name: message.data.title,
                             description: message.data.description,
-                            nodes: (message.data.nodes || []).map((node: any) => ({
-                              id: node.id,
-                              type: node.app.toLowerCase().replace(/\s+/g, '-'),
-                              position: node.position,
+                            nodes: (message.data.nodes || []).map((n: any) => ({
+                              id: n.id,
+                              type: n.app?.toLowerCase().replace(/\s+/g, '-') || 'node',
+                              position: n.position || { x: 100, y: 100 },
                               data: {
-                                label: node.function || node.app,
-                                app: node.app,
-                                function: node.function,
-                                parameters: node.parameters || {},
-                                ...node
+                                label: n.function || n.app || 'Step',
+                                app: n.app,
+                                function: n.function,
+                                parameters: n.parameters || {},
+                                ...n
                               }
                             })),
-                            edges: (message.data.connections || []).map((conn: any) => ({
-                              id: conn.id,
-                              source: conn.source,
-                              target: conn.target,
-                              type: 'default'
+                            edges: (message.data.connections || message.data.edges || []).map((c: any) => ({
+                              id: c.id || `${c.source}-${c.target}`,
+                              source: c.source,
+                              target: c.target,
+                              type: c.type || 'default'
                             }))
                           };
                           
-                          // Save to localStorage and redirect with correct route + flag
+                          // Save to localStorage and redirect to correct route
                           localStorage.setItem('ai_generated_workflow', JSON.stringify(graphData));
-                          window.location.href = '/graph-builder?from=ai-builder';
+                          window.location.href = '/graph-editor?from=ai-builder';
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >
@@ -964,14 +964,14 @@ Need help? I can guide you through each step!`
                     <h4 className="font-medium text-white">Code.gs</h4>
                     <Button
                       size="sm"
-                      onClick={() => handleCopyCode(workflowResult.code)}
+                      onClick={() => handleCopyCode(workflowResult.appsScriptCode || workflowResult.code || '')}
                       className="bg-slate-700 hover:bg-slate-600"
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
                   <pre className="bg-slate-900 p-4 rounded text-sm overflow-x-auto text-green-400">
-                    <code>{workflowResult.code}</code>
+                    <code>{workflowResult.appsScriptCode || workflowResult.code || ''}</code>
                   </pre>
                 </div>
               </div>
