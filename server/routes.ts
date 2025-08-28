@@ -270,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/workflow/compile',
     process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken,
-    checkQuota(1),
+    process.env.NODE_ENV === 'development' ? (req: any, res: any, next: any) => next() : checkQuota(1),
     securityService.validateInput([
       { field: 'graph', type: 'json', required: true }
     ]),
@@ -288,8 +288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/workflow/deploy',
     process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken,
-    process.env.NODE_ENV === 'development' ? optionalAuth : proOrHigher, // Pro plan only in production
-    checkQuota(1),
+    process.env.NODE_ENV === 'development' ? (req: any, res: any, next: any) => next() : proOrHigher, // Skip plan check in dev
+    process.env.NODE_ENV === 'development' ? (req: any, res: any, next: any) => next() : checkQuota(1), // Skip quota in dev
     securityService.validateInput([
       { field: 'files', type: 'array', required: true }
     ]),
@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.get('/api/deployment/prerequisites', authenticateToken, async (req, res) => {
+  app.get('/api/deployment/prerequisites', process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken, async (req, res) => {
     try {
       const result = await productionDeployer.validatePrerequisites();
       res.json({ success: true, data: result });
