@@ -1452,33 +1452,53 @@ function violatesAppsScriptOnly(code: string) {
 }
 
 function buildWorkflowFromAnswers(answers: any, originalPrompt: string) {
-  console.log('🎯 Building deterministic workflow from answers:', answers);
+  console.log('🎯 Building intelligent workflow from answers:', answers);
   
-  // Extract information from answers
-  const extractInfo = () => {
-    const text = JSON.stringify(answers).toLowerCase();
+  // Intelligent workflow type detection
+  const detectWorkflowType = () => {
+    const promptText = originalPrompt.toLowerCase();
+    const answersText = JSON.stringify(answers).toLowerCase();
+    const combined = promptText + ' ' + answersText;
     
-    // Extract Gmail label
-    let gmailLabel = 'Inbox';
-    for (const [key, value] of Object.entries(answers)) {
-      if (key.toLowerCase().includes('label') && typeof value === 'string') {
-        gmailLabel = value;
-        break;
-      }
+    // Interview/HR automation pattern
+    if (combined.includes('candidate') || combined.includes('interview') || 
+        combined.includes('recruit') || combined.includes('hire') ||
+        (combined.includes('sheet') && combined.includes('email') && combined.includes('send'))) {
+      return 'interview_automation';
     }
     
-    // Extract keywords
-    let keywords: string[] = [];
-    for (const [key, value] of Object.entries(answers)) {
-      if (key.toLowerCase().includes('keyword') || key.toLowerCase().includes('criteria')) {
-        if (typeof value === 'string') {
-          keywords = value.split(',').map(k => k.trim()).filter(Boolean);
-        }
-        break;
-      }
+    // Gmail monitoring pattern  
+    if (combined.includes('gmail') || combined.includes('inbox') || 
+        combined.includes('email monitoring') || combined.includes('email automation')) {
+      return 'gmail_monitoring';
     }
     
-    // Extract Sheet ID from URL or direct ID
+    // Customer support pattern
+    if (combined.includes('support') || combined.includes('ticket') || 
+        combined.includes('customer') || combined.includes('help')) {
+      return 'customer_support';
+    }
+    
+    // E-commerce/order pattern
+    if (combined.includes('order') || combined.includes('purchase') || 
+        combined.includes('product') || combined.includes('sale')) {
+      return 'ecommerce_automation';
+    }
+    
+    // Default to sheet-based if sheets mentioned
+    if (combined.includes('sheet') || combined.includes('spreadsheet')) {
+      return 'sheet_automation';
+    }
+    
+    return 'generic_automation';
+  };
+  
+  const workflowType = detectWorkflowType();
+  console.log(`🎯 Detected workflow type: ${workflowType}`);
+  
+  // Extract common information from answers
+  const extractCommonInfo = () => {
+    // Extract Sheet details
     let sheetId = '';
     let sheetName = 'Sheet1';
     for (const [key, value] of Object.entries(answers)) {
@@ -1486,163 +1506,246 @@ function buildWorkflowFromAnswers(answers: any, originalPrompt: string) {
         if (value.includes('docs.google.com/spreadsheets')) {
           const match = value.match(/\/d\/([a-zA-Z0-9-_]+)/);
           if (match) sheetId = match[1];
-        } else if (value.length > 10 && !value.includes(' ')) {
-          sheetId = value;
         }
+        // Extract sheet name if mentioned
+        if (value.toLowerCase().includes('sheet 1')) sheetName = 'Sheet1';
         break;
       }
     }
     
-    // Extract priorities
-    let priorities = ['High', 'Medium', 'Low'];
+    // Extract email content/template
+    let emailContent = 'Default message';
     for (const [key, value] of Object.entries(answers)) {
-      if (key.toLowerCase().includes('priority') && typeof value === 'string') {
-        if (value.toLowerCase().includes('high') || value.toLowerCase().includes('medium') || value.toLowerCase().includes('low')) {
-          priorities = ['High', 'Medium', 'Low'];
+      if (key.toLowerCase().includes('email') || key.toLowerCase().includes('content') || 
+          key.toLowerCase().includes('template') || key.toLowerCase().includes('message')) {
+        if (typeof value === 'string') {
+          emailContent = value;
         }
         break;
       }
     }
     
-    return { gmailLabel, keywords, sheetId, sheetName, priorities };
+    // Extract trigger information
+    let triggerType = 'manual';
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('trigger') && typeof value === 'string') {
+        if (value.toLowerCase().includes('new row') || value.toLowerCase().includes('sheet')) {
+          triggerType = 'sheet_row';
+        } else if (value.toLowerCase().includes('email') || value.toLowerCase().includes('gmail')) {
+          triggerType = 'gmail';
+        }
+        break;
+      }
+    }
+    
+    return { sheetId, sheetName, emailContent, triggerType };
   };
   
-  const { gmailLabel, keywords, sheetId, sheetName, priorities } = extractInfo();
+  const { sheetId, sheetName, emailContent, triggerType } = extractCommonInfo();
   
-  // Build multi-node workflow as ChatGPT specified
-  const nodes = [
-    {
-      id: 'gmail-trigger',
-      type: 'gmail',
-      app: 'Gmail',
-      function: 'new_email_in_label',
-      functionName: 'Monitor Gmail Label',
-      parameters: { label: gmailLabel },
-      position: { x: 120, y: 80 },
-      icon: '📧',
-      color: '#EA4335',
-      aiReason: `Monitors new emails in "${gmailLabel}" label`,
-      confidence: 0.95,
-      isRequired: true
-    },
-    {
-      id: 'ai-classify',
-      type: 'ai',
-      app: 'AI Analysis',
-      function: 'classify_priority_and_replyworthiness',
-      functionName: 'Analyze Email Context',
-      parameters: {
-        mode: 'keywords+sentiment',
-        keywords: keywords,
-        priorities: priorities
+  // Generate workflow based on detected type
+  let nodes, connections, appsScriptCode, description, intent;
+  
+  if (workflowType === 'interview_automation') {
+    // Interview automation: Sheets trigger → Check status → Send email → Update status
+    nodes = [
+      {
+        id: 'sheets-trigger',
+        type: 'google-sheets',
+        app: 'Google Sheets',
+        function: 'on_new_row',
+        functionName: 'Monitor New Candidates',
+        parameters: { spreadsheetId: sheetId, sheetName },
+        position: { x: 120, y: 80 },
+        icon: '📊',
+        color: '#34A853',
+        aiReason: 'Detects when new candidate data is added to spreadsheet',
+        confidence: 0.95,
+        isRequired: true
       },
-      position: { x: 380, y: 80 },
-      icon: '🤖',
-      color: '#4285F4',
-      aiReason: `Analyzes email content for keywords: ${keywords.join(', ')} and determines priority`,
-      confidence: 0.90,
-      isRequired: true
-    },
-    {
-      id: 'gmail-reply',
-      type: 'gmail',
-      app: 'Gmail',
-      function: 'send_reply',
-      functionName: 'Send Auto Reply',
-      parameters: {
-        onlyIfReplyWorthy: true,
-        subjectTemplate: 'Re: {{subject}}',
-        bodyTemplate: 'Thank you for your query. We will get back to you shortly.'
+      {
+        id: 'status-check',
+        type: 'transform',
+        app: 'Built-in',
+        function: 'check_column_status',
+        functionName: 'Check Invitation Status',
+        parameters: { 
+          statusColumn: 'D',
+          condition: 'empty',
+          action: 'proceed_if_empty'
+        },
+        position: { x: 380, y: 80 },
+        icon: '🔍',
+        color: '#9AA0A6',
+        aiReason: 'Only proceeds if status column D is empty (not yet invited)',
+        confidence: 0.90,
+        isRequired: true
       },
-      position: { x: 640, y: 20 },
-      icon: '↩️',
-      color: '#EA4335',
-      aiReason: 'Sends replies only to emails matching criteria',
-      confidence: 0.85,
-      isRequired: true
-    },
-    {
-      id: 'gmail-label',
-      type: 'gmail',
-      app: 'Gmail',
-      function: 'apply_label',
-      functionName: 'Apply Priority Label',
-      parameters: { labelFromPriority: true, priorities: priorities },
-      position: { x: 640, y: 140 },
-      icon: '🏷️',
-      color: '#EA4335',
-      aiReason: 'Labels emails with priority (High/Medium/Low)',
-      confidence: 0.90,
-      isRequired: true
-    },
-    {
-      id: 'sheets-append',
-      type: 'google-sheets',
-      app: 'Google Sheets',
-      function: 'append_row',
-      functionName: 'Log to Spreadsheet',
-      parameters: {
-        spreadsheetId: sheetId,
-        sheetName: sheetName,
-        columns: ['Email Subject', 'Email Sender', 'Email Body', 'Priority Label', 'Reply Sent (Yes/No)', 'Timestamp']
+      {
+        id: 'gmail-send',
+        type: 'gmail',
+        app: 'Gmail',
+        function: 'send_email',
+        functionName: 'Send Interview Invitation',
+        parameters: {
+          toColumnRef: 'B',
+          subjectTemplate: `${emailContent} - Interview Invitation`,
+          bodyColumnRef: 'C',
+          fromTemplate: true
+        },
+        position: { x: 640, y: 80 },
+        icon: '📧',
+        color: '#EA4335',
+        aiReason: 'Sends personalized interview invitation to candidate email',
+        confidence: 0.85,
+        isRequired: true
       },
-      position: { x: 900, y: 80 },
-      icon: '📊',
-      color: '#34A853',
-      aiReason: 'Logs all processed emails to Google Sheets with metadata',
-      confidence: 0.95,
-      isRequired: true
-    }
-  ];
-
-  // Connections between nodes
-  const connections = [
-    {
-      id: 'c1',
-      source: 'gmail-trigger',
-      target: 'ai-classify',
-      dataType: 'email_data'
-    },
-    {
-      id: 'c2',
-      source: 'ai-classify',
-      target: 'gmail-reply',
-      dataType: 'classification_result'
-    },
-    {
-      id: 'c3',
-      source: 'ai-classify',
-      target: 'gmail-label',
-      dataType: 'priority_data'
-    },
-    {
-      id: 'c4',
-      source: 'ai-classify',
-      target: 'sheets-append',
-      dataType: 'log_data'
-    }
-  ];
-
-  // Generate Google Apps Script code for this specific workflow
-  const appsScriptCode = generateGASForGmailReplyLabelSheet({
-    gmailLabel,
-    keywords,
-    sheetId,
-    sheetName,
-    priorities
-  });
+      {
+        id: 'status-update',
+        type: 'google-sheets',
+        app: 'Google Sheets',
+        function: 'update_cell',
+        functionName: 'Update Invitation Status',
+        parameters: {
+          spreadsheetId: sheetId,
+          sheetName,
+          column: 'D',
+          value: 'Invited',
+          onError: 'Failed to Send'
+        },
+        position: { x: 900, y: 80 },
+        icon: '✅',
+        color: '#34A853',
+        aiReason: 'Updates status column to track invitation success/failure',
+        confidence: 0.95,
+        isRequired: true
+      }
+    ];
+    
+    connections = [
+      { id: 'c1', source: 'sheets-trigger', target: 'status-check', dataType: 'row_data' },
+      { id: 'c2', source: 'status-check', target: 'gmail-send', dataType: 'candidate_data' },
+      { id: 'c3', source: 'gmail-send', target: 'status-update', dataType: 'send_result' }
+    ];
+    
+    appsScriptCode = generateInterviewAutomationGAS({ sheetId, sheetName, emailContent });
+    description = `Automatically sends interview invitations when new candidates are added to spreadsheet. Tracks status in column D.`;
+    intent = 'interview_automation';
+    
+  } else if (workflowType === 'sheet_automation') {
+    // Generic sheet automation 
+    nodes = [
+      {
+        id: 'sheets-trigger',
+        type: 'google-sheets', 
+        app: 'Google Sheets',
+        function: 'on_edit',
+        functionName: 'Monitor Sheet Changes',
+        parameters: { spreadsheetId: sheetId, sheetName },
+        position: { x: 120, y: 80 },
+        icon: '📊',
+        color: '#34A853',
+        aiReason: 'Monitors spreadsheet for changes or new data',
+        confidence: 0.95,
+        isRequired: true
+      },
+      {
+        id: 'data-process',
+        type: 'transform',
+        app: 'Built-in',
+        function: 'process_data',
+        functionName: 'Process Sheet Data',
+        parameters: { action: 'validate_and_format' },
+        position: { x: 380, y: 80 },
+        icon: '⚙️',
+        color: '#9AA0A6',
+        aiReason: 'Processes and validates the sheet data',
+        confidence: 0.85,
+        isRequired: true
+      },
+      {
+        id: 'gmail-notify',
+        type: 'gmail',
+        app: 'Gmail',
+        function: 'send_notification',
+        functionName: 'Send Notification',
+        parameters: { 
+          subject: 'Sheet Updated',
+          body: `${emailContent}`
+        },
+        position: { x: 640, y: 80 },
+        icon: '📧',
+        color: '#EA4335',
+        aiReason: 'Sends notification about sheet changes',
+        confidence: 0.80,
+        isRequired: true
+      }
+    ];
+    
+    connections = [
+      { id: 'c1', source: 'sheets-trigger', target: 'data-process', dataType: 'sheet_data' },
+      { id: 'c2', source: 'data-process', target: 'gmail-notify', dataType: 'processed_data' }
+    ];
+    
+    appsScriptCode = generateSheetAutomationGAS({ sheetId, sheetName, emailContent });
+    description = `Monitors spreadsheet changes and sends notifications when data is updated.`;
+    intent = 'sheet_automation';
+    
+  } else {
+    // Default Gmail monitoring (fallback)
+    nodes = [
+      {
+        id: 'gmail-trigger',
+        type: 'gmail',
+        app: 'Gmail',
+        function: 'new_email_in_label',
+        functionName: 'Monitor Gmail',
+        parameters: { label: 'Inbox' },
+        position: { x: 120, y: 80 },
+        icon: '📧',
+        color: '#EA4335',
+        aiReason: 'Monitors new emails in specified label',
+        confidence: 0.95,
+        isRequired: true
+      },
+      {
+        id: 'gmail-reply',
+        type: 'gmail',
+        app: 'Gmail',
+        function: 'send_reply',
+        functionName: 'Auto Reply',
+        parameters: { 
+          bodyTemplate: emailContent || 'Thank you for your email. We will respond shortly.'
+        },
+        position: { x: 380, y: 80 },
+        icon: '↩️',
+        color: '#EA4335',
+        aiReason: 'Sends automated reply to emails',
+        confidence: 0.85,
+        isRequired: true
+      }
+    ];
+    
+    connections = [
+      { id: 'c1', source: 'gmail-trigger', target: 'gmail-reply', dataType: 'email_data' }
+    ];
+    
+    appsScriptCode = generateGenericGAS({ emailContent });
+    description = `Basic email automation with auto-reply functionality.`;
+    intent = 'email_automation';
+  }
 
   return {
     id: `workflow-${Date.now()}`,
-    title: generateIntelligentTitle('email_automation', originalPrompt),
-    description: `Monitors "${gmailLabel}" for emails containing: ${keywords.join(', ')}. Replies to matching queries, labels by priority, and logs to Google Sheets.`,
+    title: generateIntelligentTitle(intent, originalPrompt),
+    description,
     nodes,
     connections,
     appsScriptCode,
     estimatedValue: '$500/month time savings',
-    complexity: 'Complex',
+    complexity: nodes.length > 3 ? 'Complex' : 'Medium',
     intelligence: {
-      intent: 'email_automation',
+      intent,
       confidence: 0.92,
       logicalFunctions: nodes.map(n => ({
         app: n.app,
@@ -1653,6 +1756,198 @@ function buildWorkflowFromAnswers(answers: any, originalPrompt: string) {
       }))
     }
   };
+}
+
+// New intelligent GAS generators for different automation types
+function generateInterviewAutomationGAS(config: any) {
+  const { sheetId, sheetName, emailContent } = config;
+  
+  return `/**
+ * Interview Automation: Sheets → Status Check → Send Email → Update Status  
+ * Generated by AI Builder for interview candidate management
+ */
+
+function onEdit(e) {
+  // Only trigger on new rows in the candidate sheet
+  const sheet = e.source.getActiveSheet();
+  if (sheet.getName() !== "${sheetName}") return;
+  
+  const range = e.range;
+  if (range.getColumn() > 3 || range.getRow() === 1) return; // Skip headers and status column
+  
+  processCandidateRow(range.getRow());
+}
+
+function processCandidateRow(rowNum) {
+  try {
+    console.log(\`🎯 Processing candidate in row \${rowNum}\`);
+    
+    const sheet = SpreadsheetApp.openById("${sheetId}").getSheetByName("${sheetName}");
+    const range = sheet.getRange(rowNum, 1, 1, 4); // A:D columns
+    const [name, email, template, status] = range.getValues()[0];
+    
+    // Only proceed if status column (D) is empty
+    if (status && status.toString().trim() !== '') {
+      console.log(\`⏭️ Skipping row \${rowNum} - already processed (status: \${status})\`);
+      return;
+    }
+    
+    // Validate required data
+    if (!name || !email) {
+      sheet.getRange(rowNum, 4).setValue('Missing Data');
+      console.log(\`❌ Row \${rowNum} missing required data\`);
+      return;
+    }
+    
+    // Send interview invitation
+    const subject = \`\${emailContent || 'Interview Invitation'} - \${name}\`;
+    const body = template || \`
+Dear \${name},
+
+Thank you for your interest in our position. We would like to invite you for an interview.
+
+Please reply with your availability for the coming week.
+
+Best regards,
+HR Team
+\`;
+    
+    console.log(\`📧 Sending invitation to \${email}\`);
+    
+    MailApp.sendEmail({
+      to: email,
+      subject: subject,
+      body: body
+    });
+    
+    // Update status to 'Invited'
+    sheet.getRange(rowNum, 4).setValue('Invited');
+    console.log(\`✅ Successfully invited \${name} and updated status\`);
+    
+  } catch (error) {
+    console.error(\`❌ Error processing candidate: \${error.message}\`);
+    
+    // Update status to show error
+    try {
+      const sheet = SpreadsheetApp.openById("${sheetId}").getSheetByName("${sheetName}");
+      sheet.getRange(rowNum, 4).setValue('Failed to Send');
+    } catch (updateError) {
+      console.error(\`Failed to update error status: \${updateError.message}\`);
+    }
+  }
+}
+
+function testInterviewAutomation() {
+  console.log('🧪 Testing interview automation...');
+  processCandidateRow(2); // Test with row 2
+}`;
+}
+
+function generateSheetAutomationGAS(config: any) {
+  const { sheetId, sheetName, emailContent } = config;
+  
+  return `/**
+ * Sheet Automation: Monitor Changes → Process Data → Send Notifications
+ * Generated by AI Builder for spreadsheet monitoring
+ */
+
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  if (sheet.getName() !== "${sheetName}") return;
+  
+  const range = e.range;
+  console.log(\`📊 Sheet change detected: \${range.getA1Notation()}\`);
+  
+  processSheetChange(range);
+}
+
+function processSheetChange(range) {
+  try {
+    const sheet = range.getSheet();
+    const values = range.getValues();
+    
+    console.log(\`🔄 Processing change in \${range.getA1Notation()}\`);
+    
+    // Send notification about the change
+    const subject = 'Sheet Updated - ${sheetName}';
+    const body = \`
+\${emailContent || 'Spreadsheet has been updated'}
+
+Details:
+- Sheet: \${sheet.getName()}
+- Range: \${range.getA1Notation()}
+- New Values: \${JSON.stringify(values)}
+- Time: \${new Date()}
+
+View spreadsheet: https://docs.google.com/spreadsheets/d/${sheetId}/edit
+\`;
+    
+    // You can modify this to send to specific recipients
+    const recipients = ['admin@company.com']; // Add your email here
+    
+    recipients.forEach(email => {
+      MailApp.sendEmail({
+        to: email,
+        subject: subject,
+        body: body
+      });
+    });
+    
+    console.log(\`✅ Notification sent for change in \${range.getA1Notation()}\`);
+    
+  } catch (error) {
+    console.error(\`❌ Error processing sheet change: \${error.message}\`);
+  }
+}`;
+}
+
+function generateGenericGAS(config: any) {
+  const { emailContent } = config;
+  
+  return `/**
+ * Generic Email Automation
+ * Generated by AI Builder for basic email handling
+ */
+
+function processEmails() {
+  try {
+    console.log('📧 Starting email processing...');
+    
+    const threads = GmailApp.getInboxThreads(0, 10);
+    
+    threads.forEach(thread => {
+      const messages = thread.getMessages();
+      const lastMessage = messages[messages.length - 1];
+      
+      if (lastMessage.isUnread()) {
+        console.log(\`📨 Processing: \${lastMessage.getSubject()}\`);
+        
+        // Send auto-reply
+        const replyBody = \`\${emailContent || 'Thank you for your email. We will respond shortly.'}
+
+---
+This is an automated response.
+\`;
+        
+        lastMessage.reply(replyBody);
+        lastMessage.markRead();
+        
+        console.log(\`✅ Auto-reply sent to \${lastMessage.getFrom()}\`);
+      }
+    });
+    
+  } catch (error) {
+    console.error(\`❌ Error processing emails: \${error.message}\`);
+  }
+}
+
+function setupEmailTrigger() {
+  // Create a time-based trigger to check emails every 5 minutes
+  ScriptApp.newTrigger('processEmails')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+}`;
 }
 
 function generateGASForGmailReplyLabelSheet(config: any) {
