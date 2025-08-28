@@ -46,6 +46,12 @@ export class ConnectionService {
     }
   }
 
+  private ensureDb() {
+    if (!this.db) {
+      throw new Error('Database not available. Set DATABASE_URL or enable dev fallback.');
+    }
+  }
+
   /**
    * Create a new encrypted connection
    */
@@ -68,6 +74,7 @@ export class ConnectionService {
     const encrypted = EncryptionService.encryptCredentials(request.credentials);
 
     // Store in database
+    this.ensureDb();
     const [connection] = await this.db.insert(connections).values({
       userId: request.userId,
       name: request.name,
@@ -87,6 +94,7 @@ export class ConnectionService {
    * Get decrypted connection by ID
    */
   public async getConnection(connectionId: string, userId: string): Promise<DecryptedConnection | null> {
+    this.ensureDb();
     const [connection] = await this.db
       .select()
       .from(connections)
@@ -136,6 +144,7 @@ export class ConnectionService {
       whereConditions.push(eq(connections.provider, provider));
     }
 
+    this.ensureDb();
     const userConnections = await this.db
       .select()
       .from(connections)
@@ -323,6 +332,7 @@ export class ConnectionService {
    * Update connection test status
    */
   private async updateTestStatus(connectionId: string, success: boolean, message: string): Promise<void> {
+    this.ensureDb();
     await this.db
       .update(connections)
       .set({
@@ -356,6 +366,7 @@ export class ConnectionService {
       updateData.credentialsIv = encrypted.iv;
     }
 
+    this.ensureDb();
     await this.db
       .update(connections)
       .set(updateData)
@@ -369,6 +380,7 @@ export class ConnectionService {
    * Delete connection (soft delete)
    */
   public async deleteConnection(connectionId: string, userId: string): Promise<void> {
+    this.ensureDb();
     await this.db
       .update(connections)
       .set({

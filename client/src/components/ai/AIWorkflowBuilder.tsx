@@ -264,12 +264,22 @@ function processCustomerEmails() {
     
     try {
       // TODO: Deploy to user's Google Apps Script
-      const response = await fetch('/api/google/deploy-script', {
+      const response = await fetch('/api/workflow/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add JWT auth when available
+          // ...(jwt && { Authorization: `Bearer ${jwt}` })
+        },
         body: JSON.stringify({
-          workflow: generatedWorkflow,
-          userId: 'demo-user'
+          files: generatedWorkflow.appsScriptCode ? [
+            {
+              name: 'Code.gs',
+              content: generatedWorkflow.appsScriptCode,
+              type: 'gas'
+            }
+          ] : [],
+          options: { projectName: generatedWorkflow.title }
         })
       });
       

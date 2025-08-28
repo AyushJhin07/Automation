@@ -384,11 +384,16 @@ export function registerAIWorkflowRoutes(app: express.Application) {
 
       console.log(`🚀 AI Workflow Request from user ${userId}: "${prompt}"`);
       
-      // If client provided an API key, temporarily override the environment
-      if (apiKey) {
-        process.env.GEMINI_API_KEY = apiKey;
-        process.env.OPENAI_API_KEY = apiKey;
-        process.env.CLAUDE_API_KEY = apiKey;
+      // If client provided an API key, set it for the specific provider only
+      if (apiKey && preferredModel) {
+        const modelLower = preferredModel.toLowerCase();
+        if (modelLower.includes('gemini')) {
+          process.env.GEMINI_API_KEY = apiKey;
+        } else if (modelLower.includes('gpt') || modelLower.includes('openai')) {
+          process.env.OPENAI_API_KEY = apiKey;
+        } else if (modelLower.includes('claude')) {
+          process.env.CLAUDE_API_KEY = apiKey;
+        }
       }
 
       // STEP 1: Always ask clarifying questions first (conversational approach)

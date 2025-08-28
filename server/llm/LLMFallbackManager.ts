@@ -484,7 +484,7 @@ export class LLMFallbackManager {
       maxConcurrentRequests: 10,
       timeoutMs: 30000,
       costMultiplier: 1.0,
-      models: ['openai:gpt-4o-mini', 'openai:gpt-4.1', 'openai:o3-mini'],
+      models: ['openai:gpt-4o-mini', 'openai:gpt-4.1'],
       circuitBreaker: {
         failureThreshold: 5,
         timeoutMs: 60000,

@@ -182,11 +182,14 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
         <Button
           size="sm"
           onClick={() => {
-            // Generate and download code
-            fetch('/api/workflow/generate-code', {
+            // Generate and download code using automation script generator
+            fetch('/api/automation/generate-script', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ graph: workflowData.workflow.graph })
+              body: JSON.stringify({ 
+                nodes: workflowData.workflow?.graph?.nodes || workflowData.nodes || [],
+                edges: workflowData.workflow?.graph?.connections || workflowData.connections || []
+              })
             })
             .then(response => response.json())
             .then(result => {

@@ -131,7 +131,7 @@ export class OpenAIProvider implements LLMProvider {
     const costPer1k = {
       'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
       'gpt-4.1': { input: 0.005, output: 0.015 },
-      'o3-mini': { input: 0.00015, output: 0.0006 }
+
     } as const;
 
     const modelCost = costPer1k[model as keyof typeof costPer1k] || costPer1k['gpt-4o-mini'];

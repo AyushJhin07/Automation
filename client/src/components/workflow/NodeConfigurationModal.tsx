@@ -134,13 +134,13 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const handleTestConnection = async (connectionId: string) => {
     setIsTestingConnection(true);
     try {
-      const response = await fetch('/api/connections/test', {
+      const response = await fetch(`/api/connections/${connectionId}/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ connectionId })
+        }
+        // Note: Server expects connection to already exist, no body needed
       });
 
       const result = await response.json();

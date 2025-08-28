@@ -1,5 +1,5 @@
 export type LLMModelId =
-  | 'openai:gpt-4o-mini' | 'openai:gpt-4.1' | 'openai:o3-mini'
+  | 'openai:gpt-4o-mini' | 'openai:gpt-4.1'
   | 'anthropic:claude-3-5-sonnet' | 'anthropic:claude-3-haiku'
   | 'google:gemini-1.5-pro' | 'google:gemini-1.5-flash';
 
@@ -77,7 +77,7 @@ export class LLMRegistry {
   private getModelsForProvider(providerId: string): string[] {
     switch (providerId) {
       case 'openai':
-        return ['openai:gpt-4o-mini', 'openai:gpt-4.1', 'openai:o3-mini'];
+        return ['openai:gpt-4o-mini', 'openai:gpt-4.1'];
       case 'anthropic':
         return ['anthropic:claude-3-5-sonnet', 'anthropic:claude-3-haiku'];
       case 'google':
