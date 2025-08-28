@@ -403,27 +403,26 @@ export function registerAIWorkflowRoutes(app: express.Application) {
         });
       }
 
-      // STEP 2: Generate workflow (either directly or with answers)
-      console.log('🔧 Generating workflow...');
+      // STEP 2: Generate workflow from answers (deterministic approach)
+      console.log('🔧 Generating workflow from user answers...');
+      
+      const hasAnswers = answers && Object.keys(answers).length > 0;
       
       let enhancedPrompt = prompt;
-      
-      // If we have answers, incorporate them into the workflow generation
-      if (answers && Object.keys(answers).length > 0) {
+      if (hasAnswers) {
         console.log('📝 Incorporating user answers:', answers);
         
         // Create normalized answer summary as ChatGPT suggested
         const lines = Object.entries(answers).map(([k, v]) => `- ${k}: ${v}`);
-        enhancedPrompt = `${prompt}\n\nAdditional clarifications:\n${lines.join('\n')}`;
+        enhancedPrompt = `${prompt}\n\nClarifications:\n${lines.join('\n')}`;
         
         console.log('🎯 Enhanced prompt with answers:', enhancedPrompt);
       }
       
-      // Analyze prompt with multiple AI models (using enhanced prompt if we have answers)
-      const analysis = await MultiAIService.analyzeWorkflowPrompt(enhancedPrompt);
-      
-      // Generate workflow structure
-      const workflow = await generateWorkflowFromAnalysis(analysis, enhancedPrompt);
+      // Build deterministic workflow from answers (ChatGPT's approach)
+      const workflow = hasAnswers 
+        ? await buildWorkflowFromAnswers(answers, prompt)
+        : await generateWorkflowFromAnalysis(await MultiAIService.analyzeWorkflowPrompt(enhancedPrompt), enhancedPrompt);
       
       // Enforce Apps Script only at the output (guard-rail)
       if (workflow.appsScriptCode && violatesAppsScriptOnly(workflow.appsScriptCode)) {
@@ -1404,6 +1403,469 @@ function needsClarificationHardCheck(prompt: string) {
 
 function violatesAppsScriptOnly(code: string) {
   return /(?:import\s|\brequire\(|axios|fs\.|child_process|process\.env|fetch\(|new\sXMLHttpRequest)/i.test(code);
+}
+
+function buildWorkflowFromAnswers(answers: any, originalPrompt: string) {
+  console.log('🎯 Building deterministic workflow from answers:', answers);
+  
+  // Extract information from answers
+  const extractInfo = () => {
+    const text = JSON.stringify(answers).toLowerCase();
+    
+    // Extract Gmail label
+    let gmailLabel = 'Inbox';
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('label') && typeof value === 'string') {
+        gmailLabel = value;
+        break;
+      }
+    }
+    
+    // Extract keywords
+    let keywords: string[] = [];
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('keyword') || key.toLowerCase().includes('criteria')) {
+        if (typeof value === 'string') {
+          keywords = value.split(',').map(k => k.trim()).filter(Boolean);
+        }
+        break;
+      }
+    }
+    
+    // Extract Sheet ID from URL or direct ID
+    let sheetId = '';
+    let sheetName = 'Sheet1';
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('sheet') && typeof value === 'string') {
+        if (value.includes('docs.google.com/spreadsheets')) {
+          const match = value.match(/\/d\/([a-zA-Z0-9-_]+)/);
+          if (match) sheetId = match[1];
+        } else if (value.length > 10 && !value.includes(' ')) {
+          sheetId = value;
+        }
+        break;
+      }
+    }
+    
+    // Extract priorities
+    let priorities = ['High', 'Medium', 'Low'];
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('priority') && typeof value === 'string') {
+        if (value.toLowerCase().includes('high') || value.toLowerCase().includes('medium') || value.toLowerCase().includes('low')) {
+          priorities = ['High', 'Medium', 'Low'];
+        }
+        break;
+      }
+    }
+    
+    return { gmailLabel, keywords, sheetId, sheetName, priorities };
+  };
+  
+  const { gmailLabel, keywords, sheetId, sheetName, priorities } = extractInfo();
+  
+  // Build multi-node workflow as ChatGPT specified
+  const nodes = [
+    {
+      id: 'gmail-trigger',
+      type: 'gmail',
+      app: 'Gmail',
+      function: 'new_email_in_label',
+      functionName: 'Monitor Gmail Label',
+      parameters: { label: gmailLabel },
+      position: { x: 120, y: 80 },
+      icon: '📧',
+      color: '#EA4335',
+      aiReason: `Monitors new emails in "${gmailLabel}" label`,
+      confidence: 0.95,
+      isRequired: true
+    },
+    {
+      id: 'ai-classify',
+      type: 'ai',
+      app: 'AI Analysis',
+      function: 'classify_priority_and_replyworthiness',
+      functionName: 'Analyze Email Context',
+      parameters: {
+        mode: 'keywords+sentiment',
+        keywords: keywords,
+        priorities: priorities
+      },
+      position: { x: 380, y: 80 },
+      icon: '🤖',
+      color: '#4285F4',
+      aiReason: `Analyzes email content for keywords: ${keywords.join(', ')} and determines priority`,
+      confidence: 0.90,
+      isRequired: true
+    },
+    {
+      id: 'gmail-reply',
+      type: 'gmail',
+      app: 'Gmail',
+      function: 'send_reply',
+      functionName: 'Send Auto Reply',
+      parameters: {
+        onlyIfReplyWorthy: true,
+        subjectTemplate: 'Re: {{subject}}',
+        bodyTemplate: 'Thank you for your query. We will get back to you shortly.'
+      },
+      position: { x: 640, y: 20 },
+      icon: '↩️',
+      color: '#EA4335',
+      aiReason: 'Sends replies only to emails matching criteria',
+      confidence: 0.85,
+      isRequired: true
+    },
+    {
+      id: 'gmail-label',
+      type: 'gmail',
+      app: 'Gmail',
+      function: 'apply_label',
+      functionName: 'Apply Priority Label',
+      parameters: { labelFromPriority: true, priorities: priorities },
+      position: { x: 640, y: 140 },
+      icon: '🏷️',
+      color: '#EA4335',
+      aiReason: 'Labels emails with priority (High/Medium/Low)',
+      confidence: 0.90,
+      isRequired: true
+    },
+    {
+      id: 'sheets-append',
+      type: 'google-sheets',
+      app: 'Google Sheets',
+      function: 'append_row',
+      functionName: 'Log to Spreadsheet',
+      parameters: {
+        spreadsheetId: sheetId,
+        sheetName: sheetName,
+        columns: ['Email Subject', 'Email Sender', 'Email Body', 'Priority Label', 'Reply Sent (Yes/No)', 'Timestamp']
+      },
+      position: { x: 900, y: 80 },
+      icon: '📊',
+      color: '#34A853',
+      aiReason: 'Logs all processed emails to Google Sheets with metadata',
+      confidence: 0.95,
+      isRequired: true
+    }
+  ];
+
+  // Connections between nodes
+  const connections = [
+    {
+      id: 'c1',
+      source: 'gmail-trigger',
+      target: 'ai-classify',
+      dataType: 'email_data'
+    },
+    {
+      id: 'c2',
+      source: 'ai-classify',
+      target: 'gmail-reply',
+      dataType: 'classification_result'
+    },
+    {
+      id: 'c3',
+      source: 'ai-classify',
+      target: 'gmail-label',
+      dataType: 'priority_data'
+    },
+    {
+      id: 'c4',
+      source: 'ai-classify',
+      target: 'sheets-append',
+      dataType: 'log_data'
+    }
+  ];
+
+  // Generate Google Apps Script code for this specific workflow
+  const appsScriptCode = generateGASForGmailReplyLabelSheet({
+    gmailLabel,
+    keywords,
+    sheetId,
+    sheetName,
+    priorities
+  });
+
+  return {
+    id: `workflow-${Date.now()}`,
+    title: generateIntelligentTitle('email_automation', originalPrompt),
+    description: `Monitors "${gmailLabel}" for emails containing: ${keywords.join(', ')}. Replies to matching queries, labels by priority, and logs to Google Sheets.`,
+    nodes,
+    connections,
+    appsScriptCode,
+    estimatedValue: '$500/month time savings',
+    complexity: 'Complex',
+    intelligence: {
+      intent: 'email_automation',
+      confidence: 0.92,
+      logicalFunctions: nodes.map(n => ({
+        app: n.app,
+        function: n.function,
+        reason: n.aiReason,
+        parameters: n.parameters,
+        isRequired: n.isRequired
+      }))
+    }
+  };
+}
+
+function generateGASForGmailReplyLabelSheet(config: any) {
+  const { gmailLabel, keywords, sheetId, sheetName, priorities } = config;
+  const keywordsArray = JSON.stringify(keywords || []);
+  const prioritiesArray = JSON.stringify(priorities || ['High', 'Medium', 'Low']);
+
+  return `/**
+ * Gmail → LLM Classify → Reply/Label → Sheets Automation
+ * Generated by AI Builder
+ * 
+ * Monitors: ${gmailLabel}
+ * Keywords: ${keywords?.join(', ') || 'any'}
+ * Sheet: ${sheetId}
+ */
+
+function main() {
+  try {
+    console.log('🚀 Starting Gmail automation...');
+    
+    const labelName = ${JSON.stringify(gmailLabel)};
+    const keywords = ${keywordsArray};
+    const priorities = ${prioritiesArray};
+    const sheetId = ${JSON.stringify(sheetId)};
+    const sheetName = ${JSON.stringify(sheetName)};
+    
+    // Get emails from specific label
+    const query = 'label:"' + labelName + '" is:unread';
+    const threads = GmailApp.search(query, 0, 50);
+    
+    console.log(\`Found \${threads.length} unread emails in "\${labelName}" label\`);
+    
+    if (threads.length === 0) {
+      console.log('No new emails to process');
+      return;
+    }
+    
+    // Open Google Sheet
+    const sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName) || 
+                  SpreadsheetApp.openById(sheetId).getSheets()[0];
+    
+    // Process each email thread
+    threads.forEach((thread, index) => {
+      try {
+        const messages = thread.getMessages();
+        const latestMessage = messages[messages.length - 1];
+        
+        const subject = latestMessage.getSubject() || '';
+        const from = latestMessage.getFrom() || '';
+        const body = latestMessage.getPlainBody() || '';
+        const date = latestMessage.getDate();
+        
+        console.log(\`Processing email \${index + 1}: "\${subject}"\`);
+        
+        // Step 1: Check if email contains target keywords
+        const hasKeyword = keywords.length === 0 || 
+          keywords.some(keyword => 
+            body.toLowerCase().includes(keyword.toLowerCase()) ||
+            subject.toLowerCase().includes(keyword.toLowerCase())
+          );
+        
+        console.log(\`Keywords check: \${hasKeyword ? 'PASS' : 'FAIL'}\`);
+        
+        // Step 2: LLM Classification (with fallback)
+        const classification = classifyWithGemini({
+          subject: subject,
+          body: body.substring(0, 1000), // Limit for API
+          keywords: keywords
+        });
+        
+        const shouldReply = hasKeyword && classification.replyWorthy;
+        const priority = classification.priority || 'Medium';
+        
+        console.log(\`Classification: Priority=\${priority}, ShouldReply=\${shouldReply}\`);
+        
+        // Step 3: Send reply if needed
+        let replySent = 'No';
+        if (shouldReply) {
+          try {
+            const replyText = classification.suggestedReply || 
+              'Thank you for your email regarding ' + subject + '. We have received your query and will get back to you shortly.';
+            
+            latestMessage.reply(replyText);
+            replySent = 'Yes';
+            console.log('✅ Reply sent');
+          } catch (replyError) {
+            console.error('Failed to send reply:', replyError);
+            replySent = 'Failed';
+          }
+        }
+        
+        // Step 4: Apply priority label
+        try {
+          const priorityLabelName = 'Priority/' + priority;
+          let priorityLabel = GmailApp.getUserLabelByName(priorityLabelName);
+          
+          if (!priorityLabel) {
+            priorityLabel = GmailApp.createLabel(priorityLabelName);
+          }
+          
+          thread.addLabel(priorityLabel);
+          console.log(\`✅ Applied label: \${priorityLabelName}\`);
+        } catch (labelError) {
+          console.error('Failed to apply label:', labelError);
+        }
+        
+        // Step 5: Log to Google Sheets
+        try {
+          const rowData = [
+            subject,
+            from,
+            body.substring(0, 500), // Truncate long bodies
+            priority,
+            replySent,
+            date
+          ];
+          
+          sheet.appendRow(rowData);
+          console.log('✅ Logged to sheet');
+        } catch (sheetError) {
+          console.error('Failed to log to sheet:', sheetError);
+        }
+        
+        // Mark as read to avoid reprocessing
+        thread.markAsRead();
+        
+      } catch (emailError) {
+        console.error(\`Error processing email \${index + 1}:\`, emailError);
+      }
+    });
+    
+    console.log('✅ Gmail automation completed successfully');
+    
+  } catch (error) {
+    console.error('❌ Gmail automation error:', error);
+    
+    // Send error notification
+    try {
+      GmailApp.sendEmail(
+        Session.getActiveUser().getEmail(),
+        'Gmail Automation Error',
+        \`Your Gmail automation encountered an error: \${error.toString()}\`
+      );
+    } catch (notificationError) {
+      console.error('Failed to send error notification:', notificationError);
+    }
+  }
+}
+
+function classifyWithGemini(input) {
+  try {
+    const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+    
+    if (!apiKey) {
+      console.log('No Gemini API key found, using keyword-based classification');
+      return {
+        replyWorthy: input.keywords.some(k => 
+          input.body.toLowerCase().includes(k.toLowerCase())
+        ),
+        priority: 'Medium',
+        suggestedReply: 'Thank you for your email. We will get back to you shortly.'
+      };
+    }
+    
+    const prompt = \`Analyze this email and return JSON:
+Subject: \${input.subject}
+Body: \${input.body}
+
+Required keywords: \${input.keywords.join(', ')}
+
+Return JSON format:
+{
+  "replyWorthy": true/false,
+  "priority": "High/Medium/Low", 
+  "suggestedReply": "appropriate response text"
+}
+
+Priority rules:
+- High: Urgent issues, complaints, immediate action needed
+- Medium: General queries, information requests
+- Low: Marketing, newsletters, non-critical updates
+
+Reply worthiness: Only if email contains required keywords and needs human response\`;
+
+    const payload = {
+      contents: [{ 
+        parts: [{ text: prompt }] 
+      }],
+      generationConfig: { 
+        temperature: 0.1, 
+        maxOutputTokens: 512 
+      }
+    };
+    
+    const response = UrlFetchApp.fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey,
+      {
+        method: 'POST',
+        contentType: 'application/json',
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      }
+    );
+    
+    if (response.getResponseCode() !== 200) {
+      throw new Error('Gemini API error: ' + response.getContentText());
+    }
+    
+    const data = JSON.parse(response.getContentText());
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const result = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+    
+    console.log('🤖 LLM Classification:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('LLM classification failed:', error);
+    
+    // Fallback to keyword-based classification
+    const hasKeywords = input.keywords.some(k => 
+      input.body.toLowerCase().includes(k.toLowerCase()) ||
+      input.subject.toLowerCase().includes(k.toLowerCase())
+    );
+    
+    return {
+      replyWorthy: hasKeywords,
+      priority: 'Medium',
+      suggestedReply: 'Thank you for your email. We will get back to you shortly.'
+    };
+  }
+}
+
+// Setup function to create time-based triggers
+function setupTriggers() {
+  console.log('Setting up triggers for Gmail automation...');
+  
+  // Delete existing triggers to avoid duplicates
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'main') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // Create time-based trigger (every 5 minutes)
+  ScriptApp.newTrigger('main')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+    
+  console.log('✅ Trigger set up: runs every 5 minutes');
+  console.log('💡 Add your Gemini API key to Script Properties for LLM features');
+}
+
+// Manual execution function for testing
+function runOnce() {
+  console.log('🧪 Running Gmail automation manually...');
+  main();
+}`;
 }
 
 async function shouldAskQuestions(prompt: string): Promise<{shouldAsk: boolean, reasoning: string}> {
