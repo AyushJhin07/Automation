@@ -1007,19 +1007,22 @@ const GraphEditorContent = () => {
           const graph = compileResult.graph;
           
           if (graph && graph.nodes) {
-            // Convert ChatGPT's WorkflowGraph format to ReactFlow format
+            // Convert VisualWorkflowGraph format to ReactFlow format
             const reactFlowNodes = graph.nodes.map((node: any) => ({
               id: node.id,
-              type: 'customNode',
-              position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
+              type: node.type, // Use proper node type (trigger, action, transform)
+              position: node.position || { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
               data: {
-                label: node.name,
-                app: node.app,
+                label: node.data?.label || node.name,
+                description: node.data?.description || node.op,
+                app: node.data?.app || node.app,
                 function: node.op,
-                parameters: node.params,
+                parameters: node.data?.params || node.params,
                 nodeType: node.type,
-                icon: getIconForApp(node.app),
-                color: getColorForApp(node.app)
+                icon: node.data?.icon || getIconForApp(node.app),
+                color: node.data?.color || getColorForApp(node.app),
+                connectorId: node.data?.connectorId,
+                actionId: node.data?.actionId
               }
             }));
             

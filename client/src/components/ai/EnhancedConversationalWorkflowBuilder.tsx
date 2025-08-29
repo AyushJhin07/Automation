@@ -367,7 +367,49 @@ You can try:
       // Only send apiKey if we have a local one, otherwise let server use its own
       const apiKeyToSend = currentApiKey || undefined;
 
-      // Use the new deterministic workflow build endpoint
+      // STEP 1: Check if we need to ask questions first (if no answers provided)
+      if (Object.keys(answers).length === 0) {
+        setProcessingStep('🤔 Analyzing if I need more information...');
+        
+        // First call the question generation endpoint
+        const questionResponse = await fetch('/api/ai/generate-workflow', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            model: selectedModel,
+            apiKey: apiKeyToSend
+          })
+        });
+
+        if (!questionResponse.ok) {
+          throw new Error(`HTTP ${questionResponse.status}: ${questionResponse.statusText}`);
+        }
+
+        const questionResult = await questionResponse.json();
+
+        // If questions are returned, display them and wait for answers
+        if (questionResult.questions && questionResult.questions.length > 0) {
+          setProcessingStep('');
+          setCurrentQuestions(questionResult.questions);
+          addMessage({
+            role: 'assistant',
+            content: `🤔 **I need a bit more information to build the perfect workflow for you:**`,
+            type: 'questions',
+            data: { questions: questionResult.questions }
+          });
+          return; // Stop here, wait for user to answer questions
+        }
+
+        // If no questions needed, continue to build workflow
+        console.log('🎯 No additional questions needed, proceeding to build workflow');
+      }
+
+      // STEP 2: Build the workflow (either after questions answered, or if none needed)
+      setProcessingStep('⚡ Building your intelligent workflow...');
+      
       const response = await fetch('/api/workflow/build', {
         method: 'POST',
         headers: {
@@ -532,6 +574,34 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
     }
     
     try {
+      // Check deployment prerequisites first
+      addMessage({
+        role: 'assistant',
+        content: '🔍 **Checking deployment prerequisites...**'
+      });
+      
+      const prereqResponse = await fetch('/api/ai/deployment/prerequisites');
+      const prereqResult = await prereqResponse.json();
+      
+      if (!prereqResult.success || !prereqResult.canDeploy) {
+        addMessage({
+          role: 'assistant',
+          content: `⚠️ **Deployment Prerequisites Not Met**
+
+${Object.entries(prereqResult.checks || {}).map(([check, info]: [string, any]) => 
+  `• **${check}:** ${info.status === 'error' ? '❌' : info.status === 'available' ? '✅' : '⚠️'} ${info.message}`
+).join('\n')}
+
+Please ensure all prerequisites are satisfied before deploying.`
+        });
+        return;
+      }
+      
+      addMessage({
+        role: 'assistant',
+        content: '✅ **Prerequisites satisfied! Starting deployment...**'
+      });
+      
       // Use the real deployment endpoint with the compiled files
       const response = await fetch('/api/workflow/deploy', {
         method: 'POST',

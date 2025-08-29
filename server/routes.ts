@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { registerAIWorkflowRoutes } from "./aiModels";
 import { workflowBuildRouter } from "./routes/workflow.build";
+import aiRouter from "./routes/ai";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -55,6 +56,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // New workflow build routes
   app.use('/api/workflow', workflowBuildRouter);
+  
+  // AI routes
+  app.use('/api/ai', aiRouter);
 
   // ===== AUTHENTICATION ROUTES =====
   
