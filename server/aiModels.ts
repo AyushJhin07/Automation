@@ -35,7 +35,7 @@ const MODEL_MAP = {
 
 class MultiAIService {
   // Get models dynamically to avoid API key caching issues
-  private static getModels(): AIModelConfig[] {
+  public static getModels(): AIModelConfig[] {
     return [
       {
         name: 'Gemini 2.0 Flash (Experimental)',

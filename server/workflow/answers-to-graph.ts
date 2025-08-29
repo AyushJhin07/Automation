@@ -1,25 +1,7 @@
 import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow-types';
 
-// Extended types to match your visual graph editor
-export interface VisualWorkflowNode extends WorkflowNode {
-  position: { x: number; y: number };
-  data: {
-    label: string;
-    description: string;
-    app: string;
-    icon: string;
-    color: string;
-    params: Record<string, any>;
-    connectorId: string;
-    actionId: string;
-  };
-}
-
-export interface VisualWorkflowGraph extends Omit<WorkflowGraph, 'nodes'> {
-  nodes: VisualWorkflowNode[];
-}
-
-export function answersToGraph(prompt: string, answers: Record<string, string>): VisualWorkflowGraph {
+// Use standard WorkflowNode interface from common/workflow-types.ts
+export function answersToGraph(prompt: string, answers: Record<string, string>): WorkflowGraph {
   console.log(`🔥 NEW FUNCTION CALLED! Prompt: "${prompt}"`);
   console.log(`🔥 Answers:`, answers);
   
@@ -70,56 +52,34 @@ function detectAutomationType(prompt: string, answers: Record<string, string>): 
   return 'generic';
 }
 
-function generateDriveBackupWorkflow(prompt: string, answers: Record<string, string>): VisualWorkflowGraph {
+function generateDriveBackupWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
   const source = answers.source || 'Google Drive folder';
   const destination = answers.destination || 'Dropbox folder';
   const frequency = parseFrequency(answers.frequency || 'daily');
   
-  const nodes: VisualWorkflowNode[] = [
+  const nodes: WorkflowNode[] = [
     {
       id: 'trigger-1',
       type: 'trigger',
-      app: 'google-drive',
-      name: 'Drive Monitor',
-      op: 'watch_folder',
+      app: 'drive',
+      name: 'Monitor Drive Folder',
+      op: 'drive.watch_folder',
       params: {
         folderId: extractFolderId(source),
         frequency: frequency,
         fileTypes: answers.fileTypes || 'all'
-      },
-      position: { x: 100, y: 200 },
-      data: {
-        label: 'Monitor Drive',
-        description: `Watch ${source} for changes`,
-        app: 'google-drive',
-        icon: 'drive',
-        color: '#4285F4',
-        params: { folderId: extractFolderId(source), frequency },
-        connectorId: 'google-drive',
-        actionId: 'watch_folder'
       }
     },
     {
       id: 'action-1',
       type: 'action',
       app: 'dropbox',
-      name: 'Backup to Dropbox',
-      op: 'upload_file',
+      name: 'Upload to Dropbox',
+      op: 'dropbox.upload_file',
       params: {
         destination: destination,
         createFolder: true,
         overwrite: false
-      },
-      position: { x: 400, y: 200 },
-      data: {
-        label: 'Upload to Dropbox',
-        description: `Backup files to ${destination}`,
-        app: 'dropbox',
-        icon: 'dropbox',
-        color: '#0061FF',
-        params: { destination, createFolder: true },
-        connectorId: 'dropbox',
-        actionId: 'upload_file'
       }
     }
   ];
@@ -136,56 +96,34 @@ function generateDriveBackupWorkflow(prompt: string, answers: Record<string, str
   };
 }
 
-function generateCalendarNotificationWorkflow(prompt: string, answers: Record<string, string>): VisualWorkflowGraph {
+function generateCalendarNotificationWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
   const source = answers.source || 'Google Calendar';
   const destination = answers.destination || 'Slack channel';
   const frequency = parseFrequency(answers.trigger || 'daily');
   
-  const nodes: VisualWorkflowNode[] = [
+  const nodes: WorkflowNode[] = [
     {
       id: 'trigger-1',
       type: 'trigger',
-      app: 'google-calendar',
-      name: 'Calendar Monitor',
-      op: 'watch_events',
+      app: 'calendar',
+      name: 'Monitor Calendar Events',
+      op: 'calendar.watch_events',
       params: {
         calendarId: 'primary',
         eventType: 'birthday',
         frequency: frequency
-      },
-      position: { x: 100, y: 200 },
-      data: {
-        label: 'Monitor Calendar',
-        description: `Watch ${source} for birthday events`,
-        app: 'google-calendar',
-        icon: 'calendar',
-        color: '#EA4335',
-        params: { calendarId: 'primary', eventType: 'birthday' },
-        connectorId: 'google-calendar',
-        actionId: 'watch_events'
       }
     },
     {
       id: 'action-1',
       type: 'action',
-      app: 'slack-enhanced',
+      app: 'slack',
       name: 'Send Slack Message',
-      op: 'send_message',
+      op: 'slack.send_message',
       params: {
         channel: extractChannel(destination),
         message: answers.message || 'Happy Birthday! 🎉',
         asUser: true
-      },
-      position: { x: 400, y: 200 },
-      data: {
-        label: 'Send to Slack',
-        description: `Send birthday wishes to ${destination}`,
-        app: 'slack-enhanced',
-        icon: 'slack',
-        color: '#4A154B',
-        params: { channel: extractChannel(destination), message: answers.message },
-        connectorId: 'slack-enhanced',
-        actionId: 'send_message'
       }
     }
   ];
@@ -202,91 +140,91 @@ function generateCalendarNotificationWorkflow(prompt: string, answers: Record<st
   };
 }
 
-function generateSlackAutomationWorkflow(prompt: string, answers: Record<string, string>): VisualWorkflowGraph {
-  // Similar structure for Slack-specific workflows
-  return generateCalendarNotificationWorkflow(prompt, answers);
-}
-
-function generateGmailSheetsWorkflow(prompt: string, answers: Record<string, string>): VisualWorkflowGraph {
-  // Original Gmail to Sheets logic
-  const filter = answers.filter || '';
-  const fields = (answers.fields || '').toLowerCase();
-  const dest = answers.destination || '';
-  const freqTxt = answers.frequency || '';
-
-  const keywords = extractQuoted(filter);             
-  const { spreadsheetId, sheetName } = parseSheet(dest);
-  const everyMin = parseFrequency(freqTxt);           
-
-  const nodes: VisualWorkflowNode[] = [
+function generateSlackAutomationWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
+  const trigger = answers.trigger || 'message received';
+  const action = answers.action || 'send notification';
+  
+  const nodes: WorkflowNode[] = [
     {
       id: 'trigger-1',
       type: 'trigger',
-      app: 'gmail-enhanced',
-      name: 'Gmail Trigger',
-      op: 'search_emails',
+      app: 'slack',
+      name: 'Slack Message Trigger',
+      op: 'slack.message_received',
       params: {
-        query: buildQuery(keywords),
-        frequency: everyMin,
-        labelIds: [],
-        maxResults: 50
-      },
-      position: { x: 100, y: 200 },
-      data: {
-        label: 'Gmail Search',
-        description: `Monitor Gmail for emails matching: ${buildQuery(keywords)}`,
-        app: 'gmail-enhanced',
-        icon: 'gmail',
-        color: '#EA4335',
-        params: { query: buildQuery(keywords), frequency: everyMin },
-        connectorId: 'gmail-enhanced',
-        actionId: 'search_emails'
-      }
-    },
-    {
-      id: 'transform-1',
-      type: 'transform',
-      app: 'core',
-      name: 'Extract Email Data',
-      op: 'extract_fields',
-      params: {
-        fields: ['subject', 'from', 'date', ...(fields.includes('body') ? ['body'] : [])],
-        format: 'structured'
-      },
-      position: { x: 400, y: 200 },
-      data: {
-        label: 'Extract Fields',
-        description: `Extract: ${['subject', 'from', 'date', ...(fields.includes('body') ? ['body'] : [])].join(', ')}`,
-        app: 'core',
-        icon: 'filter',
-        color: '#8B5CF6',
-        params: { fields: ['subject', 'from', 'date', ...(fields.includes('body') ? ['body'] : [])] },
-        connectorId: 'core',
-        actionId: 'extract_fields'
+        channel: answers.channel || '#general',
+        keywords: answers.keywords || '',
+        userFilter: answers.userFilter || ''
       }
     },
     {
       id: 'action-1',
       type: 'action',
-      app: 'google-sheets-enhanced',
-      name: 'Add to Sheet',
-      op: 'append_row',
-      params: { 
-        spreadsheetId, 
-        sheet: sheetName,
-        values: [],
-        valueInputOption: 'RAW'
-      },
-      position: { x: 700, y: 200 },
-      data: {
-        label: 'Append to Sheet',
-        description: `Add data to ${sheetName} in spreadsheet`,
-        app: 'google-sheets-enhanced',
-        icon: 'table',
-        color: '#34A853',
-        params: { spreadsheetId, sheet: sheetName },
-        connectorId: 'google-sheets-enhanced',
-        actionId: 'append_row'
+      app: 'slack',
+      name: 'Send Response',
+      op: 'slack.send_message',
+      params: {
+        channel: answers.responseChannel || '#general',
+        message: answers.responseMessage || 'Message received and processed!',
+        threadReply: true
+      }
+    }
+  ];
+
+  const edges: WorkflowEdge[] = [
+    { id: 'edge-1', from: 'trigger-1', to: 'action-1' }
+  ];
+
+  return {
+    id: `wf-${Date.now()}`,
+    nodes,
+    edges,
+    meta: { prompt, answers, automationType: 'slack_automation', trigger, action },
+  };
+}
+
+function generateGmailSheetsWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
+  const emailFilter = answers.emailFilter || 'unread';
+  const sheetName = answers.sheetName || 'Email Data';
+  
+  const nodes: WorkflowNode[] = [
+    {
+      id: 'trigger-1',
+      type: 'trigger',
+      app: 'gmail',
+      name: 'New Email Detected',
+      op: 'gmail.new_email',
+      params: {
+        query: emailFilter,
+        frequency: 'realtime'
+      }
+    },
+    {
+      id: 'transform-1',
+      type: 'transform',
+      app: 'email',
+      name: 'Extract Email Data',
+      op: 'email.extract_data',
+      params: {
+        fields: answers.fields?.split(',') || ['subject', 'from', 'date', 'body'],
+        includeAttachments: answers.includeAttachments === 'true'
+      }
+    },
+    {
+      id: 'action-1',
+      type: 'action',
+      app: 'sheets',
+      name: 'Add to Google Sheet',
+      op: 'sheets.append_row',
+      params: {
+        spreadsheetId: answers.spreadsheetId || 'YOUR_SPREADSHEET_ID',
+        sheetName: sheetName,
+        dataMapping: {
+          subject: 'A',
+          from: 'B', 
+          date: 'C',
+          body: 'D'
+        }
       }
     }
   ];
@@ -300,13 +238,46 @@ function generateGmailSheetsWorkflow(prompt: string, answers: Record<string, str
     id: `wf-${Date.now()}`,
     nodes,
     edges,
-    meta: { prompt, answers, automationType: 'gmail_sheets', keywords, spreadsheetId, sheetName, everyMin },
+    meta: { prompt, answers, automationType: 'gmail_sheets', emailFilter, sheetName },
   };
 }
 
-function generateGenericWorkflow(prompt: string, answers: Record<string, string>): VisualWorkflowGraph {
-  // Fallback to Gmail-Sheets pattern
-  return generateGmailSheetsWorkflow(prompt, answers);
+function generateGenericWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
+  const nodes: WorkflowNode[] = [
+    {
+      id: 'trigger-1',
+      type: 'trigger',
+      app: 'time',
+      name: 'Scheduled Trigger',
+      op: 'time.schedule',
+      params: {
+        frequency: 'daily',
+        time: '09:00'
+      }
+    },
+    {
+      id: 'action-1',
+      type: 'action',
+      app: 'system',
+      name: 'Log Activity',
+      op: 'system.log',
+      params: {
+        message: `Workflow executed: ${prompt}`,
+        level: 'info'
+      }
+    }
+  ];
+
+  const edges: WorkflowEdge[] = [
+    { id: 'edge-1', from: 'trigger-1', to: 'action-1' }
+  ];
+
+  return {
+    id: `wf-${Date.now()}`,
+    nodes,
+    edges,
+    meta: { prompt, answers, automationType: 'generic' },
+  };
 }
 
 // Helper functions
