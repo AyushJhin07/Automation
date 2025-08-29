@@ -7,7 +7,7 @@ export const aiRouter = Router();
 aiRouter.post('/generate-workflow', async (req, res) => {
   try {
     console.log('🤖 /api/ai/generate-workflow called!');
-    const { prompt, model = 'gemini-1.5-flash', apiKey } = req.body || {};
+    const { prompt, userId, model = 'gemini-1.5-flash', apiKey } = req.body || {};
     
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ 
@@ -16,7 +16,17 @@ aiRouter.post('/generate-workflow', async (req, res) => {
       });
     }
 
+    // Make userId optional in development mode
+    const finalUserId = userId || (process.env.NODE_ENV === 'development' ? 'dev-user' : null);
+    if (!finalUserId && process.env.NODE_ENV === 'production') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'userId is required in production mode' 
+      });
+    }
+
     console.log('📝 Prompt for analysis:', prompt);
+    console.log('👤 User ID:', finalUserId);
     console.log('🤖 Model:', model);
 
     // Use MultiAIService to determine if questions are needed

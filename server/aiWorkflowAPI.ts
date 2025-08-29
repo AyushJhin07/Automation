@@ -350,25 +350,29 @@ function createTriggers() {
   }
 }
 
-// Express route handlers
+// Express route handlers - DISABLED: Conflicts with new AI routes
 export function registerAIWorkflowRoutes(app: express.Application) {
-  // Generate workflow from natural language prompt
-  app.post('/api/ai/generate-workflow', async (req, res) => {
-    try {
-      const { prompt, userId }: WorkflowGenerationRequest = req.body;
-      
-      if (!prompt || !userId) {
-        return res.status(400).json({ error: 'Prompt and userId are required' });
-      }
+  // DISABLED: This route conflicts with the new AI routes
+  // The new implementation is in routes/ai.ts
+  console.log('⚠️ registerAIWorkflowRoutes called but routes are disabled to avoid conflicts');
+  
+  // Generate workflow from natural language prompt - DISABLED
+  // app.post('/api/ai/generate-workflow', async (req, res) => {
+  //   try {
+  //     const { prompt, userId }: WorkflowGenerationRequest = req.body;
+  //     
+  //     if (!prompt || !userId) {
+  //       return res.status(400).json({ error: 'Prompt and userId are required' });
+  //     }
 
-      const workflow = await AIWorkflowGenerator.generateWorkflow(prompt, userId);
-      
-      res.json(workflow);
-    } catch (error) {
-      console.error('Error generating workflow:', error);
-      res.status(500).json({ error: 'Failed to generate workflow' });
-    }
-  });
+  //     const workflow = await AIWorkflowGenerator.generateWorkflow(prompt, userId);
+  //       
+  //     res.json(workflow);
+  //   } catch (error) {
+  //     console.error('Error generating workflow:', error);
+  //     res.status(500).json({ error: 'Failed to generate workflow' });
+  //   }
+  // });
 
   // Validate generated workflow
   app.post('/api/ai/validate-workflow', async (req, res) => {

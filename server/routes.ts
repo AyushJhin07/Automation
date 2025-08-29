@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
-import { registerAIWorkflowRoutes } from "./aiModels";
+// import { registerAIWorkflowRoutes } from "./aiModels"; // REMOVED: Conflicts with new AI routes
 import { workflowBuildRouter } from "./routes/workflow.build";
 import aiRouter from "./routes/ai";
 import { RealAIService, ConversationManager } from "./realAIService";
@@ -50,15 +50,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.use(securityService.createRateLimiter(rateLimitConfig));
 
+  // AI routes - Register FIRST to avoid conflicts
+  app.use('/api/ai', aiRouter);
+  
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
-  registerAIWorkflowRoutes(app);
+  // registerAIWorkflowRoutes(app); // REMOVED: Conflicts with new AI routes
   
   // New workflow build routes
   app.use('/api/workflow', workflowBuildRouter);
-  
-  // AI routes
-  app.use('/api/ai', aiRouter);
 
   // ===== AUTHENTICATION ROUTES =====
   

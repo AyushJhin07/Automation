@@ -372,6 +372,7 @@ You can try:
         setProcessingStep('🤔 Analyzing if I need more information...');
         
         // First call the question generation endpoint
+        const userId = localStorage.getItem('userId') || 'demo-user'; // Get userId or use fallback
         const questionResponse = await fetch('/api/ai/generate-workflow', {
           method: 'POST',
           headers: {
@@ -379,6 +380,7 @@ You can try:
           },
           body: JSON.stringify({
             prompt: prompt,
+            userId: userId, // Add userId to request
             model: selectedModel,
             apiKey: apiKeyToSend
           })
