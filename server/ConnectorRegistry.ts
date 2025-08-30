@@ -179,7 +179,23 @@ export class ConnectorRegistry {
     this.registerAPIClient('toggl', GenericAPIClient);
     this.registerAPIClient('webflow', GenericAPIClient);
     
-    console.log('✅ Marked 56 apps as implemented with real Apps Script code');
+    // Phase 3 implementations - Analytics & Dev Tools
+    this.registerAPIClient('mixpanel', GenericAPIClient);
+    this.registerAPIClient('gitlab', GenericAPIClient);
+    this.registerAPIClient('bitbucket', GenericAPIClient);
+    this.registerAPIClient('circleci', GenericAPIClient);
+    
+    // Phase 3 implementations - HR & Support
+    this.registerAPIClient('bamboohr', GenericAPIClient);
+    this.registerAPIClient('greenhouse', GenericAPIClient);
+    this.registerAPIClient('freshdesk', GenericAPIClient);
+    this.registerAPIClient('zendesk', GenericAPIClient);
+    
+    // Phase 3 implementations - Scheduling & Documents
+    this.registerAPIClient('calendly', GenericAPIClient);
+    this.registerAPIClient('docusign', GenericAPIClient);
+    
+    console.log('✅ Marked 66 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }
