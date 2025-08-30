@@ -372,7 +372,7 @@ export class AuthService {
       .select({
         email: users.email,
         role: users.role,
-        plan: users.plan
+        plan: users.planType
       })
       .from(users)
       .where(eq(users.id, userId));

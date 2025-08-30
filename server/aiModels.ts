@@ -105,6 +105,10 @@ class MultiAIService {
     return this.localFallbackAnalysis(prompt);
   }
 
+  public static async generateFollowUpQuestions(prompt: string): Promise<any[]> {
+    return generateFollowUpQuestions(prompt);
+  }
+
   private static async callAIModel(model: AIModelConfig, prompt: string): Promise<Omit<AIAnalysisResult, 'processingTime' | 'modelUsed'>> {
     switch (model.provider) {
       case 'gemini':

@@ -101,7 +101,7 @@ function main() {
   try {
     let workflowData = {};
     
-    // Execute workflow nodes in order
+    // Execute workflow nodes in order (synchronous style for Apps Script)
 ${executionOrder.map((nodeId, index) => {
   const node = graph.nodes.find(n => n.id === nodeId);
   if (!node) return '';
@@ -109,11 +109,11 @@ ${executionOrder.map((nodeId, index) => {
   const indent = '    ';
   if (index === 0) {
     return `${indent}// ${node.name || node.op}
-${indent}workflowData = await execute${capitalizeFirst(node.op.split('.').pop() || 'Node')}(${JSON.stringify(node.params)});`;
+${indent}workflowData = execute${capitalizeFirst(node.op.split('.').pop() || 'Node')}(${JSON.stringify(node.params)});`;
   } else {
     return `${indent}
 ${indent}// ${node.name || node.op}
-${indent}workflowData = await execute${capitalizeFirst(node.op.split('.').pop() || 'Node')}(workflowData, ${JSON.stringify(node.params)});`;
+${indent}workflowData = execute${capitalizeFirst(node.op.split('.').pop() || 'Node')}(workflowData, ${JSON.stringify(node.params)});`;
   }
 }).join('\n')}
     
