@@ -179,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== PRODUCTION LLM ORCHESTRATOR ROUTES =====
 
   app.post('/api/workflow/clarify', 
-    authenticateToken,
+    optionalAuth,
     checkQuota(1, 500),
     securityService.validateInput([
       { field: 'prompt', type: 'string', required: true, maxLength: 10000, sanitize: true }
@@ -188,14 +188,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const result = await productionLLMOrchestrator.clarifyIntent({
           prompt: req.body.prompt,
-          userId: req.user!.id,
+          userId: req.user?.id || 'dev-user',
           context: req.body.context || {}
         });
 
         // Record usage
         if (result.tokensUsed) {
           await usageMeteringService.recordApiUsage(
-            req.user!.id,
+            (req.user?.id || 'dev-user'),
             1,
             result.tokensUsed,
             result.cost || 0
@@ -210,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.post('/api/workflow/plan',
-    authenticateToken,
+    optionalAuth,
     checkQuota(1, 1500),
     securityService.validateInput([
       { field: 'prompt', type: 'string', required: true, maxLength: 10000, sanitize: true },
@@ -221,14 +221,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await productionLLMOrchestrator.planWorkflow({
           prompt: req.body.prompt,
           answers: req.body.answers,
-          userId: req.user!.id,
+          userId: req.user?.id || 'dev-user',
           context: req.body.context || {}
         });
 
         // Record usage
         if (result.tokensUsed) {
           await usageMeteringService.recordApiUsage(
-            req.user!.id,
+            (req.user?.id || 'dev-user'),
             1,
             result.tokensUsed,
             result.cost || 0

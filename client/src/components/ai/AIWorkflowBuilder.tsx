@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PaywallModal } from '@/components/auth/PaywallModal';
 import { 
@@ -59,6 +60,9 @@ export const AIWorkflowBuilder: React.FC = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [isPaidUser, setIsPaidUser] = useState(false); // TODO: Replace with real auth check
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [questions, setQuestions] = useState<Array<{ id: string; text: string; type: 'text' | 'choice' | 'number'; choices?: string[]; required?: boolean }>>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [step, setStep] = useState<'input' | 'questions' | 'ready'>('input');
 
   // Load available AI models on component mount
   useEffect(() => {
@@ -100,26 +104,30 @@ export const AIWorkflowBuilder: React.FC = () => {
     }
     
     try {
-      // Call our backend API to generate workflow
+      // Step 1: Ask follow-up questions
       const response = await fetch('/api/ai/generate-workflow', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: prompt.trim(),
-          userId: 'demo-user', // TODO: Replace with real user ID
+          userId: 'demo-user',
           preferredModel: selectedModel !== 'auto' ? selectedModel : undefined,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate workflow');
+      if (!response.ok) throw new Error('Failed to analyze prompt');
+
+      const data = await response.json();
+      const qs = Array.isArray(data.questions) ? data.questions : [];
+      if (qs.length > 0) {
+        setQuestions(qs);
+        setStep('questions');
+        return;
       }
 
-      const workflow = await response.json();
-      setGeneratedWorkflow(workflow);
-      
+      // If no questions needed, proceed to build directly
+      await buildFromAnswers({});
+
     } catch (err) {
       console.error('Error generating workflow:', err);
       setError('Failed to generate workflow. Please try again.');
@@ -128,6 +136,25 @@ export const AIWorkflowBuilder: React.FC = () => {
       setGeneratedWorkflow(createDemoWorkflow(prompt));
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const buildFromAnswers = async (providedAnswers: Record<string, string>) => {
+    try {
+      const res = await fetch('/api/workflow/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim(), answers: providedAnswers })
+      });
+      if (!res.ok) throw new Error('Build failed');
+      const compiled = await res.json();
+      // Persist for Graph Editor to load
+      localStorage.setItem('lastCompile', JSON.stringify(compiled));
+      setStep('ready');
+      window.open('/graph-editor?from=ai-builder', '_blank');
+    } catch (e) {
+      console.error('Build error:', e);
+      setError('Failed to build workflow.');
     }
   };
 
@@ -249,14 +276,13 @@ function processCustomerEmails() {
     };
   };
 
-  const handleBuildWorkflow = () => {
-    if (generatedWorkflow) {
-      // Store the generated workflow in localStorage for the builder to pick up
-      localStorage.setItem('ai-generated-workflow', JSON.stringify(generatedWorkflow));
-      
-      // Navigate to the drag-and-drop builder
-      window.open('/pre-built-apps', '_blank');
+  const handleBuildWorkflow = async () => {
+    // If we have questions, require answers; otherwise build immediately
+    if (questions.length > 0) {
+      await buildFromAnswers(answers);
+      return;
     }
+    await buildFromAnswers({});
   };
 
   const handleDeployToGoogle = async () => {
@@ -395,6 +421,68 @@ function processCustomerEmails() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Follow-up Questions */}
+      {step === 'questions' && questions.length > 0 && (
+        <Card className="border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-blue-600" />
+              A few quick details to build the perfect workflow
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {questions.map((q) => (
+              <div key={q.id} className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">
+                  {q.text}{q.required ? ' *' : ''}
+                </label>
+                {q.type === 'choice' ? (
+                  <select
+                    className="px-3 py-2 border rounded w-full"
+                    value={answers[q.id] || ''}
+                    onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                  >
+                    <option value="">Select...</option>
+                    {(q.choices || []).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    value={answers[q.id] || ''}
+                    onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                    placeholder="Type your answer"
+                  />
+                )}
+              </div>
+            ))}
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setStep('input')}
+              >
+                Back
+              </Button>
+              <Button
+                onClick={async () => {
+                  // simple required validation
+                  const missing = questions.filter(q => q.required && !answers[q.id]);
+                  if (missing.length > 0) {
+                    setError('Please fill required fields.');
+                    return;
+                  }
+                  await buildFromAnswers(answers);
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Build Workflow
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Error Display */}
       {error && (
