@@ -221,14 +221,16 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
   
   if (nodeOp.startsWith('gmail.') || node.app === 'gmail') {
     return generateGmailTriggerFunction(functionName, node);
-  } else if (nodeOp.startsWith('sheets.') || node.app === 'sheets') {
-    return generateSheetsActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('slack.') || node.app === 'slack') {
-    return generateSlackActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('dropbox.') || node.app === 'dropbox') {
-    return generateDropboxActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('calendar.') || node.app === 'calendar') {
-    return generateCalendarTriggerFunction(functionName, node);
+  } else if (nodeOp.startsWith('sheets.') || node.app === 'sheets' || nodeOp.startsWith('google-sheets.') || node.app === 'google-sheets-enhanced') {
+    return generateGoogleSheetsFunction(functionName, node);
+  } else if (nodeOp.startsWith('slack.') || node.app === 'slack' || nodeOp.startsWith('slack-enhanced.') || node.app === 'slack-enhanced') {
+    return generateSlackEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('dropbox.') || node.app === 'dropbox' || nodeOp.startsWith('dropbox-enhanced.') || node.app === 'dropbox-enhanced') {
+    return generateDropboxEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('calendar.') || node.app === 'calendar' || nodeOp.startsWith('google-calendar.') || node.app === 'google-calendar') {
+    return generateGoogleCalendarFunction(functionName, node);
+  } else if (nodeOp.startsWith('drive.') || node.app === 'drive' || nodeOp.startsWith('google-drive.') || node.app === 'google-drive') {
+    return generateGoogleDriveFunction(functionName, node);
   } else if (nodeOp.startsWith('email.') || node.app === 'email') {
     return generateEmailTransformFunction(functionName, node);
   } else if (nodeOp.startsWith('time.') || node.app === 'time') {
@@ -237,16 +239,16 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
     return generateSystemActionFunction(functionName, node);
   } else if (nodeOp.startsWith('shopify.') || node.app === 'shopify') {
     return generateShopifyActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('salesforce.') || node.app === 'salesforce') {
-    return generateSalesforceActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('jira.') || node.app === 'jira') {
-    return generateJiraActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('forms.') || node.app === 'forms') {
-    return generateFormsActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('mailchimp.') || node.app === 'mailchimp') {
-    return generateMailchimpActionFunction(functionName, node);
-  } else if (nodeOp.startsWith('hubspot.') || node.app === 'hubspot') {
-    return generateHubspotActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('salesforce.') || node.app === 'salesforce' || nodeOp.startsWith('salesforce-enhanced.') || node.app === 'salesforce-enhanced') {
+    return generateSalesforceEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('jira.') || node.app === 'jira' || nodeOp.startsWith('jira-enhanced.') || node.app === 'jira-enhanced') {
+    return generateJiraEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('forms.') || node.app === 'forms' || nodeOp.startsWith('google-forms.') || node.app === 'google-forms') {
+    return generateGoogleFormsFunction(functionName, node);
+  } else if (nodeOp.startsWith('mailchimp.') || node.app === 'mailchimp' || nodeOp.startsWith('mailchimp-enhanced.') || node.app === 'mailchimp-enhanced') {
+    return generateMailchimpEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('hubspot.') || node.app === 'hubspot' || nodeOp.startsWith('hubspot-enhanced.') || node.app === 'hubspot-enhanced') {
+    return generateHubspotEnhancedFunction(functionName, node);
   }
   
   // Default generic function
@@ -297,215 +299,1591 @@ async function ${functionName}(params) {
 }`;
 }
 
-function generateSheetsActionFunction(functionName: string, node: WorkflowNode): string {
+// Comprehensive Google Sheets implementation
+function generateGoogleSheetsFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'append_row';
+  
   return `
-async function ${functionName}(inputData, params) {
-  console.log('📊 Executing Sheets action: ${node.name || 'Append Row'}');
+function ${functionName}(inputData, params) {
+  console.log('📊 Executing Google Sheets: ${node.name || operation}');
   
   const spreadsheetId = params.spreadsheetId;
-  const sheetName = params.sheetName || 'Sheet1';
+  const operation = params.operation || '${operation}';
   
   if (!spreadsheetId) {
-    throw new Error('Spreadsheet ID is required');
+    console.warn('⚠️ Spreadsheet ID is required for most operations');
   }
   
   try {
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = spreadsheet.getSheetByName(sheetName);
+    const spreadsheet = spreadsheetId ? SpreadsheetApp.openById(spreadsheetId) : null;
     
-    if (!sheet) {
-      throw new Error(\`Sheet '\${sheetName}' not found in spreadsheet\`);
+    switch (operation) {
+      case 'append_row':
+        return handleAppendRow(spreadsheet, params, inputData);
+      case 'update_cell':
+        return handleUpdateCell(spreadsheet, params, inputData);
+      case 'update_range':
+        return handleUpdateRange(spreadsheet, params, inputData);
+      case 'get_values':
+        return handleGetValues(spreadsheet, params, inputData);
+      case 'clear_range':
+        return handleClearRange(spreadsheet, params, inputData);
+      case 'create_sheet':
+        return handleCreateSheet(spreadsheet, params, inputData);
+      case 'delete_sheet':
+        return handleDeleteSheet(spreadsheet, params, inputData);
+      case 'duplicate_sheet':
+        return handleDuplicateSheet(spreadsheet, params, inputData);
+      case 'format_cells':
+        return handleFormatCells(spreadsheet, params, inputData);
+      case 'find_replace':
+        return handleFindReplace(spreadsheet, params, inputData);
+      case 'sort_range':
+        return handleSortRange(spreadsheet, params, inputData);
+      case 'test_connection':
+        return handleTestConnection(params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Sheets operation: \${operation}\`);
+        return { ...inputData, sheetsWarning: \`Unsupported operation: \${operation}\` };
     }
-    
-    // Prepare data for insertion
-    let rowData = [];
-    if (inputData.emails && Array.isArray(inputData.emails)) {
-      inputData.emails.forEach(email => {
-        rowData.push([
-          email.subject || '',
-          email.from || '',
-          email.date || new Date(),
-          email.body || ''
-        ]);
-      });
-    } else {
-      // Single row insertion
-      rowData.push([
-        inputData.subject || '',
-        inputData.from || '',
-        inputData.date || new Date(),
-        inputData.body || ''
-      ]);
-    }
-    
-    // Append data to sheet
-    if (rowData.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, rowData.length, rowData[0].length).setValues(rowData);
-      console.log(\`✅ Added \${rowData.length} rows to sheet '\${sheetName}'\`);
-    }
-    
-    return { ...inputData, sheetsUpdated: true, rowsAdded: rowData.length };
     
   } catch (error) {
-    console.error('❌ Sheets action failed:', error);
-    throw error;
+    console.error(\`❌ Google Sheets \${operation} failed:\`, error);
+    return { ...inputData, sheetsError: error.toString(), sheetsSuccess: false };
+  }
+}
+
+function handleAppendRow(spreadsheet, params, inputData) {
+  const sheet = getSheet(spreadsheet, params.sheet || params.sheetName || 'Sheet1');
+  const values = params.values || extractRowData(inputData);
+  
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error('Values array is required for append operation');
+  }
+  
+  const range = sheet.getRange(sheet.getLastRow() + 1, 1, 1, values.length);
+  range.setValues([values]);
+  
+  console.log(\`✅ Appended row to \${sheet.getName()}: \${values.length} columns\`);
+  return { ...inputData, sheetsAppended: true, rowsAdded: 1, sheetName: sheet.getName() };
+}
+
+function handleUpdateCell(spreadsheet, params, inputData) {
+  const range = params.range;
+  const value = params.value;
+  
+  if (!range || value === undefined) {
+    throw new Error('Range and value are required for cell update');
+  }
+  
+  const cell = spreadsheet.getRange(range);
+  cell.setValue(value);
+  
+  console.log(\`✅ Updated cell \${range} with value: \${value}\`);
+  return { ...inputData, sheetsUpdated: true, updatedRange: range, updatedValue: value };
+}
+
+function handleUpdateRange(spreadsheet, params, inputData) {
+  const range = params.range;
+  const values = params.values;
+  
+  if (!range || !Array.isArray(values)) {
+    throw new Error('Range and values 2D array are required for range update');
+  }
+  
+  const targetRange = spreadsheet.getRange(range);
+  targetRange.setValues(values);
+  
+  console.log(\`✅ Updated range \${range} with \${values.length} rows\`);
+  return { ...inputData, sheetsUpdated: true, updatedRange: range, rowsUpdated: values.length };
+}
+
+function handleGetValues(spreadsheet, params, inputData) {
+  const range = params.range;
+  
+  if (!range) {
+    throw new Error('Range is required for get values operation');
+  }
+  
+  const targetRange = spreadsheet.getRange(range);
+  const values = targetRange.getValues();
+  
+  console.log(\`✅ Retrieved \${values.length} rows from range \${range}\`);
+  return { ...inputData, sheetsData: values, retrievedRange: range, rowCount: values.length };
+}
+
+function handleClearRange(spreadsheet, params, inputData) {
+  const range = params.range;
+  
+  if (!range) {
+    throw new Error('Range is required for clear operation');
+  }
+  
+  const targetRange = spreadsheet.getRange(range);
+  targetRange.clear();
+  
+  console.log(\`✅ Cleared range \${range}\`);
+  return { ...inputData, sheetsCleared: true, clearedRange: range };
+}
+
+function handleCreateSheet(spreadsheet, params, inputData) {
+  const title = params.title || 'New Sheet';
+  const index = params.index || undefined;
+  
+  const newSheet = index !== undefined 
+    ? spreadsheet.insertSheet(title, index)
+    : spreadsheet.insertSheet(title);
+  
+  console.log(\`✅ Created new sheet: \${title}\`);
+  return { ...inputData, sheetCreated: true, sheetName: title, sheetId: newSheet.getSheetId() };
+}
+
+function handleDeleteSheet(spreadsheet, params, inputData) {
+  const sheetName = params.sheetName || params.title;
+  
+  if (!sheetName) {
+    throw new Error('Sheet name is required for delete operation');
+  }
+  
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    throw new Error(\`Sheet '\${sheetName}' not found\`);
+  }
+  
+  spreadsheet.deleteSheet(sheet);
+  
+  console.log(\`✅ Deleted sheet: \${sheetName}\`);
+  return { ...inputData, sheetDeleted: true, deletedSheetName: sheetName };
+}
+
+function handleDuplicateSheet(spreadsheet, params, inputData) {
+  const sourceSheetName = params.sourceSheet || 'Sheet1';
+  const newSheetName = params.newSheetName || \`Copy of \${sourceSheetName}\`;
+  
+  const sourceSheet = spreadsheet.getSheetByName(sourceSheetName);
+  if (!sourceSheet) {
+    throw new Error(\`Source sheet '\${sourceSheetName}' not found\`);
+  }
+  
+  const duplicatedSheet = sourceSheet.copyTo(spreadsheet);
+  duplicatedSheet.setName(newSheetName);
+  
+  console.log(\`✅ Duplicated sheet '\${sourceSheetName}' as '\${newSheetName}'\`);
+  return { ...inputData, sheetDuplicated: true, newSheetName: newSheetName, sourceSheetName: sourceSheetName };
+}
+
+function handleFormatCells(spreadsheet, params, inputData) {
+  const range = params.range;
+  const format = params.format || {};
+  
+  if (!range) {
+    throw new Error('Range is required for formatting');
+  }
+  
+  const targetRange = spreadsheet.getRange(range);
+  
+  // Apply formatting options
+  if (format.backgroundColor) targetRange.setBackground(format.backgroundColor);
+  if (format.fontColor) targetRange.setFontColor(format.fontColor);
+  if (format.fontSize) targetRange.setFontSize(format.fontSize);
+  if (format.fontWeight) targetRange.setFontWeight(format.fontWeight);
+  if (format.numberFormat) targetRange.setNumberFormat(format.numberFormat);
+  if (format.horizontalAlignment) targetRange.setHorizontalAlignment(format.horizontalAlignment);
+  if (format.verticalAlignment) targetRange.setVerticalAlignment(format.verticalAlignment);
+  
+  console.log(\`✅ Formatted range \${range}\`);
+  return { ...inputData, sheetsFormatted: true, formattedRange: range };
+}
+
+function handleFindReplace(spreadsheet, params, inputData) {
+  const findText = params.findText;
+  const replaceText = params.replaceText || '';
+  const sheetName = params.sheetName;
+  
+  if (!findText) {
+    throw new Error('Find text is required for find/replace operation');
+  }
+  
+  let targetSheet;
+  if (sheetName) {
+    targetSheet = spreadsheet.getSheetByName(sheetName);
+    if (!targetSheet) {
+      throw new Error(\`Sheet '\${sheetName}' not found\`);
+    }
+  } else {
+    targetSheet = spreadsheet.getActiveSheet();
+  }
+  
+  const textFinder = targetSheet.createTextFinder(findText);
+  const replacements = textFinder.replaceAllWith(replaceText);
+  
+  console.log(\`✅ Replaced \${replacements} instances of '\${findText}' with '\${replaceText}'\`);
+  return { ...inputData, sheetsReplaced: true, replacements: replacements, findText: findText, replaceText: replaceText };
+}
+
+function handleSortRange(spreadsheet, params, inputData) {
+  const range = params.range;
+  const sortColumn = params.sortColumn || 1;
+  const ascending = params.ascending !== false;
+  
+  if (!range) {
+    throw new Error('Range is required for sort operation');
+  }
+  
+  const targetRange = spreadsheet.getRange(range);
+  targetRange.sort({ column: sortColumn, ascending: ascending });
+  
+  console.log(\`✅ Sorted range \${range} by column \${sortColumn} (\${ascending ? 'ascending' : 'descending'})\`);
+  return { ...inputData, sheetsSorted: true, sortedRange: range, sortColumn: sortColumn };
+}
+
+function handleTestConnection(params, inputData) {
+  try {
+    // Test by accessing SpreadsheetApp
+    const user = Session.getActiveUser().getEmail();
+    console.log(\`✅ Google Sheets connection test successful. User: \${user}\`);
+    return { ...inputData, connectionTest: 'success', userEmail: user };
+  } catch (error) {
+    console.error('❌ Sheets connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+// Helper functions
+function getSheet(spreadsheet, sheetNameOrRange) {
+  if (!spreadsheet) throw new Error('Spreadsheet is required');
+  
+  let sheetName = sheetNameOrRange;
+  if (sheetNameOrRange.includes('!')) {
+    sheetName = sheetNameOrRange.split('!')[0];
+  }
+  
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    throw new Error(\`Sheet '\${sheetName}' not found\`);
+  }
+  
+  return sheet;
+}
+
+function extractRowData(inputData) {
+  // Extract meaningful data from various input formats
+  if (inputData.emails && Array.isArray(inputData.emails) && inputData.emails.length > 0) {
+    const email = inputData.emails[0];
+    return [email.subject || '', email.from || '', email.date || new Date(), email.body || ''];
+  } else if (inputData.formResponses && Array.isArray(inputData.formResponses) && inputData.formResponses.length > 0) {
+    const response = inputData.formResponses[0];
+    return Object.values(response.answers || {});
+  } else if (inputData.shopifyResult && inputData.shopifyResult.customer) {
+    const customer = inputData.shopifyResult.customer;
+    return [customer.first_name || '', customer.last_name || '', customer.email || '', customer.phone || ''];
+  } else {
+    // Generic extraction
+    const values = [];
+    ['name', 'email', 'phone', 'company', 'subject', 'message', 'date'].forEach(key => {
+      if (inputData[key] !== undefined) {
+        values.push(inputData[key]);
+      }
+    });
+    return values.length > 0 ? values : ['Data from workflow', new Date().toString()];
   }
 }`;
 }
 
-function generateSlackActionFunction(functionName: string, node: WorkflowNode): string {
+// Comprehensive Slack implementation
+function generateSlackEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_message';
+  
   return `
-async function ${functionName}(inputData, params) {
-  console.log('💬 Executing Slack action: ${node.name || 'Send Message'}');
+function ${functionName}(inputData, params) {
+  console.log('💬 Executing Slack: ${node.name || operation}');
   
+  const operation = params.operation || '${operation}';
+  const botToken = PropertiesService.getScriptProperties().getProperty('SLACK_BOT_TOKEN');
   const webhookUrl = PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');
-  const channel = params.channel || '#general';
-  const message = params.message || inputData.message || 'Workflow notification';
-  
-  if (!webhookUrl) {
-    console.warn('⚠️ Slack webhook URL not configured, skipping Slack action');
-    return { ...inputData, slackSkipped: true };
-  }
   
   try {
-    const payload = {
-      channel: channel,
-      text: message,
-      username: 'Apps Script Bot',
-      icon_emoji: ':robot_face:'
-    };
+    switch (operation) {
+      case 'send_message':
+        return handleSendMessage(botToken, webhookUrl, params, inputData);
+      case 'send_direct_message':
+        return handleSendDirectMessage(botToken, params, inputData);
+      case 'create_channel':
+        return handleCreateChannel(botToken, params, inputData);
+      case 'invite_user_to_channel':
+        return handleInviteUser(botToken, params, inputData);
+      case 'get_channel_history':
+        return handleGetChannelHistory(botToken, params, inputData);
+      case 'upload_file':
+        return handleUploadFile(botToken, params, inputData);
+      case 'add_reaction':
+        return handleAddReaction(botToken, params, inputData);
+      case 'get_user_info':
+        return handleGetUserInfo(botToken, params, inputData);
+      case 'list_channels':
+        return handleListChannels(botToken, params, inputData);
+      case 'set_channel_topic':
+        return handleSetChannelTopic(botToken, params, inputData);
+      case 'archive_channel':
+        return handleArchiveChannel(botToken, params, inputData);
+      case 'pin_message':
+        return handlePinMessage(botToken, params, inputData);
+      case 'schedule_message':
+        return handleScheduleMessage(botToken, params, inputData);
+      case 'test_connection':
+        return handleSlackTestConnection(botToken, webhookUrl, params, inputData);
+      case 'message_received':
+      case 'mention_received':
+        return handleSlackTrigger(botToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Slack operation: \${operation}\`);
+        return { ...inputData, slackWarning: \`Unsupported operation: \${operation}\` };
+    }
     
+  } catch (error) {
+    console.error(\`❌ Slack \${operation} failed:\`, error);
+    return { ...inputData, slackError: error.toString(), slackSuccess: false };
+  }
+}
+
+function handleSendMessage(botToken, webhookUrl, params, inputData) {
+  const channel = params.channel || '#general';
+  const text = params.text || params.message || inputData.message || 'Workflow notification';
+  const username = params.username || 'Apps Script Bot';
+  const iconEmoji = params.icon_emoji || ':robot_face:';
+  
+  // Try bot token first, then webhook
+  if (botToken) {
+    const response = UrlFetchApp.fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${botToken}\`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        channel: channel,
+        text: text,
+        username: username,
+        icon_emoji: iconEmoji,
+        attachments: params.attachments || [],
+        blocks: params.blocks || []
+      })
+    });
+    
+    const data = JSON.parse(response.getContentText());
+    if (data.ok) {
+      console.log(\`✅ Slack message sent to \${channel}\`);
+      return { ...inputData, slackSent: true, channel: channel, messageTs: data.ts };
+    } else {
+      throw new Error(\`Slack API error: \${data.error}\`);
+    }
+  } else if (webhookUrl) {
     const response = UrlFetchApp.fetch(webhookUrl, {
       method: 'POST',
       contentType: 'application/json',
-      payload: JSON.stringify(payload)
+      payload: JSON.stringify({
+        channel: channel,
+        text: text,
+        username: username,
+        icon_emoji: iconEmoji
+      })
     });
     
     if (response.getResponseCode() === 200) {
-      console.log(\`✅ Slack message sent to \${channel}\`);
-      return { ...inputData, slackSent: true, channel, message };
+      console.log(\`✅ Slack webhook message sent to \${channel}\`);
+      return { ...inputData, slackSent: true, channel: channel };
     } else {
-      console.warn(\`⚠️ Slack message failed with status: \${response.getResponseCode()}\`);
-      return { ...inputData, slackFailed: true, status: response.getResponseCode() };
+      throw new Error(\`Webhook failed with status: \${response.getResponseCode()}\`);
     }
-    
-  } catch (error) {
-    console.error('❌ Slack action failed:', error);
-    return { ...inputData, slackError: error.message };
+  } else {
+    throw new Error('Neither Slack bot token nor webhook URL is configured');
   }
-}`;
 }
 
-function generateDropboxActionFunction(functionName: string, node: WorkflowNode): string {
-  return `
-async function ${functionName}(inputData, params) {
-  console.log('☁️ Executing Dropbox action: ${node.name || 'Upload File'}');
-  
-  const dropboxToken = PropertiesService.getScriptProperties().getProperty('DROPBOX_TOKEN');
-  const destination = params.destination || '/backup';
-  
-  if (!dropboxToken) {
-    console.warn('⚠️ Dropbox token not configured, skipping Dropbox action');
-    return { ...inputData, dropboxSkipped: true };
+function handleSendDirectMessage(botToken, params, inputData) {
+  if (!botToken) {
+    throw new Error('Slack bot token is required for direct messages');
   }
   
-  try {
-    let filesToUpload = [];
-    
-    if (inputData.files && Array.isArray(inputData.files)) {
-      filesToUpload = inputData.files;
-    } else if (inputData.emails && Array.isArray(inputData.emails)) {
-      // Convert email data to file-like structure
-      filesToUpload = inputData.emails.map((email, index) => ({
-        name: \`email_\${index + 1}.txt\`,
-        content: \`Subject: \${email.subject}\\nFrom: \${email.from}\\nDate: \${email.date}\\n\\n\${email.body}\`
-      }));
-    }
-    
-    if (filesToUpload.length === 0) {
-      console.log('ℹ️ No files to upload to Dropbox');
-      return { ...inputData, dropboxNoFiles: true };
-    }
-    
-    let uploadedCount = 0;
-    
-    for (const fileInfo of filesToUpload) {
-      try {
-        const response = UrlFetchApp.fetch('https://content.dropboxapi.com/2/files/upload', {
-          method: 'POST',
-          headers: {
-            'Authorization': \`Bearer \${dropboxToken}\`,
-            'Content-Type': 'application/octet-stream',
-            'Dropbox-API-Arg': JSON.stringify({
-              path: \`\${destination}/\${fileInfo.name}\`,
-              mode: 'add',
-              autorename: true
-            })
-          },
-          payload: fileInfo.content || fileInfo.blob || ''
-        });
-        
-        if (response.getResponseCode() === 200) {
-          console.log(\`✅ Uploaded \${fileInfo.name} to Dropbox\`);
-          uploadedCount++;
-        } else {
-          console.warn(\`⚠️ Failed to upload \${fileInfo.name}: \${response.getResponseCode()}\`);
-        }
-      } catch (fileError) {
-        console.error(\`❌ Error uploading \${fileInfo.name}:\`, fileError);
-      }
-    }
-    
-    console.log(\`📤 Dropbox upload completed: \${uploadedCount}/\${filesToUpload.length} files\`);
-    return { ...inputData, dropboxUploaded: uploadedCount, dropboxTotal: filesToUpload.length };
-    
-  } catch (error) {
-    console.error('❌ Dropbox action failed:', error);
-    return { ...inputData, dropboxError: error.message };
+  const userId = params.userId || params.user;
+  const text = params.text || params.message || 'Direct message from automation';
+  
+  if (!userId) {
+    throw new Error('User ID is required for direct message');
   }
-}`;
+  
+  const response = UrlFetchApp.fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${botToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      channel: userId,
+      text: text
+    })
+  });
+  
+  const data = JSON.parse(response.getContentText());
+  if (data.ok) {
+    console.log(\`✅ Direct message sent to user \${userId}\`);
+    return { ...inputData, slackDmSent: true, userId: userId, messageTs: data.ts };
+  } else {
+    throw new Error(\`Slack API error: \${data.error}\`);
+  }
 }
 
-function generateCalendarTriggerFunction(functionName: string, node: WorkflowNode): string {
-  return `
-async function ${functionName}(params) {
-  console.log('📅 Executing Calendar trigger: ${node.name || 'Event Detection'}');
+function handleCreateChannel(botToken, params, inputData) {
+  if (!botToken) {
+    throw new Error('Slack bot token is required for channel creation');
+  }
   
-  const calendarId = params.calendarId || 'primary';
-  const eventType = params.eventType || 'birthday';
-  const daysAhead = params.daysAhead || 7;
+  const name = params.name || params.channelName;
+  const isPrivate = params.is_private || false;
   
-  try {
-    const calendar = CalendarApp.getCalendarById(calendarId);
-    const now = new Date();
-    const future = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
-    
-    const events = calendar.getEvents(now, future);
-    const filteredEvents = events.filter(event => {
-      if (eventType === 'birthday') {
-        return event.getTitle().toLowerCase().includes('birthday') || 
-               event.getDescription()?.toLowerCase().includes('birthday');
-      }
-      return true;
-    });
-    
-    const eventData = filteredEvents.map(event => ({
-      id: event.getId(),
-      title: event.getTitle(),
-      start: event.getStartTime(),
-      end: event.getEndTime(),
-      description: event.getDescription(),
-      location: event.getLocation(),
-      attendees: event.getGuestList().map(guest => guest.getEmail())
+  if (!name) {
+    throw new Error('Channel name is required');
+  }
+  
+  const response = UrlFetchApp.fetch('https://slack.com/api/conversations.create', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${botToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      name: name,
+      is_private: isPrivate
+    })
+  });
+  
+  const data = JSON.parse(response.getContentText());
+  if (data.ok) {
+    console.log(\`✅ Created Slack channel: #\${name}\`);
+    return { ...inputData, slackChannelCreated: true, channelId: data.channel.id, channelName: name };
+  } else {
+    throw new Error(\`Slack API error: \${data.error}\`);
+  }
+}
+
+function handleInviteUser(botToken, params, inputData) {
+  if (!botToken) {
+    throw new Error('Slack bot token is required for inviting users');
+  }
+  
+  const channelId = params.channelId || params.channel;
+  const userId = params.userId || params.user;
+  
+  if (!channelId || !userId) {
+    throw new Error('Channel ID and User ID are required');
+  }
+  
+  const response = UrlFetchApp.fetch('https://slack.com/api/conversations.invite', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${botToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      channel: channelId,
+      users: userId
+    })
+  });
+  
+  const data = JSON.parse(response.getContentText());
+  if (data.ok) {
+    console.log(\`✅ Invited user \${userId} to channel \${channelId}\`);
+    return { ...inputData, slackUserInvited: true, channelId: channelId, userId: userId };
+  } else {
+    throw new Error(\`Slack API error: \${data.error}\`);
+  }
+}
+
+function handleGetChannelHistory(botToken, params, inputData) {
+  if (!botToken) {
+    throw new Error('Slack bot token is required for channel history');
+  }
+  
+  const channelId = params.channelId || params.channel;
+  const limit = params.limit || 100;
+  
+  if (!channelId) {
+    throw new Error('Channel ID is required');
+  }
+  
+  const response = UrlFetchApp.fetch(\`https://slack.com/api/conversations.history?channel=\${channelId}&limit=\${limit}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Bearer \${botToken}\`
+    }
+  });
+  
+  const data = JSON.parse(response.getContentText());
+  if (data.ok) {
+    console.log(\`✅ Retrieved \${data.messages.length} messages from channel \${channelId}\`);
+    return { ...inputData, slackMessages: data.messages, messageCount: data.messages.length };
+  } else {
+    throw new Error(\`Slack API error: \${data.error}\`);
+  }
+}
+
+function handleUploadFile(botToken, params, inputData) {
+  if (!botToken) {
+    throw new Error('Slack bot token is required for file upload');
+  }
+  
+  const channels = params.channels || params.channel || '#general';
+  const title = params.title || 'File from automation';
+  const content = params.content || params.fileContent || inputData.fileContent || 'Sample content';
+  const filename = params.filename || 'automation-file.txt';
+  
+  const response = UrlFetchApp.fetch('https://slack.com/api/files.upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${botToken}\`
+    },
+    payload: {
+      channels: channels,
+      title: title,
+      filename: filename,
+      content: content
+    }
+  });
+  
+  const data = JSON.parse(response.getContentText());
+  if (data.ok) {
+    console.log(\`✅ Uploaded file to Slack: \${filename}\`);
+    return { ...inputData, slackFileUploaded: true, fileId: data.file.id, filename: filename };
+  } else {
+    throw new Error(\`Slack API error: \${data.error}\`);
+  }
+}
+
+function handleListChannels(botToken, params, inputData) {
+  if (!botToken) {
+    throw new Error('Slack bot token is required for listing channels');
+  }
+  
+  const types = params.types || 'public_channel,private_channel';
+  const excludeArchived = params.exclude_archived !== false;
+  
+  const response = UrlFetchApp.fetch(\`https://slack.com/api/conversations.list?types=\${types}&exclude_archived=\${excludeArchived}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Bearer \${botToken}\`
+    }
+  });
+  
+  const data = JSON.parse(response.getContentText());
+  if (data.ok) {
+    const channels = data.channels.map(channel => ({
+      id: channel.id,
+      name: channel.name,
+      isChannel: channel.is_channel,
+      isPrivate: channel.is_private,
+      isArchived: channel.is_archived,
+      memberCount: channel.num_members || 0
     }));
     
-    console.log(\`📅 Found \${eventData.length} events in the next \${daysAhead} days\`);
-    return { events: eventData, calendarId, eventType, daysAhead };
+    console.log(\`✅ Retrieved \${channels.length} Slack channels\`);
+    return { ...inputData, slackChannels: channels, channelCount: channels.length };
+  } else {
+    throw new Error(\`Slack API error: \${data.error}\`);
+  }
+}
+
+function handleSlackTestConnection(botToken, webhookUrl, params, inputData) {
+  try {
+    if (botToken) {
+      const response = UrlFetchApp.fetch('https://slack.com/api/auth.test', {
+        method: 'POST',
+        headers: {
+          'Authorization': \`Bearer \${botToken}\`
+        }
+      });
+      
+      const data = JSON.parse(response.getContentText());
+      if (data.ok) {
+        console.log(\`✅ Slack bot token test successful. Team: \${data.team}, User: \${data.user}\`);
+        return { ...inputData, connectionTest: 'success', team: data.team, user: data.user };
+      } else {
+        throw new Error(\`Bot token test failed: \${data.error}\`);
+      }
+    } else if (webhookUrl) {
+      const testResponse = UrlFetchApp.fetch(webhookUrl, {
+        method: 'POST',
+        contentType: 'application/json',
+        payload: JSON.stringify({
+          text: 'Connection test from Apps Script',
+          username: 'Test Bot'
+        })
+      });
+      
+      if (testResponse.getResponseCode() === 200) {
+        console.log('✅ Slack webhook test successful');
+        return { ...inputData, connectionTest: 'success', method: 'webhook' };
+      } else {
+        throw new Error(\`Webhook test failed: \${testResponse.getResponseCode()}\`);
+      }
+    } else {
+      throw new Error('Neither bot token nor webhook URL is configured');
+    }
+  } catch (error) {
+    console.error('❌ Slack connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleSlackTrigger(botToken, params, inputData) {
+  // This simulates checking for new messages/mentions
+  if (!botToken) {
+    console.warn('⚠️ Bot token required for message triggers, using webhook fallback');
+    return { ...inputData, slackTrigger: 'simulated', message: 'Trigger detected' };
+  }
+  
+  const channelId = params.channelId || params.channel;
+  const keywords = params.keywords || '';
+  
+  try {
+    if (channelId) {
+      const response = UrlFetchApp.fetch(\`https://slack.com/api/conversations.history?channel=\${channelId}&limit=10\`, {
+        method: 'GET',
+        headers: {
+          'Authorization': \`Bearer \${botToken}\`
+        }
+      });
+      
+      const data = JSON.parse(response.getContentText());
+      if (data.ok && data.messages.length > 0) {
+        const recentMessages = data.messages.filter(msg => {
+          if (!keywords) return true;
+          return msg.text && msg.text.toLowerCase().includes(keywords.toLowerCase());
+        });
+        
+        console.log(\`📨 Slack trigger found \${recentMessages.length} matching messages\`);
+        return { ...inputData, slackTrigger: recentMessages, triggerCount: recentMessages.length };
+      }
+    }
+    
+    return { ...inputData, slackTrigger: [], triggerCount: 0 };
+  } catch (error) {
+    console.error('❌ Slack trigger check failed:', error);
+    return { ...inputData, slackTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Dropbox implementation
+function generateDropboxEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'upload_file';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('☁️ Executing Dropbox: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const dropboxToken = PropertiesService.getScriptProperties().getProperty('DROPBOX_ACCESS_TOKEN');
+  
+  if (!dropboxToken) {
+    console.warn('⚠️ Dropbox access token not configured, skipping operation');
+    return { ...inputData, dropboxSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    switch (operation) {
+      case 'upload_file':
+        return handleDropboxUpload(dropboxToken, params, inputData);
+      case 'download_file':
+        return handleDropboxDownload(dropboxToken, params, inputData);
+      case 'list_folder':
+        return handleListFolder(dropboxToken, params, inputData);
+      case 'create_folder':
+        return handleCreateDropboxFolder(dropboxToken, params, inputData);
+      case 'delete_file':
+        return handleDeleteDropboxFile(dropboxToken, params, inputData);
+      case 'move_file':
+        return handleMoveDropboxFile(dropboxToken, params, inputData);
+      case 'copy_file':
+        return handleCopyDropboxFile(dropboxToken, params, inputData);
+      case 'get_metadata':
+        return handleGetDropboxMetadata(dropboxToken, params, inputData);
+      case 'create_shared_link':
+        return handleCreateSharedLink(dropboxToken, params, inputData);
+      case 'search':
+        return handleDropboxSearch(dropboxToken, params, inputData);
+      case 'test_connection':
+        return handleDropboxTestConnection(dropboxToken, params, inputData);
+      case 'file_uploaded':
+      case 'file_deleted':
+      case 'folder_shared':
+        return handleDropboxTrigger(dropboxToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Dropbox operation: \${operation}\`);
+        return { ...inputData, dropboxWarning: \`Unsupported operation: \${operation}\` };
+    }
     
   } catch (error) {
-    console.error('❌ Calendar trigger failed:', error);
-    throw error;
+    console.error(\`❌ Dropbox \${operation} failed:\`, error);
+    return { ...inputData, dropboxError: error.toString(), dropboxSuccess: false };
   }
+}
+
+function handleDropboxUpload(dropboxToken, params, inputData) {
+  const path = params.path || params.destination || '/uploaded_file.txt';
+  const content = params.content || params.fileContent || inputData.fileContent || 'Default content';
+  const mode = params.mode || 'add';
+  const autorename = params.autorename !== false;
+  
+  const response = UrlFetchApp.fetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${dropboxToken}\`,
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({
+        path: path,
+        mode: mode,
+        autorename: autorename
+      })
+    },
+    payload: content
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Uploaded file to Dropbox: \${data.name}\`);
+    return { ...inputData, dropboxUploaded: true, filePath: data.path_display, fileId: data.id };
+  } else {
+    throw new Error(\`Upload failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleDropboxDownload(dropboxToken, params, inputData) {
+  const path = params.path || params.filePath;
+  
+  if (!path) {
+    throw new Error('File path is required for download');
+  }
+  
+  const response = UrlFetchApp.fetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${dropboxToken}\`,
+      'Dropbox-API-Arg': JSON.stringify({ path: path })
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const content = response.getContentText();
+    console.log(\`✅ Downloaded file from Dropbox: \${path}\`);
+    return { ...inputData, dropboxDownload: { path: path, content: content, size: content.length } };
+  } else {
+    throw new Error(\`Download failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleListFolder(dropboxToken, params, inputData) {
+  const path = params.path || params.folderPath || '';
+  const recursive = params.recursive || false;
+  const limit = params.limit || 2000;
+  
+  const response = UrlFetchApp.fetch('https://api.dropboxapi.com/2/files/list_folder', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${dropboxToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      path: path,
+      recursive: recursive,
+      limit: limit
+    })
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    const entries = data.entries.map(entry => ({
+      name: entry.name,
+      path: entry.path_display,
+      type: entry['.tag'], // file or folder
+      id: entry.id,
+      size: entry.size || 0,
+      modifiedTime: entry.server_modified || null
+    }));
+    
+    console.log(\`✅ Listed \${entries.length} items from Dropbox folder: \${path}\`);
+    return { ...inputData, dropboxEntries: entries, entryCount: entries.length };
+  } else {
+    throw new Error(\`List folder failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateDropboxFolder(dropboxToken, params, inputData) {
+  const path = params.path || params.folderPath;
+  
+  if (!path) {
+    throw new Error('Folder path is required');
+  }
+  
+  const response = UrlFetchApp.fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${dropboxToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      path: path,
+      autorename: params.autorename !== false
+    })
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Dropbox folder: \${data.metadata.name}\`);
+    return { ...inputData, dropboxFolderCreated: true, folderPath: data.metadata.path_display };
+  } else {
+    throw new Error(\`Create folder failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleDeleteDropboxFile(dropboxToken, params, inputData) {
+  const path = params.path || params.filePath;
+  
+  if (!path) {
+    throw new Error('File path is required for deletion');
+  }
+  
+  const response = UrlFetchApp.fetch('https://api.dropboxapi.com/2/files/delete_v2', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${dropboxToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      path: path
+    })
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Deleted Dropbox file: \${data.metadata.name}\`);
+    return { ...inputData, dropboxDeleted: true, deletedPath: data.metadata.path_display };
+  } else {
+    throw new Error(\`Delete failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleDropboxTestConnection(dropboxToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${dropboxToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Dropbox connection test successful. User: \${data.email}\`);
+      return { ...inputData, connectionTest: 'success', userEmail: data.email, accountId: data.account_id };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Dropbox connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleDropboxTrigger(dropboxToken, params, inputData) {
+  // Simulate file monitoring by checking recent changes
+  const path = params.path || '';
+  const limit = params.limit || 10;
+  
+  try {
+    const response = UrlFetchApp.fetch('https://api.dropboxapi.com/2/files/list_folder', {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${dropboxToken}\`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        path: path,
+        limit: limit
+      })
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      const recentFiles = data.entries.slice(0, 5); // Get 5 most recent
+      
+      console.log(\`📁 Dropbox trigger found \${recentFiles.length} recent files\`);
+      return { ...inputData, dropboxTrigger: recentFiles, triggerCount: recentFiles.length };
+    } else {
+      throw new Error(\`Trigger check failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Dropbox trigger failed:', error);
+    return { ...inputData, dropboxTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Google Calendar implementation
+function generateGoogleCalendarFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'list_events';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📅 Executing Google Calendar: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const calendarId = params.calendarId || 'primary';
+  
+  try {
+    switch (operation) {
+      case 'create_event':
+        return handleCreateEvent(calendarId, params, inputData);
+      case 'update_event':
+        return handleUpdateEvent(calendarId, params, inputData);
+      case 'get_event':
+        return handleGetEvent(calendarId, params, inputData);
+      case 'list_events':
+        return handleListEvents(calendarId, params, inputData);
+      case 'delete_event':
+        return handleDeleteEvent(calendarId, params, inputData);
+      case 'list_calendars':
+        return handleListCalendars(params, inputData);
+      case 'create_calendar':
+        return handleCreateCalendar(params, inputData);
+      case 'update_calendar':
+        return handleUpdateCalendar(calendarId, params, inputData);
+      case 'get_freebusy':
+        return handleGetFreeBusy(calendarId, params, inputData);
+      case 'quick_add':
+        return handleQuickAdd(calendarId, params, inputData);
+      case 'test_connection':
+        return handleCalendarTestConnection(params, inputData);
+      case 'watch_events':
+      case 'event_created':
+      case 'event_updated':
+        return handleEventTrigger(calendarId, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Calendar operation: \${operation}\`);
+        return { ...inputData, calendarWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Google Calendar \${operation} failed:\`, error);
+    return { ...inputData, calendarError: error.toString(), calendarSuccess: false };
+  }
+}
+
+function handleCreateEvent(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  
+  const title = params.title || params.summary || 'New Event';
+  const startTime = params.startTime ? new Date(params.startTime) : new Date();
+  const endTime = params.endTime ? new Date(params.endTime) : new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour default
+  const description = params.description || '';
+  const location = params.location || '';
+  
+  const event = calendar.createEvent(title, startTime, endTime, {
+    description: description,
+    location: location,
+    guests: params.attendees || '',
+    sendInvites: params.sendInvites !== false
+  });
+  
+  console.log(\`✅ Created event: \${title} on \${startTime.toISOString()}\`);
+  return { ...inputData, calendarEvent: event.getId(), eventTitle: title, eventStart: startTime.toISOString() };
+}
+
+function handleUpdateEvent(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const eventId = params.eventId;
+  
+  if (!eventId) {
+    throw new Error('Event ID is required for update operation');
+  }
+  
+  const event = calendar.getEventById(eventId);
+  if (!event) {
+    throw new Error(\`Event with ID '\${eventId}' not found\`);
+  }
+  
+  if (params.title) event.setTitle(params.title);
+  if (params.description) event.setDescription(params.description);
+  if (params.location) event.setLocation(params.location);
+  if (params.startTime && params.endTime) {
+    event.setTime(new Date(params.startTime), new Date(params.endTime));
+  }
+  
+  console.log(\`✅ Updated event: \${eventId}\`);
+  return { ...inputData, calendarUpdated: true, eventId: eventId };
+}
+
+function handleGetEvent(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const eventId = params.eventId;
+  
+  if (!eventId) {
+    throw new Error('Event ID is required for get operation');
+  }
+  
+  const event = calendar.getEventById(eventId);
+  if (!event) {
+    throw new Error(\`Event with ID '\${eventId}' not found\`);
+  }
+  
+  const eventData = {
+    id: event.getId(),
+    title: event.getTitle(),
+    start: event.getStartTime().toISOString(),
+    end: event.getEndTime().toISOString(),
+    description: event.getDescription(),
+    location: event.getLocation(),
+    creator: event.getCreators()[0] || '',
+    attendees: event.getGuestList().map(guest => guest.getEmail())
+  };
+  
+  console.log(\`✅ Retrieved event: \${eventData.title}\`);
+  return { ...inputData, calendarEvent: eventData };
+}
+
+function handleListEvents(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  
+  const startTime = params.timeMin ? new Date(params.timeMin) : new Date();
+  const endTime = params.timeMax ? new Date(params.timeMax) : new Date(startTime.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days default
+  const maxResults = params.maxResults || 250;
+  
+  const events = calendar.getEvents(startTime, endTime);
+  const limitedEvents = events.slice(0, maxResults);
+  
+  const eventList = limitedEvents.map(event => ({
+    id: event.getId(),
+    title: event.getTitle(),
+    start: event.getStartTime().toISOString(),
+    end: event.getEndTime().toISOString(),
+    description: event.getDescription() || '',
+    location: event.getLocation() || '',
+    attendees: event.getGuestList().map(guest => guest.getEmail())
+  }));
+  
+  console.log(\`✅ Listed \${eventList.length} events from \${calendarId}\`);
+  return { ...inputData, calendarEvents: eventList, eventCount: eventList.length };
+}
+
+function handleDeleteEvent(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const eventId = params.eventId;
+  
+  if (!eventId) {
+    throw new Error('Event ID is required for delete operation');
+  }
+  
+  const event = calendar.getEventById(eventId);
+  if (!event) {
+    throw new Error(\`Event with ID '\${eventId}' not found\`);
+  }
+  
+  event.deleteEvent();
+  
+  console.log(\`✅ Deleted event: \${eventId}\`);
+  return { ...inputData, calendarDeleted: true, deletedEventId: eventId };
+}
+
+function handleListCalendars(params, inputData) {
+  const calendars = CalendarApp.getAllOwnedCalendars();
+  
+  const calendarList = calendars.map(calendar => ({
+    id: calendar.getId(),
+    name: calendar.getName(),
+    description: calendar.getDescription() || '',
+    color: calendar.getColor(),
+    timeZone: calendar.getTimeZone()
+  }));
+  
+  console.log(\`✅ Listed \${calendarList.length} calendars\`);
+  return { ...inputData, calendars: calendarList, calendarCount: calendarList.length };
+}
+
+function handleCreateCalendar(params, inputData) {
+  const name = params.name || 'New Calendar';
+  const description = params.description || '';
+  
+  const calendar = CalendarApp.createCalendar(name, {
+    summary: description,
+    color: params.color || CalendarApp.Color.BLUE
+  });
+  
+  console.log(\`✅ Created calendar: \${name}\`);
+  return { ...inputData, calendarCreated: true, calendarId: calendar.getId(), calendarName: name };
+}
+
+function handleUpdateCalendar(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  
+  if (params.name) calendar.setName(params.name);
+  if (params.description) calendar.setDescription(params.description);
+  if (params.color) calendar.setColor(params.color);
+  if (params.timeZone) calendar.setTimeZone(params.timeZone);
+  
+  console.log(\`✅ Updated calendar: \${calendarId}\`);
+  return { ...inputData, calendarUpdated: true, calendarId: calendarId };
+}
+
+function handleGetFreeBusy(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const startTime = params.timeMin ? new Date(params.timeMin) : new Date();
+  const endTime = params.timeMax ? new Date(params.timeMax) : new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
+  
+  const events = calendar.getEvents(startTime, endTime);
+  const busyTimes = events.map(event => ({
+    start: event.getStartTime().toISOString(),
+    end: event.getEndTime().toISOString(),
+    title: event.getTitle()
+  }));
+  
+  console.log(\`✅ Retrieved free/busy data for \${calendarId}: \${busyTimes.length} busy periods\`);
+  return { ...inputData, busyTimes: busyTimes, calendarId: calendarId };
+}
+
+function handleQuickAdd(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const text = params.text || params.quickAddText;
+  
+  if (!text) {
+    throw new Error('Text is required for quick add operation');
+  }
+  
+  // Parse simple text like "Meeting tomorrow 2pm" or "Lunch at 12:30"
+  const event = calendar.createEventFromDescription(text);
+  
+  console.log(\`✅ Quick added event from text: \${text}\`);
+  return { ...inputData, calendarQuickAdded: true, eventId: event.getId(), originalText: text };
+}
+
+function handleCalendarTestConnection(params, inputData) {
+  try {
+    const user = Session.getActiveUser().getEmail();
+    const calendars = CalendarApp.getAllOwnedCalendars();
+    
+    console.log(\`✅ Google Calendar connection test successful. User: \${user}, Calendars: \${calendars.length}\`);
+    return { ...inputData, connectionTest: 'success', userEmail: user, calendarCount: calendars.length };
+  } catch (error) {
+    console.error('❌ Calendar connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleEventTrigger(calendarId, params, inputData) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const eventType = params.eventType || 'all';
+  const daysAhead = params.daysAhead || 7;
+  
+  const now = new Date();
+  const future = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+  
+  let events = calendar.getEvents(now, future);
+  
+  // Apply filters based on event type
+  if (eventType === 'birthday') {
+    events = events.filter(event => 
+      event.getTitle().toLowerCase().includes('birthday') || 
+      event.getDescription()?.toLowerCase().includes('birthday')
+    );
+  } else if (eventType === 'meeting') {
+    events = events.filter(event => 
+      event.getTitle().toLowerCase().includes('meeting') || 
+      event.getGuestList().length > 0
+    );
+  }
+  
+  const eventData = events.map(event => ({
+    id: event.getId(),
+    title: event.getTitle(),
+    start: event.getStartTime().toISOString(),
+    end: event.getEndTime().toISOString(),
+    description: event.getDescription() || '',
+    location: event.getLocation() || '',
+    attendees: event.getGuestList().map(guest => guest.getEmail())
+  }));
+  
+  console.log(\`📅 Found \${eventData.length} \${eventType} events in the next \${daysAhead} days\`);
+  return { ...inputData, events: eventData, calendarId: calendarId, eventType: eventType };
+}`;
+}
+
+// Comprehensive Google Drive implementation
+function generateGoogleDriveFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'list_files';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💾 Executing Google Drive: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  
+  try {
+    switch (operation) {
+      case 'create_file':
+        return handleCreateFile(params, inputData);
+      case 'upload_file':
+        return handleUploadFile(params, inputData);
+      case 'get_file':
+        return handleGetFile(params, inputData);
+      case 'download_file':
+        return handleDownloadFile(params, inputData);
+      case 'list_files':
+        return handleListFiles(params, inputData);
+      case 'create_folder':
+        return handleCreateFolder(params, inputData);
+      case 'move_file':
+        return handleMoveFile(params, inputData);
+      case 'copy_file':
+        return handleCopyFile(params, inputData);
+      case 'delete_file':
+        return handleDeleteFile(params, inputData);
+      case 'share_file':
+        return handleShareFile(params, inputData);
+      case 'get_file_permissions':
+        return handleGetFilePermissions(params, inputData);
+      case 'update_file_metadata':
+        return handleUpdateFileMetadata(params, inputData);
+      case 'test_connection':
+        return handleDriveTestConnection(params, inputData);
+      case 'watch_folder':
+      case 'file_created':
+      case 'file_updated':
+        return handleFileTrigger(params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Drive operation: \${operation}\`);
+        return { ...inputData, driveWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Google Drive \${operation} failed:\`, error);
+    return { ...inputData, driveError: error.toString(), driveSuccess: false };
+  }
+}
+
+function handleCreateFile(params, inputData) {
+  const name = params.name || params.title || 'New File';
+  const content = params.content || params.body || '';
+  const mimeType = params.mimeType || 'text/plain';
+  const folderId = params.folderId || params.parentId;
+  
+  let file;
+  if (folderId) {
+    const folder = DriveApp.getFolderById(folderId);
+    file = folder.createFile(name, content, mimeType);
+  } else {
+    file = DriveApp.createFile(name, content, mimeType);
+  }
+  
+  console.log(\`✅ Created file: \${name} (\${file.getId()})\`);
+  return { ...inputData, driveFile: { id: file.getId(), name: name, url: file.getUrl() } };
+}
+
+function handleUploadFile(params, inputData) {
+  const name = params.name || 'Uploaded File';
+  const blob = params.blob;
+  const folderId = params.folderId || params.parentId;
+  
+  if (!blob) {
+    throw new Error('File blob is required for upload');
+  }
+  
+  let file;
+  if (folderId) {
+    const folder = DriveApp.getFolderById(folderId);
+    file = folder.createFile(blob);
+  } else {
+    file = DriveApp.createFile(blob);
+  }
+  
+  if (name !== blob.getName()) {
+    file.setName(name);
+  }
+  
+  console.log(\`✅ Uploaded file: \${name} (\${file.getId()})\`);
+  return { ...inputData, driveFile: { id: file.getId(), name: file.getName(), size: file.getSize() } };
+}
+
+function handleGetFile(params, inputData) {
+  const fileId = params.fileId;
+  
+  if (!fileId) {
+    throw new Error('File ID is required');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  const fileData = {
+    id: file.getId(),
+    name: file.getName(),
+    description: file.getDescription(),
+    size: file.getSize(),
+    mimeType: file.getBlob().getContentType(),
+    createdDate: file.getDateCreated().toISOString(),
+    lastUpdated: file.getLastUpdated().toISOString(),
+    url: file.getUrl(),
+    downloadUrl: file.getDownloadUrl(),
+    owners: file.getOwners().map(owner => owner.getEmail())
+  };
+  
+  console.log(\`✅ Retrieved file: \${fileData.name}\`);
+  return { ...inputData, driveFile: fileData };
+}
+
+function handleDownloadFile(params, inputData) {
+  const fileId = params.fileId;
+  
+  if (!fileId) {
+    throw new Error('File ID is required for download');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  const blob = file.getBlob();
+  const content = blob.getDataAsString();
+  
+  console.log(\`✅ Downloaded file: \${file.getName()} (\${blob.getSize()} bytes)\`);
+  return { 
+    ...inputData, 
+    driveDownload: {
+      fileName: file.getName(),
+      content: content,
+      size: blob.getSize(),
+      mimeType: blob.getContentType()
+    }
+  };
+}
+
+function handleListFiles(params, inputData) {
+  const query = params.query || params.searchQuery || '';
+  const maxResults = params.maxResults || 100;
+  const folderId = params.folderId || params.parentId;
+  
+  let searchQuery = query;
+  if (folderId) {
+    searchQuery += (searchQuery ? ' and ' : '') + \`'\${folderId}' in parents\`;
+  }
+  
+  let files;
+  if (searchQuery) {
+    files = DriveApp.searchFiles(searchQuery);
+  } else {
+    files = DriveApp.getFiles();
+  }
+  
+  const fileList = [];
+  let count = 0;
+  
+  while (files.hasNext() && count < maxResults) {
+    const file = files.next();
+    fileList.push({
+      id: file.getId(),
+      name: file.getName(),
+      mimeType: file.getBlob().getContentType(),
+      size: file.getSize(),
+      createdDate: file.getDateCreated().toISOString(),
+      url: file.getUrl()
+    });
+    count++;
+  }
+  
+  console.log(\`✅ Listed \${fileList.length} files\`);
+  return { ...inputData, driveFiles: fileList, fileCount: fileList.length };
+}
+
+function handleCreateFolder(params, inputData) {
+  const name = params.name || params.title || 'New Folder';
+  const parentId = params.parentId || params.folderId;
+  
+  let folder;
+  if (parentId) {
+    const parentFolder = DriveApp.getFolderById(parentId);
+    folder = parentFolder.createFolder(name);
+  } else {
+    folder = DriveApp.createFolder(name);
+  }
+  
+  console.log(\`✅ Created folder: \${name} (\${folder.getId()})\`);
+  return { ...inputData, driveFolder: { id: folder.getId(), name: name, url: folder.getUrl() } };
+}
+
+function handleMoveFile(params, inputData) {
+  const fileId = params.fileId;
+  const targetFolderId = params.targetFolderId || params.destinationFolderId;
+  
+  if (!fileId || !targetFolderId) {
+    throw new Error('File ID and target folder ID are required for move operation');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  const targetFolder = DriveApp.getFolderById(targetFolderId);
+  const currentParents = file.getParents();
+  
+  // Remove from current parents and add to target folder
+  while (currentParents.hasNext()) {
+    currentParents.next().removeFile(file);
+  }
+  targetFolder.addFile(file);
+  
+  console.log(\`✅ Moved file \${file.getName()} to folder \${targetFolder.getName()}\`);
+  return { ...inputData, driveMoved: true, fileId: fileId, targetFolderId: targetFolderId };
+}
+
+function handleCopyFile(params, inputData) {
+  const fileId = params.fileId;
+  const name = params.name || params.copyName;
+  
+  if (!fileId) {
+    throw new Error('File ID is required for copy operation');
+  }
+  
+  const originalFile = DriveApp.getFileById(fileId);
+  const copiedFile = originalFile.makeCopy(name || \`Copy of \${originalFile.getName()}\`);
+  
+  console.log(\`✅ Copied file: \${originalFile.getName()} to \${copiedFile.getName()}\`);
+  return { ...inputData, driveCopied: true, originalId: fileId, copyId: copiedFile.getId() };
+}
+
+function handleDeleteFile(params, inputData) {
+  const fileId = params.fileId;
+  
+  if (!fileId) {
+    throw new Error('File ID is required for delete operation');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  const fileName = file.getName();
+  file.setTrashed(true);
+  
+  console.log(\`✅ Deleted file: \${fileName}\`);
+  return { ...inputData, driveDeleted: true, deletedFileId: fileId, deletedFileName: fileName };
+}
+
+function handleShareFile(params, inputData) {
+  const fileId = params.fileId;
+  const email = params.email || params.userEmail;
+  const role = params.role || 'reader'; // reader, writer, owner
+  
+  if (!fileId || !email) {
+    throw new Error('File ID and email are required for sharing');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  
+  switch (role) {
+    case 'reader':
+      file.addViewer(email);
+      break;
+    case 'writer':
+      file.addEditor(email);
+      break;
+    case 'owner':
+      file.setOwner(email);
+      break;
+    default:
+      file.addViewer(email);
+  }
+  
+  console.log(\`✅ Shared file \${file.getName()} with \${email} as \${role}\`);
+  return { ...inputData, driveShared: true, fileId: fileId, sharedWith: email, role: role };
+}
+
+function handleGetFilePermissions(params, inputData) {
+  const fileId = params.fileId;
+  
+  if (!fileId) {
+    throw new Error('File ID is required');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  const permissions = {
+    viewers: file.getViewers().map(user => user.getEmail()),
+    editors: file.getEditors().map(user => user.getEmail()),
+    owner: file.getOwner().getEmail(),
+    sharingAccess: file.getSharingAccess().toString(),
+    sharingPermission: file.getSharingPermission().toString()
+  };
+  
+  console.log(\`✅ Retrieved permissions for file: \${file.getName()}\`);
+  return { ...inputData, drivePermissions: permissions, fileId: fileId };
+}
+
+function handleUpdateFileMetadata(params, inputData) {
+  const fileId = params.fileId;
+  
+  if (!fileId) {
+    throw new Error('File ID is required for metadata update');
+  }
+  
+  const file = DriveApp.getFileById(fileId);
+  
+  if (params.name) file.setName(params.name);
+  if (params.description) file.setDescription(params.description);
+  
+  console.log(\`✅ Updated metadata for file: \${file.getName()}\`);
+  return { ...inputData, driveUpdated: true, fileId: fileId };
+}
+
+function handleDriveTestConnection(params, inputData) {
+  try {
+    const user = Session.getActiveUser().getEmail();
+    const rootFolder = DriveApp.getRootFolder();
+    
+    console.log(\`✅ Google Drive connection test successful. User: \${user}\`);
+    return { ...inputData, connectionTest: 'success', userEmail: user, rootFolderId: rootFolder.getId() };
+  } catch (error) {
+    console.error('❌ Drive connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleFileTrigger(params, inputData) {
+  const folderId = params.folderId || params.parentId;
+  const fileNamePattern = params.fileNamePattern || '';
+  const mimeType = params.mimeType || '';
+  
+  let folder;
+  if (folderId) {
+    folder = DriveApp.getFolderById(folderId);
+  } else {
+    folder = DriveApp.getRootFolder();
+  }
+  
+  const files = folder.getFiles();
+  const fileList = [];
+  
+  while (files.hasNext()) {
+    const file = files.next();
+    
+    // Apply filters
+    let matchesPattern = true;
+    if (fileNamePattern && !file.getName().includes(fileNamePattern)) {
+      matchesPattern = false;
+    }
+    if (mimeType && file.getBlob().getContentType() !== mimeType) {
+      matchesPattern = false;
+    }
+    
+    if (matchesPattern) {
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: file.getBlob().getContentType(),
+        size: file.getSize(),
+        createdDate: file.getDateCreated().toISOString(),
+        lastUpdated: file.getLastUpdated().toISOString(),
+        url: file.getUrl()
+      });
+    }
+  }
+  
+  console.log(\`📁 Found \${fileList.length} files in folder trigger\`);
+  return { ...inputData, driveFiles: fileList, triggeredBy: 'file_watcher' };
 }`;
 }
 
@@ -716,11 +2094,15 @@ function ${functionName}(inputData, params) {
 }`;
 }
 
-function generateSalesforceActionFunction(functionName: string, node: WorkflowNode): string {
+// Comprehensive Salesforce implementation
+function generateSalesforceEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'query_records';
+  
   return `
 function ${functionName}(inputData, params) {
-  console.log('☁️ Executing Salesforce action: ${node.name || 'Salesforce Operation'}');
+  console.log('☁️ Executing Salesforce: ${node.name || operation}');
   
+  const operation = params.operation || '${operation}';
   const accessToken = PropertiesService.getScriptProperties().getProperty('SALESFORCE_ACCESS_TOKEN');
   const instanceUrl = PropertiesService.getScriptProperties().getProperty('SALESFORCE_INSTANCE_URL');
   
@@ -730,72 +2112,291 @@ function ${functionName}(inputData, params) {
   }
   
   try {
-    let endpoint = '';
-    let method = 'GET';
-    let payload = null;
-    
-    // Handle different Salesforce operations
-    if (params.operation === 'create_lead') {
-      endpoint = '/services/data/v58.0/sobjects/Lead/';
-      method = 'POST';
-      payload = {
-        FirstName: params.first_name || '',
-        LastName: params.last_name || '',
-        Email: params.email || '',
-        Company: params.company || '',
-        LeadSource: params.lead_source || 'Website',
-        Status: params.status || 'Open - Not Contacted'
-      };
-    } else if (params.operation === 'create_contact') {
-      endpoint = '/services/data/v58.0/sobjects/Contact/';
-      method = 'POST';
-      payload = {
-        FirstName: params.first_name || '',
-        LastName: params.last_name || '',
-        Email: params.email || '',
-        AccountId: params.account_id || null
-      };
-    } else if (params.operation === 'query_records') {
-      endpoint = \`/services/data/v58.0/query/?q=\${encodeURIComponent(params.soql || 'SELECT Id FROM Lead LIMIT 10')}\`;
-      method = 'GET';
-    }
-    
-    const options = {
-      method: method,
-      headers: {
-        'Authorization': \`Bearer \${accessToken}\`,
-        'Content-Type': 'application/json'
-      }
-    };
-    
-    if (payload) {
-      options.payload = JSON.stringify(payload);
-    }
-    
-    const response = UrlFetchApp.fetch(instanceUrl + endpoint, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode >= 200 && responseCode < 300) {
-      const data = JSON.parse(response.getContentText());
-      console.log(\`✅ Salesforce operation successful: \${params.operation}\`);
-      return { ...inputData, salesforceResult: data, salesforceSuccess: true };
-    } else {
-      console.error(\`❌ Salesforce API error: \${responseCode}\`);
-      return { ...inputData, salesforceError: \`API error: \${responseCode}\`, salesforceSuccess: false };
+    switch (operation) {
+      case 'query_records':
+        return handleQueryRecords(accessToken, instanceUrl, params, inputData);
+      case 'create_record':
+        return handleCreateRecord(accessToken, instanceUrl, params, inputData);
+      case 'update_record':
+        return handleUpdateRecord(accessToken, instanceUrl, params, inputData);
+      case 'delete_record':
+        return handleDeleteRecord(accessToken, instanceUrl, params, inputData);
+      case 'get_record':
+        return handleGetRecord(accessToken, instanceUrl, params, inputData);
+      case 'upsert_record':
+        return handleUpsertRecord(accessToken, instanceUrl, params, inputData);
+      case 'execute_apex':
+        return handleExecuteApex(accessToken, instanceUrl, params, inputData);
+      case 'test_connection':
+        return handleSalesforceTestConnection(accessToken, instanceUrl, params, inputData);
+      case 'record_created':
+      case 'record_updated':
+        return handleSalesforceTrigger(accessToken, instanceUrl, params, inputData);
+      case 'create_lead':
+        return handleCreateLead(accessToken, instanceUrl, params, inputData);
+      case 'create_contact':
+        return handleCreateContact(accessToken, instanceUrl, params, inputData);
+      case 'create_opportunity':
+        return handleCreateOpportunity(accessToken, instanceUrl, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Salesforce operation: \${operation}\`);
+        return { ...inputData, salesforceWarning: \`Unsupported operation: \${operation}\` };
     }
     
   } catch (error) {
-    console.error('❌ Salesforce action failed:', error);
+    console.error(\`❌ Salesforce \${operation} failed:\`, error);
     return { ...inputData, salesforceError: error.toString(), salesforceSuccess: false };
+  }
+}
+
+function handleQueryRecords(accessToken, instanceUrl, params, inputData) {
+  const soql = params.soql || params.query || 'SELECT Id, Name FROM Account LIMIT 10';
+  const endpoint = \`/services/data/v58.0/query/?q=\${encodeURIComponent(soql)}\`;
+  
+  const response = UrlFetchApp.fetch(instanceUrl + endpoint, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Salesforce query returned \${data.totalSize} records\`);
+    return { ...inputData, salesforceRecords: data.records, totalSize: data.totalSize, done: data.done };
+  } else {
+    throw new Error(\`Query failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateRecord(accessToken, instanceUrl, params, inputData) {
+  const sobjectType = params.sobjectType || params.objectType || 'Lead';
+  const fields = params.fields || {};
+  
+  const endpoint = \`/services/data/v58.0/sobjects/\${sobjectType}/\`;
+  
+  const response = UrlFetchApp.fetch(instanceUrl + endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(fields)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Salesforce \${sobjectType} record: \${data.id}\`);
+    return { ...inputData, salesforceCreated: true, recordId: data.id, sobjectType: sobjectType };
+  } else {
+    throw new Error(\`Create failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleUpdateRecord(accessToken, instanceUrl, params, inputData) {
+  const sobjectType = params.sobjectType || params.objectType || 'Lead';
+  const recordId = params.recordId || params.id;
+  const fields = params.fields || {};
+  
+  if (!recordId) {
+    throw new Error('Record ID is required for update');
+  }
+  
+  const endpoint = \`/services/data/v58.0/sobjects/\${sobjectType}/\${recordId}\`;
+  
+  const response = UrlFetchApp.fetch(instanceUrl + endpoint, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(fields)
+  });
+  
+  if (response.getResponseCode() === 204) {
+    console.log(\`✅ Updated Salesforce \${sobjectType} record: \${recordId}\`);
+    return { ...inputData, salesforceUpdated: true, recordId: recordId, sobjectType: sobjectType };
+  } else {
+    throw new Error(\`Update failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleDeleteRecord(accessToken, instanceUrl, params, inputData) {
+  const sobjectType = params.sobjectType || params.objectType || 'Lead';
+  const recordId = params.recordId || params.id;
+  
+  if (!recordId) {
+    throw new Error('Record ID is required for deletion');
+  }
+  
+  const endpoint = \`/services/data/v58.0/sobjects/\${sobjectType}/\${recordId}\`;
+  
+  const response = UrlFetchApp.fetch(instanceUrl + endpoint, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`
+    }
+  });
+  
+  if (response.getResponseCode() === 204) {
+    console.log(\`✅ Deleted Salesforce \${sobjectType} record: \${recordId}\`);
+    return { ...inputData, salesforceDeleted: true, recordId: recordId, sobjectType: sobjectType };
+  } else {
+    throw new Error(\`Delete failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleGetRecord(accessToken, instanceUrl, params, inputData) {
+  const sobjectType = params.sobjectType || params.objectType || 'Lead';
+  const recordId = params.recordId || params.id;
+  const fields = params.fields ? params.fields.join(',') : null;
+  
+  if (!recordId) {
+    throw new Error('Record ID is required');
+  }
+  
+  let endpoint = \`/services/data/v58.0/sobjects/\${sobjectType}/\${recordId}\`;
+  if (fields) {
+    endpoint += \`?fields=\${fields}\`;
+  }
+  
+  const response = UrlFetchApp.fetch(instanceUrl + endpoint, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Retrieved Salesforce \${sobjectType} record: \${recordId}\`);
+    return { ...inputData, salesforceRecord: data, recordId: recordId, sobjectType: sobjectType };
+  } else {
+    throw new Error(\`Get record failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateLead(accessToken, instanceUrl, params, inputData) {
+  const leadData = {
+    FirstName: params.firstName || params.first_name || inputData.firstName || inputData.first_name || '',
+    LastName: params.lastName || params.last_name || inputData.lastName || inputData.last_name || 'Unknown',
+    Email: params.email || inputData.email || '',
+    Company: params.company || inputData.company || 'Unknown Company',
+    Phone: params.phone || inputData.phone || '',
+    LeadSource: params.leadSource || params.lead_source || 'Website',
+    Status: params.status || 'Open - Not Contacted',
+    Description: params.description || params.notes || ''
+  };
+  
+  const response = UrlFetchApp.fetch(instanceUrl + '/services/data/v58.0/sobjects/Lead/', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(leadData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Salesforce Lead: \${data.id}\`);
+    return { ...inputData, salesforceLeadCreated: true, leadId: data.id, leadData: leadData };
+  } else {
+    throw new Error(\`Create lead failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateContact(accessToken, instanceUrl, params, inputData) {
+  const contactData = {
+    FirstName: params.firstName || params.first_name || inputData.firstName || inputData.first_name || '',
+    LastName: params.lastName || params.last_name || inputData.lastName || inputData.last_name || 'Unknown',
+    Email: params.email || inputData.email || '',
+    Phone: params.phone || inputData.phone || '',
+    AccountId: params.accountId || params.account_id || null,
+    Description: params.description || params.notes || ''
+  };
+  
+  const response = UrlFetchApp.fetch(instanceUrl + '/services/data/v58.0/sobjects/Contact/', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(contactData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Salesforce Contact: \${data.id}\`);
+    return { ...inputData, salesforceContactCreated: true, contactId: data.id, contactData: contactData };
+  } else {
+    throw new Error(\`Create contact failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleSalesforceTestConnection(accessToken, instanceUrl, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(instanceUrl + '/services/data/', {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Salesforce connection test successful. Available versions: \${data.length}\`);
+      return { ...inputData, connectionTest: 'success', availableVersions: data.length, instanceUrl: instanceUrl };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Salesforce connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleSalesforceTrigger(accessToken, instanceUrl, params, inputData) {
+  // Simulate record monitoring by querying recent records
+  const sobjectType = params.sobjectType || 'Lead';
+  const timeFilter = params.timeFilter || 'LAST_N_DAYS:1';
+  
+  const soql = \`SELECT Id, Name, CreatedDate FROM \${sobjectType} WHERE CreatedDate >= \${timeFilter} ORDER BY CreatedDate DESC LIMIT 10\`;
+  const endpoint = \`/services/data/v58.0/query/?q=\${encodeURIComponent(soql)}\`;
+  
+  try {
+    const response = UrlFetchApp.fetch(instanceUrl + endpoint, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`📊 Salesforce trigger found \${data.totalSize} recent \${sobjectType} records\`);
+      return { ...inputData, salesforceTrigger: data.records, triggerCount: data.totalSize };
+    } else {
+      throw new Error(\`Trigger query failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Salesforce trigger failed:', error);
+    return { ...inputData, salesforceTriggerError: error.toString() };
   }
 }`;
 }
 
-function generateJiraActionFunction(functionName: string, node: WorkflowNode): string {
+// Comprehensive Jira implementation
+function generateJiraEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_issue';
+  
   return `
 function ${functionName}(inputData, params) {
-  console.log('🎯 Executing Jira action: ${node.name || 'Jira Operation'}');
+  console.log('🎯 Executing Jira: ${node.name || operation}');
   
+  const operation = params.operation || '${operation}';
   const baseUrl = PropertiesService.getScriptProperties().getProperty('JIRA_BASE_URL');
   const email = PropertiesService.getScriptProperties().getProperty('JIRA_EMAIL');
   const apiToken = PropertiesService.getScriptProperties().getProperty('JIRA_API_TOKEN');
@@ -806,118 +2407,597 @@ function ${functionName}(inputData, params) {
   }
   
   try {
-    let endpoint = '';
-    let method = 'GET';
-    let payload = null;
-    
-    // Handle different Jira operations
-    if (params.operation === 'create_issue') {
-      endpoint = '/rest/api/3/issue';
-      method = 'POST';
-      payload = {
-        fields: {
-          project: { key: params.project_key || 'PROJ' },
-          summary: params.summary || 'New Issue',
-          description: params.description || '',
-          issuetype: { name: params.issue_type || 'Task' },
-          assignee: params.assignee ? { name: params.assignee } : null
-        }
-      };
-    } else if (params.operation === 'get_issue') {
-      endpoint = \`/rest/api/3/issue/\${params.issue_key}\`;
-      method = 'GET';
-    } else if (params.operation === 'search_issues') {
-      endpoint = \`/rest/api/3/search?jql=\${encodeURIComponent(params.jql || 'project = PROJ')}\`;
-      method = 'GET';
-    }
-    
-    const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
-    const options = {
-      method: method,
-      headers: {
-        'Authorization': \`Basic \${auth}\`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    };
-    
-    if (payload) {
-      options.payload = JSON.stringify(payload);
-    }
-    
-    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode >= 200 && responseCode < 300) {
-      const data = JSON.parse(response.getContentText());
-      console.log(\`✅ Jira operation successful: \${params.operation}\`);
-      return { ...inputData, jiraResult: data, jiraSuccess: true };
-    } else {
-      console.error(\`❌ Jira API error: \${responseCode}\`);
-      return { ...inputData, jiraError: \`API error: \${responseCode}\`, jiraSuccess: false };
+    switch (operation) {
+      case 'create_issue':
+        return handleCreateIssue(baseUrl, email, apiToken, params, inputData);
+      case 'update_issue':
+        return handleUpdateIssue(baseUrl, email, apiToken, params, inputData);
+      case 'get_issue':
+        return handleGetIssue(baseUrl, email, apiToken, params, inputData);
+      case 'search_issues':
+        return handleSearchIssues(baseUrl, email, apiToken, params, inputData);
+      case 'add_comment':
+        return handleAddComment(baseUrl, email, apiToken, params, inputData);
+      case 'transition_issue':
+        return handleTransitionIssue(baseUrl, email, apiToken, params, inputData);
+      case 'assign_issue':
+        return handleAssignIssue(baseUrl, email, apiToken, params, inputData);
+      case 'create_project':
+        return handleCreateProject(baseUrl, email, apiToken, params, inputData);
+      case 'get_project':
+        return handleGetProject(baseUrl, email, apiToken, params, inputData);
+      case 'list_projects':
+        return handleListProjects(baseUrl, email, apiToken, params, inputData);
+      case 'create_version':
+        return handleCreateVersion(baseUrl, email, apiToken, params, inputData);
+      case 'test_connection':
+        return handleJiraTestConnection(baseUrl, email, apiToken, params, inputData);
+      case 'issue_created':
+      case 'issue_updated':
+        return handleJiraTrigger(baseUrl, email, apiToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Jira operation: \${operation}\`);
+        return { ...inputData, jiraWarning: \`Unsupported operation: \${operation}\` };
     }
     
   } catch (error) {
-    console.error('❌ Jira action failed:', error);
+    console.error(\`❌ Jira \${operation} failed:\`, error);
     return { ...inputData, jiraError: error.toString(), jiraSuccess: false };
   }
-}`;
 }
 
-function generateFormsActionFunction(functionName: string, node: WorkflowNode): string {
-  return `
-function ${functionName}(inputData, params) {
-  console.log('📝 Executing Forms action: ${node.name || 'Form Operation'}');
+function handleCreateIssue(baseUrl, email, apiToken, params, inputData) {
+  const issueData = {
+    fields: {
+      project: { key: params.projectKey || params.project_key || 'PROJ' },
+      summary: params.summary || params.title || 'New Issue from Automation',
+      description: params.description || params.body || '',
+      issuetype: { name: params.issueType || params.issue_type || 'Task' },
+      priority: params.priority ? { name: params.priority } : undefined,
+      assignee: params.assignee ? { name: params.assignee } : null,
+      labels: params.labels ? (Array.isArray(params.labels) ? params.labels : [params.labels]) : [],
+      customfield_10000: params.customFields || null // Epic Link or other custom fields
+    }
+  };
+  
+  const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+  const response = UrlFetchApp.fetch(baseUrl + '/rest/api/3/issue', {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(issueData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Jira issue: \${data.key}\`);
+    return { ...inputData, jiraIssueCreated: true, issueKey: data.key, issueId: data.id };
+  } else {
+    throw new Error(\`Create issue failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleUpdateIssue(baseUrl, email, apiToken, params, inputData) {
+  const issueKey = params.issueKey || params.issue_key;
+  const fields = params.fields || {};
+  
+  if (!issueKey) {
+    throw new Error('Issue key is required for update');
+  }
+  
+  const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+  const response = UrlFetchApp.fetch(baseUrl + \`/rest/api/3/issue/\${issueKey}\`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({ fields: fields })
+  });
+  
+  if (response.getResponseCode() === 204) {
+    console.log(\`✅ Updated Jira issue: \${issueKey}\`);
+    return { ...inputData, jiraIssueUpdated: true, issueKey: issueKey };
+  } else {
+    throw new Error(\`Update issue failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleGetIssue(baseUrl, email, apiToken, params, inputData) {
+  const issueKey = params.issueKey || params.issue_key;
+  
+  if (!issueKey) {
+    throw new Error('Issue key is required');
+  }
+  
+  const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+  const response = UrlFetchApp.fetch(baseUrl + \`/rest/api/3/issue/\${issueKey}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Retrieved Jira issue: \${data.key}\`);
+    return { ...inputData, jiraIssue: data, issueKey: data.key, summary: data.fields.summary };
+  } else {
+    throw new Error(\`Get issue failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleSearchIssues(baseUrl, email, apiToken, params, inputData) {
+  const jql = params.jql || params.query || 'project = PROJ ORDER BY created DESC';
+  const maxResults = params.maxResults || 50;
+  
+  const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+  const response = UrlFetchApp.fetch(baseUrl + \`/rest/api/3/search?\` + 
+    \`jql=\${encodeURIComponent(jql)}&maxResults=\${maxResults}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Found \${data.total} Jira issues matching query\`);
+    return { ...inputData, jiraIssues: data.issues, total: data.total, jql: jql };
+  } else {
+    throw new Error(\`Search failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleAddComment(baseUrl, email, apiToken, params, inputData) {
+  const issueKey = params.issueKey || params.issue_key;
+  const comment = params.comment || params.body || 'Comment from automation';
+  
+  if (!issueKey) {
+    throw new Error('Issue key is required for comment');
+  }
+  
+  const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+  const response = UrlFetchApp.fetch(baseUrl + \`/rest/api/3/issue/\${issueKey}/comment\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      body: {
+        type: 'doc',
+        version: 1,
+        content: [{
+          type: 'paragraph',
+          content: [{
+            type: 'text',
+            text: comment
+          }]
+        }]
+      }
+    })
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Added comment to Jira issue: \${issueKey}\`);
+    return { ...inputData, jiraCommentAdded: true, commentId: data.id, issueKey: issueKey };
+  } else {
+    throw new Error(\`Add comment failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleJiraTestConnection(baseUrl, email, apiToken, params, inputData) {
+  try {
+    const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+    const response = UrlFetchApp.fetch(baseUrl + '/rest/api/3/myself', {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Basic \${auth}\`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Jira connection test successful. User: \${data.displayName}\`);
+      return { ...inputData, connectionTest: 'success', userDisplayName: data.displayName, userEmail: data.emailAddress };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Jira connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleJiraTrigger(baseUrl, email, apiToken, params, inputData) {
+  // Simulate issue monitoring by searching for recent issues
+  const projectKey = params.projectKey || params.project_key || '';
+  const timeFilter = params.timeFilter || 'created >= -1d';
+  const jql = projectKey ? 
+    \`project = \${projectKey} AND \${timeFilter} ORDER BY created DESC\` :
+    \`\${timeFilter} ORDER BY created DESC\`;
   
   try {
-    // Handle form triggers (Google Forms integration)
-    if (params.operation === 'get_responses') {
-      const formId = params.formId;
-      if (!formId) {
-        throw new Error('Form ID is required');
+    const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+    const response = UrlFetchApp.fetch(baseUrl + \`/rest/api/3/search?jql=\${encodeURIComponent(jql)}&maxResults=10\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Basic \${auth}\`,
+        'Accept': 'application/json'
       }
-      
-      const form = FormApp.openById(formId);
-      const responses = form.getResponses();
-      const formData = [];
-      
-      responses.forEach(response => {
-        const itemResponses = response.getItemResponses();
-        const responseData = {
-          id: response.getId(),
-          timestamp: response.getTimestamp(),
-          respondentEmail: response.getRespondentEmail(),
-          answers: {}
-        };
-        
-        itemResponses.forEach(itemResponse => {
-          const question = itemResponse.getItem().getTitle();
-          responseData.answers[question] = itemResponse.getResponse();
-        });
-        
-        formData.push(responseData);
-      });
-      
-      console.log(\`✅ Retrieved \${formData.length} form responses\`);
-      return { ...inputData, formResponses: formData, formSuccess: true };
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`🎯 Jira trigger found \${data.total} recent issues\`);
+      return { ...inputData, jiraTrigger: data.issues, triggerCount: data.total };
+    } else {
+      throw new Error(\`Trigger search failed: \${response.getResponseCode()}\`);
     }
-    
-    // Default form processing
-    return { ...inputData, formProcessed: true };
-    
   } catch (error) {
-    console.error('❌ Forms action failed:', error);
-    return { ...inputData, formError: error.toString(), formSuccess: false };
+    console.error('❌ Jira trigger failed:', error);
+    return { ...inputData, jiraTriggerError: error.toString() };
   }
 }`;
 }
 
-function generateMailchimpActionFunction(functionName: string, node: WorkflowNode): string {
+// Comprehensive Google Forms implementation
+function generateGoogleFormsFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'list_responses';
+  
   return `
 function ${functionName}(inputData, params) {
-  console.log('📧 Executing Mailchimp action: ${node.name || 'Mailchimp Operation'}');
+  console.log('📝 Executing Google Forms: ${node.name || operation}');
   
+  const operation = params.operation || '${operation}';
+  const formId = params.formId;
+  
+  try {
+    switch (operation) {
+      case 'create_form':
+        return handleCreateForm(params, inputData);
+      case 'get_form':
+        return handleGetForm(formId, params, inputData);
+      case 'batch_update':
+        return handleBatchUpdate(formId, params, inputData);
+      case 'add_question':
+        return handleAddQuestion(formId, params, inputData);
+      case 'update_form_info':
+        return handleUpdateFormInfo(formId, params, inputData);
+      case 'delete_item':
+        return handleDeleteItem(formId, params, inputData);
+      case 'list_responses':
+      case 'get_responses':
+        return handleListResponses(formId, params, inputData);
+      case 'get_response':
+        return handleGetResponse(formId, params, inputData);
+      case 'test_connection':
+        return handleFormsTestConnection(params, inputData);
+      case 'form_submit':
+      case 'response_submitted':
+        return handleFormTrigger(formId, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Forms operation: \${operation}\`);
+        return { ...inputData, formsWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Google Forms \${operation} failed:\`, error);
+    return { ...inputData, formsError: error.toString(), formsSuccess: false };
+  }
+}
+
+function handleCreateForm(params, inputData) {
+  const title = params.title || 'New Form';
+  const description = params.description || '';
+  
+  const form = FormApp.create(title);
+  form.setDescription(description);
+  
+  // Set additional properties if provided
+  if (params.collectEmail !== undefined) form.setCollectEmail(params.collectEmail);
+  if (params.allowResponseEdits !== undefined) form.setAllowResponseEdits(params.allowResponseEdits);
+  if (params.confirmationMessage) form.setConfirmationMessage(params.confirmationMessage);
+  
+  console.log(\`✅ Created form: \${title} (\${form.getId()})\`);
+  return { ...inputData, formCreated: true, formId: form.getId(), formTitle: title, formUrl: form.getPublishedUrl() };
+}
+
+function handleGetForm(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  const formData = {
+    id: form.getId(),
+    title: form.getTitle(),
+    description: form.getDescription(),
+    publishedUrl: form.getPublishedUrl(),
+    editUrl: form.getEditUrl(),
+    acceptingResponses: form.isAcceptingResponses(),
+    collectEmail: form.collectsEmail(),
+    allowResponseEdits: form.canEditResponse(),
+    confirmationMessage: form.getConfirmationMessage(),
+    destinationId: form.getDestinationId(),
+    items: form.getItems().map(item => ({
+      id: item.getId(),
+      title: item.getTitle(),
+      type: item.getType().toString(),
+      helpText: item.getHelpText()
+    }))
+  };
+  
+  console.log(\`✅ Retrieved form: \${formData.title}\`);
+  return { ...inputData, formData: formData };
+}
+
+function handleBatchUpdate(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  const requests = params.requests || [];
+  
+  // Process batch update requests (simplified implementation)
+  let updatesApplied = 0;
+  
+  requests.forEach(request => {
+    try {
+      if (request.updateFormInfo) {
+        const info = request.updateFormInfo;
+        if (info.title) form.setTitle(info.title);
+        if (info.description) form.setDescription(info.description);
+        updatesApplied++;
+      }
+    } catch (error) {
+      console.warn('Failed to apply update request:', error);
+    }
+  });
+  
+  console.log(\`✅ Applied \${updatesApplied} batch updates to form\`);
+  return { ...inputData, formUpdated: true, updatesApplied: updatesApplied };
+}
+
+function handleAddQuestion(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  const questionType = params.questionType || params.type || 'TEXT';
+  const title = params.title || params.question || 'New Question';
+  const helpText = params.helpText || params.description || '';
+  const required = params.required !== false;
+  
+  let item;
+  
+  switch (questionType.toUpperCase()) {
+    case 'TEXT':
+      item = form.addTextItem();
+      break;
+    case 'PARAGRAPH_TEXT':
+      item = form.addParagraphTextItem();
+      break;
+    case 'MULTIPLE_CHOICE':
+      item = form.addMultipleChoiceItem();
+      if (params.choices && Array.isArray(params.choices)) {
+        item.setChoiceValues(params.choices);
+      }
+      break;
+    case 'CHECKBOX':
+      item = form.addCheckboxItem();
+      if (params.choices && Array.isArray(params.choices)) {
+        item.setChoiceValues(params.choices);
+      }
+      break;
+    case 'LIST':
+      item = form.addListItem();
+      if (params.choices && Array.isArray(params.choices)) {
+        item.setChoiceValues(params.choices);
+      }
+      break;
+    case 'SCALE':
+      item = form.addScaleItem();
+      if (params.lowerBound) item.setBounds(params.lowerBound, params.upperBound || 5);
+      break;
+    case 'DATE':
+      item = form.addDateItem();
+      break;
+    case 'TIME':
+      item = form.addTimeItem();
+      break;
+    case 'DATETIME':
+      item = form.addDateTimeItem();
+      break;
+    default:
+      item = form.addTextItem();
+  }
+  
+  item.setTitle(title);
+  if (helpText) item.setHelpText(helpText);
+  item.setRequired(required);
+  
+  console.log(\`✅ Added \${questionType} question: \${title}\`);
+  return { ...inputData, questionAdded: true, questionId: item.getId(), questionTitle: title };
+}
+
+function handleUpdateFormInfo(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  
+  if (params.title) form.setTitle(params.title);
+  if (params.description) form.setDescription(params.description);
+  if (params.acceptingResponses !== undefined) form.setAcceptingResponses(params.acceptingResponses);
+  if (params.collectEmail !== undefined) form.setCollectEmail(params.collectEmail);
+  if (params.allowResponseEdits !== undefined) form.setAllowResponseEdits(params.allowResponseEdits);
+  if (params.confirmationMessage) form.setConfirmationMessage(params.confirmationMessage);
+  
+  console.log(\`✅ Updated form info: \${form.getTitle()}\`);
+  return { ...inputData, formUpdated: true, formId: formId };
+}
+
+function handleDeleteItem(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  const itemId = params.itemId || params.questionId;
+  
+  if (!itemId) {
+    throw new Error('Item ID is required for deletion');
+  }
+  
+  const items = form.getItems();
+  const item = items.find(i => i.getId().toString() === itemId.toString());
+  
+  if (!item) {
+    throw new Error(\`Item with ID \${itemId} not found\`);
+  }
+  
+  form.deleteItem(item);
+  
+  console.log(\`✅ Deleted form item: \${itemId}\`);
+  return { ...inputData, itemDeleted: true, deletedItemId: itemId };
+}
+
+function handleListResponses(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  const responses = form.getResponses();
+  const maxResults = params.maxResults || responses.length;
+  
+  const responseData = responses.slice(0, maxResults).map(response => {
+    const itemResponses = response.getItemResponses();
+    const answers = {};
+    
+    itemResponses.forEach(itemResponse => {
+      const question = itemResponse.getItem().getTitle();
+      answers[question] = itemResponse.getResponse();
+    });
+    
+    return {
+      id: response.getId(),
+      timestamp: response.getTimestamp().toISOString(),
+      respondentEmail: response.getRespondentEmail(),
+      answers: answers
+    };
+  });
+  
+  console.log(\`✅ Retrieved \${responseData.length} form responses\`);
+  return { ...inputData, formResponses: responseData, responseCount: responseData.length };
+}
+
+function handleGetResponse(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+  
+  const form = FormApp.openById(formId);
+  const responseId = params.responseId;
+  
+  if (!responseId) {
+    throw new Error('Response ID is required');
+  }
+  
+  const responses = form.getResponses();
+  const response = responses.find(r => r.getId() === responseId);
+  
+  if (!response) {
+    throw new Error(\`Response with ID \${responseId} not found\`);
+  }
+  
+  const itemResponses = response.getItemResponses();
+  const answers = {};
+  
+  itemResponses.forEach(itemResponse => {
+    const question = itemResponse.getItem().getTitle();
+    answers[question] = itemResponse.getResponse();
+  });
+  
+  const responseData = {
+    id: response.getId(),
+    timestamp: response.getTimestamp().toISOString(),
+    respondentEmail: response.getRespondentEmail(),
+    answers: answers
+  };
+  
+  console.log(\`✅ Retrieved specific response: \${responseId}\`);
+  return { ...inputData, formResponse: responseData };
+}
+
+function handleFormsTestConnection(params, inputData) {
+  try {
+    const user = Session.getActiveUser().getEmail();
+    
+    console.log(\`✅ Google Forms connection test successful. User: \${user}\`);
+    return { ...inputData, connectionTest: 'success', userEmail: user };
+  } catch (error) {
+    console.error('❌ Forms connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleFormTrigger(formId, params, inputData) {
+  if (!formId) {
+    throw new Error('Form ID is required for trigger');
+  }
+  
+  const form = FormApp.openById(formId);
+  const responses = form.getResponses();
+  
+  // Get the most recent responses (for trigger simulation)
+  const recentResponses = responses.slice(-5); // Last 5 responses
+  
+  const triggerData = recentResponses.map(response => {
+    const itemResponses = response.getItemResponses();
+    const answers = {};
+    
+    itemResponses.forEach(itemResponse => {
+      const question = itemResponse.getItem().getTitle();
+      answers[question] = itemResponse.getResponse();
+    });
+    
+    return {
+      id: response.getId(),
+      timestamp: response.getTimestamp().toISOString(),
+      respondentEmail: response.getRespondentEmail(),
+      answers: answers,
+      triggeredBy: 'form_submission'
+    };
+  });
+  
+  console.log(\`📝 Form trigger detected \${triggerData.length} recent responses\`);
+  return { ...inputData, formTrigger: triggerData, formId: formId };
+}`;
+}
+
+// Comprehensive Mailchimp implementation
+function generateMailchimpEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'add_subscriber';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📧 Executing Mailchimp: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
   const apiKey = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_API_KEY');
+  
   if (!apiKey) {
     console.warn('⚠️ Mailchimp API key not configured');
     return { ...inputData, mailchimpSkipped: true, error: 'Missing API key' };
@@ -927,66 +3007,129 @@ function ${functionName}(inputData, params) {
     const datacenter = apiKey.split('-')[1];
     const baseUrl = \`https://\${datacenter}.api.mailchimp.com/3.0\`;
     
-    let endpoint = '';
-    let method = 'GET';
-    let payload = null;
-    
-    // Handle different Mailchimp operations
-    if (params.operation === 'add_subscriber') {
-      const listId = params.list_id || params.listId;
-      endpoint = \`/lists/\${listId}/members\`;
-      method = 'POST';
-      payload = {
-        email_address: params.email || inputData.email,
-        status: 'subscribed',
-        merge_fields: {
-          FNAME: params.first_name || inputData.first_name || '',
-          LNAME: params.last_name || inputData.last_name || ''
-        },
-        tags: params.tags ? params.tags.split(',') : []
-      };
-    } else if (params.operation === 'get_lists') {
-      endpoint = '/lists';
-      method = 'GET';
-    }
-    
-    const options = {
-      method: method,
-      headers: {
-        'Authorization': \`apikey \${apiKey}\`,
-        'Content-Type': 'application/json'
-      }
-    };
-    
-    if (payload) {
-      options.payload = JSON.stringify(payload);
-    }
-    
-    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode >= 200 && responseCode < 300) {
-      const data = JSON.parse(response.getContentText());
-      console.log(\`✅ Mailchimp operation successful: \${params.operation}\`);
-      return { ...inputData, mailchimpResult: data, mailchimpSuccess: true };
-    } else {
-      console.error(\`❌ Mailchimp API error: \${responseCode}\`);
-      return { ...inputData, mailchimpError: \`API error: \${responseCode}\`, mailchimpSuccess: false };
+    switch (operation) {
+      case 'add_subscriber':
+      case 'create_member':
+        return handleAddSubscriber(baseUrl, apiKey, params, inputData);
+      case 'update_subscriber':
+        return handleUpdateSubscriber(baseUrl, apiKey, params, inputData);
+      case 'get_subscriber':
+        return handleGetSubscriber(baseUrl, apiKey, params, inputData);
+      case 'remove_subscriber':
+        return handleRemoveSubscriber(baseUrl, apiKey, params, inputData);
+      case 'get_lists':
+      case 'list_audiences':
+        return handleGetLists(baseUrl, apiKey, params, inputData);
+      case 'create_campaign':
+        return handleCreateCampaign(baseUrl, apiKey, params, inputData);
+      case 'send_campaign':
+        return handleSendCampaign(baseUrl, apiKey, params, inputData);
+      case 'test_connection':
+        return handleMailchimpTestConnection(baseUrl, apiKey, params, inputData);
+      case 'subscriber_added':
+      case 'campaign_sent':
+        return handleMailchimpTrigger(baseUrl, apiKey, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Mailchimp operation: \${operation}\`);
+        return { ...inputData, mailchimpWarning: \`Unsupported operation: \${operation}\` };
     }
     
   } catch (error) {
-    console.error('❌ Mailchimp action failed:', error);
+    console.error(\`❌ Mailchimp \${operation} failed:\`, error);
     return { ...inputData, mailchimpError: error.toString(), mailchimpSuccess: false };
+  }
+}
+
+function handleAddSubscriber(baseUrl, apiKey, params, inputData) {
+  const listId = params.listId || params.list_id || params.audienceId;
+  const email = params.email || inputData.email;
+  
+  if (!listId || !email) {
+    throw new Error('List ID and email are required');
+  }
+  
+  const subscriberData = {
+    email_address: email,
+    status: params.status || 'subscribed',
+    merge_fields: {
+      FNAME: params.firstName || params.first_name || inputData.firstName || inputData.first_name || '',
+      LNAME: params.lastName || params.last_name || inputData.lastName || inputData.last_name || ''
+    },
+    interests: params.interests || {},
+    tags: params.tags ? (Array.isArray(params.tags) ? params.tags : params.tags.split(',')) : []
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/lists/\${listId}/members\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`apikey \${apiKey}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(subscriberData)
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Added subscriber to Mailchimp: \${email}\`);
+    return { ...inputData, mailchimpSubscribed: true, subscriberId: data.id, email: email };
+  } else {
+    throw new Error(\`Add subscriber failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleGetLists(baseUrl, apiKey, params, inputData) {
+  const count = params.count || params.limit || 10;
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/lists?count=\${count}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`apikey \${apiKey}\`
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Retrieved \${data.lists.length} Mailchimp lists\`);
+    return { ...inputData, mailchimpLists: data.lists, listCount: data.lists.length };
+  } else {
+    throw new Error(\`Get lists failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleMailchimpTestConnection(baseUrl, apiKey, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/ping\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`apikey \${apiKey}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Mailchimp connection test successful. Account: \${data.account_name}\`);
+      return { ...inputData, connectionTest: 'success', accountName: data.account_name };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Mailchimp connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
   }
 }`;
 }
 
-function generateHubspotActionFunction(functionName: string, node: WorkflowNode): string {
+// Comprehensive HubSpot implementation  
+function generateHubspotEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_contact';
+  
   return `
 function ${functionName}(inputData, params) {
-  console.log('🎯 Executing HubSpot action: ${node.name || 'HubSpot Operation'}');
+  console.log('🎯 Executing HubSpot: ${node.name || operation}');
   
+  const operation = params.operation || '${operation}';
   const accessToken = PropertiesService.getScriptProperties().getProperty('HUBSPOT_ACCESS_TOKEN');
+  
   if (!accessToken) {
     console.warn('⚠️ HubSpot access token not configured');
     return { ...inputData, hubspotSkipped: true, error: 'Missing access token' };
@@ -994,65 +3137,121 @@ function ${functionName}(inputData, params) {
   
   try {
     const baseUrl = 'https://api.hubapi.com';
-    let endpoint = '';
-    let method = 'GET';
-    let payload = null;
     
-    // Handle different HubSpot operations
-    if (params.operation === 'create_contact') {
-      endpoint = '/crm/v3/objects/contacts';
-      method = 'POST';
-      payload = {
-        properties: {
-          firstname: params.first_name || inputData.first_name || '',
-          lastname: params.last_name || inputData.last_name || '',
-          email: params.email || inputData.email || '',
-          company: params.company || inputData.company || '',
-          phone: params.phone || inputData.phone || ''
-        }
-      };
-    } else if (params.operation === 'create_deal') {
-      endpoint = '/crm/v3/objects/deals';
-      method = 'POST';
-      payload = {
-        properties: {
-          dealname: params.deal_name || 'New Deal',
-          amount: params.amount || '0',
-          dealstage: params.deal_stage || 'appointmentscheduled',
-          pipeline: params.pipeline || 'default'
-        }
-      };
-    } else if (params.operation === 'get_contacts') {
-      endpoint = '/crm/v3/objects/contacts';
-      method = 'GET';
-    }
-    
-    const options = {
-      method: method,
-      headers: {
-        'Authorization': \`Bearer \${accessToken}\`,
-        'Content-Type': 'application/json'
-      }
-    };
-    
-    if (payload) {
-      options.payload = JSON.stringify(payload);
-    }
-    
-    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode >= 200 && responseCode < 300) {
-      const data = JSON.parse(response.getContentText());
-      console.log(\`✅ HubSpot operation successful: \${params.operation}\`);
-      return { ...inputData, hubspotResult: data, hubspotSuccess: true };
-    } else {
-      console.error(\`❌ HubSpot API error: \${responseCode}\`);
-      return { ...inputData, hubspotError: \`API error: \${responseCode}\`, hubspotSuccess: false };
+    switch (operation) {
+      case 'create_contact':
+        return handleCreateHubSpotContact(baseUrl, accessToken, params, inputData);
+      case 'update_contact':
+        return handleUpdateHubSpotContact(baseUrl, accessToken, params, inputData);
+      case 'get_contact':
+        return handleGetHubSpotContact(baseUrl, accessToken, params, inputData);
+      case 'search_contacts':
+        return handleSearchHubSpotContacts(baseUrl, accessToken, params, inputData);
+      case 'create_deal':
+        return handleCreateHubSpotDeal(baseUrl, accessToken, params, inputData);
+      case 'update_deal':
+        return handleUpdateHubSpotDeal(baseUrl, accessToken, params, inputData);
+      case 'create_company':
+        return handleCreateHubSpotCompany(baseUrl, accessToken, params, inputData);
+      case 'create_task':
+        return handleCreateHubSpotTask(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleHubSpotTestConnection(baseUrl, accessToken, params, inputData);
+      case 'contact_created':
+      case 'deal_updated':
+        return handleHubSpotTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown HubSpot operation: \${operation}\`);
+        return { ...inputData, hubspotWarning: \`Unsupported operation: \${operation}\` };
     }
     
   } catch (error) {
-    console.error('❌ HubSpot action failed:', error);
+    console.error(\`❌ HubSpot \${operation} failed:\`, error);
     return { ...inputData, hubspotError: error.toString(), hubspotSuccess: false };
   }
+}
+
+function handleCreateHubSpotContact(baseUrl, accessToken, params, inputData) {
+  const contactData = {
+    properties: {
+      firstname: params.firstName || params.first_name || inputData.firstName || inputData.first_name || '',
+      lastname: params.lastName || params.last_name || inputData.lastName || inputData.last_name || '',
+      email: params.email || inputData.email || '',
+      company: params.company || inputData.company || '',
+      phone: params.phone || inputData.phone || '',
+      website: params.website || inputData.website || '',
+      jobtitle: params.jobTitle || params.job_title || inputData.jobTitle || '',
+      lifecyclestage: params.lifecycleStage || 'lead'
+    }
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/crm/v3/objects/contacts\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(contactData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created HubSpot contact: \${data.id}\`);
+    return { ...inputData, hubspotContactCreated: true, contactId: data.id, email: contactData.properties.email };
+  } else {
+    throw new Error(\`Create contact failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateHubSpotDeal(baseUrl, accessToken, params, inputData) {
+  const dealData = {
+    properties: {
+      dealname: params.dealName || params.deal_name || 'New Deal from Automation',
+      amount: params.amount || '0',
+      dealstage: params.dealStage || params.deal_stage || 'appointmentscheduled',
+      pipeline: params.pipeline || 'default',
+      closedate: params.closeDate || params.close_date || null,
+      dealtype: params.dealType || params.deal_type || 'newbusiness'
+    }
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/crm/v3/objects/deals\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(dealData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created HubSpot deal: \${data.id}\`);
+    return { ...inputData, hubspotDealCreated: true, dealId: data.id, dealName: dealData.properties.dealname };
+  } else {
+    throw new Error(\`Create deal failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleHubSpotTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/crm/v3/owners\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ HubSpot connection test successful. Found \${data.results.length} owners\`);
+      return { ...inputData, connectionTest: 'success', ownerCount: data.results.length };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ HubSpot connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
 }`;
+}
