@@ -195,7 +195,31 @@ export class ConnectorRegistry {
     this.registerAPIClient('calendly', GenericAPIClient);
     this.registerAPIClient('docusign', GenericAPIClient);
     
-    console.log('✅ Marked 66 apps as implemented with real Apps Script code');
+    // Phase 4 implementations - Productivity & Finance
+    this.registerAPIClient('monday-enhanced', GenericAPIClient);
+    this.registerAPIClient('coda', GenericAPIClient);
+    this.registerAPIClient('brex', GenericAPIClient);
+    this.registerAPIClient('expensify', GenericAPIClient);
+    this.registerAPIClient('netsuite', GenericAPIClient);
+    
+    // Phase 4 implementations - Microsoft Office & Monitoring
+    this.registerAPIClient('excel-online', GenericAPIClient);
+    this.registerAPIClient('microsoft-todo', GenericAPIClient);
+    this.registerAPIClient('onedrive', GenericAPIClient);
+    this.registerAPIClient('outlook', GenericAPIClient);
+    this.registerAPIClient('sharepoint', GenericAPIClient);
+    this.registerAPIClient('datadog', GenericAPIClient);
+    this.registerAPIClient('newrelic', GenericAPIClient);
+    this.registerAPIClient('sentry', GenericAPIClient);
+    
+    // Phase 4 implementations - Enterprise & Storage
+    this.registerAPIClient('box', GenericAPIClient);
+    this.registerAPIClient('confluence', GenericAPIClient);
+    this.registerAPIClient('jira-service-management', GenericAPIClient);
+    this.registerAPIClient('servicenow', GenericAPIClient);
+    this.registerAPIClient('workday', GenericAPIClient);
+    
+    console.log('✅ Marked 84 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }

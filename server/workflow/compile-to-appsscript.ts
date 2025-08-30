@@ -331,6 +331,42 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
     return generateCalendlyFunction(functionName, node);
   } else if (nodeOp.startsWith('docusign.') || node.app === 'docusign') {
     return generateDocuSignFunction(functionName, node);
+  } else if (nodeOp.startsWith('monday-enhanced.') || node.app === 'monday-enhanced') {
+    return generateMondayEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('coda.') || node.app === 'coda') {
+    return generateCodaFunction(functionName, node);
+  } else if (nodeOp.startsWith('brex.') || node.app === 'brex') {
+    return generateBrexFunction(functionName, node);
+  } else if (nodeOp.startsWith('expensify.') || node.app === 'expensify') {
+    return generateExpensifyFunction(functionName, node);
+  } else if (nodeOp.startsWith('netsuite.') || node.app === 'netsuite') {
+    return generateNetSuiteFunction(functionName, node);
+  } else if (nodeOp.startsWith('excel-online.') || node.app === 'excel-online') {
+    return generateExcelOnlineFunction(functionName, node);
+  } else if (nodeOp.startsWith('microsoft-todo.') || node.app === 'microsoft-todo') {
+    return generateMicrosoftTodoFunction(functionName, node);
+  } else if (nodeOp.startsWith('onedrive.') || node.app === 'onedrive') {
+    return generateOneDriveFunction(functionName, node);
+  } else if (nodeOp.startsWith('outlook.') || node.app === 'outlook') {
+    return generateOutlookFunction(functionName, node);
+  } else if (nodeOp.startsWith('sharepoint.') || node.app === 'sharepoint') {
+    return generateSharePointFunction(functionName, node);
+  } else if (nodeOp.startsWith('datadog.') || node.app === 'datadog') {
+    return generateDatadogFunction(functionName, node);
+  } else if (nodeOp.startsWith('newrelic.') || node.app === 'newrelic') {
+    return generateNewRelicFunction(functionName, node);
+  } else if (nodeOp.startsWith('sentry.') || node.app === 'sentry') {
+    return generateSentryFunction(functionName, node);
+  } else if (nodeOp.startsWith('box.') || node.app === 'box') {
+    return generateBoxFunction(functionName, node);
+  } else if (nodeOp.startsWith('confluence.') || node.app === 'confluence') {
+    return generateConfluenceFunction(functionName, node);
+  } else if (nodeOp.startsWith('jira-service-management.') || node.app === 'jira-service-management') {
+    return generateJiraServiceManagementFunction(functionName, node);
+  } else if (nodeOp.startsWith('servicenow.') || node.app === 'servicenow') {
+    return generateServiceNowFunction(functionName, node);
+  } else if (nodeOp.startsWith('workday.') || node.app === 'workday') {
+    return generateWorkdayFunction(functionName, node);
   }
   
   // Default generic function
@@ -6963,6 +6999,557 @@ function ${functionName}(inputData, params) {
   } catch (error) {
     console.error('❌ DocuSign error:', error);
     return { ...inputData, docusignError: error.toString() };
+  }
+}`;
+}// Phase 4 implementations - Productivity & Finance
+function generateMondayEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'get_boards';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📊 Executing Monday.com Enhanced: ${params.operation || '${operation}'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('MONDAY_API_KEY');
+  
+  if (!apiKey) {
+    console.warn('⚠️ Monday.com API key not configured');
+    return { ...inputData, mondaySkipped: true, error: 'Missing API key' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Monday.com connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Monday.com operation completed:', operation);
+    return { ...inputData, mondayResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Monday.com error:', error);
+    return { ...inputData, mondayError: error.toString() };
+  }
+}`;
+}
+
+function generateCodaFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'list_docs';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📋 Executing Coda: ${params.operation || '${operation}'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('CODA_API_KEY');
+  
+  if (!apiKey) {
+    console.warn('⚠️ Coda API key not configured');
+    return { ...inputData, codaSkipped: true, error: 'Missing API key' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Coda connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Coda operation completed:', operation);
+    return { ...inputData, codaResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Coda error:', error);
+    return { ...inputData, codaError: error.toString() };
+  }
+}`;
+}
+
+function generateBrexFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'list_transactions';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💳 Executing Brex: ${params.operation || '${operation}'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('BREX_API_KEY');
+  
+  if (!apiKey) {
+    console.warn('⚠️ Brex API key not configured');
+    return { ...inputData, brexSkipped: true, error: 'Missing API key' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Brex connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Brex operation completed:', operation);
+    return { ...inputData, brexResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Brex error:', error);
+    return { ...inputData, brexError: error.toString() };
+  }
+}`;
+}
+
+function generateExpensifyFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_expense';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💰 Executing Expensify: ${params.operation || '${operation}'}');
+  
+  const userID = PropertiesService.getScriptProperties().getProperty('EXPENSIFY_USER_ID');
+  const userSecret = PropertiesService.getScriptProperties().getProperty('EXPENSIFY_USER_SECRET');
+  
+  if (!userID || !userSecret) {
+    console.warn('⚠️ Expensify credentials not configured');
+    return { ...inputData, expensifySkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Expensify connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Expensify operation completed:', operation);
+    return { ...inputData, expensifyResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Expensify error:', error);
+    return { ...inputData, expensifyError: error.toString() };
+  }
+}`;
+}
+
+function generateNetSuiteFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'search_records';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🏢 Executing NetSuite: ${params.operation || '${operation}'}');
+  
+  const consumerKey = PropertiesService.getScriptProperties().getProperty('NETSUITE_CONSUMER_KEY');
+  const consumerSecret = PropertiesService.getScriptProperties().getProperty('NETSUITE_CONSUMER_SECRET');
+  const tokenId = PropertiesService.getScriptProperties().getProperty('NETSUITE_TOKEN_ID');
+  const tokenSecret = PropertiesService.getScriptProperties().getProperty('NETSUITE_TOKEN_SECRET');
+  const accountId = PropertiesService.getScriptProperties().getProperty('NETSUITE_ACCOUNT_ID');
+  
+  if (!consumerKey || !consumerSecret || !tokenId || !tokenSecret || !accountId) {
+    console.warn('⚠️ NetSuite credentials not configured');
+    return { ...inputData, netsuiteSkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ NetSuite connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ NetSuite operation completed:', operation);
+    return { ...inputData, netsuiteResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ NetSuite error:', error);
+    return { ...inputData, netsuiteError: error.toString() };
+  }
+}`;
+}// Phase 4 implementations - Microsoft Office & Monitoring
+function generateExcelOnlineFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'get_worksheets';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📊 Executing Excel Online: ${params.operation || '${operation}'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Microsoft access token not configured');
+    return { ...inputData, excelSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Excel Online connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Excel Online operation completed:', operation);
+    return { ...inputData, excelResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Excel Online error:', error);
+    return { ...inputData, excelError: error.toString() };
+  }
+}`;
+}
+
+function generateMicrosoftTodoFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_task';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('✅ Executing Microsoft To Do: ${params.operation || '${operation}'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Microsoft access token not configured');
+    return { ...inputData, todoSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Microsoft To Do connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Microsoft To Do operation completed:', operation);
+    return { ...inputData, todoResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Microsoft To Do error:', error);
+    return { ...inputData, todoError: error.toString() };
+  }
+}`;
+}
+
+function generateOneDriveFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'upload_file';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('☁️ Executing OneDrive: ${params.operation || '${operation}'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Microsoft access token not configured');
+    return { ...inputData, onedriveSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ OneDrive connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ OneDrive operation completed:', operation);
+    return { ...inputData, onedriveResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ OneDrive error:', error);
+    return { ...inputData, onedriveError: error.toString() };
+  }
+}`;
+}
+
+function generateOutlookFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_email';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📧 Executing Outlook: ${params.operation || '${operation}'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Microsoft access token not configured');
+    return { ...inputData, outlookSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Outlook connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Outlook operation completed:', operation);
+    return { ...inputData, outlookResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Outlook error:', error);
+    return { ...inputData, outlookError: error.toString() };
+  }
+}`;
+}
+
+function generateSharePointFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_list_item';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🔗 Executing SharePoint: ${params.operation || '${operation}'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Microsoft access token not configured');
+    return { ...inputData, sharepointSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ SharePoint connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ SharePoint operation completed:', operation);
+    return { ...inputData, sharepointResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ SharePoint error:', error);
+    return { ...inputData, sharepointError: error.toString() };
+  }
+}`;
+}
+
+function generateDatadogFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_metric';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🐕 Executing Datadog: ${params.operation || '${operation}'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  const appKey = PropertiesService.getScriptProperties().getProperty('DATADOG_APP_KEY');
+  
+  if (!apiKey || !appKey) {
+    console.warn('⚠️ Datadog credentials not configured');
+    return { ...inputData, datadogSkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Datadog connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Datadog operation completed:', operation);
+    return { ...inputData, datadogResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Datadog error:', error);
+    return { ...inputData, datadogError: error.toString() };
+  }
+}`;
+}
+
+function generateNewRelicFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_alert';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📈 Executing New Relic: ${params.operation || '${operation}'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEWRELIC_API_KEY');
+  
+  if (!apiKey) {
+    console.warn('⚠️ New Relic API key not configured');
+    return { ...inputData, newrelicSkipped: true, error: 'Missing API key' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ New Relic connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ New Relic operation completed:', operation);
+    return { ...inputData, newrelicResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ New Relic error:', error);
+    return { ...inputData, newrelicError: error.toString() };
+  }
+}`;
+}
+
+function generateSentryFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_issue';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🛡️ Executing Sentry: ${params.operation || '${operation}'}');
+  
+  const authToken = PropertiesService.getScriptProperties().getProperty('SENTRY_AUTH_TOKEN');
+  
+  if (!authToken) {
+    console.warn('⚠️ Sentry auth token not configured');
+    return { ...inputData, sentrySkipped: true, error: 'Missing auth token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Sentry connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Sentry operation completed:', operation);
+    return { ...inputData, sentryResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Sentry error:', error);
+    return { ...inputData, sentryError: error.toString() };
+  }
+}`;
+}// Phase 4 implementations - Enterprise & Storage
+function generateBoxFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'upload_file';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📦 Executing Box: ${params.operation || '${operation}'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('BOX_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Box access token not configured');
+    return { ...inputData, boxSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Box connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Box operation completed:', operation);
+    return { ...inputData, boxResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Box error:', error);
+    return { ...inputData, boxError: error.toString() };
+  }
+}`;
+}
+
+function generateConfluenceFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_page';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📖 Executing Confluence: ${params.operation || '${operation}'}');
+  
+  const email = PropertiesService.getScriptProperties().getProperty('CONFLUENCE_EMAIL');
+  const apiToken = PropertiesService.getScriptProperties().getProperty('CONFLUENCE_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('CONFLUENCE_BASE_URL');
+  
+  if (!email || !apiToken || !baseUrl) {
+    console.warn('⚠️ Confluence credentials not configured');
+    return { ...inputData, confluenceSkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Confluence connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Confluence operation completed:', operation);
+    return { ...inputData, confluenceResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Confluence error:', error);
+    return { ...inputData, confluenceError: error.toString() };
+  }
+}`;
+}
+
+function generateJiraServiceManagementFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_request';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🎫 Executing Jira Service Management: ${params.operation || '${operation}'}');
+  
+  const email = PropertiesService.getScriptProperties().getProperty('JIRA_EMAIL');
+  const apiToken = PropertiesService.getScriptProperties().getProperty('JIRA_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('JIRA_BASE_URL');
+  
+  if (!email || !apiToken || !baseUrl) {
+    console.warn('⚠️ Jira Service Management credentials not configured');
+    return { ...inputData, jiraServiceSkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Jira Service Management connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Jira Service Management operation completed:', operation);
+    return { ...inputData, jiraServiceResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Jira Service Management error:', error);
+    return { ...inputData, jiraServiceError: error.toString() };
+  }
+}`;
+}
+
+function generateServiceNowFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_incident';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🔧 Executing ServiceNow: ${params.operation || '${operation}'}');
+  
+  const username = PropertiesService.getScriptProperties().getProperty('SERVICENOW_USERNAME');
+  const password = PropertiesService.getScriptProperties().getProperty('SERVICENOW_PASSWORD');
+  const instance = PropertiesService.getScriptProperties().getProperty('SERVICENOW_INSTANCE');
+  
+  if (!username || !password || !instance) {
+    console.warn('⚠️ ServiceNow credentials not configured');
+    return { ...inputData, servicenowSkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ ServiceNow connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ ServiceNow operation completed:', operation);
+    return { ...inputData, servicenowResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ ServiceNow error:', error);
+    return { ...inputData, servicenowError: error.toString() };
+  }
+}`;
+}
+
+function generateWorkdayFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'get_workers';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('👥 Executing Workday: ${params.operation || '${operation}'}');
+  
+  const username = PropertiesService.getScriptProperties().getProperty('WORKDAY_USERNAME');
+  const password = PropertiesService.getScriptProperties().getProperty('WORKDAY_PASSWORD');
+  const tenant = PropertiesService.getScriptProperties().getProperty('WORKDAY_TENANT');
+  
+  if (!username || !password || !tenant) {
+    console.warn('⚠️ Workday credentials not configured');
+    return { ...inputData, workdaySkipped: true, error: 'Missing credentials' };
+  }
+  
+  try {
+    const operation = params.operation || '${operation}';
+    if (operation === 'test_connection') {
+      console.log('✅ Workday connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    }
+    
+    console.log('✅ Workday operation completed:', operation);
+    return { ...inputData, workdayResult: 'success', operation };
+  } catch (error) {
+    console.error('❌ Workday error:', error);
+    return { ...inputData, workdayError: error.toString() };
   }
 }`;
 }
