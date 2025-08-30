@@ -219,7 +219,17 @@ export class ConnectorRegistry {
     this.registerAPIClient('servicenow', GenericAPIClient);
     this.registerAPIClient('workday', GenericAPIClient);
     
-    console.log('✅ Marked 84 apps as implemented with real Apps Script code');
+    // Phase 5 implementations - Database & Analytics
+    this.registerAPIClient('bigquery', GenericAPIClient);
+    this.registerAPIClient('snowflake', GenericAPIClient);
+    this.registerAPIClient('gmail-enhanced', GenericAPIClient);
+    this.registerAPIClient('braze', GenericAPIClient);
+    this.registerAPIClient('okta', GenericAPIClient);
+    this.registerAPIClient('intercom', GenericAPIClient);
+    this.registerAPIClient('adobesign', GenericAPIClient);
+    this.registerAPIClient('egnyte', GenericAPIClient);
+    
+    console.log('✅ Marked 92 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }
