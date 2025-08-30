@@ -136,7 +136,12 @@ export const requirePlan = (plans: string[]) => {
  */
 export const checkQuota = (apiCalls: number = 1, tokens: number = 0) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    // Skip quota check for unauthenticated users in development
     if (!req.user) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ Skipping quota check for unauthenticated dev user');
+        return next();
+      }
       return res.status(401).json({
         success: false,
         error: 'Authentication required'

@@ -354,6 +354,31 @@ export class ProductionLLMOrchestrator {
       }
     }
     
+    // Fallback to environment variables for development/demo
+    if (process.env.GEMINI_API_KEY) {
+      return {
+        provider: 'gemini',
+        credentials: { apiKey: process.env.GEMINI_API_KEY },
+        isActive: true
+      };
+    }
+    
+    if (process.env.OPENAI_API_KEY) {
+      return {
+        provider: 'openai',
+        credentials: { apiKey: process.env.OPENAI_API_KEY },
+        isActive: true
+      };
+    }
+    
+    if (process.env.CLAUDE_API_KEY) {
+      return {
+        provider: 'claude',
+        credentials: { apiKey: process.env.CLAUDE_API_KEY },
+        isActive: true
+      };
+    }
+    
     return null;
   }
 

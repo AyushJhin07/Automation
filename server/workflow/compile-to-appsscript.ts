@@ -235,6 +235,18 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
     return generateTimeTriggerFunction(functionName, node);
   } else if (nodeOp.startsWith('system.') || node.app === 'system') {
     return generateSystemActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('shopify.') || node.app === 'shopify') {
+    return generateShopifyActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('salesforce.') || node.app === 'salesforce') {
+    return generateSalesforceActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('jira.') || node.app === 'jira') {
+    return generateJiraActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('forms.') || node.app === 'forms') {
+    return generateFormsActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('mailchimp.') || node.app === 'mailchimp') {
+    return generateMailchimpActionFunction(functionName, node);
+  } else if (nodeOp.startsWith('hubspot.') || node.app === 'hubspot') {
+    return generateHubspotActionFunction(functionName, node);
   }
   
   // Default generic function
@@ -620,3 +632,427 @@ async function ${functionName}(inputData, params) {
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+// Popular app implementations
+
+function generateShopifyActionFunction(functionName: string, node: WorkflowNode): string {
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🛍️ Executing Shopify action: ${node.name || 'Shopify Operation'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('SHOPIFY_API_KEY');
+  const shopDomain = PropertiesService.getScriptProperties().getProperty('SHOPIFY_SHOP_DOMAIN');
+  const apiVersion = '2023-07';
+  
+  if (!apiKey || !shopDomain) {
+    console.warn('⚠️ Shopify API credentials not configured');
+    return { ...inputData, shopifySkipped: true, error: 'Missing API credentials' };
+  }
+  
+  try {
+    const baseUrl = \`https://\${shopDomain}.myshopify.com/admin/api/\${apiVersion}\`;
+    let endpoint = '';
+    let method = 'GET';
+    let payload = null;
+    
+    // Handle different Shopify operations
+    if (params.operation === 'create_product') {
+      endpoint = '/products.json';
+      method = 'POST';
+      payload = {
+        product: {
+          title: params.title || 'New Product',
+          body_html: params.description || '',
+          vendor: params.vendor || '',
+          product_type: params.product_type || '',
+          tags: params.tags || ''
+        }
+      };
+    } else if (params.operation === 'get_orders') {
+      endpoint = '/orders.json';
+      method = 'GET';
+    } else if (params.operation === 'create_customer') {
+      endpoint = '/customers.json';
+      method = 'POST';
+      payload = {
+        customer: {
+          first_name: params.first_name || '',
+          last_name: params.last_name || '',
+          email: params.email || '',
+          phone: params.phone || '',
+          accepts_marketing: params.accepts_marketing || false
+        }
+      };
+    }
+    
+    const options = {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': apiKey
+      }
+    };
+    
+    if (payload) {
+      options.payload = JSON.stringify(payload);
+    }
+    
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode >= 200 && responseCode < 300) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Shopify operation successful: \${params.operation}\`);
+      return { ...inputData, shopifyResult: data, shopifySuccess: true };
+    } else {
+      console.error(\`❌ Shopify API error: \${responseCode}\`);
+      return { ...inputData, shopifyError: \`API error: \${responseCode}\`, shopifySuccess: false };
+    }
+    
+  } catch (error) {
+    console.error('❌ Shopify action failed:', error);
+    return { ...inputData, shopifyError: error.toString(), shopifySuccess: false };
+  }
+}`;
+}
+
+function generateSalesforceActionFunction(functionName: string, node: WorkflowNode): string {
+  return `
+function ${functionName}(inputData, params) {
+  console.log('☁️ Executing Salesforce action: ${node.name || 'Salesforce Operation'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('SALESFORCE_ACCESS_TOKEN');
+  const instanceUrl = PropertiesService.getScriptProperties().getProperty('SALESFORCE_INSTANCE_URL');
+  
+  if (!accessToken || !instanceUrl) {
+    console.warn('⚠️ Salesforce credentials not configured');
+    return { ...inputData, salesforceSkipped: true, error: 'Missing OAuth credentials' };
+  }
+  
+  try {
+    let endpoint = '';
+    let method = 'GET';
+    let payload = null;
+    
+    // Handle different Salesforce operations
+    if (params.operation === 'create_lead') {
+      endpoint = '/services/data/v58.0/sobjects/Lead/';
+      method = 'POST';
+      payload = {
+        FirstName: params.first_name || '',
+        LastName: params.last_name || '',
+        Email: params.email || '',
+        Company: params.company || '',
+        LeadSource: params.lead_source || 'Website',
+        Status: params.status || 'Open - Not Contacted'
+      };
+    } else if (params.operation === 'create_contact') {
+      endpoint = '/services/data/v58.0/sobjects/Contact/';
+      method = 'POST';
+      payload = {
+        FirstName: params.first_name || '',
+        LastName: params.last_name || '',
+        Email: params.email || '',
+        AccountId: params.account_id || null
+      };
+    } else if (params.operation === 'query_records') {
+      endpoint = \`/services/data/v58.0/query/?q=\${encodeURIComponent(params.soql || 'SELECT Id FROM Lead LIMIT 10')}\`;
+      method = 'GET';
+    }
+    
+    const options = {
+      method: method,
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'Content-Type': 'application/json'
+      }
+    };
+    
+    if (payload) {
+      options.payload = JSON.stringify(payload);
+    }
+    
+    const response = UrlFetchApp.fetch(instanceUrl + endpoint, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode >= 200 && responseCode < 300) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Salesforce operation successful: \${params.operation}\`);
+      return { ...inputData, salesforceResult: data, salesforceSuccess: true };
+    } else {
+      console.error(\`❌ Salesforce API error: \${responseCode}\`);
+      return { ...inputData, salesforceError: \`API error: \${responseCode}\`, salesforceSuccess: false };
+    }
+    
+  } catch (error) {
+    console.error('❌ Salesforce action failed:', error);
+    return { ...inputData, salesforceError: error.toString(), salesforceSuccess: false };
+  }
+}`;
+}
+
+function generateJiraActionFunction(functionName: string, node: WorkflowNode): string {
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🎯 Executing Jira action: ${node.name || 'Jira Operation'}');
+  
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('JIRA_BASE_URL');
+  const email = PropertiesService.getScriptProperties().getProperty('JIRA_EMAIL');
+  const apiToken = PropertiesService.getScriptProperties().getProperty('JIRA_API_TOKEN');
+  
+  if (!baseUrl || !email || !apiToken) {
+    console.warn('⚠️ Jira credentials not configured');
+    return { ...inputData, jiraSkipped: true, error: 'Missing Jira credentials' };
+  }
+  
+  try {
+    let endpoint = '';
+    let method = 'GET';
+    let payload = null;
+    
+    // Handle different Jira operations
+    if (params.operation === 'create_issue') {
+      endpoint = '/rest/api/3/issue';
+      method = 'POST';
+      payload = {
+        fields: {
+          project: { key: params.project_key || 'PROJ' },
+          summary: params.summary || 'New Issue',
+          description: params.description || '',
+          issuetype: { name: params.issue_type || 'Task' },
+          assignee: params.assignee ? { name: params.assignee } : null
+        }
+      };
+    } else if (params.operation === 'get_issue') {
+      endpoint = \`/rest/api/3/issue/\${params.issue_key}\`;
+      method = 'GET';
+    } else if (params.operation === 'search_issues') {
+      endpoint = \`/rest/api/3/search?jql=\${encodeURIComponent(params.jql || 'project = PROJ')}\`;
+      method = 'GET';
+    }
+    
+    const auth = Utilities.base64Encode(\`\${email}:\${apiToken}\`);
+    const options = {
+      method: method,
+      headers: {
+        'Authorization': \`Basic \${auth}\`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    };
+    
+    if (payload) {
+      options.payload = JSON.stringify(payload);
+    }
+    
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode >= 200 && responseCode < 300) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Jira operation successful: \${params.operation}\`);
+      return { ...inputData, jiraResult: data, jiraSuccess: true };
+    } else {
+      console.error(\`❌ Jira API error: \${responseCode}\`);
+      return { ...inputData, jiraError: \`API error: \${responseCode}\`, jiraSuccess: false };
+    }
+    
+  } catch (error) {
+    console.error('❌ Jira action failed:', error);
+    return { ...inputData, jiraError: error.toString(), jiraSuccess: false };
+  }
+}`;
+}
+
+function generateFormsActionFunction(functionName: string, node: WorkflowNode): string {
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📝 Executing Forms action: ${node.name || 'Form Operation'}');
+  
+  try {
+    // Handle form triggers (Google Forms integration)
+    if (params.operation === 'get_responses') {
+      const formId = params.formId;
+      if (!formId) {
+        throw new Error('Form ID is required');
+      }
+      
+      const form = FormApp.openById(formId);
+      const responses = form.getResponses();
+      const formData = [];
+      
+      responses.forEach(response => {
+        const itemResponses = response.getItemResponses();
+        const responseData = {
+          id: response.getId(),
+          timestamp: response.getTimestamp(),
+          respondentEmail: response.getRespondentEmail(),
+          answers: {}
+        };
+        
+        itemResponses.forEach(itemResponse => {
+          const question = itemResponse.getItem().getTitle();
+          responseData.answers[question] = itemResponse.getResponse();
+        });
+        
+        formData.push(responseData);
+      });
+      
+      console.log(\`✅ Retrieved \${formData.length} form responses\`);
+      return { ...inputData, formResponses: formData, formSuccess: true };
+    }
+    
+    // Default form processing
+    return { ...inputData, formProcessed: true };
+    
+  } catch (error) {
+    console.error('❌ Forms action failed:', error);
+    return { ...inputData, formError: error.toString(), formSuccess: false };
+  }
+}`;
+}
+
+function generateMailchimpActionFunction(functionName: string, node: WorkflowNode): string {
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📧 Executing Mailchimp action: ${node.name || 'Mailchimp Operation'}');
+  
+  const apiKey = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_API_KEY');
+  if (!apiKey) {
+    console.warn('⚠️ Mailchimp API key not configured');
+    return { ...inputData, mailchimpSkipped: true, error: 'Missing API key' };
+  }
+  
+  try {
+    const datacenter = apiKey.split('-')[1];
+    const baseUrl = \`https://\${datacenter}.api.mailchimp.com/3.0\`;
+    
+    let endpoint = '';
+    let method = 'GET';
+    let payload = null;
+    
+    // Handle different Mailchimp operations
+    if (params.operation === 'add_subscriber') {
+      const listId = params.list_id || params.listId;
+      endpoint = \`/lists/\${listId}/members\`;
+      method = 'POST';
+      payload = {
+        email_address: params.email || inputData.email,
+        status: 'subscribed',
+        merge_fields: {
+          FNAME: params.first_name || inputData.first_name || '',
+          LNAME: params.last_name || inputData.last_name || ''
+        },
+        tags: params.tags ? params.tags.split(',') : []
+      };
+    } else if (params.operation === 'get_lists') {
+      endpoint = '/lists';
+      method = 'GET';
+    }
+    
+    const options = {
+      method: method,
+      headers: {
+        'Authorization': \`apikey \${apiKey}\`,
+        'Content-Type': 'application/json'
+      }
+    };
+    
+    if (payload) {
+      options.payload = JSON.stringify(payload);
+    }
+    
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode >= 200 && responseCode < 300) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Mailchimp operation successful: \${params.operation}\`);
+      return { ...inputData, mailchimpResult: data, mailchimpSuccess: true };
+    } else {
+      console.error(\`❌ Mailchimp API error: \${responseCode}\`);
+      return { ...inputData, mailchimpError: \`API error: \${responseCode}\`, mailchimpSuccess: false };
+    }
+    
+  } catch (error) {
+    console.error('❌ Mailchimp action failed:', error);
+    return { ...inputData, mailchimpError: error.toString(), mailchimpSuccess: false };
+  }
+}`;
+}
+
+function generateHubspotActionFunction(functionName: string, node: WorkflowNode): string {
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🎯 Executing HubSpot action: ${node.name || 'HubSpot Operation'}');
+  
+  const accessToken = PropertiesService.getScriptProperties().getProperty('HUBSPOT_ACCESS_TOKEN');
+  if (!accessToken) {
+    console.warn('⚠️ HubSpot access token not configured');
+    return { ...inputData, hubspotSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://api.hubapi.com';
+    let endpoint = '';
+    let method = 'GET';
+    let payload = null;
+    
+    // Handle different HubSpot operations
+    if (params.operation === 'create_contact') {
+      endpoint = '/crm/v3/objects/contacts';
+      method = 'POST';
+      payload = {
+        properties: {
+          firstname: params.first_name || inputData.first_name || '',
+          lastname: params.last_name || inputData.last_name || '',
+          email: params.email || inputData.email || '',
+          company: params.company || inputData.company || '',
+          phone: params.phone || inputData.phone || ''
+        }
+      };
+    } else if (params.operation === 'create_deal') {
+      endpoint = '/crm/v3/objects/deals';
+      method = 'POST';
+      payload = {
+        properties: {
+          dealname: params.deal_name || 'New Deal',
+          amount: params.amount || '0',
+          dealstage: params.deal_stage || 'appointmentscheduled',
+          pipeline: params.pipeline || 'default'
+        }
+      };
+    } else if (params.operation === 'get_contacts') {
+      endpoint = '/crm/v3/objects/contacts';
+      method = 'GET';
+    }
+    
+    const options = {
+      method: method,
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'Content-Type': 'application/json'
+      }
+    };
+    
+    if (payload) {
+      options.payload = JSON.stringify(payload);
+    }
+    
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode >= 200 && responseCode < 300) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ HubSpot operation successful: \${params.operation}\`);
+      return { ...inputData, hubspotResult: data, hubspotSuccess: true };
+    } else {
+      console.error(\`❌ HubSpot API error: \${responseCode}\`);
+      return { ...inputData, hubspotError: \`API error: \${responseCode}\`, hubspotSuccess: false };
+    }
+    
+  } catch (error) {
+    console.error('❌ HubSpot action failed:', error);
+    return { ...inputData, hubspotError: error.toString(), hubspotSuccess: false };
+  }
+}`;

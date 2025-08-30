@@ -192,10 +192,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           context: req.body.context || {}
         });
 
-        // Record usage
-        if (result.tokensUsed) {
+        // Record usage (only for authenticated users)
+        if (result.tokensUsed && req.user?.id) {
           await usageMeteringService.recordApiUsage(
-            (req.user?.id || 'dev-user'),
+            req.user.id,
             1,
             result.tokensUsed,
             result.cost || 0
@@ -225,10 +225,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           context: req.body.context || {}
         });
 
-        // Record usage
-        if (result.tokensUsed) {
+        // Record usage (only for authenticated users)
+        if (result.tokensUsed && req.user?.id) {
           await usageMeteringService.recordApiUsage(
-            (req.user?.id || 'dev-user'),
+            req.user.id,
             1,
             result.tokensUsed,
             result.cost || 0

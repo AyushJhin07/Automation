@@ -2096,12 +2096,24 @@ We are building an automation ONLY in Google Apps Script (UrlFetchApp for extern
 
 User request: "${prompt}"
 
-Return 3–5 highly specific questions that BLOCK implementation if unanswered. Focus ONLY on:
-- trigger specifics (event, schedule, Gmail label/query, Form submit, Drive folder, etc.)
-- filters/conditions/exclusions
-- exact fields to read/write
-- destination details (Sheet ID/range, Calendar, Drive folder)
-- permissions/scopes and frequency/error handling
+AVAILABLE PLATFORMS (choose the most relevant):
+Google Workspace: Gmail, Sheets, Calendar, Drive, Forms, Docs, Slides
+CRM: Salesforce, HubSpot, Pipedrive, Zoho CRM
+E-commerce: Shopify, BigCommerce, WooCommerce, Magento
+Communication: Slack, Microsoft Teams, Discord
+Project Management: Jira, Trello, Asana, Monday.com, ClickUp
+Marketing: Mailchimp, SendGrid, Klaviyo
+Accounting: QuickBooks, Xero, Sage Intacct
+Time Tracking: Toggl, Harvest, Clockify
+Customer Support: Zendesk, Freshdesk, Intercom
+
+Return 3–5 highly specific questions that BLOCK implementation if unanswered. Include app selection if relevant.
+
+Example questions:
+- "Which platform should be used for [specific function]?" with choices from available apps
+- "What specific trigger should start this automation?" with realistic options
+- "What exact data fields need to be processed?" 
+- "Where should the results be stored?" with specific IDs/endpoints
 
 Respond as strict JSON array:
 [
