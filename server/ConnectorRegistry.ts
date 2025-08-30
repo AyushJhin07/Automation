@@ -160,7 +160,26 @@ export class ConnectorRegistry {
     this.registerAPIClient('square', GenericAPIClient);
     this.registerAPIClient('stripe-enhanced', GenericAPIClient);
     
-    console.log('✅ Marked 43 apps as implemented with real Apps Script code');
+    // Phase 2 implementations - Project Management
+    this.registerAPIClient('asana-enhanced', GenericAPIClient);
+    this.registerAPIClient('trello-enhanced', GenericAPIClient);
+    this.registerAPIClient('clickup', GenericAPIClient);
+    this.registerAPIClient('notion-enhanced', GenericAPIClient);
+    
+    // Phase 2 implementations - Productivity & Accounting
+    this.registerAPIClient('airtable-enhanced', GenericAPIClient);
+    this.registerAPIClient('quickbooks', GenericAPIClient);
+    this.registerAPIClient('xero', GenericAPIClient);
+    
+    // Phase 2 implementations - Development & Customer Feedback
+    this.registerAPIClient('github-enhanced', GenericAPIClient);
+    this.registerAPIClient('basecamp', GenericAPIClient);
+    this.registerAPIClient('surveymonkey', GenericAPIClient);
+    this.registerAPIClient('typeform', GenericAPIClient);
+    this.registerAPIClient('toggl', GenericAPIClient);
+    this.registerAPIClient('webflow', GenericAPIClient);
+    
+    console.log('✅ Marked 56 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }
