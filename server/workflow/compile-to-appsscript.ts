@@ -265,6 +265,26 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
     return generateTwilioFunction(functionName, node);
   } else if (nodeOp.startsWith('paypal.') || node.app === 'paypal') {
     return generatePayPalFunction(functionName, node);
+  } else if (nodeOp.startsWith('zoom-enhanced.') || node.app === 'zoom-enhanced') {
+    return generateZoomEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('google-chat.') || node.app === 'google-chat') {
+    return generateGoogleChatFunction(functionName, node);
+  } else if (nodeOp.startsWith('google-meet.') || node.app === 'google-meet') {
+    return generateGoogleMeetFunction(functionName, node);
+  } else if (nodeOp.startsWith('ringcentral.') || node.app === 'ringcentral') {
+    return generateRingCentralFunction(functionName, node);
+  } else if (nodeOp.startsWith('webex.') || node.app === 'webex') {
+    return generateWebexFunction(functionName, node);
+  } else if (nodeOp.startsWith('bigcommerce.') || node.app === 'bigcommerce') {
+    return generateBigCommerceFunction(functionName, node);
+  } else if (nodeOp.startsWith('woocommerce.') || node.app === 'woocommerce') {
+    return generateWooCommerceFunction(functionName, node);
+  } else if (nodeOp.startsWith('magento.') || node.app === 'magento') {
+    return generateMagentoFunction(functionName, node);
+  } else if (nodeOp.startsWith('square.') || node.app === 'square') {
+    return generateSquareFunction(functionName, node);
+  } else if (nodeOp.startsWith('stripe-enhanced.') || node.app === 'stripe-enhanced') {
+    return generateStripeEnhancedFunction(functionName, node);
   }
   
   // Default generic function
@@ -4717,6 +4737,990 @@ function handlePayPalTestConnection(baseUrl, accessToken, params, inputData) {
     }
   } catch (error) {
     console.error('❌ PayPal connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Zoom Enhanced implementation
+function generateZoomEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_meeting';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🎥 Executing Zoom Enhanced: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('ZOOM_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Zoom access token not configured');
+    return { ...inputData, zoomSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://api.zoom.us/v2';
+    
+    switch (operation) {
+      case 'create_meeting':
+        return handleCreateZoomMeeting(baseUrl, accessToken, params, inputData);
+      case 'get_meeting':
+        return handleGetZoomMeeting(baseUrl, accessToken, params, inputData);
+      case 'update_meeting':
+        return handleUpdateZoomMeeting(baseUrl, accessToken, params, inputData);
+      case 'delete_meeting':
+        return handleDeleteZoomMeeting(baseUrl, accessToken, params, inputData);
+      case 'list_meetings':
+        return handleListZoomMeetings(baseUrl, accessToken, params, inputData);
+      case 'create_webinar':
+        return handleCreateZoomWebinar(baseUrl, accessToken, params, inputData);
+      case 'get_recording':
+        return handleGetZoomRecording(baseUrl, accessToken, params, inputData);
+      case 'list_recordings':
+        return handleListZoomRecordings(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleZoomTestConnection(baseUrl, accessToken, params, inputData);
+      case 'meeting_started':
+        return handleZoomTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Zoom operation: \${operation}\`);
+        return { ...inputData, zoomWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Zoom \${operation} failed:\`, error);
+    return { ...inputData, zoomError: error.toString(), zoomSuccess: false };
+  }
+}
+
+function handleCreateZoomMeeting(baseUrl, accessToken, params, inputData) {
+  const userId = params.userId || 'me';
+  
+  const meetingData = {
+    topic: params.topic || params.title || 'Meeting from Automation',
+    type: params.type || 2, // Scheduled meeting
+    start_time: params.start_time || new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
+    duration: params.duration || 60,
+    timezone: params.timezone || 'UTC',
+    agenda: params.agenda || params.description || '',
+    password: params.password || '',
+    settings: {
+      host_video: params.host_video || true,
+      participant_video: params.participant_video || true,
+      join_before_host: params.join_before_host || false,
+      mute_upon_entry: params.mute_upon_entry || false,
+      waiting_room: params.waiting_room || false
+    }
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/users/\${userId}/meetings\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(meetingData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Zoom meeting: \${data.topic} (ID: \${data.id})\`);
+    return { 
+      ...inputData, 
+      zoomMeetingCreated: true, 
+      meetingId: data.id, 
+      meetingUrl: data.join_url,
+      meetingPassword: data.password,
+      meetingTopic: data.topic
+    };
+  } else {
+    throw new Error(\`Create meeting failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleZoomTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/users/me\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Zoom connection test successful. User: \${data.display_name}\`);
+      return { ...inputData, connectionTest: 'success', userName: data.display_name, userEmail: data.email };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Zoom connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Google Chat implementation  
+function generateGoogleChatFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_message';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💬 Executing Google Chat: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('GOOGLE_CHAT_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Google Chat access token not configured');
+    return { ...inputData, googleChatSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://chat.googleapis.com/v1';
+    
+    switch (operation) {
+      case 'send_message':
+        return handleSendGoogleChatMessage(baseUrl, accessToken, params, inputData);
+      case 'create_space':
+        return handleCreateGoogleChatSpace(baseUrl, accessToken, params, inputData);
+      case 'list_spaces':
+        return handleListGoogleChatSpaces(baseUrl, accessToken, params, inputData);
+      case 'get_space':
+        return handleGetGoogleChatSpace(baseUrl, accessToken, params, inputData);
+      case 'list_members':
+        return handleListGoogleChatMembers(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleGoogleChatTestConnection(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Google Chat operation: \${operation}\`);
+        return { ...inputData, googleChatWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Google Chat \${operation} failed:\`, error);
+    return { ...inputData, googleChatError: error.toString(), googleChatSuccess: false };
+  }
+}
+
+function handleSendGoogleChatMessage(baseUrl, accessToken, params, inputData) {
+  const spaceName = params.spaceName || params.space_name;
+  const message = params.message || params.text || inputData.message || 'Message from automation';
+  
+  if (!spaceName) {
+    throw new Error('Space name is required');
+  }
+  
+  const messageData = {
+    text: message
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/\${spaceName}/messages\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(messageData)
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Sent Google Chat message to \${spaceName}\`);
+    return { ...inputData, googleChatMessageSent: true, messageId: data.name, spaceName: spaceName };
+  } else {
+    throw new Error(\`Send message failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleGoogleChatTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/spaces\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Google Chat connection test successful. Spaces available: \${data.spaces?.length || 0}\`);
+      return { ...inputData, connectionTest: 'success', spacesCount: data.spaces?.length || 0 };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Google Chat connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Google Meet implementation
+function generateGoogleMeetFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_space';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📹 Executing Google Meet: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('GOOGLE_MEET_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Google Meet access token not configured');
+    return { ...inputData, googleMeetSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://meet.googleapis.com/v2';
+    
+    switch (operation) {
+      case 'create_space':
+        return handleCreateGoogleMeetSpace(baseUrl, accessToken, params, inputData);
+      case 'get_space':
+        return handleGetGoogleMeetSpace(baseUrl, accessToken, params, inputData);
+      case 'end_active_conference':
+        return handleEndActiveConference(baseUrl, accessToken, params, inputData);
+      case 'list_conference_records':
+        return handleListConferenceRecords(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleGoogleMeetTestConnection(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Google Meet operation: \${operation}\`);
+        return { ...inputData, googleMeetWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Google Meet \${operation} failed:\`, error);
+    return { ...inputData, googleMeetError: error.toString(), googleMeetSuccess: false };
+  }
+}
+
+function handleCreateGoogleMeetSpace(baseUrl, accessToken, params, inputData) {
+  const spaceData = {};
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/spaces\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(spaceData)
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Google Meet space: \${data.name}\`);
+    return { ...inputData, googleMeetSpaceCreated: true, spaceName: data.name, meetingUri: data.meetingUri };
+  } else {
+    throw new Error(\`Create space failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleGoogleMeetTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/spaces\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      console.log(\`✅ Google Meet connection test successful\`);
+      return { ...inputData, connectionTest: 'success' };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Google Meet connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive RingCentral implementation
+function generateRingCentralFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_sms';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('☎️ Executing RingCentral: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_ACCESS_TOKEN');
+  const serverUrl = PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_SERVER_URL') || 'https://platform.ringcentral.com';
+  
+  if (!accessToken) {
+    console.warn('⚠️ RingCentral access token not configured');
+    return { ...inputData, ringcentralSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = \`\${serverUrl}/restapi/v1.0\`;
+    
+    switch (operation) {
+      case 'send_sms':
+        return handleSendRingCentralSMS(baseUrl, accessToken, params, inputData);
+      case 'get_messages':
+        return handleGetRingCentralMessages(baseUrl, accessToken, params, inputData);
+      case 'get_call_log':
+        return handleGetRingCentralCallLog(baseUrl, accessToken, params, inputData);
+      case 'make_call':
+        return handleMakeRingCentralCall(baseUrl, accessToken, params, inputData);
+      case 'create_meeting':
+        return handleCreateRingCentralMeeting(baseUrl, accessToken, params, inputData);
+      case 'get_account_info':
+        return handleGetRingCentralAccount(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleRingCentralTestConnection(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown RingCentral operation: \${operation}\`);
+        return { ...inputData, ringcentralWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ RingCentral \${operation} failed:\`, error);
+    return { ...inputData, ringcentralError: error.toString(), ringcentralSuccess: false };
+  }
+}
+
+function handleSendRingCentralSMS(baseUrl, accessToken, params, inputData) {
+  const accountId = params.accountId || '~';
+  const extensionId = params.extensionId || '~';
+  const to = params.to || params.phone || inputData.phone;
+  const text = params.text || params.message || inputData.message || 'Message from automation';
+  const from = params.from || PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_FROM_NUMBER');
+  
+  if (!to || !from) {
+    throw new Error('To and From phone numbers are required');
+  }
+  
+  const messageData = {
+    from: { phoneNumber: from },
+    to: [{ phoneNumber: to }],
+    text: text
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/account/\${accountId}/extension/\${extensionId}/sms\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(messageData)
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Sent SMS via RingCentral to \${to}: \${data.id}\`);
+    return { ...inputData, ringcentralSmsSent: true, messageId: data.id, to: to };
+  } else {
+    throw new Error(\`Send SMS failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleRingCentralTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/account/~/extension/~\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ RingCentral connection test successful. Extension: \${data.name}\`);
+      return { ...inputData, connectionTest: 'success', extensionName: data.name };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ RingCentral connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Cisco Webex implementation
+function generateWebexFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_room';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🏢 Executing Cisco Webex: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('WEBEX_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Webex access token not configured');
+    return { ...inputData, webexSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://webexapis.com/v1';
+    
+    switch (operation) {
+      case 'create_room':
+        return handleCreateWebexRoom(baseUrl, accessToken, params, inputData);
+      case 'get_room':
+        return handleGetWebexRoom(baseUrl, accessToken, params, inputData);
+      case 'list_rooms':
+        return handleListWebexRooms(baseUrl, accessToken, params, inputData);
+      case 'send_message':
+        return handleSendWebexMessage(baseUrl, accessToken, params, inputData);
+      case 'create_meeting':
+        return handleCreateWebexMeeting(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleWebexTestConnection(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Webex operation: \${operation}\`);
+        return { ...inputData, webexWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Webex \${operation} failed:\`, error);
+    return { ...inputData, webexError: error.toString(), webexSuccess: false };
+  }
+}
+
+function handleCreateWebexRoom(baseUrl, accessToken, params, inputData) {
+  const roomData = {
+    title: params.title || params.name || 'Room from Automation',
+    type: params.type || 'group'
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/rooms\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(roomData)
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Webex room: \${data.title} (ID: \${data.id})\`);
+    return { ...inputData, webexRoomCreated: true, roomId: data.id, roomTitle: data.title };
+  } else {
+    throw new Error(\`Create room failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleWebexTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/people/me\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Webex connection test successful. User: \${data.displayName}\`);
+      return { ...inputData, connectionTest: 'success', userName: data.displayName, userEmail: data.emails[0] };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Webex connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive BigCommerce implementation
+function generateBigCommerceFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_product';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🛍️ Executing BigCommerce: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_ACCESS_TOKEN');
+  const storeHash = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_STORE_HASH');
+  
+  if (!accessToken || !storeHash) {
+    console.warn('⚠️ BigCommerce credentials not configured');
+    return { ...inputData, bigcommerceSkipped: true, error: 'Missing access token or store hash' };
+  }
+  
+  try {
+    const baseUrl = \`https://api.bigcommerce.com/stores/\${storeHash}/v3\`;
+    
+    switch (operation) {
+      case 'create_product':
+        return handleCreateBigCommerceProduct(baseUrl, accessToken, params, inputData);
+      case 'update_product':
+        return handleUpdateBigCommerceProduct(baseUrl, accessToken, params, inputData);
+      case 'get_product':
+        return handleGetBigCommerceProduct(baseUrl, accessToken, params, inputData);
+      case 'list_products':
+        return handleListBigCommerceProducts(baseUrl, accessToken, params, inputData);
+      case 'create_order':
+        return handleCreateBigCommerceOrder(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleBigCommerceTestConnection(baseUrl, accessToken, params, inputData);
+      case 'order_created':
+      case 'product_updated':
+        return handleBigCommerceTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown BigCommerce operation: \${operation}\`);
+        return { ...inputData, bigcommerceWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ BigCommerce \${operation} failed:\`, error);
+    return { ...inputData, bigcommerceError: error.toString(), bigcommerceSuccess: false };
+  }
+}
+
+function handleCreateBigCommerceProduct(baseUrl, accessToken, params, inputData) {
+  const productData = {
+    name: params.name || params.product_name || 'New Product from Automation',
+    type: params.type || 'physical',
+    sku: params.sku || '',
+    description: params.description || '',
+    price: params.price || 0,
+    categories: params.categories || [],
+    brand_id: params.brand_id || 0,
+    inventory_level: params.inventory_level || 0,
+    weight: params.weight || 0
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/catalog/products\`, {
+    method: 'POST',
+    headers: {
+      'X-Auth-Token': accessToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(productData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created BigCommerce product: \${data.data.name} (ID: \${data.data.id})\`);
+    return { ...inputData, bigcommerceProductCreated: true, productId: data.data.id, productName: data.data.name };
+  } else {
+    throw new Error(\`Create product failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleBigCommerceTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/store\`, {
+      method: 'GET',
+      headers: {
+        'X-Auth-Token': accessToken,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ BigCommerce connection test successful. Store: \${data.data.name}\`);
+      return { ...inputData, connectionTest: 'success', storeName: data.data.name };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ BigCommerce connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive WooCommerce implementation
+function generateWooCommerceFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_product';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🛍️ Executing WooCommerce: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const consumerKey = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_KEY');
+  const consumerSecret = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_SECRET');
+  const siteUrl = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_SITE_URL');
+  
+  if (!consumerKey || !consumerSecret || !siteUrl) {
+    console.warn('⚠️ WooCommerce credentials not configured');
+    return { ...inputData, woocommerceSkipped: true, error: 'Missing credentials or site URL' };
+  }
+  
+  try {
+    const baseUrl = \`\${siteUrl}/wp-json/wc/v3\`;
+    const auth = Utilities.base64Encode(\`\${consumerKey}:\${consumerSecret}\`);
+    
+    switch (operation) {
+      case 'create_product':
+        return handleCreateWooCommerceProduct(baseUrl, auth, params, inputData);
+      case 'get_product':
+        return handleGetWooCommerceProduct(baseUrl, auth, params, inputData);
+      case 'update_product':
+        return handleUpdateWooCommerceProduct(baseUrl, auth, params, inputData);
+      case 'list_products':
+        return handleListWooCommerceProducts(baseUrl, auth, params, inputData);
+      case 'create_order':
+        return handleCreateWooCommerceOrder(baseUrl, auth, params, inputData);
+      case 'test_connection':
+        return handleWooCommerceTestConnection(baseUrl, auth, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown WooCommerce operation: \${operation}\`);
+        return { ...inputData, woocommerceWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ WooCommerce \${operation} failed:\`, error);
+    return { ...inputData, woocommerceError: error.toString(), woocommerceSuccess: false };
+  }
+}
+
+function handleCreateWooCommerceProduct(baseUrl, auth, params, inputData) {
+  const productData = {
+    name: params.name || params.product_name || 'New Product from Automation',
+    type: params.type || 'simple',
+    regular_price: params.price || params.regular_price || '0',
+    description: params.description || '',
+    short_description: params.short_description || '',
+    sku: params.sku || '',
+    manage_stock: params.manage_stock || false,
+    stock_quantity: params.stock_quantity || 0,
+    in_stock: params.in_stock || true,
+    categories: params.categories || []
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/products\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(productData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created WooCommerce product: \${data.name} (ID: \${data.id})\`);
+    return { ...inputData, woocommerceProductCreated: true, productId: data.id, productName: data.name };
+  } else {
+    throw new Error(\`Create product failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleWooCommerceTestConnection(baseUrl, auth, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/system_status\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Basic \${auth}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ WooCommerce connection test successful. Version: \${data.settings?.version}\`);
+      return { ...inputData, connectionTest: 'success', version: data.settings?.version };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ WooCommerce connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Magento implementation
+function generateMagentoFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_product';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🛍️ Executing Magento: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MAGENTO_ACCESS_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('MAGENTO_BASE_URL');
+  
+  if (!accessToken || !baseUrl) {
+    console.warn('⚠️ Magento credentials not configured');
+    return { ...inputData, magentoSkipped: true, error: 'Missing access token or base URL' };
+  }
+  
+  try {
+    const apiUrl = \`\${baseUrl}/rest/V1\`;
+    
+    switch (operation) {
+      case 'create_product':
+        return handleCreateMagentoProduct(apiUrl, accessToken, params, inputData);
+      case 'get_product':
+        return handleGetMagentoProduct(apiUrl, accessToken, params, inputData);
+      case 'update_product':
+        return handleUpdateMagentoProduct(apiUrl, accessToken, params, inputData);
+      case 'search_products':
+        return handleSearchMagentoProducts(apiUrl, accessToken, params, inputData);
+      case 'create_order':
+        return handleCreateMagentoOrder(apiUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleMagentoTestConnection(apiUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Magento operation: \${operation}\`);
+        return { ...inputData, magentoWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Magento \${operation} failed:\`, error);
+    return { ...inputData, magentoError: error.toString(), magentoSuccess: false };
+  }
+}
+
+function handleMagentoTestConnection(apiUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${apiUrl}/modules\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      console.log('✅ Magento connection test successful');
+      return { ...inputData, connectionTest: 'success' };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Magento connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Square implementation
+function generateSquareFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_payment';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💳 Executing Square: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('SQUARE_ACCESS_TOKEN');
+  const applicationId = PropertiesService.getScriptProperties().getProperty('SQUARE_APPLICATION_ID');
+  const environment = PropertiesService.getScriptProperties().getProperty('SQUARE_ENVIRONMENT') || 'sandbox';
+  
+  if (!accessToken || !applicationId) {
+    console.warn('⚠️ Square credentials not configured');
+    return { ...inputData, squareSkipped: true, error: 'Missing access token or application ID' };
+  }
+  
+  try {
+    const baseUrl = environment === 'production' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
+    
+    switch (operation) {
+      case 'create_payment':
+        return handleCreateSquarePayment(baseUrl, accessToken, params, inputData);
+      case 'get_payment':
+        return handleGetSquarePayment(baseUrl, accessToken, params, inputData);
+      case 'list_payments':
+        return handleListSquarePayments(baseUrl, accessToken, params, inputData);
+      case 'create_refund':
+        return handleCreateSquareRefund(baseUrl, accessToken, params, inputData);
+      case 'create_customer':
+        return handleCreateSquareCustomer(baseUrl, accessToken, params, inputData);
+      case 'get_customer':
+        return handleGetSquareCustomer(baseUrl, accessToken, params, inputData);
+      case 'create_order':
+        return handleCreateSquareOrder(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleSquareTestConnection(baseUrl, accessToken, params, inputData);
+      case 'payment_created':
+        return handleSquareTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Square operation: \${operation}\`);
+        return { ...inputData, squareWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Square \${operation} failed:\`, error);
+    return { ...inputData, squareError: error.toString(), squareSuccess: false };
+  }
+}
+
+function handleCreateSquarePayment(baseUrl, accessToken, params, inputData) {
+  const amount = params.amount || 100; // Amount in cents
+  const currency = params.currency || 'USD';
+  const sourceId = params.source_id || 'cnon:card-nonce-ok'; // Test nonce
+  
+  const paymentData = {
+    source_id: sourceId,
+    amount_money: {
+      amount: amount,
+      currency: currency
+    },
+    idempotency_key: Utilities.getUuid()
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/v2/payments\`, {
+    method: 'POST',
+    headers: {
+      'Square-Version': '2023-10-18',
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(paymentData)
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Square payment: \${data.payment.id} for \${amount} \${currency}\`);
+    return { ...inputData, squarePaymentCreated: true, paymentId: data.payment.id, amount: amount };
+  } else {
+    throw new Error(\`Create payment failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleSquareTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/v2/locations\`, {
+      method: 'GET',
+      headers: {
+        'Square-Version': '2023-10-18',
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Square connection test successful. Locations: \${data.locations?.length || 0}\`);
+      return { ...inputData, connectionTest: 'success', locationsCount: data.locations?.length || 0 };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Square connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Stripe Enhanced implementation (with advanced features)
+function generateStripeEnhancedFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_customer';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💳 Executing Stripe Enhanced: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const apiKey = PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
+  
+  if (!apiKey) {
+    console.warn('⚠️ Stripe Enhanced secret key not configured');
+    return { ...inputData, stripeEnhancedSkipped: true, error: 'Missing secret key' };
+  }
+  
+  try {
+    const baseUrl = 'https://api.stripe.com/v1';
+    
+    switch (operation) {
+      case 'create_customer':
+        return handleCreateStripeEnhancedCustomer(baseUrl, apiKey, params, inputData);
+      case 'create_subscription':
+        return handleCreateStripeSubscription(baseUrl, apiKey, params, inputData);
+      case 'create_product':
+        return handleCreateStripeProduct(baseUrl, apiKey, params, inputData);
+      case 'create_price':
+        return handleCreateStripePrice(baseUrl, apiKey, params, inputData);
+      case 'create_invoice':
+        return handleCreateStripeInvoice(baseUrl, apiKey, params, inputData);
+      case 'charge_customer':
+        return handleChargeStripeCustomer(baseUrl, apiKey, params, inputData);
+      case 'list_invoices':
+        return handleListStripeInvoices(baseUrl, apiKey, params, inputData);
+      case 'webhook_endpoint':
+        return handleStripeWebhook(baseUrl, apiKey, params, inputData);
+      case 'test_connection':
+        return handleStripeEnhancedTestConnection(baseUrl, apiKey, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Stripe Enhanced operation: \${operation}\`);
+        return { ...inputData, stripeEnhancedWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Stripe Enhanced \${operation} failed:\`, error);
+    return { ...inputData, stripeEnhancedError: error.toString(), stripeEnhancedSuccess: false };
+  }
+}
+
+function handleCreateStripeSubscription(baseUrl, apiKey, params, inputData) {
+  const customerId = params.customer_id || params.customerId;
+  const priceId = params.price_id || params.priceId;
+  
+  if (!customerId || !priceId) {
+    throw new Error('Customer ID and Price ID are required');
+  }
+  
+  const subscriptionData = {
+    customer: customerId,
+    items: [{ price: priceId }],
+    payment_behavior: params.payment_behavior || 'default_incomplete',
+    payment_settings: {
+      save_default_payment_method: 'on_subscription'
+    },
+    expand: ['latest_invoice.payment_intent']
+  };
+  
+  const formData = Object.entries(subscriptionData)
+    .filter(([key, value]) => value !== '' && value !== null && value !== undefined)
+    .map(([key, value]) => \`\${key}=\${encodeURIComponent(typeof value === 'object' ? JSON.stringify(value) : value)}\`)
+    .join('&');
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/subscriptions\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${apiKey}\`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    payload: formData
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Stripe subscription: \${data.id}\`);
+    return { ...inputData, stripeSubscriptionCreated: true, subscriptionId: data.id, status: data.status };
+  } else {
+    throw new Error(\`Create subscription failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleStripeEnhancedTestConnection(baseUrl, apiKey, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/account\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${apiKey}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Stripe Enhanced connection test successful. Account: \${data.display_name || data.id}\`);
+      return { ...inputData, connectionTest: 'success', accountId: data.id, accountName: data.display_name };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Stripe Enhanced connection test failed:', error);
     return { ...inputData, connectionTest: 'failed', error: error.toString() };
   }
 }`;

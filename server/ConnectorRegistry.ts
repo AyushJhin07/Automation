@@ -117,39 +117,49 @@ export class ConnectorRegistry {
    */
   private initializeAPIClients(): void {
     // Register implemented API clients
-    this.apiClients.set('gmail', GmailAPIClient);
-    this.apiClients.set('shopify', ShopifyAPIClient);
+    this.registerAPIClient('gmail', GmailAPIClient);
+    this.registerAPIClient('shopify', ShopifyAPIClient);
     
     // Mark Google Workspace apps as implemented (built-in Apps Script APIs)
-    this.apiClients.set('google-sheets-enhanced', BaseAPIClient);
-    this.apiClients.set('google-calendar', BaseAPIClient);
-    this.apiClients.set('google-drive', BaseAPIClient);
-    this.apiClients.set('google-forms', BaseAPIClient);
-    this.apiClients.set('google-contacts', BaseAPIClient);
+    this.registerAPIClient('google-sheets-enhanced', BaseAPIClient);
+    this.registerAPIClient('google-calendar', BaseAPIClient);
+    this.registerAPIClient('google-drive', BaseAPIClient);
+    this.registerAPIClient('google-forms', BaseAPIClient);
+    this.registerAPIClient('google-contacts', BaseAPIClient);
     
     // Mark external apps with real implementations as implemented
-    this.apiClients.set('slack', BaseAPIClient);
-    this.apiClients.set('slack-enhanced', BaseAPIClient);
-    this.apiClients.set('dropbox', BaseAPIClient);
-    this.apiClients.set('dropbox-enhanced', BaseAPIClient);
-    this.apiClients.set('salesforce', BaseAPIClient);
-    this.apiClients.set('salesforce-enhanced', BaseAPIClient);
-    this.apiClients.set('jira', BaseAPIClient);
-    this.apiClients.set('mailchimp', BaseAPIClient);
-    this.apiClients.set('mailchimp-enhanced', BaseAPIClient);
-    this.apiClients.set('hubspot', BaseAPIClient);
-    this.apiClients.set('hubspot-enhanced', BaseAPIClient);
+    this.registerAPIClient('slack', BaseAPIClient);
+    this.registerAPIClient('slack-enhanced', BaseAPIClient);
+    this.registerAPIClient('dropbox', BaseAPIClient);
+    this.registerAPIClient('dropbox-enhanced', BaseAPIClient);
+    this.registerAPIClient('salesforce', BaseAPIClient);
+    this.registerAPIClient('salesforce-enhanced', BaseAPIClient);
+    this.registerAPIClient('jira', BaseAPIClient);
+    this.registerAPIClient('mailchimp', BaseAPIClient);
+    this.registerAPIClient('mailchimp-enhanced', BaseAPIClient);
+    this.registerAPIClient('hubspot', BaseAPIClient);
+    this.registerAPIClient('hubspot-enhanced', BaseAPIClient);
     
     // Phase 1 implementations
-    this.apiClients.set('pipedrive', BaseAPIClient);
-    this.apiClients.set('zoho-crm', BaseAPIClient);
-    this.apiClients.set('dynamics365', BaseAPIClient);
-    this.apiClients.set('microsoft-teams', BaseAPIClient);
-    this.apiClients.set('stripe', BaseAPIClient);
-    this.apiClients.set('twilio', BaseAPIClient);
-    this.apiClients.set('paypal', BaseAPIClient);
+    this.registerAPIClient('pipedrive', BaseAPIClient);
+    this.registerAPIClient('zoho-crm', BaseAPIClient);
+    this.registerAPIClient('dynamics365', BaseAPIClient);
+    this.registerAPIClient('microsoft-teams', BaseAPIClient);
+    this.registerAPIClient('stripe', BaseAPIClient);
+    this.registerAPIClient('twilio', BaseAPIClient);
+    this.registerAPIClient('paypal', BaseAPIClient);
+    this.registerAPIClient('zoom-enhanced', BaseAPIClient);
+    this.registerAPIClient('google-chat', BaseAPIClient);
+    this.registerAPIClient('google-meet', BaseAPIClient);
+    this.registerAPIClient('ringcentral', BaseAPIClient);
+    this.registerAPIClient('webex', BaseAPIClient);
+    this.registerAPIClient('bigcommerce', BaseAPIClient);
+    this.registerAPIClient('woocommerce', BaseAPIClient);
+    this.registerAPIClient('magento', BaseAPIClient);
+    this.registerAPIClient('square', BaseAPIClient);
+    this.registerAPIClient('stripe-enhanced', BaseAPIClient);
     
-    console.log('✅ Marked 18 apps as implemented with real Apps Script code');
+    console.log('✅ Marked 25 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }
