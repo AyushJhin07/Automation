@@ -229,7 +229,40 @@ export class ConnectorRegistry {
     this.registerAPIClient('adobesign', GenericAPIClient);
     this.registerAPIClient('egnyte', GenericAPIClient);
     
-    console.log('✅ Marked 92 apps as implemented with real Apps Script code');
+    // Phase 6 implementations - Batch 1 (HR, Finance, Payments)
+    this.registerAPIClient('adp', GenericAPIClient);
+    this.registerAPIClient('adyen', GenericAPIClient);
+    this.registerAPIClient('caldotcom', GenericAPIClient);
+    this.registerAPIClient('concur', GenericAPIClient);
+    this.registerAPIClient('coupa', GenericAPIClient);
+    this.registerAPIClient('databricks', GenericAPIClient);
+    this.registerAPIClient('github', GenericAPIClient);
+    this.registerAPIClient('google-admin', GenericAPIClient);
+    
+    // Phase 6 implementations - Batch 2 (Google Workspace, Knowledge)
+    this.registerAPIClient('google-docs', GenericAPIClient);
+    this.registerAPIClient('google-slides', GenericAPIClient);
+    this.registerAPIClient('guru', GenericAPIClient);
+    this.registerAPIClient('hellosign', GenericAPIClient);
+    this.registerAPIClient('linear', GenericAPIClient);
+    this.registerAPIClient('smartsheet', GenericAPIClient);
+    this.registerAPIClient('successfactors', GenericAPIClient);
+    this.registerAPIClient('tableau', GenericAPIClient);
+    
+    // Phase 6 implementations - Batch 3 (Support, Project Management)
+    this.registerAPIClient('talkdesk', GenericAPIClient);
+    this.registerAPIClient('teamwork', GenericAPIClient);
+    this.registerAPIClient('victorops', GenericAPIClient);
+    this.registerAPIClient('workfront', GenericAPIClient);
+    
+    // Phase 6 implementations - Batch 4 (Standard versions of enhanced apps)
+    this.registerAPIClient('notion', GenericAPIClient);
+    this.registerAPIClient('jira', GenericAPIClient);
+    this.registerAPIClient('slack', GenericAPIClient);
+    this.registerAPIClient('trello', GenericAPIClient);
+    this.registerAPIClient('zoom', GenericAPIClient);
+    
+    console.log('✅ Marked 117 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }
