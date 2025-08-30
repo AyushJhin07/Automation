@@ -125,6 +125,7 @@ export class ConnectorRegistry {
     this.apiClients.set('google-calendar', BaseAPIClient);
     this.apiClients.set('google-drive', BaseAPIClient);
     this.apiClients.set('google-forms', BaseAPIClient);
+    this.apiClients.set('google-contacts', BaseAPIClient);
     
     // Mark external apps with real implementations as implemented
     this.apiClients.set('slack', BaseAPIClient);
@@ -138,6 +139,17 @@ export class ConnectorRegistry {
     this.apiClients.set('mailchimp-enhanced', BaseAPIClient);
     this.apiClients.set('hubspot', BaseAPIClient);
     this.apiClients.set('hubspot-enhanced', BaseAPIClient);
+    
+    // Phase 1 implementations
+    this.apiClients.set('pipedrive', BaseAPIClient);
+    this.apiClients.set('zoho-crm', BaseAPIClient);
+    this.apiClients.set('dynamics365', BaseAPIClient);
+    this.apiClients.set('microsoft-teams', BaseAPIClient);
+    this.apiClients.set('stripe', BaseAPIClient);
+    this.apiClients.set('twilio', BaseAPIClient);
+    this.apiClients.set('paypal', BaseAPIClient);
+    
+    console.log('✅ Marked 18 apps as implemented with real Apps Script code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }

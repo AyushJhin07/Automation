@@ -249,6 +249,22 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
     return generateMailchimpEnhancedFunction(functionName, node);
   } else if (nodeOp.startsWith('hubspot.') || node.app === 'hubspot' || nodeOp.startsWith('hubspot-enhanced.') || node.app === 'hubspot-enhanced') {
     return generateHubspotEnhancedFunction(functionName, node);
+  } else if (nodeOp.startsWith('pipedrive.') || node.app === 'pipedrive') {
+    return generatePipedriveFunction(functionName, node);
+  } else if (nodeOp.startsWith('zoho-crm.') || node.app === 'zoho-crm') {
+    return generateZohoCRMFunction(functionName, node);
+  } else if (nodeOp.startsWith('dynamics365.') || node.app === 'dynamics365') {
+    return generateDynamics365Function(functionName, node);
+  } else if (nodeOp.startsWith('google-contacts.') || node.app === 'google-contacts') {
+    return generateGoogleContactsFunction(functionName, node);
+  } else if (nodeOp.startsWith('microsoft-teams.') || node.app === 'microsoft-teams') {
+    return generateMicrosoftTeamsFunction(functionName, node);
+  } else if (nodeOp.startsWith('stripe.') || node.app === 'stripe') {
+    return generateStripeFunction(functionName, node);
+  } else if (nodeOp.startsWith('twilio.') || node.app === 'twilio') {
+    return generateTwilioFunction(functionName, node);
+  } else if (nodeOp.startsWith('paypal.') || node.app === 'paypal') {
+    return generatePayPalFunction(functionName, node);
   }
   
   // Default generic function
@@ -3251,6 +3267,1456 @@ function handleHubSpotTestConnection(baseUrl, accessToken, params, inputData) {
     }
   } catch (error) {
     console.error('❌ HubSpot connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Pipedrive implementation
+function generatePipedriveFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'get_deals';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💼 Executing Pipedrive: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const apiToken = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_API_TOKEN');
+  const companyDomain = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_COMPANY_DOMAIN');
+  
+  if (!apiToken || !companyDomain) {
+    console.warn('⚠️ Pipedrive credentials not configured');
+    return { ...inputData, pipedriveSkipped: true, error: 'Missing API token or company domain' };
+  }
+  
+  try {
+    const baseUrl = \`https://\${companyDomain}.pipedrive.com/api/v1\`;
+    
+    switch (operation) {
+      case 'get_deals':
+        return handleGetDeals(baseUrl, apiToken, params, inputData);
+      case 'create_deal':
+        return handleCreateDeal(baseUrl, apiToken, params, inputData);
+      case 'update_deal':
+        return handleUpdateDeal(baseUrl, apiToken, params, inputData);
+      case 'get_persons':
+        return handleGetPersons(baseUrl, apiToken, params, inputData);
+      case 'create_person':
+        return handleCreatePerson(baseUrl, apiToken, params, inputData);
+      case 'get_organizations':
+        return handleGetOrganizations(baseUrl, apiToken, params, inputData);
+      case 'create_organization':
+        return handleCreateOrganization(baseUrl, apiToken, params, inputData);
+      case 'get_activities':
+        return handleGetActivities(baseUrl, apiToken, params, inputData);
+      case 'create_activity':
+        return handleCreateActivity(baseUrl, apiToken, params, inputData);
+      case 'test_connection':
+        return handlePipedriveTestConnection(baseUrl, apiToken, params, inputData);
+      case 'deal_created':
+      case 'deal_updated':
+        return handlePipedriveTrigger(baseUrl, apiToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Pipedrive operation: \${operation}\`);
+        return { ...inputData, pipedriveWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Pipedrive \${operation} failed:\`, error);
+    return { ...inputData, pipedriveError: error.toString(), pipedriveSuccess: false };
+  }
+}
+
+function handleGetDeals(baseUrl, apiToken, params, inputData) {
+  const status = params.status || 'all_not_deleted';
+  const limit = params.limit || 100;
+  const userId = params.user_id || null;
+  
+  let endpoint = \`/deals?api_token=\${apiToken}&status=\${status}&limit=\${limit}\`;
+  if (userId) endpoint += \`&user_id=\${userId}\`;
+  
+  const response = UrlFetchApp.fetch(baseUrl + endpoint, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json'
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Retrieved \${data.data?.length || 0} Pipedrive deals\`);
+    return { ...inputData, pipedriveDeals: data.data, dealCount: data.data?.length || 0 };
+  } else {
+    throw new Error(\`Get deals failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateDeal(baseUrl, apiToken, params, inputData) {
+  const dealData = {
+    title: params.title || params.deal_name || 'New Deal from Automation',
+    value: params.value || params.amount || 0,
+    currency: params.currency || 'USD',
+    user_id: params.user_id || null,
+    person_id: params.person_id || null,
+    org_id: params.org_id || params.organization_id || null,
+    stage_id: params.stage_id || null,
+    status: params.status || 'open',
+    expected_close_date: params.expected_close_date || null,
+    probability: params.probability || null,
+    lost_reason: params.lost_reason || null,
+    visible_to: params.visible_to || '3' // Owner & followers
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/deals?api_token=\${apiToken}\`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(dealData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Pipedrive deal: \${data.data.title} (ID: \${data.data.id})\`);
+    return { ...inputData, pipedriveDealCreated: true, dealId: data.data.id, dealTitle: data.data.title };
+  } else {
+    throw new Error(\`Create deal failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreatePerson(baseUrl, apiToken, params, inputData) {
+  const personData = {
+    name: params.name || \`\${params.first_name || inputData.first_name || ''} \${params.last_name || inputData.last_name || ''}\`.trim() || 'Unknown Person',
+    email: [{ value: params.email || inputData.email || '', primary: true }],
+    phone: params.phone || inputData.phone ? [{ value: params.phone || inputData.phone, primary: true }] : [],
+    org_id: params.org_id || params.organization_id || null,
+    owner_id: params.owner_id || params.user_id || null,
+    visible_to: params.visible_to || '3'
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/persons?api_token=\${apiToken}\`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(personData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Pipedrive person: \${data.data.name} (ID: \${data.data.id})\`);
+    return { ...inputData, pipedrivePersonCreated: true, personId: data.data.id, personName: data.data.name };
+  } else {
+    throw new Error(\`Create person failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateOrganization(baseUrl, apiToken, params, inputData) {
+  const orgData = {
+    name: params.name || params.company_name || inputData.company || 'New Organization',
+    owner_id: params.owner_id || params.user_id || null,
+    visible_to: params.visible_to || '3',
+    address: params.address || '',
+    address_subpremise: params.address_subpremise || '',
+    address_street_number: params.address_street_number || '',
+    address_route: params.address_route || '',
+    address_sublocality: params.address_sublocality || '',
+    address_locality: params.address_locality || '',
+    address_admin_area_level_1: params.address_admin_area_level_1 || '',
+    address_admin_area_level_2: params.address_admin_area_level_2 || '',
+    address_country: params.address_country || '',
+    address_postal_code: params.address_postal_code || ''
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/organizations?api_token=\${apiToken}\`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(orgData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Pipedrive organization: \${data.data.name} (ID: \${data.data.id})\`);
+    return { ...inputData, pipedriveOrgCreated: true, orgId: data.data.id, orgName: data.data.name };
+  } else {
+    throw new Error(\`Create organization failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateActivity(baseUrl, apiToken, params, inputData) {
+  const activityData = {
+    subject: params.subject || params.title || 'New Activity from Automation',
+    type: params.type || 'call',
+    due_date: params.due_date || new Date().toISOString().split('T')[0],
+    due_time: params.due_time || '09:00',
+    duration: params.duration || '01:00',
+    deal_id: params.deal_id || null,
+    person_id: params.person_id || null,
+    org_id: params.org_id || null,
+    note: params.note || params.description || '',
+    done: params.done || '0',
+    user_id: params.user_id || null
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/activities?api_token=\${apiToken}\`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(activityData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Pipedrive activity: \${data.data.subject} (ID: \${data.data.id})\`);
+    return { ...inputData, pipedriveActivityCreated: true, activityId: data.data.id, activitySubject: data.data.subject };
+  } else {
+    throw new Error(\`Create activity failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handlePipedriveTestConnection(baseUrl, apiToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/users/me?api_token=\${apiToken}\`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Pipedrive connection test successful. User: \${data.data.name}\`);
+      return { ...inputData, connectionTest: 'success', userName: data.data.name, userEmail: data.data.email };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Pipedrive connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handlePipedriveTrigger(baseUrl, apiToken, params, inputData) {
+  // Simulate deal monitoring by getting recent deals
+  const sinceDate = new Date();
+  sinceDate.setHours(sinceDate.getHours() - 24); // Last 24 hours
+  const since = sinceDate.toISOString().split('T')[0];
+  
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/deals?api_token=\${apiToken}&status=all_not_deleted&start=0&limit=50\`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      const recentDeals = (data.data || []).filter(deal => {
+        const addTime = new Date(deal.add_time);
+        return addTime >= sinceDate;
+      });
+      
+      console.log(\`💼 Pipedrive trigger found \${recentDeals.length} recent deals\`);
+      return { ...inputData, pipedriveTrigger: recentDeals, triggerCount: recentDeals.length };
+    } else {
+      throw new Error(\`Trigger check failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Pipedrive trigger failed:', error);
+    return { ...inputData, pipedriveTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Zoho CRM implementation
+function generateZohoCRMFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_record';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🏢 Executing Zoho CRM: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('ZOHO_CRM_ACCESS_TOKEN');
+  const orgId = PropertiesService.getScriptProperties().getProperty('ZOHO_CRM_ORG_ID');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Zoho CRM access token not configured');
+    return { ...inputData, zohoCrmSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://www.zohoapis.com/crm/v2';
+    
+    switch (operation) {
+      case 'create_record':
+        return handleCreateZohoRecord(baseUrl, accessToken, params, inputData);
+      case 'get_record':
+        return handleGetZohoRecord(baseUrl, accessToken, params, inputData);
+      case 'update_record':
+        return handleUpdateZohoRecord(baseUrl, accessToken, params, inputData);
+      case 'delete_record':
+        return handleDeleteZohoRecord(baseUrl, accessToken, params, inputData);
+      case 'search_records':
+        return handleSearchZohoRecords(baseUrl, accessToken, params, inputData);
+      case 'list_records':
+        return handleListZohoRecords(baseUrl, accessToken, params, inputData);
+      case 'convert_lead':
+        return handleConvertZohoLead(baseUrl, accessToken, params, inputData);
+      case 'upload_attachment':
+        return handleUploadZohoAttachment(baseUrl, accessToken, params, inputData);
+      case 'add_note':
+        return handleAddZohoNote(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleZohoCRMTestConnection(baseUrl, accessToken, params, inputData);
+      case 'record_created':
+      case 'record_updated':
+        return handleZohoCRMTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Zoho CRM operation: \${operation}\`);
+        return { ...inputData, zohoCrmWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Zoho CRM \${operation} failed:\`, error);
+    return { ...inputData, zohoCrmError: error.toString(), zohoCrmSuccess: false };
+  }
+}
+
+function handleCreateZohoRecord(baseUrl, accessToken, params, inputData) {
+  const module = params.module || 'Leads';
+  const recordData = {
+    data: [{
+      Company: params.company || inputData.company || 'Unknown Company',
+      Last_Name: params.lastName || params.last_name || inputData.last_name || 'Unknown',
+      First_Name: params.firstName || params.first_name || inputData.first_name || '',
+      Email: params.email || inputData.email || '',
+      Phone: params.phone || inputData.phone || '',
+      Lead_Source: params.leadSource || params.lead_source || 'Website',
+      Lead_Status: params.leadStatus || params.lead_status || 'Not Contacted',
+      Description: params.description || params.notes || ''
+    }]
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/\${module}\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Zoho-oauthtoken \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(recordData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    const record = data.data[0];
+    console.log(\`✅ Created Zoho CRM \${module} record: \${record.details.id}\`);
+    return { ...inputData, zohoCrmRecordCreated: true, recordId: record.details.id, module: module };
+  } else {
+    throw new Error(\`Create record failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleGetZohoRecord(baseUrl, accessToken, params, inputData) {
+  const module = params.module || 'Leads';
+  const recordId = params.recordId || params.record_id;
+  
+  if (!recordId) {
+    throw new Error('Record ID is required');
+  }
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/\${module}/\${recordId}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Zoho-oauthtoken \${accessToken}\`
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Retrieved Zoho CRM \${module} record: \${recordId}\`);
+    return { ...inputData, zohoCrmRecord: data.data[0], recordId: recordId, module: module };
+  } else {
+    throw new Error(\`Get record failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleListZohoRecords(baseUrl, accessToken, params, inputData) {
+  const module = params.module || 'Leads';
+  const page = params.page || 1;
+  const perPage = params.per_page || params.limit || 200;
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/\${module}?page=\${page}&per_page=\${perPage}\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Zoho-oauthtoken \${accessToken}\`
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Listed \${data.data?.length || 0} Zoho CRM \${module} records\`);
+    return { ...inputData, zohoCrmRecords: data.data, recordCount: data.data?.length || 0, module: module };
+  } else {
+    throw new Error(\`List records failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleZohoCRMTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/settings/users?type=CurrentUser\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Zoho-oauthtoken \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      const user = data.users[0];
+      console.log(\`✅ Zoho CRM connection test successful. User: \${user.full_name}\`);
+      return { ...inputData, connectionTest: 'success', userName: user.full_name, userEmail: user.email };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Zoho CRM connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleZohoCRMTrigger(baseUrl, accessToken, params, inputData) {
+  const module = params.module || 'Leads';
+  const converted = params.converted || 'false';
+  
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/\${module}?converted=\${converted}&page=1&per_page=10\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Zoho-oauthtoken \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`🏢 Zoho CRM trigger found \${data.data?.length || 0} recent \${module} records\`);
+      return { ...inputData, zohoCrmTrigger: data.data, triggerCount: data.data?.length || 0 };
+    } else {
+      throw new Error(\`Trigger check failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Zoho CRM trigger failed:', error);
+    return { ...inputData, zohoCrmTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Microsoft Dynamics 365 implementation
+function generateDynamics365Function(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_account';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('🏬 Executing Microsoft Dynamics 365: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_ACCESS_TOKEN');
+  const instanceUrl = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_INSTANCE_URL');
+  
+  if (!accessToken || !instanceUrl) {
+    console.warn('⚠️ Dynamics 365 credentials not configured');
+    return { ...inputData, dynamics365Skipped: true, error: 'Missing access token or instance URL' };
+  }
+  
+  try {
+    const baseUrl = \`\${instanceUrl}/api/data/v9.2\`;
+    
+    switch (operation) {
+      case 'create_account':
+        return handleCreateD365Account(baseUrl, accessToken, params, inputData);
+      case 'get_account':
+        return handleGetD365Account(baseUrl, accessToken, params, inputData);
+      case 'update_account':
+        return handleUpdateD365Account(baseUrl, accessToken, params, inputData);
+      case 'list_accounts':
+        return handleListD365Accounts(baseUrl, accessToken, params, inputData);
+      case 'create_contact':
+        return handleCreateD365Contact(baseUrl, accessToken, params, inputData);
+      case 'create_lead':
+        return handleCreateD365Lead(baseUrl, accessToken, params, inputData);
+      case 'create_opportunity':
+        return handleCreateD365Opportunity(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleDynamics365TestConnection(baseUrl, accessToken, params, inputData);
+      case 'account_created':
+      case 'lead_created':
+      case 'opportunity_won':
+        return handleDynamics365Trigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Dynamics 365 operation: \${operation}\`);
+        return { ...inputData, dynamics365Warning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Dynamics 365 \${operation} failed:\`, error);
+    return { ...inputData, dynamics365Error: error.toString(), dynamics365Success: false };
+  }
+}
+
+function handleCreateD365Account(baseUrl, accessToken, params, inputData) {
+  const accountData = {
+    name: params.name || params.company_name || inputData.company || 'New Account',
+    websiteurl: params.website || inputData.website || '',
+    telephone1: params.phone || inputData.phone || '',
+    emailaddress1: params.email || inputData.email || '',
+    address1_line1: params.address1 || '',
+    address1_city: params.city || '',
+    address1_stateorprovince: params.state || '',
+    address1_postalcode: params.postalcode || '',
+    address1_country: params.country || '',
+    description: params.description || ''
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/accounts\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0'
+    },
+    payload: JSON.stringify(accountData)
+  });
+  
+  if (response.getResponseCode() === 204) {
+    const location = response.getHeaders()['OData-EntityId'] || response.getHeaders()['Location'];
+    const accountId = location ? location.match(/\(([^)]+)\)/)?.[1] : 'unknown';
+    console.log(\`✅ Created Dynamics 365 account: \${accountData.name} (ID: \${accountId})\`);
+    return { ...inputData, dynamics365AccountCreated: true, accountId: accountId, accountName: accountData.name };
+  } else {
+    throw new Error(\`Create account failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateD365Contact(baseUrl, accessToken, params, inputData) {
+  const contactData = {
+    firstname: params.firstName || params.first_name || inputData.first_name || '',
+    lastname: params.lastName || params.last_name || inputData.last_name || 'Unknown',
+    emailaddress1: params.email || inputData.email || '',
+    telephone1: params.phone || inputData.phone || '',
+    jobtitle: params.jobTitle || params.job_title || '',
+    description: params.description || ''
+  };
+  
+  // Link to account if provided
+  if (params.parentaccountid || params.account_id) {
+    contactData['parentcustomerid_account@odata.bind'] = \`/accounts(\${params.parentaccountid || params.account_id})\`;
+  }
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/contacts\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0'
+    },
+    payload: JSON.stringify(contactData)
+  });
+  
+  if (response.getResponseCode() === 204) {
+    const location = response.getHeaders()['OData-EntityId'] || response.getHeaders()['Location'];
+    const contactId = location ? location.match(/\(([^)]+)\)/)?.[1] : 'unknown';
+    console.log(\`✅ Created Dynamics 365 contact: \${contactData.firstname} \${contactData.lastname} (ID: \${contactId})\`);
+    return { ...inputData, dynamics365ContactCreated: true, contactId: contactId, contactName: \`\${contactData.firstname} \${contactData.lastname}\` };
+  } else {
+    throw new Error(\`Create contact failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateD365Lead(baseUrl, accessToken, params, inputData) {
+  const leadData = {
+    subject: params.subject || params.title || 'New Lead from Automation',
+    firstname: params.firstName || params.first_name || inputData.first_name || '',
+    lastname: params.lastName || params.last_name || inputData.last_name || 'Unknown',
+    emailaddress1: params.email || inputData.email || '',
+    telephone1: params.phone || inputData.phone || '',
+    companyname: params.company || inputData.company || '',
+    websiteurl: params.website || inputData.website || '',
+    leadsourcecode: 1, // Web
+    description: params.description || ''
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/leads\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0'
+    },
+    payload: JSON.stringify(leadData)
+  });
+  
+  if (response.getResponseCode() === 204) {
+    const location = response.getHeaders()['OData-EntityId'] || response.getHeaders()['Location'];
+    const leadId = location ? location.match(/\(([^)]+)\)/)?.[1] : 'unknown';
+    console.log(\`✅ Created Dynamics 365 lead: \${leadData.subject} (ID: \${leadId})\`);
+    return { ...inputData, dynamics365LeadCreated: true, leadId: leadId, leadSubject: leadData.subject };
+  } else {
+    throw new Error(\`Create lead failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleDynamics365TestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/WhoAmI\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'OData-MaxVersion': '4.0',
+        'OData-Version': '4.0'
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Dynamics 365 connection test successful. User ID: \${data.UserId}\`);
+      return { ...inputData, connectionTest: 'success', userId: data.UserId, businessUnitId: data.BusinessUnitId };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Dynamics 365 connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleDynamics365Trigger(baseUrl, accessToken, params, inputData) {
+  const entity = params.entity || 'leads';
+  const filter = params.filter || '';
+  
+  try {
+    let endpoint = \`\${baseUrl}/\${entity}?\`;
+    if (filter) endpoint += \`$filter=\${encodeURIComponent(filter)}&\`;
+    endpoint += '$top=10&$orderby=createdon desc';
+    
+    const response = UrlFetchApp.fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'OData-MaxVersion': '4.0',
+        'OData-Version': '4.0'
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`🏬 Dynamics 365 trigger found \${data.value?.length || 0} recent \${entity} records\`);
+      return { ...inputData, dynamics365Trigger: data.value, triggerCount: data.value?.length || 0 };
+    } else {
+      throw new Error(\`Trigger check failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Dynamics 365 trigger failed:', error);
+    return { ...inputData, dynamics365TriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Google Contacts implementation
+function generateGoogleContactsFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_contact';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📇 Executing Google Contacts: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  
+  try {
+    switch (operation) {
+      case 'create_contact':
+        return handleCreateGoogleContact(params, inputData);
+      case 'get_contact':
+        return handleGetGoogleContact(params, inputData);
+      case 'update_contact':
+        return handleUpdateGoogleContact(params, inputData);
+      case 'delete_contact':
+        return handleDeleteGoogleContact(params, inputData);
+      case 'list_contacts':
+        return handleListGoogleContacts(params, inputData);
+      case 'search_contacts':
+        return handleSearchGoogleContacts(params, inputData);
+      case 'create_contact_group':
+        return handleCreateContactGroup(params, inputData);
+      case 'list_contact_groups':
+        return handleListContactGroups(params, inputData);
+      case 'test_connection':
+        return handleGoogleContactsTestConnection(params, inputData);
+      case 'contact_created':
+      case 'contact_updated':
+        return handleGoogleContactsTrigger(params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Google Contacts operation: \${operation}\`);
+        return { ...inputData, googleContactsWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Google Contacts \${operation} failed:\`, error);
+    return { ...inputData, googleContactsError: error.toString(), googleContactsSuccess: false };
+  }
+}
+
+function handleCreateGoogleContact(params, inputData) {
+  const contact = ContactsApp.createContact(
+    params.firstName || params.first_name || inputData.first_name || '',
+    params.lastName || params.last_name || inputData.last_name || 'Unknown'
+  );
+  
+  // Add additional fields
+  if (params.email || inputData.email) {
+    contact.addEmail(params.email || inputData.email);
+  }
+  
+  if (params.phone || inputData.phone) {
+    contact.addPhone(ContactsApp.Field.MOBILE_PHONE, params.phone || inputData.phone);
+  }
+  
+  if (params.company || inputData.company) {
+    contact.addCompany(params.company || inputData.company, params.jobTitle || params.job_title || '');
+  }
+  
+  if (params.address) {
+    contact.addAddress(ContactsApp.Field.HOME_ADDRESS, params.address);
+  }
+  
+  if (params.notes || params.description) {
+    contact.setNotes(params.notes || params.description);
+  }
+  
+  console.log(\`✅ Created Google contact: \${contact.getFullName()}\`);
+  return { 
+    ...inputData, 
+    googleContactCreated: true, 
+    contactId: contact.getId(), 
+    contactName: contact.getFullName(),
+    contactEmail: contact.getEmails()[0]?.getAddress() || ''
+  };
+}
+
+function handleGetGoogleContact(params, inputData) {
+  const contactId = params.contactId || params.contact_id;
+  
+  if (!contactId) {
+    throw new Error('Contact ID is required');
+  }
+  
+  const contact = ContactsApp.getContact(contactId);
+  
+  const contactData = {
+    id: contact.getId(),
+    fullName: contact.getFullName(),
+    givenName: contact.getGivenName(),
+    familyName: contact.getFamilyName(),
+    emails: contact.getEmails().map(email => email.getAddress()),
+    phones: contact.getPhones().map(phone => phone.getPhoneNumber()),
+    companies: contact.getCompanies().map(company => company.getCompanyName()),
+    addresses: contact.getAddresses().map(addr => addr.getAddress()),
+    notes: contact.getNotes()
+  };
+  
+  console.log(\`✅ Retrieved Google contact: \${contactData.fullName}\`);
+  return { ...inputData, googleContact: contactData };
+}
+
+function handleListGoogleContacts(params, inputData) {
+  const maxResults = params.maxResults || params.limit || 100;
+  const query = params.query || '';
+  
+  let contacts;
+  if (query) {
+    contacts = ContactsApp.getContactsByName(query);
+  } else {
+    contacts = ContactsApp.getContacts();
+  }
+  
+  const contactList = contacts.slice(0, maxResults).map(contact => ({
+    id: contact.getId(),
+    fullName: contact.getFullName(),
+    primaryEmail: contact.getEmails()[0]?.getAddress() || '',
+    primaryPhone: contact.getPhones()[0]?.getPhoneNumber() || '',
+    company: contact.getCompanies()[0]?.getCompanyName() || ''
+  }));
+  
+  console.log(\`✅ Listed \${contactList.length} Google contacts\`);
+  return { ...inputData, googleContacts: contactList, contactCount: contactList.length };
+}
+
+function handleGoogleContactsTestConnection(params, inputData) {
+  try {
+    const user = Session.getActiveUser().getEmail();
+    const contacts = ContactsApp.getContacts();
+    
+    console.log(\`✅ Google Contacts connection test successful. User: \${user}, Contacts available: \${contacts.length}\`);
+    return { ...inputData, connectionTest: 'success', userEmail: user, totalContacts: contacts.length };
+  } catch (error) {
+    console.error('❌ Google Contacts connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleGoogleContactsTrigger(params, inputData) {
+  // Simulate contact monitoring by getting recently updated contacts
+  const maxResults = params.maxResults || 10;
+  
+  try {
+    const contacts = ContactsApp.getContacts();
+    
+    // Get the most recently created/updated contacts (simulate by taking first N)
+    const recentContacts = contacts.slice(0, maxResults).map(contact => ({
+      id: contact.getId(),
+      fullName: contact.getFullName(),
+      email: contact.getEmails()[0]?.getAddress() || '',
+      phone: contact.getPhones()[0]?.getPhoneNumber() || '',
+      company: contact.getCompanies()[0]?.getCompanyName() || '',
+      triggeredBy: 'contact_watcher'
+    }));
+    
+    console.log(\`📇 Google Contacts trigger found \${recentContacts.length} recent contacts\`);
+    return { ...inputData, googleContactsTrigger: recentContacts, triggerCount: recentContacts.length };
+  } catch (error) {
+    console.error('❌ Google Contacts trigger failed:', error);
+    return { ...inputData, googleContactsTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Microsoft Teams implementation
+function generateMicrosoftTeamsFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_message';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('👥 Executing Microsoft Teams: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_TEAMS_ACCESS_TOKEN');
+  
+  if (!accessToken) {
+    console.warn('⚠️ Microsoft Teams access token not configured');
+    return { ...inputData, teamsSkipped: true, error: 'Missing access token' };
+  }
+  
+  try {
+    const baseUrl = 'https://graph.microsoft.com/v1.0';
+    
+    switch (operation) {
+      case 'send_message':
+        return handleSendTeamsMessage(baseUrl, accessToken, params, inputData);
+      case 'send_chat_message':
+        return handleSendTeamsChatMessage(baseUrl, accessToken, params, inputData);
+      case 'create_team':
+        return handleCreateTeam(baseUrl, accessToken, params, inputData);
+      case 'create_channel':
+        return handleCreateTeamsChannel(baseUrl, accessToken, params, inputData);
+      case 'list_teams':
+        return handleListTeams(baseUrl, accessToken, params, inputData);
+      case 'list_channels':
+        return handleListTeamsChannels(baseUrl, accessToken, params, inputData);
+      case 'add_team_member':
+        return handleAddTeamMember(baseUrl, accessToken, params, inputData);
+      case 'create_meeting':
+        return handleCreateTeamsMeeting(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handleTeamsTestConnection(baseUrl, accessToken, params, inputData);
+      case 'message_posted':
+        return handleTeamsTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Microsoft Teams operation: \${operation}\`);
+        return { ...inputData, teamsWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Microsoft Teams \${operation} failed:\`, error);
+    return { ...inputData, teamsError: error.toString(), teamsSuccess: false };
+  }
+}
+
+function handleSendTeamsMessage(baseUrl, accessToken, params, inputData) {
+  const teamId = params.teamId || params.team_id;
+  const channelId = params.channelId || params.channel_id;
+  const message = params.message || params.text || inputData.message || 'Message from automation';
+  
+  if (!teamId || !channelId) {
+    throw new Error('Team ID and Channel ID are required');
+  }
+  
+  const messageData = {
+    body: {
+      contentType: 'text',
+      content: message
+    }
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/teams/\${teamId}/channels/\${channelId}/messages\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(messageData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Sent Teams message to channel \${channelId}\`);
+    return { ...inputData, teamsMessageSent: true, messageId: data.id, teamId: teamId, channelId: channelId };
+  } else {
+    throw new Error(\`Send message failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreateTeam(baseUrl, accessToken, params, inputData) {
+  const teamData = {
+    'template@odata.bind': 'https://graph.microsoft.com/v1.0/teamsTemplates/standard',
+    displayName: params.displayName || params.name || 'New Team from Automation',
+    description: params.description || 'Team created by automation'
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/teams\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(teamData)
+  });
+  
+  if (response.getResponseCode() === 202) {
+    console.log(\`✅ Teams creation initiated: \${teamData.displayName}\`);
+    return { ...inputData, teamsCreated: true, teamName: teamData.displayName };
+  } else {
+    throw new Error(\`Create team failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleListTeams(baseUrl, accessToken, params, inputData) {
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/me/joinedTeams\`, {
+    method: 'GET',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`
+    }
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    const teams = data.value.map(team => ({
+      id: team.id,
+      displayName: team.displayName,
+      description: team.description,
+      webUrl: team.webUrl
+    }));
+    
+    console.log(\`✅ Listed \${teams.length} Teams\`);
+    return { ...inputData, teamsListed: teams, teamCount: teams.length };
+  } else {
+    throw new Error(\`List teams failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleTeamsTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/me\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Microsoft Teams connection test successful. User: \${data.displayName}\`);
+      return { ...inputData, connectionTest: 'success', userName: data.displayName, userEmail: data.mail };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Microsoft Teams connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleTeamsTrigger(baseUrl, accessToken, params, inputData) {
+  const teamId = params.teamId || params.team_id;
+  const channelId = params.channelId || params.channel_id;
+  
+  if (!teamId || !channelId) {
+    console.warn('⚠️ Team ID and Channel ID required for message monitoring');
+    return { ...inputData, teamsTrigger: [], triggerCount: 0 };
+  }
+  
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/teams/\${teamId}/channels/\${channelId}/messages?$top=10\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`👥 Teams trigger found \${data.value?.length || 0} recent messages\`);
+      return { ...inputData, teamsTrigger: data.value, triggerCount: data.value?.length || 0 };
+    } else {
+      throw new Error(\`Trigger check failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Microsoft Teams trigger failed:', error);
+    return { ...inputData, teamsTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Stripe implementation
+function generateStripeFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_customer';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💳 Executing Stripe: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const apiKey = PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
+  
+  if (!apiKey) {
+    console.warn('⚠️ Stripe secret key not configured');
+    return { ...inputData, stripeSkipped: true, error: 'Missing secret key' };
+  }
+  
+  try {
+    const baseUrl = 'https://api.stripe.com/v1';
+    
+    switch (operation) {
+      case 'create_customer':
+        return handleCreateStripeCustomer(baseUrl, apiKey, params, inputData);
+      case 'create_payment_intent':
+        return handleCreatePaymentIntent(baseUrl, apiKey, params, inputData);
+      case 'create_subscription':
+        return handleCreateSubscription(baseUrl, apiKey, params, inputData);
+      case 'create_refund':
+        return handleCreateRefund(baseUrl, apiKey, params, inputData);
+      case 'retrieve_customer':
+        return handleRetrieveCustomer(baseUrl, apiKey, params, inputData);
+      case 'list_payment_intents':
+        return handleListPaymentIntents(baseUrl, apiKey, params, inputData);
+      case 'update_subscription':
+        return handleUpdateSubscription(baseUrl, apiKey, params, inputData);
+      case 'test_connection':
+        return handleStripeTestConnection(baseUrl, apiKey, params, inputData);
+      case 'payment_succeeded':
+      case 'payment_failed':
+      case 'subscription_created':
+        return handleStripeTrigger(baseUrl, apiKey, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Stripe operation: \${operation}\`);
+        return { ...inputData, stripeWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Stripe \${operation} failed:\`, error);
+    return { ...inputData, stripeError: error.toString(), stripeSuccess: false };
+  }
+}
+
+function handleCreateStripeCustomer(baseUrl, apiKey, params, inputData) {
+  const customerData = {
+    name: params.name || \`\${params.first_name || inputData.first_name || ''} \${params.last_name || inputData.last_name || ''}\`.trim() || 'Unknown Customer',
+    email: params.email || inputData.email || '',
+    phone: params.phone || inputData.phone || '',
+    description: params.description || 'Customer created by automation',
+    metadata: params.metadata || {}
+  };
+  
+  // Convert to form data for Stripe API
+  const formData = Object.entries(customerData)
+    .filter(([key, value]) => value !== '' && value !== null && value !== undefined)
+    .map(([key, value]) => \`\${key}=\${encodeURIComponent(typeof value === 'object' ? JSON.stringify(value) : value)}\`)
+    .join('&');
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/customers\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${apiKey}\`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    payload: formData
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Stripe customer: \${data.name || data.email} (ID: \${data.id})\`);
+    return { ...inputData, stripeCustomerCreated: true, customerId: data.id, customerEmail: data.email };
+  } else {
+    throw new Error(\`Create customer failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleCreatePaymentIntent(baseUrl, apiKey, params, inputData) {
+  const amount = params.amount || 1000; // Amount in cents
+  const currency = params.currency || 'usd';
+  const customerId = params.customer_id || params.customerId;
+  
+  const paymentData = {
+    amount: amount,
+    currency: currency,
+    automatic_payment_methods: JSON.stringify({ enabled: true }),
+    description: params.description || 'Payment from automation'
+  };
+  
+  if (customerId) {
+    paymentData.customer = customerId;
+  }
+  
+  const formData = Object.entries(paymentData)
+    .map(([key, value]) => \`\${key}=\${encodeURIComponent(value)}\`)
+    .join('&');
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/payment_intents\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${apiKey}\`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    payload: formData
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created Stripe payment intent: \${data.id} for \${amount} \${currency.toUpperCase()}\`);
+    return { ...inputData, stripePaymentCreated: true, paymentIntentId: data.id, amount: amount, currency: currency };
+  } else {
+    throw new Error(\`Create payment intent failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleStripeTestConnection(baseUrl, apiKey, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/account\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${apiKey}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Stripe connection test successful. Account: \${data.display_name || data.id}\`);
+      return { ...inputData, connectionTest: 'success', accountId: data.id, accountName: data.display_name };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Stripe connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}
+
+function handleStripeTrigger(baseUrl, apiKey, params, inputData) {
+  // Simulate payment monitoring by getting recent payments
+  const limit = params.limit || 10;
+  
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/payment_intents?limit=\${limit}\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${apiKey}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`💳 Stripe trigger found \${data.data?.length || 0} recent payment intents\`);
+      return { ...inputData, stripeTrigger: data.data, triggerCount: data.data?.length || 0 };
+    } else {
+      throw new Error(\`Trigger check failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Stripe trigger failed:', error);
+    return { ...inputData, stripeTriggerError: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive Twilio implementation
+function generateTwilioFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'send_sms';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📱 Executing Twilio: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const accountSid = PropertiesService.getScriptProperties().getProperty('TWILIO_ACCOUNT_SID');
+  const authToken = PropertiesService.getScriptProperties().getProperty('TWILIO_AUTH_TOKEN');
+  const fromNumber = PropertiesService.getScriptProperties().getProperty('TWILIO_FROM_NUMBER');
+  
+  if (!accountSid || !authToken) {
+    console.warn('⚠️ Twilio credentials not configured');
+    return { ...inputData, twilioSkipped: true, error: 'Missing account SID or auth token' };
+  }
+  
+  try {
+    const baseUrl = \`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}\`;
+    
+    switch (operation) {
+      case 'send_sms':
+        return handleSendSMS(baseUrl, accountSid, authToken, fromNumber, params, inputData);
+      case 'send_mms':
+        return handleSendMMS(baseUrl, accountSid, authToken, fromNumber, params, inputData);
+      case 'make_call':
+        return handleMakeCall(baseUrl, accountSid, authToken, fromNumber, params, inputData);
+      case 'send_whatsapp':
+        return handleSendWhatsApp(baseUrl, accountSid, authToken, params, inputData);
+      case 'lookup_phone':
+        return handleLookupPhone(baseUrl, accountSid, authToken, params, inputData);
+      case 'list_messages':
+        return handleListTwilioMessages(baseUrl, accountSid, authToken, params, inputData);
+      case 'get_call_logs':
+        return handleGetCallLogs(baseUrl, accountSid, authToken, params, inputData);
+      case 'test_connection':
+        return handleTwilioTestConnection(baseUrl, accountSid, authToken, params, inputData);
+      case 'sms_received':
+      case 'call_completed':
+        return handleTwilioTrigger(baseUrl, accountSid, authToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown Twilio operation: \${operation}\`);
+        return { ...inputData, twilioWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ Twilio \${operation} failed:\`, error);
+    return { ...inputData, twilioError: error.toString(), twilioSuccess: false };
+  }
+}
+
+function handleSendSMS(baseUrl, accountSid, authToken, fromNumber, params, inputData) {
+  const to = params.to || params.phone || inputData.phone;
+  const body = params.body || params.message || inputData.message || 'Message from automation';
+  const from = params.from || fromNumber;
+  
+  if (!to || !from) {
+    throw new Error('To and From phone numbers are required');
+  }
+  
+  const auth = Utilities.base64Encode(\`\${accountSid}:\${authToken}\`);
+  const formData = \`To=\${encodeURIComponent(to)}&From=\${encodeURIComponent(from)}&Body=\${encodeURIComponent(body)}\`;
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/Messages.json\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    payload: formData
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Sent SMS via Twilio to \${to}: \${data.sid}\`);
+    return { ...inputData, twilioSmsSent: true, messageSid: data.sid, to: to, body: body };
+  } else {
+    throw new Error(\`Send SMS failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleMakeCall(baseUrl, accountSid, authToken, fromNumber, params, inputData) {
+  const to = params.to || params.phone || inputData.phone;
+  const from = params.from || fromNumber;
+  const twiml = params.twiml || \`<Response><Say>Hello from automation</Say></Response>\`;
+  
+  if (!to || !from) {
+    throw new Error('To and From phone numbers are required');
+  }
+  
+  const auth = Utilities.base64Encode(\`\${accountSid}:\${authToken}\`);
+  const formData = \`To=\${encodeURIComponent(to)}&From=\${encodeURIComponent(from)}&Twiml=\${encodeURIComponent(twiml)}\`;
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/Calls.json\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    payload: formData
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Initiated call via Twilio to \${to}: \${data.sid}\`);
+    return { ...inputData, twilioCallInitiated: true, callSid: data.sid, to: to };
+  } else {
+    throw new Error(\`Make call failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handleTwilioTestConnection(baseUrl, accountSid, authToken, params, inputData) {
+  try {
+    const auth = Utilities.base64Encode(\`\${accountSid}:\${authToken}\`);
+    const response = UrlFetchApp.fetch(\`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}.json\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Basic \${auth}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ Twilio connection test successful. Account: \${data.friendly_name}\`);
+      return { ...inputData, connectionTest: 'success', accountSid: data.sid, accountName: data.friendly_name };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ Twilio connection test failed:', error);
+    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+  }
+}`;
+}
+
+// Comprehensive PayPal implementation
+function generatePayPalFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_order';
+  
+  return `
+function ${functionName}(inputData, params) {
+  console.log('💰 Executing PayPal: ${node.name || operation}');
+  
+  const operation = params.operation || '${operation}';
+  const clientId = PropertiesService.getScriptProperties().getProperty('PAYPAL_CLIENT_ID');
+  const clientSecret = PropertiesService.getScriptProperties().getProperty('PAYPAL_CLIENT_SECRET');
+  const sandbox = PropertiesService.getScriptProperties().getProperty('PAYPAL_SANDBOX') === 'true';
+  
+  if (!clientId || !clientSecret) {
+    console.warn('⚠️ PayPal credentials not configured');
+    return { ...inputData, paypalSkipped: true, error: 'Missing client ID or secret' };
+  }
+  
+  try {
+    const baseUrl = sandbox ? 'https://api.sandbox.paypal.com' : 'https://api.paypal.com';
+    
+    // Get access token first
+    const accessToken = getPayPalAccessToken(baseUrl, clientId, clientSecret);
+    if (!accessToken) {
+      throw new Error('Failed to obtain PayPal access token');
+    }
+    
+    switch (operation) {
+      case 'create_order':
+        return handleCreatePayPalOrder(baseUrl, accessToken, params, inputData);
+      case 'capture_order':
+        return handleCapturePayPalOrder(baseUrl, accessToken, params, inputData);
+      case 'get_order':
+        return handleGetPayPalOrder(baseUrl, accessToken, params, inputData);
+      case 'refund_capture':
+        return handleRefundCapture(baseUrl, accessToken, params, inputData);
+      case 'create_payment':
+        return handleCreatePayPalPayment(baseUrl, accessToken, params, inputData);
+      case 'test_connection':
+        return handlePayPalTestConnection(baseUrl, accessToken, params, inputData);
+      case 'payment_sale_completed':
+      case 'payment_sale_refunded':
+        return handlePayPalTrigger(baseUrl, accessToken, params, inputData);
+      default:
+        console.warn(\`⚠️ Unknown PayPal operation: \${operation}\`);
+        return { ...inputData, paypalWarning: \`Unsupported operation: \${operation}\` };
+    }
+    
+  } catch (error) {
+    console.error(\`❌ PayPal \${operation} failed:\`, error);
+    return { ...inputData, paypalError: error.toString(), paypalSuccess: false };
+  }
+}
+
+function getPayPalAccessToken(baseUrl, clientId, clientSecret) {
+  const auth = Utilities.base64Encode(\`\${clientId}:\${clientSecret}\`);
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/v1/oauth2/token\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Basic \${auth}\`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    payload: 'grant_type=client_credentials'
+  });
+  
+  if (response.getResponseCode() === 200) {
+    const data = JSON.parse(response.getContentText());
+    return data.access_token;
+  }
+  
+  return null;
+}
+
+function handleCreatePayPalOrder(baseUrl, accessToken, params, inputData) {
+  const amount = params.amount || '10.00';
+  const currency = params.currency || 'USD';
+  
+  const orderData = {
+    intent: 'CAPTURE',
+    purchase_units: [{
+      amount: {
+        currency_code: currency,
+        value: amount.toString()
+      },
+      description: params.description || 'Order from automation'
+    }]
+  };
+  
+  const response = UrlFetchApp.fetch(\`\${baseUrl}/v2/checkout/orders\`, {
+    method: 'POST',
+    headers: {
+      'Authorization': \`Bearer \${accessToken}\`,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(orderData)
+  });
+  
+  if (response.getResponseCode() === 201) {
+    const data = JSON.parse(response.getContentText());
+    console.log(\`✅ Created PayPal order: \${data.id} for \${amount} \${currency}\`);
+    return { ...inputData, paypalOrderCreated: true, orderId: data.id, amount: amount, currency: currency };
+  } else {
+    throw new Error(\`Create order failed: \${response.getResponseCode()}\`);
+  }
+}
+
+function handlePayPalTestConnection(baseUrl, accessToken, params, inputData) {
+  try {
+    const response = UrlFetchApp.fetch(\`\${baseUrl}/v1/identity/oauth2/userinfo?schema=paypalv1.1\`, {
+      method: 'GET',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`
+      }
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      console.log(\`✅ PayPal connection test successful. User: \${data.name}\`);
+      return { ...inputData, connectionTest: 'success', userName: data.name, userEmail: data.email };
+    } else {
+      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
+    }
+  } catch (error) {
+    console.error('❌ PayPal connection test failed:', error);
     return { ...inputData, connectionTest: 'failed', error: error.toString() };
   }
 }`;
