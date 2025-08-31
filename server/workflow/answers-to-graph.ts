@@ -22,11 +22,16 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
   const edges: any[] = [];
   let nodeIndex = 0;
   
-  // Build nodes that match the editor's schema
+  // Build nodes compatible with both Graph Editor and compiler
   if (userRequirements.trigger) {
     nodes.push({
-      id: 'n-trigger',
-      type: `trigger.${userRequirements.trigger.app}`,
+      id: 'trigger-1',
+      type: 'trigger',
+      app: userRequirements.trigger.app,
+      name: userRequirements.trigger.label,
+      op: `${userRequirements.trigger.app}.${userRequirements.trigger.operation}`,
+      params: userRequirements.trigger.config,
+      // Also include Graph Editor format
       position: { x: 80, y: 60 },
       data: {
         label: userRequirements.trigger.label,
@@ -37,10 +42,15 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
   }
   
   userRequirements.actions.forEach((action, index) => {
-    const actionId = `n-action-${index + 1}`;
+    const actionId = `action-${index + 1}`;
     nodes.push({
       id: actionId,
-      type: `action.${action.app}`,
+      type: 'action',
+      app: action.app,
+      name: action.label,
+      op: `${action.app}.${action.operation}`,
+      params: action.config,
+      // Also include Graph Editor format
       position: { x: 80 + ((index + 1) * 280), y: 60 },
       data: {
         label: action.label,
@@ -54,9 +64,11 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
   if (nodes.length > 1) {
     for (let i = 0; i < nodes.length - 1; i++) {
       edges.push({
-        id: `e${i + 1}`,
+        id: `edge-${i + 1}`,
         source: nodes[i].id,
-        target: nodes[i + 1].id
+        target: nodes[i + 1].id,
+        from: nodes[i].id, // Also include Graph Editor format
+        to: nodes[i + 1].id
       });
     }
   }
@@ -85,7 +97,21 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   
   // Parse trigger from user's actual words
   let trigger = null;
-  if (answers.trigger?.toLowerCase().includes('email') || allText.includes('email arrives')) {
+  
+  // Check for spreadsheet triggers
+  if (answers.trigger?.toLowerCase().includes('spreadsheet') || answers.trigger?.toLowerCase().includes('sheet edit')) {
+    trigger = {
+      app: 'sheets',
+      label: 'Sheet Row Added',
+      operation: 'onRowAdded',
+      config: {
+        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheetDetails || ''),
+        sheetName: 'Sheet1'
+      }
+    };
+  }
+  // Check for email triggers
+  else if (answers.trigger?.toLowerCase().includes('email') || allText.includes('email arrives')) {
     const filterCriteria = answers.filter_criteria || '';
     trigger = {
       app: 'gmail',
@@ -101,29 +127,58 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   // Parse actions from user's actual requests
   const actions: Array<{app: string, label: string, operation: string, config: any}> = [];
   
-  // Check if user wants email replies
-  if (allText.includes('reply') || allText.includes('respond') || answers.response_template) {
+  // Parse what user actually wants to do
+  
+  // Check if user wants to send emails (not auto-reply)
+  if (allText.includes('email will be sent') || answers.emailContent) {
     actions.push({
       app: 'gmail',
-      label: 'Send Auto Reply',
-      operation: 'send_reply',
+      label: 'Send Email to Candidate',
+      operation: 'sendEmail',
       config: {
-        responseTemplate: answers.response_template || 'Thank you for your email.',
-        markAsReplied: true
+        to: '{{candidate_email}}',
+        subject: extractSubjectFromContent(answers.emailContent || 'Interview Invitation'),
+        body: extractBodyFromContent(answers.emailContent || 'Hello {{candidate_name}}, you are selected for the interview')
       }
     });
   }
   
-  // Check if user wants logging to sheets
-  if (allText.includes('log') || allText.includes('sheet') || answers.sheet_id) {
+  // Check if user wants to update status
+  if (allText.includes('status will be updated') || allText.includes('update') || answers.statusValues) {
     actions.push({
       app: 'sheets',
-      label: 'Log Email Data',
-      operation: 'append_row',
+      label: 'Update Status',
+      operation: 'updateCell',
       config: {
-        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheet_id || ''),
+        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheetDetails || ''),
         sheetName: 'Sheet1',
-        columns: answers.sheet_columns || 'Sender, Subject, Body, Timestamp'
+        range: '{{row}}!C:C',
+        value: 'EMAIL_SENT'
+      }
+    });
+  }
+  
+  // Check if user wants reminder functionality
+  if (allText.includes('reminder') || allText.includes('24 hours') || answers.reminderEmailContent) {
+    // Add delay trigger
+    actions.push({
+      app: 'time',
+      label: 'Wait 24 Hours',
+      operation: 'delay',
+      config: {
+        hours: 24
+      }
+    });
+    
+    // Add reminder email
+    actions.push({
+      app: 'gmail',
+      label: 'Send Reminder',
+      operation: 'sendEmail',
+      config: {
+        to: '{{candidate_email}}',
+        subject: extractSubjectFromContent(answers.reminderEmailContent || 'Reminder'),
+        body: extractBodyFromContent(answers.reminderEmailContent || 'Gentle reminder')
       }
     });
   }
@@ -155,6 +210,20 @@ function buildGmailQueryFromUserWords(criteria: string): string {
 function extractSheetIdFromUserAnswer(sheetAnswer: string): string {
   const match = sheetAnswer.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   return match ? match[1] : '';
+}
+
+function extractSubjectFromContent(content: string): string {
+  const match = content.match(/Subject:\s*(.+)/i);
+  return match ? match[1].trim() : content.split('\n')[0] || 'Automated Email';
+}
+
+function extractBodyFromContent(content: string): string {
+  const match = content.match(/Body:\s*(.+)/i);
+  if (match) return match[1].trim();
+  
+  // If no "Body:" prefix, take everything after first line
+  const lines = content.split('\n');
+  return lines.length > 1 ? lines.slice(1).join('\n').trim() : content;
 }
 
 function detectAutomationType(prompt: string, answers: Record<string, string>): string {

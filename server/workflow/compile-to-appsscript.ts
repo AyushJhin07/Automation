@@ -221,13 +221,15 @@ function generateNodeFunctions(nodes: WorkflowNode[]): string[] {
 }
 
 function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): string {
-  const functionName = `execute${capitalizeFirst(nodeOp.split('.').pop() || 'Node')}`;
+  // Handle both old format (node.op) and new format (node.data.operation)
+  const operation = nodeOp || node.op || `${node.app || 'unknown'}.${node.data?.operation || 'default'}`;
+  const functionName = `execute${capitalizeFirst(operation.split('.').pop() || 'Node')}`;
   
-  if (nodeOp.startsWith('gmail.') || node.app === 'gmail') {
+  if (operation.startsWith('gmail.') || node.app === 'gmail') {
     return generateGmailFunction(functionName, node);
-  } else if (nodeOp.startsWith('sheets.') || node.app === 'sheets' || nodeOp.startsWith('google-sheets.') || node.app === 'google-sheets-enhanced') {
+  } else if (operation.startsWith('sheets.') || node.app === 'sheets' || operation.startsWith('google-sheets.') || node.app === 'google-sheets-enhanced') {
     return generateGoogleSheetsFunction(functionName, node);
-  } else if (nodeOp.startsWith('slack.') || node.app === 'slack' || nodeOp.startsWith('slack-enhanced.') || node.app === 'slack-enhanced') {
+  } else if (operation.startsWith('slack.') || node.app === 'slack' || operation.startsWith('slack-enhanced.') || node.app === 'slack-enhanced') {
     return generateSlackEnhancedFunction(functionName, node);
   } else if (nodeOp.startsWith('dropbox.') || node.app === 'dropbox' || nodeOp.startsWith('dropbox-enhanced.') || node.app === 'dropbox-enhanced') {
     return generateDropboxEnhancedFunction(functionName, node);
