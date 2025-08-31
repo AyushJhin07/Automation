@@ -1,0 +1,185 @@
+{
+  "id": "docker-hub",
+  "name": "Docker Hub",
+  "description": "Container registry and image management platform",
+  "category": "DevOps",
+  "icon": "🐳",
+  "color": "#2496ED",
+  "authentication": {
+    "type": "api_key",
+    "fields": [
+      {
+        "key": "username",
+        "label": "Docker Hub Username",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "access_token",
+        "label": "Access Token",
+        "type": "password",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://hub.docker.com/v2",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 5000
+  },
+  "actions": [
+    {
+      "id": "list_repositories",
+      "name": "List Repositories",
+      "description": "List Docker repositories",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to list repositories from"
+          },
+          "page_size": {
+            "type": "number",
+            "default": 25,
+            "maximum": 100,
+            "description": "Number of repositories per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_repository",
+      "name": "Get Repository",
+      "description": "Get repository details",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Repository name"
+          }
+        },
+        "required": ["namespace", "repository"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_tags",
+      "name": "List Tags",
+      "description": "List repository tags",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "page_size": {
+            "type": "number",
+            "default": 25,
+            "maximum": 100,
+            "description": "Number of tags per page"
+          }
+        },
+        "required": ["namespace", "repository"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_tag",
+      "name": "Get Tag Details",
+      "description": "Get detailed information about a specific tag",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag name"
+          }
+        },
+        "required": ["namespace", "repository", "tag"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Docker Hub",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "image_pushed",
+      "name": "Image Pushed",
+      "description": "Triggered when a new image is pushed to repository",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace to monitor"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Repository name to monitor"
+          },
+          "tag_pattern": {
+            "type": "string",
+            "description": "Tag pattern to match (e.g., latest, v*)"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "repository_created",
+      "name": "Repository Created",
+      "description": "Triggered when a new repository is created",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

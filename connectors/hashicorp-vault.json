@@ -1,0 +1,171 @@
+{
+  "id": "hashicorp-vault",
+  "name": "HashiCorp Vault",
+  "description": "Secrets management and data protection platform",
+  "category": "DevOps",
+  "icon": "🔐",
+  "color": "#000000",
+  "authentication": {
+    "type": "vault_token",
+    "fields": [
+      {
+        "key": "vault_url",
+        "label": "Vault Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "vault_token",
+        "label": "Vault Token",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "namespace",
+        "label": "Vault Namespace (Enterprise)",
+        "type": "text",
+        "required": false
+      }
+    ]
+  },
+  "baseUrl": "https://vault-server.com:8200/v1",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 2000
+  },
+  "actions": [
+    {
+      "id": "read_secret",
+      "name": "Read Secret",
+      "description": "Read a secret from Vault",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Secret path (e.g., secret/data/myapp)"
+          },
+          "version": {
+            "type": "number",
+            "description": "Secret version (for KV v2)"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "write_secret",
+      "name": "Write Secret",
+      "description": "Write a secret to Vault",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Secret path (e.g., secret/data/myapp)"
+          },
+          "data": {
+            "type": "object",
+            "description": "Secret data as key-value pairs"
+          },
+          "cas": {
+            "type": "number",
+            "description": "Check-and-set parameter for KV v2"
+          }
+        },
+        "required": ["path", "data"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_secret",
+      "name": "Delete Secret",
+      "description": "Delete a secret from Vault",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Secret path to delete"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_policy",
+      "name": "Create Policy",
+      "description": "Create or update a Vault policy",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Policy name"
+          },
+          "policy": {
+            "type": "string",
+            "description": "Policy rules in HCL format"
+          }
+        },
+        "required": ["name", "policy"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Vault",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "secret_accessed",
+      "name": "Secret Accessed",
+      "description": "Triggered when a secret is accessed (audit log)",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path_pattern": {
+            "type": "string",
+            "description": "Secret path pattern to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "policy_updated",
+      "name": "Policy Updated",
+      "description": "Triggered when a policy is updated",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_name": {
+            "type": "string",
+            "description": "Policy name to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

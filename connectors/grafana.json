@@ -1,0 +1,206 @@
+{
+  "id": "grafana",
+  "name": "Grafana",
+  "description": "Observability and data visualization platform",
+  "category": "DevOps",
+  "icon": "📊",
+  "color": "#F46800",
+  "authentication": {
+    "type": "api_key",
+    "fields": [
+      {
+        "key": "api_key",
+        "label": "Grafana API Key",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "server_url",
+        "label": "Grafana Server URL",
+        "type": "text",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://your-grafana.com/api",
+  "rateLimits": {
+    "requestsPerSecond": 15,
+    "requestsPerMinute": 200,
+    "dailyLimit": 5000
+  },
+  "actions": [
+    {
+      "id": "create_dashboard",
+      "name": "Create Dashboard",
+      "description": "Create a new Grafana dashboard",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Dashboard title"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Dashboard tags"
+          },
+          "folder_id": {
+            "type": "number",
+            "description": "Folder ID to create dashboard in"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "default": false,
+            "description": "Overwrite existing dashboard"
+          }
+        },
+        "required": ["title"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_datasource",
+      "name": "Create Datasource",
+      "description": "Create a new data source",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Data source name"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["prometheus", "influxdb", "elasticsearch", "mysql", "postgres"],
+            "description": "Data source type"
+          },
+          "url": {
+            "type": "string",
+            "description": "Data source URL"
+          },
+          "access": {
+            "type": "string",
+            "enum": ["proxy", "direct"],
+            "default": "proxy",
+            "description": "Access mode"
+          },
+          "basic_auth": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable basic authentication"
+          }
+        },
+        "required": ["name", "type", "url"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_alert_rule",
+      "name": "Create Alert Rule",
+      "description": "Create a new alert rule",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Alert rule title"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Alert condition query"
+          },
+          "folder_uid": {
+            "type": "string",
+            "description": "Folder UID"
+          },
+          "interval_seconds": {
+            "type": "number",
+            "default": 60,
+            "description": "Evaluation interval in seconds"
+          },
+          "no_data_state": {
+            "type": "string",
+            "enum": ["NoData", "Alerting", "OK"],
+            "default": "NoData",
+            "description": "State when no data"
+          }
+        },
+        "required": ["title", "condition"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_dashboard",
+      "name": "Get Dashboard",
+      "description": "Get dashboard by UID",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "description": "Dashboard UID"
+          }
+        },
+        "required": ["uid"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Grafana",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "alert_triggered",
+      "name": "Alert Triggered",
+      "description": "Triggered when a Grafana alert fires",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_name": {
+            "type": "string",
+            "description": "Alert name to monitor"
+          },
+          "folder_uid": {
+            "type": "string",
+            "description": "Filter by folder UID"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "dashboard_saved",
+      "name": "Dashboard Saved",
+      "description": "Triggered when a dashboard is saved",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "number",
+            "description": "Folder ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

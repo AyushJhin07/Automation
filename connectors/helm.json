@@ -1,0 +1,216 @@
+{
+  "id": "helm",
+  "name": "Helm",
+  "description": "Kubernetes package manager and application deployment",
+  "category": "DevOps",
+  "icon": "⛵",
+  "color": "#0F1689",
+  "authentication": {
+    "type": "kubeconfig",
+    "fields": [
+      {
+        "key": "kubeconfig",
+        "label": "Kubeconfig Content",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "namespace",
+        "label": "Default Namespace",
+        "type": "text",
+        "default": "default",
+        "required": false
+      }
+    ]
+  },
+  "baseUrl": "kubernetes-api-via-helm",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 1000
+  },
+  "actions": [
+    {
+      "id": "install_chart",
+      "name": "Install Chart",
+      "description": "Install a Helm chart",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "release_name": {
+            "type": "string",
+            "description": "Release name"
+          },
+          "chart": {
+            "type": "string",
+            "description": "Chart name or path"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "values": {
+            "type": "object",
+            "description": "Chart values to override"
+          },
+          "version": {
+            "type": "string",
+            "description": "Chart version"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Helm repository URL"
+          }
+        },
+        "required": ["release_name", "chart"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "upgrade_release",
+      "name": "Upgrade Release",
+      "description": "Upgrade an existing Helm release",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "release_name": {
+            "type": "string",
+            "description": "Release name"
+          },
+          "chart": {
+            "type": "string",
+            "description": "Chart name or path"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "values": {
+            "type": "object",
+            "description": "Chart values to override"
+          },
+          "version": {
+            "type": "string",
+            "description": "Chart version"
+          }
+        },
+        "required": ["release_name", "chart"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "uninstall_release",
+      "name": "Uninstall Release",
+      "description": "Uninstall a Helm release",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "release_name": {
+            "type": "string",
+            "description": "Release name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "keep_history": {
+            "type": "boolean",
+            "default": false,
+            "description": "Keep release history"
+          }
+        },
+        "required": ["release_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_releases",
+      "name": "List Releases",
+      "description": "List Helm releases",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Kubernetes namespace"
+          },
+          "all_namespaces": {
+            "type": "boolean",
+            "default": false,
+            "description": "List releases from all namespaces"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["deployed", "uninstalled", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback"],
+            "description": "Filter by release status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Kubernetes via Helm",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "release_deployed",
+      "name": "Release Deployed",
+      "description": "Triggered when a Helm release is successfully deployed",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to monitor"
+          },
+          "release_name": {
+            "type": "string",
+            "description": "Specific release to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "release_failed",
+      "name": "Release Failed",
+      "description": "Triggered when a Helm release fails",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to monitor"
+          },
+          "release_name": {
+            "type": "string",
+            "description": "Specific release to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

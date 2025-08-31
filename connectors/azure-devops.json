@@ -1,0 +1,216 @@
+{
+  "id": "azure-devops",
+  "name": "Azure DevOps",
+  "description": "Complete DevOps platform with repos, pipelines, and boards",
+  "category": "DevOps",
+  "icon": "🔷",
+  "color": "#0078D4",
+  "authentication": {
+    "type": "personal_access_token",
+    "fields": [
+      {
+        "key": "organization",
+        "label": "Azure DevOps Organization",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "personal_access_token",
+        "label": "Personal Access Token",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "project",
+        "label": "Project Name",
+        "type": "text",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://dev.azure.com/{organization}",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 200,
+    "dailyLimit": 5000
+  },
+  "actions": [
+    {
+      "id": "create_work_item",
+      "name": "Create Work Item",
+      "description": "Create a new work item (bug, task, user story)",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["Bug", "Task", "User Story", "Feature"],
+            "description": "Work item type"
+          },
+          "title": {
+            "type": "string",
+            "description": "Work item title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Work item description"
+          },
+          "assigned_to": {
+            "type": "string",
+            "description": "Assignee email"
+          },
+          "area_path": {
+            "type": "string",
+            "description": "Area path"
+          },
+          "iteration_path": {
+            "type": "string",
+            "description": "Iteration path"
+          },
+          "priority": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Priority level"
+          }
+        },
+        "required": ["type", "title"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger_build",
+      "name": "Trigger Build",
+      "description": "Trigger a build pipeline",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "definition_id": {
+            "type": "string",
+            "description": "Build definition ID"
+          },
+          "source_branch": {
+            "type": "string",
+            "default": "main",
+            "description": "Source branch"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Build parameters"
+          }
+        },
+        "required": ["definition_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_release",
+      "name": "Create Release",
+      "description": "Create a new release",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "definition_id": {
+            "type": "string",
+            "description": "Release definition ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Release description"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "alias": {"type": "string"},
+                "instanceReference": {"type": "object"}
+              }
+            },
+            "description": "Release artifacts"
+          }
+        },
+        "required": ["definition_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_build_status",
+      "name": "Get Build Status",
+      "description": "Get build execution status",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "build_id": {
+            "type": "string",
+            "description": "Build ID"
+          }
+        },
+        "required": ["build_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Azure DevOps",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "build_completed",
+      "name": "Build Completed",
+      "description": "Triggered when a build completes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "definition_id": {
+            "type": "string",
+            "description": "Build definition ID to monitor"
+          },
+          "result": {
+            "type": "string",
+            "enum": ["succeeded", "failed", "canceled"],
+            "description": "Filter by build result"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "work_item_created",
+      "name": "Work Item Created",
+      "description": "Triggered when a new work item is created",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "work_item_type": {
+            "type": "string",
+            "enum": ["Bug", "Task", "User Story", "Feature"],
+            "description": "Filter by work item type"
+          },
+          "area_path": {
+            "type": "string",
+            "description": "Filter by area path"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

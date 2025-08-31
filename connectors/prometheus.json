@@ -1,0 +1,186 @@
+{
+  "id": "prometheus",
+  "name": "Prometheus",
+  "description": "Monitoring system and time series database",
+  "category": "DevOps",
+  "icon": "🔥",
+  "color": "#E6522C",
+  "authentication": {
+    "type": "basic_auth",
+    "fields": [
+      {
+        "key": "server_url",
+        "label": "Prometheus Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "username",
+        "label": "Username (if auth enabled)",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "password",
+        "label": "Password (if auth enabled)",
+        "type": "password",
+        "required": false
+      }
+    ]
+  },
+  "baseUrl": "http://prometheus-server:9090",
+  "rateLimits": {
+    "requestsPerSecond": 20,
+    "requestsPerMinute": 300,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "query_metrics",
+      "name": "Query Metrics",
+      "description": "Execute a PromQL query",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "PromQL query string"
+          },
+          "time": {
+            "type": "string",
+            "description": "Evaluation timestamp (RFC3339 or Unix timestamp)"
+          },
+          "timeout": {
+            "type": "string",
+            "description": "Query timeout duration"
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "query_range",
+      "name": "Query Range",
+      "description": "Execute a range query over time",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "PromQL query string"
+          },
+          "start": {
+            "type": "string",
+            "description": "Start timestamp (RFC3339 or Unix timestamp)"
+          },
+          "end": {
+            "type": "string",
+            "description": "End timestamp (RFC3339 or Unix timestamp)"
+          },
+          "step": {
+            "type": "string",
+            "description": "Query resolution step width"
+          }
+        },
+        "required": ["query", "start", "end", "step"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_targets",
+      "name": "Get Targets",
+      "description": "Get current targets being scraped",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["active", "dropped", "any"],
+            "default": "active",
+            "description": "Target state filter"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_alerts",
+      "name": "Get Alerts",
+      "description": "Get current active alerts",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Alert filter expression"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Prometheus",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "alert_fired",
+      "name": "Alert Fired",
+      "description": "Triggered when a Prometheus alert fires",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_name": {
+            "type": "string",
+            "description": "Alert name to monitor"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "warning", "info"],
+            "description": "Filter by alert severity"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "target_down",
+      "name": "Target Down",
+      "description": "Triggered when a scrape target goes down",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "string",
+            "description": "Job name to monitor"
+          },
+          "instance": {
+            "type": "string",
+            "description": "Instance to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

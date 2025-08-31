@@ -1,0 +1,212 @@
+{
+  "id": "argocd",
+  "name": "Argo CD",
+  "description": "GitOps continuous delivery for Kubernetes",
+  "category": "DevOps",
+  "icon": "🔄",
+  "color": "#EF7B4D",
+  "authentication": {
+    "type": "bearer_token",
+    "fields": [
+      {
+        "key": "server_url",
+        "label": "Argo CD Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "auth_token",
+        "label": "Authentication Token",
+        "type": "password",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://argocd-server.com/api/v1",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 2000
+  },
+  "actions": [
+    {
+      "id": "create_application",
+      "name": "Create Application",
+      "description": "Create a new Argo CD application",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Application name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "argocd",
+            "description": "Argo CD namespace"
+          },
+          "repo_url": {
+            "type": "string",
+            "description": "Git repository URL"
+          },
+          "path": {
+            "type": "string",
+            "default": ".",
+            "description": "Path within the repository"
+          },
+          "target_revision": {
+            "type": "string",
+            "default": "HEAD",
+            "description": "Git revision (branch, tag, commit)"
+          },
+          "destination_server": {
+            "type": "string",
+            "default": "https://kubernetes.default.svc",
+            "description": "Kubernetes cluster server"
+          },
+          "destination_namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Target namespace"
+          },
+          "auto_sync": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable automatic sync"
+          }
+        },
+        "required": ["name", "repo_url"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "sync_application",
+      "name": "Sync Application",
+      "description": "Sync an Argo CD application",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Application name"
+          },
+          "revision": {
+            "type": "string",
+            "description": "Git revision to sync to"
+          },
+          "prune": {
+            "type": "boolean",
+            "default": false,
+            "description": "Prune resources"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": false,
+            "description": "Perform a dry run"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_application",
+      "name": "Get Application",
+      "description": "Get application details and status",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Application name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_application",
+      "name": "Delete Application",
+      "description": "Delete an Argo CD application",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Application name"
+          },
+          "cascade": {
+            "type": "boolean",
+            "default": true,
+            "description": "Delete application resources"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Argo CD",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "app_synced",
+      "name": "Application Synced",
+      "description": "Triggered when an application sync completes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_name": {
+            "type": "string",
+            "description": "Application name to monitor"
+          },
+          "sync_status": {
+            "type": "string",
+            "enum": ["Synced", "OutOfSync", "Unknown"],
+            "description": "Filter by sync status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "app_health_changed",
+      "name": "Application Health Changed",
+      "description": "Triggered when application health status changes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_name": {
+            "type": "string",
+            "description": "Application name to monitor"
+          },
+          "health_status": {
+            "type": "string",
+            "enum": ["Healthy", "Progressing", "Degraded", "Suspended", "Missing", "Unknown"],
+            "description": "Filter by health status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

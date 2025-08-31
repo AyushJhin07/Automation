@@ -1,0 +1,218 @@
+{
+  "id": "aws-cloudformation",
+  "name": "AWS CloudFormation",
+  "description": "Infrastructure as Code service for AWS resources",
+  "category": "DevOps",
+  "icon": "☁️",
+  "color": "#FF9900",
+  "authentication": {
+    "type": "aws_credentials",
+    "fields": [
+      {
+        "key": "access_key_id",
+        "label": "AWS Access Key ID",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "secret_access_key",
+        "label": "AWS Secret Access Key",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "region",
+        "label": "AWS Region",
+        "type": "text",
+        "default": "us-east-1",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://cloudformation.{region}.amazonaws.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 50,
+    "dailyLimit": 1000
+  },
+  "actions": [
+    {
+      "id": "create_stack",
+      "name": "Create Stack",
+      "description": "Create a new CloudFormation stack",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stack_name": {
+            "type": "string",
+            "description": "Stack name"
+          },
+          "template_body": {
+            "type": "string",
+            "description": "CloudFormation template as JSON/YAML string"
+          },
+          "template_url": {
+            "type": "string",
+            "description": "S3 URL to CloudFormation template"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ParameterKey": {"type": "string"},
+                "ParameterValue": {"type": "string"}
+              }
+            },
+            "description": "Stack parameters"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+            },
+            "description": "Stack capabilities"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Key": {"type": "string"},
+                "Value": {"type": "string"}
+              }
+            },
+            "description": "Stack tags"
+          }
+        },
+        "required": ["stack_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_stack",
+      "name": "Update Stack",
+      "description": "Update an existing CloudFormation stack",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stack_name": {
+            "type": "string",
+            "description": "Stack name"
+          },
+          "template_body": {
+            "type": "string",
+            "description": "Updated CloudFormation template"
+          },
+          "template_url": {
+            "type": "string",
+            "description": "S3 URL to updated template"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ParameterKey": {"type": "string"},
+                "ParameterValue": {"type": "string"}
+              }
+            },
+            "description": "Updated stack parameters"
+          }
+        },
+        "required": ["stack_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_stack",
+      "name": "Delete Stack",
+      "description": "Delete a CloudFormation stack",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stack_name": {
+            "type": "string",
+            "description": "Stack name to delete"
+          }
+        },
+        "required": ["stack_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_stack_status",
+      "name": "Get Stack Status",
+      "description": "Get CloudFormation stack status",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stack_name": {
+            "type": "string",
+            "description": "Stack name"
+          }
+        },
+        "required": ["stack_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to AWS CloudFormation",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "stack_created",
+      "name": "Stack Created",
+      "description": "Triggered when a stack is successfully created",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stack_name_pattern": {
+            "type": "string",
+            "description": "Stack name pattern to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "stack_failed",
+      "name": "Stack Failed",
+      "description": "Triggered when a stack operation fails",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stack_name_pattern": {
+            "type": "string",
+            "description": "Stack name pattern to monitor"
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["CREATE", "UPDATE", "DELETE"],
+            "description": "Filter by operation type"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

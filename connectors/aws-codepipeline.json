@@ -1,0 +1,195 @@
+{
+  "id": "aws-codepipeline",
+  "name": "AWS CodePipeline",
+  "description": "Continuous integration and continuous delivery service",
+  "category": "DevOps",
+  "icon": "🚀",
+  "color": "#FF9900",
+  "authentication": {
+    "type": "aws_credentials",
+    "fields": [
+      {
+        "key": "access_key_id",
+        "label": "AWS Access Key ID",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "secret_access_key",
+        "label": "AWS Secret Access Key",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "region",
+        "label": "AWS Region",
+        "type": "text",
+        "default": "us-east-1",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://codepipeline.{region}.amazonaws.com",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 100,
+    "dailyLimit": 1000
+  },
+  "actions": [
+    {
+      "id": "create_pipeline",
+      "name": "Create Pipeline",
+      "description": "Create a new CI/CD pipeline",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Pipeline name"
+          },
+          "role_arn": {
+            "type": "string",
+            "description": "IAM role ARN for pipeline"
+          },
+          "source_provider": {
+            "type": "string",
+            "enum": ["GitHub", "CodeCommit", "S3"],
+            "description": "Source provider"
+          },
+          "repository": {
+            "type": "string",
+            "description": "Repository name or S3 bucket"
+          },
+          "branch": {
+            "type": "string",
+            "default": "main",
+            "description": "Branch to monitor"
+          }
+        },
+        "required": ["name", "role_arn", "source_provider", "repository"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "start_pipeline",
+      "name": "Start Pipeline",
+      "description": "Start pipeline execution",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Pipeline name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_pipeline_state",
+      "name": "Get Pipeline State",
+      "description": "Get current pipeline execution state",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Pipeline name"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "stop_pipeline",
+      "name": "Stop Pipeline",
+      "description": "Stop pipeline execution",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Pipeline name"
+          },
+          "execution_id": {
+            "type": "string",
+            "description": "Pipeline execution ID"
+          }
+        },
+        "required": ["name", "execution_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to AWS CodePipeline",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "pipeline_started",
+      "name": "Pipeline Started",
+      "description": "Triggered when a pipeline execution starts",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline_name": {
+            "type": "string",
+            "description": "Pipeline name to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "pipeline_succeeded",
+      "name": "Pipeline Succeeded",
+      "description": "Triggered when a pipeline execution succeeds",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline_name": {
+            "type": "string",
+            "description": "Pipeline name to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "pipeline_failed",
+      "name": "Pipeline Failed",
+      "description": "Triggered when a pipeline execution fails",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline_name": {
+            "type": "string",
+            "description": "Pipeline name to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

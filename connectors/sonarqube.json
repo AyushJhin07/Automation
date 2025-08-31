@@ -1,0 +1,193 @@
+{
+  "id": "sonarqube",
+  "name": "SonarQube",
+  "description": "Code quality and security analysis platform",
+  "category": "DevOps",
+  "icon": "🔍",
+  "color": "#4E9BCD",
+  "authentication": {
+    "type": "basic_auth",
+    "fields": [
+      {
+        "key": "server_url",
+        "label": "SonarQube Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "token",
+        "label": "User Token",
+        "type": "password",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://sonarqube-server.com/api",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 2000
+  },
+  "actions": [
+    {
+      "id": "create_project",
+      "name": "Create Project",
+      "description": "Create a new SonarQube project",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_key": {
+            "type": "string",
+            "description": "Unique project key"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"],
+            "default": "private",
+            "description": "Project visibility"
+          }
+        },
+        "required": ["project_key", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_project_status",
+      "name": "Get Project Status",
+      "description": "Get project analysis status and quality gate",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_key": {
+            "type": "string",
+            "description": "Project key"
+          }
+        },
+        "required": ["project_key"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_issues",
+      "name": "Get Issues",
+      "description": "Get code issues for a project",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_key": {
+            "type": "string",
+            "description": "Project key"
+          },
+          "severities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"]
+            },
+            "description": "Filter by issue severities"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["BUG", "VULNERABILITY", "CODE_SMELL", "SECURITY_HOTSPOT"]
+            },
+            "description": "Filter by issue types"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["OPEN", "CONFIRMED", "REOPENED", "RESOLVED", "CLOSED"]
+            },
+            "description": "Filter by issue statuses"
+          }
+        },
+        "required": ["project_key"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_metrics",
+      "name": "Get Metrics",
+      "description": "Get project metrics and measures",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_key": {
+            "type": "string",
+            "description": "Project key"
+          },
+          "metric_keys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Metric keys to retrieve"
+          }
+        },
+        "required": ["project_key"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to SonarQube",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "analysis_completed",
+      "name": "Analysis Completed",
+      "description": "Triggered when code analysis completes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_key": {
+            "type": "string",
+            "description": "Project key to monitor"
+          },
+          "quality_gate_status": {
+            "type": "string",
+            "enum": ["OK", "WARN", "ERROR"],
+            "description": "Filter by quality gate status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "quality_gate_changed",
+      "name": "Quality Gate Changed",
+      "description": "Triggered when quality gate status changes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_key": {
+            "type": "string",
+            "description": "Project key to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

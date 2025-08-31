@@ -1,0 +1,200 @@
+{
+  "id": "nexus",
+  "name": "Sonatype Nexus",
+  "description": "Repository manager for software artifacts and dependencies",
+  "category": "DevOps",
+  "icon": "📦",
+  "color": "#1DB954",
+  "authentication": {
+    "type": "basic_auth",
+    "fields": [
+      {
+        "key": "server_url",
+        "label": "Nexus Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "username",
+        "label": "Username",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "password",
+        "label": "Password",
+        "type": "password",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://nexus-server.com/service/rest",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 2000
+  },
+  "actions": [
+    {
+      "id": "search_components",
+      "name": "Search Components",
+      "description": "Search for components in repositories",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["maven2", "npm", "docker", "pypi", "nuget"],
+            "description": "Repository format"
+          },
+          "group": {
+            "type": "string",
+            "description": "Component group"
+          },
+          "name": {
+            "type": "string",
+            "description": "Component name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Component version"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "upload_component",
+      "name": "Upload Component",
+      "description": "Upload a component to repository",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["maven2", "npm", "docker", "pypi", "nuget"],
+            "description": "Repository format"
+          },
+          "group": {
+            "type": "string",
+            "description": "Component group"
+          },
+          "artifact_id": {
+            "type": "string",
+            "description": "Artifact ID"
+          },
+          "version": {
+            "type": "string",
+            "description": "Component version"
+          },
+          "file_content": {
+            "type": "string",
+            "description": "Base64 encoded file content"
+          }
+        },
+        "required": ["repository", "format", "artifact_id", "version"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_component",
+      "name": "Delete Component",
+      "description": "Delete a component from repository",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "Component ID"
+          }
+        },
+        "required": ["component_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_repositories",
+      "name": "List Repositories",
+      "description": "List all repositories",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["maven2", "npm", "docker", "pypi", "nuget"],
+            "description": "Filter by repository format"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Nexus",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "component_uploaded",
+      "name": "Component Uploaded",
+      "description": "Triggered when a new component is uploaded",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": "string",
+            "description": "Repository to monitor"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["maven2", "npm", "docker", "pypi", "nuget"],
+            "description": "Filter by format"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "security_vulnerability",
+      "name": "Security Vulnerability",
+      "description": "Triggered when a security vulnerability is detected",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+            "description": "Filter by vulnerability severity"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "id": "terraform-cloud",
+  "name": "Terraform Cloud",
+  "description": "Infrastructure as Code management and automation platform",
+  "category": "DevOps",
+  "icon": "🏗️",
+  "color": "#623CE4",
+  "authentication": {
+    "type": "bearer_token",
+    "fields": [
+      {
+        "key": "api_token",
+        "label": "API Token",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "organization",
+        "label": "Organization Name",
+        "type": "text",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://app.terraform.io/api/v2",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 2000
+  },
+  "actions": [
+    {
+      "id": "create_workspace",
+      "name": "Create Workspace",
+      "description": "Create a new Terraform workspace",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Workspace name"
+          },
+          "terraform_version": {
+            "type": "string",
+            "description": "Terraform version to use"
+          },
+          "working_directory": {
+            "type": "string",
+            "description": "Working directory in VCS repo"
+          },
+          "auto_apply": {
+            "type": "boolean",
+            "default": false,
+            "description": "Auto-apply successful plans"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger_run",
+      "name": "Trigger Run",
+      "description": "Trigger a new Terraform run",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace ID"
+          },
+          "message": {
+            "type": "string",
+            "description": "Run message"
+          },
+          "is_destroy": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this is a destroy run"
+          }
+        },
+        "required": ["workspace_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_run_status",
+      "name": "Get Run Status",
+      "description": "Get the status of a Terraform run",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "description": "Run ID"
+          }
+        },
+        "required": ["run_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "set_variables",
+      "name": "Set Variables",
+      "description": "Set workspace variables",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace ID"
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {"type": "string"},
+                "value": {"type": "string"},
+                "category": {"type": "string", "enum": ["terraform", "env"]},
+                "sensitive": {"type": "boolean", "default": false}
+              }
+            },
+            "description": "Variables to set"
+          }
+        },
+        "required": ["workspace_id", "variables"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Terraform Cloud",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "run_completed",
+      "name": "Run Completed",
+      "description": "Triggered when a Terraform run completes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace ID to monitor"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["applied", "planned", "errored", "canceled"],
+            "description": "Filter by run status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "workspace_created",
+      "name": "Workspace Created",
+      "description": "Triggered when a new workspace is created",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

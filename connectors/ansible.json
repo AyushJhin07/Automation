@@ -1,0 +1,182 @@
+{
+  "id": "ansible",
+  "name": "Ansible",
+  "description": "Configuration management and automation platform",
+  "category": "DevOps",
+  "icon": "🔧",
+  "color": "#EE0000",
+  "authentication": {
+    "type": "api_key",
+    "fields": [
+      {
+        "key": "api_token",
+        "label": "Ansible API Token",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "base_url",
+        "label": "Ansible Tower/AWX URL",
+        "type": "text",
+        "required": true
+      }
+    ]
+  },
+  "baseUrl": "https://your-ansible-tower.com/api/v2",
+  "rateLimits": {
+    "requestsPerSecond": 10,
+    "requestsPerMinute": 100,
+    "dailyLimit": 2000
+  },
+  "actions": [
+    {
+      "id": "launch_job_template",
+      "name": "Launch Job Template",
+      "description": "Launch an Ansible job template",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_template_id": {
+            "type": "string",
+            "description": "Job template ID"
+          },
+          "extra_vars": {
+            "type": "object",
+            "description": "Extra variables for the job"
+          },
+          "inventory": {
+            "type": "string",
+            "description": "Inventory to use"
+          },
+          "limit": {
+            "type": "string",
+            "description": "Host pattern to limit execution"
+          }
+        },
+        "required": ["job_template_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_job_status",
+      "name": "Get Job Status",
+      "description": "Get the status of a running job",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "Job ID"
+          }
+        },
+        "required": ["job_id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_inventory",
+      "name": "Create Inventory",
+      "description": "Create a new inventory",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Inventory name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Inventory description"
+          },
+          "organization": {
+            "type": "string",
+            "description": "Organization ID"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_host",
+      "name": "Add Host",
+      "description": "Add a host to inventory",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inventory_id": {
+            "type": "string",
+            "description": "Inventory ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Host name"
+          },
+          "variables": {
+            "type": "object",
+            "description": "Host variables"
+          }
+        },
+        "required": ["inventory_id", "name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Ansible",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "job_completed",
+      "name": "Job Completed",
+      "description": "Triggered when an Ansible job completes",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_template_id": {
+            "type": "string",
+            "description": "Job template ID to monitor"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["successful", "failed", "error", "canceled"],
+            "description": "Filter by job status"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "inventory_updated",
+      "name": "Inventory Updated",
+      "description": "Triggered when inventory is updated",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inventory_id": {
+            "type": "string",
+            "description": "Inventory ID to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

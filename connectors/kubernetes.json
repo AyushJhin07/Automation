@@ -1,0 +1,234 @@
+{
+  "id": "kubernetes",
+  "name": "Kubernetes",
+  "description": "Container orchestration and cluster management platform",
+  "category": "DevOps",
+  "icon": "☸️",
+  "color": "#326CE5",
+  "authentication": {
+    "type": "bearer_token",
+    "fields": [
+      {
+        "key": "api_server",
+        "label": "Kubernetes API Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "bearer_token",
+        "label": "Bearer Token",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "namespace",
+        "label": "Default Namespace",
+        "type": "text",
+        "default": "default",
+        "required": false
+      }
+    ]
+  },
+  "baseUrl": "https://kubernetes.default.svc",
+  "rateLimits": {
+    "requestsPerSecond": 20,
+    "requestsPerMinute": 200,
+    "dailyLimit": 10000
+  },
+  "actions": [
+    {
+      "id": "create_deployment",
+      "name": "Create Deployment",
+      "description": "Create a new deployment",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Deployment name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "image": {
+            "type": "string",
+            "description": "Container image"
+          },
+          "replicas": {
+            "type": "number",
+            "default": 1,
+            "minimum": 1,
+            "description": "Number of replicas"
+          },
+          "port": {
+            "type": "number",
+            "description": "Container port"
+          }
+        },
+        "required": ["name", "image"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_service",
+      "name": "Create Service",
+      "description": "Create a Kubernetes service",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Service name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "selector": {
+            "type": "object",
+            "description": "Label selector for pods"
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "port": {"type": "number"},
+                "targetPort": {"type": "number"},
+                "protocol": {"type": "string", "enum": ["TCP", "UDP"]}
+              }
+            },
+            "description": "Service ports"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+            "default": "ClusterIP",
+            "description": "Service type"
+          }
+        },
+        "required": ["name", "selector", "ports"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "scale_deployment",
+      "name": "Scale Deployment",
+      "description": "Scale a deployment to specified replicas",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Deployment name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "replicas": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Target replica count"
+          }
+        },
+        "required": ["name", "replicas"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_pod_logs",
+      "name": "Get Pod Logs",
+      "description": "Retrieve logs from a pod",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pod_name": {
+            "type": "string",
+            "description": "Pod name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "container": {
+            "type": "string",
+            "description": "Container name (if multi-container pod)"
+          },
+          "tail_lines": {
+            "type": "number",
+            "default": 100,
+            "description": "Number of lines to tail"
+          }
+        },
+        "required": ["pod_name"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test_connection",
+      "name": "Test Connection",
+      "description": "Test the connection to Kubernetes cluster",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "pod_created",
+      "name": "Pod Created",
+      "description": "Triggered when a new pod is created",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to monitor"
+          },
+          "label_selector": {
+            "type": "string",
+            "description": "Label selector to filter pods"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "deployment_updated",
+      "name": "Deployment Updated",
+      "description": "Triggered when a deployment is updated",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to monitor"
+          },
+          "deployment_name": {
+            "type": "string",
+            "description": "Specific deployment to monitor"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

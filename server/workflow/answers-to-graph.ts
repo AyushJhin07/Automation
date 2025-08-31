@@ -30,6 +30,8 @@ export function answersToGraph(prompt: string, answers: Record<string, string>):
       return generateProjectManagementWorkflow(prompt, answers);
     case 'email_marketing':
       return generateEmailMarketingWorkflow(prompt, answers);
+    case 'devops_automation':
+      return generateDevOpsWorkflow(prompt, answers);
     default:
       return generateGenericWorkflow(prompt, answers);
   }
@@ -102,6 +104,18 @@ function detectAutomationType(prompt: string, answers: Record<string, string>): 
   // Form processing
   if (combined.includes('form') && (combined.includes('submit') || combined.includes('response'))) {
     return 'form_processing';
+  }
+  
+  // DevOps/CI/CD workflows (Jenkins, GitHub, Docker, Kubernetes, etc.)
+  if (combined.includes('jenkins') || combined.includes('github') || combined.includes('docker') ||
+      combined.includes('kubernetes') || combined.includes('terraform') || combined.includes('ansible') ||
+      combined.includes('ci/cd') || combined.includes('pipeline') || combined.includes('devops') ||
+      combined.includes('build') || combined.includes('deploy') || combined.includes('container') ||
+      combined.includes('infrastructure') || combined.includes('prometheus') || combined.includes('grafana') ||
+      combined.includes('vault') || combined.includes('helm') || combined.includes('argocd') ||
+      combined.includes('cloudformation') || combined.includes('codepipeline') || combined.includes('azure-devops')) {
+    console.log(`✅ Detected: devops_automation`);
+    return 'devops_automation';
   }
   
   // Project management workflows
@@ -273,6 +287,75 @@ function generateGmailSheetsWorkflow(prompt: string, answers: Record<string, str
     nodes,
     edges,
     meta: { prompt, answers, automationType: 'gmail_sheets', emailFilter, sheetName },
+  };
+}
+
+function generateDevOpsWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
+  const combined = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
+  
+  // Detect DevOps platform preferences (use existing implemented apps)
+  let sourceApp = 'jenkins';  // Use Jenkins as source since it's implemented
+  let cicdApp = 'jenkins';
+  let deployApp = 'docker-hub';
+  
+  // CI/CD detection  
+  if (combined.includes('azure-devops') || combined.includes('azure devops')) cicdApp = 'azure-devops';
+  if (combined.includes('aws-codepipeline') || combined.includes('codepipeline')) cicdApp = 'aws-codepipeline';
+  if (combined.includes('jenkins')) cicdApp = 'jenkins';
+  
+  // Deployment detection
+  if (combined.includes('docker')) deployApp = 'docker-hub';
+  if (combined.includes('kubernetes')) deployApp = 'kubernetes';
+  if (combined.includes('terraform')) deployApp = 'terraform-cloud';
+  if (combined.includes('helm')) deployApp = 'helm';
+  
+  const nodes: WorkflowNode[] = [
+    {
+      id: 'trigger-1',
+      type: 'trigger',
+      app: cicdApp,
+      name: `Build Trigger in ${cicdApp.charAt(0).toUpperCase() + cicdApp.slice(1)}`,
+      op: `${cicdApp}.build_started`,
+      params: {
+        repository: answers.repository || 'main-repo',
+        branch: answers.branch || 'main',
+        event_type: 'push'
+      }
+    },
+    {
+      id: 'action-1', 
+      type: 'action',
+      app: deployApp,
+      name: `Deploy with ${deployApp.charAt(0).toUpperCase() + deployApp.slice(1)}`,
+      op: `${deployApp}.deploy`,
+      params: {
+        environment: answers.environment || 'production',
+        replicas: answers.replicas || 3,
+        image_tag: answers.image_tag || 'latest'
+      }
+    }
+  ];
+  
+  const edges: WorkflowEdge[] = [
+    {
+      id: 'edge-1',
+      source: 'trigger-1',
+      target: 'action-1'
+    }
+  ];
+  
+  return {
+    id: `wf-${Date.now()}`,
+    name: `DevOps Pipeline: ${cicdApp} → ${deployApp}`,
+    nodes,
+    edges,
+    meta: {
+      automationType: 'devops_automation',
+      sourceApp,
+      cicdApp,
+      deployApp,
+      description: `Automated DevOps pipeline with ${sourceApp}, ${cicdApp}, and ${deployApp}`
+    }
   };
 }
 
