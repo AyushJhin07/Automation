@@ -61,6 +61,8 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
   className = ""
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   
   // Determine current mode and parsed value
   const currentValue: AIParamValue = React.useMemo(() => {
@@ -106,6 +108,64 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
 
   const handleValueUpdate = (updates: Partial<AIParamValue>) => {
     onChange({ ...currentValue, ...updates });
+  };
+
+  // AI Assist Handler - Connect to backend API
+  const handleAIAssist = async () => {
+    setIsGenerating(true);
+    setAiSuggestion(null);
+
+    try {
+      // Extract app and operation from context (you'd get this from props in real implementation)
+      const app = 'gmail'; // This should come from parent component
+      const operation = 'sendEmail'; // This should come from parent component
+      
+      const response = await fetch('/api/ai-assist/suggest-parameters', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          app,
+          operation,
+          context: {
+            parameterName: paramName,
+            currentValue: currentValue.value,
+            userGoal: 'optimize parameter value'
+          },
+          userInput: currentValue.prompt || `Help me set the best value for ${paramName}`
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.suggestions) {
+        // Apply AI suggestions to the parameter
+        const suggestion = result.suggestions[paramName];
+        if (suggestion) {
+          handleValueUpdate({ 
+            value: suggestion.value,
+            prompt: `AI suggested: ${suggestion.reasoning}`
+          });
+          setAiSuggestion(suggestion.value);
+        }
+        
+        // Show tips if available
+        if (result.tips && result.tips.length > 0) {
+          console.log('💡 AI Tips:', result.tips);
+        }
+      }
+    } catch (error) {
+      console.error('❌ AI Assist failed:', error);
+      // Show error feedback to user
+      setAiSuggestion('Error: Could not generate AI suggestions');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getModeIcon = (mode: ParamMode) => {
@@ -230,6 +290,25 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
       {/* LLM Mode Editor */}
       {currentValue.mode === 'llm' && (
         <div className="space-y-2">
+          {/* AI Assist Button - Connect to backend */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAIAssist}
+              disabled={isGenerating}
+              className="h-8 text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
+            >
+              <Bot className="w-3 h-3 mr-1" />
+              {isGenerating ? 'Generating...' : 'AI Assist'}
+            </Button>
+            {aiSuggestion && (
+              <Badge variant="outline" className="text-xs text-green-700 bg-green-50 border-green-200">
+                ✓ AI Suggestion Applied
+              </Badge>
+            )}
+          </div>
+
           {/* Prompt */}
           <div>
             <label className="text-xs text-slate-600 block mb-1">

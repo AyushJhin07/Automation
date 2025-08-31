@@ -1,604 +1,425 @@
-// DYNAMIC PARAMETER FORM - GENERATES UI FORMS FOR FUNCTION PARAMETERS
-// Provides type-safe, validated input forms for all application functions
+/**
+ * P2 Fix: Dynamic Parameter Forms using Schema-Driven Fields
+ * 
+ * Replaces generic JSON.stringify parameter inputs with proper
+ * schema-driven forms based on app-specific parameter definitions.
+ */
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Checkbox } from '../ui/checkbox';
-import { Switch } from '../ui/switch';
+import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Alert, AlertDescription } from '../ui/alert';
-import { Separator } from '../ui/separator';
-import { ScrollArea } from '../ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 import { 
+  Bot, 
+  HelpCircle, 
   AlertCircle, 
-  Info, 
-  Plus, 
-  Trash2, 
-  Eye, 
-  EyeOff,
-  HelpCircle,
-  CheckCircle2,
-  X
+  CheckCircle,
+  Loader2,
+  Sparkles
 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
-export interface ParameterDefinition {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  required: boolean;
-  description: string;
-  options?: string[];
-  default?: any;
+interface ParameterSchema {
+  type: 'string' | 'number' | 'boolean' | 'email' | 'url' | 'select' | 'textarea' | 'password';
+  label: string;
+  description?: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
   validation?: {
     min?: number;
     max?: number;
     pattern?: string;
-    minLength?: number;
-    maxLength?: number;
+    message?: string;
   };
-  sensitive?: boolean; // For passwords, API keys, etc.
-  placeholder?: string;
-  helpText?: string;
-}
-
-export interface FunctionDefinition {
-  id: string;
-  name: string;
-  description: string;
-  category: 'action' | 'trigger' | 'both';
-  parameters: Record<string, ParameterDefinition>;
-  requiredScopes?: string[];
-  rateLimits?: {
-    requests: number;
-    period: string;
-  };
-  pricing?: {
-    cost: number;
-    currency: string;
-    unit: string;
-  };
+  defaultValue?: any;
 }
 
 interface DynamicParameterFormProps {
-  functionDef: FunctionDefinition;
-  initialValues?: Record<string, any>;
-  onSubmit: (values: Record<string, any>) => void;
-  onCancel?: () => void;
-  isLoading?: boolean;
-  showAdvanced?: boolean;
+  app: string;
+  operation: string;
+  parameters: Record<string, any>;
+  onChange: (parameters: Record<string, any>) => void;
   className?: string;
 }
 
-interface ValidationError {
-  field: string;
-  message: string;
-}
-
 export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
-  functionDef,
-  initialValues = {},
-  onSubmit,
-  onCancel,
-  isLoading = false,
-  showAdvanced = false,
-  className = ''
+  app,
+  operation,
+  parameters,
+  onChange,
+  className = ""
 }) => {
-  const [values, setValues] = useState<Record<string, any>>(initialValues);
-  const [errors, setErrors] = useState<ValidationError[]>([]);
-  const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
-  const [arrayValues, setArrayValues] = useState<Record<string, string[]>>({});
-  const [showHelp, setShowHelp] = useState<Record<string, boolean>>({});
+  const [schema, setSchema] = useState<Record<string, ParameterSchema> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
 
-  // Initialize form values with defaults
+  // Load parameter schema for the app/operation
   useEffect(() => {
-    const defaultValues: Record<string, any> = {};
-    const defaultArrayValues: Record<string, string[]> = {};
-
-    Object.entries(functionDef.parameters).forEach(([key, param]) => {
-      if (param.default !== undefined) {
-        defaultValues[key] = param.default;
-      }
-      if (param.type === 'array') {
-        defaultArrayValues[key] = Array.isArray(initialValues[key]) 
-          ? initialValues[key] 
-          : [];
-      }
-    });
-
-    setValues({ ...defaultValues, ...initialValues });
-    setArrayValues(defaultArrayValues);
-  }, [functionDef, initialValues]);
-
-  // Validate individual field
-  const validateField = (key: string, value: any, param: ParameterDefinition): string | null => {
-    // Required field validation
-    if (param.required && (value === undefined || value === null || value === '')) {
-      return `${key} is required`;
-    }
-
-    if (value === undefined || value === null || value === '') {
-      return null; // Skip validation for empty optional fields
-    }
-
-    // Type-specific validation
-    switch (param.type) {
-      case 'string':
-        if (typeof value !== 'string') return `${key} must be a string`;
-        if (param.validation?.minLength && value.length < param.validation.minLength) {
-          return `${key} must be at least ${param.validation.minLength} characters`;
-        }
-        if (param.validation?.maxLength && value.length > param.validation.maxLength) {
-          return `${key} must be no more than ${param.validation.maxLength} characters`;
-        }
-        if (param.validation?.pattern && !new RegExp(param.validation.pattern).test(value)) {
-          return `${key} format is invalid`;
-        }
-        break;
-
-      case 'number':
-        const numValue = Number(value);
-        if (isNaN(numValue)) return `${key} must be a number`;
-        if (param.validation?.min !== undefined && numValue < param.validation.min) {
-          return `${key} must be at least ${param.validation.min}`;
-        }
-        if (param.validation?.max !== undefined && numValue > param.validation.max) {
-          return `${key} must be no more than ${param.validation.max}`;
-        }
-        break;
-
-      case 'array':
-        if (!Array.isArray(value)) return `${key} must be an array`;
-        if (param.validation?.min && value.length < param.validation.min) {
-          return `${key} must have at least ${param.validation.min} items`;
-        }
-        if (param.validation?.max && value.length > param.validation.max) {
-          return `${key} must have no more than ${param.validation.max} items`;
-        }
-        break;
-
-      case 'boolean':
-        if (typeof value !== 'boolean') return `${key} must be true or false`;
-        break;
-
-      case 'object':
-        if (typeof value !== 'object' || Array.isArray(value)) {
-          return `${key} must be an object`;
-        }
-        break;
-    }
-
-    return null;
-  };
-
-  // Validate all fields
-  const validateForm = (): ValidationError[] => {
-    const newErrors: ValidationError[] = [];
-
-    Object.entries(functionDef.parameters).forEach(([key, param]) => {
-      const value = param.type === 'array' ? arrayValues[key] : values[key];
-      const error = validateField(key, value, param);
-      if (error) {
-        newErrors.push({ field: key, message: error });
-      }
-    });
-
-    return newErrors;
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const validationErrors = validateForm();
-    setErrors(validationErrors);
-
-    if (validationErrors.length === 0) {
-      // Prepare final values with proper types
-      const finalValues: Record<string, any> = {};
-      
-      Object.entries(functionDef.parameters).forEach(([key, param]) => {
-        let value = param.type === 'array' ? arrayValues[key] : values[key];
-        
-        // Type conversion
-        if (value !== undefined && value !== null && value !== '') {
-          switch (param.type) {
-            case 'number':
-              finalValues[key] = Number(value);
-              break;
-            case 'boolean':
-              finalValues[key] = Boolean(value);
-              break;
-            case 'object':
-              try {
-                finalValues[key] = typeof value === 'string' ? JSON.parse(value) : value;
-              } catch {
-                finalValues[key] = value;
-              }
-              break;
-            default:
-              finalValues[key] = value;
+    const loadSchema = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setSchema(result.parameters);
           }
         }
+      } catch (error) {
+        console.error('Failed to load parameter schema:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSchema();
+  }, [app, operation]);
+
+  // Validate parameters against schema
+  const validateParameters = async () => {
+    if (!schema) return;
+
+    setValidationStatus('validating');
+    try {
+      const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parameters })
       });
 
-      onSubmit(finalValues);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const newErrors: Record<string, string> = {};
+          result.validation.errors.forEach((error: any) => {
+            newErrors[error.field] = error.message;
+          });
+          setErrors(newErrors);
+          setValidationStatus(result.validation.isValid ? 'valid' : 'invalid');
+        }
+      }
+    } catch (error) {
+      console.error('Validation failed:', error);
+      setValidationStatus('invalid');
     }
   };
 
-  // Handle input change
-  const handleInputChange = (key: string, value: any) => {
-    setValues(prev => ({ ...prev, [key]: value }));
+  // Handle parameter value change
+  const handleParameterChange = (paramName: string, value: any) => {
+    const newParameters = { ...parameters, [paramName]: value };
+    onChange(newParameters);
     
     // Clear error for this field
-    setErrors(prev => prev.filter(error => error.field !== key));
+    if (errors[paramName]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[paramName];
+        return newErrors;
+      });
+    }
   };
 
-  // Handle array input changes
-  const handleArrayChange = (key: string, index: number, value: string) => {
-    setArrayValues(prev => ({
-      ...prev,
-      [key]: prev[key]?.map((item, i) => i === index ? value : item) || []
-    }));
+  // AI assist for specific parameter
+  const handleAIAssist = async (paramName: string) => {
+    try {
+      const response = await fetch('/api/ai-assist/suggest-parameters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          app,
+          operation,
+          context: {
+            parameterName: paramName,
+            currentParameters: parameters,
+            userGoal: `optimize ${paramName} parameter`
+          },
+          userInput: `Suggest the best value for ${paramName} in ${app} ${operation}`
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.suggestions[paramName]) {
+          const suggestion = result.suggestions[paramName];
+          handleParameterChange(paramName, suggestion.value);
+        }
+      }
+    } catch (error) {
+      console.error('AI assist failed:', error);
+    }
   };
 
-  const addArrayItem = (key: string) => {
-    setArrayValues(prev => ({
-      ...prev,
-      [key]: [...(prev[key] || []), '']
-    }));
-  };
+  // Render form field based on schema type
+  const renderField = (paramName: string, paramSchema: ParameterSchema) => {
+    const value = parameters[paramName] ?? paramSchema.defaultValue ?? '';
+    const hasError = !!errors[paramName];
 
-  const removeArrayItem = (key: string, index: number) => {
-    setArrayValues(prev => ({
-      ...prev,
-      [key]: prev[key]?.filter((_, i) => i !== index) || []
-    }));
-  };
+    const baseInputClass = `bg-white border-slate-300 text-slate-900 text-sm focus:border-blue-500 focus:ring-blue-500/20 ${
+      hasError ? 'border-red-300 focus:border-red-500' : ''
+    }`;
 
-  // Get error for field
-  const getFieldError = (field: string): string | undefined => {
-    return errors.find(error => error.field === field)?.message;
-  };
-
-  // Render input based on parameter type
-  const renderInput = (key: string, param: ParameterDefinition) => {
-    const error = getFieldError(key);
-    const value = values[key] || '';
-
-    switch (param.type) {
-      case 'boolean':
-        return (
-          <div className="flex items-center space-x-2">
-            <Switch
-              id={key}
-              checked={Boolean(values[key])}
-              onCheckedChange={(checked) => handleInputChange(key, checked)}
-              disabled={isLoading}
-            />
-            <Label htmlFor={key} className="text-sm font-medium">
-              {param.description}
-            </Label>
-          </div>
-        );
-
-      case 'number':
-        return (
-          <Input
-            id={key}
-            type="number"
-            value={value}
-            onChange={(e) => handleInputChange(key, e.target.value)}
-            placeholder={param.placeholder || `Enter ${key}`}
-            disabled={isLoading}
-            min={param.validation?.min}
-            max={param.validation?.max}
-            className={error ? 'border-red-500' : ''}
-          />
-        );
-
-      case 'array':
-        const arrayItems = arrayValues[key] || [];
-        return (
-          <div className="space-y-2">
-            {arrayItems.map((item, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <Input
-                  value={item}
-                  onChange={(e) => handleArrayChange(key, index, e.target.value)}
-                  placeholder={`Item ${index + 1}`}
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeArrayItem(key, index)}
-                  disabled={isLoading}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => addArrayItem(key)}
-              disabled={isLoading}
-              className="w-full"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
-          </div>
-        );
-
-      case 'object':
-        return (
-          <Textarea
-            id={key}
-            value={typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
-            onChange={(e) => handleInputChange(key, e.target.value)}
-            placeholder={param.placeholder || 'Enter JSON object'}
-            disabled={isLoading}
-            rows={4}
-            className={error ? 'border-red-500' : ''}
-          />
-        );
-
-      default: // string
-        if (param.options) {
+    const fieldContent = () => {
+      switch (paramSchema.type) {
+        case 'textarea':
           return (
-            <Select
+            <Textarea
               value={value}
-              onValueChange={(newValue) => handleInputChange(key, newValue)}
-              disabled={isLoading}
-            >
-              <SelectTrigger className={error ? 'border-red-500' : ''}>
-                <SelectValue placeholder={`Select ${key}`} />
+              onChange={(e) => handleParameterChange(paramName, e.target.value)}
+              placeholder={paramSchema.placeholder}
+              className={baseInputClass}
+              rows={3}
+            />
+          );
+
+        case 'select':
+          return (
+            <Select value={value} onValueChange={(val) => handleParameterChange(paramName, val)}>
+              <SelectTrigger className={baseInputClass}>
+                <SelectValue placeholder={paramSchema.placeholder} />
               </SelectTrigger>
               <SelectContent>
-                {param.options.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
+                {paramSchema.options?.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           );
-        }
 
-        if (param.sensitive) {
+        case 'boolean':
           return (
-            <div className="relative">
-              <Input
-                id={key}
-                type={showSensitive[key] ? 'text' : 'password'}
-                value={value}
-                onChange={(e) => handleInputChange(key, e.target.value)}
-                placeholder={param.placeholder || `Enter ${key}`}
-                disabled={isLoading}
-                className={error ? 'border-red-500 pr-10' : 'pr-10'}
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={value}
+                onCheckedChange={(checked) => handleParameterChange(paramName, checked)}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowSensitive(prev => ({ ...prev, [key]: !prev[key] }))}
-              >
-                {showSensitive[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
+              <Label className="text-sm">{value ? 'Enabled' : 'Disabled'}</Label>
             </div>
           );
-        }
 
-        return (
-          <Textarea
-            id={key}
-            value={value}
-            onChange={(e) => handleInputChange(key, e.target.value)}
-            placeholder={param.placeholder || `Enter ${key}`}
-            disabled={isLoading}
-            rows={param.description.length > 100 ? 3 : 1}
-            className={error ? 'border-red-500' : ''}
-          />
-        );
-    }
-  };
+        case 'number':
+          return (
+            <Input
+              type="number"
+              value={value}
+              onChange={(e) => handleParameterChange(paramName, parseFloat(e.target.value) || 0)}
+              placeholder={paramSchema.placeholder}
+              min={paramSchema.validation?.min}
+              max={paramSchema.validation?.max}
+              className={baseInputClass}
+            />
+          );
 
-  // Group parameters by required/optional
-  const requiredParams = Object.entries(functionDef.parameters).filter(([_, param]) => param.required);
-  const optionalParams = Object.entries(functionDef.parameters).filter(([_, param]) => !param.required);
+        case 'email':
+          return (
+            <Input
+              type="email"
+              value={value}
+              onChange={(e) => handleParameterChange(paramName, e.target.value)}
+              placeholder={paramSchema.placeholder}
+              className={baseInputClass}
+            />
+          );
 
-  return (
-    <TooltipProvider>
-      <Card className={`w-full max-w-2xl ${className}`}>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                {functionDef.name}
-                <Badge variant={functionDef.category === 'action' ? 'default' : 'secondary'}>
-                  {functionDef.category}
-                </Badge>
-              </CardTitle>
-              <CardDescription className="mt-1">
-                {functionDef.description}
-              </CardDescription>
-            </div>
-            {onCancel && (
-              <Button variant="ghost" size="sm" onClick={onCancel}>
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+        case 'url':
+          return (
+            <Input
+              type="url"
+              value={value}
+              onChange={(e) => handleParameterChange(paramName, e.target.value)}
+              placeholder={paramSchema.placeholder}
+              className={baseInputClass}
+            />
+          );
 
-          {/* Function metadata */}
-          {(functionDef.requiredScopes || functionDef.rateLimits || functionDef.pricing) && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {functionDef.requiredScopes && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Badge variant="outline" className="text-xs">
-                      {functionDef.requiredScopes.length} scopes required
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="text-xs">
-                      Required scopes: {functionDef.requiredScopes.join(', ')}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {functionDef.rateLimits && (
-                <Badge variant="outline" className="text-xs">
-                  {functionDef.rateLimits.requests}/{functionDef.rateLimits.period}
-                </Badge>
-              )}
-              {functionDef.pricing && (
-                <Badge variant="outline" className="text-xs">
-                  {functionDef.pricing.cost} {functionDef.pricing.currency}/{functionDef.pricing.unit}
-                </Badge>
-              )}
-            </div>
-          )}
-        </CardHeader>
+        case 'password':
+          return (
+            <Input
+              type="password"
+              value={value}
+              onChange={(e) => handleParameterChange(paramName, e.target.value)}
+              placeholder={paramSchema.placeholder}
+              className={baseInputClass}
+            />
+          );
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Required Parameters */}
-            {requiredParams.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  Required Parameters
-                </h4>
-                <div className="space-y-4">
-                  {requiredParams.map(([key, param]) => (
-                    <div key={key} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={key} className="text-sm font-medium">
-                          {key}
-                          <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        {param.helpText && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-xs max-w-xs">{param.helpText}</div>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                      
-                      {param.type !== 'boolean' && (
-                        <p className="text-xs text-muted-foreground">{param.description}</p>
-                      )}
-                      
-                      {renderInput(key, param)}
-                      
-                      {getFieldError(key) && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription className="text-xs">
-                            {getFieldError(key)}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-                  ))}
+        default: // string
+          return (
+            <Input
+              type="text"
+              value={value}
+              onChange={(e) => handleParameterChange(paramName, e.target.value)}
+              placeholder={paramSchema.placeholder}
+              className={baseInputClass}
+            />
+          );
+      }
+    };
+
+    return (
+      <div key={paramName} className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium text-slate-700">
+              {paramSchema.label}
+              {paramSchema.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {paramSchema.description && (
+              <div className="group relative">
+                <HelpCircle className="w-4 h-4 text-slate-400 cursor-help" />
+                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-10">
+                  <div className="bg-slate-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                    {paramSchema.description}
+                  </div>
                 </div>
               </div>
             )}
+          </div>
+          
+          {/* AI Assist Button for each field */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleAIAssist(paramName)}
+            className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Bot className="w-3 h-3 mr-1" />
+            AI
+          </Button>
+        </div>
 
-            {/* Optional Parameters */}
-            {optionalParams.length > 0 && (
-              <>
-                {requiredParams.length > 0 && <Separator />}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <Info className="h-4 w-4 text-blue-500" />
-                    Optional Parameters
-                  </h4>
-                  <ScrollArea className="max-h-96">
-                    <div className="space-y-4 pr-4">
-                      {optionalParams.map(([key, param]) => (
-                        <div key={key} className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={key} className="text-sm font-medium">
-                              {key}
-                            </Label>
-                            {param.helpText && (
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="text-xs max-w-xs">{param.helpText}</div>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {param.default !== undefined && (
-                              <Badge variant="secondary" className="text-xs">
-                                default: {String(param.default)}
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {param.type !== 'boolean' && (
-                            <p className="text-xs text-muted-foreground">{param.description}</p>
-                          )}
-                          
-                          {renderInput(key, param)}
-                          
-                          {getFieldError(key) && (
-                            <Alert variant="destructive">
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription className="text-xs">
-                                {getFieldError(key)}
-                              </AlertDescription>
-                            </Alert>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </>
-            )}
+        {fieldContent()}
 
-            {/* Form Actions */}
-            <div className="flex justify-end gap-2 pt-4">
-              {onCancel && (
-                <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-                  Cancel
-                </Button>
-              )}
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Configuring...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Configure Function
-                  </>
-                )}
-              </Button>
+        {/* Error message */}
+        {hasError && (
+          <div className="flex items-center gap-1 text-red-600 text-xs">
+            <AlertCircle className="w-3 h-3" />
+            {errors[paramName]}
+          </div>
+        )}
+
+        {/* Success indicator */}
+        {!hasError && value && paramSchema.required && (
+          <div className="flex items-center gap-1 text-green-600 text-xs">
+            <CheckCircle className="w-3 h-3" />
+            Valid
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+        <span className="ml-2 text-sm text-slate-600">Loading parameter schema...</span>
+      </div>
+    );
+  }
+
+  if (!schema) {
+    // Fallback to generic form if no schema available
+    return (
+      <Card className={className}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-500" />
+            Parameters
+            <Badge variant="outline" className="ml-auto">Generic Form</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Textarea
+              value={JSON.stringify(parameters, null, 2)}
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  onChange(parsed);
+                } catch {
+                  // Invalid JSON, don't update
+                }
+              }}
+              placeholder="Enter parameters as JSON..."
+              rows={6}
+              className="font-mono text-sm"
+            />
+            <div className="text-xs text-amber-600 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              No parameter schema available for {app}:{operation}. Using generic JSON editor.
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
-    </TooltipProvider>
+    );
+  }
+
+  return (
+    <Card className={className}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-500" />
+            Parameters
+            <Badge variant="outline" className="ml-2">Schema-Driven</Badge>
+          </CardTitle>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={validateParameters}
+              disabled={validationStatus === 'validating'}
+              className="h-8 text-xs"
+            >
+              {validationStatus === 'validating' ? (
+                <>
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Validate
+                </>
+              )}
+            </Button>
+            
+            {validationStatus === 'valid' && (
+              <Badge className="bg-green-100 text-green-800 border-green-200">
+                ✓ Valid
+              </Badge>
+            )}
+            {validationStatus === 'invalid' && (
+              <Badge className="bg-red-100 text-red-800 border-red-200">
+                ✗ Errors
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {Object.entries(schema).map(([paramName, paramSchema]) => 
+            renderField(paramName, paramSchema)
+          )}
+          
+          {Object.keys(schema).length === 0 && (
+            <div className="text-center py-8 text-slate-500">
+              <Sparkles className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+              <p className="text-sm">No parameters required for this operation</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

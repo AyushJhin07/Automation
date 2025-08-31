@@ -2213,11 +2213,45 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
       const raw = aiResponse.replace(/```json|```/g, '').trim();
       parsed = JSON.parse(raw);
     } catch {
-      // Fallback questions if parsing fails
+      // Enhanced fallback questions with explicit sheet URL requirements
       parsed = [
-        { id: 'trigger', text: 'What should trigger this automation?', type: 'text', required: true, category: 'trigger' },
-        { id: 'filter', text: 'Any filters/conditions (e.g., subject contains, label, folder)?', type: 'text', required: false, category: 'filter' },
-        { id: 'destination', text: 'Where should we write the output (Sheet ID and range)?', type: 'text', required: true, category: 'destination' }
+        { 
+          id: 'trigger', 
+          text: 'What should trigger this automation?', 
+          type: 'select',
+          options: ['Time-based schedule', 'Spreadsheet edit', 'Email received', 'Form submission'],
+          required: true, 
+          category: 'trigger' 
+        },
+        { 
+          id: 'spreadsheet_url', 
+          text: 'What is the EXACT Google Sheets URL?', 
+          type: 'url',
+          placeholder: 'https://docs.google.com/spreadsheets/d/1ABC...XYZ/edit',
+          required: true, 
+          category: 'data',
+          helpText: 'Copy the full URL from your Google Sheets browser tab. This is required for sheet operations.',
+          validation: {
+            pattern: 'spreadsheets/d/',
+            message: 'Must be a valid Google Sheets URL'
+          }
+        },
+        { 
+          id: 'filter', 
+          text: 'Any filters/conditions (e.g., subject contains, label, folder)?', 
+          type: 'text', 
+          required: false, 
+          category: 'filter' 
+        },
+        { 
+          id: 'email_details', 
+          text: 'What email should be sent? (subject and content)', 
+          type: 'textarea',
+          placeholder: 'Subject: Welcome!\nBody: Hello {{name}}, welcome to our service!',
+          required: false, 
+          category: 'action',
+          helpText: 'Specify both subject and body content for email actions'
+        }
       ];
     }
     
