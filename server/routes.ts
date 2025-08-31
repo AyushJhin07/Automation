@@ -5,6 +5,8 @@ import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 // import { registerAIWorkflowRoutes } from "./aiModels"; // REMOVED: Conflicts with new AI routes
 import { workflowBuildRouter } from "./routes/workflow.build";
 import aiRouter from "./routes/ai";
+import appSchemaRoutes from "./routes/app-schemas.js";
+import aiAssistRoutes from "./routes/ai-assist.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -52,6 +54,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // AI routes - Register FIRST to avoid conflicts
   app.use('/api/ai', aiRouter);
+  
+  // P1-6: App parameter schema routes
+  app.use('/api/app-schemas', appSchemaRoutes);
+  
+  // P1-7: AI assist functionality routes
+  app.use('/api/ai-assist', aiAssistRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);

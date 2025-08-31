@@ -995,61 +995,190 @@ const GraphEditorContent = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
 
-  // Load AI-generated workflow if coming from AI Builder
+  // P1-8: Enhanced Graph Editor autoload robustness
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('from') === 'ai-builder') {
-      // Use ChatGPT's single source of truth approach
+    const loadWorkflowFromStorage = async () => {
       try {
-        const savedCompile = localStorage.getItem('lastCompile');
-        if (savedCompile) {
-          const compileResult = JSON.parse(savedCompile);
-          const graph = compileResult.graph;
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromAIB = urlParams.get('from') === 'ai-builder';
+        const workflowId = urlParams.get('workflowId');
+        const autoLoad = urlParams.get('autoLoad') === 'true';
+        
+        // Priority order for loading workflows
+        const sources = [
+          { key: 'lastCompile', condition: fromAIB || autoLoad },
+          { key: 'savedWorkflow', condition: workflowId },
+          { key: 'draftWorkflow', condition: true },
+          { key: 'backupWorkflow', condition: true }
+        ];
+
+        let loadedWorkflow = null;
+        let loadSource = null;
+
+        // Try each source in priority order
+        for (const source of sources) {
+          if (!source.condition) continue;
           
-          if (graph && graph.nodes) {
-            // Convert VisualWorkflowGraph format to ReactFlow format
-            const reactFlowNodes = (graph.nodes || []).map((node: any) => {
-              // Derive app and operation from new schema as fallback
-              const app = node.data?.app || node.app || (node.type?.split?.('.')?.[1] ?? 'core');
-              const operation = node.data?.operation || node.op || 'unknown';
+          try {
+            const storageKey = workflowId ? `workflow_${workflowId}` : source.key;
+            const savedData = localStorage.getItem(storageKey);
+            
+            if (savedData) {
+              const parsed = JSON.parse(savedData);
+              const graph = parsed.graph || parsed;
               
-              return {
-                id: node.id,
-                type: node.type, // Use proper node type (trigger, action, transform)
-                position: node.position || { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
-                data: {
-                  label: node.data?.label || node.name || `${app}:${operation}`,
-                  description: node.data?.description || operation,
-                  app,
-                  function: operation,
-                  parameters: node.data?.config || node.data?.params || node.params || {},
-                  nodeType: node.type,
-                  icon: node.data?.icon || getIconForApp(app),
-                  color: node.data?.color || getColorForApp(app),
-                  connectorId: node.data?.connectorId,
-                  actionId: node.data?.actionId
-                }
-              };
-            });
-            
-            const reactFlowEdges = (graph.edges || []).map((edge: any) => ({
-              id: edge.id || `${edge.source ?? edge.from}-${edge.target ?? edge.to}`,
-              source: edge.source ?? edge.from,
-              target: edge.target ?? edge.to,
-              type: 'smoothstep'
-            }));
-            
-            setNodes(reactFlowNodes);
-            setEdges(reactFlowEdges);
-            setShowWelcomeModal(false);
-            
-            console.log('✅ Loaded real AI-generated workflow:', graph);
+              // Validate graph structure
+              if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
+                loadedWorkflow = graph;
+                loadSource = source.key;
+                console.log(`🔄 Loading workflow from ${loadSource}:`, graph.nodes.length, 'nodes');
+                break;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to load from ${source.key}:`, error);
+            continue;
           }
         }
+
+        if (!loadedWorkflow) {
+          console.log('📝 No saved workflow found, starting with empty canvas');
+          return;
+        }
+
+        // Enhanced node conversion with better error handling
+        const reactFlowNodes = loadedWorkflow.nodes.map((node: any, index: number) => {
+          try {
+            // Extract app and operation with multiple fallback strategies
+            const app = node.data?.app || 
+                      node.app || 
+                      (node.type?.includes?.('.') ? node.type.split('.')[1] : null) ||
+                      'unknown';
+            
+            const operation = node.data?.operation || 
+                            node.data?.function ||
+                            node.op || 
+                            (node.type?.includes?.('.') ? node.type.split('.')[0] : null) ||
+                            'action';
+
+            // Generate position if missing
+            const position = node.position || {
+              x: 150 + (index % 3) * 250,
+              y: 100 + Math.floor(index / 3) * 150
+            };
+
+            // Comprehensive parameter extraction
+            const parameters = node.data?.config || 
+                             node.data?.params || 
+                             node.params || 
+                             node.data?.parameters ||
+                             {};
+
+            return {
+              id: node.id || `node_${index}`,
+              type: node.type || 'action.core',
+              position,
+              data: {
+                label: node.data?.label || 
+                      node.name || 
+                      `${app}:${operation}` ||
+                      'Workflow Node',
+                description: node.data?.description || 
+                           `${operation} operation` ||
+                           'Automated workflow step',
+                app,
+                function: operation,
+                parameters,
+                nodeType: node.type || 'action.core',
+                icon: node.data?.icon || getIconForApp(app),
+                color: node.data?.color || getColorForApp(app),
+                connectorId: node.data?.connectorId || app,
+                actionId: node.data?.actionId || operation,
+                // Preserve additional metadata
+                metadata: node.data?.metadata || {},
+                isValid: true,
+                loadSource
+              }
+            };
+          } catch (nodeError) {
+            console.warn(`Error processing node ${node.id || index}:`, nodeError);
+            // Return a fallback node instead of failing completely
+            return {
+              id: node.id || `fallback_${index}`,
+              type: 'action.core',
+              position: { x: 100, y: 100 + index * 50 },
+              data: {
+                label: 'Error Loading Node',
+                description: 'This node had loading errors',
+                app: 'core',
+                function: 'error',
+                parameters: {},
+                nodeType: 'action.core',
+                icon: '⚠️',
+                color: '#ff6b6b',
+                isValid: false,
+                error: nodeError.message
+              }
+            };
+          }
+        });
+
+        // Enhanced edge conversion with validation
+        const reactFlowEdges = (loadedWorkflow.edges || []).map((edge: any, index: number) => {
+          try {
+            const source = edge.source ?? edge.from;
+            const target = edge.target ?? edge.to;
+            
+            if (!source || !target) {
+              console.warn(`Invalid edge ${index}: missing source or target`, edge);
+              return null;
+            }
+
+            // Validate that source and target nodes exist
+            const sourceExists = reactFlowNodes.some(n => n.id === source);
+            const targetExists = reactFlowNodes.some(n => n.id === target);
+            
+            if (!sourceExists || !targetExists) {
+              console.warn(`Invalid edge ${index}: source(${source}) or target(${target}) node not found`);
+              return null;
+            }
+
+            return {
+              id: edge.id || `edge_${source}_${target}`,
+              source,
+              target,
+              type: edge.type || 'smoothstep',
+              animated: edge.animated || false,
+              style: edge.style || {},
+              data: edge.data || {}
+            };
+          } catch (edgeError) {
+            console.warn(`Error processing edge ${index}:`, edgeError);
+            return null;
+          }
+        }).filter(Boolean); // Remove null edges
+
+        // Apply the loaded workflow
+        console.log(`✅ Successfully loaded workflow: ${reactFlowNodes.length} nodes, ${reactFlowEdges.length} edges`);
+        setNodes(reactFlowNodes);
+        setEdges(reactFlowEdges);
+        setShowWelcomeModal(false);
+
+        // Clean up URL parameters after successful load
+        if (fromAIB || workflowId) {
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, '', newUrl);
+        }
+
       } catch (error) {
-        console.error('Failed to load AI-generated workflow:', error);
+        console.error('❌ Critical error in workflow autoload:', error);
+        // Show user there was an issue but don't break the editor
+        console.warn('Workflow autoload failed, starting with empty canvas');
       }
-    }
+    };
+
+    // Run the enhanced autoload
+    loadWorkflowFromStorage();
   }, [setNodes, setEdges]);
   
   // Helper functions for node styling

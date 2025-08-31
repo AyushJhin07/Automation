@@ -2106,40 +2106,76 @@ Examples:
 }
 
 async function generateFollowUpQuestions(prompt: string): Promise<any[]> {
-  // Use LLM to generate intelligent, context-aware questions
+  // P1-9: Enhanced LLM Q&A completeness with comprehensive business analysis
   try {
-    const appHints = detectAppsFromPrompt(prompt); // you already import this
+    const appHints = detectAppsFromPrompt(prompt);
     const appList = appHints?.join(', ') || 'Google Workspace apps';
 
-    const questionPrompt = `You are an expert Google Apps Script solution architect.
-We are building an automation ONLY in Google Apps Script (UrlFetchApp for external APIs, OAuth2 library for OAuth). No Node.js/Python/servers.
+    const questionPrompt = `You are a world-class automation consultant and Google Apps Script expert with deep business process knowledge.
 
 User request: "${prompt}"
 
-AVAILABLE PLATFORMS (choose the most relevant):
-Google Workspace: Gmail, Sheets, Calendar, Drive, Forms, Docs, Slides
-CRM: Salesforce, HubSpot, Pipedrive, Zoho CRM
-E-commerce: Shopify, BigCommerce, WooCommerce, Magento
-Communication: Slack, Microsoft Teams, Discord
-Project Management: Jira, Trello, Asana, Monday.com, ClickUp
-Marketing: Mailchimp, SendGrid, Klaviyo
-Accounting: QuickBooks, Xero, Sage Intacct
-Time Tracking: Toggl, Harvest, Clockify
-Customer Support: Zendesk, Freshdesk, Intercom
+COMPREHENSIVE PLATFORM ECOSYSTEM (149 apps available):
+🏢 CRM & Sales: Salesforce, HubSpot, Pipedrive, Zoho CRM, Dynamics 365
+💬 Communication: Slack, Microsoft Teams, Discord, Telegram, WhatsApp, Twilio, Zoom
+🛍️ E-commerce: Shopify, Stripe, PayPal, Square, Amazon, eBay, WooCommerce, BigCommerce, Magento
+📋 Project Management: Jira, Asana, Trello, Monday.com, ClickUp, Basecamp, Notion
+📧 Marketing: Mailchimp, Klaviyo, SendGrid, HubSpot, ActiveCampaign, ConvertKit
+📊 Analytics: Google Analytics, Mixpanel, Amplitude, Datadog, New Relic
+💰 Finance: QuickBooks, Xero, Wave, FreshBooks, Sage, Zoho Books
+📄 Documents: Google Docs/Sheets/Slides, Microsoft Office, DocuSign, Adobe Sign
+☁️ Storage: Google Drive, Dropbox, Box, OneDrive, AWS S3
+🔧 DevOps: GitHub, GitLab, Jenkins, Docker Hub, Kubernetes
+📱 Social Media: Facebook, Twitter, Instagram, LinkedIn, YouTube, TikTok, Buffer
+🎫 Support: Zendesk, Freshdesk, Intercom, ServiceNow
+👤 HR: BambooHR, Greenhouse, Workday
+🗄️ Database: MySQL, PostgreSQL, MongoDB, Redis, Oracle
 
-Return 3–5 highly specific questions that BLOCK implementation if unanswered. Include app selection if relevant.
+GENERATE COMPREHENSIVE QUESTIONS that ensure enterprise-grade automation:
 
-Example questions:
-- "Which platform should be used for [specific function]?" with choices from available apps
-- "What specific trigger should start this automation?" with realistic options
-- "What exact data fields need to be processed?" 
-- "Where should the results be stored?" with specific IDs/endpoints
+1. BUSINESS CONTEXT (understand the why)
+2. TECHNICAL SPECIFICATIONS (understand the what)
+3. DATA REQUIREMENTS (understand the how)
+4. OPERATIONAL NEEDS (understand the when/where)
+5. SUCCESS METRICS (understand the outcomes)
 
-Respond as strict JSON array:
+Generate 5-8 intelligent questions that build upon each other and gather complete requirements for production-ready automation.
+
+Use these enhanced input types:
+- "business_select": Business process choices
+- "app_select": Platform/app selection with descriptions
+- "data_mapping": Data field specifications
+- "schedule_config": Timing and frequency settings
+- "validation_rules": Business logic and conditions
+- "notification_config": Alert and reporting preferences
+
+Respond as comprehensive JSON array:
 [
-  { "id": "trigger", "text": "...", "type": "choice|text", "choices": ["..."], "required": true, "category": "trigger" },
-  ...
-]`;
+  {
+    "id": "business_objective",
+    "text": "What specific business objective does this automation achieve?",
+    "type": "textarea",
+    "category": "business",
+    "required": true,
+    "helpText": "Understanding the business goal helps optimize the technical solution",
+    "placeholder": "e.g., Reduce manual data entry by 80% and eliminate lead processing errors"
+  },
+  {
+    "id": "trigger_specification", 
+    "text": "What should trigger this automation and how frequently?",
+    "type": "app_select",
+    "category": "technical",
+    "options": [
+      {"value": "time_schedule", "label": "Time-based schedule", "description": "Run every X minutes/hours/days"},
+      {"value": "spreadsheet_edit", "label": "Spreadsheet changes", "description": "When data is added/modified"},
+      {"value": "email_received", "label": "Email triggers", "description": "When specific emails arrive"},
+      {"value": "external_webhook", "label": "External system events", "description": "When other systems send data"}
+    ],
+    "required": true
+  }
+]
+
+CRITICAL: Generate questions that are intelligent, context-aware, and comprehensive enough to build enterprise-grade automation without additional clarification.`;
 
     // Use the Gemini model to generate questions
     const models = MultiAIService.getModels();
