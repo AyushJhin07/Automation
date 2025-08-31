@@ -10,6 +10,7 @@ import aiAssistRoutes from "./routes/ai-assist.js";
 import templateRoutes from "./routes/templates.js";
 import collaborationRoutes from "./routes/collaboration.js";
 import analyticsRoutes from "./routes/analytics.js";
+import aiPlannerRoutes from "./routes/ai-planner.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -72,6 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P2-3: Advanced analytics routes
   app.use('/api/analytics', analyticsRoutes);
+  
+  // CRITICAL FIX: LLM automation planner routes (replaces static Q&A)
+  app.use('/api/ai-planner', aiPlannerRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
