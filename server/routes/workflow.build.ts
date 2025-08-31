@@ -3,6 +3,7 @@ import { answersToGraph } from '../workflow/answers-to-graph';
 import { compileToAppsScript } from '../workflow/compile-to-appsscript';
 import { healthMonitoringService } from '../services/HealthMonitoringService';
 import { convertToNodeGraph } from '../workflow/graph-format-converter';
+import { mapAnswersToBackendFormat, validateTriggerConfig } from '../utils/answer-field-mapper.js';
 
 export const workflowBuildRouter = Router();
 
@@ -19,7 +20,15 @@ workflowBuildRouter.post('/build', async (req, res) => {
     console.log(`🚀 /api/workflow/build called! RequestID: ${requestId}`);
     
     // Validate input
-    const { prompt = '', answers = {} } = req.body || {};
+    const { prompt = '', answers: rawAnswers = {} } = req.body || {};
+    
+    // CRITICAL FIX: Map LLM question IDs to backend-expected field names
+    const answers = mapAnswersToBackendFormat(rawAnswers);
+    console.log('🔄 Applied field mapping:', {
+      originalFields: Object.keys(rawAnswers),
+      mappedFields: Object.keys(answers),
+      triggerValue: answers.trigger
+    });
     
     if (!prompt || typeof prompt !== 'string') {
       logWorkflowEvent('VALIDATION_ERROR', requestId, { error: 'Invalid prompt', prompt });
