@@ -220,7 +220,7 @@ function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): stri
   const functionName = `execute${capitalizeFirst(nodeOp.split('.').pop() || 'Node')}`;
   
   if (nodeOp.startsWith('gmail.') || node.app === 'gmail') {
-    return generateGmailTriggerFunction(functionName, node);
+    return generateGmailFunction(functionName, node);
   } else if (nodeOp.startsWith('sheets.') || node.app === 'sheets' || nodeOp.startsWith('google-sheets.') || node.app === 'google-sheets-enhanced') {
     return generateGoogleSheetsFunction(functionName, node);
   } else if (nodeOp.startsWith('slack.') || node.app === 'slack' || nodeOp.startsWith('slack-enhanced.') || node.app === 'slack-enhanced') {
@@ -529,38 +529,95 @@ async function ${functionName}(inputData, params) {
 }`;
 }
 
-function generateGmailTriggerFunction(functionName: string, node: WorkflowNode): string {
-  return `
-async function ${functionName}(params) {
-  console.log('📧 Executing Gmail trigger: ${node.name || 'New Email Detection'}');
+function generateGmailFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'email_received';
   
-  const query = params.query || 'is:unread';
-  const maxResults = params.maxResults || 10;
+  return `
+function ${functionName}(inputData, params) {
+  console.log('📧 Executing Gmail: ' + (params.operation || '${operation}'));
   
   try {
-    const threads = GmailApp.search(query, 0, maxResults);
-    const emails = [];
+    const operation = params.operation || '${operation}';
     
-    threads.forEach(thread => {
-      const messages = thread.getMessages();
-      messages.forEach(message => {
-        emails.push({
-          id: message.getId(),
-          subject: message.getSubject(),
-          from: message.getFrom(),
-          date: message.getDate(),
-          body: message.getPlainBody(),
-          threadId: thread.getId()
+    if (operation === 'email_received' || operation === 'trigger') {
+      const query = params.query || 'is:unread';
+      const maxResults = params.maxResults || 10;
+      
+      const threads = GmailApp.search(query, 0, maxResults);
+      const emails = [];
+      
+      threads.forEach(thread => {
+        const messages = thread.getMessages();
+        messages.forEach(message => {
+          emails.push({
+            id: message.getId(),
+            subject: message.getSubject(),
+            from: message.getFrom(),
+            date: message.getDate(),
+            body: message.getPlainBody(),
+            threadId: thread.getId(),
+            thread: thread
+          });
         });
       });
-    });
+      
+      console.log('📧 Found ' + emails.length + ' emails matching query: ' + query);
+      return { ...inputData, emails: emails, emailsFound: emails.length };
+    }
     
-    console.log(\`📧 Found \${emails.length} emails matching query: \${query}\`);
-    return { emails, query, maxResults };
+    if (operation === 'send_reply' || operation === 'reply') {
+      const responseTemplate = params.responseTemplate || 'Thank you for your email. We will get back to you soon.';
+      const emails = inputData.emails || [];
+      let repliesSent = 0;
+      
+      emails.forEach(email => {
+        if (email.thread) {
+          // Personalize response with sender name
+          const senderName = email.from.split('<')[0].trim() || 'Valued Customer';
+          let personalizedResponse = responseTemplate;
+          personalizedResponse = personalizedResponse.replace(/{{name}}/g, senderName);
+          personalizedResponse = personalizedResponse.replace(/{{subject}}/g, email.subject);
+          
+          // Send reply
+          email.thread.reply(personalizedResponse);
+          repliesSent++;
+          
+          // Mark as processed
+          if (params.markAsReplied) {
+            const label = GmailApp.getUserLabelByName('Auto-Replied');
+            if (label) {
+              email.thread.addLabel(label);
+            } else {
+              email.thread.addLabel(GmailApp.createLabel('Auto-Replied'));
+            }
+          }
+        }
+      });
+      
+      console.log('📧 Sent ' + repliesSent + ' auto-replies');
+      return { ...inputData, repliesSent: repliesSent, responseTemplate: responseTemplate };
+    }
     
+    if (operation === 'send_email') {
+      const to = params.to || inputData.to;
+      const subject = params.subject || inputData.subject || 'Automated Email';
+      const body = params.body || inputData.body || 'Automated message';
+      
+      if (!to) {
+        console.warn('⚠️ Missing recipient email');
+        return { ...inputData, gmailError: 'Missing recipient' };
+      }
+      
+      GmailApp.sendEmail(to, subject, body);
+      console.log('📧 Email sent to: ' + to);
+      return { ...inputData, emailSent: true, recipient: to };
+    }
+    
+    console.log('✅ Gmail operation completed:', operation);
+    return { ...inputData, gmailResult: 'success', operation };
   } catch (error) {
-    console.error('❌ Gmail trigger failed:', error);
-    throw error;
+    console.error('❌ Gmail error:', error);
+    return { ...inputData, gmailError: error.toString() };
   }
 }`;
 }

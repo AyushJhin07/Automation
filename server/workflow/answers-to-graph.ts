@@ -32,6 +32,8 @@ export function answersToGraph(prompt: string, answers: Record<string, string>):
       return generateEmailMarketingWorkflow(prompt, answers);
     case 'devops_automation':
       return generateDevOpsWorkflow(prompt, answers);
+    case 'email_responder':
+      return generateEmailResponderWorkflow(prompt, answers);
     default:
       return generateGenericWorkflow(prompt, answers);
   }
@@ -48,7 +50,15 @@ function detectAutomationType(prompt: string, answers: Record<string, string>): 
   
   // Analyze trigger and destination patterns more intelligently
   
-  // E-commerce workflows (Shopify, orders, products, payments) - CHECK FIRST
+  // Email responder workflows (auto-reply systems) - CHECK FIRST
+  if ((combined.includes('email') && (combined.includes('responder') || combined.includes('reply') || combined.includes('respond'))) ||
+      (combined.includes('gmail') && (combined.includes('reply') || combined.includes('respond') || combined.includes('auto'))) ||
+      (combined.includes('automatic') && combined.includes('email') && (combined.includes('reply') || combined.includes('response')))) {
+    console.log(`✅ Detected: email_responder`);
+    return 'email_responder';
+  }
+  
+  // E-commerce workflows (Shopify, orders, products, payments) - CHECK SECOND
   if (combined.includes('shopify') || combined.includes('ecommerce') || 
       combined.includes('stripe') || combined.includes('paypal') || combined.includes('square') ||
       combined.includes('woocommerce') || combined.includes('bigcommerce') || combined.includes('magento') ||
@@ -129,7 +139,9 @@ function detectAutomationType(prompt: string, answers: Record<string, string>): 
     return 'email_marketing';
   }
   
-  // Pure email workflows
+  // Email responder workflows (auto-reply systems) - REMOVED (moved to top)
+  
+  // Pure email workflows (Gmail to Sheets)
   if (combined.includes('gmail') || combined.includes('email') || combined.includes('inbox')) {
     return 'gmail_sheets';
   }
@@ -355,6 +367,83 @@ function generateDevOpsWorkflow(prompt: string, answers: Record<string, string>)
       cicdApp,
       deployApp,
       description: `Automated DevOps pipeline with ${sourceApp}, ${cicdApp}, and ${deployApp}`
+    }
+  };
+}
+
+function generateEmailResponderWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
+  console.log('📧 Generating Email Responder Workflow');
+  
+  // Extract sheet information
+  const sheetInfo = parseSheet(answers.sheet_id || answers.spreadsheet_id || '');
+  const filterCriteria = answers.filter_criteria || 'is:unread';
+  const responseTemplate = answers.response_template || 'Thank you for your email. We will get back to you soon.';
+  
+  // Build Gmail search query from filter criteria
+  let gmailQuery = 'is:unread';
+  if (filterCriteria.toLowerCase().includes('subject')) {
+    // Extract keywords from filter criteria
+    const keywords = extractQuoted(filterCriteria) || ['Query', 'Doubt', 'Help'];
+    gmailQuery = buildQuery(keywords);
+  }
+  
+  const nodes: WorkflowNode[] = [
+    {
+      id: 'trigger-1',
+      type: 'trigger',
+      app: 'gmail',
+      name: 'New Email Received',
+      op: 'gmail.email_received',
+      params: {
+        query: gmailQuery,
+        labels: ['inbox'],
+        frequency: 5 // Check every 5 minutes
+      }
+    },
+    {
+      id: 'action-1',
+      type: 'action',
+      app: 'gmail',
+      name: 'Send Auto Reply',
+      op: 'gmail.send_reply',
+      params: {
+        responseTemplate: responseTemplate,
+        replyToOriginal: true,
+        markAsReplied: true
+      }
+    },
+    {
+      id: 'action-2',
+      type: 'action',
+      app: 'sheets',
+      name: 'Log Email Data',
+      op: 'sheets.append_row',
+      params: {
+        spreadsheetId: sheetInfo.spreadsheetId,
+        sheetName: sheetInfo.sheetName,
+        columns: answers.sheet_columns || 'Sender, Subject, Body, Response Sent, Timestamp'
+      }
+    }
+  ];
+
+  const edges: WorkflowEdge[] = [
+    { id: 'edge-1', from: 'trigger-1', to: 'action-1' },
+    { id: 'edge-2', from: 'action-1', to: 'action-2' }
+  ];
+
+  return {
+    id: `wf-${Date.now()}`,
+    name: 'Gmail Auto Responder with Logging',
+    nodes,
+    edges,
+    meta: { 
+      prompt, 
+      answers, 
+      automationType: 'email_responder',
+      gmailQuery,
+      responseTemplate,
+      sheetInfo,
+      description: 'Automated email responder that replies to specific emails and logs all interactions to Google Sheets'
     }
   };
 }

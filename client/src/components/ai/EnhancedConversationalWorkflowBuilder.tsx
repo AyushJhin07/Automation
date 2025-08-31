@@ -173,7 +173,7 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
         <Button
           size="sm"
           onClick={() => {
-            localStorage.setItem('ai_generated_workflow', JSON.stringify(workflowData));
+            localStorage.setItem('lastCompile', JSON.stringify(workflowData));
             window.open('/graph-editor?from=ai-builder', '_blank');
           }}
           className="bg-green-600 hover:bg-green-700 flex-1"
@@ -749,7 +749,8 @@ Need help? I can guide you through each step!`
                             return;
                           }
                           
-                          // Navigate to graph editor with the real graph data
+                          // Store workflow data and navigate to graph editor
+                          localStorage.setItem('lastCompile', JSON.stringify(workflowResult));
                           window.location.href = `/graph-editor?from=ai-builder`;
                         }}
                         className="bg-green-600 hover:bg-green-700"
