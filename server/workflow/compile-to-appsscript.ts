@@ -58,9 +58,9 @@ function emitCode(graph: WorkflowGraph): string {
   console.log(`🔧 Walking graph with ${graph.nodes.length} nodes and ${graph.edges.length} edges`);
   
   // Analyze the graph structure
-  const triggerNodes = graph.nodes.filter(n => n.type === 'trigger');
-  const actionNodes = graph.nodes.filter(n => n.type === 'action');
-  const transformNodes = graph.nodes.filter(n => n.type === 'transform');
+  const triggerNodes   = graph.nodes.filter(n => n.type?.startsWith('trigger'));
+  const actionNodes    = graph.nodes.filter(n => n.type?.startsWith('action'));
+  const transformNodes = graph.nodes.filter(n => n.type?.startsWith('transform'));
   
   console.log(`📊 Graph analysis: ${triggerNodes.length} triggers, ${actionNodes.length} actions, ${transformNodes.length} transforms`);
   
@@ -77,7 +77,7 @@ function emitCode(graph: WorkflowGraph): string {
  */`);
   
   // Generate code from graph structure using OPS mapping
-  const graphDrivenCode = buildCodeFromGraph(graph);
+  const graphDrivenCode = buildRealCodeFromGraph(graph);
   codeBlocks.push(graphDrivenCode);
   
   // Generate main function
@@ -139,9 +139,9 @@ function buildExecutionOrder(graph: WorkflowGraph): string[] {
   const order: string[] = [];
   
   // Find nodes with no incoming edges (triggers)
-  const triggerNodes = graph.nodes.filter(n => n.type === 'trigger');
-  const actionNodes = graph.nodes.filter(n => n.type === 'action');
-  const transformNodes = graph.nodes.filter(n => n.type === 'transform');
+  const triggerNodes   = graph.nodes.filter(n => n.type?.startsWith('trigger'));
+  const actionNodes    = graph.nodes.filter(n => n.type?.startsWith('action'));
+  const transformNodes = graph.nodes.filter(n => n.type?.startsWith('transform'));
   
   // Add triggers first
   triggerNodes.forEach(node => {
@@ -208,22 +208,32 @@ function generateNodeFunctions(nodes: WorkflowNode[]): string[] {
   const codeBlocks: string[] = [];
   
   // Generate execution functions for each unique node operation
-  const nodeOps = new Set(nodes.map(n => n.op));
-  
-  nodeOps.forEach(nodeOp => {
-    const node = nodes.find(n => n.op === nodeOp);
+    // Use new-format operation key as fallback when node.op is missing
+  const keyFor = (n: any) => n.op ?? `${n.app ?? (n.type?.split('.')[1] || 'unknown')}.${n.data?.operation ?? ''}`;
+
+  const nodeOps = new Set(nodes.map(keyFor));
+
+  nodeOps.forEach(opKey => {
+    const node = nodes.find(n => keyFor(n) === opKey);
     if (!node) return;
-    
-    codeBlocks.push(generateNodeExecutionFunction(nodeOp, node));
+    codeBlocks.push(generateNodeExecutionFunction(opKey, node));
   });
   
   return codeBlocks;
 }
 
 function generateNodeExecutionFunction(nodeOp: string, node: WorkflowNode): string {
-  // Handle both old format (node.op) and new format (node.data.operation)
-  const operation = nodeOp || node.op || `${node.app || 'unknown'}.${node.data?.operation || 'default'}`;
-  const functionName = `execute${capitalizeFirst(operation.split('.').pop() || 'Node')}`;
+  const opFromType = () => {
+    const app = node.app ?? node.type?.split('.')?.[1] ?? 'unknown';
+    const oper = node.data?.operation ?? 'default';
+    return `${app}.${oper}`;
+  };
+  const operation = (typeof nodeOp === 'string' && nodeOp.length) ? nodeOp
+                   : (node.op ?? opFromType());
+
+  if (!operation || typeof operation !== 'string') return ''; // hard guard
+
+  const functionName = `execute${capitalizeFirst((operation.split('.').pop() || 'Node'))}`;
   
   if (operation.startsWith('gmail.') || node.app === 'gmail') {
     return generateGmailFunction(functionName, node);
@@ -9847,7 +9857,7 @@ function step_logData(ctx) {
 }`
 };
 
-function buildCodeFromGraph(graph: any): string {
+function buildRealCodeFromGraph(graph: any): string {
   const emitted = new Set<string>();
   let body = `
 function interpolate(t, ctx) {
@@ -9863,9 +9873,9 @@ ${graph.nodes.map((n: any) => `  ctx = ${funcName(n)}(ctx);`).join('\n')}
 
   for (const n of graph.nodes) {
     const key = opKey(n);
-    const gen = OPS[key];
+    const gen = REAL_OPS[key];
     if (gen && !emitted.has(key)) {
-      body += '\n' + gen(n.data?.config || {});
+      body += '\n' + gen(n.data?.config || n.params || {});
       emitted.add(key);
     }
   }
@@ -9874,6 +9884,70 @@ ${graph.nodes.map((n: any) => `  ctx = ${funcName(n)}(ctx);`).join('\n')}
 }
 
 function funcName(n: any) {
-  const op = (n.data?.operation || 'unknown').replace(/[^a-z0-9_]/gi, '_');
+  const op = (n.data?.operation || n.op?.split('.').pop() || 'unknown').replace(/[^a-z0-9_]/gi, '_');
   return `step_${op}`;
 }
+
+// Real Apps Script operations mapping
+const REAL_OPS: Record<string, (c: any) => string> = {
+  'trigger.sheets:onEdit': (c) => `
+function onEdit(e) {
+  const sh = e.source.getActiveSheet();
+  if ('${c.sheetName || 'Sheet1'}' && sh.getName() !== '${c.sheetName || 'Sheet1'}') return;
+  const row = e.range.getRow();
+  main({ row });
+}`,
+
+  'action.sheets:getRow': (c) => `
+function step_getRow(ctx) {
+  const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');
+  const r = ctx.row;
+  const values = sh.getRange(r, 1, 1, sh.getLastColumn()).getValues()[0];
+  ctx.candidate_email = values[1]; // assumes column B = email
+  ctx.candidate_name = values[0];  // assumes column A = name
+  ctx.rowValues = values;
+  return ctx;
+}`,
+
+  'action.gmail:sendEmail': (c) => `
+function step_sendEmail(ctx) {
+  const to = interpolate('${c.to || '{{candidate_email}}'}', ctx);
+  const subject = interpolate('${c.subject || 'Interview Invitation'}', ctx);
+  const body = interpolate('${c.body || 'Hello {{candidate_name}}, you are selected for the interview'}', ctx);
+  GmailApp.sendEmail(to, subject, body);
+  return ctx;
+}`,
+
+  'action.sheets:updateCell': (c) => `
+function step_updateCell(ctx) {
+  const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');
+  const row = ctx.row;
+  sh.getRange(row, 3).setValue('${c.value || 'EMAIL_SENT'}'); // Column C
+  return ctx;
+}`,
+
+  'action.time:delay': (c) => `
+function step_delay(ctx) {
+  Utilities.sleep(${((c.hours || 24) * 60 * 60 * 1000)});
+  return ctx;
+}`,
+
+  'action.gmail:send_reply': (c) => `
+function step_sendReply(ctx) {
+  if (ctx.thread) {
+    const template = '${c.responseTemplate || 'Thank you for your email.'}';
+    const personalizedResponse = interpolate(template, ctx);
+    ctx.thread.reply(personalizedResponse);
+  }
+  return ctx;
+}`,
+
+  'action.sheets:append_row': (c) => `
+function step_appendRow(ctx) {
+  const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');
+  const timestamp = new Date().toISOString();
+  const rowData = [ctx.from || 'Unknown', ctx.subject || 'No Subject', ctx.body || 'No Body', 'Processed', timestamp];
+  sh.appendRow(rowData);
+  return ctx;
+}`
+};

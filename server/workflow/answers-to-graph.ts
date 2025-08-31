@@ -99,11 +99,11 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   let trigger = null;
   
   // Check for spreadsheet triggers
-  if (answers.trigger?.toLowerCase().includes('spreadsheet') || answers.trigger?.toLowerCase().includes('sheet edit')) {
+  if (answers.trigger === 'On spreadsheet edit' || answers.trigger?.toLowerCase().includes('spreadsheet') || answers.trigger?.toLowerCase().includes('sheet edit')) {
     trigger = {
       app: 'sheets',
-      label: 'Sheet Row Added',
-      operation: 'onRowAdded',
+      label: 'Sheet Edit',
+      operation: 'onEdit',
       config: {
         spreadsheetId: extractSheetIdFromUserAnswer(answers.sheetDetails || ''),
         sheetName: 'Sheet1'
