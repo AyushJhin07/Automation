@@ -295,23 +295,62 @@ function logWorkflowEvent(event: string, requestId: string, data: any = {}) {
   // healthMonitoringService.logEvent(logEntry);
 }
 
+// CRITICAL FIX: Local sheet URL validation function
+function validateSpreadsheetUrlLocal(url: string): { isValid: boolean; id: string | null; error?: string } {
+  if (!url || typeof url !== 'string') {
+    return { isValid: false, id: null, error: 'Spreadsheet URL is required' };
+  }
+
+  // Check if it's a Google Sheets URL
+  if (!url.includes('docs.google.com/spreadsheets/d/')) {
+    return { isValid: false, id: null, error: 'Must be a valid Google Sheets URL (docs.google.com/spreadsheets/d/...)' };
+  }
+
+  // Extract spreadsheet ID
+  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!match || !match[1]) {
+    return { isValid: false, id: null, error: 'Could not extract spreadsheet ID from URL' };
+  }
+
+  const spreadsheetId = match[1];
+  
+  // Validate ID format
+  if (spreadsheetId.length < 20 || !/^[a-zA-Z0-9-_]+$/.test(spreadsheetId)) {
+    return { isValid: false, id: null, error: 'Invalid spreadsheet ID format' };
+  }
+
+  return { isValid: true, id: spreadsheetId };
+}
+
 // Helper functions for enterprise metadata
 function validateRequiredInputs(prompt: string, answers: Record<string, string>): string[] {
   const errors: string[] = [];
   const allText = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
   
-  // Check for spreadsheet operations without valid ID
+  // CRITICAL FIX: Enhanced spreadsheet URL validation
   if (allText.includes('sheet') || allText.includes('spreadsheet')) {
-    const sheetAnswers = Object.values(answers).filter(a => 
-      a.includes('spreadsheets/d/') || a.toLowerCase().includes('sheet')
-    );
+    let hasValidSheetUrl = false;
+    let sheetValidationError = '';
     
-    const hasValidSheetId = sheetAnswers.some(a => 
-      a.match(/spreadsheets\/d\/[a-zA-Z0-9-_]+/)
-    );
+    // Check all answers for spreadsheet URLs
+    for (const [key, value] of Object.entries(answers)) {
+      if (key.toLowerCase().includes('sheet') || key.toLowerCase().includes('spreadsheet') || 
+          value.includes('docs.google.com/spreadsheets/d/')) {
+        
+        // CRITICAL FIX: Manual sheet URL validation (avoid async import)
+        const validation = validateSpreadsheetUrlLocal(value);
+        
+        if (validation.isValid) {
+          hasValidSheetUrl = true;
+          break;
+        } else if (validation.error) {
+          sheetValidationError = validation.error;
+        }
+      }
+    }
     
-    if (!hasValidSheetId) {
-      errors.push('Spreadsheet URL is required but not provided. Please provide a valid Google Sheets URL.');
+    if (!hasValidSheetUrl) {
+      errors.push(sheetValidationError || 'Valid Google Sheets URL is required. Please provide the full URL from your browser (https://docs.google.com/spreadsheets/d/...)');
     }
   }
   

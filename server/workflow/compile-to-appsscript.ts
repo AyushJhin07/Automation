@@ -9942,13 +9942,36 @@ function onEdit(e) {
 
   'action.sheets:getRow': (c) => `
 function step_getRow(ctx) {
-  const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');
-  const r = ctx.row;
-  const values = sh.getRange(r, 1, 1, sh.getLastColumn()).getValues()[0];
-  ctx.candidate_email = values[1]; // assumes column B = email
-  ctx.candidate_name = values[0];  // assumes column A = name
-  ctx.rowValues = values;
-  return ctx;
+  // CRITICAL FIX: Safe spreadsheet access with validation
+  const spreadsheetId = '${c.spreadsheetId || ''}';
+  const sheetName = '${c.sheetName || 'Sheet1'}';
+  
+  if (!spreadsheetId) {
+    console.error('❌ CRITICAL: Spreadsheet ID is required but not provided');
+    throw new Error('Spreadsheet ID is required for getRow operation');
+  }
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName(sheetName) || spreadsheet.getSheets()[0];
+    
+    if (!sheet) {
+      throw new Error(\`Sheet '\${sheetName}' not found in spreadsheet\`);
+    }
+    
+    const row = ctx.row || 1;
+    const values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    ctx.candidate_email = values[1]; // assumes column B = email
+    ctx.candidate_name = values[0];  // assumes column A = name
+    ctx.rowValues = values;
+    
+    console.log('✅ Successfully read row ' + row + ' from sheet: ' + sheetName);
+    return ctx;
+  } catch (error) {
+    console.error('❌ CRITICAL: Failed to access spreadsheet:', error.message);
+    throw new Error(\`Failed to read from spreadsheet: \${error.message}\`);
+  }
 }`,
 
   'action.gmail:sendEmail': (c) => `
@@ -10004,10 +10027,35 @@ function scheduledTrigger() {
 
   'action.sheets:updateCell': (c) => `
 function step_updateCell(ctx) {
-  const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');
-  const row = ctx.row;
-  sh.getRange(row, 3).setValue('${c.value || 'EMAIL_SENT'}'); // Column C
-  return ctx;
+  // CRITICAL FIX: Safe spreadsheet access with validation
+  const spreadsheetId = '${c.spreadsheetId || ''}';
+  const sheetName = '${c.sheetName || 'Sheet1'}';
+  
+  if (!spreadsheetId) {
+    console.error('❌ CRITICAL: Spreadsheet ID is required but not provided');
+    throw new Error('Spreadsheet ID is required for updateCell operation');
+  }
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName(sheetName) || spreadsheet.getSheets()[0];
+    
+    if (!sheet) {
+      throw new Error(\`Sheet '\${sheetName}' not found in spreadsheet\`);
+    }
+    
+    const row = ctx.row || 1;
+    const column = ${c.column || 3}; // Default to column C
+    const value = '${c.value || 'EMAIL_SENT'}';
+    
+    sheet.getRange(row, column).setValue(value);
+    
+    console.log(\`✅ Successfully updated cell \${row},\${column} with value: \${value}\`);
+    return ctx;
+  } catch (error) {
+    console.error('❌ CRITICAL: Failed to update spreadsheet cell:', error.message);
+    throw new Error(\`Failed to update spreadsheet: \${error.message}\`);
+  }
 }`,
 
   'action.time:delay': (c) => `
@@ -10035,8 +10083,28 @@ function step_delay(ctx) {
     console.log('✅ Delayed trigger set for: ' + triggerTime.toISOString());
     return ctx;
   } else {
-    // Short delays can use sleep
-    Utilities.sleep(hours * 60 * 60 * 1000);
+    // CRITICAL FIX: NEVER use Utilities.sleep - always use triggers for safety
+    console.log('⏰ Using safe trigger even for short delays');
+    
+    // Use trigger for ALL delays to avoid any timeout issues
+    const contextKey = 'delayed_context_' + Utilities.getUuid();
+    PropertiesService.getScriptProperties().setProperty(contextKey, JSON.stringify(ctx));
+    
+    // Minimum delay is 1 minute for Apps Script triggers
+    const delayMs = Math.max(hours * 60 * 60 * 1000, 60000);
+    const triggerTime = new Date(Date.now() + delayMs);
+    
+    ScriptApp.newTrigger('executeDelayedContext')
+      .timeBased()
+      .at(triggerTime)
+      .create();
+    
+    PropertiesService.getScriptProperties().setProperties({
+      'trigger_context': contextKey,
+      'short_delay_trigger': 'true'
+    });
+    
+    console.log('✅ Safe short delay trigger set for: ' + triggerTime.toISOString());
     return ctx;
   }
 }
@@ -10074,11 +10142,41 @@ function step_sendReply(ctx) {
 
   'action.sheets:append_row': (c) => `
 function step_appendRow(ctx) {
-  const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');
-  const timestamp = new Date().toISOString();
-  const rowData = [ctx.from || 'Unknown', ctx.subject || 'No Subject', ctx.body || 'No Body', 'Processed', timestamp];
-  sh.appendRow(rowData);
-  return ctx;
+  // CRITICAL FIX: Safe spreadsheet access with validation
+  const spreadsheetId = '${c.spreadsheetId || ''}';
+  const sheetName = '${c.sheetName || 'Sheet1'}';
+  
+  if (!spreadsheetId) {
+    console.error('❌ CRITICAL: Spreadsheet ID is required but not provided');
+    throw new Error('Spreadsheet ID is required for append_row operation');
+  }
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName(sheetName) || spreadsheet.getSheets()[0];
+    
+    if (!sheet) {
+      throw new Error(\`Sheet '\${sheetName}' not found in spreadsheet\`);
+    }
+    
+    const timestamp = new Date().toISOString();
+    const rowData = [
+      ctx.from || 'Unknown', 
+      ctx.subject || 'No Subject', 
+      ctx.body || 'No Body', 
+      'Processed', 
+      timestamp
+    ];
+    
+    sheet.appendRow(rowData);
+    
+    console.log(\`✅ Successfully appended row to sheet: \${sheetName}\`);
+    console.log(\`📊 Row data: \${JSON.stringify(rowData)}\`);
+    return ctx;
+  } catch (error) {
+    console.error('❌ CRITICAL: Failed to append to spreadsheet:', error.message);
+    throw new Error(\`Failed to append to spreadsheet: \${error.message}\`);
+  }
 }`,
 
   // P0 CRITICAL: Add top 20 business apps to prevent false advertising

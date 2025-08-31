@@ -277,8 +277,55 @@ function buildGmailQueryFromUserWords(criteria: string): string {
 }
 
 function extractSheetIdFromUserAnswer(sheetAnswer: string): string {
-  const match = sheetAnswer.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  return match ? match[1] : '';
+  // CRITICAL FIX: Safe spreadsheet ID extraction with validation
+  if (!sheetAnswer || typeof sheetAnswer !== 'string') {
+    console.warn('⚠️ No spreadsheet answer provided');
+    return '';
+  }
+
+  const match = sheetAnswer.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  const spreadsheetId = match?.[1];
+  
+  if (!spreadsheetId) {
+    console.warn('⚠️ Could not extract spreadsheet ID from:', sheetAnswer);
+    return '';
+  }
+  
+  // Validate ID format (Google Sheets IDs are typically 44 characters)
+  if (spreadsheetId.length < 20 || !/^[a-zA-Z0-9-_]+$/.test(spreadsheetId)) {
+    console.warn('⚠️ Invalid spreadsheet ID format:', spreadsheetId);
+    return '';
+  }
+  
+  console.log('✅ Extracted valid spreadsheet ID:', spreadsheetId);
+  return spreadsheetId;
+}
+
+// CRITICAL FIX: Add comprehensive sheet URL validation
+function validateSpreadsheetUrl(url: string): { isValid: boolean; id: string | null; error?: string } {
+  if (!url || typeof url !== 'string') {
+    return { isValid: false, id: null, error: 'Spreadsheet URL is required' };
+  }
+
+  // Check if it's a Google Sheets URL
+  if (!url.includes('docs.google.com/spreadsheets/d/')) {
+    return { isValid: false, id: null, error: 'Must be a valid Google Sheets URL (docs.google.com/spreadsheets/d/...)' };
+  }
+
+  // Extract spreadsheet ID
+  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!match || !match[1]) {
+    return { isValid: false, id: null, error: 'Could not extract spreadsheet ID from URL' };
+  }
+
+  const spreadsheetId = match[1];
+  
+  // Validate ID format
+  if (spreadsheetId.length < 20 || !/^[a-zA-Z0-9-_]+$/.test(spreadsheetId)) {
+    return { isValid: false, id: null, error: 'Invalid spreadsheet ID format' };
+  }
+
+  return { isValid: true, id: spreadsheetId };
 }
 
 function extractSubjectFromContent(content: string): string {
@@ -425,3 +472,4 @@ function detectAutomationType(prompt: string, answers: Record<string, string>): 
   return 'generic';
 }
 
+export { validateSpreadsheetUrl };
