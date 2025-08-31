@@ -24,7 +24,11 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
         y: 100 + (Math.floor(index / 3) * 200) // Wrap to new row every 3 nodes
       },
       color: getAppColor(app),
-      icon: getAppIcon(app)
+      icon: getAppIcon(app),
+      // Preserve original data for Graph Editor
+      data: node.data,
+      app: app,
+      op: node.op || `${app}.${operation}`
     };
   });
   

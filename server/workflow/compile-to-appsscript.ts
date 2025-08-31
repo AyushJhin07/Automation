@@ -9918,6 +9918,48 @@ function step_sendEmail(ctx) {
   return ctx;
 }`,
 
+  'action.gmail:search_emails': (c) => `
+function step_searchEmails(ctx) {
+  const query = '${c.query || 'is:unread'}';
+  const maxResults = ${c.maxResults || 50};
+  
+  const threads = GmailApp.search(query, 0, maxResults);
+  const invoices = [];
+  
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+    messages.forEach(message => {
+      // Extract invoice data from email
+      const subject = message.getSubject();
+      const body = message.getPlainBody();
+      const from = message.getFrom();
+      const date = message.getDate();
+      
+      // Simple data extraction (can be enhanced)
+      const invoiceData = {
+        from: from,
+        subject: subject,
+        date: date.toISOString(),
+        body: body.substring(0, 200), // First 200 chars
+        extractedData: '${c.extractData || 'Manual extraction needed'}'
+      };
+      
+      invoices.push(invoiceData);
+    });
+  });
+  
+  ctx.invoices = invoices;
+  console.log('📧 Found ' + invoices.length + ' potential invoices');
+  return ctx;
+}`,
+
+  'trigger.time:schedule': (c) => `
+function scheduledTrigger() {
+  console.log('⏰ Time-based trigger executed every ${c.frequency || 15} ${c.unit || 'minutes'}');
+  const ctx = {};
+  main(ctx);
+}`,
+
   'action.sheets:updateCell': (c) => `
 function step_updateCell(ctx) {
   const sh = SpreadsheetApp.openById('${c.spreadsheetId || ''}').getSheetByName('${c.sheetName || 'Sheet1'}');

@@ -98,8 +98,21 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   // Parse trigger from user's actual words
   let trigger = null;
   
+  // Check for time-based triggers
+  if (answers.trigger?.toLowerCase().includes('time-based') || answers.trigger?.toLowerCase().includes('every')) {
+    const frequency = extractFrequencyFromAnswer(answers.trigger);
+    trigger = {
+      app: 'time',
+      label: 'Time-based Trigger',
+      operation: 'schedule',
+      config: {
+        frequency: frequency,
+        unit: 'minutes'
+      }
+    };
+  }
   // Check for spreadsheet triggers
-  if (answers.trigger === 'On spreadsheet edit' || answers.trigger?.toLowerCase().includes('spreadsheet') || answers.trigger?.toLowerCase().includes('sheet edit')) {
+  else if (answers.trigger === 'On spreadsheet edit' || answers.trigger?.toLowerCase().includes('spreadsheet') || answers.trigger?.toLowerCase().includes('sheet edit')) {
     trigger = {
       app: 'sheets',
       label: 'Sheet Edit',
@@ -112,7 +125,7 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   }
   // Check for email triggers
   else if (answers.trigger?.toLowerCase().includes('email') || allText.includes('email arrives')) {
-    const filterCriteria = answers.filter_criteria || '';
+    const filterCriteria = answers.filter_criteria || answers.invoice_identification || '';
     trigger = {
       app: 'gmail',
       label: 'Email Received',
@@ -128,6 +141,35 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   const actions: Array<{app: string, label: string, operation: string, config: any}> = [];
   
   // Parse what user actually wants to do
+  
+  // Check if user wants Gmail monitoring (for invoices, etc.)
+  if (allText.includes('monitor') || allText.includes('gmail') || answers.invoice_identification) {
+    const filterCriteria = answers.invoice_identification || '';
+    actions.push({
+      app: 'gmail',
+      label: 'Monitor Gmail for Invoices',
+      operation: 'search_emails',
+      config: {
+        query: buildGmailQueryFromUserWords(filterCriteria),
+        maxResults: 50,
+        extractData: answers.data_extraction || 'invoice number, date, amount'
+      }
+    });
+  }
+  
+  // Check if user wants to log to sheets
+  if (allText.includes('log') || allText.includes('sheet') || answers.sheet_destination) {
+    actions.push({
+      app: 'sheets',
+      label: 'Log Invoice Data',
+      operation: 'append_row',
+      config: {
+        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheet_destination || ''),
+        sheetName: 'Sheet1',
+        columns: answers.data_extraction || 'Invoice Number, Date, Amount, Vendor'
+      }
+    });
+  }
   
   // Check if user wants to send emails (not auto-reply)
   if (allText.includes('email will be sent') || answers.emailContent) {
@@ -150,7 +192,7 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
       label: 'Update Status',
       operation: 'updateCell',
       config: {
-        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheetDetails || ''),
+        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheetDetails || answers.sheet_destination || ''),
         sheetName: 'Sheet1',
         range: '{{row}}!C:C',
         value: 'EMAIL_SENT'
@@ -224,6 +266,22 @@ function extractBodyFromContent(content: string): string {
   // If no "Body:" prefix, take everything after first line
   const lines = content.split('\n');
   return lines.length > 1 ? lines.slice(1).join('\n').trim() : content;
+}
+
+function extractFrequencyFromAnswer(triggerAnswer: string): number {
+  // Extract frequency from user's answer like "every 15 mins"
+  const match = triggerAnswer.match(/(\d+)\s*(min|hour|day)/i);
+  if (match) {
+    const value = parseInt(match[1]);
+    const unit = match[2].toLowerCase();
+    
+    // Convert to minutes
+    if (unit.startsWith('hour')) return value * 60;
+    if (unit.startsWith('day')) return value * 60 * 24;
+    return value; // already minutes
+  }
+  
+  return 15; // Default to 15 minutes
 }
 
 function detectAutomationType(prompt: string, answers: Record<string, string>): string {
