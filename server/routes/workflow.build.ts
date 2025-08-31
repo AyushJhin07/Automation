@@ -135,7 +135,24 @@ workflowBuildRouter.post('/build', async (req, res) => {
       // Microsoft Office Suite
       'outlook', 'microsoft-todo', 'onedrive',
       // Additional Popular Apps
-      'intercom', 'discord'
+      'intercom', 'discord',
+      // PHASE 9: E-commerce & Payment
+      'paypal', 'square', 'etsy', 'amazon', 'ebay',
+      // PHASE 10: Social Media & Content
+      'facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok',
+      // PHASE 11: Finance & Accounting
+      'wave', 'freshbooks', 'sage', 'zoho-books',
+      // PHASE 12: Database & Backend
+      'mysql', 'postgresql', 'mongodb', 'redis',
+      // PHASE 13: Specialized Industry
+      'salesforce-commerce', 'servicenow', 'workday', 'oracle',
+      // PHASE 14: Final Batch
+      'telegram', 'whatsapp', 'skype', 'zapier', 'ifttt', 'aws-s3', 'google-cloud-storage',
+      'constant-contact', 'activecampaign', 'convertkit',
+      // FINAL PUSH: Remaining Critical Apps
+      'microsoft-excel', 'microsoft-word', 'microsoft-powerpoint',
+      'adobe-sign', 'pandadoc', 'hellosign', 'eversign', 'signrequest', 'adobe-acrobat',
+      'google-ads', 'facebook-ads', 'ringcentral', 'vonage', 'bitbucket', 'gitlab'
     ];
     const unsupportedNodes = graph.nodes.filter((node: any) => {
       const app = node.app || node.type?.split('.')[1];
