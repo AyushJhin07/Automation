@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { answersToGraph } from '../workflow/answers-to-graph';
 import { compileToAppsScript } from '../workflow/compile-to-appsscript';
 import { healthMonitoringService } from '../services/HealthMonitoringService';
+import { convertToNodeGraph } from '../workflow/graph-format-converter';
 
 export const workflowBuildRouter = Router();
 
@@ -97,10 +98,14 @@ workflowBuildRouter.post('/build', async (req, res) => {
     // Calculate total processing time
     const totalTime = Date.now() - startTime;
     
+    // Convert graph format for Graph Editor compatibility
+    const nodeGraph = convertToNodeGraph(graph);
+    
     // Add enterprise metadata
     const response = {
       success: true,
       ...compiled,
+      graph: nodeGraph, // Use converted format instead of original
       metadata: {
         generatedAt: new Date().toISOString(),
         automationType: graph.meta?.automationType || 'generic',
