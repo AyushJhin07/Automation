@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { answersToGraph } from '../workflow/answers-to-graph';
+import { generatePureAIWorkflow } from '../workflow/pure-ai-generator';
 import { compileToAppsScript } from '../workflow/compile-to-appsscript';
 import { healthMonitoringService } from '../services/HealthMonitoringService';
 import { convertToNodeGraph } from '../workflow/graph-format-converter';
@@ -52,7 +52,7 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     // Generate graph with error handling
     const graphStartTime = Date.now();
-    const graph = answersToGraph(prompt, answers);
+    const graph = await generatePureAIWorkflow(prompt, answers);
     const graphGenerationTime = Date.now() - graphStartTime;
     
     if (!graph || !graph.nodes || graph.nodes.length === 0) {
