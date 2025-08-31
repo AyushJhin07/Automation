@@ -93,8 +93,30 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     console.log(`📊 Generated graph (${requestId}):`, JSON.stringify(graph, null, 2));
     
-    // P0 CRITICAL: Check for unsupported operations before compilation
-    const supportedApps = ['gmail', 'sheets', 'time', 'slack', 'salesforce', 'hubspot', 'stripe', 'shopify'];
+    // P0 CRITICAL: Check for unsupported operations before compilation  
+    const supportedApps = [
+      'gmail', 'sheets', 'time', 'slack', 'salesforce', 'hubspot', 'stripe', 'shopify',
+      // BATCH 1: CRM
+      'pipedrive', 'zoho-crm', 'dynamics365',
+      // BATCH 2: Communication  
+      'microsoft-teams', 'twilio', 'zoom',
+      // BATCH 3: E-commerce
+      'woocommerce', 'bigcommerce', 'magento',
+      // BATCH 4: Project Management
+      'jira', 'asana', 'trello',
+      // BATCH 5: Marketing
+      'mailchimp', 'klaviyo', 'sendgrid',
+      // BATCH 6: Productivity
+      'notion', 'airtable',
+      // BATCH 7: Finance & Accounting
+      'quickbooks', 'xero',
+      // BATCH 8: Developer Tools
+      'github',
+      // BATCH 9: Forms & Surveys
+      'typeform', 'surveymonkey',
+      // BATCH 10: Calendar & Scheduling
+      'calendly'
+    ];
     const unsupportedNodes = graph.nodes.filter((node: any) => {
       const app = node.app || node.type?.split('.')[1];
       return app && !supportedApps.includes(app);

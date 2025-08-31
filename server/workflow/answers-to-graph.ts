@@ -142,6 +142,33 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   
   // Parse what user actually wants to do
   
+  // Check if user wants CRM operations
+  if (allText.includes('crm') || allText.includes('pipedrive') || allText.includes('deal') || answers.crm_action) {
+    actions.push({
+      app: 'pipedrive',
+      label: 'Create Pipedrive Deal',
+      operation: 'create_deal',
+      config: {
+        title: answers.deal_title || '{{deal_title}}',
+        value: answers.deal_value || '1000',
+        currency: 'USD'
+      }
+    });
+  }
+  
+  // Check if user wants Slack notifications
+  if (allText.includes('slack') || allText.includes('notification') || answers.slack_channel) {
+    actions.push({
+      app: 'slack',
+      label: 'Send Slack Notification',
+      operation: 'send_message',
+      config: {
+        channel: answers.slack_channel || '#general',
+        message: answers.notification_message || 'Automated notification from CRM workflow'
+      }
+    });
+  }
+  
   // Check if user wants Gmail monitoring (for invoices, etc.)
   if (allText.includes('monitor') || allText.includes('gmail') || answers.invoice_identification) {
     const filterCriteria = answers.invoice_identification || '';
