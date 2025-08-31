@@ -1008,28 +1008,34 @@ const GraphEditorContent = () => {
           
           if (graph && graph.nodes) {
             // Convert VisualWorkflowGraph format to ReactFlow format
-            const reactFlowNodes = graph.nodes.map((node: any) => ({
-              id: node.id,
-              type: node.type, // Use proper node type (trigger, action, transform)
-              position: node.position || { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
-              data: {
-                label: node.data?.label || node.name,
-                description: node.data?.description || node.op,
-                app: node.data?.app || node.app,
-                function: node.op,
-                parameters: node.data?.params || node.params,
-                nodeType: node.type,
-                icon: node.data?.icon || getIconForApp(node.app),
-                color: node.data?.color || getColorForApp(node.app),
-                connectorId: node.data?.connectorId,
-                actionId: node.data?.actionId
-              }
-            }));
+            const reactFlowNodes = (graph.nodes || []).map((node: any) => {
+              // Derive app and operation from new schema as fallback
+              const app = node.data?.app || node.app || (node.type?.split?.('.')?.[1] ?? 'core');
+              const operation = node.data?.operation || node.op || 'unknown';
+              
+              return {
+                id: node.id,
+                type: node.type, // Use proper node type (trigger, action, transform)
+                position: node.position || { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
+                data: {
+                  label: node.data?.label || node.name || `${app}:${operation}`,
+                  description: node.data?.description || operation,
+                  app,
+                  function: operation,
+                  parameters: node.data?.config || node.data?.params || node.params || {},
+                  nodeType: node.type,
+                  icon: node.data?.icon || getIconForApp(app),
+                  color: node.data?.color || getColorForApp(app),
+                  connectorId: node.data?.connectorId,
+                  actionId: node.data?.actionId
+                }
+              };
+            });
             
-            const reactFlowEdges = graph.edges.map((edge: any) => ({
-              id: edge.id,
-              source: edge.from,
-              target: edge.to,
+            const reactFlowEdges = (graph.edges || []).map((edge: any) => ({
+              id: edge.id || `${edge.source ?? edge.from}-${edge.target ?? edge.to}`,
+              source: edge.source ?? edge.from,
+              target: edge.target ?? edge.to,
               type: 'smoothstep'
             }));
             
