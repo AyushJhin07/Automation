@@ -333,68 +333,340 @@ RESPOND WITH:
   }
 
   /**
-   * Create fallback plan when LLM fails
+   * Create DYNAMIC fallback plan when LLM fails (analyzes prompt complexity)
    */
   private static createFallbackPlan(userPrompt: string): AutomationPlan {
+    console.log('🔄 Creating dynamic fallback plan for:', userPrompt);
+    
+    const prompt = userPrompt.toLowerCase();
+    const apps: string[] = [];
+    const missingInputs: MissingInput[] = [];
+    const steps: AutomationStep[] = [];
+
+    // DYNAMIC APP DETECTION
+    if (prompt.includes('email') || prompt.includes('gmail')) apps.push('gmail');
+    if (prompt.includes('sheet') || prompt.includes('spreadsheet')) apps.push('sheets');
+    if (prompt.includes('slack')) apps.push('slack');
+    if (prompt.includes('jira')) apps.push('jira');
+    if (prompt.includes('salesforce') || prompt.includes('crm')) apps.push('salesforce');
+    if (prompt.includes('docusign') || prompt.includes('contract') || prompt.includes('signature')) apps.push('docusign');
+    if (prompt.includes('notion')) apps.push('notion');
+    if (prompt.includes('calendly') || prompt.includes('calendar') || prompt.includes('meeting')) apps.push('calendly');
+    if (prompt.includes('mailchimp') || prompt.includes('email marketing')) apps.push('mailchimp');
+    if (prompt.includes('quickbooks') || prompt.includes('accounting') || prompt.includes('invoice')) apps.push('quickbooks');
+    if (prompt.includes('trello')) apps.push('trello');
+    if (prompt.includes('asana')) apps.push('asana');
+    if (prompt.includes('hubspot')) apps.push('hubspot');
+    if (prompt.includes('stripe') || prompt.includes('payment')) apps.push('stripe');
+    if (prompt.includes('shopify') || prompt.includes('ecommerce')) apps.push('shopify');
+
+    // Default to gmail+sheets if no apps detected
+    if (apps.length === 0) {
+      apps.push('gmail', 'sheets');
+    }
+
+    console.log('🔍 Detected apps from prompt:', apps);
+
+    // DYNAMIC STEP GENERATION based on detected apps
+    apps.forEach((app, index) => {
+      switch (app) {
+        case 'gmail':
+          steps.push({
+            app: 'gmail',
+            operation: 'search_emails',
+            description: 'Search and filter emails',
+            required_inputs: ['search_query', 'max_results'],
+            missing_inputs: ['search_query']
+          });
+          missingInputs.push({
+            id: 'search_query',
+            question: 'What email search criteria should we use to find the right emails?',
+            type: 'text',
+            placeholder: 'from:vendor.com OR subject:invoice OR has:attachment',
+            required: true,
+            category: 'trigger',
+            helpText: 'Use Gmail search syntax to filter emails precisely'
+          });
+          break;
+
+        case 'sheets':
+          steps.push({
+            app: 'sheets',
+            operation: 'append_row',
+            description: 'Log data to spreadsheet',
+            required_inputs: ['spreadsheet_url', 'sheet_name', 'column_mapping'],
+            missing_inputs: ['spreadsheet_url', 'sheet_name']
+          });
+          missingInputs.push(
+            {
+              id: 'spreadsheet_url',
+              question: 'What is the EXACT Google Sheets URL where data should be logged?',
+              type: 'url',
+              placeholder: 'https://docs.google.com/spreadsheets/d/1ABC...XYZ/edit',
+              required: true,
+              category: 'data',
+              helpText: 'Copy the full URL from your Google Sheets browser tab'
+            },
+            {
+              id: 'sheet_name',
+              question: 'Which sheet tab should we use for logging data?',
+              type: 'text',
+              placeholder: 'Sheet1',
+              required: true,
+              category: 'data'
+            }
+          );
+          break;
+
+        case 'slack':
+          steps.push({
+            app: 'slack',
+            operation: 'send_message',
+            description: 'Send Slack notification',
+            required_inputs: ['channel', 'message_template'],
+            missing_inputs: ['channel', 'message_template']
+          });
+          missingInputs.push(
+            {
+              id: 'slack_channel',
+              question: 'Which Slack channel should receive notifications?',
+              type: 'text',
+              placeholder: '#general',
+              required: true,
+              category: 'action'
+            },
+            {
+              id: 'slack_message_template',
+              question: 'What message should be sent to Slack?',
+              type: 'textarea',
+              placeholder: 'New email received from {{sender}} with subject: {{subject}}',
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'jira':
+          steps.push({
+            app: 'jira',
+            operation: 'create_ticket',
+            description: 'Create Jira ticket',
+            required_inputs: ['project_key', 'issue_type', 'summary_template'],
+            missing_inputs: ['project_key', 'issue_type', 'summary_template']
+          });
+          missingInputs.push(
+            {
+              id: 'jira_project_key',
+              question: 'What is your Jira project key?',
+              type: 'text',
+              placeholder: 'PROJ',
+              required: true,
+              category: 'action'
+            },
+            {
+              id: 'jira_issue_type',
+              question: 'What type of Jira issue should be created?',
+              type: 'select',
+              options: ['Task', 'Bug', 'Story', 'Epic'],
+              required: true,
+              category: 'action'
+            },
+            {
+              id: 'jira_summary_template',
+              question: 'What should be the Jira ticket summary?',
+              type: 'text',
+              placeholder: 'New customer onboarding: {{customer_name}}',
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'salesforce':
+          steps.push({
+            app: 'salesforce',
+            operation: 'create_lead',
+            description: 'Create Salesforce lead',
+            required_inputs: ['lead_source', 'assignment_rules'],
+            missing_inputs: ['lead_source', 'assignment_rules']
+          });
+          missingInputs.push(
+            {
+              id: 'salesforce_lead_source',
+              question: 'What lead source should be assigned in Salesforce?',
+              type: 'text',
+              placeholder: 'Website',
+              required: true,
+              category: 'action'
+            },
+            {
+              id: 'salesforce_assignment_rules',
+              question: 'Should leads be auto-assigned to specific sales reps?',
+              type: 'select',
+              options: ['Auto-assign by territory', 'Assign to specific rep', 'Round-robin assignment', 'No auto-assignment'],
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'docusign':
+          missingInputs.push(
+            {
+              id: 'docusign_template_id',
+              question: 'What DocuSign template should be used for contracts?',
+              type: 'text',
+              placeholder: 'template_123456',
+              required: true,
+              category: 'action'
+            },
+            {
+              id: 'docusign_signer_email',
+              question: 'What email field contains the signer\'s email address?',
+              type: 'text',
+              placeholder: '{{customer_email}}',
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'notion':
+          missingInputs.push(
+            {
+              id: 'notion_database_id',
+              question: 'What is your Notion database ID?',
+              type: 'text',
+              placeholder: '12345678-1234-1234-1234-123456789012',
+              required: true,
+              category: 'action',
+              helpText: 'Find this in your Notion database URL'
+            },
+            {
+              id: 'notion_page_template',
+              question: 'What properties should be set on the Notion page?',
+              type: 'textarea',
+              placeholder: 'Title: {{customer_name}}\nStatus: Onboarding\nOwner: {{sales_rep}}',
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'calendly':
+          missingInputs.push(
+            {
+              id: 'calendly_event_type',
+              question: 'What Calendly event type should be used?',
+              type: 'text',
+              placeholder: 'onboarding-call',
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'mailchimp':
+          missingInputs.push(
+            {
+              id: 'mailchimp_list_id',
+              question: 'What Mailchimp list should customers be added to?',
+              type: 'text',
+              placeholder: 'list_12345',
+              required: true,
+              category: 'action'
+            },
+            {
+              id: 'mailchimp_tags',
+              question: 'What tags should be applied to new subscribers?',
+              type: 'text',
+              placeholder: 'new-customer,onboarding',
+              required: false,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'quickbooks':
+          missingInputs.push(
+            {
+              id: 'quickbooks_customer_type',
+              question: 'What QuickBooks customer type should be assigned?',
+              type: 'select',
+              options: ['Standard', 'Premium', 'Enterprise'],
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+      }
+    });
+
+    // Add trigger questions
+    missingInputs.unshift({
+      id: 'trigger_frequency',
+      question: 'How often should this automation check for new triggers?',
+      type: 'select',
+      options: ['Every 5 minutes', 'Every 15 minutes', 'Every 30 minutes', 'Every hour', 'Every 6 hours', 'Daily'],
+      required: true,
+      category: 'trigger'
+    });
+
+    console.log(`🎯 Generated dynamic fallback plan: ${apps.length} apps, ${missingInputs.length} questions`);
+
     return {
-      apps: ['gmail', 'sheets'],
+      apps,
       trigger: {
         type: 'time',
         app: 'time',
-        operation: 'schedule', 
-        description: 'Time-based trigger',
+        operation: 'schedule',
+        description: 'Time-based automation trigger',
         required_inputs: ['frequency'],
         missing_inputs: ['frequency']
       },
-      steps: [
-        {
-          app: 'gmail',
-          operation: 'search_emails',
-          description: 'Search emails',
-          required_inputs: ['search_query'],
-          missing_inputs: ['search_query']
-        },
-        {
-          app: 'sheets',
-          operation: 'append_row',
-          description: 'Log to spreadsheet',
-          required_inputs: ['spreadsheet_url'],
-          missing_inputs: ['spreadsheet_url']
-        }
-      ],
-      missing_inputs: [
-        {
-          id: 'frequency',
-          question: 'How often should this automation run?',
-          type: 'select',
-          options: ['Every 5 minutes', 'Every 15 minutes', 'Every hour', 'Daily'],
-          required: true,
-          category: 'trigger'
-        },
-        {
-          id: 'search_query',
-          question: 'What email search criteria should we use?',
-          type: 'text',
-          placeholder: 'from:example.com OR subject:invoice',
-          required: true,
-          category: 'trigger'
-        },
-        {
-          id: 'spreadsheet_url',
-          question: 'What is the EXACT Google Sheets URL?',
-          type: 'url',
-          placeholder: 'https://docs.google.com/spreadsheets/d/...',
-          required: true,
-          category: 'data',
-          helpText: 'Copy the full URL from your Google Sheets browser tab'
-        }
-      ],
-      workflow_name: 'Custom Automation',
+      steps,
+      missing_inputs: missingInputs,
+      workflow_name: this.generateWorkflowName(apps, userPrompt),
       description: userPrompt,
-      complexity: 'medium',
-      estimated_setup_time: '15-20 minutes',
-      business_value: 'Automate manual processes and save time'
+      complexity: this.assessComplexity(apps.length, missingInputs.length),
+      estimated_setup_time: this.estimateSetupTime(apps.length, missingInputs.length),
+      business_value: this.estimateBusinessValue(apps, userPrompt)
     };
+  }
+
+  private static generateWorkflowName(apps: string[], prompt: string): string {
+    const appNames = apps.map(app => app.charAt(0).toUpperCase() + app.slice(1)).join(' + ');
+    return `${appNames} Automation`;
+  }
+
+  private static assessComplexity(appCount: number, questionCount: number): 'simple' | 'medium' | 'complex' {
+    if (appCount <= 2 && questionCount <= 4) return 'simple';
+    if (appCount <= 4 && questionCount <= 8) return 'medium';
+    return 'complex';
+  }
+
+  private static estimateSetupTime(appCount: number, questionCount: number): string {
+    const baseTime = 10; // 10 minutes base
+    const appTime = appCount * 5; // 5 minutes per app
+    const configTime = questionCount * 2; // 2 minutes per configuration
+    const totalMinutes = baseTime + appTime + configTime;
+    
+    if (totalMinutes < 30) return `${totalMinutes} minutes`;
+    if (totalMinutes < 120) return `${Math.round(totalMinutes / 15) * 15} minutes`;
+    return `${Math.round(totalMinutes / 60)} hours`;
+  }
+
+  private static estimateBusinessValue(apps: string[], prompt: string): string {
+    const appCount = apps.length;
+    const hasHighValueApps = apps.some(app => ['salesforce', 'hubspot', 'quickbooks', 'jira'].includes(app));
+    
+    if (hasHighValueApps && appCount >= 4) {
+      return 'High-value enterprise automation - save 10+ hours per week';
+    } else if (appCount >= 3) {
+      return 'Multi-app automation - save 5-8 hours per week';
+    } else {
+      return 'Simple automation - save 2-3 hours per week';
+    }
   }
 
   /**
