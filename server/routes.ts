@@ -7,6 +7,9 @@ import { workflowBuildRouter } from "./routes/workflow.build";
 import aiRouter from "./routes/ai";
 import appSchemaRoutes from "./routes/app-schemas.js";
 import aiAssistRoutes from "./routes/ai-assist.js";
+import templateRoutes from "./routes/templates.js";
+import collaborationRoutes from "./routes/collaboration.js";
+import analyticsRoutes from "./routes/analytics.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -60,6 +63,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P1-7: AI assist functionality routes
   app.use('/api/ai-assist', aiAssistRoutes);
+  
+  // P2-1: Workflow templates routes
+  app.use('/api/workflow-templates', templateRoutes);
+  
+  // P2-2: Real-time collaboration routes
+  app.use('/api/collaboration', collaborationRoutes);
+  
+  // P2-3: Advanced analytics routes
+  app.use('/api/analytics', analyticsRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
