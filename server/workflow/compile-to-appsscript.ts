@@ -76,6 +76,10 @@ function emitCode(graph: WorkflowGraph): string {
  * Automation Type: ${graph.meta?.automationType || 'generic'}
  */`);
   
+  // Generate code from graph structure using OPS mapping
+  const graphDrivenCode = buildCodeFromGraph(graph);
+  codeBlocks.push(graphDrivenCode);
+  
   // Generate main function
   codeBlocks.push(generateMainFunction(graph));
   
@@ -9790,4 +9794,84 @@ function ${functionName}(inputData, params) {
     return { ...inputData, nexusError: error.toString() };
   }
 }`;
+}
+
+// Graph-driven code generation with OPS mapping
+const opKey = (n: any) => `${n.type}:${n.data?.operation}`;
+
+const OPS: Record<string, (c: any) => string> = {
+  'trigger.gmail:email_received': (c) => `
+function onNewEmail() {
+  const query = '${c.query || 'is:unread'}';
+  const threads = GmailApp.search(query, 0, 10);
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+    messages.forEach(message => {
+      const ctx = {
+        from: message.getFrom(),
+        subject: message.getSubject(),
+        body: message.getPlainBody(),
+        thread: thread
+      };
+      main(ctx);
+    });
+  });
+}`,
+
+  'action.gmail:send_reply': (c) => `
+function step_sendReply(ctx) {
+  if (ctx.thread) {
+    const template = '${c.responseTemplate || 'Thank you for your email.'}';
+    const senderName = ctx.from.split('<')[0].trim() || 'Valued Customer';
+    const personalizedResponse = template.replace(/{{name}}/g, senderName);
+    ctx.thread.reply(personalizedResponse);
+    ${c.markAsReplied ? 'ctx.thread.addLabel(GmailApp.getUserLabelByName("Auto-Replied") || GmailApp.createLabel("Auto-Replied"));' : ''}
+  }
+  return ctx;
+}`,
+
+  'action.sheets:append_row': (c) => `
+function step_logData(ctx) {
+  const spreadsheetId = '${c.spreadsheetId}';
+  const sheetName = '${c.sheetName || 'Sheet1'}';
+  
+  if (spreadsheetId) {
+    const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(sheetName);
+    const timestamp = new Date().toISOString();
+    const rowData = [ctx.from, ctx.subject, ctx.body, 'Auto-replied', timestamp];
+    sheet.appendRow(rowData);
+  }
+  return ctx;
+}`
+};
+
+function buildCodeFromGraph(graph: any): string {
+  const emitted = new Set<string>();
+  let body = `
+function interpolate(t, ctx) {
+  return String(t).replace(/\\{\\{(.*?)\\}\\}/g, (_, k) => ctx[k.trim()] ?? '');
+}
+
+function main(ctx) {
+  ctx = ctx || {};
+${graph.nodes.map((n: any) => `  ctx = ${funcName(n)}(ctx);`).join('\n')}
+  return ctx;
+}
+`;
+
+  for (const n of graph.nodes) {
+    const key = opKey(n);
+    const gen = OPS[key];
+    if (gen && !emitted.has(key)) {
+      body += '\n' + gen(n.data?.config || {});
+      emitted.add(key);
+    }
+  }
+  
+  return body;
+}
+
+function funcName(n: any) {
+  const op = (n.data?.operation || 'unknown').replace(/[^a-z0-9_]/gi, '_');
+  return `step_${op}`;
 }

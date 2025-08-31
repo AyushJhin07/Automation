@@ -22,50 +22,44 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
   const edges: any[] = [];
   let nodeIndex = 0;
   
-  // Add trigger based on user's actual words
+  // Build nodes that match the editor's schema
   if (userRequirements.trigger) {
-    const triggerId = `trigger-1`;
     nodes.push({
-      id: triggerId,
-      type: 'trigger',
-      app: userRequirements.trigger.app,
-      name: userRequirements.trigger.label,
-      op: `${userRequirements.trigger.app}.${userRequirements.trigger.operation}`,
-      params: userRequirements.trigger.config
+      id: 'n-trigger',
+      type: `trigger.${userRequirements.trigger.app}`,
+      position: { x: 80, y: 60 },
+      data: {
+        label: userRequirements.trigger.label,
+        operation: userRequirements.trigger.operation,
+        config: userRequirements.trigger.config
+      }
     });
-    
-    // Connect to first action
-    if (userRequirements.actions.length > 0) {
-      const firstActionId = `action-1`;
+  }
+  
+  userRequirements.actions.forEach((action, index) => {
+    const actionId = `n-action-${index + 1}`;
+    nodes.push({
+      id: actionId,
+      type: `action.${action.app}`,
+      position: { x: 80 + ((index + 1) * 280), y: 60 },
+      data: {
+        label: action.label,
+        operation: action.operation,
+        config: action.config
+      }
+    });
+  });
+  
+  // Build edges connecting the nodes
+  if (nodes.length > 1) {
+    for (let i = 0; i < nodes.length - 1; i++) {
       edges.push({
-        id: `edge-1`,
-        source: triggerId,
-        target: firstActionId
+        id: `e${i + 1}`,
+        source: nodes[i].id,
+        target: nodes[i + 1].id
       });
     }
   }
-  
-  // Add actions based on user's actual requests
-  userRequirements.actions.forEach((action, index) => {
-    const actionId = `action-${index + 1}`;
-    nodes.push({
-      id: actionId,
-      type: 'action',
-      app: action.app,
-      name: action.label,
-      op: `${action.app}.${action.operation}`,
-      params: action.config
-    });
-    
-    // Connect to next action
-    if (index < userRequirements.actions.length - 1) {
-      edges.push({
-        id: `edge-${index + 2}`,
-        source: actionId,
-        target: `action-${index + 2}`
-      });
-    }
-  });
   
   return {
     id: `wf-${Date.now()}`,

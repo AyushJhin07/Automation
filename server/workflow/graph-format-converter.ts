@@ -9,19 +9,22 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
   
   // Convert nodes from AI format to Graph Editor format
   const graphNodes: GraphNode[] = workflowGraph.nodes.map((node, index) => {
-    const nodeType = `${node.type}.${node.app}.${node.op?.split('.').pop() || 'default'}`;
+    // Handle both old format (with op) and new format (with data.operation)
+    const operation = node.op?.split('.').pop() || node.data?.operation || 'default';
+    const app = node.app || node.type?.split('.')[1] || 'unknown';
+    const nodeType = `${node.type?.split('.')[0] || node.type}.${app}.${operation}`;
     
     return {
       id: node.id,
       type: nodeType,
-      label: node.name || `${node.app} ${node.type}`,
-      params: node.params || {},
-      position: {
+      label: node.name || node.data?.label || `${app} ${node.type}`,
+      params: node.params || node.data?.config || {},
+      position: node.position || {
         x: 100 + (index * 300), // Auto-layout horizontally
         y: 100 + (Math.floor(index / 3) * 200) // Wrap to new row every 3 nodes
       },
-      color: getAppColor(node.app),
-      icon: getAppIcon(node.app)
+      color: getAppColor(app),
+      icon: getAppIcon(app)
     };
   });
   
