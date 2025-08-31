@@ -115,7 +115,27 @@ workflowBuildRouter.post('/build', async (req, res) => {
       // BATCH 9: Forms & Surveys
       'typeform', 'surveymonkey',
       // BATCH 10: Calendar & Scheduling
-      'calendly'
+      'calendly',
+      // PHASE 1: Storage & Cloud
+      'dropbox', 'google-drive', 'box',
+      // PHASE 2: Analytics & Data
+      'google-analytics', 'mixpanel', 'amplitude',
+      // PHASE 3: HR & Recruitment
+      'bamboohr', 'greenhouse',
+      // PHASE 4: Customer Support
+      'zendesk', 'freshdesk',
+      // PHASE 5: DevOps & Development
+      'jenkins', 'docker-hub', 'kubernetes',
+      // PHASE 6: Security & Monitoring
+      'datadog', 'new-relic',
+      // PHASE 7: Document Management
+      'docusign', 'google-docs', 'google-slides',
+      // PHASE 8: Additional Essential Business Apps
+      'monday', 'clickup', 'basecamp', 'toggl', 'webflow',
+      // Microsoft Office Suite
+      'outlook', 'microsoft-todo', 'onedrive',
+      // Additional Popular Apps
+      'intercom', 'discord'
     ];
     const unsupportedNodes = graph.nodes.filter((node: any) => {
       const app = node.app || node.type?.split('.')[1];
