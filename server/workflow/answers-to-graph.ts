@@ -2,41 +2,165 @@ import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow
 
 // Use standard WorkflowNode interface from common/workflow-types.ts
 export function answersToGraph(prompt: string, answers: Record<string, string>): WorkflowGraph {
-  console.log(`🔥 NEW FUNCTION CALLED! Prompt: "${prompt}"`);
-  console.log(`🔥 Answers:`, answers);
+  console.log(`🤖 Generating workflow from user answers (NO PRESETS)`);
+  console.log(`📝 User Prompt: "${prompt}"`);
+  console.log(`📋 User Answers:`, answers);
   
-  // ---- Intelligently detect automation type from prompt ----
-  const automationType = detectAutomationType(prompt, answers);
+  // Generate workflow directly from user's actual requirements
+  return generateWorkflowFromUserAnswers(prompt, answers);
+}
+
+function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string, string>): WorkflowGraph {
+  console.log('👤 Building workflow from user requirements only...');
   
-  console.log(`🧠 Detected automation type: ${automationType} for prompt: "${prompt}"`);
+  // Parse what the user actually wants
+  const userRequirements = parseUserRequirements(prompt, answers);
+  console.log('🎯 User Requirements:', userRequirements);
   
-  // ---- Generate workflow based on detected type ----
-  switch (automationType) {
-    case 'ecommerce_automation':
-      return generateEcommerceWorkflow(prompt, answers);
-    case 'crm_automation':
-      return generateCRMWorkflow(prompt, answers);
-    case 'drive_backup':
-      return generateDriveBackupWorkflow(prompt, answers);
-    case 'calendar_notifications':
-      return generateCalendarNotificationWorkflow(prompt, answers);
-    case 'communication_automation':
-      return generateCommunicationWorkflow(prompt, answers);
-    case 'gmail_sheets':
-      return generateGmailSheetsWorkflow(prompt, answers);
-    case 'form_processing':
-      return generateFormProcessingWorkflow(prompt, answers);
-    case 'project_management':
-      return generateProjectManagementWorkflow(prompt, answers);
-    case 'email_marketing':
-      return generateEmailMarketingWorkflow(prompt, answers);
-    case 'devops_automation':
-      return generateDevOpsWorkflow(prompt, answers);
-    case 'email_responder':
-      return generateEmailResponderWorkflow(prompt, answers);
-    default:
-      return generateGenericWorkflow(prompt, answers);
+  // Build nodes in Graph Editor compatible format
+  const nodes: any[] = [];
+  const edges: any[] = [];
+  let nodeIndex = 0;
+  
+  // Add trigger based on user's actual words
+  if (userRequirements.trigger) {
+    const triggerId = `trigger-1`;
+    nodes.push({
+      id: triggerId,
+      type: 'trigger',
+      app: userRequirements.trigger.app,
+      name: userRequirements.trigger.label,
+      op: `${userRequirements.trigger.app}.${userRequirements.trigger.operation}`,
+      params: userRequirements.trigger.config
+    });
+    
+    // Connect to first action
+    if (userRequirements.actions.length > 0) {
+      const firstActionId = `action-1`;
+      edges.push({
+        id: `edge-1`,
+        source: triggerId,
+        target: firstActionId
+      });
+    }
   }
+  
+  // Add actions based on user's actual requests
+  userRequirements.actions.forEach((action, index) => {
+    const actionId = `action-${index + 1}`;
+    nodes.push({
+      id: actionId,
+      type: 'action',
+      app: action.app,
+      name: action.label,
+      op: `${action.app}.${action.operation}`,
+      params: action.config
+    });
+    
+    // Connect to next action
+    if (index < userRequirements.actions.length - 1) {
+      edges.push({
+        id: `edge-${index + 2}`,
+        source: actionId,
+        target: `action-${index + 2}`
+      });
+    }
+  });
+  
+  return {
+    id: `wf-${Date.now()}`,
+    name: userRequirements.workflowName,
+    nodes,
+    edges,
+    meta: {
+      automationType: 'user_driven',
+      description: userRequirements.description,
+      userPrompt: prompt,
+      userAnswers: answers
+    }
+  };
+}
+
+function parseUserRequirements(prompt: string, answers: Record<string, string>): {
+  trigger: {app: string, label: string, operation: string, config: any} | null,
+  actions: Array<{app: string, label: string, operation: string, config: any}>,
+  workflowName: string,
+  description: string
+} {
+  const allText = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
+  
+  // Parse trigger from user's actual words
+  let trigger = null;
+  if (answers.trigger?.toLowerCase().includes('email') || allText.includes('email arrives')) {
+    const filterCriteria = answers.filter_criteria || '';
+    trigger = {
+      app: 'gmail',
+      label: 'Email Received',
+      operation: 'email_received',
+      config: {
+        query: buildGmailQueryFromUserWords(filterCriteria),
+        frequency: 5
+      }
+    };
+  }
+  
+  // Parse actions from user's actual requests
+  const actions: Array<{app: string, label: string, operation: string, config: any}> = [];
+  
+  // Check if user wants email replies
+  if (allText.includes('reply') || allText.includes('respond') || answers.response_template) {
+    actions.push({
+      app: 'gmail',
+      label: 'Send Auto Reply',
+      operation: 'send_reply',
+      config: {
+        responseTemplate: answers.response_template || 'Thank you for your email.',
+        markAsReplied: true
+      }
+    });
+  }
+  
+  // Check if user wants logging to sheets
+  if (allText.includes('log') || allText.includes('sheet') || answers.sheet_id) {
+    actions.push({
+      app: 'sheets',
+      label: 'Log Email Data',
+      operation: 'append_row',
+      config: {
+        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheet_id || ''),
+        sheetName: 'Sheet1',
+        columns: answers.sheet_columns || 'Sender, Subject, Body, Timestamp'
+      }
+    });
+  }
+  
+  return {
+    trigger,
+    actions,
+    workflowName: `User Request: ${prompt.substring(0, 40)}...`,
+    description: `Generated from user request: ${prompt}`
+  };
+}
+
+function buildGmailQueryFromUserWords(criteria: string): string {
+  if (!criteria) return 'is:unread';
+  
+  const lowerCriteria = criteria.toLowerCase();
+  if (lowerCriteria.includes('subject')) {
+    // Extract exact words user mentioned
+    const wordMatch = criteria.match(/(?:words?|include)[:\s]*([^.]+)/i);
+    if (wordMatch && wordMatch[1]) {
+      const userWords = wordMatch[1].split(/[,\s]+/).map(w => w.trim()).filter(w => w.length > 1);
+      return `is:unread subject:(${userWords.map(w => `"${w}"`).join(' OR ')})`;
+    }
+  }
+  
+  return 'is:unread';
+}
+
+function extractSheetIdFromUserAnswer(sheetAnswer: string): string {
+  const match = sheetAnswer.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return match ? match[1] : '';
 }
 
 function detectAutomationType(prompt: string, answers: Record<string, string>): string {
