@@ -50,6 +50,22 @@ workflowBuildRouter.post('/build', async (req, res) => {
       answerCount: Object.keys(answers).length 
     });
     
+    // P0 CRITICAL: Validate required inputs before generation
+    const validationErrors = validateRequiredInputs(prompt, answers);
+    if (validationErrors.length > 0) {
+      logWorkflowEvent('VALIDATION_FAILED', requestId, { 
+        errors: validationErrors,
+        prompt: prompt.substring(0, 100) + '...'
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required inputs',
+        code: 'VALIDATION_FAILED',
+        details: validationErrors,
+        requestId
+      });
+    }
+    
     // Generate graph with error handling
     const graphStartTime = Date.now();
     const graph = answersToGraph(prompt, answers);
@@ -184,6 +200,40 @@ function logWorkflowEvent(event: string, requestId: string, data: any = {}) {
 }
 
 // Helper functions for enterprise metadata
+function validateRequiredInputs(prompt: string, answers: Record<string, string>): string[] {
+  const errors: string[] = [];
+  const allText = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
+  
+  // Check for spreadsheet operations without valid ID
+  if (allText.includes('sheet') || allText.includes('spreadsheet')) {
+    const sheetAnswers = Object.values(answers).filter(a => 
+      a.includes('spreadsheets/d/') || a.toLowerCase().includes('sheet')
+    );
+    
+    const hasValidSheetId = sheetAnswers.some(a => 
+      a.match(/spreadsheets\/d\/[a-zA-Z0-9-_]+/)
+    );
+    
+    if (!hasValidSheetId) {
+      errors.push('Spreadsheet URL is required but not provided. Please provide a valid Google Sheets URL.');
+    }
+  }
+  
+  // Check for email operations without proper configuration
+  if (allText.includes('email') || allText.includes('gmail')) {
+    if (answers.emailContent && !answers.emailContent.includes('Subject:')) {
+      errors.push('Email content should include both Subject and Body. Format: "Subject: Your Subject\\nBody: Your Message"');
+    }
+  }
+  
+  // Check for incomplete trigger configuration
+  if (!answers.trigger) {
+    errors.push('Trigger configuration is required. Please specify when the automation should run.');
+  }
+  
+  return errors;
+}
+
 function hashString(str: string): string {
   return str.split('').reduce((hash, char) => {
     const charCode = char.charCodeAt(0);
