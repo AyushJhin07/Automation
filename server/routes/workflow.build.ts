@@ -93,6 +93,36 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     console.log(`📊 Generated graph (${requestId}):`, JSON.stringify(graph, null, 2));
     
+    // P0 CRITICAL: Check for unsupported operations before compilation
+    const supportedApps = ['gmail', 'sheets', 'time', 'slack', 'salesforce', 'hubspot', 'stripe', 'shopify'];
+    const unsupportedNodes = graph.nodes.filter((node: any) => {
+      const app = node.app || node.type?.split('.')[1];
+      return app && !supportedApps.includes(app);
+    });
+    
+    if (unsupportedNodes.length > 0) {
+      logWorkflowEvent('UNSUPPORTED_OPERATIONS', requestId, {
+        unsupportedNodes: unsupportedNodes.map((n: any) => ({
+          id: n.id,
+          app: n.app || n.type?.split('.')[1],
+          operation: n.data?.operation || n.op
+        }))
+      });
+      
+      return res.status(400).json({
+        success: false,
+        error: 'Workflow contains unsupported operations',
+        code: 'UNSUPPORTED_OPERATIONS',
+        details: {
+          message: 'Some apps in your workflow are not yet fully implemented',
+          unsupportedApps: [...new Set(unsupportedNodes.map((n: any) => n.app || n.type?.split('.')[1]))],
+          supportedApps: supportedApps,
+          suggestion: 'Please use only supported apps or contact support for implementation timeline'
+        },
+        requestId
+      });
+    }
+    
     // Compile with validation
     const compileStartTime = Date.now();
     const compiled = compileToAppsScript(graph);

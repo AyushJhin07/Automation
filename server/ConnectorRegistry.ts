@@ -330,7 +330,10 @@ export class ConnectorRegistry {
     this.registerAPIClient('sonarqube', GenericAPIClient);
     this.registerAPIClient('nexus', GenericAPIClient);
     
-    console.log('🎉 Marked ALL 149 apps as implemented with real Apps Script code - COMPLETE DEVOPS ECOSYSTEM!');
+    console.log('⚠️ P0 CRITICAL: Registry shows 149 apps but only ~7 have working REAL_OPS implementations');
+    console.log('📊 Actually working apps: gmail, sheets, time, slack, salesforce, hubspot, stripe, shopify');
+    console.log('🔧 Remaining 142 apps have generate*Function stubs but no REAL_OPS mappings');
+    console.log('💼 Business Impact: Users can select apps that will generate non-functional code');
     
     console.log('✅ Registered API clients for all implemented apps');
   }
