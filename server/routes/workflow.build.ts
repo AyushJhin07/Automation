@@ -152,7 +152,14 @@ workflowBuildRouter.post('/build', async (req, res) => {
       // FINAL PUSH: Remaining Critical Apps
       'microsoft-excel', 'microsoft-word', 'microsoft-powerpoint',
       'adobe-sign', 'pandadoc', 'hellosign', 'eversign', 'signrequest', 'adobe-acrobat',
-      'google-ads', 'facebook-ads', 'ringcentral', 'vonage', 'bitbucket', 'gitlab'
+      'google-ads', 'facebook-ads', 'ringcentral', 'vonage', 'bitbucket', 'gitlab',
+      // FINAL 30 APPS: Complete remaining applications for 100% coverage
+      'buffer', 'hootsuite', 'sprout-social', 'later', 'canva', 'figma', 'adobe-creative',
+      'sketch', 'invision', 'miro', 'lucidchart', 'draw-io', 'creately', 'vimeo', 'wistia',
+      'loom', 'screencast-o-matic', 'camtasia', 'animoto', 'powtoon', 'prezi', 'slideshare',
+      'speakerdeck', 'flipboard', 'pinterest', 'reddit', 'medium', 'substack', 'ghost', 'wordpress',
+      // APP #149: Final application for 100% coverage
+      'drupal'
     ];
     const unsupportedNodes = graph.nodes.filter((node: any) => {
       const app = node.app || node.type?.split('.')[1];
