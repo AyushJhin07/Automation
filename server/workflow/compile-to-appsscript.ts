@@ -10142,7 +10142,7 @@ function step_sendReply(ctx) {
 
   'action.sheets:append_row': (c) => `
 function step_appendRow(ctx) {
-  // CRITICAL FIX: Safe spreadsheet access with validation
+  // CRITICAL FIX: Safe spreadsheet access with validation and proper column handling
   const spreadsheetId = '${c.spreadsheetId || ''}';
   const sheetName = '${c.sheetName || 'Sheet1'}';
   
@@ -10159,18 +10159,42 @@ function step_appendRow(ctx) {
       throw new Error(\`Sheet '\${sheetName}' not found in spreadsheet\`);
     }
     
+    // CRITICAL FIX: Handle columns array properly
+    const columns = ${Array.isArray(c.columns) ? JSON.stringify(c.columns) : `'${c.columns || 'Data, Timestamp'}'.split(', ')`};
     const timestamp = new Date().toISOString();
-    const rowData = [
-      ctx.from || 'Unknown', 
-      ctx.subject || 'No Subject', 
-      ctx.body || 'No Body', 
-      'Processed', 
-      timestamp
-    ];
+    
+    // Intelligent row data mapping based on available context
+    let rowData = [];
+    if (ctx.emails && ctx.emails.length > 0) {
+      const email = ctx.emails[0];
+      rowData = [
+        email.from || 'Unknown',
+        email.subject || 'No Subject', 
+        email.body || 'No Body',
+        'Processed',
+        timestamp
+      ];
+    } else {
+      // Generic data extraction
+      rowData = [
+        ctx.from || ctx.sender || 'Unknown',
+        ctx.subject || ctx.title || 'No Subject',
+        ctx.body || ctx.content || 'No Body',
+        'Processed',
+        timestamp
+      ];
+    }
+    
+    // Ensure row data matches column count
+    while (rowData.length < columns.length) {
+      rowData.push('');
+    }
+    rowData = rowData.slice(0, columns.length);
     
     sheet.appendRow(rowData);
     
     console.log(\`✅ Successfully appended row to sheet: \${sheetName}\`);
+    console.log(\`📊 Columns: \${JSON.stringify(columns)}\`);
     console.log(\`📊 Row data: \${JSON.stringify(rowData)}\`);
     return ctx;
   } catch (error) {

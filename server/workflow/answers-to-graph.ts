@@ -125,13 +125,14 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   }
   // Check for email triggers
   else if (answers.trigger?.toLowerCase().includes('email') || allText.includes('email arrives')) {
-    const filterCriteria = answers.filter_criteria || answers.invoice_identification || '';
+    // CRITICAL FIX: Use user's actual search query, not hardcoded filters
+    const userQuery = answers.search_query || answers.gmail_search || answers.email_criteria || answers.filter_criteria || answers.invoice_identification || '';
     trigger = {
       app: 'gmail',
       label: 'Email Received',
       operation: 'email_received',
       config: {
-        query: buildGmailQueryFromUserWords(filterCriteria),
+        query: userQuery || buildGmailQueryFromUserWords(userQuery),
         frequency: 5
       }
     };
@@ -170,14 +171,29 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   }
   
   // Check if user wants Gmail monitoring (for invoices, etc.)
-  if (allText.includes('monitor') || allText.includes('gmail') || answers.invoice_identification) {
-    const filterCriteria = answers.invoice_identification || '';
+  if (allText.includes('monitor') || allText.includes('gmail') || answers.invoice_identification || answers.gmail || answers.search_query) {
+    // CRITICAL FIX: Use user's actual search query, not hardcoded
+    const userQuery = answers.search_query || 
+                     (answers.gmail && answers.gmail.search_query) ||
+                     answers.gmail_search || 
+                     answers.email_criteria || 
+                     answers.filter_criteria || 
+                     answers.invoice_identification || '';
+    
+    const finalQuery = userQuery || buildGmailQueryFromUserWords(userQuery) || 'is:unread';
+    
+    console.log('📧 Gmail query mapping:', {
+      userProvided: !!userQuery,
+      finalQuery: finalQuery.substring(0, 50) + '...',
+      source: userQuery ? 'user_input' : 'fallback'
+    });
+
     actions.push({
       app: 'gmail',
       label: 'Monitor Gmail for Invoices',
       operation: 'search_emails',
       config: {
-        query: buildGmailQueryFromUserWords(filterCriteria),
+        query: finalQuery,
         maxResults: 50,
         extractData: answers.data_extraction || 'invoice number, date, amount'
       }
@@ -185,15 +201,48 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   }
   
   // Check if user wants to log to sheets
-  if (allText.includes('log') || allText.includes('sheet') || answers.sheet_destination) {
+  if (allText.includes('log') || allText.includes('sheet') || answers.sheet_destination || answers.sheets || answers.spreadsheet_url) {
+    // CRITICAL FIX: Handle both old format and new normalized format
+    let spreadsheetId = '';
+    let sheetName = 'Sheet1';
+    let columns = 'Invoice Number, Date, Amount, Vendor';
+
+    // New normalized format (from LLM normalization)
+    if (answers.sheets && typeof answers.sheets === 'object') {
+      spreadsheetId = extractSheetIdFromUserAnswer(answers.sheets.sheet_url || '');
+      sheetName = answers.sheets.sheet_name || 'Sheet1';
+      columns = Array.isArray(answers.sheets.columns) ? 
+        answers.sheets.columns.join(', ') : 
+        String(answers.sheets.columns || columns);
+    }
+    // Legacy format support
+    else if (answers.spreadsheet_url) {
+      spreadsheetId = extractSheetIdFromUserAnswer(answers.spreadsheet_url);
+      sheetName = answers.sheet_name || 'Sheet1';
+      columns = answers.columns || answers.data_extraction || columns;
+    }
+    // Fallback to old format
+    else {
+      spreadsheetId = extractSheetIdFromUserAnswer(answers.sheet_destination || '');
+      sheetName = 'Sheet1';
+      columns = answers.data_extraction || columns;
+    }
+
+    console.log('📊 Sheets mapping applied:', {
+      spreadsheetId: spreadsheetId ? '✅ EXTRACTED' : '❌ MISSING',
+      sheetName,
+      columnsType: typeof columns,
+      columnsPreview: typeof columns === 'string' ? columns.substring(0, 50) + '...' : columns
+    });
+
     actions.push({
       app: 'sheets',
       label: 'Log Invoice Data',
       operation: 'append_row',
       config: {
-        spreadsheetId: extractSheetIdFromUserAnswer(answers.sheet_destination || ''),
-        sheetName: 'Sheet1',
-        columns: answers.data_extraction || 'Invoice Number, Date, Amount, Vendor'
+        spreadsheetId,
+        sheetName,
+        columns
       }
     });
   }
