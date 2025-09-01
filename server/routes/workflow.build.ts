@@ -22,14 +22,6 @@ workflowBuildRouter.post('/build', async (req, res) => {
     // Validate input
     const { prompt = '', answers: rawAnswers = {} } = req.body || {};
     
-    // CRITICAL FIX: Map LLM question IDs to backend-expected field names
-    const answers = mapAnswersToBackendFormat(rawAnswers);
-    console.log('🔄 Applied field mapping:', {
-      originalFields: Object.keys(rawAnswers),
-      mappedFields: Object.keys(answers),
-      triggerValue: answers.trigger
-    });
-    
     if (!prompt || typeof prompt !== 'string') {
       logWorkflowEvent('VALIDATION_ERROR', requestId, { error: 'Invalid prompt', prompt });
       return res.status(400).json({ 
@@ -40,8 +32,8 @@ workflowBuildRouter.post('/build', async (req, res) => {
       });
     }
     
-    if (typeof answers !== 'object' || answers === null) {
-      logWorkflowEvent('VALIDATION_ERROR', requestId, { error: 'Invalid answers', answers });
+    if (typeof rawAnswers !== 'object' || rawAnswers === null) {
+      logWorkflowEvent('VALIDATION_ERROR', requestId, { error: 'Invalid answers', answers: rawAnswers });
       return res.status(400).json({ 
         success: false, 
         error: 'Answers must be an object',
@@ -50,8 +42,19 @@ workflowBuildRouter.post('/build', async (req, res) => {
       });
     }
     
+    // CRITICAL FIX: Apply answer normalization BEFORE any processing
+    const answers = mapAnswersToBackendFormat(rawAnswers);
+    console.log('🔄 COMPREHENSIVE ANSWER NORMALIZATION APPLIED:', {
+      originalFields: Object.keys(rawAnswers),
+      normalizedFields: Object.keys(answers),
+      triggerMapped: !!answers.trigger,
+      spreadsheetMapped: !!(answers.spreadsheet_url || answers.sheet_url),
+      requestId
+    });
+
     console.log(`📝 Prompt (${requestId}):`, prompt);
-    console.log(`📋 Answers (${requestId}):`, answers);
+    console.log(`📋 Raw Answers (${requestId}):`, rawAnswers);
+    console.log(`🎯 Normalized Answers (${requestId}):`, answers);
     
     // Log workflow generation start
     logWorkflowEvent('WORKFLOW_GENERATION_START', requestId, { 
@@ -59,7 +62,7 @@ workflowBuildRouter.post('/build', async (req, res) => {
       answerCount: Object.keys(answers).length 
     });
     
-    // P0 CRITICAL: Validate required inputs before generation
+    // P0 CRITICAL: Validate required inputs AFTER normalization
     const validationErrors = validateRequiredInputs(prompt, answers);
     if (validationErrors.length > 0) {
       logWorkflowEvent('VALIDATION_FAILED', requestId, { 
