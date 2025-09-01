@@ -12,6 +12,7 @@ import collaborationRoutes from "./routes/collaboration.js";
 import analyticsRoutes from "./routes/analytics.js";
 import aiPlannerRoutes from "./routes/ai-planner.js";
 import aiNormalizerRoutes from "./routes/ai-normalizer.js";
+import workflowReadRoutes from "./routes/workflow-read.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -80,6 +81,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // CRITICAL FIX: LLM answer normalization routes (ChatGPT's solution)
   app.use('/api/ai-normalizer', aiNormalizerRoutes);
+  
+  // CRITICAL FIX: Workflow read routes for Graph Editor handoff
+  app.use('/api', workflowReadRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);

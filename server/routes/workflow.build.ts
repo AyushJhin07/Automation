@@ -4,6 +4,7 @@ import { compileToAppsScript } from '../workflow/compile-to-appsscript';
 import { healthMonitoringService } from '../services/HealthMonitoringService';
 import { convertToNodeGraph } from '../workflow/graph-format-converter';
 import { mapAnswersToBackendFormat, validateTriggerConfig } from '../utils/answer-field-mapper.js';
+import { WorkflowStoreService } from '../workflow/workflow-store.js';
 
 export const workflowBuildRouter = Router();
 
@@ -255,6 +256,9 @@ workflowBuildRouter.post('/build', async (req, res) => {
       totalTime,
       codeSize: compiled.files.reduce((sum, f) => sum + f.content.length, 0)
     });
+    
+    // CRITICAL FIX: Store workflow for Graph Editor handoff
+    WorkflowStoreService.store(response.workflowId, nodeGraph);
     
     // Record performance metrics
     healthMonitoringService.recordApiRequest(totalTime, false);
