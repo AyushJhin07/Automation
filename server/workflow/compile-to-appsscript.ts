@@ -12836,3 +12836,6 @@ function step_createDrupalNode(ctx) {
   return ctx;
 }`
 };
+
+// ChatGPT Fix: Export REAL_OPS for accurate counting
+export { REAL_OPS };

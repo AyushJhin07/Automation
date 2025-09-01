@@ -64,6 +64,60 @@ export interface NormalizationResult {
 export class AnswerNormalizerService {
   
   /**
+   * ChatGPT's robust URL extraction from any field
+   */
+  private static extractSheetUrl(anyText: string): string | null {
+    if (!anyText) return null;
+    const re = /(https?:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_\-]+)/i;
+    const m = anyText.match(re);
+    return m ? m[1] : null;
+  }
+
+  /**
+   * ChatGPT's sheet coercion after LLM parsing
+   */
+  private static coerceSheets(obj: any, raw: Record<string,string>): any {
+    obj.sheets = obj.sheets || {};
+    const fieldsToScan = [
+      raw.spreadsheet_destination,
+      raw.data_mapping,
+      raw.mapping,
+      raw.sheetDetails,
+      raw.sheet_url,
+      raw.columns,
+      // scan ALL raw fields:
+      ...Object.values(raw)
+    ].filter(Boolean);
+
+    // find the first URL anywhere
+    for (const val of fieldsToScan) {
+      const url = this.extractSheetUrl(String(val));
+      if (url && !obj.sheets.sheet_url) {
+        obj.sheets.sheet_url = url;
+      }
+    }
+
+    // extract sheet name heuristically
+    if (!obj.sheets.sheet_name) {
+      const guess = String(raw.spreadsheet_destination || raw.data_mapping || '')
+        .split('\n').map(s => s.trim()).find(s => /^sheet\s*\w+/i.test(s) || /^[A-Za-z0-9 _-]{1,30}$/.test(s));
+      if (guess) obj.sheets.sheet_name = guess.replace(/^sheet\s*/i, '');
+    }
+
+    // extract columns heuristically
+    if (!Array.isArray(obj.sheets.columns) || obj.sheets.columns?.length === 0) {
+      const lines = String(raw.spreadsheet_destination || raw.data_mapping || '')
+        .split('\n').map(s => s.trim());
+      const last = lines[lines.length - 1];
+      if (last && last.includes(',')) {
+        obj.sheets.columns = last.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+
+    return obj;
+  }
+  
+  /**
    * CRITICAL: LLM-powered answer normalization
    * Let the LLM intelligently convert free-form answers to structured format
    */
@@ -79,6 +133,31 @@ export class AnswerNormalizerService {
       rawAnswerKeys: Object.keys(rawAnswers),
       timezone
     });
+
+    // ChatGPT's strict JSON instruction
+    const SYSTEM_JSON_INSTRUCTION = `
+You are an answer normalizer. Output ONLY strict JSON. No prose.
+If a value is unknown, set it to null. Use this schema:
+{
+  "trigger": { "type": "time|event|manual", "frequency": { "value": number, "unit": "minutes|hours|days" } },
+  "apps": { "source": string[], "destination": string[] },
+  "sheets": { "sheet_url": string|null, "sheet_name": string|null, "columns": string[]|null },
+  "mapping": { "pairs": [ { "from": string, "to": string, "transform": string|null } ] }
+}
+`;
+
+    function makeLLMPrompt(questions: Question[], rawAnswers: Record<string, any>, timezone: string): string {
+      return [
+        SYSTEM_JSON_INSTRUCTION,
+        'Questions:',
+        JSON.stringify(questions, null, 2),
+        'Answers:',
+        JSON.stringify(rawAnswers, null, 2),
+        'Timezone:',
+        timezone,
+        'Return ONLY the JSON object above. No markdown, no explanation.'
+      ].join('\n');
+    }
 
     const systemPrompt = `You are a precise data normalizer for automation workflows. Your job is to convert user's free-form answers into a structured JSON object that matches the exact schema the compiler expects.
 
@@ -124,18 +203,11 @@ COERCION RULES:
 
 RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
 
-    const userPrompt = `QUESTIONS AND ANSWERS TO NORMALIZE:
-
-QUESTIONS:
-${JSON.stringify(questions, null, 2)}
-
-USER'S RAW ANSWERS:
-${JSON.stringify(rawAnswers, null, 2)}
-
-Convert these answers to the exact structured format needed by the automation compiler. Use intelligent coercion and extraction to handle free-form text appropriately.`;
+    // ChatGPT's strict JSON prompt
+    const prompt = makeLLMPrompt(questions, rawAnswers, timezone);
 
     try {
-      const result = await LLMProviderService.generateText(userPrompt, {
+      const result = await LLMProviderService.generateText(prompt, {
         model: 'gemini-2.0-flash-exp',
         temperature: 0.1, // Low temperature for precise formatting
         maxTokens: 1500
@@ -146,16 +218,32 @@ Convert these answers to the exact structured format needed by the automation co
         model: result.model
       });
 
-      // Parse LLM response
-      let parsed: { normalized: BuildAnswers; __issues: any[] };
+      // ChatGPT's strict parsing with repair path
+      let normalized: any;
       try {
-        const cleanedResponse = result.text.replace(/```json|```/g, '').trim();
-        parsed = JSON.parse(cleanedResponse);
-      } catch (parseError) {
-        console.error('❌ Failed to parse LLM normalization response:', parseError);
-        
-        // Fallback to deterministic normalization
-        return this.fallbackNormalization(questions, rawAnswers, result.provider);
+        normalized = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+      } catch (e) {
+        // attempt simple JSON repair (strip pre/post text)
+        const match = String(result.text).match(/\{[\s\S]*\}$/);
+        if (match) {
+          normalized = JSON.parse(match[0]);
+        } else {
+          throw new Error('LLM did not return JSON');
+        }
+      }
+
+      // ChatGPT's coercion after parsing
+      normalized = this.coerceSheets(normalized, rawAnswers);
+
+      let parsed: { normalized: BuildAnswers; __issues: any[] };
+      if (normalized.normalized && normalized.__issues) {
+        parsed = normalized;
+      } else {
+        // Wrap in expected format if LLM returned direct structure
+        parsed = {
+          normalized: normalized,
+          __issues: []
+        };
       }
 
       // Validate the normalized structure

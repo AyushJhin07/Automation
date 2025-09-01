@@ -7,6 +7,53 @@ import { MultiAIService } from '../llm/MultiAIService.js';
 
 const router = Router();
 
+// ChatGPT Fix: AI field assist endpoint
+router.post('/field-assist', async (req, res) => {
+  try {
+    const { app, op, field, sampleContext, userText } = req.body;
+    
+    const prompt = `You are helping a user fill out a field for an automation workflow.
+    
+App: ${app}
+Operation: ${op}
+Field: ${field}
+Context: ${sampleContext || 'No context provided'}
+User's current text: ${userText || 'Empty'}
+
+Provide a helpful value for this field. Respond with JSON only:
+{
+  "value": "suggested field value",
+  "confidence": 0.85,
+  "rationale": "Why this value makes sense"
+}`;
+
+    const aiResponse = await MultiAIService.generateText({
+      model: 'gemini-2.0-flash-exp',
+      prompt
+    });
+
+    let result;
+    try {
+      result = JSON.parse(aiResponse);
+    } catch (e) {
+      // Fallback if not JSON
+      result = {
+        value: aiResponse.substring(0, 100),
+        confidence: 0.5,
+        rationale: 'AI suggested this value'
+      };
+    }
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('AI field assist error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'AI field assist failed'
+    });
+  }
+});
+
 // AI assist for parameter suggestions
 router.post('/suggest-parameters', async (req, res) => {
   try {

@@ -83,12 +83,26 @@ workflowBuildRouter.post('/build', async (req, res) => {
       answerCount: Object.keys(answers).length 
     });
     
-    // P0 CRITICAL: Validate required inputs AFTER normalization
-    const validationErrors = validateRequiredInputs(prompt, answers);
+    // ChatGPT Fix: Plan before validate (context-aware validation)
+    let plannedApps: string[] = [];
+    try {
+      const { AutomationPlannerService } = await import('../services/AutomationPlannerService.js');
+      const plan = await AutomationPlannerService.planAutomation(prompt, answers);
+      plannedApps = plan.apps || [];
+      console.log('🎯 Planned apps for validation context:', plannedApps);
+    } catch (error) {
+      console.warn('⚠️ Could not get automation plan for validation context:', error.message);
+      // Fallback: detect from prompt text
+      plannedApps = this.detectAppsFromPrompt(prompt);
+    }
+
+    // P0 CRITICAL: Context-aware validation (don't require sheets if not planned)
+    const validationErrors = validateRequiredInputs(prompt, answers, plannedApps);
     if (validationErrors.length > 0) {
       logWorkflowEvent('VALIDATION_FAILED', requestId, { 
         errors: validationErrors,
-        prompt: prompt.substring(0, 100) + '...'
+        prompt: prompt.substring(0, 100) + '...',
+        plannedApps
       });
       return res.status(400).json({
         success: false,
@@ -362,13 +376,29 @@ function validateSpreadsheetUrlLocal(url: string): { isValid: boolean; id: strin
   return { isValid: true, id: spreadsheetId };
 }
 
+// ChatGPT Fix: Detect apps from prompt as fallback
+function detectAppsFromPrompt(prompt: string): string[] {
+  const apps: string[] = [];
+  const text = prompt.toLowerCase();
+  
+  if (text.includes('gmail') || text.includes('email')) apps.push('gmail');
+  if (text.includes('sheets') || text.includes('spreadsheet')) apps.push('sheets');
+  if (text.includes('slack')) apps.push('slack');
+  if (text.includes('salesforce')) apps.push('salesforce');
+  if (text.includes('hubspot')) apps.push('hubspot');
+  
+  return apps;
+}
+
 // Helper functions for enterprise metadata
-function validateRequiredInputs(prompt: string, answers: Record<string, string>): string[] {
+function validateRequiredInputs(prompt: string, answers: Record<string, string>, plannedApps: string[] = []): string[] {
   const errors: string[] = [];
   const allText = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
   
-  // CRITICAL FIX: ChatGPT's tolerant sheet validation
-  if (allText.includes('sheet') || allText.includes('spreadsheet')) {
+  // ChatGPT Fix: Context-aware sheet validation (only if sheets is planned)
+  const needsSheets = plannedApps.includes('sheets') || allText.includes('sheet') || allText.includes('spreadsheet');
+  
+  if (needsSheets) {
     const hasSheet =
       answers?.sheets?.sheet_id ||
       answers?.spreadsheet_id   ||

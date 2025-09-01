@@ -8,6 +8,7 @@ import { GmailAPIClient } from './integrations/GmailAPIClient';
 import { ShopifyAPIClient } from './integrations/ShopifyAPIClient';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
+import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {
   id: string;
@@ -111,6 +112,53 @@ export class ConnectorRegistry {
       ConnectorRegistry.instance = new ConnectorRegistry();
     }
     return ConnectorRegistry.instance;
+  }
+
+  /**
+   * ChatGPT Fix: Compute implemented ops from compiler map
+   */
+  private computeImplementedOps(connectors: ConnectorDefinition[]): {
+    totalApps: number;
+    appsWithRealOps: number;
+    totalOps: number;
+    realOps: number;
+    byApp: Record<string, number>;
+  } {
+    const opMap = getCompilerOpMap(); // e.g. { 'gmail.search_emails': fn, 'sheets.append_row': fn, ... }
+    const byApp: Record<string, number> = {};
+    let realOps = 0;
+    let totalOps = 0;
+
+    for (const c of connectors) {
+      let appReal = 0;
+      const allOps = [...(c.actions || []), ...(c.triggers || [])];
+      for (const op of allOps) {
+        totalOps++;
+        // Try multiple key formats to match compiler
+        const keys = [
+          `${c.id}.${op.id}`,
+          `action.${c.id}:${op.id}`,
+          `trigger.${c.id}:${op.id}`,
+          `action.${c.id}.${op.id}`,
+          `trigger.${c.id}.${op.id}`
+        ];
+        
+        if (keys.some(key => opMap[key])) {
+          appReal++;
+          realOps++;
+        }
+      }
+      byApp[c.id] = appReal;
+    }
+
+    const appsWithRealOps = Object.values(byApp).filter(n => n > 0).length;
+    return {
+      totalApps: connectors.length,
+      appsWithRealOps,
+      totalOps,
+      realOps,
+      byApp
+    };
   }
 
   /**
@@ -330,11 +378,6 @@ export class ConnectorRegistry {
     this.registerAPIClient('sonarqube', GenericAPIClient);
     this.registerAPIClient('nexus', GenericAPIClient);
     
-    console.log('⚠️ P0 CRITICAL: Registry shows 149 apps but only ~7 have working REAL_OPS implementations');
-    console.log('📊 Actually working apps: gmail, sheets, time, slack, salesforce, hubspot, stripe, shopify');
-    console.log('🔧 Remaining 142 apps have generate*Function stubs but no REAL_OPS mappings');
-    console.log('💼 Business Impact: Users can select apps that will generate non-functional code');
-    
     console.log('✅ Registered API clients for all implemented apps');
   }
 
@@ -370,6 +413,21 @@ export class ConnectorRegistry {
       }
     }
     console.log(`[ConnectorRegistry] Loaded ${loaded}/${files.length} connector JSON files from ${this.connectorsPath}`);
+    
+    // ChatGPT Fix: Accurate implementation counting after loading
+    try {
+      const allConnectors = this.getAllConnectors().map(entry => entry.definition);
+      const stats = this.computeImplementedOps(allConnectors);
+      const msg = `Connector health: ${stats.appsWithRealOps}/${stats.totalApps} apps have real compiler-backed ops (${stats.realOps}/${stats.totalOps} ops).`;
+      console.log(msg); // INFO, not P0 CRITICAL
+
+      // Only warn if zero implemented
+      if (stats.realOps === 0) {
+        console.warn('⚠️ No REAL_OPS wired to the compiler. Check compiler/op-map.');
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not compute REAL_OPS stats:', error.message);
+    }
   }
 
   /**
