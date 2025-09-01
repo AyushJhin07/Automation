@@ -341,13 +341,15 @@ function validateRequiredInputs(prompt: string, answers: Record<string, string>)
     let hasValidSheetUrl = false;
     let sheetValidationError = '';
     
-    // Check all answers for spreadsheet URLs
+    // Check all answers for spreadsheet URLs (handle different data types)
     for (const [key, value] of Object.entries(answers)) {
+      const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
       if (key.toLowerCase().includes('sheet') || key.toLowerCase().includes('spreadsheet') || 
-          value.includes('docs.google.com/spreadsheets/d/')) {
+          valueStr.includes('docs.google.com/spreadsheets/d/')) {
         
-        // CRITICAL FIX: Manual sheet URL validation (avoid async import)
-        const validation = validateSpreadsheetUrlLocal(value);
+        // CRITICAL FIX: Manual sheet URL validation (handle different data types)
+        const urlToValidate = typeof value === 'string' ? value : valueStr;
+        const validation = validateSpreadsheetUrlLocal(urlToValidate);
         
         if (validation.isValid) {
           hasValidSheetUrl = true;

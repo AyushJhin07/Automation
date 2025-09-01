@@ -72,19 +72,20 @@ export const TRIGGER_VALUE_MAPPINGS: Record<string, string> = {
 };
 
 /**
- * CRITICAL: Map LLM answers to backend-expected format
+ * COMPREHENSIVE: Map and normalize LLM answers to backend-expected format
+ * Handles all classes of normalization issues identified by ChatGPT
  */
-export function mapAnswersToBackendFormat(llmAnswers: Record<string, string>): Record<string, string> {
-  const mappedAnswers: Record<string, string> = {};
+export function mapAnswersToBackendFormat(llmAnswers: Record<string, any>): Record<string, any> {
+  const mappedAnswers: Record<string, any> = {};
   
-  console.log('🔄 Mapping LLM answers to backend format...');
-  console.log('📝 Original answers:', Object.keys(llmAnswers));
+  console.log('🔄 Comprehensive answer normalization starting...');
+  console.log('📝 Original answers keys:', Object.keys(llmAnswers));
 
   // Apply field mappings
   for (const [llmField, value] of Object.entries(llmAnswers)) {
     const backendField = FIELD_MAPPINGS[llmField] || llmField;
     
-    // Special handling for trigger values
+    // CRITICAL: Handle trigger values with comprehensive normalization
     if (backendField === 'trigger') {
       const normalizedValue = value.toLowerCase().trim();
       const mappedTriggerValue = TRIGGER_VALUE_MAPPINGS[normalizedValue] || 
@@ -93,7 +94,33 @@ export function mapAnswersToBackendFormat(llmAnswers: Record<string, string>): R
       
       mappedAnswers[backendField] = mappedTriggerValue;
       console.log(`🎯 Mapped trigger: "${llmField}": "${value}" → "${backendField}": "${mappedTriggerValue}"`);
-    } else {
+    } 
+    // CRITICAL: Handle data_extraction_method (checkbox → array)
+    else if (llmField === 'data_extraction_method' && typeof value === 'string') {
+      mappedAnswers[backendField] = value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+      console.log(`🔄 Normalized checkbox to array: "${llmField}" → ${mappedAnswers[backendField].length} items`);
+    }
+    // CRITICAL: Handle data_mapping (multi-line text → structured)
+    else if (llmField === 'data_mapping' && typeof value === 'string') {
+      const parsed = parseDataMapping(value);
+      Object.assign(mappedAnswers, parsed);
+      console.log(`🔄 Parsed data mapping: extracted ${Object.keys(parsed).join(', ')}`);
+    }
+    // CRITICAL: Handle notification_config (text → structured)
+    else if (llmField === 'notification_config' && typeof value === 'string') {
+      const emails = value.split(/[,\s]/).map(s => s.trim()).filter(s => /\S+@\S+\.\S+/.test(s));
+      if (emails.length) {
+        mappedAnswers.notifications = { emails, on: ['error'] };
+        console.log(`🔄 Parsed notification emails: ${emails.length} recipients`);
+      }
+    }
+    // CRITICAL: Handle access_control (text → structured)
+    else if (llmField === 'access_control' && typeof value === 'string') {
+      mappedAnswers.acl = [{ principal: 'sheet_owners', role: 'edit' }];
+      console.log(`🔄 Normalized access control to default ACL`);
+    }
+    // Default mapping
+    else {
       mappedAnswers[backendField] = value;
       
       if (llmField !== backendField) {
@@ -102,10 +129,18 @@ export function mapAnswersToBackendFormat(llmAnswers: Record<string, string>): R
     }
   }
 
-  // Ensure critical fields exist with defaults
-  if (!mappedAnswers.trigger && (llmAnswers.schedule_config || llmAnswers.frequency)) {
-    mappedAnswers.trigger = 'On a time-based trigger every 15 minutes';
-    console.log('🔧 Added default trigger from schedule config');
+  // CRITICAL: Ensure critical fields exist with intelligent defaults
+  if (!mappedAnswers.trigger) {
+    if (llmAnswers.schedule_config || llmAnswers.frequency || llmAnswers.trigger_frequency) {
+      mappedAnswers.trigger = 'On a time-based trigger every 15 minutes';
+      console.log('🔧 Added default trigger from schedule indicators');
+    } else if (llmAnswers.spreadsheet_url || llmAnswers.sheet_url) {
+      mappedAnswers.trigger = 'On spreadsheet edit';
+      console.log('🔧 Inferred spreadsheet edit trigger');
+    } else {
+      mappedAnswers.trigger = 'On a time-based trigger every 15 minutes';
+      console.log('🔧 Added fallback time-based trigger');
+    }
   }
 
   if (!mappedAnswers.action && Object.keys(llmAnswers).length > 0) {
@@ -113,10 +148,73 @@ export function mapAnswersToBackendFormat(llmAnswers: Record<string, string>): R
     console.log('🔧 Added default action');
   }
 
-  console.log('✅ Mapped answers:', Object.keys(mappedAnswers));
-  console.log('🎯 Final trigger value:', mappedAnswers.trigger);
+  // CRITICAL: Ensure sheet_url is available if any sheet operation is mentioned
+  if (!mappedAnswers.sheet_url && !mappedAnswers.spreadsheet_url) {
+    // Check if any value contains a sheet URL
+    for (const value of Object.values(llmAnswers)) {
+      if (typeof value === 'string' && value.includes('spreadsheets/d/')) {
+        mappedAnswers.spreadsheet_url = value;
+        console.log('🔧 Extracted sheet URL from embedded answer');
+        break;
+      }
+    }
+  }
+
+  console.log('✅ Normalized answers keys:', Object.keys(mappedAnswers));
+  console.log('🎯 Critical fields check:', {
+    trigger: !!mappedAnswers.trigger,
+    spreadsheet_url: !!mappedAnswers.spreadsheet_url,
+    sheet_url: !!mappedAnswers.sheet_url
+  });
   
   return mappedAnswers;
+}
+
+/**
+ * Parse data_mapping multi-line text into structured components
+ */
+function parseDataMapping(dataMapping: string): Record<string, any> {
+  const result: Record<string, any> = {};
+  const lines = dataMapping.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  // Extract sheet URL
+  const urlLine = lines.find(l => l.startsWith('http') && l.includes('spreadsheets/d/'));
+  if (urlLine) {
+    result.sheet_url = urlLine;
+    result.spreadsheet_url = urlLine; // Both formats for compatibility
+  }
+
+  // Extract sheet name
+  const sheetLine = lines.find(l => /^sheet\s*\d+|^sheet/i.test(l.replace(',', '')));
+  if (sheetLine) {
+    result.sheet_name = sheetLine.replace(/[,]/g, '').trim();
+  }
+
+  // Extract column mappings
+  const columnLines = lines.filter(l => 
+    !l.includes('spreadsheets/d/') && 
+    !/^sheet/i.test(l) &&
+    l.includes('→') || l.includes(':') || l.includes('=')
+  );
+  
+  if (columnLines.length) {
+    result.columns = columnLines.map(line => {
+      // Parse "Source Field → Destination Column" format
+      if (line.includes('→')) {
+        const [source, dest] = line.split('→').map(s => s.trim());
+        return { source, destination: dest };
+      }
+      // Parse "Field: Column" format  
+      if (line.includes(':')) {
+        const [source, dest] = line.split(':').map(s => s.trim());
+        return { source, destination: dest };
+      }
+      // Default format
+      return line.trim();
+    });
+  }
+
+  return result;
 }
 
 /**
