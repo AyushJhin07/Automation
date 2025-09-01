@@ -1,5 +1,23 @@
 // CRITICAL FIX: Centralized LLM Provider Service Integration
 import { LLMProviderService } from '../services/LLMProviderService.js';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// ChatGPT Fix: Force Gemini to return JSON
+export async function generateJsonWithGemini(modelId: string, prompt: string) {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const model = genAI.getGenerativeModel({ model: modelId });
+
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      // 👇 This tells Gemini to return only JSON text.
+      responseMimeType: "application/json"
+    }
+  });
+
+  const text = result.response.text();
+  return text;
+}
 
 type GenerateArgs = { model?: string; prompt: string };
 

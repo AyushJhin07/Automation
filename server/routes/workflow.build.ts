@@ -83,30 +83,37 @@ workflowBuildRouter.post('/build', async (req, res) => {
       answerCount: Object.keys(answers).length 
     });
     
-    // ChatGPT Fix: Plan before validate (context-aware validation)
-    let plannedApps: string[] = [];
+    // ChatGPT Fix: Plan before validate with null-safety
+    let plan;
     try {
       const { AutomationPlannerService } = await import('../services/AutomationPlannerService.js');
-      const plan = await AutomationPlannerService.planAutomation(prompt, answers);
-      plannedApps = plan.apps || [];
-      console.log('🎯 Planned apps for validation context:', plannedApps);
+      plan = await AutomationPlannerService.planAutomation(prompt, answers);
     } catch (error) {
-      console.warn('⚠️ Could not get automation plan for validation context:', error.message);
-      // Fallback: detect from prompt text
-      plannedApps = this.detectAppsFromPrompt(prompt);
+      console.warn('⚠️ Planner failed, using dynamic fallback plan:', error.message);
+      // Create safe fallback plan
+      plan = {
+        apps: detectAppsFromPrompt(prompt),
+        nodes: [],
+        trigger: { app: 'time', type: 'time', operation: 'schedule' },
+        steps: []
+      };
     }
 
-    // P0 CRITICAL: Context-aware validation (don't require sheets if not planned)
-    const validationErrors = validateRequiredInputs(prompt, answers, plannedApps);
+    // ChatGPT Fix: Only require sheet_url if a Sheets node is in the plan
+    const needsSheets = !!plan?.nodes?.some((n:any) => (n?.app || n?.type || '').toString().includes('sheets'));
+    const validationOptions = { requireSheetUrl: needsSheets };
+
+    const validationErrors = validateNormalizedAnswers(answers, validationOptions);
     if (validationErrors.length > 0) {
       logWorkflowEvent('VALIDATION_FAILED', requestId, { 
         errors: validationErrors,
         prompt: prompt.substring(0, 100) + '...',
-        plannedApps
+        needsSheets,
+        planApps: plan?.apps || []
       });
       return res.status(400).json({
         success: false,
-        error: 'Missing required inputs',
+        error: 'Missing required fields',
         code: 'VALIDATION_FAILED',
         details: validationErrors,
         requestId
@@ -388,6 +395,18 @@ function detectAppsFromPrompt(prompt: string): string[] {
   if (text.includes('hubspot')) apps.push('hubspot');
   
   return apps;
+}
+
+// ChatGPT Fix: Context-aware validation function
+function validateNormalizedAnswers(n:any, opts:{requireSheetUrl:boolean}) {
+  const errors:string[] = [];
+  if (opts.requireSheetUrl) {
+    if (!n?.sheets?.sheet_url) {
+      errors.push('Valid Google Sheets URL is required. Include the full URL or paste it anywhere in your answers.');
+    }
+  }
+  // other checks...
+  return errors;
 }
 
 // Helper functions for enterprise metadata

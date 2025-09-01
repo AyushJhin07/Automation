@@ -180,9 +180,9 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
 
       console.log('✅ Generated automation plan:', {
         apps: plan.apps,
-        triggerType: plan.trigger.type,
-        stepsCount: plan.steps.length,
-        missingInputsCount: plan.missing_inputs.length
+        triggerType: plan.trigger?.type || 'unknown',
+        stepsCount: plan.steps?.length || 0,
+        missingInputsCount: plan.missing_inputs?.length || 0
       });
 
       return plan;
@@ -254,37 +254,37 @@ RESPOND WITH:
     const triggerId = 'trigger_1';
     nodes.push({
       id: triggerId,
-      type: `trigger.${plan.trigger.app}`,
+      type: `trigger.${plan.trigger?.app || 'unknown'}`,
       position: { x: 100, y: 200 },
       data: {
-        label: plan.trigger.description,
-        app: plan.trigger.app,
-        operation: plan.trigger.operation,
-        config: this.fillConfigFromAnswers(plan.trigger.required_inputs, userAnswers)
+        label: plan.trigger?.description || 'Trigger',
+        app: plan.trigger?.app || 'unknown',
+        operation: plan.trigger?.operation || 'unknown',
+        config: this.fillConfigFromAnswers(plan.trigger?.required_inputs || [], userAnswers)
       },
-      app: plan.trigger.app,
-      op: `trigger.${plan.trigger.app}:${plan.trigger.operation}`,
-      params: this.fillConfigFromAnswers(plan.trigger.required_inputs, userAnswers)
+      app: plan.trigger?.app || 'unknown',
+      op: `trigger.${plan.trigger?.app || 'unknown'}:${plan.trigger?.operation || 'unknown'}`,
+      params: this.fillConfigFromAnswers(plan.trigger?.required_inputs || [], userAnswers)
     });
 
     // Create step nodes
     let previousNodeId = triggerId;
-    plan.steps.forEach((step, index) => {
+    (plan.steps || []).forEach((step, index) => {
       const stepId = `step_${index + 1}`;
       
       nodes.push({
         id: stepId,
-        type: `action.${step.app}`,
+        type: `action.${step?.app || 'unknown'}`,
         position: { x: 300 + (index * 200), y: 200 },
         data: {
-          label: step.description,
-          app: step.app,
-          operation: step.operation,
-          config: this.fillConfigFromAnswers(step.required_inputs, userAnswers)
+          label: step?.description || 'Action',
+          app: step?.app || 'unknown',
+          operation: step?.operation || 'unknown',
+          config: this.fillConfigFromAnswers(step?.required_inputs || [], userAnswers)
         },
-        app: step.app,
-        op: `action.${step.app}:${step.operation}`,
-        params: this.fillConfigFromAnswers(step.required_inputs, userAnswers)
+        app: step?.app || 'unknown',
+        op: `action.${step?.app || 'unknown'}:${step?.operation || 'unknown'}`,
+        params: this.fillConfigFromAnswers(step?.required_inputs || [], userAnswers)
       });
 
       // Connect to previous node

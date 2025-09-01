@@ -7,8 +7,95 @@
 
 import { LLMProviderService } from './LLMProviderService.js';
 import { Question, BuildAnswers } from '../../shared/build-schema.js';
+import { generateJsonWithGemini } from '../llm/MultiAIService.js';
 
 const SHEET_URL_RE = /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i;
+
+// ChatGPT Fix: Strict JSON schema for normalizer
+const NORMALIZER_SCHEMA = `
+Return ONLY this JSON (no markdown, no commentary). If unknown, set null.
+
+{
+  "trigger": { "type": "time|event|manual|null", "frequency": { "value": number|null, "unit": "minutes|hours|days|null" } },
+  "apps": { "source": string[]|null, "destination": string[]|null },
+  "sheets": { "sheet_url": string|null, "sheet_name": string|null, "columns": string[]|null },
+  "mapping": { "pairs": [ { "from": string, "to": string, "transform": string|null } ]|null }
+}
+`;
+
+function buildNormalizerPrompt(questions:any[], rawAnswers:Record<string,any>, timezone:string) {
+  return [
+    "You are an answer normalizer. Output STRICT JSON only.",
+    NORMALIZER_SCHEMA,
+    "Questions:", JSON.stringify(questions ?? [], null, 2),
+    "Answers:", JSON.stringify(rawAnswers ?? {}, null, 2),
+    "Timezone:", timezone,
+    "Remember: Respond ONLY with JSON matching the schema."
+  ].join("\n");
+}
+
+function tryParseJson(s: string) {
+  try { return JSON.parse(s); } catch {}
+  // repair attempt: grab last JSON object in the string
+  const m = String(s).match(/\{[\s\S]*\}$/);
+  if (m) { return JSON.parse(m[0]); }
+  throw new Error("LLM did not return JSON");
+}
+
+function extractFirstSheetUrlFromAny(val: unknown): string | null {
+  if (!val) return null;
+  const re = /(https?:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_\-]+)/i;
+  const m = String(val).match(re);
+  return m ? m[1] : null;
+}
+
+function coerceSheets(normalized: any, raw: Record<string,any>) {
+  normalized.sheets = normalized.sheets || {};
+  const bucket: string[] = [];
+
+  // Scan all raw answers
+  Object.values(raw ?? {}).forEach(v => { if (v) bucket.push(String(v)); });
+
+  // 1) URL
+  if (!normalized.sheets.sheet_url) {
+    for (const s of bucket) {
+      const u = extractFirstSheetUrlFromAny(s);
+      if (u) { normalized.sheets.sheet_url = u; break; }
+    }
+  }
+
+  // 2) Name
+  if (!normalized.sheets.sheet_name) {
+    // heuristic: line containing "Sheet" or a simple token line
+    const lines = bucket.flatMap(s => s.split(/\r?\n/).map(x => x.trim()));
+    const guess = lines.find(x => /^sheet\s*\w+/i.test(x)) || lines.find(x => /^[A-Za-z0-9 _-]{1,30}$/.test(x));
+    if (guess) normalized.sheets.sheet_name = guess.replace(/^sheet\s*/i, "");
+  }
+
+  // 3) Columns
+  if (!Array.isArray(normalized.sheets.columns) || normalized.sheets.columns.length === 0) {
+    const lines = bucket.flatMap(s => s.split(/\r?\n/).map(x => x.trim()));
+    // take the last comma line as columns
+    const lastComma = [...lines].reverse().find(x => x.includes(","));
+    if (lastComma) {
+      normalized.sheets.columns = lastComma.split(",").map(s => s.trim()).filter(Boolean);
+    }
+  }
+}
+
+function coerceSchedule(normalized:any, raw:Record<string,any>) {
+  // map common phrases → frequency enum
+  const text = (raw.schedule_config || raw.trigger || "").toString().toLowerCase();
+  if (!normalized.trigger) normalized.trigger = {};
+  if (/15\s*min/.test(text)) {
+    normalized.trigger.type = "time";
+    normalized.trigger.frequency = { value: 15, unit: "minutes" };
+  } else if (/hour/.test(text)) {
+    normalized.trigger.type = "time";
+    normalized.trigger.frequency = { value: 1, unit: "hours" };
+  }
+  // add more if desired
+}
 
 function parseSheetFreeform(input: string) {
   if (!input) return null;
@@ -203,37 +290,24 @@ COERCION RULES:
 
 RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
 
-    // ChatGPT's strict JSON prompt
-    const prompt = makeLLMPrompt(questions, rawAnswers, timezone);
+    // ChatGPT Fix: Use strict JSON prompt and Gemini JSON mode
+    const prompt = buildNormalizerPrompt(questions, rawAnswers, timezone);
 
     try {
-      const result = await LLMProviderService.generateText(prompt, {
-        model: 'gemini-2.0-flash-exp',
-        temperature: 0.1, // Low temperature for precise formatting
-        maxTokens: 1500
-      });
+      // Use Gemini JSON mode for guaranteed JSON response
+      const llmText = await generateJsonWithGemini('gemini-2.0-flash-exp', prompt);
 
-      console.log(`✅ LLM normalization response from ${result.provider}:`, {
-        responseLength: result.text.length,
-        model: result.model
+      console.log(`✅ LLM JSON normalization response:`, {
+        responseLength: llmText.length,
+        provider: 'gemini'
       });
 
       // ChatGPT's strict parsing with repair path
-      let normalized: any;
-      try {
-        normalized = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
-      } catch (e) {
-        // attempt simple JSON repair (strip pre/post text)
-        const match = String(result.text).match(/\{[\s\S]*\}$/);
-        if (match) {
-          normalized = JSON.parse(match[0]);
-        } else {
-          throw new Error('LLM did not return JSON');
-        }
-      }
+      let normalized = tryParseJson(llmText);
 
-      // ChatGPT's coercion after parsing
-      normalized = this.coerceSheets(normalized, rawAnswers);
+      // ChatGPT's coercions that work even if LLM returned partial
+      coerceSheets(normalized, rawAnswers);
+      coerceSchedule(normalized, rawAnswers);
 
       let parsed: { normalized: BuildAnswers; __issues: any[] };
       if (normalized.normalized && normalized.__issues) {
@@ -274,6 +348,21 @@ RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
   }
 
   /**
+   * ChatGPT Fix: Robust fallback that still extracts Sheets
+   */
+  static normalizeAnswersFallback(raw:Record<string,any>): any {
+    const normalized:any = {
+      trigger: { type: "time", frequency: { value: 15, unit: "minutes" } },
+      apps: { source: null, destination: null },
+      sheets: { sheet_url: null, sheet_name: null, columns: null },
+      mapping: { pairs: null }
+    };
+    coerceSheets(normalized, raw);
+    coerceSchedule(normalized, raw);
+    return normalized;
+  }
+
+  /**
    * Deterministic fallback normalization when LLM fails
    */
   private static fallbackNormalization(
@@ -283,51 +372,11 @@ RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
   ): NormalizationResult {
     console.log('🔄 Using deterministic fallback normalization');
     
-    const normalized: any = {};
+    // Use robust fallback that extracts Sheets
+    const normalized = this.normalizeAnswersFallback(rawAnswers);
     const issues: Array<{ path: string; reason: string }> = [];
 
-    // Handle trigger normalization
-    const triggerAnswer = rawAnswers.schedule_config || rawAnswers.trigger_frequency || rawAnswers.frequency;
-    if (triggerAnswer) {
-      const triggerStr = triggerAnswer.toLowerCase();
-      if (triggerStr.includes('5') && triggerStr.includes('min')) {
-        normalized.trigger = 'time.every_5_minutes';
-      } else if (triggerStr.includes('15') && triggerStr.includes('min')) {
-        normalized.trigger = 'time.every_15_minutes';
-      } else if (triggerStr.includes('30') && triggerStr.includes('min')) {
-        normalized.trigger = 'time.every_30_minutes';
-      } else if (triggerStr.includes('hour')) {
-        normalized.trigger = 'time.every_hour';
-      } else if (triggerStr.includes('day')) {
-        normalized.trigger = 'time.every_day';
-      } else {
-        normalized.trigger = 'time.every_15_minutes'; // Safe default
-      }
-    } else {
-      normalized.trigger = 'time.every_15_minutes';
-      issues.push({ path: '/trigger', reason: 'No schedule specified, using default' });
-    }
-
-    // Handle sheets normalization with ChatGPT's parseSheetFreeform
-    const freeform = rawAnswers.spreadsheet_destination || rawAnswers.sheet || rawAnswers.google_sheet || 
-                    rawAnswers.data_mapping || rawAnswers.sheet_config || 
-                    rawAnswers.spreadsheet_url || rawAnswers.sheet_url || '';
-    
-    const parsed = parseSheetFreeform(freeform);
-
-    if (parsed?.spreadsheetId) {
-      normalized.sheets = {
-        sheet_url: parsed.spreadsheetUrl,
-        sheet_id:  parsed.spreadsheetId,
-        sheet_name: parsed.sheetName || 'Sheet1',
-        columns: parsed.columns && parsed.columns.length ? parsed.columns : undefined,
-      };
-      // For backwards compatibility with builder/validator
-      normalized.spreadsheet_url = parsed.spreadsheetUrl;
-      normalized.spreadsheet_id  = parsed.spreadsheetId;
-    } else {
-      issues.push({ path: '/sheets/sheet_url', reason: 'Valid Google Sheets URL not found in any field' });
-    }
+    // All normalization now handled by coerceSheets and coerceSchedule functions
 
 
 

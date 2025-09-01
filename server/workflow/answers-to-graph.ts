@@ -98,9 +98,16 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
   // Parse trigger from user's actual words
   let trigger = null;
   
-  // Check for time-based triggers
-  if (answers.trigger?.toLowerCase().includes('time-based') || answers.trigger?.toLowerCase().includes('every')) {
-    const frequency = extractFrequencyFromAnswer(answers.trigger);
+  // Check for time-based triggers (handle both string and object formats)
+  const triggerText = typeof answers.trigger === 'string' ? answers.trigger : 
+                     answers.trigger?.type || 
+                     JSON.stringify(answers.trigger || {});
+  
+  if (triggerText.toLowerCase().includes('time-based') || triggerText.toLowerCase().includes('every') || 
+      triggerText.toLowerCase().includes('time') || answers.trigger?.type === 'time') {
+    const frequency = typeof answers.trigger === 'string' ? 
+                     extractFrequencyFromAnswer(answers.trigger) :
+                     answers.trigger?.frequency?.value || 15;
     trigger = {
       app: 'time',
       label: 'Time-based Trigger',
@@ -112,7 +119,7 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
     };
   }
   // Check for spreadsheet triggers
-  else if (answers.trigger === 'On spreadsheet edit' || answers.trigger?.toLowerCase().includes('spreadsheet') || answers.trigger?.toLowerCase().includes('sheet edit')) {
+  else if (triggerText === 'On spreadsheet edit' || triggerText.toLowerCase().includes('spreadsheet') || triggerText.toLowerCase().includes('sheet edit')) {
     trigger = {
       app: 'sheets',
       label: 'Sheet Edit',
@@ -124,7 +131,7 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
     };
   }
   // Check for email triggers
-  else if (answers.trigger?.toLowerCase().includes('email') || allText.includes('email arrives')) {
+  else if (triggerText.toLowerCase().includes('email') || allText.includes('email arrives')) {
     // CRITICAL FIX: Use user's actual search query, not hardcoded filters
     const userQuery = answers.search_query || answers.gmail_search || answers.email_criteria || answers.filter_criteria || answers.invoice_identification || '';
     trigger = {
