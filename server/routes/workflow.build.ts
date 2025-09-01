@@ -5,6 +5,9 @@ import { healthMonitoringService } from '../services/HealthMonitoringService';
 import { convertToNodeGraph } from '../workflow/graph-format-converter';
 import { mapAnswersToBackendFormat, validateTriggerConfig } from '../utils/answer-field-mapper.js';
 import { WorkflowStoreService } from '../workflow/workflow-store.js';
+import { AnswerNormalizerService } from '../services/AnswerNormalizerService.js';
+
+const SHEET_URL_RE = /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i;
 
 export const workflowBuildRouter = Router();
 
@@ -43,13 +46,30 @@ workflowBuildRouter.post('/build', async (req, res) => {
       });
     }
     
-    // CRITICAL FIX: Apply answer normalization BEFORE any processing
-    const answers = mapAnswersToBackendFormat(rawAnswers);
-    console.log('🔄 COMPREHENSIVE ANSWER NORMALIZATION APPLIED:', {
+    // CRITICAL FIX: ChatGPT's LLM-powered normalization BEFORE validation
+    const { questions, timezone } = req.body;
+    const { normalized, __issues } = await (async () => {
+      try {
+        // Try LLM normalization first
+        const result = await AnswerNormalizerService
+          .normalizeAnswersLLM(questions || [], rawAnswers, timezone || 'UTC');
+        return result;
+      } catch (error) {
+        console.error('❌ LLM normalization failed, using fallback:', error);
+        // Fallback to deterministic normalization
+        return { normalized: mapAnswersToBackendFormat(rawAnswers), __issues: [] };
+      }
+    })();
+
+    // Use normalized answers as single source of truth
+    const answers = normalized;
+    
+    console.log('🔄 CHATGPT LLM NORMALIZATION APPLIED:', {
       originalFields: Object.keys(rawAnswers),
       normalizedFields: Object.keys(answers),
       triggerMapped: !!answers.trigger,
-      spreadsheetMapped: !!(answers.spreadsheet_url || answers.sheet_url),
+      spreadsheetMapped: !!(answers.spreadsheet_url || answers.sheets?.sheet_id),
+      issues: __issues || [],
       requestId
     });
 
@@ -226,9 +246,13 @@ workflowBuildRouter.post('/build', async (req, res) => {
     // Convert graph format for Graph Editor compatibility
     const nodeGraph = convertToNodeGraph(graph);
     
+    // ChatGPT's fix: Generate workflowId for Graph Editor handoff
+    const workflowId = `wf-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    
     // Add enterprise metadata
     const response = {
       success: true,
+      workflowId, // ChatGPT's fix: Include workflowId for Graph Editor navigation
       ...compiled,
       graph: nodeGraph, // Use converted format instead of original
       metadata: {
@@ -258,7 +282,7 @@ workflowBuildRouter.post('/build', async (req, res) => {
     });
     
     // CRITICAL FIX: Store workflow for Graph Editor handoff
-    WorkflowStoreService.store(response.workflowId, nodeGraph);
+    WorkflowStoreService.store(workflowId, nodeGraph);
     
     // Record performance metrics
     healthMonitoringService.recordApiRequest(totalTime, false);
@@ -343,32 +367,16 @@ function validateRequiredInputs(prompt: string, answers: Record<string, string>)
   const errors: string[] = [];
   const allText = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
   
-  // CRITICAL FIX: Enhanced spreadsheet URL validation
+  // CRITICAL FIX: ChatGPT's tolerant sheet validation
   if (allText.includes('sheet') || allText.includes('spreadsheet')) {
-    let hasValidSheetUrl = false;
-    let sheetValidationError = '';
-    
-    // Check all answers for spreadsheet URLs (handle different data types)
-    for (const [key, value] of Object.entries(answers)) {
-      const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
-      if (key.toLowerCase().includes('sheet') || key.toLowerCase().includes('spreadsheet') || 
-          valueStr.includes('docs.google.com/spreadsheets/d/')) {
-        
-        // CRITICAL FIX: Manual sheet URL validation (handle different data types)
-        const urlToValidate = typeof value === 'string' ? value : valueStr;
-        const validation = validateSpreadsheetUrlLocal(urlToValidate);
-        
-        if (validation.isValid) {
-          hasValidSheetUrl = true;
-          break;
-        } else if (validation.error) {
-          sheetValidationError = validation.error;
-        }
-      }
-    }
-    
-    if (!hasValidSheetUrl) {
-      errors.push(sheetValidationError || 'Valid Google Sheets URL is required. Please provide the full URL from your browser (https://docs.google.com/spreadsheets/d/...)');
+    const hasSheet =
+      answers?.sheets?.sheet_id ||
+      answers?.spreadsheet_id   ||
+      (answers?.spreadsheet_url && SHEET_URL_RE.test(answers.spreadsheet_url)) ||
+      (answers?.spreadsheet_destination && SHEET_URL_RE.test(answers.spreadsheet_destination));
+
+    if (!hasSheet) {
+      errors.push('Valid Google Sheets URL is required. Include the full URL or paste it in the "spreadsheet destination" answer.');
     }
   }
   

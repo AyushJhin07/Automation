@@ -8,6 +8,52 @@
 import { LLMProviderService } from './LLMProviderService.js';
 import { Question, BuildAnswers } from '../../shared/build-schema.js';
 
+const SHEET_URL_RE = /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i;
+
+function parseSheetFreeform(input: string) {
+  if (!input) return null;
+
+  const urlMatch = input.match(SHEET_URL_RE);
+  const spreadsheetUrl = urlMatch ? urlMatch[0].trim() : null;
+  const spreadsheetId  = urlMatch ? urlMatch[1] : null;
+
+  // Split lines, strip empties
+  const lines = input.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+  // Try structured "Spreadsheet ID: …; Sheet Name: …; Headers: …"
+  const idMatch    = input.match(/Spreadsheet ID:\s*([a-zA-Z0-9-_]+)/i);
+  const nameMatch  = input.match(/Sheet Name:\s*([^\n;]+)/i);
+  const headsMatch = input.match(/Headers?:\s*([^\n]+)/i);
+
+  const sheetName =
+    nameMatch?.[1]?.trim() ||
+    // If line after URL looks like a name, use it
+    (urlMatch && lines[lines.indexOf(spreadsheetUrl) + 1]) ||
+    undefined;
+
+  const headersRaw =
+    headsMatch?.[1] ||
+    // If there's a third line after URL, treat it as headers
+    (urlMatch && lines[lines.indexOf(spreadsheetUrl) + 2]) ||
+    // Or if user pasted a single line of headers
+    (!urlMatch && lines.length >= 1 ? lines[lines.length - 1] : '');
+
+  const columns =
+    headersRaw
+      ? headersRaw
+          .split(/[,\|]/)         // commas or pipes
+          .map(s => s.trim())
+          .filter(Boolean)
+      : [];
+
+  return {
+    spreadsheetUrl,
+    spreadsheetId: idMatch?.[1] || spreadsheetId || null,
+    sheetName,
+    columns,
+  };
+}
+
 export interface NormalizationResult {
   normalized: BuildAnswers;
   __issues: Array<{ path: string; reason: string }>;
@@ -174,59 +220,28 @@ Convert these answers to the exact structured format needed by the automation co
       issues.push({ path: '/trigger', reason: 'No schedule specified, using default' });
     }
 
-    // Handle sheets normalization
-    const dataMappingAnswer = rawAnswers.data_mapping || rawAnswers.sheet_config;
-    const sheetUrlAnswer = rawAnswers.spreadsheet_url || rawAnswers.sheet_url;
+    // Handle sheets normalization with ChatGPT's parseSheetFreeform
+    const freeform = rawAnswers.spreadsheet_destination || rawAnswers.sheet || rawAnswers.google_sheet || 
+                    rawAnswers.data_mapping || rawAnswers.sheet_config || 
+                    rawAnswers.spreadsheet_url || rawAnswers.sheet_url || '';
     
-    if (dataMappingAnswer || sheetUrlAnswer) {
-      normalized.sheets = {};
-      
-      // Extract sheet URL
-      if (sheetUrlAnswer && sheetUrlAnswer.includes('spreadsheets/d/')) {
-        normalized.sheets.sheet_url = sheetUrlAnswer;
-      } else if (dataMappingAnswer && dataMappingAnswer.includes('spreadsheets/d/')) {
-        const urlMatch = dataMappingAnswer.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^\s\n]+/);
-        if (urlMatch) {
-          normalized.sheets.sheet_url = urlMatch[0];
-        }
-      }
-      
-      if (!normalized.sheets.sheet_url) {
-        issues.push({ path: '/sheets/sheet_url', reason: 'Valid Google Sheets URL not found' });
-      }
+    const parsed = parseSheetFreeform(freeform);
 
-      // Extract sheet name
-      const sheetNameAnswer = rawAnswers.sheet_name || rawAnswers.tab_name;
-      if (sheetNameAnswer) {
-        normalized.sheets.sheet_name = sheetNameAnswer;
-      } else if (dataMappingAnswer) {
-        const lines = dataMappingAnswer.split('\n').map(l => l.trim());
-        const sheetLine = lines.find(l => /^sheet\s*\d*$/i.test(l.replace(',', '')));
-        normalized.sheets.sheet_name = sheetLine || 'Sheet1';
-      } else {
-        normalized.sheets.sheet_name = 'Sheet1';
-      }
-
-      // Extract columns
-      const columnsAnswer = rawAnswers.columns || rawAnswers.column_mapping;
-      if (columnsAnswer) {
-        if (Array.isArray(columnsAnswer)) {
-          normalized.sheets.columns = columnsAnswer;
-        } else if (typeof columnsAnswer === 'string') {
-          normalized.sheets.columns = columnsAnswer.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-        }
-      } else if (dataMappingAnswer) {
-        const lines = dataMappingAnswer.split('\n').map(l => l.trim()).filter(Boolean);
-        const columnLines = lines.filter(l => 
-          !l.includes('spreadsheets/d/') && 
-          !/^sheet\s*\d*$/i.test(l) &&
-          l.length > 0
-        );
-        normalized.sheets.columns = columnLines.length > 0 ? columnLines : ['Data', 'Timestamp'];
-      } else {
-        normalized.sheets.columns = ['Data', 'Timestamp'];
-      }
+    if (parsed?.spreadsheetId) {
+      normalized.sheets = {
+        sheet_url: parsed.spreadsheetUrl,
+        sheet_id:  parsed.spreadsheetId,
+        sheet_name: parsed.sheetName || 'Sheet1',
+        columns: parsed.columns && parsed.columns.length ? parsed.columns : undefined,
+      };
+      // For backwards compatibility with builder/validator
+      normalized.spreadsheet_url = parsed.spreadsheetUrl;
+      normalized.spreadsheet_id  = parsed.spreadsheetId;
+    } else {
+      issues.push({ path: '/sheets/sheet_url', reason: 'Valid Google Sheets URL not found in any field' });
     }
+
+
 
     // Handle Gmail normalization
     const searchQuery = rawAnswers.search_query || rawAnswers.email_filter || rawAnswers.gmail_search;

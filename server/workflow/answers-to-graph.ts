@@ -207,25 +207,27 @@ function parseUserRequirements(prompt: string, answers: Record<string, string>):
     let sheetName = 'Sheet1';
     let columns = 'Invoice Number, Date, Amount, Vendor';
 
-    // New normalized format (from LLM normalization)
-    if (answers.sheets && typeof answers.sheets === 'object') {
-      spreadsheetId = extractSheetIdFromUserAnswer(answers.sheets.sheet_url || '');
-      sheetName = answers.sheets.sheet_name || 'Sheet1';
-      columns = Array.isArray(answers.sheets.columns) ? 
-        answers.sheets.columns.join(', ') : 
-        String(answers.sheets.columns || columns);
-    }
-    // Legacy format support
-    else if (answers.spreadsheet_url) {
-      spreadsheetId = extractSheetIdFromUserAnswer(answers.spreadsheet_url);
-      sheetName = answers.sheet_name || 'Sheet1';
+    // ChatGPT's improved sheet parsing (use parsed ID from normalizer)
+    const sheetCfg = answers.sheets || {};
+    const SHEET_URL_RE = /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i;
+    
+    spreadsheetId =
+      sheetCfg.sheet_id ||
+      (sheetCfg.sheet_url?.match(SHEET_URL_RE)?.[1]) ||
+      answers.spreadsheet_id ||
+      (answers.spreadsheet_url?.match(SHEET_URL_RE)?.[1]) ||
+      extractSheetIdFromUserAnswer(answers.sheet_destination || '') ||
+      '';
+
+    sheetName = sheetCfg.sheet_name || answers.sheet_name || 'Sheet1';
+    
+    // Handle columns from normalized format
+    if (Array.isArray(sheetCfg.columns)) {
+      columns = sheetCfg.columns.join(', '); // compiler's current string format
+    } else if (sheetCfg.columns) {
+      columns = String(sheetCfg.columns);
+    } else {
       columns = answers.columns || answers.data_extraction || columns;
-    }
-    // Fallback to old format
-    else {
-      spreadsheetId = extractSheetIdFromUserAnswer(answers.sheet_destination || '');
-      sheetName = 'Sheet1';
-      columns = answers.data_extraction || columns;
     }
 
     console.log('📊 Sheets mapping applied:', {

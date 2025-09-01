@@ -18,6 +18,13 @@ export class WorkflowStoreService {
     console.log(`📦 Stored workflow ${workflowId} for Graph Editor handoff`);
   }
 
+  // ChatGPT's save method for workflow persistence
+  static async save(graph: any): Promise<string> {
+    const workflowId = `wf-${Date.now()}`;
+    this.store(workflowId, graph);
+    return workflowId;
+  }
+
   static retrieve(workflowId: string): any | null {
     const workflow = WorkflowStore.get(workflowId);
     

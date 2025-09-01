@@ -76,12 +76,11 @@ function emitCode(graph: WorkflowGraph): string {
  * Automation Type: ${graph.meta?.automationType || 'generic'}
  */`);
   
-  // Generate code from graph structure using OPS mapping
+  // ChatGPT's fix: Use buildRealCodeFromGraph for single main() function
   const graphDrivenCode = buildRealCodeFromGraph(graph);
   codeBlocks.push(graphDrivenCode);
   
-  // Generate main function
-  codeBlocks.push(generateMainFunction(graph));
+  // Note: buildRealCodeFromGraph already includes main() - no need for generateMainFunction
   
   // Generate trigger setup if needed
   if (triggerNodes.some(t => t.op.includes('time') || t.op.includes('schedule'))) {
