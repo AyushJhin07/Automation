@@ -13,6 +13,7 @@ import analyticsRoutes from "./routes/analytics.js";
 import aiPlannerRoutes from "./routes/ai-planner.js";
 import aiNormalizerRoutes from "./routes/ai-normalizer.js";
 import workflowReadRoutes from "./routes/workflow-read.js";
+import productionHealthRoutes from "./routes/production-health.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -84,6 +85,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // CRITICAL FIX: Workflow read routes for Graph Editor handoff
   app.use('/api', workflowReadRoutes);
+  
+  // PRODUCTION: Health monitoring and metrics routes
+  app.use('/api', productionHealthRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
