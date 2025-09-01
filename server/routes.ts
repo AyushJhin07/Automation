@@ -11,6 +11,7 @@ import templateRoutes from "./routes/templates.js";
 import collaborationRoutes from "./routes/collaboration.js";
 import analyticsRoutes from "./routes/analytics.js";
 import aiPlannerRoutes from "./routes/ai-planner.js";
+import aiNormalizerRoutes from "./routes/ai-normalizer.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -76,6 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // CRITICAL FIX: LLM automation planner routes (replaces static Q&A)
   app.use('/api/ai-planner', aiPlannerRoutes);
+  
+  // CRITICAL FIX: LLM answer normalization routes (ChatGPT's solution)
+  app.use('/api/ai-normalizer', aiNormalizerRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
