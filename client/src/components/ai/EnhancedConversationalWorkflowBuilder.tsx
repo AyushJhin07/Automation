@@ -105,7 +105,7 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
       </h3>
       
       <div className="flex items-center gap-4 overflow-x-auto pb-2">
-        {graph.nodes.map((node: any, index: number) => {
+        {(graph.nodes ?? []).map((node: any, index: number) => {
           const IconComponent = getNodeIcon(node.type, node.app);
           const colorClass = getNodeColor(node.type);
           
@@ -138,7 +138,7 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
               </div>
               
               {/* Arrow */}
-              {index < graph.nodes.length - 1 && (
+              {index < (graph.nodes ?? []).length - 1 && (
                 <ArrowRight className="w-5 h-5 text-blue-400 flex-shrink-0" />
               )}
             </div>
@@ -150,19 +150,19 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
       <div className="mt-4 grid grid-cols-3 gap-4 text-center">
         <div className="bg-green-50 border border-green-200 rounded p-2">
           <div className="text-lg font-bold text-green-600">
-            {graph.nodes.filter((n: any) => n.type.startsWith('trigger.')).length}
+            {(graph.nodes ?? []).filter((n: any) => n.type?.startsWith('trigger.')).length}
           </div>
           <div className="text-xs text-gray-600">Triggers</div>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded p-2">
           <div className="text-lg font-bold text-blue-600">
-            {graph.nodes.filter((n: any) => n.type.startsWith('action.')).length}
+            {(graph.nodes ?? []).filter((n: any) => n.type?.startsWith('action.')).length}
           </div>
           <div className="text-xs text-gray-600">Actions</div>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded p-2">
           <div className="text-lg font-bold text-purple-600">
-            {graph.nodes.filter((n: any) => n.type.startsWith('transform.')).length}
+            {(graph.nodes ?? []).filter((n: any) => n.type?.startsWith('transform.')).length}
           </div>
           <div className="text-xs text-gray-600">Transforms</div>
         </div>
@@ -241,9 +241,12 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [serverModels, setServerModels] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Add safe helpers to avoid runtime errors
+  // ChatGPT Fix: Enhanced safe helpers to avoid runtime errors
   const safeGraph = (g?: any) => g || { nodes: [], connections: [] };
   const safeEdges = (g?: any) => (g?.connections ?? g?.edges ?? []);
+  const safeFiles = (result?: any) => result?.code?.files ?? [];
+  const safeNodes = (graph?: any) => graph?.nodes ?? [];
+  const safeConnections = (graph?: any) => graph?.edges ?? graph?.connections ?? [];
 
   // Load API keys from localStorage
   useEffect(() => {
@@ -475,8 +478,9 @@ You can try:
           },
           validation: { valid: true, errors: [], warnings: [] }
         },
-        code: result.files.find(f => f.path === 'Code.gs')?.content || 'No code generated',
-        files: result.files || [],
+        // ChatGPT Fix: Null-safe code files access
+        code: (result.files ?? []).find(f => f.path === 'Code.gs')?.content || 'No code generated',
+        files: result.files ?? [],
         rationale: prompt,
         deploymentInstructions: 'Ready for deployment to Google Apps Script'
       };
@@ -503,7 +507,7 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
 • **Errors:** 0
 
 📝 **Generated Code:**
-• **Lines of Code:** ${result.files.find(f => f.path === 'Code.gs')?.content.split('\n').length || 0}
+• **Lines of Code:** ${(result.files ?? []).find(f => f.path === 'Code.gs')?.content?.split('\n').length || 0}
 • **Ready for Google Apps Script**
 
 🚀 **Ready for Deployment!**`,

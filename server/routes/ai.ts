@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { MultiAIService } from '../aiModels';
+import { MultiAIService, buildWorkflowFromAnswersNew, generateWorkflowFromAnalysis } from '../aiModels';
 
 export const aiRouter = Router();
 
@@ -60,6 +60,57 @@ aiRouter.post('/generate-workflow', async (req, res) => {
       success: false, 
       error: error?.message || 'Failed to analyze workflow request',
       questions: [] // Return empty questions as fallback
+    });
+  }
+});
+
+// ChatGPT Fix: Process answers and build workflow
+aiRouter.post('/process-answers', async (req, res) => {
+  try {
+    console.log('🤖 /api/ai/process-answers called!');
+    const { prompt, answers, userId } = req.body || {};
+    
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Prompt is required and must be a string' 
+      });
+    }
+
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Answers are required and must be an object' 
+      });
+    }
+
+    console.log('📝 Processing answers for prompt:', prompt);
+    console.log('📋 Answers received:', Object.keys(answers));
+
+    // ChatGPT Fix: Check if we have answers and call the right function
+    const haveAnswers = answers && typeof answers === "object" && Object.keys(answers).length > 0;
+
+    const workflow = haveAnswers
+      ? await buildWorkflowFromAnswersNew(answers, prompt)
+      : await generateWorkflowFromAnalysis(
+          await MultiAIService.analyzeWorkflowPrompt(prompt),
+          prompt
+        );
+
+    console.log('✅ Generated workflow:', workflow.title);
+
+    res.json({
+      success: true,
+      workflow,
+      nodeCount: workflow.nodes?.length || 0,
+      connectionCount: workflow.connections?.length || 0
+    });
+
+  } catch (error: any) {
+    console.error('❌ AI process-answers error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error?.message || 'Failed to process answers and build workflow'
     });
   }
 });

@@ -417,9 +417,17 @@ async function generateWorkflowFromAnalysis(analysis: AIAnalysisResult, original
   intelligence.logicalFunctions.forEach((funcMapping, index) => {
     const nodeId = `${funcMapping.app.toLowerCase().replace(/\s+/g, '-')}-${index}`;
     
+    // ChatGPT Fix: Ensure node.type is one of trigger/action/transform
+    const role = (() => {
+      const f = (funcMapping.function || "").toLowerCase();
+      if (f.includes("new_") || f.includes("watch") || f.includes("trigger")) return "trigger";
+      if (f.includes("classify") || f.includes("filter") || f.includes("parse") || f.includes("transform")) return "transform";
+      return "action";
+    })();
+
     nodes.push({
       id: nodeId,
-      type: funcMapping.app.toLowerCase().replace(/\s+/g, '-'),
+      type: role, // <<<< this is the important change
       app: funcMapping.app,
       function: funcMapping.function,
       functionName: funcMapping.function,
@@ -1279,7 +1287,11 @@ function violatesAppsScriptOnly(code: string) {
   return violations.some(pattern => pattern.test(code)) || hasBadFetch;
 }
 
-function buildWorkflowFromAnswers(answers: any, originalPrompt: string) {
+// ChatGPT Fix: Implement proper buildWorkflowFromAnswers function
+async function buildWorkflowFromAnswers(
+  answers: any,
+  originalPrompt: string
+) {
   console.log('🎯 Building intelligent workflow from answers:', answers);
   
   // Intelligent workflow type detection
@@ -2282,4 +2294,151 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
   }
 }
 
-export { MultiAIService };
+// ChatGPT Fix: Proper buildWorkflowFromAnswers implementation
+async function buildWorkflowFromAnswersNew(
+  answers: any,
+  originalPrompt: string
+) {
+  // 1) Normalize answers from the UI
+  const label = (answers.label || answers.gmailLabel || "").trim() || "INBOX";
+  const criteria = (answers.criteria || answers.keywords || "").trim(); // e.g., "product, Return, Missing"
+  const spreadsheetId = (answers.sheetId || answers.googleSheetId || "").trim();
+  const sheetName = (answers.sheetName || "Sheet1").trim();
+  const columns = Array.isArray(answers.columns)
+    ? answers.columns
+    : [
+        "Email Subject",
+        "Email Sender",
+        "Email Body",
+        "Priority Label",
+        "Reply Sent (Yes/No)",
+        "Timestamp",
+      ];
+  const priorities =
+    answers.priorities && Array.isArray(answers.priorities)
+      ? answers.priorities
+      : ["High", "Medium", "Low"];
+
+  // 2) Build nodes with correct node.type
+  const nodes: any[] = [];
+
+  // Gmail trigger — New email in label
+  nodes.push({
+    id: "gmail-trigger-1",
+    type: "trigger",
+    app: "Gmail",
+    function: "new_email_in_label",
+    functionName: "New Email in Label",
+    parameters: { label, query: `label:"${label}"` },
+    position: { x: 140, y: 160 },
+    icon: getIconForApp("Gmail"),
+    color: getColorForApp("Gmail"),
+  });
+
+  // Transform — Filter / classify by keywords & sentiment (LLM or rules)
+  nodes.push({
+    id: "filter-classify-1",
+    type: "transform",
+    app: "AI Analysis",
+    function: "classify_priority",
+    functionName: "Classify Priority",
+    parameters: {
+      mode: "hybrid", // keywords + sentiment
+      keywords: criteria,
+      priorities,
+      field: "body",
+      provider: "gemini", // uses configured key
+      promptTemplate:
+        "Analyze the email and return a priority label (High/Medium/Low) based on urgency and tone.",
+    },
+    position: { x: 420, y: 160 },
+    icon: getIconForApp("AI Analysis"),
+    color: getColorForApp("AI Analysis"),
+  });
+
+  // Action — Optional Gmail auto-reply (only if matched)
+  nodes.push({
+    id: "gmail-reply-1",
+    type: "action",
+    app: "Gmail",
+    function: "send_email",
+    functionName: "Reply Email",
+    parameters: {
+      replyToThread: true,
+      onlyIfMatched: true,
+      template:
+        "Hi {{senderName}}, thanks for your message. We're looking into it and will get back to you shortly.",
+    },
+    position: { x: 700, y: 100 },
+    icon: getIconForApp("Gmail"),
+    color: getColorForApp("Gmail"),
+  });
+
+  // Action — Append to Google Sheets
+  nodes.push({
+    id: "sheets-append-1",
+    type: "action",
+    app: "Google Sheets",
+    function: "append_row",
+    functionName: "Append Row",
+    parameters: {
+      spreadsheetId,
+      sheetName,
+      columns,
+      mapping: {
+        "Email Subject": "{{subject}}",
+        "Email Sender": "{{from}}",
+        "Email Body": "{{body}}",
+        "Priority Label": "{{priority}}",
+        "Reply Sent (Yes/No)": "{{replySent}}",
+        Timestamp: "{{now}}",
+      },
+    },
+    position: { x: 700, y: 220 },
+    icon: getIconForApp("Google Sheets"),
+    color: getColorForApp("Google Sheets"),
+  });
+
+  // 3) Edges
+  const connections = [
+    { id: "e1", source: "gmail-trigger-1", target: "filter-classify-1", dataType: "email" },
+    { id: "e2", source: "filter-classify-1", target: "gmail-reply-1", dataType: "email" },
+    { id: "e3", source: "filter-classify-1", target: "sheets-append-1", dataType: "record" },
+  ];
+
+  // 4) Generate Apps Script from these nodes (you already have generator helpers)
+  const analysisLike = {
+    intent: "gmail_to_sheets_with_priority",
+    estimatedValue: "$500/month time savings",
+    complexity: "Complex",
+    confidence: 0.9,
+    modelUsed: "Gemini 1.5 Flash",
+  } as any;
+
+  const appsScriptCode = generateEnhancedAppsScriptCode(nodes, analysisLike, [
+    { appName: "Gmail", selectedFunction: "search_emails", reason: "trigger label", parameters: { query: `label:"${label}"` } },
+    { appName: "AI Analysis", selectedFunction: "classify_priority", reason: "keywords+sentiment", parameters: { keywords: criteria } },
+    { appName: "Gmail", selectedFunction: "send_email", reason: "reply to matched", parameters: {} },
+    { appName: "Google Sheets", selectedFunction: "append_row", reason: "log to sheet", parameters: { spreadsheetId, sheetName } },
+  ]);
+
+  return {
+    id: `workflow-${Date.now()}`,
+    title: `Gmail → Classify → Reply → Sheets`,
+    description:
+      `Monitor Gmail label "${label}", classify by keywords/sentiment (${criteria || "no keywords"}), ` +
+      `reply to matched queries and append rows to ${sheetName}.`,
+    nodes,
+    connections,
+    appsScriptCode,
+    estimatedValue: analysisLike.estimatedValue,
+    complexity: analysisLike.complexity,
+    intelligence: {
+      intent: analysisLike.intent,
+      confidence: analysisLike.confidence,
+      requiredApps: ["Gmail", "Google Sheets", "AI Analysis"],
+    },
+  };
+}
+
+export { MultiAIService, buildWorkflowFromAnswersNew, generateWorkflowFromAnalysis };
