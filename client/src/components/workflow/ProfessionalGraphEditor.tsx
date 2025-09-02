@@ -1015,17 +1015,33 @@ const GraphEditorContent = () => {
         let loadedWorkflow = null;
         let loadSource = null;
 
-        // Try each source in priority order
-        for (const source of sources) {
-          if (!source.condition) continue;
-          
+        // ChatGPT Fix: Load flow using flowId from API first
+        if (workflowId) {
           try {
-            const storageKey = workflowId ? `workflow_${workflowId}` : source.key;
-            const savedData = localStorage.getItem(storageKey);
+            const response = await fetch(`/api/flows/${workflowId}`);
+            if (response.ok) {
+              const flowData = await response.json();
+              loadedWorkflow = flowData;
+              loadSource = 'API';
+              console.log('✅ Loaded workflow from API:', workflowId);
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to load workflow from API:', error);
+          }
+        }
+
+        // Try each source in priority order (fallback to localStorage)
+        if (!loadedWorkflow) {
+          for (const source of sources) {
+            if (!source.condition) continue;
             
-            if (savedData) {
-              const parsed = JSON.parse(savedData);
-              const graph = parsed.graph || parsed;
+            try {
+              const storageKey = workflowId ? `workflow_${workflowId}` : source.key;
+              const savedData = localStorage.getItem(storageKey);
+              
+              if (savedData) {
+                const parsed = JSON.parse(savedData);
+                const graph = parsed.graph || parsed;
               
               // Validate graph structure
               if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {

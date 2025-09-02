@@ -523,6 +523,15 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
   const handleSubmitAnswers = async () => {
     if (Object.keys(questionAnswers).length === 0) return;
 
+    // ChatGPT Fix: Frontend validation before sending answers
+    for (const question of currentQuestions) {
+      const answer = questionAnswers[question.id];
+      if (question.required && (!answer || answer.length < 2)) {
+        alert(`Please provide a meaningful answer for: ${question.text}`);
+        return;
+      }
+    }
+
     // Find the original user prompt (last user message before questions)
     const userMessages = messages.filter(m => m.role === 'user');
     const originalPrompt = userMessages[userMessages.length - 1]?.content || '';
@@ -749,9 +758,23 @@ Need help? I can guide you through each step!`
                             return;
                           }
                           
-                          // Store workflow data and navigate to graph editor
+                          // ChatGPT Fix: Save flow and redirect using flowId
+                          const response = await fetch("/api/flows/save", {
+                            method: "POST",
+                            body: JSON.stringify(workflowResult),
+                            headers: { "Content-Type": "application/json" },
+                          });
+
+                          const saved = await response.json();
+                          
+                          // Fallback to localStorage for compatibility
                           localStorage.setItem('lastCompile', JSON.stringify(workflowResult));
-                          window.location.href = `/graph-editor?from=ai-builder`;
+                          
+                          if (saved.flowId) {
+                            window.location.href = `/graph-editor?flowId=${saved.flowId}`;
+                          } else {
+                            window.location.href = `/graph-editor?from=ai-builder`;
+                          }
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >

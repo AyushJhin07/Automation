@@ -14,6 +14,7 @@ import aiPlannerRoutes from "./routes/ai-planner.js";
 import aiNormalizerRoutes from "./routes/ai-normalizer.js";
 import workflowReadRoutes from "./routes/workflow-read.js";
 import productionHealthRoutes from "./routes/production-health.js";
+import flowRoutes from "./routes/flows.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -88,6 +89,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // PRODUCTION: Health monitoring and metrics routes
   app.use('/api', productionHealthRoutes);
+  
+  // ChatGPT Fix: Flow storage routes for AI Builder → Graph Editor handoff
+  app.use('/api/flows', flowRoutes);
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);

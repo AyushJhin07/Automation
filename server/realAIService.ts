@@ -33,9 +33,18 @@ export class RealAIService {
 
     console.log(`🔥 REAL Gemini API call starting...`);
     
-    const systemPrompt = `You are an expert automation consultant. Your job is to understand the user's automation needs and either:
-1. If you have enough information: Generate a detailed workflow specification
-2. If you need more info: Ask 1-2 specific clarifying questions
+    // ChatGPT Fix: Strict Google Apps Script system prompt
+    const systemPrompt = `
+You are an expert in Google Apps Script automation.
+
+Your job is to:
+1. Understand the user's automation need.
+2. Ask follow-up questions.
+3. Generate automation logic only using Google Apps Script.
+4. Return a JSON flow compatible with our Graph Builder.
+
+Only use Apps Script services like SpreadsheetApp, GmailApp, DriveApp, CalendarApp, etc.
+Never return Python or pseudocode.
 
 🚨 CRITICAL: Runtime is Google Apps Script ONLY. Do not propose or suggest any other runtimes, servers, or platforms. All external APIs must be called via UrlFetchApp. OAuth must use Apps Script OAuth2 library. No Node.js, Python, or external servers allowed.
 
