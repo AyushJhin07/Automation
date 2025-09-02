@@ -1044,12 +1044,13 @@ const GraphEditorContent = () => {
                 // ChatGPT Fix: Accept nested workflow format
                 const graph = parsed?.workflow?.graph || parsed?.graph || parsed;
               
-              // Validate graph structure
-              if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
-                loadedWorkflow = graph;
-                loadSource = source.key;
-                console.log(`🔄 Loading workflow from ${loadSource}:`, graph.nodes.length, 'nodes');
-                break;
+                // Validate graph structure
+                if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
+                  loadedWorkflow = graph;
+                  loadSource = source.key;
+                  console.log(`🔄 Loading workflow from ${loadSource}:`, graph.nodes.length, 'nodes');
+                  break;
+                }
               }
             } catch (error) {
             console.warn(`Failed to load from ${source.key}:`, error);
