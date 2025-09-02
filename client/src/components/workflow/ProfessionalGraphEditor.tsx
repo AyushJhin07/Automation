@@ -1051,8 +1051,7 @@ const GraphEditorContent = () => {
                 console.log(`🔄 Loading workflow from ${loadSource}:`, graph.nodes.length, 'nodes');
                 break;
               }
-            }
-          } catch (error) {
+            } catch (error) {
             console.warn(`Failed to load from ${source.key}:`, error);
             continue;
           }

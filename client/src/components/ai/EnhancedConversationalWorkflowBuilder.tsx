@@ -764,7 +764,7 @@ Need help? I can guide you through each step!`
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           // Use the compiled workflow from global state (ChatGPT's single source of truth)
                           const last = useWorkflowState.getState().last;
                           if (!last) {
