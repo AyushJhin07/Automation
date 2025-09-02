@@ -20,6 +20,7 @@ import { RealAIService, ConversationManager } from "./realAIService";
 // Production services
 import { authService } from "./services/AuthService";
 import { connectionService, ConnectionService } from "./services/ConnectionService";
+import { LLMProviderService } from "./services/LLMProviderService.js";
 import { productionLLMOrchestrator } from "./services/ProductionLLMOrchestrator";
 import { productionGraphCompiler } from "./core/ProductionGraphCompiler";
 import { productionDeployer } from "./core/ProductionDeployer";
@@ -92,6 +93,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ChatGPT Fix: Flow storage routes for AI Builder → Graph Editor handoff
   app.use('/api/flows', flowRoutes);
+  
+  // ChatGPT Fix: Model discovery endpoint
+  app.get('/api/ai/models', (_req, res) => {
+    try {
+      const caps = LLMProviderService.getProviderStatus();
+      const models: string[] = [];
+      if (caps.capabilities.gemini) models.push('gemini-1.5-flash', 'gemini-2.0-flash-exp');
+      if (caps.capabilities.openai) models.push('gpt-4o-mini', 'gpt-4o');
+      if (caps.capabilities.claude) models.push('claude-3-haiku');
+      res.json({ success: true, models, provider: caps.selected });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to get models' });
+    }
+  });
+  
+  // ChatGPT Fix: Registry endpoint alias for client compatibility
+  app.get('/api/registry/connectors', (_req, res) => {
+    try {
+      const catalog = connectorRegistry.getNodeCatalog();
+      res.json({ success: true, connectors: Object.values(catalog.connectors || {}) });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to get connectors' });
+    }
+  });
   
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);

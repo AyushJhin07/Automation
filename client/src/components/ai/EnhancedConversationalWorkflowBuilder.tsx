@@ -173,7 +173,13 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
         <Button
           size="sm"
           onClick={() => {
-            localStorage.setItem('lastCompile', JSON.stringify(workflowData));
+            // ChatGPT Fix: Save the compile result in correct format
+            const compile = useWorkflowState.getState().last; // <- CompileResult
+            if (compile) {
+              localStorage.setItem('lastCompile', JSON.stringify(compile)); // { graph: {...} }
+            } else if (workflowData?.workflow?.graph) {
+              localStorage.setItem('lastCompile', JSON.stringify(workflowData.workflow.graph)); // raw graph
+            }
             window.open('/graph-editor?from=ai-builder', '_blank');
           }}
           className="bg-green-600 hover:bg-green-700 flex-1"
@@ -226,6 +232,8 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | null>(null);
+  // ChatGPT Fix: Persist prompt explicitly to prevent INVALID_PROMPT errors
+  const [prompt, setPrompt] = useState('');
   const [showWorkflowPreview, setShowWorkflowPreview] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [apiKeys, setApiKeys] = useState<{gemini?: string; claude?: string; openai?: string}>({});
@@ -315,6 +323,9 @@ I'm your AI automation assistant. I can help you create powerful Google Apps Scr
 
     const userMessage = currentInput.trim();
     setCurrentInput('');
+    
+    // ChatGPT Fix: Persist prompt explicitly
+    setPrompt(userMessage);
 
     // Add user message
     addMessage({
@@ -532,9 +543,8 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
       }
     }
 
-    // Find the original user prompt (last user message before questions)
-    const userMessages = messages.filter(m => m.role === 'user');
-    const originalPrompt = userMessages[userMessages.length - 1]?.content || '';
+    // ChatGPT Fix: Use persisted prompt instead of message parsing
+    const originalPrompt = prompt || '';
 
     addMessage({
       role: 'user',
@@ -758,17 +768,20 @@ Need help? I can guide you through each step!`
                             return;
                           }
                           
-                          // ChatGPT Fix: Save flow and redirect using flowId
+                          // ChatGPT Fix: Use correct variable and save format
                           const response = await fetch("/api/flows/save", {
                             method: "POST",
-                            body: JSON.stringify(workflowResult),
+                            body: JSON.stringify(last),
                             headers: { "Content-Type": "application/json" },
                           });
 
                           const saved = await response.json();
                           
-                          // Fallback to localStorage for compatibility
-                          localStorage.setItem('lastCompile', JSON.stringify(workflowResult));
+                          // ChatGPT Fix: Save in correct format for Graph Editor
+                          localStorage.setItem(
+                            'lastCompile',
+                            JSON.stringify(last)
+                          );
                           
                           if (saved.flowId) {
                             window.location.href = `/graph-editor?flowId=${saved.flowId}`;

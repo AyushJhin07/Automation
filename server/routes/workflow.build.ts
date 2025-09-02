@@ -124,6 +124,21 @@ workflowBuildRouter.post('/build', async (req, res) => {
     const graphStartTime = Date.now();
     const graph = answersToGraph(prompt, answers);
     const graphGenerationTime = Date.now() - graphStartTime;
+
+    // ChatGPT Fix: Normalize app IDs before validation/compilation
+    function normalizeAppId(id:string){
+      const x = id?.toLowerCase().replace(/\s+/g,'-') || '';
+      if (['drive','gdrive','google-drive'].includes(x)) return 'google-drive';
+      if (['sheets','sheet','gsheets','google-sheets'].includes(x)) return 'sheets';
+      if (['calendar','gcal','google-calendar'].includes(x)) return 'calendar';
+      if (['gmail','google-mail'].includes(x)) return 'gmail';
+      return x;
+    }
+    
+    graph.nodes = graph.nodes.map(n => ({
+      ...n,
+      app: normalizeAppId(n.app || n.type?.split?.('.')[1] || '')
+    }));
     
     if (!graph || !graph.nodes || graph.nodes.length === 0) {
       logWorkflowEvent('GRAPH_GENERATION_FAILED', requestId, { 
