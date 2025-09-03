@@ -6,6 +6,7 @@ import { convertToNodeGraph } from '../workflow/graph-format-converter';
 import { mapAnswersToBackendFormat, validateTriggerConfig } from '../utils/answer-field-mapper.js';
 import { WorkflowStoreService } from '../workflow/workflow-store.js';
 import { AnswerNormalizerService } from '../services/AnswerNormalizerService.js';
+import { getAllowlistForMode, normalizeAppId, type PlannerMode } from '../services/PromptBuilder.js';
 
 const SHEET_URL_RE = /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i;
 
@@ -125,20 +126,36 @@ workflowBuildRouter.post('/build', async (req, res) => {
     const graph = answersToGraph(prompt, answers);
     const graphGenerationTime = Date.now() - graphStartTime;
 
-    // ChatGPT Fix: Normalize app IDs before validation/compilation
-    function normalizeAppId(id:string){
-      const x = id?.toLowerCase().replace(/\s+/g,'-') || '';
-      if (['drive','gdrive','google-drive'].includes(x)) return 'google-drive';
-      if (['sheets','sheet','gsheets','google-sheets'].includes(x)) return 'sheets';
-      if (['calendar','gcal','google-calendar'].includes(x)) return 'calendar';
-      if (['gmail','google-mail'].includes(x)) return 'gmail';
-      return x;
-    }
+    // ChatGPT Enhancement: Dynamic app validation based on mode
+    const { mode } = req.body;
+    const resolvedMode: PlannerMode = mode || (process.env.PLANNER_MODE === "all" ? "all" : "gas-only");
+    const ALLOW = getAllowlistForMode(resolvedMode);
     
+    // Normalize app IDs and validate against dynamic allowlist
     graph.nodes = graph.nodes.map(n => ({
       ...n,
       app: normalizeAppId(n.app || n.type?.split?.('.')[1] || '')
     }));
+
+    // Enforce dynamic allowlist based on mode
+    for (const n of graph.nodes) {
+      if (!ALLOW.has(n.app)) {
+        logWorkflowEvent('UNSUPPORTED_OPERATION', requestId, {
+          app: n.app,
+          mode: resolvedMode,
+          allowedApps: Array.from(ALLOW).slice(0, 20)
+        });
+        return res.status(400).json({
+          success: false,
+          code: "UNSUPPORTED_OPERATIONS",
+          error: `App "${n.app}" not supported in ${resolvedMode} mode`,
+          app: n.app,
+          mode: resolvedMode,
+          allowedApps: Array.from(ALLOW).slice(0, 20),
+          requestId
+        });
+      }
+    }
     
     if (!graph || !graph.nodes || graph.nodes.length === 0) {
       logWorkflowEvent('GRAPH_GENERATION_FAILED', requestId, { 

@@ -118,6 +118,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ChatGPT Enhancement: Planner mode configuration
+  app.get("/api/ai/config", (_req, res) => {
+    res.json({
+      success: true,
+      mode: process.env.PLANNER_MODE === "all" ? "all" : "gas-only",
+    });
+  });
+
+  app.post("/api/ai/plan-workflow", async (req, res) => {
+    try {
+      const { prompt, mode } = req.body || {};
+      if (!prompt || typeof prompt !== "string") {
+        return res.status(400).json({ success: false, error: "INVALID_PROMPT" });
+      }
+      
+      const { AutomationPlannerService } = await import('./services/AutomationPlannerService.js');
+      const result = await AutomationPlannerService.planAutomation(prompt, mode);
+      res.json({ success: true, ...result });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: "PLANNER_ERROR", details: e?.message });
+    }
+  });
+  
   // Legacy routes (for backward compatibility)
   registerGoogleAppsRoutes(app);
   // registerAIWorkflowRoutes(app); // REMOVED: Conflicts with new AI routes

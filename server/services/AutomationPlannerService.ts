@@ -6,6 +6,8 @@
  */
 
 import { MultiAIService } from '../aiModels.js';
+import { buildPlannerPrompt, type PlannerMode } from "./PromptBuilder.js";
+import { generateJsonWithGemini } from '../llm/MultiAIService.js';
 
 export interface AutomationStep {
   app: string;
@@ -50,10 +52,55 @@ export interface AutomationPlan {
 export class AutomationPlannerService {
   
   /**
-   * CRITICAL: Analyze user prompt and create comprehensive automation plan
+   * ChatGPT Enhancement: Dynamic automation planning with registry integration
    */
-  static async planAutomation(userPrompt: string): Promise<AutomationPlan> {
+  static async planAutomation(userPrompt: string, mode?: PlannerMode): Promise<AutomationPlan> {
     console.log('🧠 LLM Automation Planner analyzing prompt:', userPrompt);
+    
+    const DEFAULT_MODE: PlannerMode = (process.env.PLANNER_MODE as PlannerMode) || "gas-only";
+    const resolvedMode = mode || DEFAULT_MODE;
+    
+    console.log('🎯 Planner mode:', resolvedMode);
+    
+    try {
+      const systemPrompt = buildPlannerPrompt(userPrompt, resolvedMode);
+      
+      // Use JSON-safe generation
+      const jsonResponse = await generateJsonWithGemini('gemini-2.0-flash-exp', systemPrompt);
+      
+      let plan;
+      try {
+        plan = JSON.parse(jsonResponse);
+      } catch (parseError) {
+        console.error('❌ Failed to parse LLM plan response:', parseError);
+        // Fallback to deterministic planning
+        return this.createFallbackPlan(userPrompt, resolvedMode);
+      }
+      
+      console.log('✅ Generated dynamic automation plan:', {
+        mode: resolvedMode,
+        apps: plan.apps,
+        steps: plan.steps?.length || 0,
+        questions: plan.follow_up_questions?.length || 0
+      });
+      
+      // Convert to our internal format
+      return {
+        apps: plan.apps || [],
+        trigger: plan.trigger || { type: 'manual', app: 'manual', operation: 'trigger' },
+        steps: plan.steps || [],
+        missing_inputs: plan.missing_inputs || [],
+        workflow_name: plan.workflow_name || 'Generated Workflow',
+        description: plan.description || 'AI-generated automation workflow',
+        complexity: plan.complexity || 'medium',
+        business_value: plan.business_value || 'Automation efficiency',
+        follow_up_questions: plan.follow_up_questions || []
+      };
+      
+    } catch (error) {
+      console.error('❌ LLM planning failed:', error);
+      return this.createFallbackPlan(userPrompt, resolvedMode);
+    }
 
     const planningPrompt = `You are a world-class automation planner with expertise in business processes and our 149 available applications.
 
@@ -667,6 +714,50 @@ RESPOND WITH:
     } else {
       return 'Simple automation - save 2-3 hours per week';
     }
+  }
+
+  /**
+   * ChatGPT Enhancement: Create fallback plan based on mode
+   */
+  private static createFallbackPlan(userPrompt: string, mode: PlannerMode): AutomationPlan {
+    console.log('🔄 Creating fallback plan for mode:', mode);
+    
+    const apps = mode === "gas-only" ? ["gmail", "sheets"] : ["gmail", "sheets", "slack"];
+    
+    return {
+      apps,
+      trigger: { type: 'time', app: 'time', operation: 'schedule' },
+      steps: [
+        {
+          app: 'gmail',
+          operation: 'search_emails',
+          required_inputs: ['search_query'],
+          missing_inputs: ['search_query'],
+          description: 'Search for emails'
+        },
+        {
+          app: 'sheets',
+          operation: 'append_row',
+          required_inputs: ['spreadsheet_id', 'sheet_name', 'values'],
+          missing_inputs: ['spreadsheet_id', 'sheet_name'],
+          description: 'Log data to spreadsheet'
+        }
+      ],
+      missing_inputs: [
+        { id: 'search_query', question: 'What emails should we search for?', type: 'text' },
+        { id: 'spreadsheet_id', question: 'What Google Sheet should we use?', type: 'url' },
+        { id: 'sheet_name', question: 'Which sheet tab?', type: 'text' }
+      ],
+      workflow_name: 'Email to Sheets Automation',
+      description: 'Monitor emails and log them to a spreadsheet',
+      complexity: 'simple',
+      business_value: 'Save time on manual email processing',
+      follow_up_questions: [
+        { id: 'search_query', question: 'What emails should we search for?', category: 'data', expected_format: 'free' },
+        { id: 'spreadsheet_id', question: 'What Google Sheet should we use?', category: 'data', expected_format: 'url' },
+        { id: 'sheet_name', question: 'Which sheet tab?', category: 'data', expected_format: 'free' }
+      ]
+    };
   }
 
   /**

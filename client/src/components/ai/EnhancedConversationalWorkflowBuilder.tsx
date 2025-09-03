@@ -239,6 +239,8 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [apiKeys, setApiKeys] = useState<{gemini?: string; claude?: string; openai?: string}>({});
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash-exp');
   const [serverModels, setServerModels] = useState<any[]>([]);
+  // ChatGPT Enhancement: Mode selection for GAS-only vs All-connectors
+  const [mode, setMode] = useState<"gas-only"|"all">("gas-only");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // ChatGPT Fix: Enhanced safe helpers to avoid runtime errors
@@ -264,6 +266,16 @@ export default function EnhancedConversationalWorkflowBuilder() {
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setServerModels(data?.models ?? []))
       .catch(() => setServerModels([]));
+  }, []);
+
+  // ChatGPT Enhancement: Load server default mode
+  useEffect(() => {
+    fetch("/api/ai/config")
+      .then(r => r.json())
+      .then(j => {
+        if (j?.mode === "all") setMode("all");
+      })
+      .catch(() => {});
   }, []);
 
   // Helper functions for server-aware API key checking
@@ -433,7 +445,8 @@ You can try:
         },
         body: JSON.stringify({
           prompt: prompt,
-          answers: answers
+          answers: answers,
+          mode: mode  // ChatGPT Enhancement: Include mode in build request
         })
       });
 
@@ -940,6 +953,24 @@ Need help? I can guide you through each step!`
         )}
 
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* ChatGPT Enhancement: Mode Selector */}
+      <div className="border-t border-slate-700 bg-slate-800/50 backdrop-blur-sm p-2">
+        <div className="flex items-center justify-center gap-4">
+          <span className="text-sm text-gray-400">Automation Mode:</span>
+          <select 
+            value={mode} 
+            onChange={e => setMode(e.target.value as any)} 
+            className="border border-gray-600 rounded px-3 py-1 bg-slate-700 text-white text-sm"
+          >
+            <option value="gas-only">Google Apps Script only</option>
+            <option value="all">All connectors (149 apps)</option>
+          </select>
+          <span className="text-xs text-gray-500">
+            {mode === "gas-only" ? "🔒 Google Workspace + GAS services only" : "🌐 Full marketplace access"}
+          </span>
+        </div>
       </div>
 
       {/* Input Area */}
