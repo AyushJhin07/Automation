@@ -28,6 +28,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import SmartParametersPanel from './SmartParametersPanel';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
 import { 
@@ -1549,63 +1550,9 @@ const GraphEditorContent = () => {
               </div>
             </div>
             
-            {/* Smart Parameters Section */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <div className="p-1.5 bg-blue-500 rounded-lg">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  Smart Parameters
-                </label>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-300 text-xs font-medium px-2 py-1">
-                    <Brain className="w-3 h-3 mr-1" />
-                    AI-Powered
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                {Object.entries(selectedNode.data.params || {}).map(([key, value]) => (
-                  <div key={key} className="bg-white/70 rounded-lg border border-blue-200/50 p-3">
-                    <AIParameterEditor
-                      paramName={key}
-                      value={value}
-                      onChange={(newValue) => {
-                        setNodes((nds) =>
-                          nds.map((n) =>
-                            n.id === selectedNode.id
-                              ? { 
-                                  ...n, 
-                                  data: { 
-                                    ...n.data, 
-                                    params: { 
-                                      ...n.data.params, 
-                                      [key]: newValue 
-                                    } 
-                                  } 
-                                }
-                              : n
-                          )
-                        );
-                      }}
-                      availableNodes={nodes
-                        .filter(n => n.id !== selectedNode.id)
-                        .map(n => ({ id: n.id, label: n.data.label || n.id }))
-                      }
-                      className="enterprise-param-editor"
-                    />
-                  </div>
-                ))}
-                {Object.keys(selectedNode.data.params || {}).length === 0 && (
-                  <div className="text-center py-6 text-slate-500">
-                    <Box className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-sm font-medium">No parameters configured</p>
-                    <p className="text-xs text-slate-400 mt-1">Parameters will appear here when available</p>
-                  </div>
-                )}
-              </div>
+            {/* ChatGPT Schema Fix: Smart Parameters Panel */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+              <SmartParametersPanel />
             </div>
             
             {/* Node Actions */}

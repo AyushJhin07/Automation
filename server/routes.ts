@@ -117,6 +117,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ success: false, error: 'Failed to get connectors' });
     }
   });
+
+  // ChatGPT Schema Fix: Operation schema endpoint
+  app.get("/api/registry/op-schema", (req, res) => {
+    const { app, op } = req.query as { app?: string; op?: string };
+    if (!app || !op) return res.status(400).json({ success: false, error: "MISSING_APP_OR_OP" });
+
+    const catalog = connectorRegistry.getNodeCatalog();
+    const appDef = catalog?.connectors?.[String(app)];
+    
+    if (!appDef) {
+      return res.status(404).json({ success: false, error: "APP_NOT_FOUND", app });
+    }
+
+    // Look in both actions and triggers
+    const allOps = [...(appDef.actions || []), ...(appDef.triggers || [])];
+    const def = allOps.find(operation => operation.id === String(op));
+    
+    if (!def) {
+      return res.status(404).json({ success: false, error: "OP_NOT_FOUND", app, op });
+    }
+
+    // Prefer explicit JSON schema field names
+    const schema = def.parametersSchema || def.paramsSchema || def.schema || def.parameters || null;
+
+    res.json({ 
+      success: true, 
+      schema, 
+      defaults: def.defaults || {},
+      operation: def
+    });
+  });
   
   // ChatGPT Enhancement: Planner mode configuration
   app.get("/api/ai/config", (_req, res) => {
