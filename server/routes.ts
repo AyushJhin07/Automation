@@ -118,34 +118,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ChatGPT Schema Fix: Operation schema endpoint
+  // ChatGPT Panel Fix: Improved operation schema endpoint
   app.get("/api/registry/op-schema", (req, res) => {
     const { app, op } = req.query as { app?: string; op?: string };
-    if (!app || !op) return res.status(400).json({ success: false, error: "MISSING_APP_OR_OP" });
+    if (!app || !op) {
+      return res.status(400).json({ success: false, error: "MISSING_APP_OR_OP" });
+    }
 
     const catalog = connectorRegistry.getNodeCatalog();
-    const appDef = catalog?.connectors?.[String(app)];
-    
-    if (!appDef) {
+    const connector = catalog?.connectors?.[String(app).toLowerCase()];
+    if (!connector) {
       return res.status(404).json({ success: false, error: "APP_NOT_FOUND", app });
     }
 
-    // Look in both actions and triggers
-    const allOps = [...(appDef.actions || []), ...(appDef.triggers || [])];
-    const def = allOps.find(operation => operation.id === String(op));
-    
-    if (!def) {
+    // Normalize op id (case insensitive match) - ChatGPT's fix
+    const operation = Object.entries(connector.operations || {}).find(
+      ([id]) => id.toLowerCase() === String(op).toLowerCase()
+    )?.[1];
+
+    if (!operation) {
       return res.status(404).json({ success: false, error: "OP_NOT_FOUND", app, op });
     }
 
-    // Prefer explicit JSON schema field names
-    const schema = def.parametersSchema || def.paramsSchema || def.schema || def.parameters || null;
+    // Pick schema fields
+    const schema =
+      operation.parametersSchema ||
+      operation.paramsSchema ||
+      operation.schema ||
+      operation.parameters ||
+      null;
 
-    res.json({ 
-      success: true, 
-      schema, 
-      defaults: def.defaults || {},
-      operation: def
+    // ChatGPT Panel Fix: Fallback for connectors with no schema
+    const fallbackSchema = {
+      type: "object",
+      properties: {}
+    };
+
+    return res.json({
+      success: true,
+      schema: schema || fallbackSchema,
+      defaults: operation.defaults || {},
+      operation: operation
     });
   });
   

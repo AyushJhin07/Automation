@@ -41,17 +41,46 @@ export function SmartParametersPanel() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}`);
-        const json = await res.json();
+        // ChatGPT Panel Fix: Try multiple ID formats
+        const normalizedApp = app.toLowerCase();
+        const possibleOpIds = [
+          opId,
+          opId.toLowerCase(),
+          opId.replace(/\s+/g, '_').toLowerCase(),
+          opId.replace(/\s+/g, '').toLowerCase(),
+          // Convert "Test Connection" to "test_connection"
+          opId.toLowerCase().replace(/\s+/g, '_')
+        ];
+
+        let json = null;
+        for (const tryOpId of possibleOpIds) {
+          try {
+            const res = await fetch(`/api/registry/op-schema?app=${encodeURIComponent(normalizedApp)}&op=${encodeURIComponent(tryOpId)}`);
+            const response = await res.json();
+            if (response?.success) {
+              json = response;
+              break;
+            }
+          } catch (e) {
+            // Try next ID format
+            continue;
+          }
+        }
+
         if (json?.success) {
           setSchema(json.schema || null);
           setDefaults(json.defaults || {});
           // prime params with defaults if empty
           const next = { ...(json.defaults || {}), ...(node?.data?.parameters || {}) };
           setParams(next);
+        } else {
+          console.warn("Could not load schema for", app, opId, "tried:", possibleOpIds);
+          // Set empty schema so panel shows "No parameters"
+          setSchema({ type: "object", properties: {} });
         }
       } catch (e) {
         console.warn("Failed to load op schema", app, opId, e);
+        setSchema({ type: "object", properties: {} });
       }
     })();
   }, [app, opId, node?.id]);
