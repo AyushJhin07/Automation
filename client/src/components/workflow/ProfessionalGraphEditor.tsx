@@ -995,202 +995,177 @@ const GraphEditorContent = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
 
-  // P1-8: Enhanced Graph Editor autoload robustness
+  // P1-8: Enhanced Graph Editor autoload robustness (scanner-safe version)
   useEffect(() => {
     const loadWorkflowFromStorage = async () => {
+      // Keep ALL try/catch at the top level to avoid esbuild "Unexpected catch"
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const fromAIB = urlParams.get('from') === 'ai-builder';
-        const workflowId = urlParams.get('workflowId');
-        const autoLoad = urlParams.get('autoLoad') === 'true';
-        
-        // Priority order for loading workflows
-        const sources = [
-          { key: 'lastCompile', condition: fromAIB || autoLoad },
-          { key: 'savedWorkflow', condition: workflowId },
-          { key: 'draftWorkflow', condition: true },
-          { key: 'backupWorkflow', condition: true }
-        ];
+        const fromAIB = urlParams.get("from") === "ai-builder";
+        const workflowId = urlParams.get("workflowId");
+        const autoLoad = urlParams.get("autoLoad") === "true";
 
-        let loadedWorkflow = null;
-        let loadSource = null;
+        // Helper to safely parse any JSON without throwing
+        const safeParse = (raw: string | null) => {
+          if (!raw) return null;
+          try {
+            return JSON.parse(raw);
+          } catch (e) {
+            console.warn("Failed to parse JSON from storage", e);
+            return null;
+          }
+        };
 
-        // ChatGPT Fix: Load flow using flowId from API first
+        // 1) Try API load if workflowId present
+        let loadedWorkflow: any = null;
+        let loadSource: string | null = null;
+
         if (workflowId) {
           try {
-            const response = await fetch(`/api/flows/${workflowId}`);
-            if (response.ok) {
-              const flowData = await response.json();
-              loadedWorkflow = flowData;
-              loadSource = 'API';
-              console.log('✅ Loaded workflow from API:', workflowId);
+            const apiRes = await fetch(`/api/workflows/${workflowId}`);
+            if (apiRes.ok) {
+              const apiJson = await apiRes.json();
+              const candidate =
+                apiJson?.workflow?.graph || apiJson?.graph || apiJson;
+              if (candidate?.nodes?.length) {
+                loadedWorkflow = candidate;
+                loadSource = "api";
+              }
             }
-          } catch (error) {
-            console.warn('⚠️ Failed to load workflow from API:', error);
+          } catch (e) {
+            console.warn("⚠️ Failed to load workflow from API:", e);
           }
         }
 
-        // Try each source in priority order (fallback to localStorage)
+        // 2) Fallback priority from localStorage
         if (!loadedWorkflow) {
+          const sources = [
+            { key: "lastCompile", condition: fromAIB || autoLoad },
+            { key: "savedWorkflow", condition: Boolean(workflowId) },
+            { key: "draftWorkflow", condition: true },
+            { key: "backupWorkflow", condition: true },
+          ];
+
           for (const source of sources) {
             if (!source.condition) continue;
-            
-            try {
-              const storageKey = workflowId ? `workflow_${workflowId}` : source.key;
-              const savedData = localStorage.getItem(storageKey);
-              
-              if (savedData) {
-                const parsed = JSON.parse(savedData);
-                // ChatGPT Fix: Accept nested workflow format
-                const graph = parsed?.workflow?.graph || parsed?.graph || parsed;
-              
-                // Validate graph structure
-                if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
-                  loadedWorkflow = graph;
-                  loadSource = source.key;
-                  console.log(`🔄 Loading workflow from ${loadSource}:`, graph.nodes.length, 'nodes');
-                  break;
-                }
-              }
-            } catch (error) {
-            console.warn(`Failed to load from ${source.key}:`, error);
-            continue;
+            const storageKey = workflowId ? `workflow_${workflowId}` : source.key;
+            const parsed = safeParse(localStorage.getItem(storageKey));
+            const candidate =
+              parsed?.workflow?.graph || parsed?.graph || parsed;
+
+            if (candidate?.nodes?.length) {
+              loadedWorkflow = candidate;
+              loadSource = source.key;
+              break;
+            }
           }
         }
 
+        // 3) If nothing found, leave the editor empty
         if (!loadedWorkflow) {
-          console.log('📝 No saved workflow found, starting with empty canvas');
+          console.log("📝 No saved workflow found, starting with empty canvas");
+          setShowWelcomeModal(true);
           return;
         }
 
-        // Enhanced node conversion with better error handling
-        const reactFlowNodes = loadedWorkflow.nodes.map((node: any, index: number) => {
-          try {
-            // Extract app and operation with multiple fallback strategies
-            const app = node.data?.app || 
-                      node.app || 
-                      (node.type?.includes?.('.') ? node.type.split('.')[1] : null) ||
-                      'unknown';
-            
-            const operation = node.data?.operation || 
-                            node.data?.function ||
-                            node.op || 
-                            (node.type?.includes?.('.') ? node.type.split('.')[0] : null) ||
-                            'action';
+        // --- Normalize nodes to ReactFlow format (no try/catch inside map) ---
+        const makeRFNode = (node: any, index: number) => {
+          const app =
+            (node.app ||
+              node.data?.app ||
+              node.type?.split?.(".")?.[1] ||
+              "core") + "";
+          const operation =
+            (node.operation ||
+              node.data?.function ||
+              node.data?.actionId ||
+              "noop") + "";
 
-            // Generate position if missing
-            const position = node.position || {
-              x: 150 + (index % 3) * 250,
-              y: 100 + Math.floor(index / 3) * 150
-            };
+          return {
+            id: `${node.id || `node_${index}`}`,
+            type: "action.core",
+            position: {
+              x: node.position?.x ?? 100 + (index % 6) * 260,
+              y: node.position?.y ?? 120 + Math.floor(index / 6) * 180,
+            },
+            data: {
+              label:
+                node.data?.label ||
+                node.label ||
+                `${app}:${operation}`.toUpperCase(),
+              description:
+                node.data?.description || node.description || "Action node",
+              app,
+              function: operation,
+              parameters: node.data?.parameters || node.parameters || {},
+              nodeType: "action.core",
+              icon: node.data?.icon || "🔧",
+              color:
+                node.data?.color ||
+                (app.toLowerCase() === "gmail"
+                  ? "#EA4335"
+                  : app.toLowerCase() === "sheets"
+                  ? "#34A853"
+                  : app.toLowerCase() === "transform"
+                  ? "#FF6D01"
+                  : "#9AA0A6"),
+              connectorId: node.data?.connectorId || app,
+              actionId: operation,
+              metadata: node.data?.metadata || {},
+              isValid: true,
+              loadSource,
+            },
+          } as any;
+        };
 
-            // Comprehensive parameter extraction
-            const parameters = node.data?.config || 
-                             node.data?.params || 
-                             node.params || 
-                             node.data?.parameters ||
-                             {};
+        const reactFlowNodes = Array.isArray(loadedWorkflow.nodes)
+          ? loadedWorkflow.nodes.map(makeRFNode)
+          : [];
 
-            return {
-              id: node.id || `node_${index}`,
-              type: node.type || 'action.core',
-              position,
-              data: {
-                label: node.data?.label || 
-                      node.name || 
-                      `${app}:${operation}` ||
-                      'Workflow Node',
-                description: node.data?.description || 
-                           `${operation} operation` ||
-                           'Automated workflow step',
-                app,
-                function: operation,
-                parameters,
-                nodeType: node.type || 'action.core',
-                icon: node.data?.icon || getIconForApp(app),
-                color: node.data?.color || getColorForApp(app),
-                connectorId: node.data?.connectorId || app,
-                actionId: node.data?.actionId || operation,
-                // Preserve additional metadata
-                metadata: node.data?.metadata || {},
-                isValid: true,
-                loadSource
-              }
-            };
-          } catch (nodeError) {
-            console.warn(`Error processing node ${node.id || index}:`, nodeError);
-            // Return a fallback node instead of failing completely
-            return {
-              id: node.id || `fallback_${index}`,
-              type: 'action.core',
-              position: { x: 100, y: 100 + index * 50 },
-              data: {
-                label: 'Error Loading Node',
-                description: 'This node had loading errors',
-                app: 'core',
-                function: 'error',
-                parameters: {},
-                nodeType: 'action.core',
-                icon: '⚠️',
-                color: '#ff6b6b',
-                isValid: false,
-                error: nodeError.message
-              }
-            };
-          }
-        });
+        // --- Normalize edges (no nested try/catch) ---
+        const reactFlowEdges = Array.isArray(loadedWorkflow.edges)
+          ? loadedWorkflow.edges
+              .map((edge: any) => {
+                const source = edge.source ?? edge.from;
+                const target = edge.target ?? edge.to;
+                if (!source || !target) return null;
 
-        // Enhanced edge conversion with validation
-        const reactFlowEdges = (loadedWorkflow.edges || []).map((edge: any, index: number) => {
-          try {
-            const source = edge.source ?? edge.from;
-            const target = edge.target ?? edge.to;
-            
-            if (!source || !target) {
-              console.warn(`Invalid edge ${index}: missing source or target`, edge);
-              return null;
-            }
+                // Only include edges that connect existing nodes
+                const srcOk = reactFlowNodes.some((n) => n.id === source);
+                const tgtOk = reactFlowNodes.some((n) => n.id === target);
+                if (!srcOk || !tgtOk) return null;
 
-            // Validate that source and target nodes exist
-            const sourceExists = reactFlowNodes.some(n => n.id === source);
-            const targetExists = reactFlowNodes.some(n => n.id === target);
-            
-            if (!sourceExists || !targetExists) {
-              console.warn(`Invalid edge ${index}: source(${source}) or target(${target}) node not found`);
-              return null;
-            }
+                return {
+                  id: edge.id || `edge_${source}_${target}`,
+                  source,
+                  target,
+                  type: edge.type || "smoothstep",
+                  animated: Boolean(edge.animated),
+                  style: edge.style || {},
+                  data: edge.data || {},
+                };
+              })
+              .filter(Boolean)
+          : [];
 
-            return {
-              id: edge.id || `edge_${source}_${target}`,
-              source,
-              target,
-              type: edge.type || 'smoothstep',
-              animated: edge.animated || false,
-              style: edge.style || {},
-              data: edge.data || {}
-            };
-          } catch (edgeError) {
-            console.warn(`Error processing edge ${index}:`, edgeError);
-            return null;
-          }
-        }).filter(Boolean); // Remove null edges
+        console.log(
+          `✅ Successfully loaded workflow (${loadSource}): ${reactFlowNodes.length} nodes, ${reactFlowEdges.length} edges`
+        );
 
-        // Apply the loaded workflow
-        console.log(`✅ Successfully loaded workflow: ${reactFlowNodes.length} nodes, ${reactFlowEdges.length} edges`);
-        setNodes(reactFlowNodes);
-        setEdges(reactFlowEdges);
+        setNodes(reactFlowNodes as any);
+        setEdges(reactFlowEdges as any);
         setShowWelcomeModal(false);
 
-        // Clean up URL parameters after successful load
+        // Clean URL params if we autoloaded
         if (fromAIB || workflowId) {
           const newUrl = window.location.pathname;
-          window.history.replaceState({}, '', newUrl);
+          window.history.replaceState({}, "", newUrl);
         }
-
       } catch (error) {
-        console.error('❌ Critical error in workflow autoload:', error);
-        // Show user there was an issue but don't break the editor
-        console.warn('Workflow autoload failed, starting with empty canvas');
+        console.error("❌ Critical error in workflow autoload:", error);
+        console.warn("Workflow autoload failed, starting with empty canvas");
+        // Leave the editor empty but usable
+        setShowWelcomeModal(true);
       }
     };
 
