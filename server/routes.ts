@@ -118,47 +118,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ChatGPT Panel Fix: Improved operation schema endpoint
+  // ChatGPT Panel Root Cause Fix: Comprehensive schema endpoint with triggers+actions
   app.get("/api/registry/op-schema", (req, res) => {
-    const { app, op } = req.query as { app?: string; op?: string };
-    if (!app || !op) {
+    const rawApp = String(req.query.app || "");
+    const rawOp = String(req.query.op || "");
+    const rawKind = String(req.query.kind || "auto"); // "action" | "trigger" | "auto"
+
+    if (!rawApp || !rawOp) {
       return res.status(400).json({ success: false, error: "MISSING_APP_OR_OP" });
     }
 
+    // --- Normalize the app id ---
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, "-");
+    const appId = norm(rawApp);
+
     const catalog = connectorRegistry.getNodeCatalog();
-    const connector = catalog?.connectors?.[String(app).toLowerCase()];
+    // try direct id match first
+    let connector = catalog?.connectors?.[appId];
+
+    // if not found, try by title (case-insensitive)
     if (!connector) {
-      return res.status(404).json({ success: false, error: "APP_NOT_FOUND", app });
+      connector = Object.values<any>(catalog?.connectors || {}).find(
+        (c: any) => (c?.title || "").trim().toLowerCase() === rawApp.trim().toLowerCase()
+      ) as any;
     }
 
-    // Normalize op id (case insensitive match) - ChatGPT's fix
-    const operation = Object.entries(connector.operations || {}).find(
-      ([id]) => id.toLowerCase() === String(op).toLowerCase()
-    )?.[1];
-
-    if (!operation) {
-      return res.status(404).json({ success: false, error: "OP_NOT_FOUND", app, op });
+    if (!connector) {
+      return res.status(404).json({ success: false, error: "APP_NOT_FOUND", appTried: rawApp });
     }
 
-    // Pick schema fields
-    const schema =
-      operation.parametersSchema ||
-      operation.paramsSchema ||
-      operation.schema ||
-      operation.parameters ||
-      null;
+    // --- Find op/trigger by id OR title (case-insensitive) ---
+    const findEntry = (bucket: Record<string, any> | undefined) => {
+      if (!bucket) return undefined;
+      const byId = Object.entries(bucket).find(([id]) => id.toLowerCase() === rawOp.toLowerCase());
+      if (byId) return byId[1];
 
-    // ChatGPT Panel Fix: Fallback for connectors with no schema
-    const fallbackSchema = {
-      type: "object",
-      properties: {}
+      return Object.values<any>(bucket).find(
+        (v: any) => String(v?.title || "").toLowerCase() === rawOp.toLowerCase()
+      );
     };
+
+    const tryKinds = rawKind === "auto" ? ["operations","actions","triggers"] :
+                     rawKind === "trigger" ? ["triggers"] : ["operations","actions"];
+
+    let def: any;
+    for (const k of tryKinds) {
+      def = findEntry((connector as any)[k]);
+      if (def) break;
+    }
+
+    if (!def) {
+      // last-chance: send empty schema so UI doesn't spin
+      return res.json({
+        success: true,
+        schema: { type: "object", properties: {}, required: [] },
+        defaults: {},
+        note: "DEFINITION_NOT_FOUND",
+      });
+    }
+
+    const schema =
+      def.parametersSchema ||
+      def.paramsSchema ||
+      def.schema ||
+      def.parameters ||
+      { type: "object", properties: {}, required: [] };
 
     return res.json({
       success: true,
-      schema: schema || fallbackSchema,
-      defaults: operation.defaults || {},
-      operation: operation
+      schema,
+      defaults: def.defaults || {},
+      kind: def.type || (connector.triggers && def === findEntry(connector.triggers) ? "trigger" : "action"),
     });
   });
   

@@ -33,56 +33,39 @@ export function SmartParametersPanel() {
   const [defaults, setDefaults] = useState<any>({});
   const [params, setParams] = useState<any>(node?.data?.parameters ?? {});
 
+  // ChatGPT Panel Root Cause Fix: Proper loading states and error handling
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // Load schema when node/app/op changes
   useEffect(() => {
+    if (!app || !opId) return;
+    setLoading(true);
+    setError(null);
     setSchema(null);
     setDefaults({});
-    if (!app || !opId) return;
 
-    (async () => {
-      try {
-        // ChatGPT Panel Fix: Try multiple ID formats
-        const normalizedApp = app.toLowerCase();
-        const possibleOpIds = [
-          opId,
-          opId.toLowerCase(),
-          opId.replace(/\s+/g, '_').toLowerCase(),
-          opId.replace(/\s+/g, '').toLowerCase(),
-          // Convert "Test Connection" to "test_connection"
-          opId.toLowerCase().replace(/\s+/g, '_')
-        ];
-
-        let json = null;
-        for (const tryOpId of possibleOpIds) {
-          try {
-            const res = await fetch(`/api/registry/op-schema?app=${encodeURIComponent(normalizedApp)}&op=${encodeURIComponent(tryOpId)}`);
-            const response = await res.json();
-            if (response?.success) {
-              json = response;
-              break;
-            }
-          } catch (e) {
-            // Try next ID format
-            continue;
-          }
+    const kind = node?.data?.kind || "auto"; // Support trigger/action distinction
+    
+    fetch(`/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}&kind=${kind}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!j?.success) { 
+          setError(j?.error || "Failed to load schema"); 
+          setSchema({type:"object",properties:{}}); 
+          return; 
         }
-
-        if (json?.success) {
-          setSchema(json.schema || null);
-          setDefaults(json.defaults || {});
-          // prime params with defaults if empty
-          const next = { ...(json.defaults || {}), ...(node?.data?.parameters || {}) };
-          setParams(next);
-        } else {
-          console.warn("Could not load schema for", app, opId, "tried:", possibleOpIds);
-          // Set empty schema so panel shows "No parameters"
-          setSchema({ type: "object", properties: {} });
-        }
-      } catch (e) {
-        console.warn("Failed to load op schema", app, opId, e);
-        setSchema({ type: "object", properties: {} });
-      }
-    })();
+        setSchema(j.schema || {type:"object",properties:{}});
+        setDefaults(j.defaults || {});
+        // prime params with defaults if empty
+        const next = { ...(j.defaults || {}), ...(node?.data?.parameters || {}) };
+        setParams(next);
+      })
+      .catch(e => { 
+        setError(String(e)); 
+        setSchema({type:"object",properties:{}}); 
+      })
+      .finally(() => setLoading(false));
   }, [app, opId, node?.id]);
 
   // Persist edits back to the graph node
@@ -281,12 +264,23 @@ export function SmartParametersPanel() {
         </div>
       </div>
       
-      {schema ? (
+      {/* ChatGPT Panel Root Cause Fix: Proper loading/error/empty states */}
+      {loading ? (
+        <div className="text-center py-4 text-gray-500">
+          <div className="animate-pulse">Loading parameter schema...</div>
+          <div className="text-xs mt-1">Fetching {String(app)} • {String(opId)}</div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-4 text-red-500">
+          <div className="text-sm">Schema error: {error}</div>
+          <div className="text-xs mt-1 text-gray-500">Check console for details</div>
+        </div>
+      ) : schema ? (
         <FieldsFromSchema schema={schema} />
       ) : (
         <div className="text-center py-4 text-gray-500">
-          <div className="animate-pulse">Loading parameter schema...</div>
-          <div className="text-xs mt-1">Fetching {app} • {opId} configuration</div>
+          <div className="text-sm">No parameters for this operation</div>
+          <div className="text-xs mt-1">This operation works without configuration</div>
         </div>
       )}
       

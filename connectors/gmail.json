@@ -1,9 +1,11 @@
 {
   "id": "gmail",
   "name": "Gmail",
-  "category": "communication",
-  "description": "Google Gmail email service integration with comprehensive email management capabilities",
-  "version": "1.2.0",
+  "description": "Google Gmail email service for sending, receiving, and managing emails",
+  "category": "Communication",
+  "icon": "mail",
+  "color": "#EA4335",
+  "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
@@ -12,10 +14,16 @@
       "scopes": [
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/gmail.modify",
-        "https://www.googleapis.com/auth/gmail.compose"
+        "https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.modify"
       ]
     }
+  },
+  "baseUrl": "https://www.googleapis.com/gmail/v1",
+  "rateLimits": {
+    "requestsPerSecond": 5,
+    "requestsPerMinute": 250,
+    "dailyLimit": 1000000000
   },
   "actions": [
     {
@@ -32,7 +40,7 @@
     {
       "id": "send_email",
       "name": "Send Email",
-      "description": "Send a new email message",
+      "description": "Send an email message",
       "parameters": {
         "type": "object",
         "properties": {
@@ -40,37 +48,36 @@
             "type": "string",
             "description": "Recipient email address"
           },
-          "cc": {
-            "type": "string",
-            "description": "CC recipients (comma-separated)"
-          },
-          "bcc": {
-            "type": "string",
-            "description": "BCC recipients (comma-separated)"
-          },
           "subject": {
             "type": "string",
             "description": "Email subject"
           },
           "body": {
             "type": "string",
-            "description": "Email body content (plain text)"
+            "description": "Email body content"
           },
-          "htmlBody": {
+          "cc": {
             "type": "string",
-            "description": "HTML email body"
+            "description": "CC email addresses (comma-separated)"
+          },
+          "bcc": {
+            "type": "string",
+            "description": "BCC email addresses (comma-separated)"
           },
           "attachments": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "filename": {"type": "string"},
-                "content": {"type": "string"},
-                "mimeType": {"type": "string"}
+                "filename": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                }
               }
             },
-            "description": "File attachments"
+            "description": "Email attachments"
           }
         },
         "required": ["to", "subject", "body"],
@@ -78,20 +85,15 @@
       }
     },
     {
-      "id": "get_emails",
-      "name": "Get Emails",
-      "description": "Retrieve emails from inbox with optional filtering",
+      "id": "search_emails",
+      "name": "Search Emails",
+      "description": "Search for emails matching specified criteria",
       "parameters": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Gmail search query (e.g., 'from:sender@example.com')"
-          },
-          "labelIds": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Label IDs to filter by"
+            "description": "Gmail search query (e.g., 'from:example@gmail.com', 'is:unread')"
           },
           "maxResults": {
             "type": "number",
@@ -103,21 +105,21 @@
           "includeSpamTrash": {
             "type": "boolean",
             "default": false,
-            "description": "Include spam and trash emails"
+            "description": "Include emails from spam and trash"
           }
         },
-        "required": [],
+        "required": ["query"],
         "additionalProperties": false
       }
     },
     {
-      "id": "get_email_by_id",
-      "name": "Get Email by ID",
-      "description": "Get a specific email by its ID",
+      "id": "get_email",
+      "name": "Get Email",
+      "description": "Get details of a specific email by ID",
       "parameters": {
         "type": "object",
         "properties": {
-          "id": {
+          "messageId": {
             "type": "string",
             "description": "Gmail message ID"
           },
@@ -125,68 +127,16 @@
             "type": "string",
             "enum": ["minimal", "full", "raw", "metadata"],
             "default": "full",
-            "description": "Email format to return"
+            "description": "Format of the email data to return"
           }
         },
-        "required": ["id"],
+        "required": ["messageId"],
         "additionalProperties": false
       }
     },
     {
-      "id": "create_draft",
-      "name": "Create Draft",
-      "description": "Create a draft email",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "to": {
-            "type": "string",
-            "description": "Recipient email address"
-          },
-          "cc": {
-            "type": "string",
-            "description": "CC recipients (comma-separated)"
-          },
-          "bcc": {
-            "type": "string",
-            "description": "BCC recipients (comma-separated)"
-          },
-          "subject": {
-            "type": "string",
-            "description": "Email subject"
-          },
-          "body": {
-            "type": "string",
-            "description": "Email body content"
-          },
-          "htmlBody": {
-            "type": "string",
-            "description": "HTML email body"
-          }
-        },
-        "required": ["to", "subject", "body"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "send_draft",
-      "name": "Send Draft",
-      "description": "Send an existing draft email",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "draftId": {
-            "type": "string",
-            "description": "ID of the draft to send"
-          }
-        },
-        "required": ["draftId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "reply_to_email",
-      "name": "Reply to Email",
+      "id": "send_reply",
+      "name": "Send Reply",
       "description": "Reply to an existing email",
       "parameters": {
         "type": "object",
@@ -199,91 +149,13 @@
             "type": "string",
             "description": "Reply body content"
           },
-          "htmlBody": {
-            "type": "string",
-            "description": "HTML reply body"
-          },
           "replyAll": {
             "type": "boolean",
             "default": false,
-            "description": "Reply to all recipients"
+            "description": "Whether to reply to all recipients"
           }
         },
         "required": ["messageId", "body"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "forward_email",
-      "name": "Forward Email",
-      "description": "Forward an existing email",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "description": "ID of the message to forward"
-          },
-          "to": {
-            "type": "string",
-            "description": "Forward to email address"
-          },
-          "cc": {
-            "type": "string",
-            "description": "CC recipients (comma-separated)"
-          },
-          "bcc": {
-            "type": "string",
-            "description": "BCC recipients (comma-separated)"
-          },
-          "body": {
-            "type": "string",
-            "description": "Additional message body"
-          }
-        },
-        "required": ["messageId", "to"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "add_label",
-      "name": "Add Label",
-      "description": "Add labels to an email",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "description": "ID of the message"
-          },
-          "labelIds": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Label IDs to add"
-          }
-        },
-        "required": ["messageId", "labelIds"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "remove_label",
-      "name": "Remove Label",
-      "description": "Remove labels from an email",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "description": "ID of the message"
-          },
-          "labelIds": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Label IDs to remove"
-          }
-        },
-        "required": ["messageId", "labelIds"],
         "additionalProperties": false
       }
     },
@@ -296,8 +168,10 @@
         "properties": {
           "messageIds": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "Message IDs to mark as read"
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of Gmail message IDs to mark as read"
           }
         },
         "required": ["messageIds"],
@@ -305,165 +179,99 @@
       }
     },
     {
-      "id": "mark_as_unread",
-      "name": "Mark as Unread",
-      "description": "Mark emails as unread",
+      "id": "add_label",
+      "name": "Add Label",
+      "description": "Add labels to emails",
       "parameters": {
         "type": "object",
         "properties": {
           "messageIds": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "Message IDs to mark as unread"
-          }
-        },
-        "required": ["messageIds"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "delete_email",
-      "name": "Delete Email",
-      "description": "Delete an email permanently",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "description": "ID of the message to delete"
-          }
-        },
-        "required": ["messageId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "trash_email",
-      "name": "Trash Email",
-      "description": "Move an email to trash",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "description": "ID of the message to trash"
-          }
-        },
-        "required": ["messageId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_labels",
-      "name": "Get Labels",
-      "description": "Get all Gmail labels",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_label",
-      "name": "Create Label",
-      "description": "Create a new Gmail label",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Label name"
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of Gmail message IDs"
           },
-          "labelListVisibility": {
-            "type": "string",
-            "enum": ["labelShow", "labelShowIfUnread", "labelHide"],
-            "default": "labelShow",
-            "description": "Visibility of the label in the label list"
-          },
-          "messageListVisibility": {
-            "type": "string",
-            "enum": ["show", "hide"],
-            "default": "show",
-            "description": "Visibility of the label in the message list"
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of label IDs to add"
           }
         },
-        "required": ["name"],
+        "required": ["messageIds", "labelIds"],
         "additionalProperties": false
       }
     }
   ],
   "triggers": [
     {
-      "id": "new_email",
+      "id": "new_email_received",
       "name": "New Email Received",
       "description": "Triggered when a new email is received",
-      "type": "webhook",
       "parameters": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Gmail search query to filter emails (e.g., 'from:sender@example.com')"
+            "description": "Gmail query to filter emails (e.g., 'from:example@gmail.com', 'has:attachment')",
+            "default": "is:unread"
           },
           "labelIds": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "Label IDs to filter by"
-          },
-          "includeSpamTrash": {
-            "type": "boolean",
-            "default": false,
-            "description": "Include spam and trash emails"
+            "items": {
+              "type": "string"
+            },
+            "description": "Filter by specific label IDs"
           }
         },
         "required": [],
         "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "id": {"type": "string"},
-          "threadId": {"type": "string"},
-          "from": {"type": "string"},
-          "to": {"type": "string"},
-          "subject": {"type": "string"},
-          "body": {"type": "string"},
-          "date": {"type": "string"},
-          "labels": {"type": "array", "items": {"type": "string"}}
-        }
       }
     },
     {
-      "id": "email_labeled",
-      "name": "Email Labeled",
-      "description": "Triggered when an email receives a specific label",
-      "type": "webhook",
+      "id": "email_received_from",
+      "name": "Email Received From",
+      "description": "Triggered when an email is received from a specific sender",
       "parameters": {
         "type": "object",
         "properties": {
-          "labelId": {
+          "fromEmail": {
             "type": "string",
-            "description": "Specific label ID to watch for"
+            "description": "Email address to monitor for incoming emails"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Optional subject filter"
           }
         },
-        "required": ["labelId"],
+        "required": ["fromEmail"],
         "additionalProperties": false
-      },
-      "outputSchema": {
+      }
+    },
+    {
+      "id": "email_with_attachment",
+      "name": "Email with Attachment",
+      "description": "Triggered when an email with attachments is received",
+      "parameters": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "threadId": {"type": "string"},
-          "from": {"type": "string"},
-          "subject": {"type": "string"},
-          "labelId": {"type": "string"}
-        }
+          "fileTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Filter by specific file types (e.g., ['pdf', 'xlsx'])"
+          },
+          "fromEmail": {
+            "type": "string",
+            "description": "Optional sender filter"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
       }
     }
-  ],
-  "testConnection": {
-    "method": "GET",
-    "endpoint": "/gmail/v1/users/me/profile"
-  }
+  ]
 }
