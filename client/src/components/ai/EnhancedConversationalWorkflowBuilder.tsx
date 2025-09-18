@@ -2,6 +2,7 @@
 // Connected to professional ChatGPT-style backend architecture
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -36,6 +37,8 @@ import {
   Globe
 } from 'lucide-react';
 import { NodeGraph, Question, ValidationError } from '../../../shared/nodeGraphSchema';
+import { AutomationSpec as AutomationSpecZ } from '../../core/spec';
+import { useSpecStore } from '../../state/specStore';
 
 interface ConversationMessage {
   id: string;
@@ -242,6 +245,8 @@ export default function EnhancedConversationalWorkflowBuilder() {
   // ChatGPT Enhancement: Mode selection for GAS-only vs All-connectors
   const [mode, setMode] = useState<"gas-only"|"all">("gas-only");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const setSpec = useSpecStore.getState().set;
 
   // ChatGPT Fix: Enhanced safe helpers to avoid runtime errors
   const safeGraph = (g?: any) => g || { nodes: [], connections: [] };
@@ -497,6 +502,33 @@ You can try:
         rationale: prompt,
         deploymentInstructions: 'Ready for deployment to Google Apps Script'
       };
+      // Build a minimal AutomationSpec from the compiled graph for AI→Graph handoff
+      try {
+        const graph = result.graph;
+        const specCandidate = {
+          version: '1.0',
+          name: `Automation: ${prompt.substring(0, 60)}`,
+          description: prompt,
+          triggers: [],
+          nodes: (graph.nodes || []).map((n: any) => ({
+            id: n.id,
+            type: n.type || n.data?.function || 'core.noop',
+            app: n.app || n.data?.app || 'built_in',
+            label: n.label || n.data?.label || n.id,
+            inputs: n.data?.parameters || n.parameters || {},
+            outputs: n.outputs || []
+          })),
+          edges: (graph.edges || graph.connections || []).map((e: any) => ({
+            from: { nodeId: e.source || e.from, port: e.sourceHandle || e.dataType || 'out' },
+            to:   { nodeId: e.target || e.to,   port: e.targetHandle || 'in' }
+          }))
+        };
+        const parsed = AutomationSpecZ.safeParse(specCandidate);
+        if (parsed.success) {
+          setSpec(parsed.data);
+          navigate('/graph');
+        }
+      } catch {}
 
       // Store the workflow result
       setWorkflowResult(workflowData);
