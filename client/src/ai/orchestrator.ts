@@ -33,12 +33,9 @@ export function initializeState(userGoal: string): ConversationState {
 }
 
 // Catalog-driven required field detection
-import { GoogleSheetsAppendRowContract } from '../catalog/google_sheets.append_row';
+import { CONTRACTS } from '../catalog';
 
-const CONTRACTS: Record<string, { requiredFields: { key: string; type: string; help?: string; example?: any; enumOptions?: string[] }[] }> = {
-  'sheets.append_row': GoogleSheetsAppendRowContract as any
-  // Add more contracts as you grow coverage
-};
+// CONTRACTS is imported from a central registry
 
 export function deriveMissingFields(draftGraph: CanonicalSpec, answers: Record<string, any>): MissingField[] {
   const missing: MissingField[] = [];
@@ -49,7 +46,8 @@ export function deriveMissingFields(draftGraph: CanonicalSpec, answers: Record<s
     if (!contract) continue;
     for (const f of contract.requiredFields) {
       const current = n.inputs?.[f.key] ?? answers[`${n.id}.${f.key}`];
-      const isBlank = current === undefined || current === null || (typeof current === 'string' && current.trim() === '');
+      const wired = current && typeof current === 'object' && 'from' in current && (current as any).from?.nodeId && (current as any).from?.port;
+      const isBlank = !wired && (current === undefined || current === null || (typeof current === 'string' && current.trim() === ''));
       if (isBlank) {
         missing.push({
           nodeId: n.id,
