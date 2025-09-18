@@ -10,14 +10,8 @@ export interface MissingField {
   enumOptions?: string[];
 }
 
-export interface AutomationSpec {
-  id: string;
-  name: string;
-  description?: string;
-  nodes: any[];
-  edges: any[];
-  metadata?: Record<string, any>;
-}
+// Use the unified AutomationSpec from core/spec across app layers
+import type { AutomationSpec as CanonicalSpec } from '../core/spec';
 
 export interface ConversationState {
   phase: Phase;
@@ -25,7 +19,7 @@ export interface ConversationState {
   targetAppChain?: string[];        // e.g., ["gmail.read", "sheets.append", "slack.post"]
   answers: Record<string, any>;     // keyed by nodeId.field
   missing: MissingField[];
-  spec?: AutomationSpec;            // final spec when ready
+  spec?: CanonicalSpec;             // final spec when ready
 }
 
 export function initializeState(userGoal: string): ConversationState {
@@ -40,7 +34,6 @@ export function initializeState(userGoal: string): ConversationState {
 
 // Catalog-driven required field detection
 import { GoogleSheetsAppendRowContract } from '../catalog/google_sheets.append_row';
-import type { AutomationSpec as CanonicalSpec } from '../core/spec';
 
 const CONTRACTS: Record<string, { requiredFields: { key: string; type: string; help?: string; example?: any; enumOptions?: string[] }[] }> = {
   'sheets.append_row': GoogleSheetsAppendRowContract as any
@@ -103,12 +96,14 @@ export function nextState(state: ConversationState, userMessage?: string, contex
     }
     case 'GENERATE_SPEC': {
       // In a real implementation, call server to validate/compile and return a spec
-      const spec: AutomationSpec = {
-        id: `spec_${Date.now()}`,
-        name: state.userGoal.slice(0, 60),
+      const spec: CanonicalSpec = {
+        version: '1.0',
+        name: state.userGoal.slice(0, 60) || 'Untitled Automation',
+        description: state.userGoal,
+        triggers: [],
         nodes: [],
         edges: []
-      };
+      } as CanonicalSpec;
       const next = { ...state, phase: 'DONE', spec } as ConversationState;
       log('GENERATE_SPEC','DONE');
       return next;
