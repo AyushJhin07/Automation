@@ -66,19 +66,26 @@ export function SmartParametersPanel() {
             const connectorsJson = await connectorsRes.json();
             const list = connectorsJson?.connectors || [];
             // match by name OR id case-insensitive
+            const normalize = (s: any) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            const appLc = normalize(app);
             const match = list.find((c: any) => {
-              const title = String((c?.name || c?.title || '')).toLowerCase();
-              const id = String(c?.id || '').toLowerCase();
-              const appLc = String(app).toLowerCase();
+              const title = normalize(c?.name || c?.title);
+              const id = normalize(c?.id);
               return title === appLc || id === appLc;
             });
             if (match) {
               // search actions and triggers arrays
               const pools = [match.actions || [], match.triggers || []];
               let found: any = null;
+              const opCandidates = [opId, node?.data?.label].map(normalize);
               for (const pool of pools) {
-                found = pool.find((a: any) => String(a?.id || '').toLowerCase() === String(opId).toLowerCase())
-                     || pool.find((a: any) => String((a?.name || a?.title || '')).toLowerCase() === String(opId).toLowerCase());
+                found = pool.find((a: any) => {
+                  const aid = normalize(a?.id);
+                  const aname = normalize(a?.name || a?.title);
+                  // allow underscore/hyphen/space variants
+                  const variants = [aid, aname, aid.replace(/_/g,' '), aname.replace(/_/g,' '), aid.replace(/\s/g,'_'), aname.replace(/\s/g,'_')];
+                  return opCandidates.some(c => variants.includes(c));
+                });
                 if (found) break;
               }
               if (found && found.parameters && found.parameters.properties) {
