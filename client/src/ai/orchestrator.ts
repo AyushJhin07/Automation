@@ -57,23 +57,34 @@ export function deriveMissingFields(draftGraph: any, answers: Record<string, any
 }
 
 export function nextState(state: ConversationState, userMessage?: string, context?: { draftGraph?: any }): ConversationState {
+  const log = (from: Phase, to: Phase, extra?: Record<string, any>) => {
+    try { console.info(`[Orchestrator] Phase ${from} → ${to}`, { userGoal: state.userGoal, missing: state.missing?.length || 0, ...(extra||{}) }); } catch {}
+  };
   switch (state.phase) {
     case 'COLLECT_REQUIREMENTS': {
       const draftGraph = context?.draftGraph || {};
       const missing = deriveMissingFields(draftGraph, state.answers);
       if (missing.length > 0) {
         // ask only the next 1-2 essential questions
-        return { ...state, missing };
+        const next = { ...state, missing } as ConversationState;
+        log('COLLECT_REQUIREMENTS','COLLECT_REQUIREMENTS',{ action: 'ASK_MISSING', count: missing.length });
+        return next;
       }
-      return { ...state, phase: 'CONFIRM_REQUIREMENTS', missing: [] };
+      const next = { ...state, phase: 'CONFIRM_REQUIREMENTS', missing: [] } as ConversationState;
+      log('COLLECT_REQUIREMENTS','CONFIRM_REQUIREMENTS');
+      return next;
     }
     case 'CONFIRM_REQUIREMENTS': {
       const accepted = /^(ok|yes|confirm)/i.test(userMessage || '');
       if (accepted) {
-        return { ...state, phase: 'GENERATE_SPEC' };
+        const next = { ...state, phase: 'GENERATE_SPEC' } as ConversationState;
+        log('CONFIRM_REQUIREMENTS','GENERATE_SPEC');
+        return next;
       }
       // If user provided edits, merge and go back to collect
-      return { ...state, phase: 'COLLECT_REQUIREMENTS' };
+      const next = { ...state, phase: 'COLLECT_REQUIREMENTS' } as ConversationState;
+      log('CONFIRM_REQUIREMENTS','COLLECT_REQUIREMENTS',{ action: 'EDIT' });
+      return next;
     }
     case 'GENERATE_SPEC': {
       // In a real implementation, call server to validate/compile and return a spec
@@ -83,7 +94,9 @@ export function nextState(state: ConversationState, userMessage?: string, contex
         nodes: [],
         edges: []
       };
-      return { ...state, phase: 'DONE', spec };
+      const next = { ...state, phase: 'DONE', spec } as ConversationState;
+      log('GENERATE_SPEC','DONE');
+      return next;
     }
     default:
       return state;
