@@ -38,18 +38,33 @@ export function initializeState(userGoal: string): ConversationState {
   };
 }
 
-// Placeholder: determine missing fields from a given draft graph and catalog
-export function deriveMissingFields(draftGraph: any, answers: Record<string, any>): MissingField[] {
+// Catalog-driven required field detection
+import { GoogleSheetsAppendRowContract } from '../catalog/google_sheets.append_row';
+import type { AutomationSpec as CanonicalSpec } from '../core/spec';
+
+const CONTRACTS: Record<string, { requiredFields: { key: string; type: string; help?: string; example?: any; enumOptions?: string[] }[] }> = {
+  'sheets.append_row': GoogleSheetsAppendRowContract as any
+  // Add more contracts as you grow coverage
+};
+
+export function deriveMissingFields(draftGraph: CanonicalSpec, answers: Record<string, any>): MissingField[] {
   const missing: MissingField[] = [];
-  const nodes: any[] = draftGraph?.nodes || [];
-  for (const n of nodes) {
-    const params = n?.data?.parameters || n?.parameters || {};
-    const required: string[] = n?.data?.required || n?.required || [];
-    for (const field of required) {
-      const key = `${n.id}.${field}`;
-      const hasAnswer = answers[key] != null || params[field] != null;
-      if (!hasAnswer) {
-        missing.push({ nodeId: n.id, field, prompt: `Please provide ${field} for ${n.data?.label || n.type}`, type: 'string' });
+  const allNodes: any[] = [...(draftGraph?.triggers || []), ...(draftGraph?.nodes || [])];
+
+  for (const n of allNodes) {
+    const contract = CONTRACTS[n.type];
+    if (!contract) continue;
+    for (const f of contract.requiredFields) {
+      const current = n.inputs?.[f.key] ?? answers[`${n.id}.${f.key}`];
+      const isBlank = current === undefined || current === null || (typeof current === 'string' && current.trim() === '');
+      if (isBlank) {
+        missing.push({
+          nodeId: n.id,
+          field: f.key,
+          type: (f.type as any) || 'string',
+          prompt: f.help || `Please provide a value for ${f.key}.`,
+          enumOptions: f.enumOptions
+        });
       }
     }
   }
@@ -62,7 +77,7 @@ export function nextState(state: ConversationState, userMessage?: string, contex
   };
   switch (state.phase) {
     case 'COLLECT_REQUIREMENTS': {
-      const draftGraph = context?.draftGraph || {};
+      const draftGraph = (context?.draftGraph || {}) as CanonicalSpec;
       const missing = deriveMissingFields(draftGraph, state.answers);
       if (missing.length > 0) {
         // ask only the next 1-2 essential questions
