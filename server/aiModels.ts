@@ -2194,15 +2194,82 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
     const geminiModel = models.find(m => m.provider === 'gemini');
     
     if (!geminiModel?.apiKey) {
-      // Fallback to basic questions if no API key
-      return [{
-        id: 'basic_trigger',
-        text: 'What should trigger this automation?',
-        type: 'choice',
-        choices: ['Time-based', 'Event-based', 'Manual trigger'],
-        required: true,
-        category: 'trigger'
-      }];
+      // Fallback: generate context-aware questions without external LLM
+      const lower = prompt.toLowerCase();
+      const apps = appHints;
+      const likelySheet = lower.includes('sheet') || lower.includes('sheets');
+      const likelyEmail = lower.includes('email') || lower.includes('gmail');
+      const likelySlack = lower.includes('slack');
+
+      const questions: any[] = [
+        {
+          id: 'trigger_type',
+          text: 'What should trigger this automation?',
+          type: 'choice',
+          choices: ['Time schedule', ...(likelyEmail ? ['New email'] : []), ...(likelySheet ? ['Sheet update'] : []), 'Webhook', 'Manual'],
+          required: true,
+          category: 'trigger',
+          hint: 'Determines when the workflow runs'
+        },
+        {
+          id: 'apps_involved',
+          text: 'Which apps/services should be involved?',
+          type: 'app_select',
+          options: (apps.length ? apps : ['Gmail','Google Sheets','Slack','Google Drive']).map(a => ({ value: a, label: a })),
+          required: true,
+          category: 'technical'
+        },
+        ...(likelyEmail ? [{
+          id: 'email_query',
+          text: 'If emails are involved, what search/filter should be used?',
+          type: 'text',
+          required: likelyEmail,
+          category: 'data',
+          placeholder: 'e.g., label:invoices newer_than:30d has:attachment'
+        }] : []),
+        ...(likelySheet ? [{
+          id: 'sheet_url',
+          text: 'Provide the Google Sheet URL (or ID) to use.',
+          type: 'text',
+          required: likelySheet,
+          category: 'data',
+          format: 'uri',
+          placeholder: 'https://docs.google.com/spreadsheets/d/...'
+        },{
+          id: 'sheet_name',
+          text: 'Which sheet/tab name should be used?',
+          type: 'text',
+          required: false,
+          category: 'data',
+          placeholder: 'e.g., Invoices'
+        }] : []),
+        ...(likelySlack ? [{
+          id: 'slack_channel',
+          text: 'Which Slack channel should receive notifications?',
+          type: 'text',
+          required: false,
+          category: 'notification',
+          placeholder: '#ops-alerts'
+        }] : []),
+        {
+          id: 'frequency',
+          text: 'If time-based, how often should it run?',
+          type: 'choice',
+          choices: ['Every 5 minutes','Hourly','Daily','Weekly','Custom CRON'],
+          required: false,
+          category: 'trigger'
+        },
+        {
+          id: 'success_criteria',
+          text: 'What outcome would indicate success?',
+          type: 'textarea',
+          required: false,
+          category: 'business',
+          placeholder: 'e.g., All new invoices are appended to the Sheet within 5 minutes'
+        }
+      ];
+
+      return questions;
     }
 
     const response = await fetch(`${geminiModel.endpoint}?key=${geminiModel.apiKey}`, {

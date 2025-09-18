@@ -1157,6 +1157,13 @@ const GraphEditorContent = () => {
         setEdges(reactFlowEdges as any);
         setShowWelcomeModal(false);
 
+        // Auto-select first node to reveal parameter panel immediately
+        if ((reactFlowNodes as any).length > 0) {
+          const firstNode = (reactFlowNodes as any)[0];
+          setSelectedNode(firstNode as any);
+          setNodes((prev: any) => prev.map((n: any) => ({ ...n, selected: n.id === firstNode.id })));
+        }
+
         // Clean URL params if we autoloaded
         if (fromAIB || workflowId) {
           const newUrl = window.location.pathname;
