@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // if not found, try by title (case-insensitive)
     if (!connector) {
       connector = Object.values<any>(catalog?.connectors || {}).find(
-        (c: any) => (c?.title || "").trim().toLowerCase() === rawApp.trim().toLowerCase()
+        (c: any) => ((c?.title || c?.name || "")).trim().toLowerCase() === rawApp.trim().toLowerCase()
       ) as any;
     }
 
@@ -147,14 +147,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ success: false, error: "APP_NOT_FOUND", appTried: rawApp });
     }
 
-    // --- Find op/trigger by id OR title (case-insensitive) ---
-    const findEntry = (bucket: Record<string, any> | undefined) => {
+    // --- Find op/trigger by id OR title (case-insensitive). Supports map or array buckets ---
+    const findEntry = (bucket: any) => {
       if (!bucket) return undefined;
+      if (Array.isArray(bucket)) {
+        // Search array of definitions
+        const byId = bucket.find((v: any) => String(v?.id || '').toLowerCase() === rawOp.toLowerCase());
+        if (byId) return byId;
+        return bucket.find((v: any) => String((v?.title || v?.name || '')).toLowerCase() === rawOp.toLowerCase());
+      }
+      // Map/dictionary form
       const byId = Object.entries(bucket).find(([id]) => id.toLowerCase() === rawOp.toLowerCase());
       if (byId) return byId[1];
-
       return Object.values<any>(bucket).find(
-        (v: any) => String(v?.title || "").toLowerCase() === rawOp.toLowerCase()
+        (v: any) => String((v?.title || v?.name || '')).toLowerCase() === rawOp.toLowerCase()
       );
     };
 
@@ -167,14 +173,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (def) break;
     }
 
+    // Fallback: scan any array properties on connector for a matching op
     if (!def) {
-      // last-chance: send empty schema so UI doesn't spin
-      return res.json({
-        success: true,
-        schema: { type: "object", properties: {}, required: [] },
-        defaults: {},
-        note: "DEFINITION_NOT_FOUND",
-      });
+      for (const [key, value] of Object.entries(connector as any)) {
+        if (Array.isArray(value)) {
+          const found = findEntry(value);
+          if (found) {
+            def = found;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!def) {
+      // Last-chance FS fallback: read connector JSON directly to resolve schema
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const candidates: string[] = [];
+        const byNorm = path.resolve(process.cwd(), 'connectors', `${appId}.json`);
+        if (fs.existsSync(byNorm)) candidates.push(byNorm);
+
+        // Scan connectors dir for matching name/title
+        const dir = path.resolve(process.cwd(), 'connectors');
+        if (fs.existsSync(dir)) {
+          for (const f of fs.readdirSync(dir)) {
+            if (!f.endsWith('.json')) continue;
+            const full = path.join(dir, f);
+            try {
+              const json = JSON.parse(fs.readFileSync(full, 'utf-8'));
+              const title = String((json?.title || json?.name || '')).trim().toLowerCase();
+              if (title && title === rawApp.trim().toLowerCase()) {
+                candidates.push(full);
+              }
+            } catch {}
+          }
+        }
+
+        for (const file of candidates) {
+          try {
+            const json = JSON.parse(fs.readFileSync(file, 'utf-8'));
+            const buckets = [json.operations, json.actions, json.triggers].filter(Boolean);
+            for (const bucket of buckets) {
+              const found = Array.isArray(bucket)
+                ? bucket.find((v: any) => String(v?.id || '').toLowerCase() === rawOp.toLowerCase())
+                   || bucket.find((v: any) => String((v?.title || v?.name || '')).toLowerCase() === rawOp.toLowerCase())
+                : undefined;
+              if (found) {
+                def = found;
+                break;
+              }
+            }
+            if (def) break;
+          } catch {}
+        }
+      } catch {}
+
+      if (!def) {
+        // Still not found: send empty schema so UI doesn't spin
+        return res.json({
+          success: true,
+          schema: { type: "object", properties: {}, required: [] },
+          defaults: {},
+          note: "DEFINITION_NOT_FOUND",
+        });
+      }
     }
 
     const schema =

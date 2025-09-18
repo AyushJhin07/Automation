@@ -49,16 +49,51 @@ export function SmartParametersPanel() {
     
     fetch(`/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}&kind=${kind}`)
       .then(r => r.json())
-      .then(j => {
-        if (!j?.success) { 
-          setError(j?.error || "Failed to load schema"); 
-          setSchema({type:"object",properties:{}}); 
-          return; 
+      .then(async (j) => {
+        if (!j?.success) {
+          setError(j?.error || "Failed to load schema");
+          setSchema({type:"object",properties:{}});
+          return;
         }
-        setSchema(j.schema || {type:"object",properties:{}});
-        setDefaults(j.defaults || {});
-        // prime params with defaults if empty
-        const next = { ...(j.defaults || {}), ...(node?.data?.parameters || {}) };
+        let nextSchema = j.schema || { type: "object", properties: {} };
+        let nextDefaults = j.defaults || {};
+
+        // Fallback: if schema has no properties, derive from connectors payload
+        const empty = !nextSchema?.properties || Object.keys(nextSchema.properties).length === 0;
+        if (empty) {
+          try {
+            const connectorsRes = await fetch('/api/registry/connectors');
+            const connectorsJson = await connectorsRes.json();
+            const list = connectorsJson?.connectors || [];
+            // match by name OR id case-insensitive
+            const match = list.find((c: any) => {
+              const title = String((c?.name || c?.title || '')).toLowerCase();
+              const id = String(c?.id || '').toLowerCase();
+              const appLc = String(app).toLowerCase();
+              return title === appLc || id === appLc;
+            });
+            if (match) {
+              // search actions and triggers arrays
+              const pools = [match.actions || [], match.triggers || []];
+              let found: any = null;
+              for (const pool of pools) {
+                found = pool.find((a: any) => String(a?.id || '').toLowerCase() === String(opId).toLowerCase())
+                     || pool.find((a: any) => String((a?.name || a?.title || '')).toLowerCase() === String(opId).toLowerCase());
+                if (found) break;
+              }
+              if (found && found.parameters && found.parameters.properties) {
+                nextSchema = found.parameters;
+                nextDefaults = found.defaults || {};
+              }
+            }
+          } catch (e) {
+            // ignore fallback errors, keep empty schema
+          }
+        }
+
+        setSchema(nextSchema);
+        setDefaults(nextDefaults);
+        const next = { ...(nextDefaults || {}), ...(node?.data?.parameters || {}) };
         setParams(next);
       })
       .catch(e => { 
