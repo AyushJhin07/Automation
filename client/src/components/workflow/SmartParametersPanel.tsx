@@ -27,8 +27,14 @@ export function SmartParametersPanel() {
   const selected = useStore((s) => s.getNodes().filter(n => n.selected));
   const node = selected[0];
 
-  const app = node?.data?.app;
-  const opId = node?.data?.actionId ?? node?.data?.function; // support both
+  // More robust app/op retrieval
+  const app = node?.data?.app || node?.data?.connectorId || node?.data?.provider || "";
+  const opId = node?.data?.actionId
+    ?? node?.data?.function
+    ?? node?.data?.triggerId
+    ?? node?.data?.eventId
+    ?? node?.data?.id
+    ?? node?.data?.label;
   const [schema, setSchema] = useState<JSONSchema | null>(null);
   const [defaults, setDefaults] = useState<any>({});
   const [params, setParams] = useState<any>(node?.data?.parameters ?? {});
@@ -39,16 +45,27 @@ export function SmartParametersPanel() {
 
   // Load schema when node/app/op changes
   useEffect(() => {
-    if (!app || !opId) return;
+    if (!app) return;
     setLoading(true);
     setError(null);
     setSchema(null);
     setDefaults({});
 
-    const kind = node?.data?.kind || "auto"; // Support trigger/action distinction
-    
-    fetch(`/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}&kind=${kind}`)
-      .then(r => r.json())
+    const kind = node?.data?.kind || (String(node?.type||"").startsWith("trigger") ? "trigger" : "auto");
+
+    const normalize = (s: any) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const appKey = normalize(app);
+    const opKey = normalize(opId);
+
+    const opSchemaUrl = opId 
+      ? `/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}&kind=${kind}`
+      : "";
+
+    const tryOpSchema = opSchemaUrl
+      ? fetch(opSchemaUrl).then(r => r.json()).catch(() => ({ success: false }))
+      : Promise.resolve({ success: false });
+
+    tryOpSchema
       .then(async (j) => {
         if (!j?.success) {
           setError(j?.error || "Failed to load schema");
@@ -65,28 +82,30 @@ export function SmartParametersPanel() {
             const connectorsRes = await fetch('/api/registry/connectors');
             const connectorsJson = await connectorsRes.json();
             const list = connectorsJson?.connectors || [];
-            // match by name OR id case-insensitive
-            const normalize = (s: any) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-            const appLc = normalize(app);
+
             const match = list.find((c: any) => {
               const title = normalize(c?.name || c?.title);
               const id = normalize(c?.id);
-              return title === appLc || id === appLc;
+              return title === appKey || id === appKey || title.includes(appKey) || appKey.includes(title);
             });
             if (match) {
               // search actions and triggers arrays
               const pools = [match.actions || [], match.triggers || []];
               let found: any = null;
-              const opCandidates = [opId, node?.data?.label].map(normalize);
+              const opCandidates = [opKey, normalize(node?.data?.label)].filter(Boolean);
               for (const pool of pools) {
                 found = pool.find((a: any) => {
                   const aid = normalize(a?.id);
                   const aname = normalize(a?.name || a?.title);
-                  // allow underscore/hyphen/space variants
                   const variants = [aid, aname, aid.replace(/_/g,' '), aname.replace(/_/g,' '), aid.replace(/\s/g,'_'), aname.replace(/\s/g,'_')];
                   return opCandidates.some(c => variants.includes(c));
                 });
                 if (found) break;
+              }
+              if (!found && pools[0].length) {
+                // last resort: if only one action/trigger and op unknown, use it
+                const all = [...pools[0], ...pools[1]];
+                if (all.length === 1) found = all[0];
               }
               if (found && found.parameters && found.parameters.properties) {
                 nextSchema = found.parameters;
@@ -310,7 +329,7 @@ export function SmartParametersPanel() {
       {loading ? (
         <div className="text-center py-4 text-gray-500">
           <div className="animate-pulse">Loading parameter schema...</div>
-          <div className="text-xs mt-1">Fetching {String(app)} • {String(opId)}</div>
+          <div className="text-xs mt-1">Fetching {String(app)} • {String(opId || node?.data?.label || '')}</div>
         </div>
       ) : error ? (
         <div className="text-center py-4 text-red-500">
@@ -332,7 +351,7 @@ export function SmartParametersPanel() {
           <summary className="cursor-pointer text-gray-400">Debug Info</summary>
           <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-auto">
             App: {app}{'\n'}
-            Operation: {opId}{'\n'}
+            Operation: {String(opId || node?.data?.label || '')}{'\n'}
             Current Params: {JSON.stringify(params, null, 2)}
           </pre>
         </details>
