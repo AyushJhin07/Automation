@@ -5,6 +5,7 @@ export function specToReactFlow(spec: AutomationSpec) {
 
   const nodes = all.map((n, idx) => ({
     id: n.id,
+    // keep generic node type; port handles will be rendered by UI from data
     type: 'action.core',
     position: { x: 120 + (idx % 6) * 260, y: 120 + Math.floor(idx / 6) * 180 },
     data: {
@@ -12,7 +13,11 @@ export function specToReactFlow(spec: AutomationSpec) {
       app: n.app,
       function: n.type,
       parameters: n.inputs || {},
-      outputs: n.outputs || []
+      outputs: n.outputs || [],
+      ports: {
+        inputs: Object.keys(n.inputs || {}),
+        outputs: n.outputs || []
+      }
     }
   }));
 
