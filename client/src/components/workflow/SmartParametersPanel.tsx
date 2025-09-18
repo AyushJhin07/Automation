@@ -149,6 +149,24 @@ export function SmartParametersPanel() {
 
     const onChange = (v: any) => setParams((p: any) => ({ ...p, [name]: v }));
 
+    // Lightweight dynamic binding support (expressions like {{nodeId.field}})
+    const [showFx, setShowFx] = useState(false);
+    const rfEdges = useStore((s) => s.getEdges?.() || []);
+    const rfNodes = useStore((s) => s.getNodes?.() || []);
+    const upstreamIds: string[] = rfEdges
+      .filter((e: any) => e?.target === node?.id)
+      .map((e: any) => e?.source)
+      .filter(Boolean);
+    const upstreamNodes = rfNodes.filter((n: any) => upstreamIds.includes(n.id));
+    const firstUpstream = upstreamNodes[0];
+    const firstUpstreamLabel = firstUpstream?.data?.label || firstUpstream?.id;
+
+    const insertExpr = (expr: string) => {
+      // For arrays, keep expression as single token string; user can expand later
+      onChange(expr);
+      setShowFx(false);
+    };
+
     if (def?.enum && Array.isArray(def.enum)) {
       return (
         <div className="mb-3">
@@ -229,6 +247,33 @@ export function SmartParametersPanel() {
               }
               placeholder="item1, item2, item3"
             />
+            <div className="mt-1 flex items-center gap-2 text-xs">
+              <button type="button" className="text-blue-600 hover:underline" onClick={() => setShowFx((v) => !v)}>Use dynamic value (fx)</button>
+              {showFx && (
+                <div className="mt-2 w-full border rounded p-2 bg-gray-50">
+                  <div className="mb-1 text-gray-600">Insert reference from upstream</div>
+                  {firstUpstream ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 bg-white border rounded text-gray-700">{firstUpstreamLabel}</span>
+                      <button type="button" className="text-blue-600 hover:underline" onClick={() => insertExpr(`{{${firstUpstream.id}}}`)}>Insert {{firstUpstream}}</button>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500">No upstream nodes connected</div>
+                  )}
+                  {/* Sheets-friendly quick picks */}
+                  {String(firstUpstreamLabel || '').toLowerCase().includes('row added') && (
+                    <div className="flex flex-wrap gap-1">
+                      {[0,1,2,3,4].map((idx) => (
+                        <button key={idx} type="button" className="px-2 py-0.5 bg-white border rounded hover:bg-gray-100"
+                          onClick={() => insertExpr(`{{${firstUpstream.id}.values[${idx}]}}`)}>
+                          Column {String.fromCharCode(65+idx)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
         );
@@ -276,6 +321,32 @@ export function SmartParametersPanel() {
               onChange={(e) => onChange(e.target.value)}
               placeholder={def?.description || def?.format || `Enter ${name}`}
             />
+            <div className="mt-1 flex items-center gap-2 text-xs">
+              <button type="button" className="text-blue-600 hover:underline" onClick={() => setShowFx((v) => !v)}>Use dynamic value (fx)</button>
+              {showFx && (
+                <div className="mt-2 w-full border rounded p-2 bg-gray-50">
+                  <div className="mb-1 text-gray-600">Insert reference from upstream</div>
+                  {firstUpstream ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 bg-white border rounded text-gray-700">{firstUpstreamLabel}</span>
+                      <button type="button" className="text-blue-600 hover:underline" onClick={() => insertExpr(`{{${firstUpstream.id}}}`)}>Insert {{firstUpstream}}</button>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500">No upstream nodes connected</div>
+                  )}
+                  {String(firstUpstreamLabel || '').toLowerCase().includes('row added') && (
+                    <div className="flex flex-wrap gap-1">
+                      {[0,1,2,3,4].map((idx) => (
+                        <button key={idx} type="button" className="px-2 py-0.5 bg-white border rounded hover:bg-gray-100"
+                          onClick={() => insertExpr(`{{${firstUpstream.id}.values[${idx}]}}`)}>
+                          Column {String.fromCharCode(65+idx)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
         );
