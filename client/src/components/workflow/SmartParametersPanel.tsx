@@ -166,6 +166,22 @@ export function SmartParametersPanel() {
       onChange(expr);
       setShowFx(false);
     };
+    const fxOptions: Array<{ label: string; value: string }> = (() => {
+      const options: Array<{ label: string; value: string }> = [];
+      if (firstUpstream) {
+        options.push({ label: `${firstUpstreamLabel} (whole output)`, value: `{{${firstUpstream.id}}}` });
+        const isSheetsRowAdded = String(firstUpstreamLabel || '').toLowerCase().includes('row added');
+        if (isSheetsRowAdded) {
+          for (let idx = 0; idx < 10; idx++) {
+            options.push({
+              label: `Column ${String.fromCharCode(65 + idx)} (values[${idx}])`,
+              value: `{{${firstUpstream.id}.values[${idx}]}}`
+            });
+          }
+        }
+      }
+      return options;
+    })();
 
     if (def?.enum && Array.isArray(def.enum)) {
       return (
@@ -255,21 +271,19 @@ export function SmartParametersPanel() {
                   {firstUpstream ? (
                     <div className="flex items-center gap-2 mb-2">
                       <span className="px-2 py-0.5 bg-white border rounded text-gray-700">{firstUpstreamLabel}</span>
-                      <button type="button" className="text-blue-600 hover:underline" onClick={() => insertExpr(`{{${firstUpstream.id}}}`)}>Insert {{firstUpstream}}</button>
+                      <select
+                        className="border rounded px-2 py-1 bg-white text-gray-700"
+                        defaultValue=""
+                        onChange={(e) => e.target.value && insertExpr(e.target.value)}
+                      >
+                        <option value="" disabled>Select a field…</option>
+                        {fxOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </div>
                   ) : (
                     <div className="text-gray-500">No upstream nodes connected</div>
-                  )}
-                  {/* Sheets-friendly quick picks */}
-                  {String(firstUpstreamLabel || '').toLowerCase().includes('row added') && (
-                    <div className="flex flex-wrap gap-1">
-                      {[0,1,2,3,4].map((idx) => (
-                        <button key={idx} type="button" className="px-2 py-0.5 bg-white border rounded hover:bg-gray-100"
-                          onClick={() => insertExpr(`{{${firstUpstream.id}.values[${idx}]}}`)}>
-                          Column {String.fromCharCode(65+idx)}
-                        </button>
-                      ))}
-                    </div>
                   )}
                 </div>
               )}
@@ -329,20 +343,19 @@ export function SmartParametersPanel() {
                   {firstUpstream ? (
                     <div className="flex items-center gap-2 mb-2">
                       <span className="px-2 py-0.5 bg-white border rounded text-gray-700">{firstUpstreamLabel}</span>
-                      <button type="button" className="text-blue-600 hover:underline" onClick={() => insertExpr(`{{${firstUpstream.id}}}`)}>Insert {{firstUpstream}}</button>
+                      <select
+                        className="border rounded px-2 py-1 bg-white text-gray-700"
+                        defaultValue=""
+                        onChange={(e) => e.target.value && insertExpr(e.target.value)}
+                      >
+                        <option value="" disabled>Select a field…</option>
+                        {fxOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </div>
                   ) : (
                     <div className="text-gray-500">No upstream nodes connected</div>
-                  )}
-                  {String(firstUpstreamLabel || '').toLowerCase().includes('row added') && (
-                    <div className="flex flex-wrap gap-1">
-                      {[0,1,2,3,4].map((idx) => (
-                        <button key={idx} type="button" className="px-2 py-0.5 bg-white border rounded hover:bg-gray-100"
-                          onClick={() => insertExpr(`{{${firstUpstream.id}.values[${idx}]}}`)}>
-                          Column {String.fromCharCode(65+idx)}
-                        </button>
-                      ))}
-                    </div>
                   )}
                 </div>
               )}
