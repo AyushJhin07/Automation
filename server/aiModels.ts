@@ -24,6 +24,13 @@ interface AIAnalysisResult {
   modelUsed: string;
 }
 
+interface ConversationTurn {
+  id?: string;
+  question: string;
+  answer: string;
+  category?: string;
+}
+
 // Model name mapping constants for consistency
 const MODEL_MAP = {
   gemini: 'gemini-2.0-flash-exp', // Use latest Gemini model (experimental 2.0)
@@ -105,8 +112,11 @@ class MultiAIService {
     return this.localFallbackAnalysis(prompt);
   }
 
-  public static async generateFollowUpQuestions(prompt: string): Promise<any[]> {
-    return generateFollowUpQuestions(prompt);
+  public static async generateFollowUpQuestions(
+    prompt: string,
+    options: { history?: ConversationTurn[]; requested?: number } = {}
+  ): Promise<any[]> {
+    return generateFollowUpQuestions(prompt, options);
   }
 
   // Add missing generateText method for pure AI workflow generation
@@ -2087,6 +2097,26 @@ Examples:
       };
     }
 
+    const askedIds = new Set(
+      historyTurns
+        .map((turn) => (turn.id || '').toString().trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const askedTexts = new Set(
+      historyTurns
+        .map((turn) => (turn.question || '').toString().trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const dedupeQuestion = (q: any) => {
+      if (!q) return false;
+      const qId = (q.id || '').toString().trim().toLowerCase();
+      const qText = (q.text || q.question || '').toString().trim().toLowerCase();
+      if (qId && askedIds.has(qId)) return false;
+      if (qText && askedTexts.has(qText)) return false;
+      return true;
+    };
+    const filterAndLimit = (list: any[]) => (Array.isArray(list) ? list : []).filter(dedupeQuestion).slice(0, requestedCount);
+
     const response = await fetch(`${geminiModel.endpoint}?key=${geminiModel.apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2117,15 +2147,51 @@ Examples:
   }
 }
 
-async function generateFollowUpQuestions(prompt: string): Promise<any[]> {
+async function generateFollowUpQuestions(
+  prompt: string,
+  options: { history?: ConversationTurn[]; requested?: number } = {}
+): Promise<any[]> {
   // P1-9: Enhanced LLM Q&A completeness with comprehensive business analysis
+  const historyTurns = Array.isArray(options.history) ? options.history : [];
+  const requestedCount = options.requested && options.requested > 0
+    ? Math.min(options.requested, 5)
+    : 3;
+
+  const askedIds = new Set(
+    historyTurns
+      .map((turn) => (turn.id || '').toString().trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const askedTexts = new Set(
+    historyTurns
+      .map((turn) => (turn.question || '').toString().trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const dedupeQuestion = (q: any) => {
+    if (!q) return false;
+    const qId = (q.id || '').toString().trim().toLowerCase();
+    const qText = (q.text || q.question || '').toString().trim().toLowerCase();
+    if (qId && askedIds.has(qId)) return false;
+    if (qText && askedTexts.has(qText)) return false;
+    return true;
+  };
+  const filterAndLimit = (list: any[]) => (Array.isArray(list) ? list : []).filter(dedupeQuestion).slice(0, requestedCount);
+
   try {
     const appHints = detectAppsFromPrompt(prompt);
     const appList = appHints?.join(', ') || 'Google Workspace apps';
+    const conversationSummary = historyTurns.length
+      ? historyTurns
+          .map((turn, index) => `Q${index + 1}: ${turn.question}\nA${index + 1}: ${turn.answer || 'No answer provided'}`)
+          .join('\n\n')
+      : 'No clarification questions have been asked yet.';
 
     const questionPrompt = `You are a world-class automation consultant and Google Apps Script expert with deep business process knowledge.
 
 User request: "${prompt}"
+
+Clarification history:
+${conversationSummary}
 
 COMPREHENSIVE PLATFORM ECOSYSTEM (149 apps available):
 🏢 CRM & Sales: Salesforce, HubSpot, Pipedrive, Zoho CRM, Dynamics 365
@@ -2151,7 +2217,9 @@ GENERATE COMPREHENSIVE QUESTIONS that ensure enterprise-grade automation:
 4. OPERATIONAL NEEDS (understand the when/where)
 5. SUCCESS METRICS (understand the outcomes)
 
-Generate 5-8 intelligent questions that build upon each other and gather complete requirements for production-ready automation.
+Ask at most ${requestedCount} additional question(s) that build upon each other and gather complete requirements for production-ready automation.
+Only ask for information that is still missing. Do not repeat questions that were already answered in the clarification history.
+If all required details are already provided, respond with an empty JSON array [] to signal that planning can proceed.
 
 Use these enhanced input types:
 - "business_select": Business process choices
@@ -2269,7 +2337,7 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
         }
       ];
 
-      return questions;
+      return filterAndLimit(questions);
     }
 
     const response = await fetch(`${geminiModel.endpoint}?key=${geminiModel.apiKey}`, {
@@ -2293,7 +2361,7 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
       parsed = JSON.parse(raw);
     } catch {
       // Enhanced fallback questions with explicit sheet URL requirements
-      parsed = [
+      parsed = filterAndLimit([
         { 
           id: 'trigger', 
           text: 'What should trigger this automation?', 
@@ -2331,16 +2399,17 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
           category: 'action',
           helpText: 'Specify both subject and body content for email actions'
         }
-      ];
+      ]);
     }
     
     // ChatGPT's format expects direct array, not object with questions property
-    return Array.isArray(parsed) ? parsed : (parsed.questions || []);
+    const normalized = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+    return filterAndLimit(normalized);
     
   } catch (error) {
     console.error('LLM question generation failed, using fallback:', error);
     // Fallback to basic questions
-    return [
+    return filterAndLimit([
       {
         id: 'trigger_type',
         text: 'What should trigger this automation?',
@@ -2357,7 +2426,7 @@ CRITICAL: Generate questions that are intelligent, context-aware, and comprehens
         required: true,
         category: 'action'
       }
-    ];
+    ]);
   }
 }
 

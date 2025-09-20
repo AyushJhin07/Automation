@@ -7,7 +7,14 @@ export const aiRouter = Router();
 aiRouter.post('/generate-workflow', async (req, res) => {
   try {
     console.log('🤖 /api/ai/generate-workflow called!');
-    const { prompt, userId, model = 'gemini-1.5-flash', apiKey } = req.body || {};
+    const {
+      prompt,
+      userId,
+      model = 'gemini-1.5-flash',
+      apiKey,
+      history = [],
+      count = 3
+    } = req.body || {};
     
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ 
@@ -30,7 +37,10 @@ aiRouter.post('/generate-workflow', async (req, res) => {
     console.log('🤖 Model:', model);
 
     // Use MultiAIService to determine if questions are needed
-    const questions = await MultiAIService.generateFollowUpQuestions(prompt);
+    const questions = await MultiAIService.generateFollowUpQuestions(prompt, {
+      history,
+      requested: typeof count === 'number' && count > 0 ? count : 3
+    });
     
     console.log('❓ Generated questions:', questions);
 
