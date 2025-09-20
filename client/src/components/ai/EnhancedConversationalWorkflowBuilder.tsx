@@ -236,10 +236,12 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [currentInput, setCurrentInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
-  const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [questionQueue, setQuestionQueue] = useState<Question[]>([]);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | null>(null);
   const [latestWorkflowId, setLatestWorkflowId] = useState<string | undefined>(undefined);
+  const [qaHistory, setQaHistory] = useState<Array<{ question: Question; answer: string }>>([]);
   // ChatGPT Fix: Persist prompt explicitly to prevent INVALID_PROMPT errors
   const [prompt, setPrompt] = useState('');
   const [showWorkflowPreview, setShowWorkflowPreview] = useState(false);
@@ -360,10 +362,6 @@ I'm your AI automation assistant. I can help you create powerful Google Apps Scr
 
     const userMessage = currentInput.trim();
     setCurrentInput('');
-    
-    // ChatGPT Fix: Persist prompt explicitly
-    setPrompt(userMessage);
-
     // Add user message
     addMessage({
       role: 'user',
@@ -373,7 +371,7 @@ I'm your AI automation assistant. I can help you create powerful Google Apps Scr
     setIsProcessing(true);
     
     try {
-      await generateCompleteWorkflow(userMessage);
+      await startWorkflowConversation(userMessage);
     } catch (error) {
       console.error('Workflow generation error:', error);
       addMessage({
@@ -394,174 +392,164 @@ You can try:
     }
   };
 
-  const generateCompleteWorkflow = async (prompt: string, answers: Record<string, string> = {}) => {
+  const resetQuestionFlow = () => {
+    setCurrentQuestion(null);
+    setQuestionQueue([]);
+    setQaHistory([]);
+  };
+
+  const mapHistoryForLLM = (history: Array<{ question: Question; answer: string }>) =>
+    history.map((turn) => ({
+      id: turn.question.id,
+      question: turn.question.text,
+      answer: turn.answer,
+      category: (turn.question as any)?.category,
+    }));
+
+  const resolveModelCredentials = () => {
+    const provider = providerOf(selectedModel);
+    const currentApiKey =
+      provider === 'gemini' ? (apiKeys.gemini || '') :
+      provider === 'claude' ? (apiKeys.claude || '') :
+      provider === 'openai' ? (apiKeys.openai || '') : '';
+
+    const serverHasIt = serverModels.length === 0 ? true : serverHasProvider(provider);
+
+    if (!currentApiKey && !serverHasIt) {
+      throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
+    }
+
+    return { provider, apiKey: currentApiKey || undefined };
+  };
+
+  const requestClarifyingQuestions = async (
+    currentPrompt: string,
+    historyTurns: Array<{ question: Question; answer: string }>,
+    requested: number = 1
+  ) => {
+    const userId = localStorage.getItem('userId') || 'demo-user';
+    const { apiKey } = resolveModelCredentials();
+
+    const response = await fetch('/api/ai/generate-workflow', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        prompt: currentPrompt,
+        userId,
+        model: selectedModel,
+        apiKey,
+        history: mapHistoryForLLM(historyTurns),
+        count: requested
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const payload = await response.json();
+    const questions = Array.isArray(payload.questions) ? payload.questions : [];
+    return questions as Question[];
+  };
+
+  const buildAutomation = async (promptValue: string, answers: Record<string, string>) => {
+    setProcessingStep('⚡ Building your intelligent workflow...');
+
+    const response = await fetch('/api/workflow/build', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        prompt: promptValue,
+        answers,
+        mode
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json() as (CompileResult & { success: boolean; workflowId?: string });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to build workflow');
+    }
+
+    setLatestWorkflowId(result.workflowId);
+    if (result.workflowId) {
+      localStorage.setItem('lastWorkflowId', result.workflowId);
+    } else {
+      localStorage.removeItem('lastWorkflowId');
+    }
+
+    useWorkflowState.getState().set(result);
+
+    setProcessingStep('📋 Planning your workflow...');
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    setProcessingStep('✅ Validating workflow structure...');
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    setProcessingStep('🔨 Generating Google Apps Script code...');
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    setProcessingStep('🚀 Finalizing deployment package...');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const workflowData = {
+      workflow: {
+        graph: {
+          id: result.graph.id,
+          name: `Workflow: ${promptValue.substring(0, 50)}...`,
+          description: promptValue,
+          nodes: result.graph.nodes || [],
+          connections: result.graph.edges || []
+        },
+        validation: { valid: true, errors: [], warnings: [] }
+      },
+      code: (result.files ?? []).find(f => f.path === 'Code.gs')?.content || 'No code generated',
+      files: result.files ?? [],
+      rationale: promptValue,
+      deploymentInstructions: 'Ready for deployment to Google Apps Script'
+    };
+
     try {
-      setProcessingStep('🤔 Understanding your request...');
-      
-      // Get API key for selected model
-      const provider = providerOf(selectedModel);
-      const currentApiKey =
-        provider === 'gemini'  ? (apiKeys.gemini  || '') :
-        provider === 'claude'  ? (apiKeys.claude  || '') :
-        provider === 'openai'  ? (apiKeys.openai  || '') : '';
-
-      const serverHasIt = serverHasProvider(provider);
-
-      // Allow server-side keys OR local keys
-      if (!currentApiKey && !serverHasIt) {
-        throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
-      }
-
-      // Only send apiKey if we have a local one, otherwise let server use its own
-      const apiKeyToSend = currentApiKey || undefined;
-
-      // STEP 1: Check if we need to ask questions first (if no answers provided)
-      if (Object.keys(answers).length === 0) {
-        setProcessingStep('🤔 Analyzing if I need more information...');
-        
-        // First call the question generation endpoint
-        const userId = localStorage.getItem('userId') || 'demo-user'; // Get userId or use fallback
-        const questionResponse = await fetch('/api/ai/generate-workflow', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prompt: prompt,
-            userId: userId, // Add userId to request
-            model: selectedModel,
-            apiKey: apiKeyToSend
-          })
-        });
-
-        if (!questionResponse.ok) {
-          throw new Error(`HTTP ${questionResponse.status}: ${questionResponse.statusText}`);
-        }
-
-        const questionResult = await questionResponse.json();
-
-        // If questions are returned, display them and wait for answers
-        if (questionResult.questions && questionResult.questions.length > 0) {
-          setProcessingStep('');
-          setCurrentQuestions(questionResult.questions);
-          addMessage({
-            role: 'assistant',
-            content: `🤔 **I need a bit more information to build the perfect workflow for you:**`,
-            type: 'questions',
-            data: { questions: questionResult.questions }
-          });
-          return; // Stop here, wait for user to answer questions
-        }
-
-        // If no questions needed, continue to build workflow
-        console.log('🎯 No additional questions needed, proceeding to build workflow');
-      }
-
-      // STEP 2: Build the workflow (either after questions answered, or if none needed)
-      setProcessingStep('⚡ Building your intelligent workflow...');
-      
-      const response = await fetch('/api/workflow/build', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          answers: answers,
-          mode: mode  // ChatGPT Enhancement: Include mode in build request
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json() as (CompileResult & { success: boolean; workflowId?: string });
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to build workflow');
-      }
-
-      console.log('🤖 Workflow build response received:', result);
-
-      setLatestWorkflowId(result.workflowId);
-      if (result.workflowId) {
-        localStorage.setItem('lastWorkflowId', result.workflowId);
-      } else {
-        localStorage.removeItem('lastWorkflowId');
-      }
-
-      // Store the compiled result in global state
-      useWorkflowState.getState().set(result);
-
-      
-      // Process the complete workflow result
-      setProcessingStep('📋 Planning your workflow...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setProcessingStep('✅ Validating workflow structure...');
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      setProcessingStep('🔨 Generating Google Apps Script code...');
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      setProcessingStep('🚀 Finalizing deployment package...');
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Create workflow result from new CompileResult format
-      const workflowData = {
-        workflow: {
-          graph: {
-            id: result.graph.id,
-            name: `Workflow: ${prompt.substring(0, 50)}...`,
-            description: prompt,
-            nodes: result.graph.nodes || [],
-            connections: result.graph.edges || []
-          },
-          validation: { valid: true, errors: [], warnings: [] }
-        },
-        // ChatGPT Fix: Null-safe code files access
-        code: (result.files ?? []).find(f => f.path === 'Code.gs')?.content || 'No code generated',
-        files: result.files ?? [],
-        rationale: prompt,
-        deploymentInstructions: 'Ready for deployment to Google Apps Script'
+      const graph = result.graph;
+      const specCandidate = {
+        version: '1.0',
+        name: `Automation: ${promptValue.substring(0, 60)}`,
+        description: promptValue,
+        triggers: [],
+        nodes: (graph.nodes || []).map((n: any) => ({
+          id: n.id,
+          type: n.type || n.data?.function || 'core.noop',
+          app: n.app || n.data?.app || 'built_in',
+          label: n.label || n.data?.label || n.id,
+          inputs: n.data?.parameters || n.parameters || {},
+          outputs: n.outputs || []
+        })),
+        edges: (graph.edges || graph.connections || []).map((e: any) => ({
+          from: { nodeId: e.source || e.from, port: e.sourceHandle || e.dataType || 'out' },
+          to: { nodeId: e.target || e.to, port: e.targetHandle || 'in' }
+        }))
       };
-      // Build a minimal AutomationSpec from the compiled graph for AI→Graph handoff
-      try {
-        const graph = result.graph;
-        const specCandidate = {
-          version: '1.0',
-          name: `Automation: ${prompt.substring(0, 60)}`,
-          description: prompt,
-          triggers: [],
-          nodes: (graph.nodes || []).map((n: any) => ({
-            id: n.id,
-            type: n.type || n.data?.function || 'core.noop',
-            app: n.app || n.data?.app || 'built_in',
-            label: n.label || n.data?.label || n.id,
-            inputs: n.data?.parameters || n.parameters || {},
-            outputs: n.outputs || []
-          })),
-          edges: (graph.edges || graph.connections || []).map((e: any) => ({
-            from: { nodeId: e.source || e.from, port: e.sourceHandle || e.dataType || 'out' },
-            to:   { nodeId: e.target || e.to,   port: e.targetHandle || 'in' }
-          }))
-        };
-        const parsed = AutomationSpecZ.safeParse(specCandidate);
-        if (parsed.success) {
-          setSpec(parsed.data);
-        }
-      } catch {}
+      const parsed = AutomationSpecZ.safeParse(specCandidate);
+      if (parsed.success) {
+        setSpec(parsed.data);
+      }
+    } catch {}
 
-      // Store the workflow result
-      setWorkflowResult(workflowData);
+    setWorkflowResult(workflowData);
 
-      // Add success message with workflow summary using REAL stats
-      addMessage({
-        role: 'assistant',
-        content: `✅ **Workflow Generated Successfully!**
+    addMessage({
+      role: 'assistant',
+      content: `✅ **Workflow Generated Successfully!**
 
-**"${prompt.substring(0, 60)}..."**
+**"${promptValue.substring(0, 60)}..."**
 Built from your answers with ${result.graph.nodes.length} connected steps.
 
 📊 **Workflow Stats:**
@@ -579,23 +567,44 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
 • **Ready for Google Apps Script**
 
 🚀 **Ready for Deployment!**`,
-        type: 'workflow',
-        data: result
-      });
+      type: 'workflow',
+      data: result
+    });
 
-      // Add visual workflow preview message
+    addMessage({
+      role: 'assistant',
+      content: `📊 **Visual Workflow Structure:**`,
+      type: 'workflow-visual',
+      data: result
+    });
+
+    resetQuestionFlow();
+    redirectToGraphEditor(result.workflowId);
+  };
+
+  const startWorkflowConversation = async (userPrompt: string) => {
+    const trimmedPrompt = userPrompt.trim();
+    setPrompt(trimmedPrompt);
+    setQuestionAnswers({});
+    resetQuestionFlow();
+
+    setProcessingStep('🤔 Understanding your request...');
+    const questions = await requestClarifyingQuestions(trimmedPrompt, [], 3);
+
+    if (questions.length > 0) {
+      setProcessingStep('');
+      setCurrentQuestion(questions[0]);
+      setQuestionQueue(questions.slice(1));
       addMessage({
         role: 'assistant',
-        content: `📊 **Visual Workflow Structure:**`,
-        type: 'workflow-visual',
-        data: result
+        content: `🤔 **I need a bit more information to build the perfect workflow for you:**`,
+        type: 'questions',
+        data: { questions }
       });
-
-      redirectToGraphEditor(result.workflowId);
-
-    } catch (error) {
-      throw error;
+      return;
     }
+
+    await buildAutomation(trimmedPrompt, {});
   };
 
   const handleAnswerQuestion = (questionId: string, answer: string) => {
@@ -606,41 +615,62 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
   };
 
   const handleSubmitAnswers = async () => {
-    if (Object.keys(questionAnswers).length === 0) return;
+    if (!currentQuestion) return;
 
-    // ChatGPT Fix: Frontend validation before sending answers
-    for (const question of currentQuestions) {
-      const answer = questionAnswers[question.id];
-      if (question.required && (!answer || answer.length < 2)) {
-        alert(`Please provide a meaningful answer for: ${question.text}`);
-        return;
-      }
+    const answerValue = questionAnswers[currentQuestion.id] || '';
+    const activePrompt = prompt || '';
+    if (currentQuestion.required && (!answerValue || answerValue.trim().length < 2)) {
+      alert(`Please provide a meaningful answer for: ${currentQuestion.text}`);
+      return;
     }
 
-    // ChatGPT Fix: Use persisted prompt instead of message parsing
-    const originalPrompt = prompt || '';
+    const formattedAnswer = typeof answerValue === 'string' ? answerValue.trim() : answerValue;
+    const updatedAnswers = { ...questionAnswers, [currentQuestion.id]: formattedAnswer };
+    setQuestionAnswers(updatedAnswers);
+    const updatedHistory = [...qaHistory, { question: currentQuestion, answer: formattedAnswer }];
+    setQaHistory(updatedHistory);
 
     addMessage({
       role: 'user',
-      content: `📝 **My answers:**\n\n${currentQuestions.map(q => 
-        `**${q.text}**\n${questionAnswers[q.id] || 'Not answered'}`
-      ).join('\n\n')}`
+      content: `📝 **Answer:**\n\n**${currentQuestion.text}**\n${formattedAnswer || 'Not answered'}`
     });
 
-    setCurrentQuestions([]);
-    setIsProcessing(true);
+    if (questionQueue.length > 0) {
+      const [next, ...rest] = questionQueue;
+      setCurrentQuestion(next);
+      setQuestionQueue(rest);
+      return;
+    }
 
+    setIsProcessing(true);
     try {
-      await generateCompleteWorkflow(originalPrompt, questionAnswers);
-    } catch (error) {
+      setProcessingStep('🤔 Checking if anything else is needed...');
+      const followUps = await requestClarifyingQuestions(activePrompt, updatedHistory, 2);
+
+      if (followUps.length > 0) {
+        setProcessingStep('');
+        setCurrentQuestion(followUps[0]);
+        setQuestionQueue(followUps.slice(1));
+        addMessage({
+          role: 'assistant',
+          content: `ℹ️ **Almost there! Just a bit more information will help me perfect your automation.**`,
+          type: 'questions',
+          data: { questions: followUps }
+        });
+        return;
+      }
+
+      await buildAutomation(activePrompt, updatedAnswers);
+      setQuestionAnswers({});
+    } catch (error: any) {
       console.error('Error with answers:', error);
       addMessage({
         role: 'assistant',
-        content: `❌ **Error processing your answers**\n\n${error.message}`
+        content: `❌ **Error processing your answers**\n\n${error?.message || 'An unexpected error occurred.'}`
       });
     } finally {
       setIsProcessing(false);
-      setQuestionAnswers({}); // Reset answers after workflow generation
+      setProcessingStep('');
     }
   };
 
@@ -736,6 +766,11 @@ Need help? I can guide you through each step!`
         });
     }
   };
+
+  const activeQuestion = currentQuestion;
+  const activeAnswerRaw = activeQuestion ? (questionAnswers[activeQuestion.id] ?? '') : '';
+  const activeAnswer = typeof activeAnswerRaw === 'string' ? activeAnswerRaw : String(activeAnswerRaw);
+  const canSubmitCurrent = activeQuestion ? (activeQuestion.required ? activeAnswer.trim().length > 0 : true) : false;
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -875,28 +910,28 @@ Need help? I can guide you through each step!`
         ))}
 
         {/* Questions Interface */}
-        {currentQuestions.length > 0 && (
+        {currentQuestion && (
           <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 shadow-lg">
             <CardHeader className="bg-white/80">
               <CardTitle className="flex items-center gap-2 text-gray-900">
                 <HelpCircle className="w-5 h-5 text-blue-600 animate-pulse" />
-                🤔 Please Answer These Questions ({currentQuestions.length})
+                🤔 Please Answer This Question
               </CardTitle>
               <p className="text-sm text-gray-600">
                 Help me understand your automation requirements better:
               </p>
             </CardHeader>
             <CardContent className="space-y-6 bg-white/60">
-              {currentQuestions.map((question, index) => (
+              {[currentQuestion].map((question, index) => (
                 <div key={question.id} className="space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <label className="text-sm font-medium text-gray-900 flex items-start gap-2">
                     <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                      {index + 1}
+                      {qaHistory.length + index + 1}
                     </span>
                     <span className="flex-1">{question.text}</span>
                   </label>
                   
-                                     {/* ALWAYS SHOW INPUT FIELD */}
+                                       {/* ALWAYS SHOW INPUT FIELD */}
                    <div className="space-y-3">
                      {/* Text input - always visible and prominent */}
                      <div className="space-y-2">
@@ -948,11 +983,11 @@ Need help? I can guide you through each step!`
               
               <div className="space-y-3">
                 <div className="text-xs text-gray-500 text-center">
-                  Answered: {Object.keys(questionAnswers).length} / {currentQuestions.length} questions
+                  Answered so far: {qaHistory.length}
                 </div>
                 <Button
                   onClick={handleSubmitAnswers}
-                  disabled={Object.keys(questionAnswers).length === 0 || isProcessing}
+                  disabled={isProcessing || !canSubmitCurrent}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 p-4 text-base font-semibold"
                 >
                   {isProcessing ? (
@@ -963,13 +998,13 @@ Need help? I can guide you through each step!`
                   ) : (
                     <>
                       <Send className="w-5 h-5 mr-2" />
-                      Generate Workflow ({Object.keys(questionAnswers).length} answers)
+                      Continue ({qaHistory.length + (canSubmitCurrent ? 1 : 0)} details provided)
                     </>
                   )}
                 </Button>
-                {Object.keys(questionAnswers).length === 0 && (
+                {!canSubmitCurrent && (
                   <p className="text-xs text-center text-gray-500">
-                    Please answer at least one question to continue
+                    Please provide an answer to continue
                   </p>
                 )}
               </div>
