@@ -236,8 +236,7 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [currentInput, setCurrentInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [questionQueue, setQuestionQueue] = useState<Question[]>([]);
+  const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | null>(null);
   const [latestWorkflowId, setLatestWorkflowId] = useState<string | undefined>(undefined);
@@ -393,9 +392,9 @@ You can try:
   };
 
   const resetQuestionFlow = () => {
-    setCurrentQuestion(null);
-    setQuestionQueue([]);
+    setCurrentQuestions([]);
     setQaHistory([]);
+    setQuestionAnswers({});
   };
 
   const mapHistoryForLLM = (history: Array<{ question: Question; answer: string }>) =>
@@ -585,16 +584,14 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
   const startWorkflowConversation = async (userPrompt: string) => {
     const trimmedPrompt = userPrompt.trim();
     setPrompt(trimmedPrompt);
-    setQuestionAnswers({});
     resetQuestionFlow();
 
     setProcessingStep('🤔 Understanding your request...');
-    const questions = await requestClarifyingQuestions(trimmedPrompt, [], 3);
+    const questions = await requestClarifyingQuestions(trimmedPrompt, [], 6);
 
     if (questions.length > 0) {
       setProcessingStep('');
-      setCurrentQuestion(questions[0]);
-      setQuestionQueue(questions.slice(1));
+      setCurrentQuestions(questions);
       addMessage({
         role: 'assistant',
         content: `🤔 **I need a bit more information to build the perfect workflow for you:**`,
@@ -615,53 +612,55 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
   };
 
   const handleSubmitAnswers = async () => {
-    if (!currentQuestion) return;
+    if (currentQuestions.length === 0) return;
 
-    const answerValue = questionAnswers[currentQuestion.id] || '';
     const activePrompt = prompt || '';
-    if (currentQuestion.required && (!answerValue || answerValue.trim().length < 2)) {
-      alert(`Please provide a meaningful answer for: ${currentQuestion.text}`);
-      return;
+
+    for (const question of currentQuestions) {
+      const raw = questionAnswers[question.id] ?? '';
+      const trimmed = typeof raw === 'string' ? raw.trim() : String(raw);
+      if (question.required && trimmed.length === 0) {
+        alert(`Please provide a meaningful answer for: ${question.text}`);
+        return;
+      }
     }
 
-    const formattedAnswer = typeof answerValue === 'string' ? answerValue.trim() : answerValue;
-    const updatedAnswers = { ...questionAnswers, [currentQuestion.id]: formattedAnswer };
-    setQuestionAnswers(updatedAnswers);
-    const updatedHistory = [...qaHistory, { question: currentQuestion, answer: formattedAnswer }];
+    const normalizedAnswers = { ...questionAnswers };
+    const batchHistory = currentQuestions.map((question) => {
+      const raw = questionAnswers[question.id] ?? '';
+      const trimmed = typeof raw === 'string' ? raw.trim() : String(raw);
+      normalizedAnswers[question.id] = trimmed;
+      return { question, answer: trimmed };
+    });
+    setQuestionAnswers(normalizedAnswers);
+    const updatedHistory = [...qaHistory, ...batchHistory];
     setQaHistory(updatedHistory);
 
     addMessage({
       role: 'user',
-      content: `📝 **Answer:**\n\n**${currentQuestion.text}**\n${formattedAnswer || 'Not answered'}`
+      content: `📝 **My answers:**\n\n${currentQuestions
+        .map((question) => `**${question.text}**\n${normalizedAnswers[question.id] || 'Not answered'}`)
+        .join('\n\n')}`
     });
-
-    if (questionQueue.length > 0) {
-      const [next, ...rest] = questionQueue;
-      setCurrentQuestion(next);
-      setQuestionQueue(rest);
-      return;
-    }
 
     setIsProcessing(true);
     try {
-      setProcessingStep('🤔 Checking if anything else is needed...');
-      const followUps = await requestClarifyingQuestions(activePrompt, updatedHistory, 2);
+      setProcessingStep('🤔 Reviewing your answers...');
+      const followUps = await requestClarifyingQuestions(activePrompt, updatedHistory, 4);
 
       if (followUps.length > 0) {
         setProcessingStep('');
-        setCurrentQuestion(followUps[0]);
-        setQuestionQueue(followUps.slice(1));
+        setCurrentQuestions(followUps);
         addMessage({
           role: 'assistant',
-          content: `ℹ️ **Almost there! Just a bit more information will help me perfect your automation.**`,
+          content: `ℹ️ **Great progress! I just need a few more details to finalize your automation.**`,
           type: 'questions',
           data: { questions: followUps }
         });
         return;
       }
 
-      await buildAutomation(activePrompt, updatedAnswers);
-      setQuestionAnswers({});
+      await buildAutomation(activePrompt, normalizedAnswers);
     } catch (error: any) {
       console.error('Error with answers:', error);
       addMessage({
@@ -767,10 +766,12 @@ Need help? I can guide you through each step!`
     }
   };
 
-  const activeQuestion = currentQuestion;
-  const activeAnswerRaw = activeQuestion ? (questionAnswers[activeQuestion.id] ?? '') : '';
-  const activeAnswer = typeof activeAnswerRaw === 'string' ? activeAnswerRaw : String(activeAnswerRaw);
-  const canSubmitCurrent = activeQuestion ? (activeQuestion.required ? activeAnswer.trim().length > 0 : true) : false;
+  const unansweredRequired = currentQuestions.some((question) => {
+    const raw = questionAnswers[question.id] ?? '';
+    const trimmed = typeof raw === 'string' ? raw.trim() : String(raw);
+    return question.required && trimmed.length === 0;
+  });
+  const canSubmitCurrent = currentQuestions.length > 0 && !unansweredRequired;
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -910,19 +911,19 @@ Need help? I can guide you through each step!`
         ))}
 
         {/* Questions Interface */}
-        {currentQuestion && (
+        {currentQuestions.length > 0 && (
           <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 shadow-lg">
             <CardHeader className="bg-white/80">
               <CardTitle className="flex items-center gap-2 text-gray-900">
                 <HelpCircle className="w-5 h-5 text-blue-600 animate-pulse" />
-                🤔 Please Answer This Question
+                🤔 Please Answer These Questions ({currentQuestions.length})
               </CardTitle>
               <p className="text-sm text-gray-600">
                 Help me understand your automation requirements better:
               </p>
             </CardHeader>
             <CardContent className="space-y-6 bg-white/60">
-              {[currentQuestion].map((question, index) => (
+              {currentQuestions.map((question, index) => (
                 <div key={question.id} className="space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <label className="text-sm font-medium text-gray-900 flex items-start gap-2">
                     <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
@@ -998,7 +999,7 @@ Need help? I can guide you through each step!`
                   ) : (
                     <>
                       <Send className="w-5 h-5 mr-2" />
-                      Continue ({qaHistory.length + (canSubmitCurrent ? 1 : 0)} details provided)
+                      {unansweredRequired ? 'Provide Required Details' : 'Continue'} ({qaHistory.length + currentQuestions.length} total prompts)
                     </>
                   )}
                 </Button>
