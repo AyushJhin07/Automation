@@ -19,7 +19,7 @@ export type WorkflowGraph = {
 };
 
 export type CompileResult = {
-  workflowId: string;
+  workflowId?: string;
   graph: WorkflowGraph;
   stats: { nodes: number; triggers: number; actions: number; transforms: number };
   files: Array<{ path: string; content: string }>;

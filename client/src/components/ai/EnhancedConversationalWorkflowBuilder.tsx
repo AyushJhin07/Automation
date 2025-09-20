@@ -1,7 +1,7 @@
 // ENHANCED CONVERSATIONAL WORKFLOW BUILDER
 // Connected to professional ChatGPT-style backend architecture
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -183,7 +183,11 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
             } else if (workflowData?.workflow?.graph) {
               localStorage.setItem('lastCompile', JSON.stringify(workflowData.workflow.graph)); // raw graph
             }
-            window.open('/graph-editor?from=ai-builder', '_blank');
+            const storedWorkflowId = localStorage.getItem('lastWorkflowId') || '';
+            const params = new URLSearchParams();
+            params.set('from', 'ai-builder');
+            if (storedWorkflowId) params.set('workflowId', storedWorkflowId);
+            window.open(`/graph-editor?${params.toString()}`, '_blank');
           }}
           className="bg-green-600 hover:bg-green-700 flex-1"
         >
@@ -235,6 +239,7 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | null>(null);
+  const [latestWorkflowId, setLatestWorkflowId] = useState<string | undefined>(undefined);
   // ChatGPT Fix: Persist prompt explicitly to prevent INVALID_PROMPT errors
   const [prompt, setPrompt] = useState('');
   const [showWorkflowPreview, setShowWorkflowPreview] = useState(false);
@@ -247,6 +252,18 @@ export default function EnhancedConversationalWorkflowBuilder() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const setSpec = useSpecStore.getState().set;
+
+  const buildGraphEditorUrl = useCallback((workflowId?: string) => {
+    const params = new URLSearchParams();
+    params.set('from', 'ai-builder');
+    if (workflowId) params.set('workflowId', workflowId);
+    return `/graph-editor?${params.toString()}`;
+  }, []);
+
+  const redirectToGraphEditor = useCallback((workflowId?: string) => {
+    const url = buildGraphEditorUrl(workflowId);
+    navigate(url);
+  }, [buildGraphEditorUrl, navigate]);
 
   // ChatGPT Fix: Enhanced safe helpers to avoid runtime errors
   const safeGraph = (g?: any) => g || { nodes: [], connections: [] };
@@ -459,13 +476,20 @@ You can try:
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json() as CompileResult & { success: boolean };
+      const result = await response.json() as (CompileResult & { success: boolean; workflowId?: string });
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to build workflow');
       }
 
       console.log('🤖 Workflow build response received:', result);
+
+      setLatestWorkflowId(result.workflowId);
+      if (result.workflowId) {
+        localStorage.setItem('lastWorkflowId', result.workflowId);
+      } else {
+        localStorage.removeItem('lastWorkflowId');
+      }
 
       // Store the compiled result in global state
       useWorkflowState.getState().set(result);
@@ -526,7 +550,6 @@ You can try:
         const parsed = AutomationSpecZ.safeParse(specCandidate);
         if (parsed.success) {
           setSpec(parsed.data);
-          navigate('/graph');
         }
       } catch {}
 
@@ -567,6 +590,8 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
         type: 'workflow-visual',
         data: result
       });
+
+      redirectToGraphEditor(result.workflowId);
 
     } catch (error) {
       throw error;
@@ -809,34 +834,16 @@ Need help? I can guide you through each step!`
                       </Button>
                       <Button
                         size="sm"
-                        onClick={async () => {
-                          // Use the compiled workflow from global state (ChatGPT's single source of truth)
+                        onClick={() => {
                           const last = useWorkflowState.getState().last;
                           if (!last) {
                             alert('No workflow data available. Please generate a workflow first.');
                             return;
                           }
-                          
-                          // ChatGPT Fix: Use correct variable and save format
-                          const response = await fetch("/api/flows/save", {
-                            method: "POST",
-                            body: JSON.stringify(last),
-                            headers: { "Content-Type": "application/json" },
-                          });
 
-                          const saved = await response.json();
-                          
-                          // ChatGPT Fix: Save in correct format for Graph Editor
-                          localStorage.setItem(
-                            'lastCompile',
-                            JSON.stringify(last)
-                          );
-                          
-                          if (saved.flowId) {
-                            window.location.href = `/graph-editor?flowId=${saved.flowId}`;
-                          } else {
-                            window.location.href = `/graph-editor?from=ai-builder`;
-                          }
+                          localStorage.setItem('lastCompile', JSON.stringify(last));
+                          const fallbackId = localStorage.getItem('lastWorkflowId') || undefined;
+                          redirectToGraphEditor(latestWorkflowId || fallbackId || undefined);
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >

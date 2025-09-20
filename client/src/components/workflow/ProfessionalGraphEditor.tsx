@@ -31,6 +31,8 @@ import { Textarea } from '../ui/textarea';
 import SmartParametersPanel from './SmartParametersPanel';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
+import { useSpecStore } from '../../state/specStore';
+import { specToReactFlow } from '../../graph/transform';
 import { 
   Plus,
   Play,
@@ -995,6 +997,8 @@ const GraphEditorContent = () => {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
+  const spec = useSpecStore((state) => state.spec);
+  const specHydratedRef = useRef(false);
 
   // P1-8: Enhanced Graph Editor autoload robustness (scanner-safe version)
   useEffect(() => {
@@ -1003,8 +1007,10 @@ const GraphEditorContent = () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const fromAIB = urlParams.get("from") === "ai-builder";
-        const workflowId = urlParams.get("workflowId");
+        const workflowIdParam = urlParams.get("workflowId") || urlParams.get("flowId");
         const autoLoad = urlParams.get("autoLoad") === "true";
+        const storedWorkflowId = fromAIB ? (localStorage.getItem('lastWorkflowId') || undefined) : undefined;
+        const workflowId = workflowIdParam || storedWorkflowId;
 
         // Helper to safely parse any JSON without throwing
         const safeParse = (raw: string | null) => {
@@ -1165,7 +1171,7 @@ const GraphEditorContent = () => {
         }
 
         // Clean URL params if we autoloaded
-        if (fromAIB || workflowId) {
+        if (fromAIB || workflowIdParam) {
           const newUrl = window.location.pathname;
           window.history.replaceState({}, "", newUrl);
         }
@@ -1180,6 +1186,30 @@ const GraphEditorContent = () => {
     // Run the enhanced autoload
     loadWorkflowFromStorage();
   }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    if (!spec || specHydratedRef.current) return;
+    if (nodes.length > 0) {
+      specHydratedRef.current = true;
+      return;
+    }
+
+    try {
+      const { nodes: specNodes, edges: specEdges } = specToReactFlow(spec);
+      if (!specNodes.length) return;
+
+      setNodes(specNodes as any);
+      setEdges(specEdges as any);
+      setShowWelcomeModal(false);
+
+      const firstNode = specNodes[0] as any;
+      setSelectedNode(firstNode);
+      setNodes((prev: any) => prev.map((n: any) => ({ ...n, selected: n.id === firstNode.id })));
+      specHydratedRef.current = true;
+    } catch (error) {
+      console.warn('Failed to hydrate graph from spec store:', error);
+    }
+  }, [spec, nodes, setNodes, setEdges]);
   
   // Helper functions for node styling
   const getIconForApp = (app: string) => {
