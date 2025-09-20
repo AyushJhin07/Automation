@@ -22,10 +22,85 @@ type JSONSchema = {
   required?: string[];
 };
 
+type DynamicOption = {
+  label: string;
+  value: string;
+  group: string;
+  description?: string;
+};
+
+const sanitizeKey = (key: string) => key.replace(/[^a-zA-Z0-9_]/g, '_');
+
+const flattenSample = (value: any, basePath = '', labelPath: string[] = [], acc: Array<{ path: string; label: string }> = []) => {
+  if (value === null || value === undefined) return acc;
+  if (Array.isArray(value)) {
+    value.forEach((item, idx) => {
+      const path = `${basePath}[${idx}]`;
+      const label = [...labelPath, `Index ${idx}`];
+      flattenSample(item, path, label, acc);
+    });
+    return acc;
+  }
+  if (typeof value === 'object') {
+    Object.entries(value).forEach(([key, val]) => {
+      const safeKey = sanitizeKey(key);
+      const path = basePath ? `${basePath}.${safeKey}` : `.${safeKey}`;
+      const label = [...labelPath, key];
+      flattenSample(val, path, label, acc);
+    });
+    return acc;
+  }
+  const label = labelPath.join(' › ') || basePath;
+  acc.push({ path: basePath, label });
+  return acc;
+};
+
+const gatherColumnNames = (metadata: Record<string, any> = {}) => {
+  const candidateKeys = ['columns', 'columnNames', 'headers', 'headerRow', 'fields', 'fieldNames'];
+  const names: string[] = [];
+  candidateKeys.forEach((key) => {
+    const value = metadata?.[key];
+    if (Array.isArray(value)) {
+      value.forEach((entry) => {
+        if (typeof entry === 'string') {
+          if (entry.trim()) names.push(entry.trim());
+        } else if (entry && typeof entry === 'object') {
+          const label = entry?.name || entry?.label || entry?.title;
+          if (typeof label === 'string' && label.trim()) names.push(label.trim());
+        }
+      });
+    }
+  });
+  return Array.from(new Set(names));
+};
+
+const gatherSampleStructures = (metadata: Record<string, any> = {}) => {
+  const sampleKeys = ['sampleRow', 'sample', 'example', 'exampleRow', 'mock', 'previewRow', 'previewSample', 'outputExample'];
+  const samples: any[] = [];
+  sampleKeys.forEach((key) => {
+    const val = metadata?.[key];
+    if (val) samples.push(val);
+  });
+  return samples;
+};
+
 export function SmartParametersPanel() {
   const rf = useReactFlow();
-  const selected = useStore((s) => s.getNodes().filter(n => n.selected));
+  const storeNodes = useStore((s) => (typeof s.getNodes === 'function' ? s.getNodes() : (s as any).nodes) || []);
+  const storeEdges = useStore((s) => (typeof s.getEdges === 'function' ? s.getEdges() : (s as any).edges) || []);
+  const selected = useMemo(() => storeNodes.filter((n: any) => n.selected), [storeNodes]);
   const node = selected[0];
+
+  const upstreamNodes = useMemo(() => {
+    if (!node) return [] as any[];
+    const upstreamIds = new Set(
+      (storeEdges as any[])
+        .filter((edge) => edge?.target === node.id)
+        .map((edge) => edge?.source)
+        .filter(Boolean)
+    );
+    return (storeNodes as any[]).filter((n) => upstreamIds.has(n.id));
+  }, [node?.id, storeEdges, storeNodes]);
 
   // More robust app/op retrieval
   const app = node?.data?.app || node?.data?.connectorId || node?.data?.provider || "";
@@ -38,6 +113,7 @@ export function SmartParametersPanel() {
   const [schema, setSchema] = useState<JSONSchema | null>(null);
   const [defaults, setDefaults] = useState<any>({});
   const [params, setParams] = useState<any>(node?.data?.parameters ?? {});
+  const [dynamicOptions, setDynamicOptions] = useState<DynamicOption[]>([]);
 
   // ChatGPT Panel Root Cause Fix: Proper loading states and error handling
   const [loading, setLoading] = useState(false);
@@ -129,6 +205,70 @@ export function SmartParametersPanel() {
       .finally(() => setLoading(false));
   }, [app, opId, node?.id]);
 
+  useEffect(() => {
+    if (!node) {
+      setDynamicOptions([]);
+      return;
+    }
+
+    const optionMap = new Map<string, DynamicOption>();
+    const addOption = (option: DynamicOption) => {
+      if (!option?.value) return;
+      if (!optionMap.has(option.value)) optionMap.set(option.value, option);
+    };
+
+    upstreamNodes.forEach((upNode) => {
+      if (!upNode) return;
+      const groupLabel = upNode.data?.label || upNode.data?.name || upNode.id;
+      const group = groupLabel || upNode.id;
+
+      addOption({
+        label: `${groupLabel} • Entire output`,
+        value: `{{${upNode.id}}}`,
+        group,
+      });
+
+      const metadata = upNode.data?.metadata || {};
+      const columnNames = gatherColumnNames(metadata);
+      if (columnNames.length) {
+        columnNames.forEach((name, index) => {
+          addOption({
+            label: `${groupLabel} • ${name}`,
+            value: `{{${upNode.id}.values[${index}]}}`,
+            group,
+            description: 'Column from upstream data',
+          });
+        });
+      }
+
+      const samples = gatherSampleStructures(metadata);
+      samples.forEach((sample) => {
+        const flattened = flattenSample(sample);
+        flattened.forEach(({ path, label }) => {
+          if (!path) return;
+          addOption({
+            label: `${groupLabel} • ${label}`,
+            value: `{{${upNode.id}${path}}}`,
+            group,
+          });
+        });
+      });
+
+      if (!columnNames.length && !samples.length) {
+        for (let idx = 0; idx < 10; idx++) {
+          const colLabel = String.fromCharCode(65 + idx);
+          addOption({
+            label: `${groupLabel} • Column ${colLabel}`,
+            value: `{{${upNode.id}.values[${idx}]}}`,
+            group,
+          });
+        }
+      }
+    });
+
+    setDynamicOptions(Array.from(optionMap.values()));
+  }, [node?.id, upstreamNodes]);
+
   // Persist edits back to the graph node
   useEffect(() => {
     if (!node) return;
@@ -151,37 +291,115 @@ export function SmartParametersPanel() {
 
     // Lightweight dynamic binding support (expressions like {{nodeId.field}})
     const [showFx, setShowFx] = useState(false);
-    const rfEdges = useStore((s) => s.getEdges?.() || []);
-    const rfNodes = useStore((s) => s.getNodes?.() || []);
-    const upstreamIds: string[] = rfEdges
-      .filter((e: any) => e?.target === node?.id)
-      .map((e: any) => e?.source)
-      .filter(Boolean);
-    const upstreamNodes = rfNodes.filter((n: any) => upstreamIds.includes(n.id));
-    const firstUpstream = upstreamNodes[0];
-    const firstUpstreamLabel = firstUpstream?.data?.label || firstUpstream?.id;
+    const [autoStatus, setAutoStatus] = useState<string | null>(null);
 
-    const insertExpr = (expr: string) => {
-      // For arrays, keep expression as single token string; user can expand later
+    useEffect(() => {
+      setAutoStatus(null);
+    }, [name, node?.id]);
+
+    const groupedDynamicOptions = useMemo(() => {
+      return dynamicOptions.reduce<Record<string, DynamicOption[]>>((acc, option) => {
+        const group = option.group || 'Connected Nodes';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(option);
+        return acc;
+      }, {});
+    }, [dynamicOptions]);
+
+    const hasDynamicOptions = dynamicOptions.length > 0;
+
+    const stopPropagation = (e: any) => {
+      if (e && typeof e.stopPropagation === 'function') {
+        e.stopPropagation();
+      }
+    };
+
+    const insertExpr = (expr: string, label?: string) => {
       onChange(expr);
       setShowFx(false);
+      setAutoStatus(label ? `Mapped from ${label}` : `Mapped from ${expr}`);
     };
-    const fxOptions: Array<{ label: string; value: string }> = (() => {
-      const options: Array<{ label: string; value: string }> = [];
-      if (firstUpstream) {
-        options.push({ label: `${firstUpstreamLabel} (whole output)`, value: `{{${firstUpstream.id}}}` });
-        const isSheetsRowAdded = String(firstUpstreamLabel || '').toLowerCase().includes('row added');
-        if (isSheetsRowAdded) {
-          for (let idx = 0; idx < 10; idx++) {
-            options.push({
-              label: `Column ${String.fromCharCode(65 + idx)} (values[${idx}])`,
-              value: `{{${firstUpstream.id}.values[${idx}]}}`
-            });
-          }
-        }
+
+    const handleAutoMap = () => {
+      if (!hasDynamicOptions) {
+        setAutoStatus('No connected data available yet.');
+        setShowFx(true);
+        return;
       }
-      return options;
-    })();
+
+      const fieldName = (def?.title || name || '').toLowerCase();
+      const guess = dynamicOptions.find((opt) => opt.label.toLowerCase().includes(fieldName));
+      const emailGuess = /email|mail/.test(fieldName)
+        ? dynamicOptions.find((opt) => /email|mail/.test(opt.label.toLowerCase()))
+        : undefined;
+      const selection = guess || emailGuess || dynamicOptions[0];
+
+      if (selection) {
+        insertExpr(selection.value, selection.label);
+      } else {
+        setAutoStatus('Unable to infer a matching field. Choose one manually.');
+        setShowFx(true);
+      }
+    };
+
+    const renderDynamicPicker = () => (
+      <div className="mt-2 w-full border rounded p-3 bg-gray-50 max-h-60 overflow-y-auto space-y-3">
+        {hasDynamicOptions ? (
+          Object.entries(groupedDynamicOptions).map(([group, options]) => (
+            <div key={group} className="space-y-1">
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{group}</div>
+              {options.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className="w-full text-left px-3 py-1.5 rounded border border-gray-200 bg-white hover:bg-blue-50 text-gray-700 text-xs"
+                  onClick={() => insertExpr(opt.value, opt.label)}
+                >
+                  <div className="font-medium">{opt.label}</div>
+                  {opt.description ? <div className="text-[10px] text-gray-500">{opt.description}</div> : null}
+                  <div className="text-[10px] text-gray-400 mt-0.5">{opt.value}</div>
+                </button>
+              ))}
+            </div>
+          ))
+        ) : (
+          <div className="text-xs text-gray-500">
+            Connect this node to an upstream step to reference its output.
+          </div>
+        )}
+      </div>
+    );
+
+    const inputEventHandlers = {
+      onKeyDown: stopPropagation,
+      onPointerDown: stopPropagation,
+      onMouseDown: stopPropagation,
+      onPaste: stopPropagation,
+    } as const;
+
+    const renderFxControls = () => (
+      <div className="mt-1 flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          className="text-blue-600 hover:underline"
+          onClick={() => setShowFx((v) => !v)}
+        >
+          Use dynamic value (fx)
+        </button>
+        <span className="text-gray-300">•</span>
+        <button
+          type="button"
+          className="text-blue-600 hover:underline"
+          onClick={handleAutoMap}
+        >
+          Auto-map
+        </button>
+      </div>
+    );
+
+    const renderFxStatus = () => (
+      autoStatus ? <div className="text-[11px] text-emerald-600 mt-1">{autoStatus}</div> : null
+    );
 
     if (def?.enum && Array.isArray(def.enum)) {
       return (
@@ -193,6 +411,7 @@ export function SmartParametersPanel() {
             className="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            {...inputEventHandlers}
           >
             <option value="">-- select --</option>
             {def.enum.map((opt: any) => (
@@ -216,6 +435,7 @@ export function SmartParametersPanel() {
                 checked={Boolean(value)}
                 onChange={(e) => onChange(e.target.checked)}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                {...inputEventHandlers}
               />
               <label className="text-sm font-medium">
                 {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
@@ -239,6 +459,7 @@ export function SmartParametersPanel() {
               min={def.minimum as any}
               max={def.maximum as any}
               placeholder={def.description || `Enter ${name}`}
+              {...inputEventHandlers}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
@@ -262,32 +483,11 @@ export function SmartParametersPanel() {
                 )
               }
               placeholder="item1, item2, item3"
+              {...inputEventHandlers}
             />
-            <div className="mt-1 flex items-center gap-2 text-xs">
-              <button type="button" className="text-blue-600 hover:underline" onClick={() => setShowFx((v) => !v)}>Use dynamic value (fx)</button>
-              {showFx && (
-                <div className="mt-2 w-full border rounded p-2 bg-gray-50">
-                  <div className="mb-1 text-gray-600">Insert reference from upstream</div>
-                  {firstUpstream ? (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-0.5 bg-white border rounded text-gray-700">{firstUpstreamLabel}</span>
-                      <select
-                        className="border rounded px-2 py-1 bg-white text-gray-700"
-                        defaultValue=""
-                        onChange={(e) => e.target.value && insertExpr(e.target.value)}
-                      >
-                        <option value="" disabled>Select a field…</option>
-                        {fxOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="text-gray-500">No upstream nodes connected</div>
-                  )}
-                </div>
-              )}
-            </div>
+            {renderFxControls()}
+            {renderFxStatus()}
+            {showFx && renderDynamicPicker()}
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
         );
@@ -311,6 +511,7 @@ export function SmartParametersPanel() {
                 }
               }}
               placeholder="{ }"
+              {...inputEventHandlers}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
@@ -334,32 +535,11 @@ export function SmartParametersPanel() {
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={def?.description || def?.format || `Enter ${name}`}
+              {...inputEventHandlers}
             />
-            <div className="mt-1 flex items-center gap-2 text-xs">
-              <button type="button" className="text-blue-600 hover:underline" onClick={() => setShowFx((v) => !v)}>Use dynamic value (fx)</button>
-              {showFx && (
-                <div className="mt-2 w-full border rounded p-2 bg-gray-50">
-                  <div className="mb-1 text-gray-600">Insert reference from upstream</div>
-                  {firstUpstream ? (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-0.5 bg-white border rounded text-gray-700">{firstUpstreamLabel}</span>
-                      <select
-                        className="border rounded px-2 py-1 bg-white text-gray-700"
-                        defaultValue=""
-                        onChange={(e) => e.target.value && insertExpr(e.target.value)}
-                      >
-                        <option value="" disabled>Select a field…</option>
-                        {fxOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="text-gray-500">No upstream nodes connected</div>
-                  )}
-                </div>
-              )}
-            </div>
+            {renderFxControls()}
+            {renderFxStatus()}
+            {showFx && renderDynamicPicker()}
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
         );
