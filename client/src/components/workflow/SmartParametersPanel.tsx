@@ -309,8 +309,11 @@ export function SmartParametersPanel() {
     const hasDynamicOptions = dynamicOptions.length > 0;
 
     const stopPropagation = (e: any) => {
-      if (e && typeof e.stopPropagation === 'function') {
-        e.stopPropagation();
+      if (!e) return;
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (e.nativeEvent) {
+        if (typeof e.nativeEvent.stopPropagation === 'function') e.nativeEvent.stopPropagation();
+        if (typeof e.nativeEvent.stopImmediatePropagation === 'function') e.nativeEvent.stopImmediatePropagation();
       }
     };
 
