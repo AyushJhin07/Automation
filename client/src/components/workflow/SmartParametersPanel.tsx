@@ -376,14 +376,11 @@ export function SmartParametersPanel() {
     );
 
     const inputEventHandlers = {
-      onPointerDownCapture: stopPropagation,
       onPointerDown: stopPropagation,
-      onMouseDownCapture: stopPropagation,
       onMouseDown: stopPropagation,
-      onKeyDownCapture: stopPropagation,
       onKeyDown: stopPropagation,
-      onFocusCapture: stopPropagation,
-      onPasteCapture: stopPropagation,
+      onFocus: stopPropagation,
+      onPaste: stopPropagation,
     } as const;
 
     const renderFxControls = () => (
@@ -421,6 +418,7 @@ export function SmartParametersPanel() {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             {...inputEventHandlers}
+            style={{ pointerEvents: 'auto' }}
           >
             <option value="">-- select --</option>
             {def.enum.map((opt: any) => (
@@ -469,6 +467,7 @@ export function SmartParametersPanel() {
               max={def.maximum as any}
               placeholder={def.description || `Enter ${name}`}
               {...inputEventHandlers}
+              style={{ pointerEvents: 'auto' }}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
@@ -493,6 +492,7 @@ export function SmartParametersPanel() {
               }
               placeholder="item1, item2, item3"
               {...inputEventHandlers}
+              style={{ pointerEvents: 'auto' }}
             />
             {renderFxControls()}
             {renderFxStatus()}
@@ -521,6 +521,7 @@ export function SmartParametersPanel() {
               }}
               placeholder="{ }"
               {...inputEventHandlers}
+              style={{ pointerEvents: 'auto' }}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
@@ -545,6 +546,7 @@ export function SmartParametersPanel() {
               onChange={(e) => onChange(e.target.value)}
               placeholder={def?.description || def?.format || `Enter ${name}`}
               {...inputEventHandlers}
+              style={{ pointerEvents: 'auto' }}
             />
             {renderFxControls()}
             {renderFxStatus()}
