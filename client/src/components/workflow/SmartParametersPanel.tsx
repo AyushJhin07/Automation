@@ -7,6 +7,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useReactFlow, useStore } from "reactflow";
+import { Input } from "../ui/input";
 
 type JSONSchema = {
   type?: string;
@@ -112,7 +113,8 @@ export function SmartParametersPanel() {
     ?? node?.data?.label;
   const [schema, setSchema] = useState<JSONSchema | null>(null);
   const [defaults, setDefaults] = useState<any>({});
-  const [params, setParams] = useState<any>(node?.data?.parameters ?? {});
+  // Draft parameters: editable locally; commit to graph on blur or explicit actions
+  const [paramsDraft, setParamsDraft] = useState<any>(node?.data?.parameters ?? {});
   const [dynamicOptions, setDynamicOptions] = useState<DynamicOption[]>([]);
 
   // ChatGPT Panel Root Cause Fix: Proper loading states and error handling
@@ -126,6 +128,7 @@ export function SmartParametersPanel() {
     setError(null);
     setSchema(null);
     setDefaults({});
+    setParamsDraft(node?.data?.parameters ?? {});
 
     const kind = node?.data?.kind || (String(node?.type||"").startsWith("trigger") ? "trigger" : "auto");
 
@@ -145,8 +148,8 @@ export function SmartParametersPanel() {
       .then(async (j) => {
         if (!j?.success) {
           setError(j?.error || "Failed to load schema");
-          setSchema({type:"object",properties:{}});
-          return;
+          // proceed to heuristic fallback instead of early return
+          j = { success: false } as any;
         }
         let nextSchema = j.schema || { type: "object", properties: {} };
         let nextDefaults = j.defaults || {};
@@ -193,10 +196,37 @@ export function SmartParametersPanel() {
           }
         }
 
+        // Heuristic fallback for common operations when schema is still empty
+        if (!nextSchema?.properties || Object.keys(nextSchema.properties).length === 0) {
+          const appL = String(app).toLowerCase();
+          const opL = String(opId).toLowerCase();
+          if (appL.includes('sheets') && (opL.includes('row') && (opL.includes('add') || opL.includes('added') || opL.includes('row_added')))) {
+            nextSchema = {
+              type: 'object',
+              properties: {
+                spreadsheetId: { type: 'string', title: 'spreadsheetId', description: 'Spreadsheet ID to monitor' },
+                sheetName: { type: 'string', title: 'sheetName', description: 'Specific sheet name to monitor' }
+              },
+              required: ['spreadsheetId']
+            } as any;
+          }
+          if (appL.includes('gmail') && (opL.includes('send') || opL.includes('email'))) {
+            nextSchema = {
+              type: 'object',
+              properties: {
+                to: { type: 'array', items: { type: 'string' }, title: 'to', description: 'Recipient email addresses' },
+                subject: { type: 'string', title: 'subject', description: 'Email subject' },
+                body: { type: 'string', title: 'body', description: 'Email body (text or HTML)' }
+              },
+              required: ['to','subject','body']
+            } as any;
+          }
+        }
+
         setSchema(nextSchema);
         setDefaults(nextDefaults);
         const next = { ...(nextDefaults || {}), ...(node?.data?.parameters || {}) };
-        setParams(next);
+        setParamsDraft(next);
       })
       .catch(e => { 
         setError(String(e)); 
@@ -269,25 +299,28 @@ export function SmartParametersPanel() {
     setDynamicOptions(Array.from(optionMap.values()));
   }, [node?.id, upstreamNodes]);
 
-  // Persist edits back to the graph node
-  useEffect(() => {
+  // Commit helper: push a single param (or full object) back to the graph node
+  const commitParams = (nextParams: any) => {
     if (!node) return;
+    setParamsDraft(nextParams);
     rf.setNodes((nodes) =>
-      nodes.map((n) =>
-        n.id === node.id ? { ...n, data: { ...n.data, parameters: params } } : n
-      )
+      nodes.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, parameters: nextParams } } : n))
     );
-  }, [params, node?.id, rf]);
+  };
+  const commitSingle = (name: string, value: any) => {
+    const next = { ...(paramsDraft || {}), [name]: value };
+    commitParams(next);
+  };
 
   // --- Renderers ---
   const requiredSet = useMemo(() => new Set(schema?.required || []), [schema]);
 
   function Field({ name, def }: { name: string; def: JSONSchema }) {
-    const value = params?.[name] ?? def?.default ?? defaults?.[name] ?? "";
+    const value = paramsDraft?.[name] ?? def?.default ?? defaults?.[name] ?? "";
     const isRequired = requiredSet.has(name);
     const type = def?.type || (def?.enum ? "string" : "string");
 
-    const onChange = (v: any) => setParams((p: any) => ({ ...p, [name]: v }));
+    const onChange = (v: any) => setParamsDraft((p: any) => ({ ...p, [name]: v }));
 
     // Lightweight dynamic binding support (expressions like {{nodeId.field}})
     const [showFx, setShowFx] = useState(false);
@@ -321,6 +354,7 @@ export function SmartParametersPanel() {
 
     const insertExpr = (expr: string, label?: string) => {
       onChange(expr);
+      commitSingle(name, expr);
       setShowFx(false);
       setAutoStatus(label ? `Mapped from ${label}` : `Mapped from ${expr}`);
     };
@@ -375,13 +409,7 @@ export function SmartParametersPanel() {
       </div>
     );
 
-    const inputEventHandlers = {
-      onPointerDown: stopPropagation,
-      onMouseDown: stopPropagation,
-      onKeyDown: stopPropagation,
-      onFocus: stopPropagation,
-      onPaste: stopPropagation,
-    } as const;
+    const inputEventHandlers = {} as const;
 
     const renderFxControls = () => (
       <div className="mt-1 flex items-center gap-2 text-xs">
@@ -417,6 +445,7 @@ export function SmartParametersPanel() {
             className="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={(e) => commitSingle(name, e.target.value)}
             {...inputEventHandlers}
             style={{ pointerEvents: 'auto' }}
           >
@@ -458,16 +487,14 @@ export function SmartParametersPanel() {
             <label className="block text-sm font-medium mb-1">
               {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
             </label>
-            <input
+            <Input
               type="number"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               value={value}
               onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+              onBlur={(e) => commitSingle(name, e.target.value === "" ? "" : Number(e.target.value))}
               min={def.minimum as any}
               max={def.maximum as any}
               placeholder={def.description || `Enter ${name}`}
-              {...inputEventHandlers}
-              style={{ pointerEvents: 'auto' }}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
@@ -479,8 +506,7 @@ export function SmartParametersPanel() {
             <label className="block text-sm font-medium mb-1">
               {def.title || name} (comma-separated) {isRequired ? <span className="text-red-500">*</span> : null}
             </label>
-            <input
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            <Input
               value={Array.isArray(value) ? value.join(",") : value}
               onChange={(e) =>
                 onChange(
@@ -490,9 +516,14 @@ export function SmartParametersPanel() {
                     .filter(Boolean)
                 )
               }
+              onBlur={(e) => commitSingle(
+                name,
+                e.target.value
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              )}
               placeholder="item1, item2, item3"
-              {...inputEventHandlers}
-              style={{ pointerEvents: 'auto' }}
             />
             {renderFxControls()}
             {renderFxStatus()}
@@ -519,6 +550,10 @@ export function SmartParametersPanel() {
                   onChange(e.target.value); // keep raw string until valid
                 }
               }}
+              onBlur={(e) => {
+                try { commitSingle(name, JSON.parse(e.target.value)); }
+                catch { commitSingle(name, e.target.value); }
+              }}
               placeholder="{ }"
               {...inputEventHandlers}
               style={{ pointerEvents: 'auto' }}
@@ -539,14 +574,12 @@ export function SmartParametersPanel() {
             <label className="block text-sm font-medium mb-1">
               {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
             </label>
-            <input
+            <Input
               type={inputType}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               value={value}
               onChange={(e) => onChange(e.target.value)}
+              onBlur={(e) => commitSingle(name, e.target.value)}
               placeholder={def?.description || def?.format || `Enter ${name}`}
-              {...inputEventHandlers}
-              style={{ pointerEvents: 'auto' }}
             />
             {renderFxControls()}
             {renderFxStatus()}
@@ -589,7 +622,10 @@ export function SmartParametersPanel() {
   }
 
   return (
-    <div className="p-4 bg-white border-l border-gray-200 h-full overflow-y-auto">
+    <div
+      className="p-4 bg-white border-l border-gray-200 h-full overflow-y-auto"
+      style={{ pointerEvents: 'auto' }}
+    >
       <div className="mb-4">
         <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Smart Parameters</div>
         <div className="text-sm font-semibold text-gray-900">
@@ -627,7 +663,7 @@ export function SmartParametersPanel() {
           <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-auto">
             App: {app}{'\n'}
             Operation: {String(opId || node?.data?.label || '')}{'\n'}
-            Current Params: {JSON.stringify(params, null, 2)}
+            Current Params: {JSON.stringify(paramsDraft, null, 2)}
           </pre>
         </details>
       )}
