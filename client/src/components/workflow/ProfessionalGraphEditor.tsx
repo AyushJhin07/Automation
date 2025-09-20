@@ -1515,7 +1515,12 @@ const GraphEditorContent = () => {
       
       {/* Node Properties Panel - Enterprise Design */}
       {selectedNode && (
-        <div className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto">
+        <div
+          className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 border-b">
             <div className="flex items-center justify-between">
