@@ -311,9 +311,11 @@ export function SmartParametersPanel() {
     const stopPropagation = (e: any) => {
       if (!e) return;
       if (typeof e.stopPropagation === 'function') e.stopPropagation();
-      if (e.nativeEvent) {
-        if (typeof e.nativeEvent.stopPropagation === 'function') e.nativeEvent.stopPropagation();
-        if (typeof e.nativeEvent.stopImmediatePropagation === 'function') e.nativeEvent.stopImmediatePropagation();
+      if (typeof e.preventDefault === 'function' && e.type === 'pointercancel') e.preventDefault();
+      const native = e.nativeEvent;
+      if (native) {
+        if (typeof native.stopPropagation === 'function') native.stopPropagation();
+        if (typeof native.stopImmediatePropagation === 'function') native.stopImmediatePropagation();
       }
     };
 
@@ -374,10 +376,14 @@ export function SmartParametersPanel() {
     );
 
     const inputEventHandlers = {
-      onKeyDown: stopPropagation,
+      onPointerDownCapture: stopPropagation,
       onPointerDown: stopPropagation,
+      onMouseDownCapture: stopPropagation,
       onMouseDown: stopPropagation,
-      onPaste: stopPropagation,
+      onKeyDownCapture: stopPropagation,
+      onKeyDown: stopPropagation,
+      onFocusCapture: stopPropagation,
+      onPasteCapture: stopPropagation,
     } as const;
 
     const renderFxControls = () => (

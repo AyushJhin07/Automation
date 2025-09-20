@@ -1517,8 +1517,11 @@ const GraphEditorContent = () => {
       {selectedNode && (
         <div
           className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto"
+          onPointerDownCapture={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onMouseDownCapture={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
+          onKeyDownCapture={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
           {/* Header */}
