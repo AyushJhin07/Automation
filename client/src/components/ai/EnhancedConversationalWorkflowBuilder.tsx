@@ -405,6 +405,25 @@ You can try:
       category: (turn.question as any)?.category,
     }));
 
+  const canonicalQuestion = (question?: Question | null) =>
+    (question?.text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const filterNewQuestions = (
+    questions: Question[],
+    historyTurns: Array<{ question: Question; answer: string }>
+  ) => {
+    const seen = new Set(historyTurns.map((turn) => canonicalQuestion(turn.question)).filter(Boolean));
+    const filtered: Question[] = [];
+    for (const question of questions) {
+      const key = canonicalQuestion(question);
+      if (!key) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      filtered.push(question);
+    }
+    return filtered;
+  };
+
   const resolveModelCredentials = () => {
     const provider = providerOf(selectedModel);
     const currentApiKey =
@@ -588,15 +607,16 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
 
     setProcessingStep('🤔 Understanding your request...');
     const questions = await requestClarifyingQuestions(trimmedPrompt, [], 6);
+    const initialQuestions = filterNewQuestions(questions, []);
 
-    if (questions.length > 0) {
+    if (initialQuestions.length > 0) {
       setProcessingStep('');
-      setCurrentQuestions(questions);
+      setCurrentQuestions(initialQuestions);
       addMessage({
         role: 'assistant',
         content: `🤔 **I need a bit more information to build the perfect workflow for you:**`,
         type: 'questions',
-        data: { questions }
+        data: { questions: initialQuestions }
       });
       return;
     }
@@ -647,15 +667,16 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
     try {
       setProcessingStep('🤔 Reviewing your answers...');
       const followUps = await requestClarifyingQuestions(activePrompt, updatedHistory, 4);
+      const newQuestions = filterNewQuestions(followUps, updatedHistory);
 
-      if (followUps.length > 0) {
+      if (newQuestions.length > 0) {
         setProcessingStep('');
-        setCurrentQuestions(followUps);
+        setCurrentQuestions(newQuestions);
         addMessage({
           role: 'assistant',
           content: `ℹ️ **Great progress! I just need a few more details to finalize your automation.**`,
           type: 'questions',
-          data: { questions: followUps }
+          data: { questions: newQuestions }
         });
         return;
       }
