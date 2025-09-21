@@ -145,8 +145,9 @@ export const AIWorkflowBuilder: React.FC = () => {
         const qs = data.questions || data.plan?.missing_inputs || [];
         if (qs.length > 0) {
           setQuestions(qs);
-        setStep('questions');
-        return;
+          setStep('questions');
+          return;
+        }
       }
 
       // If no questions needed, proceed to build directly

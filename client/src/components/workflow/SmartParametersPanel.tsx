@@ -23,12 +23,22 @@ type JSONSchema = {
   required?: string[];
 };
 
-const sanitizeKey = (key: string) => key.replace(/[^a-zA-Z0-9_]/g, '_');
-
 export function SmartParametersPanel() {
   const rf = useReactFlow();
-  const storeNodes = useStore((s) => (typeof s.getNodes === 'function' ? s.getNodes() : (s as any).nodes) || []);
-  const storeEdges = useStore((s) => (typeof s.getEdges === 'function' ? s.getEdges() : (s as any).edges) || []);
+  const storeNodes = useStore((state) => {
+    const anyState = state as any;
+    if (typeof anyState.getNodes === 'function') {
+      return anyState.getNodes();
+    }
+    return anyState.nodes || [];
+  });
+  const storeEdges = useStore((state) => {
+    const anyState = state as any;
+    if (typeof anyState.getEdges === 'function') {
+      return anyState.getEdges();
+    }
+    return anyState.edges || [];
+  });
   const selected = useMemo(() => storeNodes.filter((n: any) => n.selected), [storeNodes]);
   const node = selected[0];
 
@@ -230,143 +240,498 @@ export function SmartParametersPanel() {
     commitParams(next);
   };
 
-  // Simple field component - exactly like Label/Description fields
-  function SimpleField({ name, def }: { name: string; def: JSONSchema }) {
-    const value = paramsDraft?.[name] ?? def?.default ?? defaults?.[name] ?? "";
+  type FieldMode = 'static' | 'dynamic' | 'llm';
+
+  const isEvaluatedValue = (value: any): value is { mode: string } => {
+    return value && typeof value === 'object' && !Array.isArray(value) && 'mode' in value;
+  };
+
+  const deriveFieldState = (value: any): {
+    mode: FieldMode;
+    staticValue: any;
+    refNodeId?: string;
+    refPath?: string;
+  } => {
+    if (isEvaluatedValue(value)) {
+      if (value.mode === 'ref') {
+        return { mode: 'dynamic', staticValue: '', refNodeId: value.nodeId, refPath: value.path };
+      }
+      if (value.mode === 'llm') {
+        return { mode: 'llm', staticValue: '' };
+      }
+      if (value.mode === 'static') {
+        return { mode: 'static', staticValue: value.value };
+      }
+    }
+
+    // primitives fall back to static
+    return { mode: 'static', staticValue: value };
+  };
+
+  const setStaticValue = (name: string, inputValue: any) => {
+    commitSingle(name, inputValue);
+  };
+
+  const setDynamicValue = (name: string, nodeId: string, path: string) => {
+    const value = { mode: 'ref', nodeId, path };
+    commitSingle(name, value);
+  };
+
+  function ParameterField({ name, def }: { name: string; def: JSONSchema }) {
+    const rawValue = paramsDraft?.[name] ?? def?.default ?? defaults?.[name] ?? '';
+    const { mode, staticValue, refNodeId, refPath } = deriveFieldState(rawValue);
     const isRequired = schema?.required?.includes(name) || false;
-    const type = def?.type || (def?.enum ? "string" : "string");
+    const [localStatic, setLocalStatic] = useState<any>(staticValue ?? '');
+    const upstreamIds = useMemo(() => upstreamNodes.map((n) => n.id).join('|'), [upstreamNodes]);
+    const [localRefNode, setLocalRefNode] = useState<string>(refNodeId || (upstreamNodes[0]?.id ?? ''));
+    const [localRefPath, setLocalRefPath] = useState<string>(refPath || '');
 
-    const onChange = (newValue: any) => {
-      setParamsDraft((p: any) => ({ ...p, [name]: newValue }));
-    };
+    useEffect(() => {
+      if (Array.isArray(staticValue)) {
+        setLocalStatic(staticValue.join(','));
+      } else if (typeof staticValue === 'object' && staticValue !== null) {
+        try {
+          setLocalStatic(JSON.stringify(staticValue, null, 2));
+        } catch {
+          setLocalStatic(staticValue as any);
+        }
+      } else {
+        setLocalStatic(staticValue != null ? String(staticValue) : '');
+      }
+    }, [staticValue, mode, node?.id]);
 
-    const onBlur = () => {
-      commitSingle(name, value);
-    };
+    useEffect(() => {
+      setLocalRefNode(refNodeId || (upstreamNodes[0]?.id ?? ''));
+      setLocalRefPath(refPath || '');
+    }, [refNodeId, refPath, upstreamIds, upstreamNodes.length, node?.id]);
 
-    // Simple text input for most cases
-    if (type === "string" || type === "text") {
-      const inputType = def?.format === "email" ? "email" : 
-                       def?.format === "uri" ? "url" :
-                       def?.format === "date" ? "date" :
-                       def?.format === "datetime-local" ? "datetime-local" :
-                       "text";
+    const handleModeChange = (nextMode: FieldMode) => {
+      if (nextMode === mode) return;
       
+      // Reset AI mapping state when switching modes
+      setAiMapping({ isLoading: false, result: null, error: null });
+      
+      if (nextMode === 'static') {
+        const initial = '';
+        setLocalStatic(initial);
+        setStaticValue(name, initial);
+      } else if (nextMode === 'dynamic') {
+        const firstNode = upstreamNodes[0]?.id;
+        if (!firstNode) {
+          return;
+        }
+        setLocalRefNode(firstNode);
+        setLocalRefPath('');
+        setDynamicValue(name, firstNode, '');
+      } else if (nextMode === 'llm') {
+        // LLM mode - no immediate value change, user needs to click "Map with AI"
+        // Keep current value as fallback
+      }
+    };
+
+    const renderStaticField = () => {
+      const type = def?.type || (def?.enum ? 'string' : 'string');
+
+      if (def?.enum && Array.isArray(def.enum)) {
+        return (
+          <select
+            value={localStatic}
+            onChange={(e) => {
+              setLocalStatic(e.target.value);
+              setStaticValue(name, e.target.value);
+            }}
+            className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+          >
+            <option value="">-- select --</option>
+            {def.enum.map((opt: any) => (
+              <option key={String(opt)} value={opt}>
+                {String(opt)}
+              </option>
+            ))}
+          </select>
+        );
+      }
+
+      if (type === 'boolean') {
+        return (
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={Boolean(localStatic)}
+              onChange={(e) => {
+                setLocalStatic(e.target.checked);
+                setStaticValue(name, e.target.checked);
+              }}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-slate-600">{def.title || name}</span>
+          </div>
+        );
+      }
+
+      if (type === 'number' || type === 'integer') {
+        return (
+          <Input
+            type="number"
+            value={localStatic}
+            onChange={(e) => {
+              setLocalStatic(e.target.value);
+            }}
+            onBlur={(e) => {
+              const val = e.target.value === '' ? '' : Number(e.target.value);
+              setStaticValue(name, val);
+            }}
+            min={def.minimum as any}
+            max={def.maximum as any}
+            placeholder={def?.description || `Enter ${name}`}
+            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+          />
+        );
+      }
+
+      if (type === 'array') {
+        return (
+          <Input
+            value={Array.isArray(localStatic) ? localStatic.join(',') : localStatic}
+            onChange={(e) => {
+              setLocalStatic(e.target.value);
+            }}
+            onBlur={(e) => {
+              const parts = e.target.value
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+              setStaticValue(name, parts);
+            }}
+            placeholder="item1, item2, item3"
+            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+          />
+        );
+      }
+
+      if (type === 'object') {
+        return (
+          <Textarea
+            value={typeof localStatic === 'string' ? localStatic : JSON.stringify(localStatic ?? {}, null, 2)}
+            onChange={(e) => {
+              setLocalStatic(e.target.value);
+            }}
+            onBlur={(e) => {
+              const val = e.target.value;
+              try {
+                const parsed = JSON.parse(val);
+                setStaticValue(name, parsed);
+              } catch {
+                setStaticValue(name, val);
+              }
+            }}
+            rows={3}
+            placeholder="{ }"
+            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none font-mono text-sm"
+          />
+        );
+      }
+
+      const inputType = def?.format === 'email'
+        ? 'email'
+        : def?.format === 'uri'
+        ? 'url'
+        : def?.format === 'date'
+        ? 'date'
+        : def?.format === 'datetime-local'
+        ? 'datetime-local'
+        : 'text';
+
       return (
         <Input
           type={inputType}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
+          value={localStatic ?? ''}
+          onChange={(e) => {
+            setLocalStatic(e.target.value);
+          }}
+          onBlur={(e) => {
+            setStaticValue(name, e.target.value);
+          }}
           placeholder={def?.description || def?.format || `Enter ${name}`}
           className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
         />
       );
-    }
+    };
 
-    // Number input
-    if (type === "number" || type === "integer") {
-      return (
-        <Input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
-          onBlur={onBlur}
-          min={def.minimum as any}
-          max={def.maximum as any}
-          placeholder={def.description || `Enter ${name}`}
-          className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-        />
-      );
-    }
+    const renderDynamicField = () => {
+      if (!upstreamNodes.length) {
+        return (
+          <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+            Connect this node to a previous step to reference its output.
+          </div>
+        );
+      }
 
-    // Boolean checkbox
-    if (type === "boolean") {
+      const handleApply = (nodeId: string, path: string) => {
+        setDynamicValue(name, nodeId, path);
+      };
+
+      const suggestions: Array<{ nodeId: string; path: string; label: string }> = [];
+      upstreamNodes.forEach((upNode) => {
+        suggestions.push({
+          nodeId: upNode.id,
+          path: '',
+          label: `${upNode.data?.label || upNode.id} • Entire output`,
+        });
+
+        const columns: string[] = upNode.data?.metadata?.columns || upNode.data?.metadata?.headers || [];
+        columns.forEach((col: string) => {
+          suggestions.push({
+            nodeId: upNode.id,
+            path: col,
+            label: `${upNode.data?.label || upNode.id} • ${col}`,
+          });
+        });
+
+        const sample = upNode.data?.metadata?.sample || upNode.data?.metadata?.sampleRow;
+        if (sample && typeof sample === 'object') {
+          Object.keys(sample).forEach((key) => {
+            suggestions.push({
+              nodeId: upNode.id,
+              path: key,
+              label: `${upNode.data?.label || upNode.id} • ${key}`,
+            });
+          });
+        }
+      });
+
+      const expressionPreview = `{{${localRefNode}${localRefPath ? `.${localRefPath}` : ''}}}`;
+
       return (
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={Boolean(value)}
-            onChange={(e) => onChange(e.target.checked)}
-            onBlur={onBlur}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label className="text-sm text-slate-700">
-            {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
-          </label>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">Source</span>
+            <select
+              value={localRefNode}
+              onChange={(e) => {
+                const id = e.target.value;
+                setLocalRefNode(id);
+                handleApply(id, localRefPath);
+              }}
+              className="flex-1 border border-slate-300 rounded px-3 py-2 bg-white text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 text-sm"
+            >
+              {upstreamNodes.map((upNode) => (
+                <option key={upNode.id} value={upNode.id}>
+                  {upNode.data?.label || upNode.id}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500">Path (dot notation)</label>
+            <Input
+              value={localRefPath}
+              onChange={(e) => setLocalRefPath(e.target.value)}
+              onBlur={(e) => handleApply(localRefNode, e.target.value)}
+              placeholder="e.g. row.email"
+              className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+            />
+          </div>
+
+          {suggestions.length > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded p-2 max-h-36 overflow-y-auto space-y-1">
+              <div className="text-[11px] uppercase tracking-wide text-slate-400">Quick Picks</div>
+              {suggestions.map((sug) => (
+                <button
+                  key={`${sug.nodeId}:${sug.path}`}
+                  type="button"
+                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-blue-50 text-slate-600"
+                  onClick={() => {
+                    setLocalRefNode(sug.nodeId);
+                    setLocalRefPath(sug.path);
+                    handleApply(sug.nodeId, sug.path);
+                  }}
+                >
+                  {sug.label}
+                  {sug.path && <span className="text-[10px] text-slate-400 ml-1">({sug.path})</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="text-[11px] text-slate-400">
+            Example: <code>{expressionPreview}</code>
+          </div>
         </div>
       );
-    }
+    };
 
-    // Select dropdown
-    if (def?.enum && Array.isArray(def.enum)) {
-      return (
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
-          className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-        >
-          <option value="">-- select --</option>
-          {def.enum.map((opt: any) => (
-            <option key={String(opt)} value={opt}>
-              {String(opt)}
-            </option>
-          ))}
-        </select>
-      );
-    }
+    const [aiMapping, setAiMapping] = useState<{
+      isLoading: boolean;
+      result: { nodeId: string; path: string; confidence?: number; reason?: string } | null;
+      error: string | null;
+    }>({ isLoading: false, result: null, error: null });
 
-    // Array as comma-separated text
-    if (type === "array") {
-      return (
-        <Input
-          value={Array.isArray(value) ? value.join(",") : value}
-          onChange={(e) =>
-            onChange(
-              e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-            )
+    const handleAIMapping = async () => {
+      if (upstreamNodes.length === 0) {
+        setAiMapping({ isLoading: false, result: null, error: 'No upstream nodes available for mapping' });
+        return;
+      }
+
+      setAiMapping({ isLoading: true, result: null, error: null });
+
+      try {
+        // Prepare upstream data for AI analysis
+        const upstreamData = upstreamNodes.map(upNode => ({
+          nodeId: upNode.id,
+          label: upNode.data?.label || upNode.id,
+          app: upNode.data?.app || 'unknown',
+          columns: upNode.data?.metadata?.columns || [],
+          sample: upNode.data?.metadata?.sample || upNode.data?.metadata?.outputSample,
+          schema: upNode.data?.metadata?.schema || upNode.data?.metadata?.outputSchema
+        }));
+
+        const response = await fetch('/api/ai/map-params', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parameter: {
+              name,
+              nodeLabel: node?.data?.label,
+              app,
+              opId,
+              description: def?.description || '',
+              schema: def
+            },
+            upstream: upstreamData,
+            instruction: `Map the "${name}" parameter to the most appropriate upstream data. This parameter is for ${def?.description || 'the current operation'}.`
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.mapping) {
+          setAiMapping({ isLoading: false, result: result.mapping, error: null });
+          
+          // Apply the AI mapping result
+          if (result.mapping.nodeId && result.mapping.path) {
+            setDynamicValue(name, result.mapping.nodeId, result.mapping.path);
+            setLocalRefNode(result.mapping.nodeId);
+            setLocalRefPath(result.mapping.path);
           }
-          onBlur={onBlur}
-          placeholder="item1, item2, item3"
-          className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-        />
-      );
-    }
+        } else {
+          setAiMapping({ 
+            isLoading: false, 
+            result: null, 
+            error: result.error || 'AI mapping failed' 
+          });
+        }
+      } catch (error) {
+        console.error('AI mapping error:', error);
+        setAiMapping({ 
+          isLoading: false, 
+          result: null, 
+          error: 'Failed to connect to AI service' 
+        });
+      }
+    };
 
-    // Object as textarea (JSON)
-    if (type === "object") {
-      return (
-        <Textarea
-          value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)}
-          onChange={(e) => {
-            try {
-              const v = JSON.parse(e.target.value);
-              onChange(v);
-            } catch {
-              onChange(e.target.value); // keep raw string until valid
-            }
-          }}
-          onBlur={onBlur}
-          placeholder="{ }"
-          rows={3}
-          className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none font-mono text-sm"
-        />
-      );
-    }
+    const renderLLMField = () => (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleAIMapping}
+            disabled={aiMapping.isLoading || upstreamNodes.length === 0}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {aiMapping.isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                Map with AI
+              </>
+            )}
+          </button>
+          
+          {upstreamNodes.length === 0 && (
+            <span className="text-xs text-slate-500">Connect upstream nodes first</span>
+          )}
+        </div>
 
-    // Default to text input
+        {aiMapping.result && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-3">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-green-800">AI Mapping Applied</div>
+                <div className="text-xs text-green-700 mt-1">
+                  Mapped to: <code className="bg-green-100 px-1 rounded">{aiMapping.result.nodeId}.{aiMapping.result.path}</code>
+                </div>
+                {aiMapping.result.confidence && (
+                  <div className="text-xs text-green-600 mt-1">
+                    Confidence: {Math.round(aiMapping.result.confidence * 100)}%
+                  </div>
+                )}
+                {aiMapping.result.reason && (
+                  <div className="text-xs text-green-600 mt-1">
+                    {aiMapping.result.reason}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {aiMapping.error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-red-800">AI Mapping Failed</div>
+                <div className="text-xs text-red-700 mt-1">{aiMapping.error}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-2">
+          <strong>AI Mapping:</strong> Analyzes upstream data and automatically maps the most appropriate field based on semantic similarity and data types.
+        </div>
+      </div>
+    );
+
     return (
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        placeholder={def?.description || `Enter ${name}`}
-        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-      />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold text-slate-700">
+            {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
+          </div>
+          <select
+            value={mode}
+            onChange={(e) => handleModeChange(e.target.value as FieldMode)}
+            className="text-xs border border-slate-300 rounded px-2 py-1 bg-white text-slate-600 focus:border-blue-500 focus:ring-blue-500/20"
+          >
+            <option value="static">Static</option>
+            <option value="dynamic" disabled={!upstreamNodes.length}>Dynamic</option>
+            <option value="llm" disabled={!upstreamNodes.length}>AI Mapping</option>
+          </select>
+        </div>
+
+        {mode === 'static' && renderStaticField()}
+        {mode === 'dynamic' && renderDynamicField()}
+        {mode === 'llm' && renderLLMField()}
+
+        {def.description ? (
+          <p className="text-xs text-slate-500">{def.description}</p>
+        ) : null}
+      </div>
     );
   }
 
@@ -387,17 +752,10 @@ export function SmartParametersPanel() {
       <div className="space-y-4">
         {keys.map((k) => {
           const def = props[k];
-          const isRequired = schema?.required?.includes(k) || false;
-          
+
           return (
             <div key={k} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-              <label className="text-sm font-semibold text-slate-700 mb-3 block">
-                {def.title || k} {isRequired ? <span className="text-red-500">*</span> : null}
-              </label>
-              <SimpleField name={k} def={def} />
-              {def.description ? (
-                <p className="text-xs text-slate-500 mt-2">{def.description}</p>
-              ) : null}
+              <ParameterField name={k} def={def} />
             </div>
           );
         })}

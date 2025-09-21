@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { MultiAIService, buildWorkflowFromAnswersNew, generateWorkflowFromAnalysis } from '../aiModels';
+import { LLMProviderService } from '../services/LLMProviderService.js';
+import { getErrorMessage } from '../types/common';
 
 export const aiRouter = Router();
 
@@ -169,6 +171,55 @@ aiRouter.post('/test-models', async (req, res) => {
   }
 });
 
+// Map parameter values using AI suggestions
+aiRouter.post('/map-params', async (req, res) => {
+  try {
+    const { parameter, upstream, instruction, model } = req.body || {};
+
+    if (!parameter || typeof parameter !== 'object' || !parameter.name) {
+      return res.status(400).json({ success: false, error: 'parameter.name is required' });
+    }
+
+    if (!Array.isArray(upstream) || upstream.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one upstream node with metadata is required.' });
+    }
+
+    const prompt = buildParameterMappingPrompt(parameter, upstream, instruction);
+
+    const llmResult = await LLMProviderService.generateText(prompt, {
+      model: model || 'gemini-1.5-flash',
+      temperature: 0.15,
+      maxTokens: 400,
+    });
+
+    console.log('🤖 AI Parameter Mapping:', { 
+      parameter: parameter.name,
+      upstreamNodes: upstream.length,
+      responseLength: llmResult?.text?.length || 0
+    });
+
+    if (!llmResult || typeof llmResult.text !== 'string') {
+      return res.status(500).json({
+        success: false,
+        error: 'Invalid LLM response format'
+      });
+    }
+
+    const mapping = parseMappingResponse(llmResult.text);
+
+    if (!mapping || !mapping.nodeId || !mapping.path) {
+      return res.status(422).json({
+        success: false,
+        error: mapping?.reason || 'AI could not determine a reliable mapping.',
+      });
+    }
+
+    res.json({ success: true, mapping });
+  } catch (error) {
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
+  }
+});
+
 // Check deployment prerequisites endpoint
 aiRouter.get('/deployment/prerequisites', async (req, res) => {
   try {
@@ -219,5 +270,75 @@ aiRouter.get('/deployment/prerequisites', async (req, res) => {
     });
   }
 });
+
+function buildParameterMappingPrompt(parameter: any, upstream: any[], instruction?: string): string {
+  const upstreamSummary = upstream
+    .map((node: any) => {
+      const columns = node.columns || [];
+      const sample = node.sample || node.outputSample;
+      const schema = node.schema || node.outputSchema;
+
+      return `Node ID: ${node.nodeId}
+Label: ${node.label || node.nodeId}
+App: ${node.app || 'unknown'}
+Columns: ${columns.length ? columns.join(', ') : 'n/a'}
+Sample: ${sample ? JSON.stringify(sample) : 'n/a'}
+Schema: ${schema ? JSON.stringify(schema) : 'n/a'}`;
+    })
+    .join('\n\n');
+
+  const paramSchema = JSON.stringify(parameter.schema || {});
+
+  return `You are an automation workflow assistant. Map downstream parameters to upstream outputs.
+
+Downstream parameter to map:
+- Name: ${parameter.name}
+- Node label: ${parameter.nodeLabel || ''}
+- App: ${parameter.app || ''}
+- Operation: ${parameter.opId || ''}
+- Description: ${parameter.schema?.description || parameter.description || ''}
+- JSON Schema: ${paramSchema}
+
+Available upstream nodes and their data:
+${upstreamSummary}
+
+Instruction from user: ${instruction || 'Choose the most semantically appropriate upstream value.'}
+
+Respond with strict JSON:
+{
+  "nodeId": "<upstream node id or empty string>",
+  "path": "<dot notation path within that node>",
+  "confidence": <number between 0 and 1>,
+  "reason": "<brief justification>"
+}
+
+If you cannot confidently map, set nodeId and path to empty strings.`;
+}
+
+function parseMappingResponse(text: string): { nodeId: string; path: string; confidence?: number; reason?: string } | null {
+  if (!text) return null;
+
+  const cleaned = text.trim();
+  let jsonText = cleaned;
+
+  // If wrapped in markdown code fences, extract contents
+  const fenceMatch = cleaned.match(/```json\s*([\s\S]*?)```/i);
+  if (fenceMatch) {
+    jsonText = fenceMatch[1];
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      nodeId: parsed.nodeId?.trim() || '',
+      path: parsed.path?.trim() || '',
+      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : undefined,
+      reason: typeof parsed.reason === 'string' ? parsed.reason : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default aiRouter;
