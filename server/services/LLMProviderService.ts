@@ -85,7 +85,7 @@ export class LLMProviderService {
   static getDefaultModel(provider: string): string {
     switch (provider) {
       case 'gemini':
-        return 'gemini-2.0-flash-exp';
+        return 'gemini-1.5-flash';
       case 'openai':
         return 'gpt-4o-mini';
       case 'claude':
