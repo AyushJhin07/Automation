@@ -196,30 +196,59 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
         </Button>
         <Button
           size="sm"
-          onClick={() => {
-            // Generate and download code using automation script generator with answers
-            fetch('/api/automation/generate-script', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                nodes: workflowData.workflow?.graph?.nodes || workflowData.nodes || [],
-                edges: workflowData.workflow?.graph?.connections || workflowData.connections || [],
-                answers: workflowData.usedAnswers || {} // Pass the user's answers
-              })
-            })
-            .then(response => response.json())
-            .then(result => {
-              if (result.success) {
-                const codeContent = result.script || '';
-                const blob = new Blob([codeContent], { type: 'text/javascript' });
+          onClick={async () => {
+            try {
+              // Prefer compiled Apps Script output if available
+              const last = useWorkflowState.getState().last;
+              const files = last?.files || workflowData?.files || [];
+              const codeFile = Array.isArray(files) ? files.find((f: any) => f.path === 'Code.gs') : null;
+
+              if (codeFile?.content) {
+                const blob = new Blob([codeFile.content], { type: 'text/javascript' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'gmail-automation.gs';
+                a.download = 'automation.gs';
+                a.click();
+                URL.revokeObjectURL(url);
+                return;
+              }
+
+              // Fallback: if code string exists on workflowData
+              const inlineCode = (workflowData as any)?.appsScriptCode || (workflowData as any)?.code;
+              if (inlineCode) {
+                const blob = new Blob([inlineCode], { type: 'text/javascript' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'automation.gs';
+                a.click();
+                URL.revokeObjectURL(url);
+                return;
+              }
+
+              // Final fallback: use legacy generator to avoid breaking existing flow
+              const nodes = workflowData.workflow?.graph?.nodes || workflowData.nodes || [];
+              const edges = workflowData.workflow?.graph?.connections || (workflowData as any)?.connections || [];
+              const answers = (workflowData as any)?.usedAnswers || {};
+              const response = await fetch('/api/automation/generate-script', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nodes, edges, answers })
+              });
+              const result = await response.json();
+              if (result?.success && result?.script) {
+                const blob = new Blob([result.script], { type: 'text/javascript' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'automation.gs';
                 a.click();
                 URL.revokeObjectURL(url);
               }
-            });
+            } catch (e) {
+              console.error('Download code failed:', e);
+            }
           }}
           className="bg-purple-600 hover:bg-purple-700 flex-1"
         >

@@ -148,6 +148,27 @@ aiRouter.get('/models', async (req, res) => {
   }
 });
 
+// Test models endpoint for Admin Settings page
+aiRouter.post('/test-models', async (req, res) => {
+  try {
+    const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+    const hasGemini = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+    const hasClaude = Boolean(process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY);
+
+    // Return a simple capability report without making network calls
+    res.json({
+      success: true,
+      results: {
+        openai: { available: hasOpenAI, model: 'gpt-4o-mini' },
+        gemini: { available: hasGemini, model: 'gemini-1.5-flash' },
+        claude: { available: hasClaude, model: 'claude-3-sonnet' }
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error?.message || 'Failed to test models' });
+  }
+});
+
 // Check deployment prerequisites endpoint
 aiRouter.get('/deployment/prerequisites', async (req, res) => {
   try {

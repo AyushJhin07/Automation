@@ -275,7 +275,7 @@ export class OAuthManager {
       },
     });
 
-    // Gmail Enhanced
+    // Gmail Enhanced (correct Google OAuth 2.0 endpoints)
     this.providers.set('gmail-enhanced', {
       name: 'gmail-enhanced',
       displayName: 'Gmail Enhanced',
@@ -283,9 +283,13 @@ export class OAuthManager {
         clientId: process.env.GMAIL_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.GMAIL_ENHANCED_CLIENT_SECRET || '',
         redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/gmail-enhanced`,
-        scopes: ["read","write"],
-        authUrl: 'https://gmail.googleapis.com/gmail/v1/oauth/authorize',
-        tokenUrl: 'https://gmail.googleapis.com/gmail/v1/oauth/token',
+        scopes: [
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/gmail.send'
+        ],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
       },
     });
 
