@@ -1640,10 +1640,27 @@ const GraphEditorContent = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    // Copy node functionality could be added here
-                    console.log('Copy node:', selectedNode?.id);
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (selectedNode) {
+                      const newNode = {
+                        ...selectedNode,
+                        id: `${selectedNode.type}-${Date.now()}`,
+                        position: {
+                          x: selectedNode.position.x + 50,
+                          y: selectedNode.position.y + 50
+                        },
+                        data: {
+                          ...selectedNode.data,
+                          label: `${selectedNode.data.label} (Copy)`
+                        }
+                      };
+                      setNodes((nds) => [...nds, newNode]);
+                      setSelectedNodeId(newNode.id);
+                    }
                   }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   className="w-full bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 hover:border-slate-400 transition-colors flex items-center justify-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
@@ -1653,10 +1670,13 @@ const GraphEditorContent = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setNodes((nds) => nds.filter((n) => n.id !== selectedNode?.id));
                     setSelectedNodeId(null);
                   }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   className="w-full bg-red-50 text-red-600 border-red-300 hover:bg-red-100 hover:border-red-400 transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
