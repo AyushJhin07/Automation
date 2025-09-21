@@ -94,29 +94,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ChatGPT Fix: Flow storage routes for AI Builder → Graph Editor handoff
   app.use('/api/flows', flowRoutes);
   
-  // ChatGPT Fix: Model discovery endpoint
-  app.get('/api/ai/models', (_req, res) => {
-    try {
-      const caps = LLMProviderService.getProviderStatus();
-      const models: string[] = [];
-      if (caps.capabilities.gemini) models.push('gemini-1.5-flash', 'gemini-2.0-flash-exp');
-      if (caps.capabilities.openai) models.push('gpt-4o-mini', 'gpt-4o');
-      if (caps.capabilities.claude) models.push('claude-3-haiku');
-      res.json({ success: true, models, provider: caps.selected });
-    } catch (error) {
-      res.status(500).json({ success: false, error: 'Failed to get models' });
-    }
-  });
+  // (removed duplicate /api/ai/models in favor of aiRouter.get('/models'))
   
-  // ChatGPT Fix: Registry endpoint alias for client compatibility
-  app.get('/api/registry/connectors', (_req, res) => {
-    try {
-      const catalog = connectorRegistry.getNodeCatalog();
-      res.json({ success: true, connectors: Object.values(catalog.connectors || {}) });
-    } catch (error) {
-      res.status(500).json({ success: false, error: 'Failed to get connectors' });
-    }
-  });
+  // (removed duplicate /api/registry/connectors in favor of the consolidated version below)
 
   // ChatGPT Panel Root Cause Fix: Comprehensive schema endpoint with triggers+actions
   app.get("/api/registry/op-schema", (req, res) => {
@@ -623,26 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, ...stats });
   });
 
-  // Node catalog endpoint for Graph Editor UI
-  app.get('/api/registry/catalog', (req, res) => {
-    try {
-      const catalog = connectorRegistry.getNodeCatalog();
-      console.log('[DEBUG] Catalog keys:', Object.keys(catalog));
-      console.log('[DEBUG] Connectors count:', Object.keys(catalog.connectors || {}).length);
-      console.log('[DEBUG] Categories count:', Object.keys(catalog.categories || {}).length);
-      
-      res.json({ 
-        success: true, 
-        catalog 
-      });
-    } catch (e) {
-      console.error('[ERROR] Catalog generation failed:', e);
-      res.status(500).json({ 
-        success: false, 
-        error: String(e) 
-      });
-    }
-  });
+  // (removed duplicate /api/registry/catalog; keeping single definition below)
 
   app.get('/api/connectors/:slug', async (req, res) => {
     try {
@@ -657,8 +618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== CONNECTOR REGISTRY ROUTES =====
-
-  // Get comprehensive node catalog for UI
+  // Get comprehensive node catalog for UI (single authoritative endpoint)
   app.get('/api/registry/catalog', async (req, res) => {
     try {
       const catalog = connectorRegistry.getNodeCatalog();

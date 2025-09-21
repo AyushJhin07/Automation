@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+# Security and runtime artifacts
+.env
+.env.*
+*.log
+logs/
+.temp-deployments/

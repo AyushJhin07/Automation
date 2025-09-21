@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { compileToAppsScript } from './workflow/compile-to-appsscript';
 
 // COMPREHENSIVE GOOGLE APPS SCRIPT FUNCTION IMPLEMENTATIONS
 // Covers ALL Google Workspace services: Gmail, Sheets, Docs, Slides, Calendar, Drive, Contacts, Chat, Meet, Forms
@@ -1438,18 +1439,26 @@ export function registerGoogleAppsRoutes(app: Express): void {
       if (!nodes || !Array.isArray(nodes)) {
         return res.status(400).json({ error: 'Invalid nodes data' });
       }
-      
-      // If answers are provided, generate optimized script
-      const script = answers 
+
+      // Try unified compiler path first to avoid drift with main pipeline
+      try {
+        const wf = toWorkflowGraphFromClient(nodes, edges || []);
+        const compiled = compileToAppsScript(wf);
+        const codeFile = compiled.files.find(f => f.path === 'Code.gs');
+        if (codeFile?.content) {
+          return res.json({ success: true, script: codeFile.content, nodeCount: nodes.length, edgeCount: (edges || []).length });
+        }
+      } catch (e) {
+        // Fall back to legacy generator if conversion/compile fails
+        console.warn('Legacy generator fallback (compile failed):', (e as Error).message);
+      }
+
+      // Legacy path (kept for backward compatibility)
+      const legacy = answers 
         ? GoogleAppsScriptAPI.generateFromAnswers(answers, nodes, edges || [])
         : GoogleAppsScriptAPI.generateCompleteScript(nodes, edges || []);
-      
-      res.json({ 
-        success: true, 
-        script: script,
-        nodeCount: nodes.length,
-        edgeCount: (edges || []).length
-      });
+
+      res.json({ success: true, script: legacy, nodeCount: nodes.length, edgeCount: (edges || []).length });
     } catch (error) {
       console.error('Error generating script:', error);
       res.status(500).json({ error: 'Failed to generate script' });
@@ -1532,4 +1541,45 @@ export function registerGoogleAppsRoutes(app: Express): void {
       res.status(500).json({ error: 'Failed to generate test script' });
     }
   });
+}
+
+// Naive adapter from client nodes/edges to compiler WorkflowGraph
+function toWorkflowGraphFromClient(nodes: any[], edges: any[]) {
+  const inferType = (n: any) => {
+    const t = String(n.type || '').toLowerCase();
+    if (t.startsWith('trigger')) return 'trigger';
+    if (t.startsWith('transform')) return 'transform';
+    return 'action';
+  };
+  const inferApp = (n: any) => {
+    const explicit = n.app || n.data?.app || '';
+    if (explicit) return String(explicit);
+    const t = String(n.type || '');
+    const parts = t.split('.');
+    return parts.length > 1 ? parts[1] : 'core';
+  };
+  const inferOp = (n: any) => {
+    const op = n.data?.operation || n.data?.function || n.data?.actionId || n.op;
+    if (op) return String(op);
+    const t = String(n.type || '');
+    const parts = t.split(':').pop() || t.split('.').slice(2).join('.') || 'noop';
+    return String(parts);
+  };
+
+  const wfNodes = nodes.map((n: any, i: number) => ({
+    id: String(n.id || `n${i}`),
+    type: inferType(n),
+    app: inferApp(n),
+    name: String(n.data?.label || n.label || n.data?.name || inferOp(n)),
+    op: `${inferApp(n)}.${inferOp(n)}`,
+    params: n.data?.parameters || n.parameters || n.params || {}
+  }));
+
+  const wfEdges = (edges || []).map((e: any, idx: number) => ({
+    id: String(e.id || `e${idx}`),
+    from: String(e.source || e.from),
+    to: String(e.target || e.to)
+  })).filter((e: any) => e.from && e.to);
+
+  return { id: `legacy_${Date.now()}`, nodes: wfNodes, edges: wfEdges, meta: { origin: 'legacy-endpoint' } };
 }

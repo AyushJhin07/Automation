@@ -104,13 +104,43 @@ export function SmartParametersPanel() {
   }, [node?.id, storeEdges, storeNodes]);
 
   // More robust app/op retrieval
-  const app = node?.data?.app || node?.data?.connectorId || node?.data?.provider || "";
-  const opId = node?.data?.actionId
-    ?? node?.data?.function
-    ?? node?.data?.triggerId
-    ?? node?.data?.eventId
-    ?? node?.data?.id
-    ?? node?.data?.label;
+  const rawNodeType = node?.data?.nodeType || node?.type || "";
+
+  const canonicalizeAppId = (value: any): string => {
+    if (!value) return "";
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  const inferAppId = (): string => {
+    const direct = canonicalizeAppId(node?.data?.app || node?.data?.connectorId || node?.data?.provider);
+    if (direct) return direct;
+    if (rawNodeType) {
+      const match = rawNodeType.match(/^(?:trigger|action|transform)[.:]([^.:]+)/i);
+      if (match?.[1]) return canonicalizeAppId(match[1]);
+    }
+    return "";
+  };
+
+  const inferOpId = (): string => {
+    const direct = node?.data?.actionId
+      ?? node?.data?.function
+      ?? node?.data?.triggerId
+      ?? node?.data?.eventId;
+    if (direct) return String(direct);
+    if (rawNodeType) {
+      const parts = rawNodeType.split(/[:.]/);
+      return parts[parts.length - 1];
+    }
+    if (node?.data?.label) return String(node.data.label);
+    return "";
+  };
+
+  const app = inferAppId();
+  const opId = inferOpId();
   const [schema, setSchema] = useState<JSONSchema | null>(null);
   const [defaults, setDefaults] = useState<any>({});
   // Draft parameters: editable locally; commit to graph on blur or explicit actions
@@ -130,11 +160,11 @@ export function SmartParametersPanel() {
     setDefaults({});
     setParamsDraft(node?.data?.parameters ?? {});
 
-    const kind = node?.data?.kind || (String(node?.type||"").startsWith("trigger") ? "trigger" : "auto");
+    const kind = node?.data?.kind || (String(rawNodeType||"").startsWith("trigger") ? "trigger" : "auto");
 
     const normalize = (s: any) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    const appKey = normalize(app);
-    const opKey = normalize(opId);
+    const appKey = canonicalizeAppId(app);
+    const opKey = canonicalizeAppId(opId);
 
     const opSchemaUrl = opId 
       ? `/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}&kind=${kind}`
@@ -158,37 +188,56 @@ export function SmartParametersPanel() {
         const empty = !nextSchema?.properties || Object.keys(nextSchema.properties).length === 0;
         if (empty) {
           try {
-            const connectorsRes = await fetch('/api/registry/connectors');
-            const connectorsJson = await connectorsRes.json();
-            const list = connectorsJson?.connectors || [];
+            // Use node catalog (has actions/triggers with full parameter schemas)
+            const res = await fetch('/api/registry/catalog');
+            const json = await res.json();
+            const connectorsMap = json?.catalog?.connectors || {};
+
+            // Flatten to array for matching by id/title
+            const list = Object.entries(connectorsMap).map(([id, def]: any) => ({
+              id,
+              name: def?.name,
+              actions: def?.actions || [],
+              triggers: def?.triggers || []
+            }));
 
             const match = list.find((c: any) => {
-              const title = normalize(c?.name || c?.title);
-              const id = normalize(c?.id);
+              const title = canonicalizeAppId(c?.name);
+              const id = canonicalizeAppId(c?.id);
               return title === appKey || id === appKey || title.includes(appKey) || appKey.includes(title);
             });
             if (match) {
-              // search actions and triggers arrays
               const pools = [match.actions || [], match.triggers || []];
               let found: any = null;
-              const opCandidates = [opKey, normalize(node?.data?.label)].filter(Boolean);
+              const opCandidates = [opKey, canonicalizeAppId(node?.data?.label || node?.data?.name)].filter(Boolean);
               for (const pool of pools) {
                 found = pool.find((a: any) => {
-                  const aid = normalize(a?.id);
-                  const aname = normalize(a?.name || a?.title);
-                  const variants = [aid, aname, aid.replace(/_/g,' '), aname.replace(/_/g,' '), aid.replace(/\s/g,'_'), aname.replace(/\s/g,'_')];
+                  const aid = canonicalizeAppId(a?.id);
+                  const aname = canonicalizeAppId(a?.name || a?.title);
+                  const variants = [aid, aname, aid.replace(/-/g,'_'), aname.replace(/-/g,'_')];
                   return opCandidates.some(c => variants.includes(c));
                 });
                 if (found) break;
               }
-              if (!found && pools[0].length) {
-                // last resort: if only one action/trigger and op unknown, use it
-                const all = [...pools[0], ...pools[1]];
+              if (!found && (match.actions?.length || match.triggers?.length)) {
+                const all = [...(match.actions || []), ...(match.triggers || [])];
                 if (all.length === 1) found = all[0];
               }
-              if (found && found.parameters && found.parameters.properties) {
+              if (found && found.parameters && found.parameters.properties && Object.keys(found.parameters.properties).length > 0) {
                 nextSchema = found.parameters;
                 nextDefaults = found.defaults || {};
+              } else {
+                const synthetic = buildSyntheticSchema({
+                  kind,
+                  appId: appKey,
+                  opId: opKey,
+                  opDef: found,
+                  node,
+                });
+                if (synthetic) {
+                  nextSchema = synthetic.schema;
+                  nextDefaults = synthetic.defaults || {};
+                }
               }
             }
           } catch (e) {
@@ -200,7 +249,9 @@ export function SmartParametersPanel() {
         if (!nextSchema?.properties || Object.keys(nextSchema.properties).length === 0) {
           const appL = String(app).toLowerCase();
           const opL = String(opId).toLowerCase();
-          if (appL.includes('sheets') && (opL.includes('row') && (opL.includes('add') || opL.includes('added') || opL.includes('row_added')))) {
+          const labelL = String(node?.data?.label || '').toLowerCase();
+          // Google Sheets: Row Added
+          if ((appL.includes('sheets') || labelL.includes('sheet')) && (opL.includes('row') || labelL.includes('row')) && (opL.includes('add') || opL.includes('added') || labelL.includes('add'))) {
             nextSchema = {
               type: 'object',
               properties: {
@@ -341,16 +392,30 @@ export function SmartParametersPanel() {
 
     const hasDynamicOptions = dynamicOptions.length > 0;
 
-    const stopPropagation = (e: any) => {
-      if (!e) return;
-      if (typeof e.stopPropagation === 'function') e.stopPropagation();
-      if (typeof e.preventDefault === 'function' && e.type === 'pointercancel') e.preventDefault();
-      const native = e.nativeEvent;
-      if (native) {
-        if (typeof native.stopPropagation === 'function') native.stopPropagation();
-        if (typeof native.stopImmediatePropagation === 'function') native.stopImmediatePropagation();
-      }
-    };
+  const stopPropagation = (e: any) => {
+    if (!e) return;
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    const native = e.nativeEvent;
+    if (native) {
+      if (typeof native.stopPropagation === 'function') native.stopPropagation();
+      if (typeof native.stopImmediatePropagation === 'function') native.stopImmediatePropagation();
+    }
+  };
+
+  // Enhanced event handlers for better focus management
+  const handleInputFocus = (e: any) => {
+    stopPropagation(e);
+    // Prevent ReactFlow from interfering with input focus
+    e.target.style.pointerEvents = 'auto';
+  };
+
+  const handleInputBlur = (e: any) => {
+    // Allow normal blur behavior
+    setTimeout(() => {
+      e.target.style.pointerEvents = 'auto';
+    }, 100);
+  };
 
     const insertExpr = (expr: string, label?: string) => {
       onChange(expr);
@@ -392,7 +457,13 @@ export function SmartParametersPanel() {
                   key={opt.value}
                   type="button"
                   className="w-full text-left px-3 py-1.5 rounded border border-gray-200 bg-white hover:bg-blue-50 text-gray-700 text-xs"
-                  onClick={() => insertExpr(opt.value, opt.label)}
+                  onClick={(e) => {
+                    stopPropagation(e);
+                    insertExpr(opt.value, opt.label);
+                  }}
+                  onMouseDown={stopPropagation}
+                  onPointerDown={stopPropagation}
+                  style={{ pointerEvents: 'auto' }}
                 >
                   <div className="font-medium">{opt.label}</div>
                   {opt.description ? <div className="text-[10px] text-gray-500">{opt.description}</div> : null}
@@ -409,14 +480,19 @@ export function SmartParametersPanel() {
       </div>
     );
 
-    const inputEventHandlers = {} as const;
 
     const renderFxControls = () => (
       <div className="mt-1 flex items-center gap-2 text-xs">
         <button
           type="button"
           className="text-blue-600 hover:underline"
-          onClick={() => setShowFx((v) => !v)}
+          onClick={(e) => {
+            stopPropagation(e);
+            setShowFx((v) => !v);
+          }}
+          onMouseDown={stopPropagation}
+          onPointerDown={stopPropagation}
+          style={{ pointerEvents: 'auto' }}
         >
           Use dynamic value (fx)
         </button>
@@ -424,7 +500,13 @@ export function SmartParametersPanel() {
         <button
           type="button"
           className="text-blue-600 hover:underline"
-          onClick={handleAutoMap}
+          onClick={(e) => {
+            stopPropagation(e);
+            handleAutoMap();
+          }}
+          onMouseDown={stopPropagation}
+          onPointerDown={stopPropagation}
+          style={{ pointerEvents: 'auto' }}
         >
           Auto-map
         </button>
@@ -442,11 +524,14 @@ export function SmartParametersPanel() {
             {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
           </label>
           <select
-            className="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 nodrag nopan"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onBlur={(e) => commitSingle(name, e.target.value)}
-            {...inputEventHandlers}
+            onFocus={handleInputFocus}
+            onMouseDown={stopPropagation}
+            onPointerDown={stopPropagation}
+            onClick={stopPropagation}
             style={{ pointerEvents: 'auto' }}
           >
             <option value="">-- select --</option>
@@ -470,8 +555,12 @@ export function SmartParametersPanel() {
                 type="checkbox"
                 checked={Boolean(value)}
                 onChange={(e) => onChange(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                {...inputEventHandlers}
+                onFocus={handleInputFocus}
+                onMouseDown={stopPropagation}
+                onPointerDown={stopPropagation}
+                onClick={stopPropagation}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 nodrag nopan"
+                style={{ pointerEvents: 'auto' }}
               />
               <label className="text-sm font-medium">
                 {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
@@ -492,9 +581,15 @@ export function SmartParametersPanel() {
               value={value}
               onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
               onBlur={(e) => commitSingle(name, e.target.value === "" ? "" : Number(e.target.value))}
+              onFocus={handleInputFocus}
+              onMouseDown={stopPropagation}
+              onPointerDown={stopPropagation}
+              onClick={stopPropagation}
               min={def.minimum as any}
               max={def.maximum as any}
               placeholder={def.description || `Enter ${name}`}
+              className="nodrag nopan"
+              style={{ pointerEvents: 'auto' }}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
           </div>
@@ -523,7 +618,13 @@ export function SmartParametersPanel() {
                   .map((s) => s.trim())
                   .filter(Boolean)
               )}
+              onFocus={handleInputFocus}
+              onMouseDown={stopPropagation}
+              onPointerDown={stopPropagation}
+              onClick={stopPropagation}
               placeholder="item1, item2, item3"
+              className="nodrag nopan"
+              style={{ pointerEvents: 'auto' }}
             />
             {renderFxControls()}
             {renderFxStatus()}
@@ -539,7 +640,7 @@ export function SmartParametersPanel() {
               {def.title || name} (JSON) {isRequired ? <span className="text-red-500">*</span> : null}
             </label>
             <textarea
-              className="w-full border border-gray-300 rounded px-3 py-2 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded px-3 py-2 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 nodrag nopan"
               rows={4}
               value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)}
               onChange={(e) => {
@@ -554,8 +655,11 @@ export function SmartParametersPanel() {
                 try { commitSingle(name, JSON.parse(e.target.value)); }
                 catch { commitSingle(name, e.target.value); }
               }}
+              onFocus={handleInputFocus}
+              onMouseDown={stopPropagation}
+              onPointerDown={stopPropagation}
+              onClick={stopPropagation}
               placeholder="{ }"
-              {...inputEventHandlers}
               style={{ pointerEvents: 'auto' }}
             />
             {def.description ? <p className="text-xs text-gray-500 mt-1">{def.description}</p> : null}
@@ -579,7 +683,13 @@ export function SmartParametersPanel() {
               value={value}
               onChange={(e) => onChange(e.target.value)}
               onBlur={(e) => commitSingle(name, e.target.value)}
+              onFocus={handleInputFocus}
+              onMouseDown={stopPropagation}
+              onPointerDown={stopPropagation}
+              onClick={stopPropagation}
               placeholder={def?.description || def?.format || `Enter ${name}`}
+              className="nodrag nopan"
+              style={{ pointerEvents: 'auto' }}
             />
             {renderFxControls()}
             {renderFxStatus()}
@@ -623,8 +733,12 @@ export function SmartParametersPanel() {
 
   return (
     <div
-      className="p-4 bg-white border-l border-gray-200 h-full overflow-y-auto"
+      className="p-4 bg-white border-l border-gray-200 h-full overflow-y-auto nodrag nopan"
       style={{ pointerEvents: 'auto' }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
     >
       <div className="mb-4">
         <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Smart Parameters</div>
@@ -669,6 +783,83 @@ export function SmartParametersPanel() {
       )}
     </div>
   );
+}
+
+function buildSyntheticSchema({
+  kind,
+  appId,
+  opId,
+  opDef,
+  node,
+}: {
+  kind: string;
+  appId: string;
+  opId: string;
+  opDef?: any;
+  node: any;
+}): { schema: JSONSchema; defaults?: Record<string, any> } | null {
+  const schema: JSONSchema = { type: 'object', properties: {} };
+  const required: string[] = [];
+  let added = false;
+
+  const addProp = (name: string, def: any, req = false) => {
+    if (!schema.properties) schema.properties = {};
+    schema.properties[name] = def;
+    if (req) required.push(name);
+    added = true;
+  };
+
+  const endpoint: string = opDef?.endpoint || opDef?.url || "";
+  if (endpoint) {
+    const regex = /{([^}]+)}/g;
+    let match;
+    while ((match = regex.exec(endpoint)) !== null) {
+      const paramName = match[1];
+      addProp(paramName, {
+        type: 'string',
+        title: paramName,
+        description: `Path parameter used in endpoint ${endpoint}`,
+      }, true);
+    }
+  }
+
+  if (kind === 'action') {
+    addProp('query', {
+      type: 'object',
+      description: 'Query string parameters (key/value pairs).',
+    });
+    const method = String(opDef?.method || 'POST').toUpperCase();
+    if (method !== 'GET') {
+      addProp('body', {
+        type: 'object',
+        description: 'Request body as JSON object.',
+      });
+    }
+    addProp('headers', {
+      type: 'object',
+      description: 'Custom HTTP headers (key/value pairs).',
+    });
+  } else {
+    addProp('filters', {
+      type: 'object',
+      description: 'Optional filters to limit trigger events (key/value pairs).',
+    });
+    addProp('pollIntervalMinutes', {
+      type: 'number',
+      description: 'Override default polling interval (minutes).',
+      minimum: 1,
+    });
+  }
+
+  if (!added) {
+    addProp('configuration', {
+      type: 'object',
+      description: 'Custom configuration for this operation.',
+    });
+  }
+
+  schema.required = required;
+  return { schema };
 }
 
 export default SmartParametersPanel;

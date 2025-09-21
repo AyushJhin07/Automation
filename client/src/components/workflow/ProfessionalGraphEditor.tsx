@@ -1,7 +1,7 @@
 // PROFESSIONAL N8N-STYLE GRAPH EDITOR
 // Beautiful visual workflow builder with smooth animations
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -923,12 +923,14 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                     {app.triggers.map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => onAddNode("trigger", { 
-                          label: t.name, 
-                          description: t.description, 
-                          app: app.appName, 
-                          nodeType: t.nodeType, 
-                          params: t.params || {} 
+                        onClick={() => onAddNode("trigger", {
+                          label: t.name,
+                          description: t.description,
+                          kind: 'trigger',
+                          app: app.appId,            // use canonical id (e.g., google-drive)
+                          triggerId: t.id,           // expose op id explicitly
+                          nodeType: t.nodeType,
+                          parameters: t.params || {}
                         })}
                         className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300"
                       >
@@ -947,12 +949,14 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                     {app.actions.map((a) => (
                       <button
                         key={a.id}
-                        onClick={() => onAddNode(a.kind === "transform" ? "transform" : "action", { 
-                          label: a.name, 
-                          description: a.description, 
-                          app: app.appName, 
-                          nodeType: a.nodeType, 
-                          params: a.params || {} 
+                        onClick={() => onAddNode(a.kind === "transform" ? "transform" : "action", {
+                          label: a.name,
+                          description: a.description,
+                          kind: a.kind === 'transform' ? 'transform' : 'action',
+                          app: app.appId,
+                          actionId: a.id,
+                          nodeType: a.nodeType,
+                          parameters: a.params || {}
                         })}
                         className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300"
                       >
@@ -994,7 +998,17 @@ const GraphEditorContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedNode = useMemo(() => {
+    return nodes.find((n: any) => String(n.id) === String(selectedNodeId)) as any;
+  }, [nodes, selectedNodeId]);
+  const [labelValue, setLabelValue] = useState<string>('');
+  const [descValue, setDescValue] = useState<string>('');
+
+  useEffect(() => {
+    setLabelValue(selectedNode?.data?.label || '');
+    setDescValue(selectedNode?.data?.description || '');
+  }, [selectedNodeId, selectedNode?.data?.label, selectedNode?.data?.description]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
@@ -1166,7 +1180,7 @@ const GraphEditorContent = () => {
         // Auto-select first node to reveal parameter panel immediately
         if ((reactFlowNodes as any).length > 0) {
           const firstNode = (reactFlowNodes as any)[0];
-          setSelectedNode(firstNode as any);
+          setSelectedNodeId(String(firstNode.id));
           setNodes((prev: any) => prev.map((n: any) => ({ ...n, selected: n.id === firstNode.id })));
         }
 
@@ -1314,15 +1328,15 @@ const GraphEditorContent = () => {
       },
       data: {
         ...nodeData,
-        id: `${nodeType}-${Date.now()}`,
       },
     };
     setNodes((nds) => [...nds, newNode]);
   }, [setNodes, getViewport]);
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedNode(node);
-  }, []);
+    setSelectedNodeId(String(node.id));
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === node.id })));
+  }, [setNodes]);
   
   const onRunWorkflow = useCallback(async () => {
     setIsRunning(true);
@@ -1434,6 +1448,25 @@ const GraphEditorContent = () => {
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          selectionOnDrag={false}
+          onPaneClick={(e) => {
+            const el = e.target as HTMLElement;
+            // Don't clear selection if clicking inside the parameters panel or any input elements
+            if (el && typeof el.closest === 'function') {
+              if (el.closest('[data-inspector]') || 
+                  el.closest('.nodrag') || 
+                  el.closest('input') || 
+                  el.closest('textarea') || 
+                  el.closest('select') ||
+                  el.closest('button') ||
+                  el.closest('.nopan')) {
+                return;
+              }
+            }
+            // Clear selection only when clicking the actual canvas
+            setSelectedNodeId(null);
+            setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+          }}
           fitView
           attributionPosition="bottom-left"
           className="bg-gray-100"
@@ -1516,11 +1549,17 @@ const GraphEditorContent = () => {
       {/* Node Properties Panel - Enterprise Design */}
       {selectedNode && (
         <div
-          className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto"
+          data-inspector
+          className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
+          onPointerDown={(e) => { e.stopPropagation(); }}
+          onPointerUp={(e) => { e.stopPropagation(); }}
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onMouseUp={(e) => { e.stopPropagation(); }}
+          onClick={(e) => { e.stopPropagation(); }}
+          onDoubleClick={(e) => { e.stopPropagation(); }}
           onPointerDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
           onMouseDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
           onClickCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
-          onKeyDownCapture={(e) => { e.stopPropagation(); }}
           style={{ pointerEvents: 'auto' }}
         >
           {/* Header */}
@@ -1532,13 +1571,13 @@ const GraphEditorContent = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">Node Properties</h3>
-                  <p className="text-xs text-blue-100 mt-0.5">{selectedNode.type}</p>
+                  <p className="text-xs text-blue-100 mt-0.5">{selectedNode?.type}</p>
                 </div>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setSelectedNode(null)}
+                onClick={() => { setSelectedNodeId(null); setNodes((nds) => nds.map((n) => ({ ...n, selected: false }))); }}
                 className="text-white/70 hover:text-white hover:bg-white/20 transition-all duration-200"
               >
                 <X className="w-5 h-5" />
@@ -1556,15 +1595,11 @@ const GraphEditorContent = () => {
                   Label
                 </label>
                 <Input
-                  value={selectedNode.data.label || ''}
-                  onChange={(e) => {
-                    setNodes((nds) =>
-                      nds.map((n) =>
-                        n.id === selectedNode.id
-                          ? { ...n, data: { ...n.data, label: e.target.value } }
-                          : n
-                      )
-                    );
+                  value={labelValue}
+                  onChange={(e) => setLabelValue(e.target.value)}
+                  onBlur={() => {
+                    const next = labelValue;
+                    setNodes((nds) => nds.map((n) => (n.id === selectedNode?.id ? { ...n, data: { ...n.data, label: next } } : n)));
                   }}
                   className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
                   placeholder="Enter node label..."
@@ -1577,15 +1612,11 @@ const GraphEditorContent = () => {
                   Description
                 </label>
                 <Textarea
-                  value={selectedNode.data.description || ''}
-                  onChange={(e) => {
-                    setNodes((nds) =>
-                      nds.map((n) =>
-                        n.id === selectedNode.id
-                          ? { ...n, data: { ...n.data, description: e.target.value } }
-                          : n
-                      )
-                    );
+                  value={descValue}
+                  onChange={(e) => setDescValue(e.target.value)}
+                  onBlur={() => {
+                    const next = descValue;
+                    setNodes((nds) => nds.map((n) => (n.id === selectedNode?.id ? { ...n, data: { ...n.data, description: next } } : n)));
                   }}
                   className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none"
                   placeholder="Describe what this node does..."
@@ -1611,7 +1642,7 @@ const GraphEditorContent = () => {
                   size="sm"
                   onClick={() => {
                     // Copy node functionality could be added here
-                    console.log('Copy node:', selectedNode.id);
+                    console.log('Copy node:', selectedNode?.id);
                   }}
                   className="w-full bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 hover:border-slate-400 transition-colors flex items-center justify-center gap-2"
                 >
@@ -1623,8 +1654,8 @@ const GraphEditorContent = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
-                    setSelectedNode(null);
+                    setNodes((nds) => nds.filter((n) => n.id !== selectedNode?.id));
+                    setSelectedNodeId(null);
                   }}
                   className="w-full bg-red-50 text-red-600 border-red-300 hover:bg-red-100 hover:border-red-400 transition-colors flex items-center justify-center gap-2"
                 >
