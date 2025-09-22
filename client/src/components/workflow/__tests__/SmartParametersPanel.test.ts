@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   computeMetadataSuggestions,
   mapUpstreamNodesForAI,
+  syncNodeParameters,
   type UpstreamNodeSummary
 } from "../SmartParametersPanel";
 
@@ -80,5 +81,23 @@ assert.equal(
     : undefined,
   "99.99"
 );
+
+const paramSyncBase = {
+  label: "Mailer",
+  params: { old: "value" },
+  metadata: { example: true }
+};
+const nextParams = { subject: "Hello" };
+const mirrored = syncNodeParameters(paramSyncBase, nextParams);
+
+assert.deepEqual(mirrored.parameters, nextParams, "parameters should mirror latest edits");
+assert.deepEqual(mirrored.params, nextParams, "params should mirror latest edits");
+assert.strictEqual(
+  mirrored.parameters,
+  mirrored.params,
+  "parameter stores should reference the same object"
+);
+assert.equal(mirrored.label, "Mailer", "other node data should be preserved");
+assert.deepEqual(paramSyncBase.params, { old: "value" }, "original data should not be mutated");
 
 console.log("SmartParametersPanel metadata helper checks passed.");

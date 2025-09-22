@@ -28,7 +28,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
-import SmartParametersPanel from './SmartParametersPanel';
+import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
@@ -543,7 +543,7 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-2 text-xs text-green-100">
-              {Object.entries(data.params || {}).map(([key, value]) => (
+              {Object.entries(data.params ?? data.parameters ?? {}).map(([key, value]) => (
                 <div key={key} className="flex justify-between">
                   <span className="opacity-75">{key}:</span>
                   <span className="font-medium">{String(value)}</span>
@@ -620,7 +620,7 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-2 text-xs text-blue-100">
-              {Object.entries(data.params || {}).map(([key, value]) => (
+              {Object.entries(data.params ?? data.parameters ?? {}).map(([key, value]) => (
                 <div key={key} className="flex justify-between">
                   <span className="opacity-75">{key}:</span>
                   <span className="font-medium">{String(value)}</span>
@@ -696,7 +696,7 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-2 text-xs text-purple-100">
-              {Object.entries(data.params || {}).map(([key, value]) => (
+              {Object.entries(data.params ?? data.parameters ?? {}).map(([key, value]) => (
                 <div key={key} className="flex justify-between">
                   <span className="opacity-75">{key}:</span>
                   <span className="font-medium">{String(value)}</span>
@@ -1134,15 +1134,19 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                     {app.triggers.map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => onAddNode("trigger", {
-                          label: t.name,
-                          description: t.description,
-                          kind: 'trigger',
-                          app: app.appId,            // use canonical id (e.g., google-drive)
-                          triggerId: t.id,           // expose op id explicitly
-                          nodeType: t.nodeType,
-                          parameters: t.params || {}
-                        })}
+                        onClick={() => {
+                          const initialParams = t.params || {};
+                          onAddNode("trigger", {
+                            label: t.name,
+                            description: t.description,
+                            kind: 'trigger',
+                            app: app.appId,            // use canonical id (e.g., google-drive)
+                            triggerId: t.id,           // expose op id explicitly
+                            nodeType: t.nodeType,
+                            parameters: initialParams,
+                            params: initialParams,
+                          });
+                        }}
                         className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300"
                       >
                         <div className="flex items-center gap-3">
@@ -1160,15 +1164,19 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
                     {app.actions.map((a) => (
                       <button
                         key={a.id}
-                        onClick={() => onAddNode(a.kind === "transform" ? "transform" : "action", {
-                          label: a.name,
-                          description: a.description,
-                          kind: a.kind === 'transform' ? 'transform' : 'action',
-                          app: app.appId,
-                          actionId: a.id,
-                          nodeType: a.nodeType,
-                          parameters: a.params || {}
-                        })}
+                        onClick={() => {
+                          const initialParams = a.params || {};
+                          onAddNode(a.kind === "transform" ? "transform" : "action", {
+                            label: a.name,
+                            description: a.description,
+                            kind: a.kind === 'transform' ? 'transform' : 'action',
+                            app: app.appId,
+                            actionId: a.id,
+                            nodeType: a.nodeType,
+                            parameters: initialParams,
+                            params: initialParams,
+                          });
+                        }}
                         className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300"
                       >
                         <div className="flex items-center gap-3">
@@ -1315,6 +1323,42 @@ const GraphEditorContent = () => {
 
           const metadata = buildMetadataFromNode(node);
 
+          const params =
+            node.data?.parameters ??
+            node.parameters ??
+            node.data?.params ??
+            node.params ??
+            node.data?.config ??
+            node.config ??
+            {};
+
+          const baseData = {
+            label:
+              node.data?.label ||
+              node.label ||
+              `${app}:${operation}`.toUpperCase(),
+            description:
+              node.data?.description || node.description || "Action node",
+            app,
+            function: operation,
+            nodeType: "action.core",
+            icon: node.data?.icon || "🔧",
+            color:
+              node.data?.color ||
+              (app.toLowerCase() === "gmail"
+                ? "#EA4335"
+                : app.toLowerCase() === "sheets"
+                ? "#34A853"
+                : app.toLowerCase() === "transform"
+                ? "#FF6D01"
+                : "#9AA0A6"),
+            connectorId: node.data?.connectorId || app,
+            actionId: operation,
+            metadata,
+            isValid: true,
+            loadSource,
+          };
+
           return {
             id: `${node.id || `node_${index}`}`,
             type: "action.core",
@@ -1322,33 +1366,7 @@ const GraphEditorContent = () => {
               x: node.position?.x ?? 100 + (index % 6) * 260,
               y: node.position?.y ?? 120 + Math.floor(index / 6) * 180,
             },
-            data: {
-              label:
-                node.data?.label ||
-                node.label ||
-                `${app}:${operation}`.toUpperCase(),
-              description:
-                node.data?.description || node.description || "Action node",
-              app,
-              function: operation,
-              parameters: node.data?.parameters || node.parameters || {},
-              nodeType: "action.core",
-              icon: node.data?.icon || "🔧",
-              color:
-                node.data?.color ||
-                (app.toLowerCase() === "gmail"
-                  ? "#EA4335"
-                  : app.toLowerCase() === "sheets"
-                  ? "#34A853"
-                  : app.toLowerCase() === "transform"
-                  ? "#FF6D01"
-                  : "#9AA0A6"),
-              connectorId: node.data?.connectorId || app,
-              actionId: operation,
-              metadata,
-              isValid: true,
-              loadSource,
-            },
+            data: syncNodeParameters(baseData, params),
           } as any;
         };
 
@@ -1482,16 +1500,26 @@ const GraphEditorContent = () => {
                       node.function?.includes('append') || node.function?.includes('create') || node.function?.includes('update') ? 'action' : 
                       'transform';
       
+      const existingData = (node.data && typeof node.data === 'object') ? node.data : {};
+      const params =
+        existingData.parameters ??
+        node.parameters ??
+        existingData.params ??
+        node.params ??
+        {};
+
+      const baseData = {
+        ...existingData,
+        label: existingData.label || node.function || node.app || 'Unknown',
+        description: existingData.description || node.type || node.app,
+        app: existingData.app || node.app || 'Unknown',
+      };
+
       newNodes.push({
         id: node.id,
         type: nodeType,
         position: node.position || { x: 100 + index * 250, y: 200 },
-        data: {
-          label: node.data?.label || node.function || node.app || 'Unknown',
-          description: node.type || node.app,
-          app: node.data?.app || node.app || 'Unknown',
-          params: node.data?.parameters || node.parameters || {}
-        }
+        data: syncNodeParameters(baseData, params),
       });
     });
     
@@ -1532,16 +1560,22 @@ const GraphEditorContent = () => {
   
   const onAddNode = useCallback((nodeType: string, nodeData: any) => {
     const viewport = getViewport();
+    const providedData =
+      nodeData && typeof nodeData === 'object' ? (nodeData as Record<string, any>) : {};
+    const { parameters: providedParameters, params: providedParams, ...rest } = providedData;
+    const params =
+      (providedParameters as Record<string, any> | undefined) ??
+      (providedParams as Record<string, any> | undefined) ??
+      {};
+    const normalizedData = syncNodeParameters(rest, params);
     const newNode: Node = {
       id: `${nodeType}-${Date.now()}`,
       type: nodeType,
-      position: { 
-        x: Math.random() * 300 + 100, 
-        y: Math.random() * 300 + 100 
+      position: {
+        x: Math.random() * 300 + 100,
+        y: Math.random() * 300 + 100
       },
-      data: {
-        ...nodeData,
-      },
+      data: normalizedData,
     };
     setNodes((nds) => [...nds, newNode]);
   }, [setNodes, getViewport]);
