@@ -1,7 +1,8 @@
 import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow-types';
+import { enrichWorkflowGraph } from './node-metadata';
 
 // Use standard WorkflowNode interface from common/workflow-types.ts
-export function answersToGraph(prompt: string, answers: Record<string, string>): WorkflowGraph {
+export function answersToGraph(prompt: string, answers: Record<string, any>): WorkflowGraph {
   console.log(`🤖 Generating workflow from user answers (NO PRESETS)`);
   console.log(`📝 User Prompt: "${prompt}"`);
   console.log(`📋 User Answers:`, answers);
@@ -10,7 +11,7 @@ export function answersToGraph(prompt: string, answers: Record<string, string>):
   return generateWorkflowFromUserAnswers(prompt, answers);
 }
 
-function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string, string>): WorkflowGraph {
+function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string, any>): WorkflowGraph {
   console.log('👤 Building workflow from user requirements only...');
   
   // Parse what the user actually wants
@@ -73,7 +74,7 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
     }
   }
   
-  return {
+  const workflow: WorkflowGraph = {
     id: `wf-${Date.now()}`,
     name: userRequirements.workflowName,
     nodes,
@@ -85,9 +86,10 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
       userAnswers: answers
     }
   };
+  return enrichWorkflowGraph(workflow, { answers });
 }
 
-function parseUserRequirements(prompt: string, answers: Record<string, string>): {
+function parseUserRequirements(prompt: string, answers: Record<string, any>): {
   trigger: {app: string, label: string, operation: string, config: any} | null,
   actions: Array<{app: string, label: string, operation: string, config: any}>,
   workflowName: string,

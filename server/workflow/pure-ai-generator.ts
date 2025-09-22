@@ -1,9 +1,10 @@
 // PURE AI-DRIVEN WORKFLOW GENERATOR
 // NO PRESETS, NO TEMPLATES - ONLY AI INTELLIGENCE
 
-import { WorkflowGraph, WorkflowNode, WorkflowEdge } from './types';
+import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow-types';
+import { enrichWorkflowGraph } from './node-metadata';
 
-export async function generatePureAIWorkflow(prompt: string, answers: Record<string, string>): Promise<WorkflowGraph> {
+export async function generatePureAIWorkflow(prompt: string, answers: Record<string, any>): Promise<WorkflowGraph> {
   console.log('🤖 PURE AI GENERATION - No presets, templates, or hardcoded patterns');
   
   // Construct intelligent AI prompt that analyzes user intent
@@ -71,7 +72,7 @@ RESPOND WITH VALID JSON:
     const workflow = aiResult.workflow;
     workflow.id = `ai-${Date.now()}`;
     
-    return workflow;
+    return enrichWorkflowGraph(workflow, { answers });
     
   } catch (error) {
     console.error('❌ Pure AI generation failed:', error);
@@ -81,7 +82,7 @@ RESPOND WITH VALID JSON:
   }
 }
 
-function generateFromUserWordsOnly(prompt: string, answers: Record<string, string>): WorkflowGraph {
+function generateFromUserWordsOnly(prompt: string, answers: Record<string, any>): WorkflowGraph {
   console.log('📝 Generating workflow from user words only (no AI, no presets)');
   
   // Just parse what the user literally said
@@ -146,7 +147,7 @@ function generateFromUserWordsOnly(prompt: string, answers: Record<string, strin
     }
   });
   
-  return {
+  const workflow: WorkflowGraph = {
     id: `user-${Date.now()}`,
     name: `User Request: ${prompt.substring(0, 30)}...`,
     nodes,
@@ -157,6 +158,7 @@ function generateFromUserWordsOnly(prompt: string, answers: Record<string, strin
       userPrompt: prompt
     }
   };
+  return enrichWorkflowGraph(workflow, { answers });
 }
 
 function buildQueryFromCriteria(criteria: string): string {

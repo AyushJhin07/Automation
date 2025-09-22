@@ -23,6 +23,119 @@ type JSONSchema = {
   required?: string[];
 };
 
+export type NodeMetadataSummary = {
+  columns?: string[];
+  headers?: string[];
+  sample?: Record<string, any> | any[];
+  sampleRow?: Record<string, any> | any[];
+  outputSample?: Record<string, any> | any[];
+  schema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
+  derivedFrom?: string[];
+  [key: string]: any;
+};
+
+export type UpstreamNodeSummary = {
+  id: string;
+  data?: {
+    label?: string;
+    app?: string;
+    metadata?: NodeMetadataSummary;
+    outputMetadata?: NodeMetadataSummary;
+    [key: string]: any;
+  };
+};
+
+const uniqueStrings = (values: Array<string | undefined>): string[] => {
+  const set = new Set<string>();
+  values.forEach((value) => {
+    if (typeof value === 'string' && value.trim()) {
+      set.add(value.trim());
+    }
+  });
+  return Array.from(set);
+};
+
+const gatherMetadata = (node: UpstreamNodeSummary): NodeMetadataSummary => {
+  const dataMeta = node.data?.metadata || {};
+  const outputMeta = node.data?.outputMetadata || {};
+  return { ...outputMeta, ...dataMeta };
+};
+
+export const computeMetadataSuggestions = (
+  upstreamNodes: UpstreamNodeSummary[]
+): Array<{ nodeId: string; path: string; label: string }> => {
+  const suggestions: Array<{ nodeId: string; path: string; label: string }> = [];
+  const seen = new Set<string>();
+
+  upstreamNodes.forEach((upNode) => {
+    if (!upNode?.id) return;
+    const nodeId = upNode.id;
+    const baseLabel = upNode.data?.label || nodeId;
+    const metadata = gatherMetadata(upNode);
+
+    const addSuggestion = (path: string, label: string) => {
+      const key = `${nodeId}:${path}`;
+      if (seen.has(key)) return;
+      suggestions.push({ nodeId, path, label });
+      seen.add(key);
+    };
+
+    addSuggestion('', `${baseLabel} • Entire output`);
+
+    const columns: string[] = [];
+    if (Array.isArray(metadata.columns)) columns.push(...metadata.columns);
+    if (Array.isArray(metadata.headers)) columns.push(...metadata.headers);
+    if (Array.isArray((metadata as any).fields)) columns.push(...(metadata as any).fields);
+    uniqueStrings(columns).forEach((column) => {
+      addSuggestion(column, `${baseLabel} • ${column}`);
+    });
+
+    const sample = metadata.sample || metadata.sampleRow || metadata.outputSample;
+    if (sample && typeof sample === 'object' && !Array.isArray(sample)) {
+      Object.keys(sample).forEach((key) => {
+        addSuggestion(key, `${baseLabel} • ${key}`);
+      });
+    }
+  });
+
+  return suggestions;
+};
+
+export const mapUpstreamNodesForAI = (
+  upstreamNodes: UpstreamNodeSummary[]
+): Array<{
+  nodeId: string;
+  label: string;
+  app: string;
+  columns: string[];
+  sample: any;
+  schema: Record<string, any> | undefined;
+}> => {
+  return upstreamNodes.map((upNode) => {
+    const metadata = gatherMetadata(upNode);
+    const columns: string[] = [];
+    if (Array.isArray(metadata.columns)) columns.push(...metadata.columns);
+    if (Array.isArray(metadata.headers)) columns.push(...metadata.headers);
+    const sample =
+      (metadata.sample && typeof metadata.sample === 'object' ? metadata.sample : undefined) ||
+      (metadata.sampleRow && typeof metadata.sampleRow === 'object' ? metadata.sampleRow : undefined) ||
+      (metadata.outputSample && typeof metadata.outputSample === 'object'
+        ? metadata.outputSample
+        : metadata.outputSample);
+    const schema = metadata.schema || metadata.outputSchema;
+
+    return {
+      nodeId: upNode.id,
+      label: upNode.data?.label || upNode.id,
+      app: upNode.data?.app || 'unknown',
+      columns: uniqueStrings(columns),
+      sample: sample ?? metadata.sample ?? metadata.sampleRow ?? metadata.outputSample,
+      schema,
+    };
+  });
+};
+
 export function SmartParametersPanel() {
   const rf = useReactFlow();
   const storeNodes = useStore((state) => {
@@ -52,6 +165,11 @@ export function SmartParametersPanel() {
     );
     return (storeNodes as any[]).filter((n) => upstreamIds.has(n.id));
   }, [node?.id, storeEdges, storeNodes]);
+
+  const metadataSuggestions = useMemo(
+    () => computeMetadataSuggestions(upstreamNodes as UpstreamNodeSummary[]),
+    [upstreamNodes]
+  );
 
   // More robust app/op retrieval
   const rawNodeType = node?.data?.nodeType || node?.type || "";
@@ -471,34 +589,7 @@ export function SmartParametersPanel() {
         setDynamicValue(name, nodeId, path);
       };
 
-      const suggestions: Array<{ nodeId: string; path: string; label: string }> = [];
-      upstreamNodes.forEach((upNode) => {
-        suggestions.push({
-          nodeId: upNode.id,
-          path: '',
-          label: `${upNode.data?.label || upNode.id} • Entire output`,
-        });
-
-        const columns: string[] = upNode.data?.metadata?.columns || upNode.data?.metadata?.headers || [];
-        columns.forEach((col: string) => {
-          suggestions.push({
-            nodeId: upNode.id,
-            path: col,
-            label: `${upNode.data?.label || upNode.id} • ${col}`,
-          });
-        });
-
-        const sample = upNode.data?.metadata?.sample || upNode.data?.metadata?.sampleRow;
-        if (sample && typeof sample === 'object') {
-          Object.keys(sample).forEach((key) => {
-            suggestions.push({
-              nodeId: upNode.id,
-              path: key,
-              label: `${upNode.data?.label || upNode.id} • ${key}`,
-            });
-          });
-        }
-      });
+      const suggestions = metadataSuggestions;
 
       const expressionPreview = `{{${localRefNode}${localRefPath ? `.${localRefPath}` : ''}}}`;
 
@@ -578,14 +669,7 @@ export function SmartParametersPanel() {
 
       try {
         // Prepare upstream data for AI analysis
-        const upstreamData = upstreamNodes.map(upNode => ({
-          nodeId: upNode.id,
-          label: upNode.data?.label || upNode.id,
-          app: upNode.data?.app || 'unknown',
-          columns: upNode.data?.metadata?.columns || [],
-          sample: upNode.data?.metadata?.sample || upNode.data?.metadata?.outputSample,
-          schema: upNode.data?.metadata?.schema || upNode.data?.metadata?.outputSchema
-        }));
+        const upstreamData = mapUpstreamNodesForAI(upstreamNodes as UpstreamNodeSummary[]);
 
         const response = await fetch('/api/ai/map-params', {
           method: 'POST',
