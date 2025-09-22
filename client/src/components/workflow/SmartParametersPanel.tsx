@@ -136,6 +136,15 @@ export const mapUpstreamNodesForAI = (
   });
 };
 
+export const syncNodeParameters = (data: any, nextParams: any): Record<string, any> => {
+  const paramsValue = nextParams ?? {};
+  return {
+    ...(data || {}),
+    parameters: paramsValue,
+    params: paramsValue,
+  };
+};
+
 export function SmartParametersPanel() {
   const rf = useReactFlow();
   const storeNodes = useStore((state) => {
@@ -211,7 +220,9 @@ export function SmartParametersPanel() {
   const opId = inferOpId();
   const [schema, setSchema] = useState<JSONSchema | null>(null);
   const [defaults, setDefaults] = useState<any>({});
-  const [paramsDraft, setParamsDraft] = useState<any>(node?.data?.parameters ?? {});
+  const [paramsDraft, setParamsDraft] = useState<any>(
+    node?.data?.parameters ?? node?.data?.params ?? {}
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -222,7 +233,7 @@ export function SmartParametersPanel() {
     setError(null);
     setSchema(null);
     setDefaults({});
-    setParamsDraft(node?.data?.parameters ?? {});
+    setParamsDraft(node?.data?.parameters ?? node?.data?.params ?? {});
 
     const kind = node?.data?.kind || (String(rawNodeType||"").startsWith("trigger") ? "trigger" : "auto");
 
@@ -334,7 +345,8 @@ export function SmartParametersPanel() {
 
         setSchema(nextSchema);
         setDefaults(nextDefaults);
-        const next = { ...(nextDefaults || {}), ...(node?.data?.parameters || {}) };
+        const currentParams = node?.data?.parameters ?? node?.data?.params ?? {};
+        const next = { ...(nextDefaults || {}), ...currentParams };
         setParamsDraft(next);
       })
       .catch(e => { 
@@ -343,13 +355,19 @@ export function SmartParametersPanel() {
       })
       .finally(() => setLoading(false));
   }, [app, opId, node?.id]);
-
   // Commit helper: push a single param back to the graph node
   const commitParams = (nextParams: any) => {
     if (!node) return;
     setParamsDraft(nextParams);
     rf.setNodes((nodes) =>
-      nodes.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, parameters: nextParams } } : n))
+      nodes.map((n) =>
+        n.id === node.id
+          ? {
+              ...n,
+              data: syncNodeParameters(n.data, nextParams),
+            }
+          : n
+      )
     );
   };
 
