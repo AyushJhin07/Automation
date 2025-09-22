@@ -1,14 +1,17 @@
 // GRAPH FORMAT CONVERTER
 // Converts AI-generated WorkflowGraph to Graph Editor compatible NodeGraph
 
-import { WorkflowGraph, WorkflowNode, WorkflowEdge } from './types';
+import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow-types';
+import { enrichWorkflowGraph } from './node-metadata';
 import { NodeGraph, GraphNode, Edge } from '../../shared/nodeGraphSchema';
 
 export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
   console.log('🔄 Converting AI graph to Graph Editor format...');
-  
+
+  const enrichedGraph = enrichWorkflowGraph(workflowGraph);
+
   // Convert nodes from AI format to Graph Editor format
-  const graphNodes: GraphNode[] = workflowGraph.nodes.map((node, index) => {
+  const graphNodes: GraphNode[] = enrichedGraph.nodes.map((node, index) => {
     // Handle both old format (with op) and new format (with data.operation)
     const operation = node.op?.split('.').pop() || node.data?.operation || 'default';
     const app = node.app || node.type?.split('.')[1] || 'unknown';
@@ -31,9 +34,9 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
       op: node.op || `${app}.${operation}`
     };
   });
-  
+
   // Convert edges from AI format to Graph Editor format
-  const graphEdges: Edge[] = workflowGraph.edges.map(edge => ({
+  const graphEdges: Edge[] = enrichedGraph.edges.map(edge => ({
     from: edge.source || edge.from,
     to: edge.target || edge.to,
     label: edge.label || '',

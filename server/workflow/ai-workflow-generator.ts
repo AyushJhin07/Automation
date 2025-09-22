@@ -1,9 +1,10 @@
 // TRUE AI-DRIVEN WORKFLOW GENERATOR
 // No presets, no templates - pure AI intelligence
 
-import { WorkflowGraph, WorkflowNode, WorkflowEdge } from './types';
+import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow-types';
+import { enrichWorkflowGraph } from './node-metadata';
 
-export async function generateWorkflowWithAI(prompt: string, answers: Record<string, string>): Promise<WorkflowGraph> {
+export async function generateWorkflowWithAI(prompt: string, answers: Record<string, any>): Promise<WorkflowGraph> {
   console.log('🤖 Using AI to dynamically generate workflow...');
   
   // Construct intelligent prompt for LLM
@@ -78,13 +79,14 @@ RESPOND ONLY WITH VALID JSON:`;
     console.log('✅ AI Reasoning:', aiResult.reasoning);
     
     // Return the AI-generated workflow
-    const workflow = aiResult.workflow;
+    const workflow = aiResult.workflow as WorkflowGraph;
     workflow.id = `wf-${Date.now()}`;
-    
+
     console.log('🎯 AI Generated Workflow:', workflow.name);
-    console.log(`📊 Nodes: ${workflow.nodes.length}, Apps: [${workflow.nodes.map(n => n.app).join(', ')}]`);
-    
-    return workflow;
+    const appSummary = (workflow.nodes as WorkflowNode[]).map((node) => node.app).join(', ');
+    console.log(`📊 Nodes: ${workflow.nodes.length}, Apps: [${appSummary}]`);
+
+    return enrichWorkflowGraph(workflow, { answers });
     
   } catch (error) {
     console.error('❌ AI workflow generation failed:', error);
@@ -94,7 +96,7 @@ RESPOND ONLY WITH VALID JSON:`;
   }
 }
 
-function generateDynamicWorkflow(prompt: string, answers: Record<string, string>): WorkflowGraph {
+function generateDynamicWorkflow(prompt: string, answers: Record<string, any>): WorkflowGraph {
   console.log('🔄 Generating dynamic workflow from user intent...');
   
   // Analyze user intent dynamically (no presets)
@@ -138,7 +140,7 @@ function generateDynamicWorkflow(prompt: string, answers: Record<string, string>
     });
   });
   
-  return {
+  const workflow = {
     id: `wf-${Date.now()}`,
     name: `Dynamic Workflow: ${apps.join(' + ')}`,
     nodes,
@@ -150,6 +152,7 @@ function generateDynamicWorkflow(prompt: string, answers: Record<string, string>
       userAnswers: answers
     }
   };
+  return enrichWorkflowGraph(workflow, { answers });
 }
 
 function extractAppsFromAnswers(answers: Record<string, string>): string[] {
