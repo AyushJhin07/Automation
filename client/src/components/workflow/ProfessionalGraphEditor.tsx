@@ -1288,14 +1288,31 @@ const GraphEditorContent = () => {
 
           for (const source of sources) {
             if (!source.condition) continue;
-            const storageKey = workflowId ? `workflow_${workflowId}` : source.key;
-            const parsed = safeParse(localStorage.getItem(storageKey));
-            const candidate =
-              parsed?.workflow?.graph || parsed?.graph || parsed;
 
-            if (candidate?.nodes?.length) {
-              loadedWorkflow = candidate;
-              loadSource = source.key;
+            const storageKeys = workflowId
+              ? Array.from(
+                  new Set([
+                    source.key,
+                    `workflow_${workflowId}`,
+                    `${source.key}_${workflowId}`,
+                    `workflow_${workflowId}_${source.key}`,
+                  ])
+                )
+              : [source.key];
+
+            for (const storageKey of storageKeys) {
+              const parsed = safeParse(localStorage.getItem(storageKey));
+              const candidate =
+                parsed?.workflow?.graph || parsed?.graph || parsed;
+
+              if (candidate?.nodes?.length) {
+                loadedWorkflow = candidate;
+                loadSource = source.key;
+                break;
+              }
+            }
+
+            if (loadedWorkflow) {
               break;
             }
           }
