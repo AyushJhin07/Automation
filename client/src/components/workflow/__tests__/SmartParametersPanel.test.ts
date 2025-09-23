@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "../../../../../server/workflow/__tests__/compile-to-appsscript.ref-params.test.ts";
 
 import {
   computeMetadataSuggestions,
