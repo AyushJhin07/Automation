@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticateToken } from "../middleware/auth";
 import { connectionService } from "../services/ConnectionService";
 import { getErrorMessage } from "../types/common";
+import { connectorMetadataService } from "../services/metadata/ConnectorMetadataService";
 
 const router = Router();
 const SHEET_ID_RE = /^[a-zA-Z0-9-_]+$/;
@@ -39,39 +40,32 @@ router.get(
         return res.status(403).json({ success: false, error: "NO_SHEETS_CONNECTION" });
       }
 
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        rawParam
-      )}?fields=sheets.properties.title`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        }
+      const sheetName = String(req.query.sheetName || req.query.tab || "").trim() || undefined;
+
+      const result = await connectorMetadataService.resolve("google-sheets", {
+        credentials: { accessToken },
+        params: {
+          spreadsheetId: rawParam,
+          sheetName,
+        },
       });
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        return res.status(response.status).json({
+      if (!result.success) {
+        const status = result.status && result.status >= 100 ? result.status : 502;
+        return res.status(status).json({
           success: false,
-          error: "GOOGLE_API_ERROR",
-          status: response.status,
-          message: text ? text.slice(0, 2000) : undefined
+          error: result.error || "GOOGLE_API_ERROR",
+          warnings: result.warnings,
         });
       }
-
-      const json = await response.json().catch(() => ({}));
-      const sheets = Array.isArray(json?.sheets)
-        ? json.sheets
-            .map((sheet: any) => sheet?.properties?.title)
-            .filter((title: any) => typeof title === "string" && title.trim().length > 0)
-            .map((title: string) => title.trim())
-        : [];
 
       return res.json({
         success: true,
         spreadsheetId: rawParam,
-        sheets
+        sheets: result.extras?.tabs ?? [],
+        sheetName: result.extras?.sheetName ?? sheetName,
+        metadata: result.metadata,
+        warnings: result.warnings,
       });
     } catch (error) {
       console.error("Failed to fetch sheet metadata:", error);
