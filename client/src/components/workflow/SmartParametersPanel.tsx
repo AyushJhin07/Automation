@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useReactFlow, useStore } from "reactflow";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
+import { buildMetadataFromNode, mergeMetadataShape } from "./metadataUtils";
 
 type JSONSchema = {
   type?: string;
@@ -360,14 +361,26 @@ export function SmartParametersPanel() {
     if (!node) return;
     setParamsDraft(nextParams);
     rf.setNodes((nodes) =>
-      nodes.map((n) =>
-        n.id === node.id
-          ? {
-              ...n,
-              data: syncNodeParameters(n.data, nextParams),
-            }
-          : n
-      )
+      nodes.map((n) => {
+        if (n.id !== node.id) return n;
+        const synced = syncNodeParameters(n.data, nextParams) as Record<string, any>;
+        const provisionalNode = {
+          ...n,
+          data: synced,
+          params: nextParams,
+          parameters: nextParams,
+        };
+        const metadata = buildMetadataFromNode(provisionalNode);
+        const nextData = {
+          ...synced,
+          metadata: mergeMetadataShape(synced.metadata, metadata),
+          outputMetadata: mergeMetadataShape(synced.outputMetadata, metadata),
+        };
+        return {
+          ...n,
+          data: nextData,
+        };
+      })
     );
   };
 

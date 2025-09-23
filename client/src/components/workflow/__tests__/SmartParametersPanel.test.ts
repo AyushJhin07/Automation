@@ -8,6 +8,7 @@ import {
   syncNodeParameters,
   type UpstreamNodeSummary
 } from "../SmartParametersPanel";
+import { buildMetadataFromNode, mergeMetadataShape } from "../metadataUtils";
 
 const upstreamNodes: UpstreamNodeSummary[] = [
   {
@@ -177,5 +178,51 @@ assert.strictEqual(
 );
 assert.equal(mirrored.label, "Mailer", "other node data should be preserved");
 assert.deepEqual(paramSyncBase.params, { old: "value" }, "original data should not be mutated");
+
+// Regression: ensure Sheets trigger metadata propagates to Gmail suggestions
+{
+  const sheetParams = { columns: ["Email", "Amount", "Status"], sheetName: "Invoices" };
+  const sheetTemplate = {
+    label: "Sheet Edit",
+    app: "sheets",
+    description: "When a row is edited",
+  };
+  const sheetNormalized = syncNodeParameters(sheetTemplate, sheetParams) as Record<string, any>;
+  const sheetMetadata = buildMetadataFromNode({
+    id: "trigger-sheets",
+    type: "trigger.sheets.onEdit",
+    data: sheetNormalized,
+    params: sheetParams,
+    parameters: sheetParams,
+  });
+  const sheetDataWithMetadata = {
+    ...sheetNormalized,
+    metadata: mergeMetadataShape(sheetNormalized.metadata, sheetMetadata),
+    outputMetadata: mergeMetadataShape(sheetNormalized.outputMetadata, sheetMetadata),
+  };
+
+  const gmailParams = { to: "", subject: "", body: "" };
+  const gmailNormalized = syncNodeParameters({ label: "Send Email", app: "gmail" }, gmailParams);
+
+  const upstreamForGmail: UpstreamNodeSummary[] = [
+    {
+      id: "trigger-sheets",
+      data: {
+        label: sheetTemplate.label,
+        app: sheetTemplate.app,
+        metadata: sheetDataWithMetadata.metadata,
+        outputMetadata: sheetDataWithMetadata.outputMetadata,
+      },
+    },
+  ];
+
+  const gmailSuggestions = computeMetadataSuggestions(upstreamForGmail);
+  const emailColumn = gmailSuggestions.find(
+    (suggestion) => suggestion.nodeId === "trigger-sheets" && suggestion.path === "Email"
+  );
+
+  assert.ok(gmailNormalized, "gmail node should normalize params without throwing");
+  assert.ok(emailColumn, "connected Gmail node should surface Sheets column quick picks");
+}
 
 console.log("SmartParametersPanel metadata helper checks passed.");
