@@ -1229,6 +1229,12 @@ const GraphEditorContent = () => {
     setDescValue(selectedNode?.data?.description || '');
   }, [selectedNodeId, selectedNode?.data?.label, selectedNode?.data?.description]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
+
+  const stopInspectorEvent = useCallback((event: React.SyntheticEvent<Element>) => {
+    event.stopPropagation();
+    const nativeEvent = event.nativeEvent as Event & { stopImmediatePropagation?: () => void };
+    nativeEvent.stopImmediatePropagation?.();
+  }, []);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
   const specHydratedRef = useRef(false);
@@ -1815,33 +1821,12 @@ const GraphEditorContent = () => {
         <div
           data-inspector
           className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
-          onPointerDown={(e) => { e.stopPropagation(); }}
-          onPointerUp={(e) => { e.stopPropagation(); }}
-          onMouseDown={(e) => { e.stopPropagation(); }}
-          onMouseUp={(e) => { e.stopPropagation(); }}
-          onClick={(e) => { e.stopPropagation(); }}
-          onDoubleClick={(e) => { e.stopPropagation(); }}
-          onPointerDownCapture={(e) => {
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-              const ne: any = (e as any).nativeEvent;
-              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
-            }
-          }}
-          onMouseDownCapture={(e) => {
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-              const ne: any = (e as any).nativeEvent;
-              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
-            }
-          }}
-          onClickCapture={(e) => {
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-              const ne: any = (e as any).nativeEvent;
-              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
-            }
-          }}
+          onPointerDown={stopInspectorEvent}
+          onPointerUp={stopInspectorEvent}
+          onMouseDown={stopInspectorEvent}
+          onMouseUp={stopInspectorEvent}
+          onClick={stopInspectorEvent}
+          onDoubleClick={stopInspectorEvent}
           style={{ pointerEvents: 'auto' }}
         >
           {/* Header */}
@@ -1943,8 +1928,8 @@ const GraphEditorContent = () => {
                       setSelectedNodeId(newNode.id);
                     }
                   }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={stopInspectorEvent}
+                  onPointerDown={stopInspectorEvent}
                   className="w-full bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 hover:border-slate-400 transition-colors flex items-center justify-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
@@ -1964,8 +1949,8 @@ const GraphEditorContent = () => {
                     }
                     setSelectedNodeId(null);
                   }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={stopInspectorEvent}
+                  onPointerDown={stopInspectorEvent}
                   className="w-full bg-red-50 text-red-600 border-red-300 hover:bg-red-100 hover:border-red-400 transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
