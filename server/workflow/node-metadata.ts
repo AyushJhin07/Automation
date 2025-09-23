@@ -3,21 +3,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { WorkflowGraph, WorkflowNode, WorkflowNodeMetadata } from '../../common/workflow-types';
+import type {
+  ConnectorDefinition,
+  EnrichContext,
+  MetadataSource,
+  MetadataResolverAuth,
+  MetadataResolverAuthProvider,
+} from './metadata-types';
+import { getMetadataResolver } from './metadata-resolvers';
+import type { MetadataResolverResult } from './metadata-resolvers';
 
 export type { WorkflowNodeMetadata } from '../../common/workflow-types';
-
-type ConnectorDefinition = {
-  id?: string;
-  name?: string;
-  actions?: Array<{ id?: string; name?: string; title?: string; parameters?: { properties?: Record<string, any> } }>;
-  triggers?: Array<{ id?: string; name?: string; title?: string; parameters?: { properties?: Record<string, any> } }>;
-};
-
-type MetadataSource = WorkflowNodeMetadata | undefined | null;
-
-type EnrichContext = {
-  answers?: Record<string, any>;
-};
+export type { EnrichContext } from './metadata-types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONNECTOR_DIR = path.resolve(__dirname, '../../connectors');
@@ -48,6 +45,89 @@ const unique = <T,>(values: Iterable<T>): T[] => {
     }
   }
   return result;
+};
+
+const resolveAuthForConnector = (
+  provider: MetadataResolverAuthProvider | undefined,
+  connectorId: string
+): MetadataResolverAuth | undefined => {
+  if (!provider || !connectorId) return undefined;
+  if (typeof provider === 'function') {
+    try {
+      return provider(connectorId) ?? undefined;
+    } catch (error) {
+      console.warn('Failed to resolve metadata resolver auth', connectorId, error);
+      return undefined;
+    }
+  }
+  return provider;
+};
+
+const normalizeResolverResult = (
+  result: MetadataResolverResult | undefined
+): { metadata?: MetadataSource; outputMetadata?: MetadataSource } => {
+  if (!result) return {};
+  if (
+    typeof result === 'object' &&
+    !Array.isArray(result) &&
+    (Object.prototype.hasOwnProperty.call(result, 'metadata') ||
+      Object.prototype.hasOwnProperty.call(result, 'outputMetadata'))
+  ) {
+    const metadata = (result as { metadata?: MetadataSource }).metadata;
+    const outputMetadata = (result as { outputMetadata?: MetadataSource }).outputMetadata;
+    return {
+      metadata: metadata ?? undefined,
+      outputMetadata: outputMetadata ?? undefined,
+    };
+  }
+  return { metadata: result as MetadataSource };
+};
+
+const resolveMetadataFromConnector = (
+  node: Partial<WorkflowNode>,
+  params: Record<string, any>,
+  context: EnrichContext,
+  connector: ConnectorDefinition | undefined,
+  operationId: string,
+  nodeType: string,
+  existingMetadata: WorkflowNodeMetadata
+): { metadata?: MetadataSource; outputMetadata?: MetadataSource } => {
+  const candidates = unique(
+    [
+      typeof node.app === 'string' ? node.app : undefined,
+      typeof node.data?.app === 'string' ? node.data.app : undefined,
+      typeof (node as any)?.connectorId === 'string' ? (node as any).connectorId : undefined,
+      typeof node.data?.connectorId === 'string' ? node.data.connectorId : undefined,
+      typeof connector?.id === 'string' ? connector.id : undefined,
+      typeof connector?.name === 'string' ? connector.name : undefined,
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+  );
+
+  for (const candidate of candidates) {
+    const resolver = getMetadataResolver(candidate);
+    if (!resolver) continue;
+    try {
+      const auth = resolveAuthForConnector(context.auth, candidate);
+      const result = resolver(
+        {
+          node,
+          params,
+          connector,
+          operationId,
+          nodeType,
+          existingMetadata,
+          context,
+        },
+        auth
+      );
+      return normalizeResolverResult(result);
+    } catch (error) {
+      console.warn('Metadata resolver failed for connector', candidate, error);
+      return {};
+    }
+  }
+
+  return {};
 };
 
 const ensureConnectorCache = () => {
@@ -428,19 +508,26 @@ const deriveMetadata = (
   node: Partial<WorkflowNode>,
   params: Record<string, any>,
   answers: Record<string, any>,
-  existing: WorkflowNodeMetadata
+  existing: WorkflowNodeMetadata,
+  options: {
+    connector?: ConnectorDefinition;
+    nodeType?: string;
+    app?: string;
+    operationId?: string;
+    opDefinition?: { parameters?: { properties?: Record<string, any> } };
+  } = {}
 ): WorkflowNodeMetadata => {
   const metadata: WorkflowNodeMetadata = {};
   const derivedFrom: string[] = [];
   const existingColumns = unique([...(existing.columns ?? []), ...(existing.headers ?? [])]);
 
-  const nodeType = typeof node.type === 'string' ? node.type : node?.data?.nodeType ?? '';
-  const app = node.app ?? node.data?.app ?? node.data?.connectorId ?? '';
+  const nodeType = options.nodeType ?? (typeof node.type === 'string' ? node.type : node?.data?.nodeType ?? '');
+  const app = options.app ?? node.app ?? node.data?.app ?? node.data?.connectorId ?? '';
   const op = node.op ?? node.data?.operation ?? node.data?.actionId ?? '';
-  const operationId = normalizeOperationId(op);
+  const operationId = options.operationId ?? normalizeOperationId(op);
 
-  const connector = findConnector(app);
-  const opDefinition = findOperation(connector, nodeType ?? '', operationId);
+  const connector = options.connector ?? findConnector(app);
+  const opDefinition = options.opDefinition ?? findOperation(connector, nodeType ?? '', operationId);
   const schemaFromConnector = buildSchemaFromConnector(opDefinition?.parameters?.properties);
 
   if (schemaFromConnector) {
@@ -517,18 +604,60 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
     {};
   const answers = context.answers ?? {};
 
-  const existingOutput = mergeMetadataSources(
+  const resolvedNodeType = typeof node.type === 'string' ? node.type : node.data?.nodeType ?? '';
+  const resolvedApp = node.app ?? node.data?.app ?? node.data?.connectorId ?? '';
+  const resolvedOperationRaw = node.op ?? node.data?.operation ?? node.data?.actionId ?? '';
+  const resolvedOperationId = normalizeOperationId(resolvedOperationRaw);
+
+  const existingOutputBase = mergeMetadataSources(
     node.data?.outputMetadata as any,
     (node as any)?.outputMetadata
+  );
+  const existingBeforeResolver = mergeMetadataSources(
+    node.metadata as any,
+    node.data?.metadata as any,
+    existingOutputBase
+  );
+
+  const connector = findConnector(resolvedApp);
+  const opDefinition = findOperation(connector, resolvedNodeType ?? '', resolvedOperationId);
+
+  const resolverContribution = resolveMetadataFromConnector(
+    node,
+    params,
+    context,
+    connector,
+    resolvedOperationId,
+    resolvedNodeType ?? '',
+    existingBeforeResolver
+  );
+
+  const existingOutput = mergeMetadataSources(
+    node.data?.outputMetadata as any,
+    (node as any)?.outputMetadata,
+    resolverContribution.outputMetadata,
+    resolverContribution.metadata
   );
   const combinedExisting = mergeMetadataSources(
     node.metadata as any,
     node.data?.metadata as any,
+    resolverContribution.metadata,
+    resolverContribution.outputMetadata,
     existingOutput
   );
-  const derived = deriveMetadata(node, params, answers, combinedExisting);
+  const derived = deriveMetadata(node, params, answers, combinedExisting, {
+    connector,
+    nodeType: resolvedNodeType,
+    app: resolvedApp,
+    operationId: resolvedOperationId,
+    opDefinition,
+  });
   const metadata = mergeMetadataSources(combinedExisting, derived);
-  const outputMetadata = mergeMetadataSources(existingOutput, metadata);
+  const outputMetadata = mergeMetadataSources(
+    existingOutput,
+    resolverContribution.outputMetadata,
+    metadata
+  );
 
   const data = {
     ...(node.data || {}),

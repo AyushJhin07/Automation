@@ -30,6 +30,8 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
       icon: getAppIcon(app),
       // Preserve original data for Graph Editor
       data: node.data,
+      metadata: node.metadata,
+      outputMetadata: node.outputMetadata,
       app: app,
       op: node.op || `${app}.${operation}`
     };

@@ -29,6 +29,11 @@ export interface GraphNode {
   position?: { x: number; y: number };
   color?: string;
   icon?: string;
+  app?: string;
+  op?: string;
+  data?: Record<string, any>;
+  metadata?: Record<string, any>;
+  outputMetadata?: Record<string, any>;
 }
 
 export interface Edge {
