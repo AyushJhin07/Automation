@@ -618,6 +618,39 @@ const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<str
 };
 
 // Sidebar Component (REPLACEMENT)
+const applyExecutionStateDefaults = (data: Record<string, any> | null | undefined): Record<string, any> => {
+  const base = data && typeof data === 'object' ? data : {};
+  const executionState = base.executionState && typeof base.executionState === 'object' ? base.executionState : {};
+  const results = executionState.results && typeof executionState.results === 'object' ? executionState.results : {};
+  const errors = Array.isArray(executionState.errors) ? executionState.errors : [];
+  const logs = Array.isArray(executionState.logs) ? executionState.logs : [];
+
+  const ensuredExecutionState = {
+    runId: typeof executionState.runId === 'string' ? executionState.runId : '',
+    status:
+      executionState.status === 'running' ||
+      executionState.status === 'completed' ||
+      executionState.status === 'failed' ||
+      executionState.status === 'paused'
+        ? executionState.status
+        : 'paused',
+    currentNode: executionState.currentNode,
+    results,
+    errors,
+    startTime:
+      typeof executionState.startTime === 'string' && executionState.startTime.trim().length > 0
+        ? executionState.startTime
+        : new Date().toISOString(),
+    endTime: executionState.endTime,
+    logs,
+  };
+
+  return {
+    ...base,
+    executionState: ensuredExecutionState,
+  };
+};
+
 const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: any) => void }) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
@@ -1375,7 +1408,9 @@ const GraphEditorContent = () => {
       (providedParameters as Record<string, any> | undefined) ??
       (providedParams as Record<string, any> | undefined) ??
       {};
-    const normalizedData = syncNodeParameters(rest, params) as Record<string, any>;
+    const normalizedData = applyExecutionStateDefaults(
+      syncNodeParameters(rest, params) as Record<string, any>
+    );
     const provisionalNode = {
       ...nodeData,
       type: nodeType,
