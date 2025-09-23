@@ -7,7 +7,8 @@
 export const WorkflowStore = new Map<string, any>();
 
 export class WorkflowStoreService {
-  
+  private static cleanupTimer: NodeJS.Timeout | null = null;
+
   static store(workflowId: string, graph: any): void {
     WorkflowStore.set(workflowId, {
       ...graph,
@@ -65,7 +66,7 @@ export class WorkflowStoreService {
   static cleanup(maxAge: number = 24 * 60 * 60 * 1000): number {
     const now = Date.now();
     let cleaned = 0;
-    
+
     for (const [id, workflow] of WorkflowStore.entries()) {
       const storedAt = new Date(workflow.storedAt).getTime();
       if (now - storedAt > maxAge) {
@@ -77,12 +78,35 @@ export class WorkflowStoreService {
     if (cleaned > 0) {
       console.log(`🧹 Cleaned up ${cleaned} old workflows from store`);
     }
-    
+
     return cleaned;
+  }
+
+  static startCleanupTimer(intervalMs: number = 60 * 60 * 1000): void {
+    if (this.cleanupTimer) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      this.cleanup();
+    }, intervalMs);
+
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+
+    this.cleanupTimer = timer;
+  }
+
+  static stopCleanupTimer(): void {
+    if (!this.cleanupTimer) {
+      return;
+    }
+
+    clearInterval(this.cleanupTimer);
+    this.cleanupTimer = null;
   }
 }
 
-// Auto-cleanup every hour
-setInterval(() => {
-  WorkflowStoreService.cleanup();
-}, 60 * 60 * 1000);
+// Auto-cleanup every hour without keeping the event loop alive
+WorkflowStoreService.startCleanupTimer();

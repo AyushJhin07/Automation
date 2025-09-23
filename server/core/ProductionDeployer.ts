@@ -15,6 +15,7 @@ export interface DeploymentOptions {
   executeAs?: 'USER_ACCESSING' | 'USER_DEPLOYING';
   versionDescription?: string;
   manifestVersion?: string;
+  dryRun?: boolean;
 }
 
 export interface DeploymentResult {
@@ -59,6 +60,37 @@ export class ProductionDeployer {
       // Validate inputs
       if (!files || files.length === 0) {
         throw new Error('No files provided for deployment');
+      }
+
+      if (options.dryRun) {
+        this.log('🧪 Dry run mode enabled - skipping filesystem and clasp operations');
+
+        const manifestFile = files.find(file => file.name === 'appsscript.json');
+        let manifest: any = undefined;
+        if (manifestFile) {
+          try {
+            manifest = typeof manifestFile.content === 'string'
+              ? JSON.parse(manifestFile.content)
+              : manifestFile.content;
+            this.log('📝 Parsed manifest for dry run preview');
+          } catch (error) {
+            this.log(`⚠️ Failed to parse manifest during dry run: ${error.message}`);
+          }
+        }
+
+        this.log(`📦 Prepared ${files.length} file(s) for dry run preview`);
+        this.log('✅ Dry run completed successfully');
+
+        return {
+          success: true,
+          logs: this.logs,
+          files: files.map(file => ({
+            name: file.name,
+            size: file.content.length,
+            uploaded: true
+          })),
+          manifest
+        };
       }
 
       // Check clasp installation
