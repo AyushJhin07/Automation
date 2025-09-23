@@ -207,12 +207,12 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     // ChatGPT's fix: Generate workflowId for Graph Editor handoff
     const workflowId = `wf-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const compiledWithWorkflowId = { ...compiled, workflowId }; // Keep response ID aligned with stored workflow
     
     // Add enterprise metadata
     const response = {
       success: true,
-      workflowId, // ChatGPT's fix: Include workflowId for Graph Editor navigation
-      ...compiled,
+      ...compiledWithWorkflowId,
       graph: nodeGraph, // Use converted format instead of original
       metadata: {
         generatedAt: new Date().toISOString(),
