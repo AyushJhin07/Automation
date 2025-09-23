@@ -1821,9 +1821,27 @@ const GraphEditorContent = () => {
           onMouseUp={(e) => { e.stopPropagation(); }}
           onClick={(e) => { e.stopPropagation(); }}
           onDoubleClick={(e) => { e.stopPropagation(); }}
-          onPointerDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
-          onMouseDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
-          onClickCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
+          onPointerDownCapture={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              const ne: any = (e as any).nativeEvent;
+              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
+            }
+          }}
+          onMouseDownCapture={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              const ne: any = (e as any).nativeEvent;
+              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
+            }
+          }}
+          onClickCapture={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              const ne: any = (e as any).nativeEvent;
+              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
+            }
+          }}
           style={{ pointerEvents: 'auto' }}
         >
           {/* Header */}
@@ -1919,7 +1937,9 @@ const GraphEditorContent = () => {
                           label: `${selectedNode.data.label} (Copy)`
                         }
                       };
-                      setNodes((nds) => [...nds, newNode]);
+                      setNodes((nds) =>
+                        nds.map((node) => ({ ...node, selected: false })).concat([{ ...newNode, selected: true }])
+                      );
                       setSelectedNodeId(newNode.id);
                     }
                   }}
@@ -1930,13 +1950,18 @@ const GraphEditorContent = () => {
                   <Copy className="w-4 h-4" />
                   Duplicate Node
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setNodes((nds) => nds.filter((n) => n.id !== selectedNode?.id));
+                    if (selectedNode) {
+                      setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
+                      setEdges((eds) =>
+                        eds.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id)
+                      );
+                    }
                     setSelectedNodeId(null);
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
