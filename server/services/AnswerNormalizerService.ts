@@ -149,7 +149,17 @@ export interface NormalizationResult {
 }
 
 export class AnswerNormalizerService {
-  
+
+  private static geminiJsonGenerator = generateJsonWithGemini;
+
+  static setGeminiJsonGenerator(generator: typeof generateJsonWithGemini) {
+    this.geminiJsonGenerator = generator;
+  }
+
+  static resetGeminiJsonGenerator() {
+    this.geminiJsonGenerator = generateJsonWithGemini;
+  }
+
   /**
    * ChatGPT's robust URL extraction from any field
    */
@@ -295,11 +305,12 @@ RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
 
     try {
       // Use Gemini JSON mode for guaranteed JSON response
-      const llmText = await generateJsonWithGemini('gemini-2.0-flash-exp', prompt);
+      const llmText = await this.geminiJsonGenerator('gemini-2.0-flash-exp', prompt);
+      const provider = 'gemini';
 
       console.log(`✅ LLM JSON normalization response:`, {
         responseLength: llmText.length,
-        provider: 'gemini'
+        provider
       });
 
       // ChatGPT's strict parsing with repair path
@@ -323,7 +334,7 @@ RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
       // Validate the normalized structure
       if (!parsed.normalized || typeof parsed.normalized !== 'object') {
         console.warn('⚠️ LLM returned invalid normalized structure, using fallback');
-        return this.fallbackNormalization(questions, rawAnswers, result.provider);
+        return this.fallbackNormalization(questions, rawAnswers, provider);
       }
 
       const processingTime = Date.now() - startTime;
@@ -337,7 +348,7 @@ RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
       return {
         normalized: parsed.normalized,
         __issues: parsed.__issues || [],
-        provider: result.provider,
+        provider,
         processingTime
       };
 
@@ -420,7 +431,7 @@ RESPOND WITH VALID JSON ONLY. No explanations or markdown.`;
       normalized,
       __issues: issues,
       provider,
-      processingTime: Date.now() - Date.now()
+      processingTime: 0
     };
   }
 
