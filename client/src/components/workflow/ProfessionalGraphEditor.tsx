@@ -1380,6 +1380,18 @@ const GraphEditorContent = () => {
 
   const createGraphPayload = useCallback((workflowIdentifier: string) => {
     const uniqueScopes = new Set<string>();
+    const nowIso = new Date().toISOString();
+    const metadataSource: Record<string, any> = (spec?.metadata && typeof spec.metadata === 'object')
+      ? spec.metadata
+      : {};
+    const metadataCreatedAt =
+      (typeof metadataSource.createdAt === 'string' && metadataSource.createdAt) ||
+      (typeof metadataSource.created_at === 'string' && metadataSource.created_at) ||
+      nowIso;
+    const metadataVersion =
+      (typeof metadataSource.version === 'string' && metadataSource.version.trim().length > 0)
+        ? metadataSource.version.trim()
+        : '1.0.0';
 
     const serializedNodes = nodes.map((node, index) => {
       const baseData = applyExecutionStateDefaults(node.data || {});
@@ -1392,38 +1404,77 @@ const GraphEditorContent = () => {
         sanitizedData.requiredScopes.forEach((scope: string) => uniqueScopes.add(scope));
       }
 
+      const candidateTypes: Array<string | undefined> = [
+        sanitizedData.nodeType,
+        node.data?.nodeType,
+        node.nodeType as string | undefined,
+        typeof node.type === 'string' ? node.type : undefined,
+        sanitizedData.type
+      ];
+      const canonicalType = candidateTypes.find((value) => typeof value === 'string' && value.includes('.'))
+        || candidateTypes.find((value) => typeof value === 'string' && value.trim().length > 0)
+        || (sanitizedData.kind ? `${sanitizedData.kind}.custom` : 'action.custom');
+
+      if (sanitizedData) {
+        sanitizedData.nodeType = canonicalType;
+        sanitizedData.type = canonicalType;
+      }
+
+      const position = (node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number')
+        ? node.position
+        : { x: Number(node.position?.x) || 0, y: Number(node.position?.y) || 0 };
+
       return {
         id: String(node.id),
-        type: typeof node.type === 'string' ? node.type : 'action',
+        type: canonicalType,
+        nodeType: canonicalType,
         label: sanitizedData.label || node.data?.label || `Node ${index + 1}`,
         params,
         data: sanitizedData,
         app: sanitizedData.app || node.data?.app,
-        position: node.position
+        position,
       };
     });
 
     const serializedEdges = edges
       .filter((edge) => edge.source && edge.target)
-      .map((edge) => ({
-        from: edge.source,
-        to: edge.target,
-        label: edge.label || edge.data?.label || '',
-        dataType: edge.data?.dataType || 'default'
-      }));
+      .map((edge, index) => {
+        const source = String(edge.source);
+        const target = String(edge.target);
+        const baseData = edge.data ?? {};
+        const edgeId =
+          typeof edge.id === 'string' && edge.id.trim().length > 0
+            ? edge.id
+            : `edge-${index}-${source}-${target}`;
+
+        return {
+          id: edgeId,
+          source,
+          target,
+          from: source,
+          to: target,
+          label: edge.label || baseData.label || '',
+          dataType: baseData.dataType || 'default',
+          sourceHandle: edge.sourceHandle ?? baseData.sourceHandle,
+          targetHandle: edge.targetHandle ?? baseData.targetHandle,
+          data: baseData,
+        };
+      });
 
     return {
-      id: workflowIdentifier,
+      id: String(workflowIdentifier),
       name: spec?.name || 'Graph Editor Workflow',
-      version: 1,
+      version: typeof spec?.version === 'number' ? spec.version : 1,
       nodes: serializedNodes,
       edges: serializedEdges,
       scopes: Array.from(uniqueScopes),
       secrets: [],
       metadata: {
-        ...(spec?.metadata || {}),
-        updatedAt: new Date().toISOString(),
-        runPreview: true
+        ...metadataSource,
+        version: metadataVersion,
+        createdAt: metadataCreatedAt,
+        updatedAt: nowIso,
+        runPreview: true,
       }
     };
   }, [nodes, edges, spec]);
