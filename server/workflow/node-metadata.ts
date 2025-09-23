@@ -2,9 +2,21 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { WorkflowGraph, WorkflowNode, WorkflowNodeMetadata } from '../../common/workflow-types';
+import {
+  canonicalizeMetadataKey,
+  createMetadataPlaceholder,
+  inferWorkflowValueType,
+  toMetadataLookupKey,
+  type WorkflowMetadata,
+  type WorkflowMetadataSource,
+} from '@shared/workflow/metadata';
+import type { WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
 
-export type { WorkflowNodeMetadata } from '../../common/workflow-types';
+export type { WorkflowMetadata as WorkflowNodeMetadata } from '@shared/workflow/metadata';
+
+type MetadataSource = WorkflowMetadataSource;
+
+const canonicalize = canonicalizeMetadataKey;
 
 type ConnectorDefinition = {
   id?: string;
@@ -12,8 +24,6 @@ type ConnectorDefinition = {
   actions?: Array<{ id?: string; name?: string; title?: string; parameters?: { properties?: Record<string, any> } }>;
   triggers?: Array<{ id?: string; name?: string; title?: string; parameters?: { properties?: Record<string, any> } }>;
 };
-
-type MetadataSource = WorkflowNodeMetadata | undefined | null;
 
 type EnrichContext = {
   answers?: Record<string, any>;
@@ -23,14 +33,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONNECTOR_DIR = path.resolve(__dirname, '../../connectors');
 
 let connectorCache: Array<{ definition: ConnectorDefinition; tokens: Set<string> }> | null = null;
-
-const canonicalize = (value: unknown): string => {
-  if (value == null) return '';
-  return String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-};
 
 const normalizeOperationId = (operation?: string): string => {
   if (!operation) return '';
@@ -184,7 +186,21 @@ const collectColumnsFromSource = (source: unknown): string[] => {
   return Array.from(result);
 };
 
-const mergeMetadataSources = (...sources: MetadataSource[]): WorkflowNodeMetadata => {
+// Connector authors can pre-populate metadata by returning the shared
+// `WorkflowMetadata` shape. A minimal example looks like:
+// {
+//   columns: ['id', 'email'],
+//   sample: { id: '123', email: 'person@example.com' },
+//   schema: {
+//     id: { type: 'string', example: '123' },
+//     email: { type: 'string', example: 'person@example.com' }
+//   },
+//   derivedFrom: ['connector:my-app']
+// }
+//
+// The enrichment logic below merges connector-provided metadata with
+// heuristics derived from params, answers and connector schemas.
+const mergeMetadataSources = (...sources: MetadataSource[]): WorkflowMetadata => {
   const columns = new Set<string>();
   const headers = new Set<string>();
   const derivedFrom = new Set<string>();
@@ -296,7 +312,7 @@ const mergeMetadataSources = (...sources: MetadataSource[]): WorkflowNodeMetadat
     }
   }
 
-  const result: WorkflowNodeMetadata = {};
+  const result: WorkflowMetadata = {};
   if (columns.size > 0) result.columns = Array.from(columns);
   if (headers.size > 0) {
     const normalizedHeaders = new Set<string>();
@@ -344,7 +360,7 @@ const lookupValue = (source: unknown, key: string, depth = 0): any => {
   }
   if (typeof source !== 'object') return undefined;
   for (const [entryKey, entryValue] of Object.entries(source as Record<string, any>)) {
-    const normalized = canonicalize(entryKey).replace(/-/g, '_');
+    const normalized = toMetadataLookupKey(entryKey);
     if (normalized === key || normalized.replace(/_/g, '') === key.replace(/_/g, '')) {
       return entryValue;
     }
@@ -356,25 +372,9 @@ const lookupValue = (source: unknown, key: string, depth = 0): any => {
   return undefined;
 };
 
-const createPlaceholder = (column: string): string => {
-  const key = canonicalize(column).replace(/-/g, '_') || 'value';
-  return `{{${key}}}`;
-};
+const createPlaceholder = (column: string): string => createMetadataPlaceholder(column);
 
-const inferType = (value: any): string => {
-  if (value === null || value === undefined) return 'string';
-  if (Array.isArray(value)) return 'array';
-  if (typeof value === 'object') return 'object';
-  if (typeof value === 'number') return 'number';
-  if (typeof value === 'boolean') return 'boolean';
-  if (typeof value === 'string') {
-    const numeric = Number(value);
-    if (!Number.isNaN(numeric) && value.trim() !== '') {
-      return 'number';
-    }
-  }
-  return 'string';
-};
+const inferType = (value: any): string => inferWorkflowValueType(value);
 
 const buildSampleRow = (
   columns: string[],
@@ -385,7 +385,7 @@ const buildSampleRow = (
   const sample: Record<string, any> = {};
   const valuesArray = Array.isArray(params?.values) ? params.values : null;
   columns.forEach((column, index) => {
-    const normalized = canonicalize(column).replace(/-/g, '_');
+    const normalized = toMetadataLookupKey(column);
     const direct = lookupValue(params, normalized);
     if (direct !== undefined && direct !== null && direct !== '') {
       sample[column] = direct;
@@ -428,9 +428,9 @@ const deriveMetadata = (
   node: Partial<WorkflowNode>,
   params: Record<string, any>,
   answers: Record<string, any>,
-  existing: WorkflowNodeMetadata
-): WorkflowNodeMetadata => {
-  const metadata: WorkflowNodeMetadata = {};
+  existing: WorkflowMetadata
+): WorkflowMetadata => {
+  const metadata: WorkflowMetadata = {};
   const derivedFrom: string[] = [];
   const existingColumns = unique([...(existing.columns ?? []), ...(existing.headers ?? [])]);
 
@@ -477,7 +477,7 @@ const deriveMetadata = (
     if (!metadata.schema) {
       const schema: Record<string, any> = {};
       columns.forEach((column) => {
-        const normalized = canonicalize(column).replace(/-/g, '_');
+        const normalized = toMetadataLookupKey(column);
         const fromSample = sampleRow[column];
         schema[column] = {
           type: inferType(fromSample),
@@ -508,7 +508,7 @@ const deriveMetadata = (
 export const enrichWorkflowNode = <T extends WorkflowNode>(
   node: T,
   context: EnrichContext = {}
-): T & { metadata?: WorkflowNodeMetadata; outputMetadata?: WorkflowNodeMetadata } => {
+): T & { metadata?: WorkflowMetadata; outputMetadata?: WorkflowMetadata } => {
   const params =
     node.params ??
     node.data?.config ??
@@ -549,7 +549,7 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
     data,
     metadata,
     outputMetadata,
-  } as T & { metadata?: WorkflowNodeMetadata; outputMetadata?: WorkflowNodeMetadata };
+  } as T & { metadata?: WorkflowMetadata; outputMetadata?: WorkflowMetadata };
 };
 
 export const enrichWorkflowGraph = (

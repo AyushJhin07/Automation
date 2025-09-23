@@ -1,15 +1,8 @@
+import type { WorkflowMetadata } from '../shared/workflow/metadata';
+
 export type NodeType = 'trigger' | 'action' | 'transform';
 
-export type WorkflowNodeMetadata = {
-  columns?: string[];
-  headers?: string[];
-  sample?: Record<string, any> | any[];
-  sampleRow?: Record<string, any> | any[];
-  outputSample?: Record<string, any> | any[];
-  schema?: Record<string, any>;
-  outputSchema?: Record<string, any>;
-  derivedFrom?: string[];
-};
+export type WorkflowNodeMetadata = WorkflowMetadata;
 
 export type WorkflowNode = {
   id: string;
