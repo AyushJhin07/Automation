@@ -48,45 +48,100 @@ const sanitizeGraphForExecution = (graph: any) => {
       baseData.params = params;
     }
 
+    const candidateTypes: Array<string | undefined> = [
+      node.nodeType,
+      baseData?.nodeType,
+      baseData?.type,
+      typeof node.type === 'string' ? node.type : undefined,
+      baseData?.kind ? `${baseData.kind}.custom` : undefined,
+    ];
+    const canonicalType = candidateTypes.find((value) => typeof value === 'string' && value.includes('.'))
+      || candidateTypes.find((value) => typeof value === 'string' && value.trim().length > 0)
+      || 'action.custom';
+
+    if (baseData && typeof baseData === 'object') {
+      baseData.nodeType = canonicalType;
+      baseData.type = canonicalType;
+    }
+
+    const position = (node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number')
+      ? node.position
+      : { x: Number(node.position?.x) || 0, y: Number(node.position?.y) || 0 };
+
+    const appId = node.app || baseData?.app || baseData?.application;
+
     return {
       ...node,
       id: String(node.id ?? `node-${index}`),
-      type: node.type || node.nodeType || 'action',
+      type: canonicalType,
+      nodeType: canonicalType,
       label: node.label || baseData?.label || `Node ${index + 1}`,
       params,
       data: baseData,
-      app: node.app || baseData?.app,
+      app: appId,
+      position,
     };
   });
 
   const edges = Array.isArray(cloned.edges) ? cloned.edges : [];
   const sanitizedEdges = edges
-    .map((edge: any) => {
+    .map((edge: any, index: number) => {
       const from = edge.from ?? edge.source;
       const to = edge.to ?? edge.target;
       if (!from || !to) {
         return null;
       }
 
+      const source = String(from);
+      const target = String(to);
+      const edgeId =
+        typeof edge.id === 'string' && edge.id.trim().length > 0
+          ? edge.id
+          : `edge-${index}-${source}-${target}`;
+
       return {
         ...edge,
-        from: String(from),
-        to: String(to),
+        id: edgeId,
+        source,
+        target,
+        from: source,
+        to: target,
         label: edge.label ?? edge.data?.label ?? '',
       };
     })
     .filter(Boolean);
 
+  const nowIso = new Date().toISOString();
+  const metadataSource = (cloned.metadata && typeof cloned.metadata === 'object') ? cloned.metadata : {};
+  const createdAt =
+    (typeof (metadataSource as any).createdAt === 'string' && (metadataSource as any).createdAt) ||
+    (typeof (metadataSource as any).created_at === 'string' && (metadataSource as any).created_at) ||
+    (typeof cloned.createdAt === 'string' && cloned.createdAt) ||
+    nowIso;
+  const metadataVersion =
+    (typeof (metadataSource as any).version === 'string' && (metadataSource as any).version?.trim()?.length > 0)
+      ? (metadataSource as any).version.trim()
+      : '1.0.0';
+
+  const metadata = {
+    ...metadataSource,
+    version: metadataVersion,
+    createdAt,
+    updatedAt: (metadataSource as any).updatedAt && typeof (metadataSource as any).updatedAt === 'string'
+      ? (metadataSource as any).updatedAt
+      : nowIso,
+  };
+
   return {
     ...cloned,
-    id: cloned.id,
+    id: String(cloned.id ?? ''),
     name: cloned.name,
-    version: cloned.version ?? 1,
+    version: typeof cloned.version === 'number' ? cloned.version : 1,
     nodes: sanitizedNodes,
     edges: sanitizedEdges,
     scopes: Array.isArray(cloned.scopes) ? cloned.scopes : [],
     secrets: Array.isArray(cloned.secrets) ? cloned.secrets : [],
-    metadata: cloned.metadata ?? {},
+    metadata,
   };
 };
 
