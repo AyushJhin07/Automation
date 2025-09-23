@@ -4,7 +4,7 @@
  * Uses the same pattern as Label and Description fields for consistency
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useReactFlow, useStore } from "reactflow";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -257,6 +257,12 @@ export function renderStaticFieldControl(
   const type = fieldDef?.type || (fieldDef?.enum ? "string" : "string");
 
   if (fieldDef?.enum && Array.isArray(fieldDef.enum)) {
+    const optionElements = fieldDef.enum.map((opt: any) => (
+      <option key={String(opt)} value={opt}>
+        {String(opt)}
+      </option>
+    ));
+
     return (
       <select
         value={localStatic}
@@ -266,12 +272,12 @@ export function renderStaticFieldControl(
         }}
         className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
       >
-        <option value="">-- select --</option>
-        {fieldDef.enum.map((opt: any) => (
-          <option key={String(opt)} value={opt}>
-            {String(opt)}
-          </option>
-        ))}
+        {[
+          <option key="__default" value="">
+            -- select --
+          </option>,
+          ...optionElements
+        ]}
       </select>
     );
   }
