@@ -6,7 +6,11 @@ import {
   computeMetadataSuggestions,
   mapUpstreamNodesForAI,
   syncNodeParameters,
-  type UpstreamNodeSummary
+  augmentSchemaWithSheetTabs,
+  fetchSheetTabs,
+  renderStaticFieldControl,
+  type UpstreamNodeSummary,
+  type JSONSchema
 } from "../SmartParametersPanel";
 
 const upstreamNodes: UpstreamNodeSummary[] = [
@@ -178,4 +182,72 @@ assert.strictEqual(
 assert.equal(mirrored.label, "Mailer", "other node data should be preserved");
 assert.deepEqual(paramSyncBase.params, { old: "value" }, "original data should not be mutated");
 
-console.log("SmartParametersPanel metadata helper checks passed.");
+const originalFetch = globalThis.fetch;
+let capturedUrl: string | null = null;
+
+try {
+  globalThis.fetch = (async (input: any) => {
+    capturedUrl = typeof input === "string" ? input : (input?.url ?? String(input));
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { sheets: ["Sheet 1", "Second Tab", "Archive"] };
+      },
+      async text() {
+        return JSON.stringify({ sheets: ["Sheet 1", "Second Tab", "Archive"] });
+      }
+    } as any;
+  }) as any;
+
+  const tabs = await fetchSheetTabs("spreadsheet-123");
+  assert.ok(Array.isArray(tabs) && tabs.length === 3, "should return tab names from stubbed metadata fetch");
+  assert.ok(
+    typeof capturedUrl === "string" && capturedUrl.includes("/api/google/sheets/spreadsheet-123/metadata"),
+    "fetchSheetTabs should call the sheet metadata endpoint"
+  );
+
+  const baseSchema: JSONSchema = {
+    type: "object",
+    properties: {
+      spreadsheetId: { type: "string" },
+      sheetName: { type: "string", title: "Sheet Name" },
+      other: { type: "string" }
+    }
+  };
+
+  const augmented = augmentSchemaWithSheetTabs(baseSchema, tabs);
+  assert.ok(augmented && augmented !== baseSchema, "augmentSchemaWithSheetTabs should create a new schema instance");
+  assert.deepEqual(
+    augmented?.properties?.sheetName?.enum,
+    tabs,
+    "sheetName field should expose enum values from metadata"
+  );
+
+  let localStatic = "";
+  let committed: any = null;
+  const element = renderStaticFieldControl(augmented!.properties!.sheetName!, {
+    fieldName: "sheetName",
+    localStatic: "",
+    setLocalStatic: (value) => {
+      localStatic = value;
+    },
+    commitValue: (value) => {
+      committed = value;
+    }
+  });
+
+  assert.equal(element.type, "select", "sheet enum should render a select control");
+  const optionNodes = (element.props.children as any[]).filter((child: any) => child?.type === "option");
+  assert.equal(optionNodes.length, tabs.length + 1, "select should render default + returned sheet options");
+  const renderedValues = optionNodes.map((opt: any) => opt.props.value);
+  assert.deepEqual(renderedValues.slice(1), tabs, "rendered options should match sheet metadata");
+
+  element.props.onChange({ target: { value: tabs[1] } });
+  assert.equal(localStatic, tabs[1], "select change should update local state");
+  assert.equal(committed, tabs[1], "select change should commit the chosen sheet");
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
+console.log("SmartParametersPanel metadata helper checks (including sheet metadata) passed.");

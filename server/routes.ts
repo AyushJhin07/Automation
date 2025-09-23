@@ -6,6 +6,7 @@ import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 import { workflowBuildRouter } from "./routes/workflow.build";
 import aiRouter from "./routes/ai";
 import appSchemaRoutes from "./routes/app-schemas.js";
+import googleSheetsRoutes from "./routes/google-sheets.js";
 import aiAssistRoutes from "./routes/ai-assist.js";
 import templateRoutes from "./routes/templates.js";
 import collaborationRoutes from "./routes/collaboration.js";
@@ -66,6 +67,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P1-6: App parameter schema routes
   app.use('/api/app-schemas', appSchemaRoutes);
+
+  app.use('/api/google', googleSheetsRoutes);
   
   // P1-7: AI assist functionality routes
   app.use('/api/ai-assist', aiAssistRoutes);
