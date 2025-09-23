@@ -647,6 +647,8 @@ export function SmartParametersPanel() {
         const provisionalNode = {
           ...n,
           data: synced,
+          metadata: synced.metadata,
+          outputMetadata: synced.outputMetadata,
           params: nextParams,
           parameters: nextParams,
         };

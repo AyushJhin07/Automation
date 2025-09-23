@@ -1021,7 +1021,7 @@ const GraphEditorContent = () => {
     setDescValue(selectedNode?.data?.description || '');
   }, [selectedNodeId, selectedNode?.data?.label, selectedNode?.data?.description]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
-  const { project, getViewport, setViewport } = useReactFlow();
+  const { project, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
   const specHydratedRef = useRef(false);
 
@@ -1368,7 +1368,6 @@ const GraphEditorContent = () => {
   }, [setEdges]);
   
   const onAddNode = useCallback((nodeType: string, nodeData: any) => {
-    const viewport = getViewport();
     const providedData =
       nodeData && typeof nodeData === 'object' ? (nodeData as Record<string, any>) : {};
     const { parameters: providedParameters, params: providedParams, ...rest } = providedData;
@@ -1381,6 +1380,8 @@ const GraphEditorContent = () => {
       ...nodeData,
       type: nodeType,
       data: normalizedData,
+      metadata: normalizedData.metadata,
+      outputMetadata: normalizedData.outputMetadata,
       params,
       parameters: params,
     };
@@ -1400,7 +1401,7 @@ const GraphEditorContent = () => {
       data: normalizedDataWithMetadata,
     };
     setNodes((nds) => [...nds, newNode]);
-  }, [setNodes, getViewport]);
+  }, [setNodes]);
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNodeId(String(node.id));
