@@ -12,6 +12,7 @@ import {
   type UpstreamNodeSummary,
   type JSONSchema
 } from "../SmartParametersPanel";
+import { buildMetadataFromNode } from "../metadata";
 
 const upstreamNodes: UpstreamNodeSummary[] = [
   {
@@ -162,6 +163,63 @@ const quickPicksFromWorkflow = computeMetadataSuggestions([
 assert.ok(
   quickPicksFromWorkflow.some((pick) => pick.nodeId === sheetNode!.id && pick.path),
   "generated workflow should expose non-empty quick picks"
+);
+
+const sheetsTriggerTemplate = {
+  label: "New row in sheet",
+  app: "google-sheets",
+  nodeType: "trigger.google-sheets.row_added",
+  parameters: {
+    spreadsheetId: "sheet-abc123",
+    sheetName: "Leads",
+    columns: ["Email", "First Name", "Last Name"],
+  },
+};
+
+const sheetsTriggerData = syncNodeParameters(
+  {
+    label: sheetsTriggerTemplate.label,
+    app: sheetsTriggerTemplate.app,
+  },
+  sheetsTriggerTemplate.parameters
+);
+
+const derivedSheetsMetadata = buildMetadataFromNode({
+  id: sheetsTriggerTemplate.nodeType,
+  type: "trigger",
+  data: sheetsTriggerData,
+  params: sheetsTriggerTemplate.parameters,
+  parameters: sheetsTriggerTemplate.parameters,
+});
+
+const sheetsTriggerSummary: UpstreamNodeSummary = {
+  id: sheetsTriggerTemplate.nodeType,
+  data: {
+    label: sheetsTriggerTemplate.label,
+    app: sheetsTriggerTemplate.app,
+    metadata: { ...(sheetsTriggerData.metadata ?? {}), ...derivedSheetsMetadata },
+    outputMetadata: { ...(sheetsTriggerData.outputMetadata ?? {}), ...derivedSheetsMetadata },
+  },
+};
+
+const gmailSummary: UpstreamNodeSummary = {
+  id: "action.gmail.send",
+  data: {
+    label: "Send Email",
+    app: "gmail",
+  },
+};
+
+const suggestionsFromNewNodes = computeMetadataSuggestions([
+  sheetsTriggerSummary,
+  gmailSummary,
+]);
+
+assert.ok(
+  suggestionsFromNewNodes.some(
+    (entry) => entry.nodeId === sheetsTriggerSummary.id && entry.path === "Email"
+  ),
+  "dropping Sheets trigger and connecting Gmail should expose Email column quick pick"
 );
 
 const paramSyncBase = {
