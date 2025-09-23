@@ -4,12 +4,12 @@
  * Uses the same pattern as Label and Description fields for consistency
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useReactFlow, useStore } from "reactflow";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 
-type JSONSchema = {
+export type JSONSchema = {
   type?: string;
   properties?: Record<string, JSONSchema>;
   items?: JSONSchema;
@@ -145,6 +145,243 @@ export const syncNodeParameters = (data: any, nextParams: any): Record<string, a
   };
 };
 
+const SHEET_NAME_FIELD_CANDIDATES = [
+  "sheetname",
+  "sheet",
+  "worksheet",
+  "worksheetname",
+  "sheet_name",
+  "tab",
+  "tabname",
+  "sheettitle",
+  "sheet_title"
+];
+
+export const fetchSheetTabs = async (
+  spreadsheetId: string,
+  options: { signal?: AbortSignal } = {}
+): Promise<string[]> => {
+  const trimmed = spreadsheetId?.trim?.() ?? "";
+  if (!trimmed) return [];
+
+  const url = `/api/google/sheets/${encodeURIComponent(trimmed)}/metadata`;
+  const response = await fetch(url, {
+    method: "GET",
+    signal: options.signal
+  });
+
+  if (!response.ok) {
+    const error = await response.text().catch(() => "");
+    throw new Error(error || `Failed to load sheet metadata (${response.status})`);
+  }
+
+  const json = await response.json().catch(() => ({}));
+  const candidate = json?.sheets ?? json?.tabs ?? json?.sheetNames ?? [];
+
+  if (!Array.isArray(candidate)) return [];
+
+  return candidate
+    .map((value) =>
+      typeof value === "string"
+        ? value.trim()
+        : typeof value === "number"
+        ? String(value)
+        : ""
+    )
+    .filter((value) => value.length > 0);
+};
+
+export const augmentSchemaWithSheetTabs = (
+  baseSchema: JSONSchema | null,
+  sheetTabs: string[],
+  options: { fieldNames?: string[] } = {}
+): JSONSchema | null => {
+  if (!baseSchema) return baseSchema;
+  const properties = baseSchema.properties;
+  if (!properties) return baseSchema;
+
+  const fields = (options.fieldNames ?? SHEET_NAME_FIELD_CANDIDATES).map((f) => f.toLowerCase());
+  const fieldSet = new Set(fields);
+  let mutated = false;
+  const nextProperties: Record<string, JSONSchema> = {};
+
+  for (const [key, value] of Object.entries(properties)) {
+    if (!value) continue;
+    const lowerKey = key.toLowerCase();
+    if (!fieldSet.has(lowerKey)) {
+      nextProperties[key] = value;
+      continue;
+    }
+
+    const nextDef: JSONSchema = { ...value };
+    if (sheetTabs.length > 0) {
+      nextDef.enum = sheetTabs;
+    } else {
+      if (value.enum) {
+        nextDef.enum = [...value.enum];
+      } else {
+        delete nextDef.enum;
+      }
+    }
+
+    nextProperties[key] = nextDef;
+    if (sheetTabs.length > 0) {
+      if (!Array.isArray(value.enum) || value.enum.join("\u0000") !== sheetTabs.join("\u0000")) {
+        mutated = true;
+      }
+    } else if (value.enum) {
+      mutated = true;
+    }
+  }
+
+  if (!mutated && sheetTabs.length === 0) {
+    return baseSchema;
+  }
+
+  return {
+    ...baseSchema,
+    properties: nextProperties
+  };
+};
+
+export function renderStaticFieldControl(
+  fieldDef: JSONSchema,
+  context: {
+    fieldName: string;
+    localStatic: any;
+    setLocalStatic: (value: any) => void;
+    commitValue: (value: any) => void;
+  }
+): JSX.Element {
+  const { fieldName, localStatic, setLocalStatic, commitValue } = context;
+  const type = fieldDef?.type || (fieldDef?.enum ? "string" : "string");
+
+  if (fieldDef?.enum && Array.isArray(fieldDef.enum)) {
+    return (
+      <select
+        value={localStatic}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+          commitValue(e.target.value);
+        }}
+        className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+      >
+        <option value="">-- select --</option>
+        {fieldDef.enum.map((opt: any) => (
+          <option key={String(opt)} value={opt}>
+            {String(opt)}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (type === "boolean") {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={Boolean(localStatic)}
+          onChange={(e) => {
+            setLocalStatic(e.target.checked);
+            commitValue(e.target.checked);
+          }}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span className="text-sm text-slate-600">{fieldDef.title || fieldName}</span>
+      </div>
+    );
+  }
+
+  if (type === "number" || type === "integer") {
+    return (
+      <Input
+        type="number"
+        value={localStatic}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+        }}
+        onBlur={(e) => {
+          const val = e.target.value === "" ? "" : Number(e.target.value);
+          commitValue(val);
+        }}
+        min={fieldDef.minimum as any}
+        max={fieldDef.maximum as any}
+        placeholder={fieldDef?.description || `Enter ${fieldName}`}
+        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+      />
+    );
+  }
+
+  if (type === "array") {
+    return (
+      <Input
+        value={Array.isArray(localStatic) ? localStatic.join(",") : localStatic}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+        }}
+        onBlur={(e) => {
+          const parts = e.target.value
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+          commitValue(parts);
+        }}
+        placeholder="item1, item2, item3"
+        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+      />
+    );
+  }
+
+  if (type === "object") {
+    return (
+      <Textarea
+        value={typeof localStatic === "string" ? localStatic : JSON.stringify(localStatic ?? {}, null, 2)}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+        }}
+        onBlur={(e) => {
+          const val = e.target.value;
+          try {
+            const parsed = JSON.parse(val);
+            commitValue(parsed);
+          } catch {
+            commitValue(val);
+          }
+        }}
+        rows={3}
+        placeholder="{ }"
+        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none font-mono text-sm"
+      />
+    );
+  }
+
+  const inputType = fieldDef?.format === "email"
+    ? "email"
+    : fieldDef?.format === "uri"
+    ? "url"
+    : fieldDef?.format === "date"
+    ? "date"
+    : fieldDef?.format === "datetime-local"
+    ? "datetime-local"
+    : "text";
+
+  return (
+    <Input
+      type={inputType}
+      value={localStatic ?? ""}
+      onChange={(e) => {
+        setLocalStatic(e.target.value);
+      }}
+      onBlur={(e) => {
+        commitValue(e.target.value);
+      }}
+      placeholder={fieldDef?.description || fieldDef?.format || `Enter ${fieldName}`}
+      className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+    />
+  );
+}
+
 export function SmartParametersPanel() {
   const rf = useReactFlow();
   const storeNodes = useStore((state) => {
@@ -219,12 +456,22 @@ export function SmartParametersPanel() {
   const app = inferAppId();
   const opId = inferOpId();
   const [schema, setSchema] = useState<JSONSchema | null>(null);
+  const originalSchemaRef = useRef<JSONSchema | null>(null);
   const [defaults, setDefaults] = useState<any>({});
   const [paramsDraft, setParamsDraft] = useState<any>(
     node?.data?.parameters ?? node?.data?.params ?? {}
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sheetMetadata, setSheetMetadata] = useState<
+    | null
+    | {
+        spreadsheetId: string;
+        tabs: string[];
+        status: "idle" | "loading" | "success" | "error";
+        error?: string;
+      }
+  >(null);
 
   // Load schema when node/app/op changes
   useEffect(() => {
@@ -343,18 +590,82 @@ export function SmartParametersPanel() {
           }
         }
 
-        setSchema(nextSchema);
+        originalSchemaRef.current = nextSchema;
+        const augmented = sheetMetadata?.tabs?.length
+          ? augmentSchemaWithSheetTabs(nextSchema, sheetMetadata.tabs) || nextSchema
+          : nextSchema;
+        setSchema(augmented);
         setDefaults(nextDefaults);
         const currentParams = node?.data?.parameters ?? node?.data?.params ?? {};
         const next = { ...(nextDefaults || {}), ...currentParams };
         setParamsDraft(next);
       })
-      .catch(e => { 
-        setError(String(e)); 
-        setSchema({type:"object",properties:{}}); 
+      .catch(e => {
+        setError(String(e));
+        const fallback = { type: "object", properties: {} } as JSONSchema;
+        originalSchemaRef.current = fallback;
+        setSchema(fallback);
       })
       .finally(() => setLoading(false));
   }, [app, opId, node?.id]);
+
+  useEffect(() => {
+    const rawId = paramsDraft?.spreadsheetId;
+    if (!rawId) {
+      setSheetMetadata(null);
+      if (originalSchemaRef.current) {
+        const restored = augmentSchemaWithSheetTabs(originalSchemaRef.current, []) || originalSchemaRef.current;
+        setSchema(restored);
+      }
+      return;
+    }
+
+    const spreadsheetId = String(rawId).trim();
+    if (!spreadsheetId) {
+      setSheetMetadata(null);
+      if (originalSchemaRef.current) {
+        const restored = augmentSchemaWithSheetTabs(originalSchemaRef.current, []) || originalSchemaRef.current;
+        setSchema(restored);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setSheetMetadata((prev) => ({
+      spreadsheetId,
+      tabs: prev?.spreadsheetId === spreadsheetId ? prev.tabs : [],
+      status: "loading"
+    }));
+
+    fetchSheetTabs(spreadsheetId, { signal: controller.signal })
+      .then((tabs) => {
+        if (cancelled) return;
+        setSheetMetadata({ spreadsheetId, tabs, status: "success" });
+        if (originalSchemaRef.current) {
+          const augmented = augmentSchemaWithSheetTabs(originalSchemaRef.current, tabs) || originalSchemaRef.current;
+          setSchema(augmented);
+        }
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setSheetMetadata({
+          spreadsheetId,
+          tabs: [],
+          status: "error",
+          error: err?.message || "Failed to load sheet metadata"
+        });
+        if (originalSchemaRef.current) {
+          const restored = augmentSchemaWithSheetTabs(originalSchemaRef.current, []) || originalSchemaRef.current;
+          setSchema(restored);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [paramsDraft?.spreadsheetId]);
   // Commit helper: push a single param back to the graph node
   const commitParams = (nextParams: any) => {
     if (!node) return;
@@ -414,7 +725,15 @@ export function SmartParametersPanel() {
   };
 
   function ParameterField({ name, def }: { name: string; def: JSONSchema }) {
-    const rawValue = paramsDraft?.[name] ?? def?.default ?? defaults?.[name] ?? '';
+    const fieldDef = useMemo(() => {
+      if (def?.enum) return def;
+      const tabs = sheetMetadata?.tabs;
+      if (!tabs || !tabs.length) return def;
+      if (!SHEET_NAME_FIELD_CANDIDATES.includes(name.toLowerCase())) return def;
+      return { ...def, enum: tabs };
+    }, [def, name, sheetMetadata?.tabs]);
+
+    const rawValue = paramsDraft?.[name] ?? fieldDef?.default ?? defaults?.[name] ?? '';
     const { mode, staticValue, refNodeId, refPath } = deriveFieldState(rawValue);
     const isRequired = schema?.required?.includes(name) || false;
     const [localStatic, setLocalStatic] = useState<any>(staticValue ?? '');
@@ -465,134 +784,13 @@ export function SmartParametersPanel() {
       }
     };
 
-    const renderStaticField = () => {
-      const type = def?.type || (def?.enum ? 'string' : 'string');
-
-      if (def?.enum && Array.isArray(def.enum)) {
-        return (
-          <select
-            value={localStatic}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-              setStaticValue(name, e.target.value);
-            }}
-            className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-          >
-            <option value="">-- select --</option>
-            {def.enum.map((opt: any) => (
-              <option key={String(opt)} value={opt}>
-                {String(opt)}
-              </option>
-            ))}
-          </select>
-        );
-      }
-
-      if (type === 'boolean') {
-        return (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={Boolean(localStatic)}
-              onChange={(e) => {
-                setLocalStatic(e.target.checked);
-                setStaticValue(name, e.target.checked);
-              }}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-slate-600">{def.title || name}</span>
-          </div>
-        );
-      }
-
-      if (type === 'number' || type === 'integer') {
-        return (
-          <Input
-            type="number"
-            value={localStatic}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-            }}
-            onBlur={(e) => {
-              const val = e.target.value === '' ? '' : Number(e.target.value);
-              setStaticValue(name, val);
-            }}
-            min={def.minimum as any}
-            max={def.maximum as any}
-            placeholder={def?.description || `Enter ${name}`}
-            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-          />
-        );
-      }
-
-      if (type === 'array') {
-        return (
-          <Input
-            value={Array.isArray(localStatic) ? localStatic.join(',') : localStatic}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-            }}
-            onBlur={(e) => {
-              const parts = e.target.value
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean);
-              setStaticValue(name, parts);
-            }}
-            placeholder="item1, item2, item3"
-            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-          />
-        );
-      }
-
-      if (type === 'object') {
-        return (
-          <Textarea
-            value={typeof localStatic === 'string' ? localStatic : JSON.stringify(localStatic ?? {}, null, 2)}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-            }}
-            onBlur={(e) => {
-              const val = e.target.value;
-              try {
-                const parsed = JSON.parse(val);
-                setStaticValue(name, parsed);
-              } catch {
-                setStaticValue(name, val);
-              }
-            }}
-            rows={3}
-            placeholder="{ }"
-            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none font-mono text-sm"
-          />
-        );
-      }
-
-      const inputType = def?.format === 'email'
-        ? 'email'
-        : def?.format === 'uri'
-        ? 'url'
-        : def?.format === 'date'
-        ? 'date'
-        : def?.format === 'datetime-local'
-        ? 'datetime-local'
-        : 'text';
-
-      return (
-        <Input
-          type={inputType}
-          value={localStatic ?? ''}
-          onChange={(e) => {
-            setLocalStatic(e.target.value);
-          }}
-          onBlur={(e) => {
-            setStaticValue(name, e.target.value);
-          }}
-          placeholder={def?.description || def?.format || `Enter ${name}`}
-          className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-        />
-      );
-    };
+    const renderStaticField = () =>
+      renderStaticFieldControl(fieldDef, {
+        fieldName: name,
+        localStatic,
+        setLocalStatic,
+        commitValue: (value) => setStaticValue(name, value)
+      });
 
     const renderDynamicField = () => {
       if (!upstreamNodes.length) {
@@ -698,11 +896,11 @@ export function SmartParametersPanel() {
               nodeLabel: node?.data?.label,
               app,
               opId,
-              description: def?.description || '',
-              schema: def
+              description: fieldDef?.description || '',
+              schema: fieldDef
             },
             upstream: upstreamData,
-            instruction: `Map the "${name}" parameter to the most appropriate upstream data. This parameter is for ${def?.description || 'the current operation'}.`
+            instruction: `Map the "${name}" parameter to the most appropriate upstream data. This parameter is for ${fieldDef?.description || 'the current operation'}.`
           })
         });
 
@@ -813,7 +1011,7 @@ export function SmartParametersPanel() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-slate-700">
-            {def.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
+            {fieldDef.title || name} {isRequired ? <span className="text-red-500">*</span> : null}
           </div>
           <select
             value={mode}
@@ -830,8 +1028,8 @@ export function SmartParametersPanel() {
         {mode === 'dynamic' && renderDynamicField()}
         {mode === 'llm' && renderLLMField()}
 
-        {def.description ? (
-          <p className="text-xs text-slate-500">{def.description}</p>
+        {fieldDef.description ? (
+          <p className="text-xs text-slate-500">{fieldDef.description}</p>
         ) : null}
       </div>
     );
