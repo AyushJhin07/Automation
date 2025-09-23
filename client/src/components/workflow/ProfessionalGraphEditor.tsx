@@ -1713,11 +1713,13 @@ const GraphEditorContent = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           selectionOnDrag={false}
+          multiSelectionKeyCode={null}
+          panActivationKeyCode={null}
           onPaneClick={(e) => {
             const el = e.target as HTMLElement;
             // Don't clear selection if clicking inside the parameters panel or any input elements
             if (el && typeof el.closest === 'function') {
-              if (el.closest('[data-inspector]') || 
+              if (el.closest('[data-inspector]') ||
                   el.closest('.nodrag') || 
                   el.closest('input') || 
                   el.closest('textarea') || 
@@ -1824,6 +1826,20 @@ const GraphEditorContent = () => {
           onPointerDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
           onMouseDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
           onClickCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
+          onKeyDownCapture={(event) => {
+            if (event.ctrlKey || event.metaKey) {
+              event.stopPropagation();
+              const nativeEvent: any = event.nativeEvent;
+              if (nativeEvent?.stopImmediatePropagation) nativeEvent.stopImmediatePropagation();
+            }
+          }}
+          onKeyUpCapture={(event) => {
+            if (event.ctrlKey || event.metaKey) {
+              event.stopPropagation();
+              const nativeEvent: any = event.nativeEvent;
+              if (nativeEvent?.stopImmediatePropagation) nativeEvent.stopImmediatePropagation();
+            }
+          }}
           style={{ pointerEvents: 'auto' }}
         >
           {/* Header */}
