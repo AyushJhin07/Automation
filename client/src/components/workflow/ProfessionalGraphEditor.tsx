@@ -28,6 +28,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
@@ -75,10 +76,12 @@ import {
   Folder,
   BookOpen,
   MapPin,
-  Calculator
+  Calculator,
+  CheckCircle2
 } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
+import { toast } from 'sonner';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -255,6 +258,56 @@ const appIconsMap: Record<string, any> = {
   'zoom-enhanced': Video,
   
   'default': Zap
+};
+
+type ExecutionStatus = 'idle' | 'running' | 'success' | 'error';
+
+const STATUS_LABELS: Record<ExecutionStatus, string> = {
+  idle: 'Idle',
+  running: 'Running',
+  success: 'Completed',
+  error: 'Failed'
+};
+
+const STATUS_RING: Record<ExecutionStatus, string> = {
+  idle: '',
+  running: 'ring-2 ring-amber-300/60 shadow-lg shadow-amber-200/40',
+  success: 'ring-2 ring-emerald-300/60 shadow-lg shadow-emerald-200/30',
+  error: 'ring-2 ring-red-400/60 shadow-lg shadow-red-200/40'
+};
+
+const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
+  idle: 'bg-white/60',
+  running: 'bg-amber-300 animate-pulse shadow-[0_0_10px_rgba(251,191,36,0.7)]',
+  success: 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]',
+  error: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.7)]'
+};
+
+const applyExecutionStateDefaults = (data: any = {}) => {
+  const base = (data && typeof data === 'object') ? { ...data } : {};
+  if (!('executionStatus' in base)) {
+    base.executionStatus = 'idle';
+  }
+  if (!('executionError' in base)) {
+    base.executionError = null;
+  }
+  if (!('lastExecution' in base)) {
+    base.lastExecution = null;
+  }
+  return base;
+};
+
+const sanitizeExecutionState = (data: any = {}) => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+  const sanitized = { ...data };
+  delete sanitized.executionStatus;
+  delete sanitized.executionError;
+  delete sanitized.lastExecution;
+  delete sanitized.isRunning;
+  delete sanitized.isCompleted;
+  return sanitized;
 };
 
 const getAppIcon = (appName: string) => {
@@ -495,19 +548,23 @@ const buildMetadataFromNode = (node: any): WorkflowMetadata => {
 // Custom Node Components
 const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+  const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
+  const statusLabel = STATUS_LABELS[status];
+  const ringClass = STATUS_RING[status];
+  const indicatorClass = STATUS_INDICATOR[status];
+
   return (
-    <div 
-      className={`
-        relative bg-gradient-to-br from-green-500 to-emerald-600 
-        rounded-xl shadow-lg border-2 transition-all duration-300 ease-out
-        ${selected ? 'border-white shadow-xl scale-105' : 'border-green-400/30'}
-        hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]
-      `}
+    <div
+      className={clsx(
+        'relative bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
+        selected ? 'border-white shadow-xl scale-105' : 'border-green-400/30',
+        'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
+        ringClass
+      )}
     >
       {/* Animated pulse effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl opacity-30 blur animate-pulse"></div>
-      
+
       <div className="relative bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
@@ -531,14 +588,26 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
         <div className="text-white">
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-green-100 text-xs mb-2 opacity-90">{data.description}</p>
-          
+
           {/* Status indicator */}
           <div className="flex items-center gap-2 text-xs">
-            <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
-            <span className="text-green-100">Active</span>
+            <div className={clsx('w-2.5 h-2.5 rounded-full', indicatorClass)}></div>
+            <span className="text-white font-medium">{statusLabel}</span>
           </div>
+
+          {status === 'error' && data.executionError?.message && (
+            <p className="mt-2 text-xs text-red-100 bg-black/20 border border-white/10 rounded-lg px-2 py-1">
+              {data.executionError.message}
+            </p>
+          )}
+
+          {status === 'success' && data.lastExecution?.summary && (
+            <p className="mt-2 text-xs text-emerald-100 bg-black/10 border border-white/10 rounded-lg px-2 py-1">
+              {data.lastExecution.summary}
+            </p>
+          )}
         </div>
-        
+
         {/* Expanded content */}
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
@@ -566,26 +635,30 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
 
 const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+  const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
+  const ringClass = STATUS_RING[status];
+  const indicatorClass = STATUS_INDICATOR[status];
+  const statusLabel = STATUS_LABELS[status];
+
   const getIcon = () => {
     if (data.app === 'Gmail') return <Mail className="w-4 h-4 text-white" />;
     if (data.app === 'Google Sheets') return <Sheet className="w-4 h-4 text-white" />;
     if (data.app === 'Google Calendar') return <Calendar className="w-4 h-4 text-white" />;
     return <Zap className="w-4 h-4 text-white" />;
   };
-  
+
   return (
-    <div 
-      className={`
-        relative bg-gradient-to-br from-blue-500 to-indigo-600 
-        rounded-xl shadow-lg border-2 transition-all duration-300 ease-out
-        ${selected ? 'border-white shadow-xl scale-105' : 'border-blue-400/30'}
-        hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]
-      `}
+    <div
+      className={clsx(
+        'relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
+        selected ? 'border-white shadow-xl scale-105' : 'border-blue-400/30',
+        'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
+        ringClass
+      )}
     >
       {/* Animated glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-xl opacity-30 blur animate-pulse"></div>
-      
+
       <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
@@ -609,13 +682,30 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
         <div className="text-white">
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-blue-100 text-xs mb-2 opacity-90">{data.description}</p>
-          
+
           {/* App badge */}
           <Badge className="bg-white/20 text-white border-white/30 text-xs">
             {data.app || 'Generic'}
           </Badge>
+
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <div className={clsx('w-2.5 h-2.5 rounded-full', indicatorClass)}></div>
+            <span className="text-white font-medium">{statusLabel}</span>
+          </div>
+
+          {status === 'error' && data.executionError?.message && (
+            <p className="mt-2 text-xs text-red-100 bg-black/20 border border-white/10 rounded-lg px-2 py-1">
+              {data.executionError.message}
+            </p>
+          )}
+
+          {status === 'success' && data.lastExecution?.summary && (
+            <p className="mt-2 text-xs text-emerald-100 bg-black/10 border border-white/10 rounded-lg px-2 py-1">
+              {data.lastExecution.summary}
+            </p>
+          )}
         </div>
-        
+
         {/* Expanded content */}
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
@@ -648,19 +738,23 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
 
 const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+  const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
+  const ringClass = STATUS_RING[status];
+  const indicatorClass = STATUS_INDICATOR[status];
+  const statusLabel = STATUS_LABELS[status];
+
   return (
-    <div 
-      className={`
-        relative bg-gradient-to-br from-purple-500 to-violet-600 
-        rounded-xl shadow-lg border-2 transition-all duration-300 ease-out
-        ${selected ? 'border-white shadow-xl scale-105' : 'border-purple-400/30'}
-        hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]
-      `}
+    <div
+      className={clsx(
+        'relative bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
+        selected ? 'border-white shadow-xl scale-105' : 'border-purple-400/30',
+        'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
+        ringClass
+      )}
     >
       {/* Animated shimmer effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-purple-400 to-violet-500 rounded-xl opacity-30 blur animate-pulse"></div>
-      
+
       <div className="relative bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
@@ -684,12 +778,23 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
         <div className="text-white">
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-purple-100 text-xs mb-2 opacity-90">{data.description}</p>
-          
-          {/* Processing indicator */}
+
           <div className="flex items-center gap-2 text-xs">
-            <div className="w-2 h-2 bg-purple-300 rounded-full animate-bounce"></div>
-            <span className="text-purple-100">Processing</span>
+            <div className={clsx('w-2.5 h-2.5 rounded-full', indicatorClass)}></div>
+            <span className="text-white font-medium">{statusLabel}</span>
           </div>
+
+          {status === 'error' && data.executionError?.message && (
+            <p className="mt-2 text-xs text-red-100 bg-black/20 border border-white/10 rounded-lg px-2 py-1">
+              {data.executionError.message}
+            </p>
+          )}
+
+          {status === 'success' && data.lastExecution?.summary && (
+            <p className="mt-2 text-xs text-emerald-100 bg-black/10 border border-white/10 rounded-lg px-2 py-1">
+              {data.lastExecution.summary}
+            </p>
+          )}
         </div>
         
         {/* Expanded content */}
@@ -1214,13 +1319,17 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
 // Main Graph Editor Component
 const GraphEditorContent = () => {
+  const fallbackWorkflowIdRef = useRef<string>(`local-${Date.now()}`);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
+  const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const selectedNode = useMemo(() => {
     return nodes.find((n: any) => String(n.id) === String(selectedNodeId)) as any;
   }, [nodes, selectedNodeId]);
+  const lastExecution = selectedNode?.data?.lastExecution;
   const [labelValue, setLabelValue] = useState<string>('');
   const [descValue, setDescValue] = useState<string>('');
 
@@ -1233,6 +1342,92 @@ const GraphEditorContent = () => {
   const spec = useSpecStore((state) => state.spec);
   const specHydratedRef = useRef(false);
 
+  const updateNodeExecution = useCallback((nodeId: string, updater: (data: any) => any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (String(node.id) !== String(nodeId)) {
+          return node;
+        }
+        const baseData = applyExecutionStateDefaults(node.data);
+        const updates = updater(baseData) || {};
+        return {
+          ...node,
+          data: {
+            ...baseData,
+            ...updates
+          }
+        };
+      })
+    );
+  }, [setNodes]);
+
+  const resetExecutionHighlights = useCallback(() => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        const baseData = applyExecutionStateDefaults(node.data);
+        return {
+          ...node,
+          data: {
+            ...baseData,
+            executionStatus: 'idle',
+            isRunning: false,
+            isCompleted: false
+          }
+        };
+      })
+    );
+  }, [setNodes]);
+
+  const createGraphPayload = useCallback((workflowIdentifier: string) => {
+    const uniqueScopes = new Set<string>();
+
+    const serializedNodes = nodes.map((node, index) => {
+      const baseData = applyExecutionStateDefaults(node.data || {});
+      const sanitizedData = sanitizeExecutionState(baseData);
+      const params = sanitizedData.parameters ?? sanitizedData.params ?? baseData.parameters ?? {};
+      sanitizedData.parameters = params;
+      sanitizedData.params = params;
+
+      if (Array.isArray(sanitizedData.requiredScopes)) {
+        sanitizedData.requiredScopes.forEach((scope: string) => uniqueScopes.add(scope));
+      }
+
+      return {
+        id: String(node.id),
+        type: typeof node.type === 'string' ? node.type : 'action',
+        label: sanitizedData.label || node.data?.label || `Node ${index + 1}`,
+        params,
+        data: sanitizedData,
+        app: sanitizedData.app || node.data?.app,
+        position: node.position
+      };
+    });
+
+    const serializedEdges = edges
+      .filter((edge) => edge.source && edge.target)
+      .map((edge) => ({
+        from: edge.source,
+        to: edge.target,
+        label: edge.label || edge.data?.label || '',
+        dataType: edge.data?.dataType || 'default'
+      }));
+
+    return {
+      id: workflowIdentifier,
+      name: spec?.name || 'Graph Editor Workflow',
+      version: 1,
+      nodes: serializedNodes,
+      edges: serializedEdges,
+      scopes: Array.from(uniqueScopes),
+      secrets: [],
+      metadata: {
+        ...(spec?.metadata || {}),
+        updatedAt: new Date().toISOString(),
+        runPreview: true
+      }
+    };
+  }, [nodes, edges, spec]);
+
   // P1-8: Enhanced Graph Editor autoload robustness (scanner-safe version)
   useEffect(() => {
     const loadWorkflowFromStorage = async () => {
@@ -1244,6 +1439,17 @@ const GraphEditorContent = () => {
         const autoLoad = urlParams.get("autoLoad") === "true";
         const storedWorkflowId = fromAIB ? (localStorage.getItem('lastWorkflowId') || undefined) : undefined;
         const workflowId = workflowIdParam || storedWorkflowId;
+
+        if (workflowId) {
+          setActiveWorkflowId(workflowId);
+          try {
+            localStorage.setItem('lastWorkflowId', workflowId);
+          } catch (e) {
+            console.warn('Unable to persist workflow id to localStorage', e);
+          }
+        } else {
+          setActiveWorkflowId((prev) => prev ?? fallbackWorkflowIdRef.current);
+        }
 
         // Helper to safely parse any JSON without throwing
         const safeParse = (raw: string | null) => {
@@ -1375,6 +1581,7 @@ const GraphEditorContent = () => {
             isValid: true,
             loadSource,
           };
+          const normalizedData = applyExecutionStateDefaults(syncNodeParameters(baseData, params));
 
           return {
             id: `${node.id || `node_${index}`}`,
@@ -1383,7 +1590,7 @@ const GraphEditorContent = () => {
               x: node.position?.x ?? 100 + (index % 6) * 260,
               y: node.position?.y ?? 120 + Math.floor(index / 6) * 180,
             },
-            data: syncNodeParameters(baseData, params),
+            data: normalizedData,
           } as any;
         };
 
@@ -1460,7 +1667,10 @@ const GraphEditorContent = () => {
       const { nodes: specNodes, edges: specEdges } = specToReactFlow(spec);
       if (!specNodes.length) return;
 
-      setNodes(specNodes as any);
+      setNodes(specNodes.map((node: any) => ({
+        ...node,
+        data: applyExecutionStateDefaults(node.data)
+      })) as any);
       setEdges(specEdges as any);
       setShowWelcomeModal(false);
 
@@ -1531,12 +1741,13 @@ const GraphEditorContent = () => {
         description: existingData.description || node.type || node.app,
         app: existingData.app || node.app || 'Unknown',
       };
+      const mergedData = applyExecutionStateDefaults(syncNodeParameters(baseData, params));
 
       newNodes.push({
         id: node.id,
         type: nodeType,
         position: node.position || { x: 100 + index * 250, y: 200 },
-        data: syncNodeParameters(baseData, params),
+        data: mergedData,
       });
     });
     
@@ -1584,7 +1795,7 @@ const GraphEditorContent = () => {
       (providedParameters as Record<string, any> | undefined) ??
       (providedParams as Record<string, any> | undefined) ??
       {};
-    const normalizedData = syncNodeParameters(rest, params);
+    const normalizedData = applyExecutionStateDefaults(syncNodeParameters(rest, params));
     const newNode: Node = {
       id: `${nodeType}-${Date.now()}`,
       type: nodeType,
@@ -1603,48 +1814,177 @@ const GraphEditorContent = () => {
   }, [setNodes]);
   
   const onRunWorkflow = useCallback(async () => {
-    setIsRunning(true);
-    
-    // Simulate workflow execution with visual feedback
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      
-      // Highlight current node
-      setNodes((nds) => 
-        nds.map((n) => ({
-          ...n,
-          data: {
-            ...n.data,
-            isRunning: n.id === node.id,
-            isCompleted: nodes.slice(0, i).some(prev => prev.id === n.id)
-          }
-        }))
-      );
-      
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    if (nodes.length === 0) {
+      return;
     }
-    
-    // Mark all nodes as completed
-    setNodes((nds) => 
-      nds.map((n) => ({
-        ...n,
-        data: { ...n.data, isRunning: false, isCompleted: true }
-      }))
+
+    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    if (!activeWorkflowId || activeWorkflowId !== workflowIdentifier) {
+      setActiveWorkflowId(workflowIdentifier);
+    }
+
+    try {
+      localStorage.setItem('lastWorkflowId', workflowIdentifier);
+    } catch (error) {
+      console.warn('Unable to persist workflow id:', error);
+    }
+
+    const payload = createGraphPayload(workflowIdentifier);
+
+    setRunBanner(null);
+    setIsRunning(true);
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        const baseData = applyExecutionStateDefaults(node.data);
+        return {
+          ...node,
+          data: {
+            ...baseData,
+            executionStatus: 'idle',
+            isRunning: false,
+            isCompleted: false,
+            executionError: null
+          }
+        };
+      })
     );
-    
-    setIsRunning(false);
-    
-    // Reset after 3 seconds
-    setTimeout(() => {
-      setNodes((nds) => 
-        nds.map((n) => ({
-          ...n,
-          data: { ...n.data, isCompleted: false }
-        }))
-      );
-    }, 3000);
-  }, [nodes, setNodes]);
+
+    let summaryEvent: any = null;
+    let encounteredError = false;
+
+    try {
+      const response = await fetch(`/api/workflows/${workflowIdentifier}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ graph: payload })
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to execute workflow';
+        try {
+          const errorJson = await response.json();
+          message = errorJson?.error || message;
+        } catch {}
+        throw new Error(message);
+      }
+
+      if (!response.body) {
+        throw new Error('Execution stream unavailable');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const processEvent = (line: string) => {
+        if (!line) return;
+        let event: any;
+        try {
+          event = JSON.parse(line);
+        } catch (error) {
+          console.warn('Failed to parse execution event', error, line);
+          return;
+        }
+
+        switch (event.type) {
+          case 'node-start':
+            updateNodeExecution(event.nodeId, () => ({
+              executionStatus: 'running',
+              executionError: null,
+              isRunning: true,
+              isCompleted: false
+            }));
+            break;
+          case 'node-complete':
+            updateNodeExecution(event.nodeId, () => ({
+              executionStatus: 'success',
+              executionError: null,
+              isRunning: false,
+              isCompleted: true,
+              lastExecution: {
+                status: 'success',
+                summary: event.result?.summary || `Completed ${event.label || event.nodeId}`,
+                result: event.result,
+                logs: event.result?.logs || [],
+                preview: event.result?.preview,
+                finishedAt: event.result?.finishedAt || event.timestamp
+              }
+            }));
+            break;
+          case 'node-error':
+            encounteredError = true;
+            updateNodeExecution(event.nodeId, () => ({
+              executionStatus: 'error',
+              isRunning: false,
+              isCompleted: false,
+              executionError: event.error,
+              lastExecution: {
+                status: 'error',
+                error: event.error,
+                finishedAt: event.timestamp
+              }
+            }));
+            break;
+          case 'deployment':
+            if (event.success === false) {
+              encounteredError = true;
+            }
+            break;
+          case 'summary':
+            summaryEvent = event;
+            encounteredError = !event.success;
+            break;
+          default:
+            break;
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex = buffer.indexOf('\n');
+        while (newlineIndex !== -1) {
+          const line = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          if (line) processEvent(line);
+          newlineIndex = buffer.indexOf('\n');
+        }
+      }
+
+      const remaining = buffer.trim();
+      if (remaining) {
+        processEvent(remaining);
+      }
+
+      const finalSummary = summaryEvent ?? {
+        success: !encounteredError,
+        message: encounteredError ? 'Workflow run completed with errors' : 'Workflow run completed successfully'
+      };
+
+      const bannerType = finalSummary.success ? 'success' : 'error';
+      const bannerMessage = finalSummary.message || (finalSummary.success ? 'Workflow executed successfully' : 'Workflow execution failed');
+
+      setRunBanner({ type: bannerType, message: bannerMessage });
+      if (bannerType === 'success') {
+        toast.success(bannerMessage);
+      } else {
+        toast.error(bannerMessage);
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Failed to execute workflow';
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      encounteredError = true;
+    } finally {
+      setIsRunning(false);
+      setTimeout(() => {
+        resetExecutionHighlights();
+      }, 1200);
+    }
+  }, [nodes, activeWorkflowId, createGraphPayload, updateNodeExecution, resetExecutionHighlights, setNodes, setActiveWorkflowId]);
   
   return (
     <div className="flex h-screen bg-gray-100">
@@ -1657,6 +1997,25 @@ const GraphEditorContent = () => {
         <div className="absolute top-4 left-4 right-4 z-10">
           <Card className="bg-slate-800/90 backdrop-blur-sm border-slate-700">
             <CardContent className="p-3">
+              {runBanner && (
+                <Alert
+                  variant={runBanner.type === 'error' ? 'destructive' : 'default'}
+                  className={clsx(
+                    'mb-3',
+                    runBanner.type === 'error'
+                      ? 'bg-red-500/10 border-red-500/40 text-red-50'
+                      : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-50'
+                  )}
+                >
+                  {runBanner.type === 'error' ? (
+                    <AlertTriangle className="h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
+                  <AlertDescription>{runBanner.message}</AlertDescription>
+                </Alert>
+              )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h1 className="text-white font-bold text-lg flex items-center gap-2">
@@ -1867,6 +2226,56 @@ const GraphEditorContent = () => {
 
           {/* Content */}
           <div className="p-6 space-y-6">
+            {lastExecution && (
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity className={clsx('w-4 h-4', lastExecution?.status === 'success' ? 'text-emerald-500' : lastExecution?.status === 'error' ? 'text-red-500' : 'text-blue-500')} />
+                    <span className="text-sm font-semibold text-slate-700">Last execution</span>
+                  </div>
+                  <Badge className={clsx(
+                    'text-xs',
+                    lastExecution?.status === 'success'
+                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      : lastExecution?.status === 'error'
+                      ? 'bg-red-100 text-red-700 border-red-200'
+                      : 'bg-slate-100 text-slate-700 border-slate-200'
+                  )}>
+                    {lastExecution?.status === 'success' ? 'Success' : lastExecution?.status === 'error' ? 'Failed' : 'Completed'}
+                  </Badge>
+                </div>
+                <div className="mt-3 space-y-2 text-xs text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    <span>{lastExecution?.finishedAt ? new Date(lastExecution.finishedAt).toLocaleString() : 'Just now'}</span>
+                  </div>
+                  {lastExecution?.summary && (
+                    <p className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-700">{lastExecution.summary}</p>
+                  )}
+                  {lastExecution?.error?.message && (
+                    <p className="bg-red-50 border border-red-200 rounded-lg p-2 text-red-600">{lastExecution.error.message}</p>
+                  )}
+                  {Array.isArray(lastExecution?.logs) && lastExecution.logs.length > 0 && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1">
+                      {lastExecution.logs.slice(0, 5).map((log: string, index: number) => (
+                        <div key={index} className="font-mono text-[11px] text-slate-500 truncate">
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {lastExecution?.result && (
+                    <details className="bg-slate-50 border border-slate-200 rounded-lg">
+                      <summary className="cursor-pointer px-2 py-1 text-slate-600 font-medium">Output preview</summary>
+                      <pre className="px-2 pb-2 text-[11px] text-slate-600 whitespace-pre-wrap break-words">
+                        {JSON.stringify(lastExecution.result?.preview ?? lastExecution.result, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Basic Information */}
             <div className="space-y-4">
               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
