@@ -2,8 +2,12 @@ export type NodeType = 'trigger' | 'action' | 'transform';
 
 export type WorkflowNodeMetadata = {
   columns?: string[];
+  headers?: string[];
   sample?: Record<string, any> | any[];
+  sampleRow?: Record<string, any> | any[];
+  outputSample?: Record<string, any> | any[];
   schema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
   derivedFrom?: string[];
 };
 
@@ -20,9 +24,11 @@ export type WorkflowNode = {
     config?: Record<string, any>;
     parameters?: Record<string, any>;
     metadata?: WorkflowNodeMetadata;
+    outputMetadata?: WorkflowNodeMetadata;
     [key: string]: any;
   };
   metadata?: WorkflowNodeMetadata;
+  outputMetadata?: WorkflowNodeMetadata;
 };
 
 export type WorkflowEdge = {

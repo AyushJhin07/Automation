@@ -2,14 +2,9 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
+import type { WorkflowGraph, WorkflowNode, WorkflowNodeMetadata } from '../../common/workflow-types';
 
-export type WorkflowNodeMetadata = {
-  columns?: string[];
-  sample?: Record<string, any> | any[];
-  schema?: Record<string, any>;
-  derivedFrom?: string[];
-};
+export type { WorkflowNodeMetadata } from '../../common/workflow-types';
 
 type ConnectorDefinition = {
   id?: string;
@@ -191,47 +186,149 @@ const collectColumnsFromSource = (source: unknown): string[] => {
 
 const mergeMetadataSources = (...sources: MetadataSource[]): WorkflowNodeMetadata => {
   const columns = new Set<string>();
+  const headers = new Set<string>();
   const derivedFrom = new Set<string>();
   let sampleObject: Record<string, any> | null = null;
   let sampleArray: any[] | null = null;
   let scalarSample: any;
+  let sampleRow: Record<string, any> | null = null;
+  let outputSampleObject: Record<string, any> | null = null;
+  let outputSampleArray: any[] | null = null;
+  let outputSampleScalar: any;
   let schema: Record<string, any> | null = null;
+  let outputSchema: Record<string, any> | null = null;
+
+  const mergeObject = (
+    target: Record<string, any> | null,
+    candidate: Record<string, any> | null | undefined
+  ): Record<string, any> | null => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return target;
+    return { ...(target ?? {}), ...candidate };
+  };
+
+  const handleSampleCandidate = (
+    value: any,
+    {
+      onObject,
+      onArray,
+      onScalar,
+    }: {
+      onObject?: (next: Record<string, any>) => void;
+      onArray?: (next: any[]) => void;
+      onScalar?: (next: any) => void;
+    }
+  ) => {
+    if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      onArray?.(value);
+      return;
+    }
+    if (typeof value === 'object') {
+      onObject?.(value as Record<string, any>);
+      return;
+    }
+    onScalar?.(value);
+  };
 
   for (const source of sources) {
     if (!source) continue;
     source.columns?.forEach((col) => {
-      if (typeof col === 'string' && col.trim()) columns.add(col);
+      if (typeof col === 'string' && col.trim()) {
+        columns.add(col);
+        headers.add(col);
+      }
+    });
+    source.headers?.forEach((header) => {
+      if (typeof header === 'string' && header.trim()) {
+        headers.add(header);
+        columns.add(header);
+      }
     });
     source.derivedFrom?.forEach((item) => {
       if (item) derivedFrom.add(item);
     });
 
-    const sample = source.sample;
-    if (Array.isArray(sample)) {
-      if (!sampleArray) sampleArray = sample;
-    } else if (sample && typeof sample === 'object') {
-      sampleObject = { ...(sampleObject ?? {}), ...sample };
-    } else if (sample !== undefined && scalarSample === undefined) {
-      scalarSample = sample;
-    }
+    handleSampleCandidate(source.sample, {
+      onObject: (next) => {
+        sampleObject = mergeObject(sampleObject, next);
+      },
+      onArray: (next) => {
+        if (!sampleArray) sampleArray = next;
+      },
+      onScalar: (next) => {
+        if (scalarSample === undefined) scalarSample = next;
+      },
+    });
+
+    handleSampleCandidate(source.sampleRow, {
+      onObject: (next) => {
+        sampleRow = mergeObject(sampleRow, next);
+        sampleObject = mergeObject(sampleObject, next);
+      },
+      onArray: (next) => {
+        if (!sampleArray) sampleArray = next;
+      },
+      onScalar: (next) => {
+        if (scalarSample === undefined) scalarSample = next;
+      },
+    });
+
+    handleSampleCandidate(source.outputSample, {
+      onObject: (next) => {
+        outputSampleObject = mergeObject(outputSampleObject, next);
+        sampleObject = mergeObject(sampleObject, next);
+      },
+      onArray: (next) => {
+        if (!outputSampleArray) outputSampleArray = next;
+        if (!sampleArray) sampleArray = next;
+      },
+      onScalar: (next) => {
+        if (outputSampleScalar === undefined) outputSampleScalar = next;
+        if (scalarSample === undefined) scalarSample = next;
+      },
+    });
 
     if (source.schema) {
       schema = { ...(schema ?? {}), ...source.schema };
+    }
+    if (source.outputSchema) {
+      outputSchema = { ...(outputSchema ?? {}), ...source.outputSchema };
     }
   }
 
   const result: WorkflowNodeMetadata = {};
   if (columns.size > 0) result.columns = Array.from(columns);
+  if (headers.size > 0) {
+    const normalizedHeaders = new Set<string>();
+    headers.forEach((header) => {
+      if (header) normalizedHeaders.add(header);
+    });
+    columns.forEach((col) => normalizedHeaders.add(col));
+    if (normalizedHeaders.size > 0) result.headers = Array.from(normalizedHeaders);
+  }
   if (derivedFrom.size > 0) result.derivedFrom = Array.from(derivedFrom);
-  if (sampleArray) {
-    result.sample = sampleArray;
-  } else if (sampleObject) {
+  if (sampleObject && Object.keys(sampleObject).length > 0) {
     result.sample = sampleObject;
+  } else if (sampleArray) {
+    result.sample = sampleArray;
   } else if (scalarSample !== undefined) {
     result.sample = scalarSample;
   }
+  if (sampleRow && Object.keys(sampleRow).length > 0) {
+    result.sampleRow = sampleRow;
+  }
+  if (outputSampleObject && Object.keys(outputSampleObject).length > 0) {
+    result.outputSample = outputSampleObject;
+  } else if (outputSampleArray) {
+    result.outputSample = outputSampleArray;
+  } else if (outputSampleScalar !== undefined) {
+    result.outputSample = outputSampleScalar;
+  }
   if (schema && Object.keys(schema).length > 0) {
     result.schema = schema;
+  }
+  if (outputSchema && Object.keys(outputSchema).length > 0) {
+    result.outputSchema = outputSchema;
   }
   return result;
 };
@@ -335,6 +432,7 @@ const deriveMetadata = (
 ): WorkflowNodeMetadata => {
   const metadata: WorkflowNodeMetadata = {};
   const derivedFrom: string[] = [];
+  const existingColumns = unique([...(existing.columns ?? []), ...(existing.headers ?? [])]);
 
   const nodeType = typeof node.type === 'string' ? node.type : node?.data?.nodeType ?? '';
   const app = node.app ?? node.data?.app ?? node.data?.connectorId ?? '';
@@ -347,30 +445,34 @@ const deriveMetadata = (
 
   if (schemaFromConnector) {
     metadata.schema = schemaFromConnector;
+    metadata.outputSchema = schemaFromConnector;
     derivedFrom.push(`connector:${canonicalize(connector?.id ?? app)}`);
     const schemaColumns = Object.keys(schemaFromConnector);
     if (schemaColumns.length > 0) {
-      metadata.columns = unique([...(existing.columns ?? []), ...schemaColumns]);
+      metadata.columns = unique([...(metadata.columns ?? existingColumns), ...schemaColumns]);
     }
   }
 
   const configColumns = collectColumnsFromSource(params);
   if (configColumns.length > 0) {
-    metadata.columns = unique([...(metadata.columns ?? existing.columns ?? []), ...configColumns]);
+    metadata.columns = unique([...(metadata.columns ?? existingColumns), ...configColumns]);
     derivedFrom.push('config');
   }
 
   const answerColumns = collectColumnsFromSource(answers);
   if (answerColumns.length > 0) {
-    metadata.columns = unique([...(metadata.columns ?? existing.columns ?? []), ...answerColumns]);
+    metadata.columns = unique([...(metadata.columns ?? existingColumns), ...answerColumns]);
     derivedFrom.push('answers');
   }
 
-  const columns = metadata.columns ?? existing.columns ?? [];
+  const columns = metadata.columns ?? existingColumns;
   if (columns.length > 0) {
-    const sampleRow = buildSampleRow(columns, params, answers, existing.sample);
+    const existingSample = existing.sample ?? existing.sampleRow ?? existing.outputSample;
+    const sampleRow = buildSampleRow(columns, params, answers, existingSample);
     if (Object.keys(sampleRow).length > 0) {
       metadata.sample = sampleRow;
+      metadata.sampleRow = sampleRow;
+      metadata.outputSample = sampleRow;
     }
     if (!metadata.schema) {
       const schema: Record<string, any> = {};
@@ -387,7 +489,13 @@ const deriveMetadata = (
         }
       });
       metadata.schema = schema;
+      metadata.outputSchema = { ...(metadata.outputSchema ?? {}), ...schema };
     }
+  }
+
+  const headerValues = unique([...(metadata.headers ?? existing.headers ?? []), ...(metadata.columns ?? [])]);
+  if (headerValues.length > 0) {
+    metadata.headers = headerValues;
   }
 
   if (derivedFrom.length > 0) {
@@ -400,7 +508,7 @@ const deriveMetadata = (
 export const enrichWorkflowNode = <T extends WorkflowNode>(
   node: T,
   context: EnrichContext = {}
-): T & { metadata?: WorkflowNodeMetadata } => {
+): T & { metadata?: WorkflowNodeMetadata; outputMetadata?: WorkflowNodeMetadata } => {
   const params =
     node.params ??
     node.data?.config ??
@@ -409,9 +517,18 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
     {};
   const answers = context.answers ?? {};
 
-  const combinedExisting = mergeMetadataSources(node.metadata as any, node.data?.metadata as any);
+  const existingOutput = mergeMetadataSources(
+    node.data?.outputMetadata as any,
+    (node as any)?.outputMetadata
+  );
+  const combinedExisting = mergeMetadataSources(
+    node.metadata as any,
+    node.data?.metadata as any,
+    existingOutput
+  );
   const derived = deriveMetadata(node, params, answers, combinedExisting);
   const metadata = mergeMetadataSources(combinedExisting, derived);
+  const outputMetadata = mergeMetadataSources(existingOutput, metadata);
 
   const data = {
     ...(node.data || {}),
@@ -420,6 +537,7 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
     parameters: node.data?.parameters ?? params,
     config: node.data?.config ?? params,
     metadata,
+    outputMetadata,
   };
 
   return {
@@ -430,7 +548,8 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
     params: params,
     data,
     metadata,
-  } as T & { metadata?: WorkflowNodeMetadata };
+    outputMetadata,
+  } as T & { metadata?: WorkflowNodeMetadata; outputMetadata?: WorkflowNodeMetadata };
 };
 
 export const enrichWorkflowGraph = (
