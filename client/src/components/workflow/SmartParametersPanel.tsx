@@ -4,13 +4,13 @@
  * Uses the same pattern as Label and Description fields for consistency
  */
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useReactFlow, useStore } from "reactflow";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { buildMetadataFromNode, mergeMetadataShape } from "./metadataUtils";
 
-type JSONSchema = {
+export type JSONSchema = {
   type?: string;
   properties?: Record<string, JSONSchema>;
   items?: JSONSchema;
@@ -146,6 +146,232 @@ export const syncNodeParameters = (data: any, nextParams: any): Record<string, a
   };
 };
 
+const normalizeFieldName = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+
+export const fetchSheetTabs = async (spreadsheetId: string): Promise<string[]> => {
+  const trimmed = typeof spreadsheetId === "string" ? spreadsheetId.trim() : "";
+  if (!trimmed) return [];
+
+  const response = await fetch(`/api/google/sheets/${encodeURIComponent(trimmed)}/metadata`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sheet metadata: ${response.status}`);
+  }
+
+  try {
+    const payload = await response.json();
+    const tabs =
+      Array.isArray(payload?.sheets)
+        ? payload.sheets
+        : Array.isArray(payload?.sheetNames)
+        ? payload.sheetNames
+        : Array.isArray(payload?.tabs)
+        ? payload.tabs
+        : [];
+    return tabs.filter((tab: unknown): tab is string => typeof tab === "string" && tab.trim().length > 0);
+  } catch (error) {
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text);
+      const fallbackTabs =
+        Array.isArray(parsed?.sheets)
+          ? parsed.sheets
+          : Array.isArray(parsed?.sheetNames)
+          ? parsed.sheetNames
+          : Array.isArray(parsed?.tabs)
+          ? parsed.tabs
+          : [];
+      return fallbackTabs.filter((tab: unknown): tab is string => typeof tab === "string" && tab.trim().length > 0);
+    } catch {
+      throw error instanceof Error ? error : new Error("Failed to parse sheet metadata response");
+    }
+  }
+};
+
+export const augmentSchemaWithSheetTabs = (
+  schema: JSONSchema | null | undefined,
+  tabs: string[]
+): JSONSchema | null | undefined => {
+  if (!schema || !Array.isArray(tabs) || tabs.length === 0) return schema;
+  if (!schema.properties) return schema;
+
+  const cleanedTabs = tabs.filter((tab): tab is string => typeof tab === "string" && tab.trim().length > 0);
+  if (cleanedTabs.length === 0) return schema;
+
+  let mutated = false;
+  const next: JSONSchema = {
+    ...schema,
+    properties: { ...schema.properties },
+  };
+
+  Object.entries(schema.properties).forEach(([key, value]) => {
+    if (!value) return;
+    const normalized = normalizeFieldName(key);
+    if (["sheetname", "tabname", "worksheet", "worksheetname"].includes(normalized)) {
+      next.properties![key] = {
+        ...value,
+        type: value.type ?? "string",
+        enum: [...cleanedTabs],
+      };
+      mutated = true;
+    }
+  });
+
+  return mutated ? next : schema;
+};
+
+export type StaticFieldControlOptions = {
+  fieldName: string;
+  localStatic: any;
+  setLocalStatic: (value: any) => void;
+  commitValue: (value: any) => void;
+};
+
+export const renderStaticFieldControl = (
+  def: JSONSchema | undefined,
+  { fieldName, localStatic, setLocalStatic, commitValue }: StaticFieldControlOptions
+) => {
+  const resolvedType = def?.type || (def?.enum ? "string" : "string");
+
+  if (def?.enum && Array.isArray(def.enum)) {
+    const optionElements = [
+      <option key="__default" value="">
+        -- select --
+      </option>,
+      ...def.enum.map((opt: any) => (
+        <option key={String(opt)} value={opt}>
+          {String(opt)}
+        </option>
+      )),
+    ];
+
+    return (
+      <select
+        value={localStatic ?? ""}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+          commitValue(e.target.value);
+        }}
+        className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+      >
+        {optionElements}
+      </select>
+    );
+  }
+
+  if (resolvedType === "boolean") {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={Boolean(localStatic)}
+          onChange={(e) => {
+            setLocalStatic(e.target.checked);
+            commitValue(e.target.checked);
+          }}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span className="text-sm text-slate-600">{def?.title || fieldName}</span>
+      </div>
+    );
+  }
+
+  if (resolvedType === "number" || resolvedType === "integer") {
+    return (
+      <Input
+        type="number"
+        value={localStatic ?? ""}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+        }}
+        onBlur={(e) => {
+          const val = e.target.value === "" ? "" : Number(e.target.value);
+          commitValue(val === "" ? "" : val);
+        }}
+        min={def?.minimum as any}
+        max={def?.maximum as any}
+        placeholder={def?.description || `Enter ${fieldName}`}
+        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+      />
+    );
+  }
+
+  if (resolvedType === "array") {
+    return (
+      <Input
+        value={Array.isArray(localStatic) ? localStatic.join(",") : localStatic ?? ""}
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+        }}
+        onBlur={(e) => {
+          const parts = e.target.value
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+          commitValue(parts);
+        }}
+        placeholder="item1, item2, item3"
+        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+      />
+    );
+  }
+
+  if (resolvedType === "object") {
+    return (
+      <Textarea
+        value={
+          typeof localStatic === "string"
+            ? localStatic
+            : JSON.stringify(localStatic ?? {}, null, 2)
+        }
+        onChange={(e) => {
+          setLocalStatic(e.target.value);
+        }}
+        onBlur={(e) => {
+          const val = e.target.value;
+          try {
+            const parsed = JSON.parse(val);
+            commitValue(parsed);
+          } catch {
+            commitValue(val);
+          }
+        }}
+        rows={3}
+        placeholder="{ }"
+        className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none font-mono text-sm"
+      />
+    );
+  }
+
+  const inputType = def?.format === "email"
+    ? "email"
+    : def?.format === "uri"
+    ? "url"
+    : def?.format === "date"
+    ? "date"
+    : def?.format === "datetime-local"
+    ? "datetime-local"
+    : "text";
+
+  return (
+    <Input
+      type={inputType}
+      value={localStatic ?? ""}
+      onChange={(e) => {
+        setLocalStatic(e.target.value);
+      }}
+      onBlur={(e) => {
+        commitValue(e.target.value);
+      }}
+      placeholder={def?.description || def?.format || `Enter ${fieldName}`}
+      className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+    />
+  );
+};
+
 export function SmartParametersPanel() {
   const rf = useReactFlow();
   const storeNodes = useStore((state) => {
@@ -226,6 +452,22 @@ export function SmartParametersPanel() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sheetReferenceId = useMemo(() => {
+    if (!paramsDraft || typeof paramsDraft !== "object") return "";
+    const candidates = [
+      paramsDraft.spreadsheetId,
+      (paramsDraft as any)?.spreadsheet_id,
+      paramsDraft.spreadsheet,
+      paramsDraft.sheetId,
+      paramsDraft.sheet_id
+    ];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+    return "";
+  }, [paramsDraft]);
 
   // Load schema when node/app/op changes
   useEffect(() => {
@@ -350,12 +592,50 @@ export function SmartParametersPanel() {
         const next = { ...(nextDefaults || {}), ...currentParams };
         setParamsDraft(next);
       })
-      .catch(e => { 
-        setError(String(e)); 
-        setSchema({type:"object",properties:{}}); 
+      .catch(e => {
+        setError(String(e));
+        setSchema({type:"object",properties:{}});
       })
       .finally(() => setLoading(false));
   }, [app, opId, node?.id]);
+
+  useEffect(() => {
+    if (!schema || !sheetReferenceId) return;
+    if (!schema.properties) return;
+
+    const targetEntry = Object.entries(schema.properties).find(([key, value]) => {
+      if (!value) return false;
+      const normalized = normalizeFieldName(key);
+      if (!["sheetname", "tabname", "worksheet", "worksheetname"].includes(normalized)) {
+        return false;
+      }
+      if (Array.isArray(value.enum) && value.enum.length > 0) {
+        return false;
+      }
+      return true;
+    });
+
+    if (!targetEntry) return;
+
+    let cancelled = false;
+
+    fetchSheetTabs(sheetReferenceId)
+      .then((tabs) => {
+        if (cancelled || tabs.length === 0) return;
+        setSchema((current) => {
+          if (!current) return current;
+          const augmented = augmentSchemaWithSheetTabs(current, tabs);
+          return augmented === current ? current : augmented;
+        });
+      })
+      .catch(() => {
+        // Swallow metadata fetch errors; schema augmentation is a best-effort enhancement
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [schema, sheetReferenceId]);
   // Commit helper: push a single param back to the graph node
   const commitParams = (nextParams: any) => {
     if (!node) return;
@@ -478,134 +758,13 @@ export function SmartParametersPanel() {
       }
     };
 
-    const renderStaticField = () => {
-      const type = def?.type || (def?.enum ? 'string' : 'string');
-
-      if (def?.enum && Array.isArray(def.enum)) {
-        return (
-          <select
-            value={localStatic}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-              setStaticValue(name, e.target.value);
-            }}
-            className="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-          >
-            <option value="">-- select --</option>
-            {def.enum.map((opt: any) => (
-              <option key={String(opt)} value={opt}>
-                {String(opt)}
-              </option>
-            ))}
-          </select>
-        );
-      }
-
-      if (type === 'boolean') {
-        return (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={Boolean(localStatic)}
-              onChange={(e) => {
-                setLocalStatic(e.target.checked);
-                setStaticValue(name, e.target.checked);
-              }}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-slate-600">{def.title || name}</span>
-          </div>
-        );
-      }
-
-      if (type === 'number' || type === 'integer') {
-        return (
-          <Input
-            type="number"
-            value={localStatic}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-            }}
-            onBlur={(e) => {
-              const val = e.target.value === '' ? '' : Number(e.target.value);
-              setStaticValue(name, val);
-            }}
-            min={def.minimum as any}
-            max={def.maximum as any}
-            placeholder={def?.description || `Enter ${name}`}
-            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-          />
-        );
-      }
-
-      if (type === 'array') {
-        return (
-          <Input
-            value={Array.isArray(localStatic) ? localStatic.join(',') : localStatic}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-            }}
-            onBlur={(e) => {
-              const parts = e.target.value
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean);
-              setStaticValue(name, parts);
-            }}
-            placeholder="item1, item2, item3"
-            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-          />
-        );
-      }
-
-      if (type === 'object') {
-        return (
-          <Textarea
-            value={typeof localStatic === 'string' ? localStatic : JSON.stringify(localStatic ?? {}, null, 2)}
-            onChange={(e) => {
-              setLocalStatic(e.target.value);
-            }}
-            onBlur={(e) => {
-              const val = e.target.value;
-              try {
-                const parsed = JSON.parse(val);
-                setStaticValue(name, parsed);
-              } catch {
-                setStaticValue(name, val);
-              }
-            }}
-            rows={3}
-            placeholder="{ }"
-            className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none font-mono text-sm"
-          />
-        );
-      }
-
-      const inputType = def?.format === 'email'
-        ? 'email'
-        : def?.format === 'uri'
-        ? 'url'
-        : def?.format === 'date'
-        ? 'date'
-        : def?.format === 'datetime-local'
-        ? 'datetime-local'
-        : 'text';
-
-      return (
-        <Input
-          type={inputType}
-          value={localStatic ?? ''}
-          onChange={(e) => {
-            setLocalStatic(e.target.value);
-          }}
-          onBlur={(e) => {
-            setStaticValue(name, e.target.value);
-          }}
-          placeholder={def?.description || def?.format || `Enter ${name}`}
-          className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
-        />
-      );
-    };
+    const renderStaticField = () =>
+      renderStaticFieldControl(def, {
+        fieldName: name,
+        localStatic,
+        setLocalStatic,
+        commitValue: (value) => setStaticValue(name, value),
+      });
 
     const renderDynamicField = () => {
       if (!upstreamNodes.length) {
