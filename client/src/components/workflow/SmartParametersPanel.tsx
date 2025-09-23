@@ -4,7 +4,7 @@
  * Uses the same pattern as Label and Description fields for consistency
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReactFlow, useStore } from "reactflow";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -46,6 +46,15 @@ export type UpstreamNodeSummary = {
     [key: string]: any;
   };
 };
+
+type MetadataRefreshState = {
+  status: "idle" | "loading" | "success" | "error";
+  error: string | null;
+  reason?: string | null;
+  updatedAt?: number;
+};
+
+const METADATA_REFRESH_ENDPOINT = "/api/workflows/metadata/refresh";
 
 const uniqueStrings = (values: Array<string | undefined>): string[] => {
   const set = new Set<string>();
@@ -479,6 +488,286 @@ export function SmartParametersPanel() {
         error?: string;
       }
   >(null);
+  const metadataRefreshAbortRef = useRef<AbortController | null>(null);
+  const storeNodesRef = useRef<any[]>(storeNodes as any[]);
+  const storeEdgesRef = useRef<any[]>(storeEdges as any[]);
+  const isMountedRef = useRef(true);
+  const [metadataRefreshState, setMetadataRefreshState] = useState<MetadataRefreshState>({
+    status: "idle",
+    error: null,
+    reason: null,
+  });
+
+  useEffect(() => {
+    storeNodesRef.current = storeNodes as any[];
+  }, [storeNodes]);
+
+  useEffect(() => {
+    storeEdgesRef.current = storeEdges as any[];
+  }, [storeEdges]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      metadataRefreshAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    metadataRefreshAbortRef.current?.abort();
+    metadataRefreshAbortRef.current = null;
+    setMetadataRefreshState({ status: "idle", error: null, reason: null });
+  }, [node?.id]);
+
+  const refreshNodeMetadata = useCallback(
+    async (params: any, reason?: string) => {
+      if (!node) return;
+
+      const paramsValue = params ?? {};
+      metadataRefreshAbortRef.current?.abort();
+      const controller = new AbortController();
+      metadataRefreshAbortRef.current = controller;
+
+      setMetadataRefreshState({
+        status: "loading",
+        error: null,
+        reason: reason ?? null,
+      });
+
+      const currentNodes = (() => {
+        try {
+          const nodesFromInstance = (rf as any).getNodes?.();
+          if (Array.isArray(nodesFromInstance)) {
+            return nodesFromInstance;
+          }
+        } catch {}
+        return storeNodesRef.current;
+      })();
+
+      const currentEdges = (() => {
+        try {
+          const edgesFromInstance = (rf as any).getEdges?.();
+          if (Array.isArray(edgesFromInstance)) {
+            return edgesFromInstance;
+          }
+        } catch {}
+        return storeEdgesRef.current;
+      })();
+
+      const normalizeNodeForPayload = (graphNode: any, overrideParams?: any) => {
+        if (!graphNode) return null;
+        const baseData =
+          graphNode.data && typeof graphNode.data === "object"
+            ? { ...graphNode.data }
+            : {};
+        const paramsForNode =
+          overrideParams ??
+          baseData.parameters ??
+          baseData.params ??
+          graphNode.parameters ??
+          graphNode.params ??
+          {};
+        const metadataValue = {
+          ...(graphNode.metadata ?? {}),
+          ...(baseData.metadata ?? {}),
+        };
+        const outputMetadataValue = {
+          ...(graphNode.outputMetadata ?? {}),
+          ...(baseData.outputMetadata ?? {}),
+        };
+        const normalizedData = {
+          ...baseData,
+          parameters: paramsForNode,
+          params: paramsForNode,
+          metadata: metadataValue,
+          outputMetadata: outputMetadataValue,
+        };
+        return {
+          id: graphNode.id,
+          type:
+            graphNode.type ?? normalizedData.nodeType ?? normalizedData.type,
+          app:
+            normalizedData.app ??
+            normalizedData.connectorId ??
+            normalizedData.provider ??
+            graphNode.app,
+          operation:
+            normalizedData.actionId ??
+            normalizedData.operation ??
+            normalizedData.triggerId ??
+            normalizedData.eventId ??
+            normalizedData.function ??
+            graphNode.operation ??
+            graphNode.op,
+          data: normalizedData,
+          metadata: normalizedData.metadata,
+          outputMetadata: normalizedData.outputMetadata,
+        };
+      };
+
+      const serializedCurrentNode =
+        normalizeNodeForPayload(
+          currentNodes.find((n: any) => String(n.id) === String(node.id)) ?? node,
+          paramsValue
+        ) ?? undefined;
+
+      const serializedNodes = currentNodes
+        .map((graphNode: any) =>
+          normalizeNodeForPayload(
+            graphNode,
+            String(graphNode.id) === String(node.id) ? paramsValue : undefined
+          )
+        )
+        .filter(Boolean);
+
+      const serializedEdges = currentEdges.map((edge: any) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type,
+        data:
+          edge.data && typeof edge.data === "object"
+            ? { ...edge.data }
+            : undefined,
+      }));
+
+      const payload = {
+        nodeId: node.id,
+        app,
+        operation: opId,
+        params: paramsValue,
+        node: serializedCurrentNode,
+        graph: {
+          nodes: serializedNodes,
+          edges: serializedEdges,
+        },
+      };
+
+      try {
+        const response = await fetch(METADATA_REFRESH_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          throw new Error(
+            errorText || `Metadata refresh failed (${response.status})`
+          );
+        }
+
+        const result = await response.json().catch(() => ({}));
+        if (controller.signal.aborted || !isMountedRef.current) {
+          return;
+        }
+
+        const extractMetadata = (value: any) => {
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            return value;
+          }
+          return undefined;
+        };
+
+        const metadataFromServer =
+          extractMetadata(result?.metadata) ??
+          extractMetadata(result?.node?.metadata) ??
+          extractMetadata(result?.node?.data?.metadata) ??
+          extractMetadata(result?.data?.metadata);
+
+        const outputMetadataFromServer =
+          extractMetadata(result?.outputMetadata) ??
+          extractMetadata(result?.node?.outputMetadata) ??
+          extractMetadata(result?.node?.data?.outputMetadata) ??
+          extractMetadata(result?.data?.outputMetadata) ??
+          (metadataFromServer ?? undefined);
+
+        if (metadataRefreshAbortRef.current === controller) {
+          metadataRefreshAbortRef.current = null;
+        }
+
+        setMetadataRefreshState({
+          status: "success",
+          error: null,
+          reason: reason ?? null,
+          updatedAt: Date.now(),
+        });
+
+        if (!metadataFromServer && !outputMetadataFromServer) {
+          return;
+        }
+
+        rf.setNodes((nodes) =>
+          nodes.map((reactNode) => {
+            if (reactNode.id !== node.id) {
+              return reactNode;
+            }
+            const dataWithParams = syncNodeParameters(
+              reactNode.data,
+              paramsValue
+            );
+            const baseMetadata = dataWithParams?.metadata ?? {};
+            const baseOutputMetadata =
+              dataWithParams?.outputMetadata ?? baseMetadata;
+
+            const mergedData = {
+              ...dataWithParams,
+              metadata: {
+                ...baseMetadata,
+                ...(metadataFromServer || {}),
+              },
+              outputMetadata: {
+                ...baseOutputMetadata,
+                ...(outputMetadataFromServer || {}),
+              },
+            };
+
+            const provisionalNode = {
+              ...reactNode,
+              data: mergedData,
+              params: paramsValue,
+              parameters: paramsValue,
+            };
+
+            const derivedMetadata = buildMetadataFromNode(provisionalNode);
+
+            return {
+              ...reactNode,
+              data: {
+                ...mergedData,
+                metadata: {
+                  ...mergedData.metadata,
+                  ...derivedMetadata,
+                },
+                outputMetadata: {
+                  ...mergedData.outputMetadata,
+                  ...derivedMetadata,
+                },
+              },
+            };
+          })
+        );
+      } catch (error) {
+        if (controller.signal.aborted || !isMountedRef.current) {
+          return;
+        }
+        if (metadataRefreshAbortRef.current === controller) {
+          metadataRefreshAbortRef.current = null;
+        }
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to refresh metadata";
+        setMetadataRefreshState({
+          status: "error",
+          error: message,
+          reason: reason ?? null,
+        });
+      }
+    },
+    [node, rf, app, opId]
+  );
 
   // Load schema when node/app/op changes
   useEffect(() => {
@@ -674,41 +963,87 @@ export function SmartParametersPanel() {
     };
   }, [paramsDraft?.spreadsheetId]);
   // Commit helper: push a single param back to the graph node
-  const commitParams = (nextParams: any) => {
-    if (!node) return;
-    setParamsDraft(nextParams);
-    rf.setNodes((nodes) =>
-      nodes.map((n) => {
-        if (n.id !== node.id) {
-          return n;
-        }
-        const dataWithParams = syncNodeParameters(n.data, nextParams);
-        const provisionalNode = {
-          ...n,
-          data: dataWithParams,
-          params: nextParams,
-          parameters: nextParams,
-        };
-        const derivedMetadata = buildMetadataFromNode(provisionalNode);
-        return {
-          ...n,
-          data: {
-            ...dataWithParams,
-            metadata: { ...(dataWithParams?.metadata ?? {}), ...derivedMetadata },
-            outputMetadata: {
-              ...(dataWithParams?.outputMetadata ?? {}),
-              ...derivedMetadata,
+  const commitParams = useCallback(
+    (nextParams: any, reason = "parameter-change") => {
+      if (!node) return;
+      setParamsDraft(nextParams);
+      rf.setNodes((nodes) =>
+        nodes.map((n) => {
+          if (n.id !== node.id) {
+            return n;
+          }
+          const dataWithParams = syncNodeParameters(n.data, nextParams);
+          const provisionalNode = {
+            ...n,
+            data: dataWithParams,
+            params: nextParams,
+            parameters: nextParams,
+          };
+          const derivedMetadata = buildMetadataFromNode(provisionalNode);
+          return {
+            ...n,
+            data: {
+              ...dataWithParams,
+              metadata: {
+                ...(dataWithParams?.metadata ?? {}),
+                ...derivedMetadata,
+              },
+              outputMetadata: {
+                ...(dataWithParams?.outputMetadata ?? {}),
+                ...derivedMetadata,
+              },
             },
-          },
-        };
-      })
-    );
-  };
+          };
+        })
+      );
+      refreshNodeMetadata(nextParams, reason);
+    },
+    [node?.id, rf, refreshNodeMetadata]
+  );
 
   const commitSingle = (name: string, value: any) => {
     const next = { ...(paramsDraft || {}), [name]: value };
-    commitParams(next);
+    commitParams(next, "parameter-change");
   };
+
+  useEffect(() => {
+    if (!node) return;
+
+    const handleAuthEvent = (event: Event) => {
+      const detail = (event as CustomEvent<any>).detail ?? {};
+      if (detail?.nodeId && detail.nodeId !== node.id) {
+        return;
+      }
+      if (
+        event.type === "automation:auth-complete" &&
+        typeof detail?.reason === "string" &&
+        detail.reason === "connection"
+      ) {
+        // Connection events also dispatch auth-complete; avoid double refresh.
+        return;
+      }
+      const mergedParams =
+        detail?.params && typeof detail.params === "object"
+          ? { ...(paramsDraft || {}), ...detail.params }
+          : paramsDraft ?? {};
+      const reason =
+        typeof detail?.reason === "string" && detail.reason.trim().length > 0
+          ? detail.reason
+          : event.type;
+      refreshNodeMetadata(mergedParams, reason);
+    };
+
+    window.addEventListener("automation:connection-selected", handleAuthEvent);
+    window.addEventListener("automation:auth-complete", handleAuthEvent);
+
+    return () => {
+      window.removeEventListener(
+        "automation:connection-selected",
+        handleAuthEvent
+      );
+      window.removeEventListener("automation:auth-complete", handleAuthEvent);
+    };
+  }, [node?.id, paramsDraft, refreshNodeMetadata]);
 
   type FieldMode = 'static' | 'dynamic' | 'llm';
 
@@ -1106,7 +1441,20 @@ export function SmartParametersPanel() {
           {node.data?.description || 'Configure the parameters for this operation'}
         </div>
       </div>
-      
+
+      {metadataRefreshState.status === 'loading' && (
+        <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+          <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+          <span>Refreshing metadata suggestions…</span>
+        </div>
+      )}
+
+      {metadataRefreshState.status === 'error' && metadataRefreshState.error && (
+        <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+          Metadata refresh failed: {metadataRefreshState.error}
+        </div>
+      )}
+
       {/* Loading/Error/Content states */}
       {loading ? (
         <div className="text-center py-4 text-gray-500">
