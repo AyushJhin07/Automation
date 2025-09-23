@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import "../../../../../server/workflow/__tests__/compile-to-appsscript.ref-params.test.ts";
 import { answersToGraph } from "../../../../../server/workflow/answers-to-graph";
+import { enrichWorkflowNode } from "../../../../../server/workflow/node-metadata";
+import { resolveAllParams } from "../../../../../server/core/ParameterResolver";
+import type { WorkflowNode } from "../../../../../common/workflow-types";
+import type { ParameterContext } from "../../../../../shared/nodeGraphSchema";
 
 import {
   computeMetadataSuggestions,
@@ -85,6 +89,103 @@ assert.ok(amountSuggestion, "should surface Amount column quick pick");
 assert.ok(statusSuggestion, "should surface status field from output metadata");
 assert.ok(entireOutput.includes("node-1"), "should include entire output suggestions");
 assert.ok(entireOutput.includes("node-3"), "should include entire output for runtime metadata nodes");
+
+const resolverNodeFixtures: Array<{
+  description: string;
+  node: WorkflowNode;
+  expectedFields: string[];
+}> = [
+  {
+    description: "Salesforce create record",
+    node: {
+      id: "salesforce-create-record",
+      type: "action",
+      app: "salesforce",
+      name: "Create Salesforce Record",
+      op: "salesforce.create_record",
+      params: {
+        sobjectType: "Contact",
+        fields: {
+          FirstName: "Ada",
+          LastName: "Lovelace",
+          Email: "ada@example.com"
+        }
+      },
+      data: { label: "Create Salesforce Record" }
+    },
+    expectedFields: ["sobjectType", "FirstName", "LastName", "Email"]
+  },
+  {
+    description: "HubSpot create contact",
+    node: {
+      id: "hubspot-create-contact",
+      type: "action",
+      app: "hubspot",
+      name: "Create HubSpot Contact",
+      op: "hubspot.create_contact",
+      params: {
+        properties: {
+          email: "ada@example.com",
+          firstname: "Ada",
+          lastname: "Lovelace",
+          phone: "555-0100"
+        }
+      },
+      data: { label: "Create HubSpot Contact" }
+    },
+    expectedFields: ["email", "firstname", "lastname", "phone"]
+  },
+  {
+    description: "Google Sheets append row",
+    node: {
+      id: "google-sheets-append-row",
+      type: "action",
+      app: "google-sheets",
+      name: "Append Spreadsheet Row",
+      op: "google-sheets.append_row",
+      params: {
+        spreadsheetId: "sheet-12345",
+        sheet: "Leads",
+        values: ["Ada", "ada@example.com", "Enterprise"]
+      },
+      data: { label: "Append Spreadsheet Row" }
+    },
+    expectedFields: ["spreadsheetId", "sheet", "values"]
+  }
+];
+
+const resolverSummaries: UpstreamNodeSummary[] = resolverNodeFixtures.map((fixture) => {
+  const enriched = enrichWorkflowNode(fixture.node as any);
+  return {
+    id: enriched.id,
+    data: {
+      label: enriched.name ?? enriched.data?.label ?? enriched.id,
+      app: enriched.app,
+      metadata: enriched.metadata,
+      outputMetadata: enriched.outputMetadata
+    }
+  } satisfies UpstreamNodeSummary;
+});
+
+const resolverSuggestions = computeMetadataSuggestions(resolverSummaries);
+
+resolverNodeFixtures.forEach((fixture, index) => {
+  const summary = resolverSummaries[index];
+  fixture.expectedFields.forEach((field) => {
+    assert.ok(
+      resolverSuggestions.some(
+        (entry) => entry.nodeId === summary.id && entry.path === field
+      ),
+      `${fixture.description} should surface ${field} quick pick from resolver metadata`
+    );
+  });
+  assert.ok(
+    resolverSuggestions.some(
+      (entry) => entry.nodeId === summary.id && entry.path === ""
+    ),
+    `${fixture.description} should include an entire output quick pick`
+  );
+});
 
 const payload = mapUpstreamNodesForAI(upstreamNodes);
 const first = payload.find((entry) => entry.nodeId === "node-1");
@@ -222,6 +323,125 @@ assert.ok(
   "dropping Sheets trigger and connecting Gmail should expose Email column quick pick"
 );
 
+const reactFlowHarnessNodes = generatedWorkflow.nodes.map((node) => ({
+  id: node.id,
+  data: {
+    label: node.name,
+    app: node.app,
+    metadata: node.metadata,
+    outputMetadata: node.outputMetadata ?? node.data?.outputMetadata,
+    parameters: node.params,
+    params: node.params
+  }
+}));
+
+const applyParameterUpdateToReactFlow = (
+  nodes: Array<{ id: string; data: any }>,
+  targetId: string,
+  nextParams: Record<string, any>
+) => {
+  return nodes.map((node) => {
+    if (node.id !== targetId) return node;
+    const dataWithParams = syncNodeParameters(node.data, nextParams);
+    const sanitizedMetadata = { ...(dataWithParams?.metadata ?? {}) };
+    delete sanitizedMetadata.sample;
+    delete sanitizedMetadata.sampleRow;
+    delete sanitizedMetadata.outputSample;
+    const sanitizedOutputMetadata = { ...(dataWithParams?.outputMetadata ?? {}) };
+    delete sanitizedOutputMetadata.sample;
+    delete sanitizedOutputMetadata.sampleRow;
+    delete sanitizedOutputMetadata.outputSample;
+    const provisionalNode = {
+      ...node,
+      data: {
+        ...dataWithParams,
+        metadata: sanitizedMetadata,
+        outputMetadata: sanitizedOutputMetadata
+      },
+      params: nextParams,
+      parameters: nextParams
+    };
+    const derivedMetadata = buildMetadataFromNode(provisionalNode);
+    return {
+      ...node,
+      data: {
+        ...dataWithParams,
+        metadata: {
+          ...sanitizedMetadata,
+          ...derivedMetadata
+        },
+        outputMetadata: {
+          ...sanitizedOutputMetadata,
+          ...derivedMetadata
+        }
+      },
+      params: nextParams,
+      parameters: nextParams
+    };
+  });
+};
+
+const updatedReactFlowNodes = applyParameterUpdateToReactFlow(
+  reactFlowHarnessNodes,
+  sheetNode!.id,
+  {
+    ...(sheetNode?.params ?? {}),
+    spreadsheetId: "sheet-new-987654321",
+    sheetName: "Paid Invoices"
+  }
+);
+
+const updatedHarnessSheet = updatedReactFlowNodes.find((node) => node.id === sheetNode!.id);
+
+assert.ok(updatedHarnessSheet, "React Flow harness should still include the sheet node after update");
+assert.equal(
+  updatedHarnessSheet?.data?.parameters?.spreadsheetId,
+  "sheet-new-987654321",
+  "parameter update should reflect in stored React Flow parameters"
+);
+
+const updatedSample = updatedHarnessSheet?.data?.metadata?.sample as
+  | Record<string, any>
+  | undefined;
+
+assert.equal(
+  updatedSample?.spreadsheetId,
+  "sheet-new-987654321",
+  "metadata sample should refresh spreadsheetId when parameters change"
+);
+assert.equal(
+  (updatedSample?.sheet_name ?? updatedSample?.sheetName ?? updatedSample?.sheet),
+  "Paid Invoices",
+  "metadata sample should reflect the latest sheet name"
+);
+
+const updatedSuggestions = computeMetadataSuggestions([
+  {
+    id: updatedHarnessSheet!.id,
+    data: {
+      label: updatedHarnessSheet!.data?.label ?? sheetNode!.name,
+      app: updatedHarnessSheet!.data?.app ?? sheetNode!.app,
+      metadata: updatedHarnessSheet!.data?.metadata,
+      outputMetadata: updatedHarnessSheet!.data?.outputMetadata
+    }
+  }
+]);
+
+const updatedPathsForSheet = updatedSuggestions
+  .filter((entry) => entry.nodeId === updatedHarnessSheet!.id)
+  .map((entry) => entry.path);
+
+assert.ok(
+  updatedPathsForSheet.includes("spreadsheetId"),
+  "updated suggestions should continue exposing spreadsheetId quick pick"
+);
+assert.ok(
+  updatedPathsForSheet.includes("sheet_name") ||
+    updatedPathsForSheet.includes("sheetName") ||
+    updatedPathsForSheet.includes("sheet"),
+  "updated suggestions should include a sheet name quick pick"
+);
+
 const paramSyncBase = {
   label: "Mailer",
   params: { old: "value" },
@@ -306,6 +526,76 @@ try {
   assert.equal(committed, tabs[1], "select change should commit the chosen sheet");
 } finally {
   globalThis.fetch = originalFetch;
+}
+
+const resolverContext: ParameterContext = {
+  nodeOutputs: {},
+  currentNodeId: "node-under-test",
+  workflowId: "workflow-under-test",
+  executionId: "exec-12345"
+};
+
+const originalWarn = console.warn;
+const warnLogs: string[] = [];
+console.warn = (...args: any[]) => {
+  warnLogs.push(args.map((arg) => String(arg)).join(" "));
+};
+
+try {
+  const missingReferenceResult = await resolveAllParams(
+    {
+      missing: { mode: "ref", nodeId: "upstream-missing", path: "value" }
+    },
+    resolverContext
+  );
+
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(missingReferenceResult, "missing"),
+    "resolver should return key for missing reference"
+  );
+  assert.strictEqual(
+    missingReferenceResult.missing,
+    undefined,
+    "missing references should fall back to undefined"
+  );
+  assert.ok(
+    warnLogs.some((entry) => entry.includes("upstream-missing")),
+    "missing reference resolution should emit telemetry warning"
+  );
+} finally {
+  console.warn = originalWarn;
+}
+
+const originalError = console.error;
+const errorLogs: string[] = [];
+console.error = (...args: any[]) => {
+  errorLogs.push(args.map((arg) => (arg instanceof Error ? arg.message : String(arg))).join(" "));
+};
+
+try {
+  const llmFailureResult = await resolveAllParams(
+    {
+      summary: {
+        mode: "llm",
+        provider: "openai",
+        model: "openai:gpt-4o-mini",
+        prompt: "Summarize {{ref:missing.value}}"
+      }
+    },
+    resolverContext
+  );
+
+  assert.strictEqual(
+    llmFailureResult.summary,
+    null,
+    "LLM resolver failures should fall back to null values"
+  );
+  assert.ok(
+    errorLogs.some((entry) => entry.includes("Failed to resolve parameter summary")),
+    "LLM resolver failure should emit telemetry error"
+  );
+} finally {
+  console.error = originalError;
 }
 
 console.log("SmartParametersPanel metadata helper checks (including sheet metadata) passed.");
