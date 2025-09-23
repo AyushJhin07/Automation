@@ -1235,6 +1235,17 @@ const GraphEditorContent = () => {
     const nativeEvent = event.nativeEvent as Event & { stopImmediatePropagation?: () => void };
     nativeEvent.stopImmediatePropagation?.();
   }, []);
+
+  const stopInspectorSurfaceEvent = useCallback(
+    (event: React.SyntheticEvent<Element>) => {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      stopInspectorEvent(event);
+    },
+    [stopInspectorEvent]
+  );
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
   const specHydratedRef = useRef(false);
@@ -1821,12 +1832,12 @@ const GraphEditorContent = () => {
         <div
           data-inspector
           className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
-          onPointerDown={stopInspectorEvent}
-          onPointerUp={stopInspectorEvent}
-          onMouseDown={stopInspectorEvent}
-          onMouseUp={stopInspectorEvent}
-          onClick={stopInspectorEvent}
-          onDoubleClick={stopInspectorEvent}
+          onPointerDown={stopInspectorSurfaceEvent}
+          onPointerUp={stopInspectorSurfaceEvent}
+          onMouseDown={stopInspectorSurfaceEvent}
+          onMouseUp={stopInspectorSurfaceEvent}
+          onClick={stopInspectorSurfaceEvent}
+          onDoubleClick={stopInspectorSurfaceEvent}
           style={{ pointerEvents: 'auto' }}
         >
           {/* Header */}
