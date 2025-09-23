@@ -128,6 +128,17 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const handleConnectionSelect = (conn: Connection) => {
     setSelectedConnection(conn);
     setActiveTab('parameters');
+    if (typeof window !== 'undefined') {
+      const detail = {
+        nodeId: nodeData.id,
+        connectionId: conn.id,
+        app: nodeData.appName,
+        status: conn.status,
+        reason: 'connection',
+      };
+      window.dispatchEvent(new CustomEvent('automation:connection-selected', { detail }));
+      window.dispatchEvent(new CustomEvent('automation:auth-complete', { detail }));
+    }
   };
 
   // Test connection
