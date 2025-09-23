@@ -1246,6 +1246,21 @@ const GraphEditorContent = () => {
     },
     [stopInspectorEvent]
   );
+
+  const stopInspectorSurfaceShortcutEvent = useCallback(
+    (event: React.KeyboardEvent<Element>) => {
+      if (!event.ctrlKey && !event.metaKey) {
+        return;
+      }
+
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      stopInspectorEvent(event);
+    },
+    [stopInspectorEvent]
+  );
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
   const specHydratedRef = useRef(false);
@@ -1838,6 +1853,11 @@ const GraphEditorContent = () => {
           onMouseUp={stopInspectorSurfaceEvent}
           onClick={stopInspectorSurfaceEvent}
           onDoubleClick={stopInspectorSurfaceEvent}
+          onPointerDownCapture={stopInspectorSurfaceEvent}
+          onMouseDownCapture={stopInspectorSurfaceEvent}
+          onClickCapture={stopInspectorSurfaceEvent}
+          onKeyDownCapture={stopInspectorSurfaceShortcutEvent}
+          onKeyUpCapture={stopInspectorSurfaceShortcutEvent}
           style={{ pointerEvents: 'auto' }}
         >
           {/* Header */}
