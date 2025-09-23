@@ -1,22 +1,12 @@
-export type WorkflowMetadata = {
-  columns?: string[];
-  sample?: Record<string, any> | any[];
-  schema?: Record<string, any>;
-  derivedFrom?: string[];
-  [key: string]: any;
-};
+import {
+  createMetadataPlaceholder,
+  inferWorkflowValueType,
+  toMetadataLookupKey,
+  type WorkflowMetadata,
+  type WorkflowMetadataSource,
+} from '@shared/workflow/metadata';
 
-const canonicalizeMetadataKey = (value: unknown): string => {
-  if (value == null) return '';
-  return String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-};
-
-const mergeMetadataValues = (
-  ...sources: Array<WorkflowMetadata | null | undefined>
-): WorkflowMetadata => {
+const mergeMetadataValues = (...sources: WorkflowMetadataSource[]): WorkflowMetadata => {
   const columns = new Set<string>();
   const derivedFrom = new Set<string>();
   let sampleObject: Record<string, any> | null = null;
@@ -110,7 +100,7 @@ const lookupValueInSource = (source: unknown, key: string, depth = 0): any => {
   }
   if (typeof source !== 'object') return undefined;
   for (const [entryKey, entryValue] of Object.entries(source as Record<string, any>)) {
-    const normalized = canonicalizeMetadataKey(entryKey).replace(/-/g, '_');
+    const normalized = toMetadataLookupKey(entryKey);
     if (normalized === key || normalized.replace(/_/g, '') === key.replace(/_/g, '')) {
       return entryValue;
     }
@@ -122,19 +112,14 @@ const lookupValueInSource = (source: unknown, key: string, depth = 0): any => {
   return undefined;
 };
 
-const inferValueType = (value: any): string => {
-  if (value === null || value === undefined) return 'string';
-  if (Array.isArray(value)) return 'array';
-  if (typeof value === 'object') return 'object';
-  if (typeof value === 'number') return 'number';
-  if (typeof value === 'boolean') return 'boolean';
-  if (typeof value === 'string') {
-    const numeric = Number(value);
-    if (!Number.isNaN(numeric) && value.trim() !== '') return 'number';
-  }
-  return 'string';
-};
-
+/**
+ * Connectors that publish `metadata`/`outputMetadata` should populate at least:
+ * - `columns`: ordered list of fields returned by the operation.
+ * - `schema` or a representative `sample` object: used to render previews.
+ *
+ * The UI will fall back to inference when values are missing, but explicit
+ * metadata from connectors produces the most accurate representation.
+ */
 export const buildMetadataFromNode = (node: any): WorkflowMetadata => {
   const merged = mergeMetadataValues(
     node?.metadata,
@@ -174,7 +159,7 @@ export const buildMetadataFromNode = (node: any): WorkflowMetadata => {
     const generated: Record<string, any> = {};
     const valuesArray = Array.isArray(params?.values) ? params.values : null;
     columns.forEach((column, index) => {
-      const normalized = canonicalizeMetadataKey(column).replace(/-/g, '_');
+      const normalized = toMetadataLookupKey(column);
       const fromParams = lookupValueInSource(params, normalized);
       if (fromParams !== undefined && fromParams !== null && fromParams !== '') {
         generated[column] = fromParams;
@@ -193,7 +178,7 @@ export const buildMetadataFromNode = (node: any): WorkflowMetadata => {
         generated[column] = (merged.sample as Record<string, any>)[column];
         return;
       }
-      generated[column] = `{{${normalized}}}`;
+      generated[column] = createMetadataPlaceholder(column);
     });
     sample = generated;
   }
@@ -212,7 +197,7 @@ export const buildMetadataFromNode = (node: any): WorkflowMetadata => {
     columns.forEach((column) => {
       const example = sampleObj?.[column];
       generatedSchema[column] = {
-        type: inferValueType(example),
+        type: inferWorkflowValueType(example),
         example,
       };
       if (schema && schema[column]) {
