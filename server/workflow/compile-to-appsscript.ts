@@ -1,11 +1,135 @@
 import { CompileResult, WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
 
+const REF_PLACEHOLDER_PREFIX = '__APPSSCRIPT_REF__';
+
+function encodeRefPlaceholder(nodeId: string, path?: string | null): string {
+  const payload = JSON.stringify({ nodeId, path: path ?? '' });
+  return REF_PLACEHOLDER_PREFIX + Buffer.from(payload, 'utf8').toString('base64');
+}
+
+function escapeForSingleQuotes(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function prepareValueForCode<T = any>(value: T): T {
+  if (value == null) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => prepareValueForCode(item)) as unknown as T;
+  }
+
+  if (typeof value === 'object') {
+    const maybeRef = value as { mode?: string; nodeId?: string; path?: string; value?: unknown };
+
+    if (maybeRef.mode === 'static' && 'value' in maybeRef) {
+      return prepareValueForCode(maybeRef.value) as unknown as T;
+    }
+
+    if (maybeRef.mode === 'ref' && typeof maybeRef.nodeId === 'string') {
+      return encodeRefPlaceholder(maybeRef.nodeId, typeof maybeRef.path === 'string' ? maybeRef.path : '') as unknown as T;
+    }
+
+    const result: Record<string, any> = {};
+    for (const [key, val] of Object.entries(value)) {
+      result[key] = prepareValueForCode(val);
+    }
+    return result as unknown as T;
+  }
+
+  return value;
+}
+
+function prepareGraphForCompilation(graph: WorkflowGraph): WorkflowGraph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map(node => ({
+      ...node,
+      params: node.params !== undefined ? prepareValueForCode(node.params) : node.params,
+      data: node.data
+        ? {
+            ...node.data,
+            config: node.data.config !== undefined ? prepareValueForCode(node.data.config) : node.data.config,
+            parameters: node.data.parameters !== undefined ? prepareValueForCode(node.data.parameters) : node.data.parameters,
+          }
+        : node.data,
+    })),
+    edges: graph.edges.map(edge => ({ ...edge })),
+  };
+}
+
+function replaceRefPlaceholders(content: string): string {
+  if (!content.includes(REF_PLACEHOLDER_PREFIX)) {
+    return content;
+  }
+
+  const base64Pattern = /[A-Za-z0-9+/=]/;
+  const quotes = new Set(["'", '"', '`']);
+
+  let searchIndex = 0;
+  let result = '';
+
+  while (searchIndex < content.length) {
+    const start = content.indexOf(REF_PLACEHOLDER_PREFIX, searchIndex);
+
+    if (start === -1) {
+      result += content.slice(searchIndex);
+      break;
+    }
+
+    const quoteIndex = start - 1;
+    const openingQuote = quoteIndex >= 0 ? content.charAt(quoteIndex) : '';
+
+    if (!quotes.has(openingQuote)) {
+      result += content.slice(searchIndex, start + REF_PLACEHOLDER_PREFIX.length);
+      searchIndex = start + REF_PLACEHOLDER_PREFIX.length;
+      continue;
+    }
+
+    let tokenEnd = start + REF_PLACEHOLDER_PREFIX.length;
+    while (tokenEnd < content.length && base64Pattern.test(content.charAt(tokenEnd))) {
+      tokenEnd++;
+    }
+
+    const closingQuote = tokenEnd < content.length ? content.charAt(tokenEnd) : '';
+
+    if (closingQuote !== openingQuote) {
+      result += content.slice(searchIndex, tokenEnd + 1);
+      searchIndex = tokenEnd + 1;
+      continue;
+    }
+
+    const token = content.slice(start + REF_PLACEHOLDER_PREFIX.length, tokenEnd);
+
+    let replacement = 'undefined';
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8')) as { nodeId?: string; path?: string };
+      const nodeId = escapeForSingleQuotes(String(decoded.nodeId ?? ''));
+      const path = escapeForSingleQuotes(String(decoded.path ?? ''));
+      replacement = `__getNodeOutputValue('${nodeId}', '${path}')`;
+    } catch (_error) {
+      replacement = 'undefined';
+    }
+
+    result += content.slice(searchIndex, quoteIndex);
+    result += replacement;
+    searchIndex = tokenEnd + 1;
+  }
+
+  return result;
+}
+
+
+
+
+
 export function compileToAppsScript(graph: WorkflowGraph): CompileResult {
   const triggers   = graph.nodes.filter(n => n.type === 'trigger').length;
   const actions    = graph.nodes.filter(n => n.type === 'action').length;
   const transforms = graph.nodes.filter(n => n.type === 'transform').length;
 
-  const code = emitCode(graph);
+  const code = replaceRefPlaceholders(emitCode(graph));
   const manifest = emitManifest(graph);
 
   return {
@@ -56,17 +180,20 @@ function emitManifest(graph: WorkflowGraph): string {
 
 function emitCode(graph: WorkflowGraph): string {
   console.log(`🔧 Walking graph with ${graph.nodes.length} nodes and ${graph.edges.length} edges`);
-  
+
   // Analyze the graph structure
   const triggerNodes   = graph.nodes.filter(n => n.type?.startsWith('trigger'));
   const actionNodes    = graph.nodes.filter(n => n.type?.startsWith('action'));
   const transformNodes = graph.nodes.filter(n => n.type?.startsWith('transform'));
-  
+
   console.log(`📊 Graph analysis: ${triggerNodes.length} triggers, ${actionNodes.length} actions, ${transformNodes.length} transforms`);
-  
+
+  const preparedGraph = prepareGraphForCompilation(graph);
+  const preparedTriggerNodes   = preparedGraph.nodes.filter(n => n.type?.startsWith('trigger'));
+
   // Generate code by walking execution path
   let codeBlocks: string[] = [];
-  
+
   // Add header
   codeBlocks.push(`
 /**
@@ -77,20 +204,20 @@ function emitCode(graph: WorkflowGraph): string {
  */`);
   
   // ChatGPT's fix: Use buildRealCodeFromGraph for single main() function
-  const graphDrivenCode = buildRealCodeFromGraph(graph);
+  const graphDrivenCode = buildRealCodeFromGraph(preparedGraph);
   codeBlocks.push(graphDrivenCode);
-  
+
   // Note: buildRealCodeFromGraph already includes main() - no need for generateMainFunction
-  
+
   // Generate trigger setup if needed
-  if (triggerNodes.some(t => t.op.includes('time') || t.op.includes('schedule'))) {
-    codeBlocks.push(generateTriggerSetup(triggerNodes));
+  if (preparedTriggerNodes.some(t => t.op?.includes('time') || t.op?.includes('schedule'))) {
+    codeBlocks.push(generateTriggerSetup(preparedTriggerNodes));
   }
-  
+
   // Generate helper functions for each node type
-  codeBlocks.push(...generateNodeFunctions(graph.nodes));
-  
-  return codeBlocks.join('\n\n');
+  codeBlocks.push(...generateNodeFunctions(preparedGraph.nodes));
+
+  return replaceRefPlaceholders(codeBlocks.join('\n\n'));
 }
 
 function generateMainFunction(graph: WorkflowGraph): string {
@@ -9867,9 +9994,6 @@ function buildRealCodeFromGraph(graph: any): string {
     const gen = REAL_OPS[key];
     if (gen) {
       supportedNodes.push(n);
-      if (!emitted.has(key)) {
-        emitted.add(key);
-      }
     } else {
       unsupportedNodes.push({
         id: n.id,
@@ -9886,18 +10010,87 @@ function buildRealCodeFromGraph(graph: any): string {
   }
   
   const allNodes = [...supportedNodes, ...unsupportedNodes];
+  const executionLines = allNodes.map((n: any) => {
+    const callLine = `  ctx = ${funcName(n)}(ctx);`;
+    const nodeId = typeof n.id === 'string' ? escapeForSingleQuotes(n.id) : '';
+    if (!nodeId) {
+      return callLine;
+    }
+    return `${callLine}\n  __storeNodeOutput('${nodeId}', ctx);`;
+  }).join('\n');
 
   let body = `
+var __nodeOutputs = {};
+
+function __resetNodeOutputs() {
+  __nodeOutputs = {};
+}
+
+function __cloneNodeOutput(value) {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    return value;
+  }
+}
+
+function __storeNodeOutput(nodeId, output) {
+  if (!nodeId) {
+    return;
+  }
+  __nodeOutputs[nodeId] = __cloneNodeOutput(output);
+}
+
+function __normalizeRefPath(path) {
+  if (!path || path === '$') {
+    return '';
+  }
+  if (path.indexOf('$.') === 0) {
+    return path.slice(2);
+  }
+  if (path.charAt(0) === '$') {
+    return path.slice(1);
+  }
+  return path;
+}
+
+function __getNodeOutputValue(nodeId, path) {
+  var output = __nodeOutputs[nodeId];
+  if (typeof output === 'undefined') {
+    return undefined;
+  }
+  var normalized = __normalizeRefPath(path);
+  if (!normalized) {
+    return output;
+  }
+  var segments = normalized.split('.');
+  var value = output;
+  for (var i = 0; i < segments.length; i++) {
+    var key = segments[i];
+    if (value == null) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      var index = Number(key);
+      if (!isNaN(index)) {
+        value = value[index];
+        continue;
+      }
+    }
+    value = value[key];
+  }
+  return value;
+}
+
 function interpolate(t, ctx) {
-  return String(t).replace(/\\{\\{(.*?)\\}\\}/g, (_, k) => ctx[k.trim()] ?? '');
+  return String(t).replace(/\\{\\{(.*?)\\}\\}/g, function(_, k) { return ctx[k.trim()] ?? ''; });
 }
 
 function main(ctx) {
   ctx = ctx || {};
+  __resetNodeOutputs();
   console.log('🚀 Starting workflow with ${allNodes.length} steps (${supportedNodes.length} native, ${unsupportedNodes.length} fallback)...');
-${allNodes.map((n: any) => `  ctx = ${funcName(n)}(ctx);`).join('\n')}
-  
-  return ctx;
+${executionLines ? executionLines + '\n' : ''}  return ctx;
 }
 `;
 
@@ -9929,8 +10122,8 @@ ${unsupportedNodes.map(n => `// - ${n.id}: ${n.operation} (${n.reason})`).join('
 // To improve, add native handlers to REAL_OPS.
 `;
   }
-  
-  return body;
+
+  return replaceRefPlaceholders(body);
 }
 
 function funcName(n: any) {
