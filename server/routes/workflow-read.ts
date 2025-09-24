@@ -30,6 +30,27 @@ const stripExecutionState = (data: any) => {
   return sanitized;
 };
 
+const NON_ALPHANUMERIC = /[^a-zA-Z0-9_-]/g;
+
+const normalizeIdentifier = (value: any, fallback: string) => {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  const sanitized = trimmed
+    .replace(NON_ALPHANUMERIC, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+
+  return sanitized.length > 0 ? sanitized : fallback;
+};
+
 const sanitizeGraphForExecution = (graph: any) => {
   if (!graph || typeof graph !== 'object') {
     return graph;
@@ -38,6 +59,36 @@ const sanitizeGraphForExecution = (graph: any) => {
   const cloned: any = typeof globalThis.structuredClone === 'function'
     ? globalThis.structuredClone(graph)
     : JSON.parse(JSON.stringify(graph));
+
+  const nodeIdMap = new Map<string, string>();
+  const usedNodeIds = new Set<string>();
+
+  const ensureUniqueNodeId = (preferred: string, fallback: string) => {
+    let base = normalizeIdentifier(preferred, fallback) || fallback;
+    if (!base) {
+      base = fallback;
+    }
+
+    let candidate = base;
+    let counter = 1;
+    while (usedNodeIds.has(candidate)) {
+      candidate = `${base}-${counter++}`;
+    }
+
+    usedNodeIds.add(candidate);
+    return candidate;
+  };
+
+  const registerNodeId = (raw: any, fallback: string) => {
+    const original = typeof raw === 'string' && raw.trim().length > 0
+      ? raw.trim()
+      : fallback;
+    const sanitized = ensureUniqueNodeId(original, fallback);
+    nodeIdMap.set(original, sanitized);
+    nodeIdMap.set(String(raw), sanitized);
+    nodeIdMap.set(sanitized, sanitized);
+    return { original, sanitized };
+  };
 
   const nodes = Array.isArray(cloned.nodes) ? cloned.nodes : [];
   const sanitizedNodes = nodes.map((node: any, index: number) => {
@@ -48,45 +99,135 @@ const sanitizeGraphForExecution = (graph: any) => {
       baseData.params = params;
     }
 
+    const fallbackId = `node-${index + 1}`;
+    const { original: originalId, sanitized: sanitizedId } = registerNodeId(node.id, fallbackId);
+
+    if (baseData && typeof baseData === 'object' && originalId !== sanitizedId) {
+      (baseData as any).__originalId = originalId;
+    }
+
+    const candidateTypes: Array<string | undefined> = [
+      node.nodeType,
+      baseData?.nodeType,
+      baseData?.type,
+      typeof node.type === 'string' ? node.type : undefined,
+      baseData?.kind ? `${baseData.kind}.custom` : undefined,
+    ];
+    const canonicalType = candidateTypes.find((value) => typeof value === 'string' && value.includes('.'))
+      || candidateTypes.find((value) => typeof value === 'string' && value.trim().length > 0)
+      || 'action.custom';
+
+    if (baseData && typeof baseData === 'object') {
+      baseData.nodeType = canonicalType;
+      baseData.type = canonicalType;
+    }
+
+    const position = (node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number')
+      ? node.position
+      : { x: Number(node.position?.x) || 0, y: Number(node.position?.y) || 0 };
+
+    const appId = node.app || baseData?.app || baseData?.application;
+
     return {
       ...node,
-      id: String(node.id ?? `node-${index}`),
-      type: node.type || node.nodeType || 'action',
+      id: sanitizedId,
+      type: canonicalType,
+      nodeType: canonicalType,
       label: node.label || baseData?.label || `Node ${index + 1}`,
       params,
       data: baseData,
-      app: node.app || baseData?.app,
+      app: appId,
+      position,
     };
   });
 
+  const resolveNodeReference = (value: any): string | null => {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    const key = String(value);
+    return nodeIdMap.get(key) ?? null;
+  };
+
+  const usedEdgeIds = new Set<string>();
+  const ensureUniqueEdgeId = (preferred: string, fallback: string) => {
+    let base = normalizeIdentifier(preferred, fallback) || fallback;
+    if (!base) {
+      base = fallback;
+    }
+
+    let candidate = base;
+    let counter = 1;
+    while (usedEdgeIds.has(candidate)) {
+      candidate = `${base}-${counter++}`;
+    }
+
+    usedEdgeIds.add(candidate);
+    return candidate;
+  };
+
   const edges = Array.isArray(cloned.edges) ? cloned.edges : [];
   const sanitizedEdges = edges
-    .map((edge: any) => {
-      const from = edge.from ?? edge.source;
-      const to = edge.to ?? edge.target;
-      if (!from || !to) {
+    .map((edge: any, index: number) => {
+      const source = resolveNodeReference(edge.from ?? edge.source);
+      const target = resolveNodeReference(edge.to ?? edge.target);
+
+      if (!source || !target) {
         return null;
       }
 
+      const fallbackEdgeId = `edge-${index + 1}`;
+      const preferredEdgeId = typeof edge.id === 'string' && edge.id.trim().length > 0
+        ? edge.id.trim()
+        : `${fallbackEdgeId}-${source}-${target}`;
+      const sanitizedEdgeId = ensureUniqueEdgeId(preferredEdgeId, fallbackEdgeId);
+
       return {
         ...edge,
-        from: String(from),
-        to: String(to),
+        id: sanitizedEdgeId,
+        source,
+        target,
+        from: source,
+        to: target,
         label: edge.label ?? edge.data?.label ?? '',
       };
     })
     .filter(Boolean);
 
+  const nowIso = new Date().toISOString();
+  const metadataSource = (cloned.metadata && typeof cloned.metadata === 'object') ? cloned.metadata : {};
+  const createdAt =
+    (typeof (metadataSource as any).createdAt === 'string' && (metadataSource as any).createdAt)
+    || (typeof (metadataSource as any).created_at === 'string' && (metadataSource as any).created_at)
+    || (typeof cloned.createdAt === 'string' && cloned.createdAt)
+    || nowIso;
+  const metadataVersion =
+    (typeof (metadataSource as any).version === 'string' && (metadataSource as any).version?.trim()?.length > 0)
+      ? (metadataSource as any).version.trim()
+      : '1.0.0';
+
+  const metadata = {
+    ...metadataSource,
+    version: metadataVersion,
+    createdAt,
+    updatedAt: (metadataSource as any).updatedAt && typeof (metadataSource as any).updatedAt === 'string'
+      ? (metadataSource as any).updatedAt
+      : nowIso,
+  };
+
+  const fallbackGraphId = 'workflow';
+  const sanitizedGraphId = ensureUniqueNodeId(String(cloned.id ?? ''), fallbackGraphId);
+
   return {
     ...cloned,
-    id: cloned.id,
+    id: sanitizedGraphId,
     name: cloned.name,
-    version: cloned.version ?? 1,
+    version: typeof cloned.version === 'number' ? cloned.version : 1,
     nodes: sanitizedNodes,
     edges: sanitizedEdges,
     scopes: Array.isArray(cloned.scopes) ? cloned.scopes : [],
     secrets: Array.isArray(cloned.secrets) ? cloned.secrets : [],
-    metadata: cloned.metadata ?? {},
+    metadata,
   };
 };
 
@@ -341,6 +482,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     const nodes = graphSource.nodes;
     const edges = graphSource.edges ?? [];
     const nodeMap = new Map(nodes.map((node: any) => [String(node.id), node]));
+    const resolvePublicNodeId = (node: any) => node?.data?.__originalId || node?.originalId || node?.id;
     const order = computeExecutionOrder(nodes, edges);
     const results: Record<string, any> = {};
     let encounteredError = !deploymentPreview.success;
@@ -371,29 +513,32 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       }
       stepIndex += 1;
 
-      const label = node.label || node.data?.label || nodeId;
+      const publicNodeId = resolvePublicNodeId(node);
+      const label = node.label || node.data?.label || publicNodeId;
 
-      console.log(`⏱️ [${id}] Running node ${nodeId} (${label})`);
+      console.log(`⏱️ [${id}] Running node ${publicNodeId} (${label})`);
       sendEvent({
         type: 'node-start',
         workflowId: id,
-        nodeId,
+        nodeId: publicNodeId,
+        internalId: node.id,
         label
       });
 
       try {
         const result = summarizeNodeExecution(node, stepIndex);
-        results[nodeId] = { status: 'success', label, result };
+        results[publicNodeId] = { status: 'success', label, result, internalId: node.id };
 
         sendEvent({
           type: 'node-complete',
           workflowId: id,
-          nodeId,
+          nodeId: publicNodeId,
+          internalId: node.id,
           label,
           result
         });
 
-        console.log(`✅ [${id}] Completed node ${nodeId}`);
+        console.log(`✅ [${id}] Completed node ${publicNodeId}`);
       } catch (error: any) {
         encounteredError = true;
         const errorPayload = {
@@ -401,13 +546,14 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
           stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
         };
 
-        results[nodeId] = { status: 'error', label, error: errorPayload };
+        results[publicNodeId] = { status: 'error', label, error: errorPayload, internalId: node.id };
 
-        console.error(`❌ [${id}] Node ${nodeId} failed:`, error?.message || error);
+        console.error(`❌ [${id}] Node ${publicNodeId} failed:`, error?.message || error);
         sendEvent({
           type: 'node-error',
           workflowId: id,
-          nodeId,
+          nodeId: publicNodeId,
+          internalId: node.id,
           label,
           error: errorPayload
         });
