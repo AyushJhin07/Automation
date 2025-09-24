@@ -134,7 +134,19 @@ Return ONLY valid JSON that matches the schema.
  */
 export function getAllowlistForMode(mode: PlannerMode): Set<string> {
   if (mode === "gas-only") {
-    return new Set(["gmail","sheets","drive","calendar","docs","forms","slides","contacts","chat","core"]);
+    return new Set([
+      "gmail",
+      "sheets",
+      "drive",
+      "calendar",
+      "docs",
+      "forms",
+      "slides",
+      "contacts",
+      "chat",
+      "core",
+      "time"
+    ]);
   }
   // Build from live registry
   const catalog = connectorRegistry.getNodeCatalog();
