@@ -1,6 +1,8 @@
 // NODEGRAPH SCHEMA - Formal DAG Structure for Automation Workflows
 // Based on ChatGPT's architecture but extended for 500+ applications
 
+import type { WorkflowMetadata } from './workflow/metadata';
+
 export interface NodeGraph {
   id: string;
   name: string;
@@ -29,6 +31,11 @@ export interface GraphNode {
   position?: { x: number; y: number };
   color?: string;
   icon?: string;
+  metadata?: WorkflowMetadata;
+  outputMetadata?: WorkflowMetadata;
+  data?: Record<string, any>;
+  app?: string;
+  op?: string;
 }
 
 export interface Edge {
