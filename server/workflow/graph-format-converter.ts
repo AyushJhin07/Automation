@@ -31,7 +31,9 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
       // Preserve original data for Graph Editor
       data: node.data,
       app: app,
-      op: node.op || `${app}.${operation}`
+      op: node.op || `${app}.${operation}`,
+      metadata: node.metadata,
+      outputMetadata: node.outputMetadata
     };
   });
 
