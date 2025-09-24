@@ -1,27 +1,64 @@
 import { WorkflowGraph, WorkflowNode, WorkflowEdge } from '../../common/workflow-types';
 import { enrichWorkflowGraph } from './node-metadata';
+import { normalizeAppId } from '../services/PromptBuilder.js';
+
+type PlanTriggerHint = {
+  app?: string | null;
+  type?: string | null;
+  operation?: string | null;
+  description?: string | null;
+  required_inputs?: string[] | null;
+};
+
+type PlanStepHint = {
+  app?: string | null;
+  operation?: string | null;
+  description?: string | null;
+  required_inputs?: string[] | null;
+};
+
+interface PlannerPlanHint {
+  apps?: string[] | null;
+  trigger?: PlanTriggerHint | null;
+  steps?: PlanStepHint[] | null;
+}
+
+interface GraphGenerationOptions {
+  allowedApps?: Set<string>;
+  plan?: PlannerPlanHint | null;
+}
 
 // Use standard WorkflowNode interface from common/workflow-types.ts
-export function answersToGraph(prompt: string, answers: Record<string, any>): WorkflowGraph {
+export function answersToGraph(
+  prompt: string,
+  answers: Record<string, any>,
+  options: GraphGenerationOptions = {}
+): WorkflowGraph {
   console.log(`🤖 Generating workflow from user answers (NO PRESETS)`);
   console.log(`📝 User Prompt: "${prompt}"`);
   console.log(`📋 User Answers:`, answers);
-  
+  if (options.allowedApps) {
+    console.log('✅ Allowed apps for graph generation:', Array.from(options.allowedApps));
+  }
+
   // Generate workflow directly from user's actual requirements
-  return generateWorkflowFromUserAnswers(prompt, answers);
+  return generateWorkflowFromUserAnswers(prompt, answers, options);
 }
 
-function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string, any>): WorkflowGraph {
+function generateWorkflowFromUserAnswers(
+  prompt: string,
+  answers: Record<string, any>,
+  options: GraphGenerationOptions
+): WorkflowGraph {
   console.log('👤 Building workflow from user requirements only...');
-  
+
   // Parse what the user actually wants
-  const userRequirements = parseUserRequirements(prompt, answers);
+  const userRequirements = parseUserRequirements(prompt, answers, options);
   console.log('🎯 User Requirements:', userRequirements);
   
   // Build nodes in Graph Editor compatible format
   const nodes: any[] = [];
   const edges: any[] = [];
-  let nodeIndex = 0;
   
   // Build nodes compatible with both Graph Editor and compiler
   if (userRequirements.trigger) {
@@ -83,46 +120,121 @@ function generateWorkflowFromUserAnswers(prompt: string, answers: Record<string,
       automationType: 'user_driven',
       description: userRequirements.description,
       userPrompt: prompt,
-      userAnswers: answers
+      userAnswers: answers,
+      planner: options.plan ? { apps: options.plan.apps, trigger: options.plan.trigger, steps: options.plan.steps } : undefined
     }
   };
   return enrichWorkflowGraph(workflow, { answers });
 }
 
-function parseUserRequirements(prompt: string, answers: Record<string, any>): {
-  trigger: {app: string, label: string, operation: string, config: any} | null,
-  actions: Array<{app: string, label: string, operation: string, config: any}>,
-  workflowName: string,
-  description: string
+type TriggerRequirement = { app: string; label: string; operation: string; config: Record<string, any> };
+type ActionRequirement = { app: string; label: string; operation: string; config: Record<string, any> };
+
+function parseUserRequirements(
+  prompt: string,
+  answers: Record<string, any>,
+  options: GraphGenerationOptions
+): {
+  trigger: TriggerRequirement | null;
+  actions: ActionRequirement[];
+  workflowName: string;
+  description: string;
 } {
+  const allowedApps = options.allowedApps;
+  const plan = options.plan;
+
+  const isAppAllowed = (app: string | null | undefined): boolean => {
+    if (!app) {
+      return false;
+    }
+    if (!allowedApps || allowedApps.size === 0) {
+      return true;
+    }
+    return allowedApps.has(normalizeAppId(app));
+  };
+
+  const logSkip = (app: string) => {
+    console.log(`⛔ Skipping app "${app}" because it is not allowed in the current planner mode`);
+  };
+
   const allText = `${prompt} ${Object.values(answers).join(' ')}`.toLowerCase();
-  
-  // Parse trigger from user's actual words
-  let trigger = null;
-  
-  // Check for time-based triggers (handle both string and object formats)
-  const triggerText = typeof answers.trigger === 'string' ? answers.trigger : 
-                     answers.trigger?.type || 
-                     JSON.stringify(answers.trigger || {});
-  
-  if (triggerText.toLowerCase().includes('time-based') || triggerText.toLowerCase().includes('every') || 
-      triggerText.toLowerCase().includes('time') || answers.trigger?.type === 'time') {
-    const frequency = typeof answers.trigger === 'string' ? 
-                     extractFrequencyFromAnswer(answers.trigger) :
-                     answers.trigger?.frequency?.value || 15;
-    trigger = {
+
+  const actions: ActionRequirement[] = [];
+  const addAction = (action: ActionRequirement) => {
+    const normalizedApp = normalizeAppId(action.app);
+    if (!isAppAllowed(normalizedApp)) {
+      logSkip(normalizedApp);
+      return;
+    }
+
+    const key = `${normalizedApp}::${action.operation || action.label}`;
+    const existingIndex = actions.findIndex(existing => `${existing.app}::${existing.operation || existing.label}` === key);
+
+    if (existingIndex >= 0) {
+      const existing = actions[existingIndex];
+      actions[existingIndex] = {
+        ...existing,
+        app: normalizedApp,
+        label: existing.label || action.label,
+        operation: existing.operation || action.operation,
+        config: { ...action.config, ...existing.config }
+      };
+      return;
+    }
+
+    actions.push({
+      ...action,
+      app: normalizedApp
+    });
+  };
+
+  let trigger: TriggerRequirement | null = null;
+  const setTrigger = (candidate: TriggerRequirement) => {
+    if (trigger) {
+      return;
+    }
+    const normalizedApp = normalizeAppId(candidate.app);
+    if (!isAppAllowed(normalizedApp)) {
+      logSkip(normalizedApp);
+      return;
+    }
+    trigger = { ...candidate, app: normalizedApp };
+  };
+
+  const triggerValue = answers.trigger;
+  const triggerText = typeof triggerValue === 'string'
+    ? triggerValue
+    : triggerValue?.type || JSON.stringify(triggerValue || {});
+  const lowerTriggerText = (triggerText || '').toLowerCase();
+
+  if (
+    lowerTriggerText.includes('time-based') ||
+    lowerTriggerText.includes('every') ||
+    lowerTriggerText.includes('time') ||
+    (typeof triggerValue === 'object' && triggerValue?.type === 'time')
+  ) {
+    const frequency = typeof triggerValue === 'string'
+      ? extractFrequencyFromAnswer(triggerValue)
+      : (typeof triggerValue === 'object' && triggerValue?.frequency?.value) || 15;
+    const unit = typeof triggerValue === 'object' && triggerValue?.frequency?.unit
+      ? triggerValue.frequency.unit
+      : 'minutes';
+
+    setTrigger({
       app: 'time',
       label: 'Time-based Trigger',
       operation: 'schedule',
       config: {
-        frequency: frequency,
-        unit: 'minutes'
+        frequency,
+        unit
       }
-    };
-  }
-  // Check for spreadsheet triggers
-  else if (triggerText === 'On spreadsheet edit' || triggerText.toLowerCase().includes('spreadsheet') || triggerText.toLowerCase().includes('sheet edit')) {
-    trigger = {
+    });
+  } else if (
+    lowerTriggerText === 'on spreadsheet edit' ||
+    lowerTriggerText.includes('spreadsheet') ||
+    lowerTriggerText.includes('sheet edit')
+  ) {
+    setTrigger({
       app: 'sheets',
       label: 'Sheet Edit',
       operation: 'onEdit',
@@ -130,13 +242,15 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
         spreadsheetId: extractSheetIdFromUserAnswer(answers.sheetDetails || ''),
         sheetName: 'Sheet1'
       }
-    };
-  }
-  // Check for email triggers
-  else if (triggerText.toLowerCase().includes('email') || allText.includes('email arrives')) {
-    // CRITICAL FIX: Use user's actual search query, not hardcoded filters
-    const userQuery = answers.search_query || answers.gmail_search || answers.email_criteria || answers.filter_criteria || answers.invoice_identification || '';
-    trigger = {
+    });
+  } else if (lowerTriggerText.includes('email') || allText.includes('email arrives')) {
+    const userQuery = answers.search_query ||
+      answers.gmail_search ||
+      answers.email_criteria ||
+      answers.filter_criteria ||
+      answers.invoice_identification || '';
+
+    setTrigger({
       app: 'gmail',
       label: 'Email Received',
       operation: 'email_received',
@@ -144,17 +258,11 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
         query: userQuery || buildGmailQueryFromUserWords(userQuery),
         frequency: 5
       }
-    };
+    });
   }
-  
-  // Parse actions from user's actual requests
-  const actions: Array<{app: string, label: string, operation: string, config: any}> = [];
-  
-  // Parse what user actually wants to do
-  
-  // Check if user wants CRM operations
+
   if (allText.includes('crm') || allText.includes('pipedrive') || allText.includes('deal') || answers.crm_action) {
-    actions.push({
+    addAction({
       app: 'pipedrive',
       label: 'Create Pipedrive Deal',
       operation: 'create_deal',
@@ -165,10 +273,9 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
-  // Check if user wants Slack notifications
+
   if (allText.includes('slack') || allText.includes('notification') || answers.slack_channel) {
-    actions.push({
+    addAction({
       app: 'slack',
       label: 'Send Slack Notification',
       operation: 'send_message',
@@ -178,26 +285,24 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
-  // Check if user wants Gmail monitoring (for invoices, etc.)
+
   if (allText.includes('monitor') || allText.includes('gmail') || answers.invoice_identification || answers.gmail || answers.search_query) {
-    // CRITICAL FIX: Use user's actual search query, not hardcoded
-    const userQuery = answers.search_query || 
-                     (answers.gmail && answers.gmail.search_query) ||
-                     answers.gmail_search || 
-                     answers.email_criteria || 
-                     answers.filter_criteria || 
-                     answers.invoice_identification || '';
-    
+    const userQuery = answers.search_query ||
+      (answers.gmail && answers.gmail.search_query) ||
+      answers.gmail_search ||
+      answers.email_criteria ||
+      answers.filter_criteria ||
+      answers.invoice_identification || '';
+
     const finalQuery = userQuery || buildGmailQueryFromUserWords(userQuery) || 'is:unread';
-    
+
     console.log('📧 Gmail query mapping:', {
       userProvided: !!userQuery,
       finalQuery: finalQuery.substring(0, 50) + '...',
       source: userQuery ? 'user_input' : 'fallback'
     });
 
-    actions.push({
+    addAction({
       app: 'gmail',
       label: 'Monitor Gmail for Invoices',
       operation: 'search_emails',
@@ -208,18 +313,15 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
-  // Check if user wants to log to sheets
+
   if (allText.includes('log') || allText.includes('sheet') || answers.sheet_destination || answers.sheets || answers.spreadsheet_url) {
-    // CRITICAL FIX: Handle both old format and new normalized format
     let spreadsheetId = '';
     let sheetName = 'Sheet1';
     let columns = 'Invoice Number, Date, Amount, Vendor';
 
-    // ChatGPT's improved sheet parsing (use parsed ID from normalizer)
     const sheetCfg = answers.sheets || {};
     const SHEET_URL_RE = /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i;
-    
+
     spreadsheetId =
       sheetCfg.sheet_id ||
       (sheetCfg.sheet_url?.match(SHEET_URL_RE)?.[1]) ||
@@ -229,10 +331,9 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       '';
 
     sheetName = sheetCfg.sheet_name || answers.sheet_name || 'Sheet1';
-    
-    // Handle columns from normalized format
+
     if (Array.isArray(sheetCfg.columns)) {
-      columns = sheetCfg.columns.join(', '); // compiler's current string format
+      columns = sheetCfg.columns.join(', ');
     } else if (sheetCfg.columns) {
       columns = String(sheetCfg.columns);
     } else {
@@ -246,7 +347,7 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       columnsPreview: typeof columns === 'string' ? columns.substring(0, 50) + '...' : columns
     });
 
-    actions.push({
+    addAction({
       app: 'sheets',
       label: 'Log Invoice Data',
       operation: 'append_row',
@@ -257,10 +358,9 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
-  // Check if user wants to send emails (not auto-reply)
+
   if (allText.includes('email will be sent') || answers.emailContent) {
-    actions.push({
+    addAction({
       app: 'gmail',
       label: 'Send Email to Candidate',
       operation: 'sendEmail',
@@ -271,10 +371,9 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
-  // Check if user wants to update status
+
   if (allText.includes('status will be updated') || allText.includes('update') || answers.statusValues) {
-    actions.push({
+    addAction({
       app: 'sheets',
       label: 'Update Status',
       operation: 'updateCell',
@@ -286,11 +385,9 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
-  // Check if user wants reminder functionality
+
   if (allText.includes('reminder') || allText.includes('24 hours') || answers.reminderEmailContent) {
-    // Add delay trigger
-    actions.push({
+    addAction({
       app: 'time',
       label: 'Wait 24 Hours',
       operation: 'delay',
@@ -298,9 +395,8 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
         hours: 24
       }
     });
-    
-    // Add reminder email
-    actions.push({
+
+    addAction({
       app: 'gmail',
       label: 'Send Reminder',
       operation: 'sendEmail',
@@ -311,13 +407,156 @@ function parseUserRequirements(prompt: string, answers: Record<string, any>): {
       }
     });
   }
-  
+
+  const aligned = applyPlanHints(trigger, actions, plan, answers, isAppAllowed);
+
   return {
-    trigger,
-    actions,
+    trigger: aligned.trigger,
+    actions: aligned.actions,
     workflowName: `User Request: ${prompt.substring(0, 40)}...`,
     description: `Generated from user request: ${prompt}`
   };
+}
+
+function applyPlanHints(
+  trigger: TriggerRequirement | null,
+  actions: ActionRequirement[],
+  plan: PlannerPlanHint | null | undefined,
+  answers: Record<string, any>,
+  isAppAllowed: (app: string | null | undefined) => boolean
+): { trigger: TriggerRequirement | null; actions: ActionRequirement[] } {
+  if (!plan) {
+    return { trigger, actions };
+  }
+
+  let nextTrigger = trigger;
+
+  if (plan.trigger) {
+    const planTriggerApp = plan.trigger.app || plan.trigger.type;
+    if (isAppAllowed(planTriggerApp)) {
+      const normalizedApp = normalizeAppId(planTriggerApp || '');
+      const configFromPlan = buildConfigFromRequiredInputs(plan.trigger.required_inputs, answers);
+
+      if (nextTrigger) {
+        nextTrigger = {
+          ...nextTrigger,
+          app: normalizeAppId(nextTrigger.app),
+          label: nextTrigger.label || plan.trigger.description || nextTrigger.operation,
+          operation: nextTrigger.operation || plan.trigger.operation || plan.trigger.type || 'trigger',
+          config: { ...configFromPlan, ...nextTrigger.config }
+        };
+      } else {
+        nextTrigger = {
+          app: normalizedApp,
+          label: plan.trigger.description || plan.trigger.operation || 'Trigger',
+          operation: plan.trigger.operation || plan.trigger.type || 'start',
+          config: configFromPlan
+        };
+      }
+    }
+  }
+
+  const actionMap = new Map<string, ActionRequirement>();
+  actions.forEach(action => {
+    const normalizedApp = normalizeAppId(action.app);
+    const key = `${normalizedApp}::${action.operation || action.label}`;
+    actionMap.set(key, { ...action, app: normalizedApp });
+  });
+
+  (plan.steps || []).forEach(step => {
+    if (!step) {
+      return;
+    }
+
+    const planApp = step.app || step.operation;
+    if (!isAppAllowed(planApp)) {
+      return;
+    }
+
+    const normalizedApp = normalizeAppId(planApp || '');
+    const operation = step.operation || 'execute';
+    const key = `${normalizedApp}::${operation}`;
+    const configFromPlan = buildConfigFromRequiredInputs(step.required_inputs, answers);
+
+    if (actionMap.has(key)) {
+      const existing = actionMap.get(key)!;
+      actionMap.set(key, {
+        ...existing,
+        label: existing.label || step.description || existing.operation || operation,
+        config: { ...configFromPlan, ...existing.config }
+      });
+    } else {
+      actionMap.set(key, {
+        app: normalizedApp,
+        label: step.description || `${normalizedApp} ${operation}`,
+        operation,
+        config: configFromPlan
+      });
+    }
+  });
+
+  return { trigger: nextTrigger, actions: Array.from(actionMap.values()) };
+}
+
+function buildConfigFromRequiredInputs(
+  requiredInputs: string[] | null | undefined,
+  answers: Record<string, any>
+): Record<string, any> {
+  if (!Array.isArray(requiredInputs) || requiredInputs.length === 0) {
+    return {};
+  }
+
+  const config: Record<string, any> = {};
+  for (const rawKey of requiredInputs) {
+    if (typeof rawKey !== 'string' || rawKey.trim().length === 0) {
+      continue;
+    }
+
+    const value = findAnswerValue(answers, rawKey);
+    if (value !== undefined) {
+      const sanitizedKey = rawKey.replace(/\s+/g, '_');
+      config[sanitizedKey] = value;
+    }
+  }
+
+  return config;
+}
+
+function findAnswerValue(source: Record<string, any>, targetKey: string): any {
+  const normalizedTarget = normalizeKey(targetKey);
+  const stack: any[] = [source];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || typeof current !== 'object') {
+      continue;
+    }
+
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        if (item && typeof item === 'object') {
+          stack.push(item);
+        }
+      }
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(current)) {
+      if (normalizeKey(key) === normalizedTarget) {
+        return value;
+      }
+
+      if (value && typeof value === 'object') {
+        stack.push(value);
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function buildGmailQueryFromUserWords(criteria: string): string {

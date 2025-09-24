@@ -26,6 +26,22 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     // Validate input
     const { prompt = '', answers: rawAnswers = {} } = req.body || {};
+
+    const requestedMode = typeof req.body?.mode === 'string' ? (req.body.mode as string) : undefined;
+    const envMode: PlannerMode = process.env.PLANNER_MODE === 'all' ? 'all' : 'gas-only';
+    const resolvedMode: PlannerMode =
+      requestedMode === 'all'
+        ? 'all'
+        : requestedMode === 'gas-only'
+          ? 'gas-only'
+          : envMode;
+
+    const baseAllowlist = getAllowlistForMode(resolvedMode);
+    const allowlist = new Set<string>();
+    for (const app of baseAllowlist) {
+      allowlist.add(app);
+      allowlist.add(normalizeAppId(app));
+    }
     
     if (!prompt || typeof prompt !== 'string') {
       logWorkflowEvent('VALIDATION_ERROR', requestId, { error: 'Invalid prompt', prompt });
@@ -88,7 +104,7 @@ workflowBuildRouter.post('/build', async (req, res) => {
     let plan;
     try {
       const { AutomationPlannerService } = await import('../services/AutomationPlannerService.js');
-      plan = await AutomationPlannerService.planAutomation(prompt, answers);
+      plan = await AutomationPlannerService.planAutomation(prompt, resolvedMode);
     } catch (error) {
       console.warn('⚠️ Planner failed, using dynamic fallback plan:', error.message);
       // Create safe fallback plan
@@ -123,14 +139,34 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     // Generate graph with error handling
     const graphStartTime = Date.now();
-    const graph = answersToGraph(prompt, answers);
+    const plannerAppSet = new Set<string>();
+    if (Array.isArray(plan?.apps)) {
+      for (const app of plan.apps) {
+        const normalized = normalizeAppId(app);
+        if (allowlist.has(normalized)) {
+          plannerAppSet.add(normalized);
+        }
+      }
+    }
+
+    if (allowlist.has('time')) {
+      plannerAppSet.add('time');
+    }
+    if (allowlist.has('core')) {
+      plannerAppSet.add('core');
+    }
+
+    const allowedAppsForGraph = plannerAppSet.size > 0 ? plannerAppSet : allowlist;
+
+    const graph = answersToGraph(prompt, answers, {
+      allowedApps: allowedAppsForGraph,
+      plan
+    });
     const graphGenerationTime = Date.now() - graphStartTime;
 
     // ChatGPT Enhancement: Dynamic app validation based on mode
-    const { mode } = req.body;
-    const resolvedMode: PlannerMode = mode || (process.env.PLANNER_MODE === "all" ? "all" : "gas-only");
-    const ALLOW = getAllowlistForMode(resolvedMode);
-    
+    const ALLOW = allowlist;
+
     // Normalize app IDs and validate against dynamic allowlist
     graph.nodes = graph.nodes.map(n => ({
       ...n,
@@ -143,7 +179,7 @@ workflowBuildRouter.post('/build', async (req, res) => {
         logWorkflowEvent('UNSUPPORTED_OPERATION', requestId, {
           app: n.app,
           mode: resolvedMode,
-          allowedApps: Array.from(ALLOW).slice(0, 20)
+          allowedApps: Array.from(baseAllowlist).slice(0, 20)
         });
         return res.status(400).json({
           success: false,
@@ -151,7 +187,7 @@ workflowBuildRouter.post('/build', async (req, res) => {
           error: `App "${n.app}" not supported in ${resolvedMode} mode`,
           app: n.app,
           mode: resolvedMode,
-          allowedApps: Array.from(ALLOW).slice(0, 20),
+          allowedApps: Array.from(baseAllowlist).slice(0, 20),
           requestId
         });
       }
