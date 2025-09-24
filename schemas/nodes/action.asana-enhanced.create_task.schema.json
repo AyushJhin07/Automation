@@ -40,25 +40,64 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "projectId": {
-          "description": "Project ID",
-          "type": "string"
-        },
         "name": {
-          "description": "Task name",
-          "type": "string"
+          "type": "string",
+          "description": "Task name"
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Project IDs to add the task to"
         },
         "assignee": {
-          "description": "Assignee user ID",
-          "type": "string"
+          "type": "string",
+          "description": "Assignee user ID or email"
         },
-        "dueOn": {
-          "description": "Due date (YYYY-MM-DD)",
-          "type": "string"
+        "description": {
+          "type": "string",
+          "description": "Task description/notes"
+        },
+        "due_on": {
+          "type": "string",
+          "format": "date",
+          "description": "Due date (YYYY-MM-DD)"
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Due date and time (ISO 8601)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high"
+          ],
+          "description": "Task priority"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tag IDs to apply to the task"
+        },
+        "followers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "User IDs to follow the task"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Parent task ID (for subtasks)"
         }
       },
       "required": [
-        "projectId",
         "name"
       ],
       "additionalProperties": false

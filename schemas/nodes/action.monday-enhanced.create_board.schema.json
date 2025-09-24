@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.monday-enhanced.create_board.schema.json",
+  "title": "Monday.com Enhanced - Create Board",
+  "description": "Create a new board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.monday-enhanced.create_board",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "board_name": {
+          "type": "string",
+          "description": "Board name"
+        },
+        "board_kind": {
+          "type": "string",
+          "enum": [
+            "public",
+            "private",
+            "share"
+          ],
+          "default": "public",
+          "description": "Board visibility"
+        },
+        "description": {
+          "type": "string",
+          "description": "Board description"
+        },
+        "folder_id": {
+          "type": "number",
+          "description": "Folder ID to place board in"
+        },
+        "workspace_id": {
+          "type": "number",
+          "description": "Workspace ID"
+        },
+        "template_id": {
+          "type": "number",
+          "description": "Template ID to create board from"
+        }
+      },
+      "required": [
+        "board_name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Monday.com Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

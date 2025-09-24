@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.google-chat.space_created.schema.json",
   "title": "Google Chat - Space Created",
-  "description": "Triggered when a space is created",
+  "description": "Triggered when a new space is created",
   "type": "object",
   "required": [
     "id",
@@ -65,9 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/chat.spaces.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

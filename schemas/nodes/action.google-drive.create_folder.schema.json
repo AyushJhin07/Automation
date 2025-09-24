@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-drive.create_folder.schema.json",
   "title": "Google Drive - Create Folder",
-  "description": "Create a new folder",
+  "description": "Create a new folder in Google Drive",
   "type": "object",
   "required": [
     "id",
@@ -41,12 +41,12 @@
       "type": "object",
       "properties": {
         "name": {
-          "description": "Name of the folder",
-          "type": "string"
+          "type": "string",
+          "description": "Name of the folder"
         },
         "parentFolderId": {
-          "description": "ID of the parent folder",
-          "type": "string"
+          "type": "string",
+          "description": "ID of the parent folder"
         }
       },
       "required": [
@@ -76,9 +76,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive.file"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -41,12 +41,23 @@
       "type": "object",
       "properties": {
         "calendarId": {
-          "description": "Calendar ID",
-          "type": "string"
+          "type": "string",
+          "default": "primary",
+          "description": "Calendar ID"
         },
         "eventId": {
-          "description": "Event ID",
-          "type": "string"
+          "type": "string",
+          "description": "Event ID to delete"
+        },
+        "sendUpdates": {
+          "type": "string",
+          "enum": [
+            "all",
+            "externalOnly",
+            "none"
+          ],
+          "default": "none",
+          "description": "Send updates to attendees"
         }
       },
       "required": [
@@ -76,9 +87,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/calendar.events"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

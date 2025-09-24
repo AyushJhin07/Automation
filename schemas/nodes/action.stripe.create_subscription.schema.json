@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.stripe.create_subscription.schema.json",
   "title": "Stripe - Create Subscription",
-  "description": "Create a subscription",
+  "description": "Create a recurring subscription for a customer",
   "type": "object",
   "required": [
     "id",
@@ -40,27 +40,67 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "customerId": {
-          "description": "Customer ID",
-          "type": "string"
+        "customer": {
+          "type": "string",
+          "description": "Customer ID"
         },
-        "priceId": {
-          "description": "Price ID",
-          "type": "string"
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "price": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Subscription items with prices and quantities"
         },
-        "trialPeriodDays": {
-          "description": "Trial period in days",
-          "type": "number"
+        "trial_period_days": {
+          "type": "number",
+          "description": "Number of trial days"
+        },
+        "default_payment_method": {
+          "type": "string",
+          "description": "Default payment method ID"
+        },
+        "collection_method": {
+          "type": "string",
+          "enum": [
+            "charge_automatically",
+            "send_invoice"
+          ],
+          "default": "charge_automatically",
+          "description": "Collection method"
+        },
+        "days_until_due": {
+          "type": "number",
+          "description": "Days until invoice is due (for send_invoice)"
         },
         "metadata": {
-          "description": "Custom metadata",
           "type": "object",
-          "additionalProperties": true
+          "description": "Custom metadata"
+        },
+        "proration_behavior": {
+          "type": "string",
+          "enum": [
+            "create_prorations",
+            "none",
+            "always_invoice"
+          ],
+          "description": "Proration behavior"
+        },
+        "coupon": {
+          "type": "string",
+          "description": "Coupon ID to apply"
         }
       },
       "required": [
-        "customerId",
-        "priceId"
+        "customer",
+        "items"
       ],
       "additionalProperties": false
     },
@@ -75,7 +115,7 @@
         },
         "category": {
           "type": "string",
-          "const": "payments"
+          "const": "Payments"
         },
         "appName": {
           "type": "string",
@@ -86,9 +126,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

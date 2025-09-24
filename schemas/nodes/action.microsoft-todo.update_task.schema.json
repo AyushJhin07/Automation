@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.microsoft-todo.update_task.schema.json",
+  "title": "Microsoft To Do - Update Task",
+  "description": "Update an existing task",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.microsoft-todo.update_task",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "listId": {
+          "type": "string",
+          "description": "Task list ID"
+        },
+        "taskId": {
+          "type": "string",
+          "description": "Task ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "text",
+                "html"
+              ]
+            }
+          },
+          "description": "Task body content"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "notStarted",
+            "inProgress",
+            "completed",
+            "waitingOnOthers",
+            "deferred"
+          ],
+          "description": "Task status"
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high"
+          ],
+          "description": "Task importance"
+        },
+        "dueDateTime": {
+          "type": "object",
+          "properties": {
+            "dateTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "timeZone": {
+              "type": "string"
+            }
+          },
+          "description": "Due date and time"
+        }
+      },
+      "required": [
+        "listId",
+        "taskId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft To Do"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

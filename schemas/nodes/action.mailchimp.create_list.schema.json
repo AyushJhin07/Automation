@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.create_list.schema.json",
+  "title": "Mailchimp - Create List",
+  "description": "Create a new audience list",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp.create_list",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the list"
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "company": {
+              "type": "string"
+            },
+            "address1": {
+              "type": "string"
+            },
+            "address2": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "zip": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            }
+          },
+          "description": "Contact information for the list"
+        },
+        "permissionReminder": {
+          "type": "string",
+          "description": "The permission reminder for the list"
+        },
+        "campaignDefaults": {
+          "type": "object",
+          "properties": {
+            "fromName": {
+              "type": "string"
+            },
+            "fromEmail": {
+              "type": "string",
+              "format": "email"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            }
+          },
+          "description": "Default values for campaigns"
+        },
+        "emailTypeOption": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the list supports multiple formats for emails"
+        },
+        "useArchiveBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether campaigns for this list use the archive bar"
+        },
+        "notifyOnSubscribe": {
+          "type": "string",
+          "description": "Email to notify when someone subscribes"
+        },
+        "notifyOnUnsubscribe": {
+          "type": "string",
+          "description": "Email to notify when someone unsubscribes"
+        }
+      },
+      "required": [
+        "name",
+        "contact",
+        "permissionReminder",
+        "campaignDefaults"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

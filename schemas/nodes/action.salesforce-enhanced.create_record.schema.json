@@ -40,14 +40,18 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "data": {
-          "description": "Record data",
+        "sobjectType": {
+          "type": "string",
+          "description": "SObject type (e.g., Account, Contact, Lead)"
+        },
+        "fields": {
           "type": "object",
-          "additionalProperties": true
+          "description": "Record fields"
         }
       },
       "required": [
-        "data"
+        "sobjectType",
+        "fields"
       ],
       "additionalProperties": false
     },
@@ -62,7 +66,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",

@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.surveymonkey.list_surveys.schema.json",
+  "title": "SurveyMonkey - List Surveys",
+  "description": "List all surveys",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.surveymonkey.list_surveys",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 50,
+          "description": "Number of surveys per page"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "title",
+            "date_modified",
+            "num_responses"
+          ],
+          "description": "Sort criteria"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "default": "DESC",
+          "description": "Sort order"
+        },
+        "start_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter surveys modified after this date"
+        },
+        "end_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter surveys modified before this date"
+        },
+        "title": {
+          "type": "string",
+          "description": "Filter by survey title"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "response_count",
+              "date_created",
+              "date_modified",
+              "language",
+              "question_count",
+              "analyze_url",
+              "preview"
+            ]
+          },
+          "description": "Additional fields to include"
+        },
+        "folder_id": {
+          "type": "string",
+          "description": "Filter by folder ID"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Feedback"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SurveyMonkey"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.confluence.delete_page.schema.json",
-  "title": "Confluence - Delete Page",
-  "description": "Delete a Confluence page",
+  "title": "Atlassian Confluence - Delete Page",
+  "description": "Delete a page",
   "type": "object",
   "required": [
     "id",
@@ -40,13 +40,26 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "page_id": {
-          "description": "Page ID to delete",
-          "type": "string"
+        "cloudid": {
+          "type": "string",
+          "description": "Atlassian cloud ID"
+        },
+        "id": {
+          "type": "string",
+          "description": "Page ID to delete"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "current",
+            "trashed"
+          ],
+          "description": "Current page status"
         }
       },
       "required": [
-        "page_id"
+        "cloudid",
+        "id"
       ],
       "additionalProperties": false
     },
@@ -61,20 +74,18 @@
         },
         "category": {
           "type": "string",
-          "const": "Collaboration"
+          "const": "Documentation"
         },
         "appName": {
           "type": "string",
-          "const": "Confluence"
+          "const": "Atlassian Confluence"
         },
         "requiredScopes": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [
-            "manage:confluence-content"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

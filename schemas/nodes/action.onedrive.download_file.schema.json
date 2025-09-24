@@ -40,13 +40,13 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "itemId": {
-          "description": "File item ID",
-          "type": "string"
+        "fileId": {
+          "type": "string",
+          "description": "File ID"
         }
       },
       "required": [
-        "itemId"
+        "fileId"
       ],
       "additionalProperties": false
     },
@@ -61,7 +61,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Cloud Storage"
+          "const": "Storage"
         },
         "appName": {
           "type": "string",
@@ -72,9 +72,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "Files.Read"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

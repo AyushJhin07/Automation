@@ -39,7 +39,16 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "channel": {
+          "type": "string",
+          "description": "Channel ID to monitor"
+        },
+        "reaction": {
+          "type": "string",
+          "description": "Specific reaction emoji to monitor"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -65,9 +74,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "reactions:read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

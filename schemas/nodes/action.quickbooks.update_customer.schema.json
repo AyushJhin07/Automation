@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.quickbooks.update_customer.schema.json",
+  "title": "QuickBooks - Update Customer",
+  "description": "Update customer information",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.quickbooks.update_customer",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "companyId": {
+          "type": "string",
+          "description": "Company ID"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Customer ID"
+        },
+        "syncToken": {
+          "type": "string",
+          "description": "Sync token for optimistic locking"
+        },
+        "name": {
+          "type": "string",
+          "description": "Customer name"
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Company name"
+        },
+        "primaryEmailAddr": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "description": "Primary email address"
+        },
+        "billAddr": {
+          "type": "object",
+          "properties": {
+            "line1": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "countrySubDivisionCode": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            }
+          },
+          "description": "Billing address"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Customer notes"
+        }
+      },
+      "required": [
+        "companyId",
+        "customerId",
+        "syncToken"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "QuickBooks"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

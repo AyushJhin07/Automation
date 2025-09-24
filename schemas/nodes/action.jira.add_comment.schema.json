@@ -41,17 +41,28 @@
       "type": "object",
       "properties": {
         "issueIdOrKey": {
-          "description": "Issue ID or key (e.g., PROJ-123)",
-          "type": "string"
+          "type": "string",
+          "description": "Issue ID or key"
         },
         "body": {
-          "description": "Comment text",
-          "type": "string"
+          "type": "string",
+          "description": "Comment text content"
         },
         "visibility": {
-          "description": "Comment visibility",
-          "type": "string",
-          "default": "all"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "group",
+                "role"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "description": "Comment visibility restrictions"
         }
       },
       "required": [
@@ -82,9 +93,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write:jira-work"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

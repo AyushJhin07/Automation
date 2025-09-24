@@ -39,11 +39,7 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {
-        "task_id": {
-          "type": "string"
-        }
-      },
+      "properties": {},
       "required": [],
       "additionalProperties": false
     },

@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp-enhanced.create_automation.schema.json",
+  "title": "Mailchimp Enhanced - Create Automation",
+  "description": "Create a new automation workflow",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp-enhanced.create_automation",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipients": {
+          "type": "object",
+          "properties": {
+            "list_id": {
+              "type": "string"
+            },
+            "store_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "list_id"
+          ],
+          "additionalProperties": false
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "from_name": {
+              "type": "string"
+            },
+            "reply_to": {
+              "type": "string",
+              "format": "email"
+            },
+            "use_conversation": {
+              "type": "boolean"
+            },
+            "to_name": {
+              "type": "string"
+            },
+            "authenticate": {
+              "type": "boolean"
+            },
+            "auto_footer": {
+              "type": "boolean"
+            },
+            "inline_css": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "title",
+            "from_name",
+            "reply_to"
+          ],
+          "additionalProperties": false
+        },
+        "tracking": {
+          "type": "object",
+          "properties": {
+            "opens": {
+              "type": "boolean",
+              "default": true
+            },
+            "html_clicks": {
+              "type": "boolean",
+              "default": true
+            },
+            "text_clicks": {
+              "type": "boolean",
+              "default": false
+            },
+            "goal_tracking": {
+              "type": "boolean",
+              "default": false
+            },
+            "ecomm360": {
+              "type": "boolean",
+              "default": false
+            },
+            "google_analytics": {
+              "type": "string"
+            },
+            "clicktale": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "trigger_settings": {
+          "type": "object",
+          "properties": {
+            "workflow_type": {
+              "type": "string"
+            },
+            "send_immediately": {
+              "type": "boolean"
+            },
+            "trigger_on_import": {
+              "type": "boolean"
+            },
+            "runtime": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "recipients",
+        "settings"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

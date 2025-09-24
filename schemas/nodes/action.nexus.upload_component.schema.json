@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.nexus.upload_component.schema.json",
+  "title": "Sonatype Nexus - Upload Component",
+  "description": "Upload a component to repository",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.nexus.upload_component",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Repository name"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "maven2",
+            "npm",
+            "docker",
+            "pypi",
+            "nuget"
+          ],
+          "description": "Repository format"
+        },
+        "group": {
+          "type": "string",
+          "description": "Component group"
+        },
+        "artifact_id": {
+          "type": "string",
+          "description": "Artifact ID"
+        },
+        "version": {
+          "type": "string",
+          "description": "Component version"
+        },
+        "file_content": {
+          "type": "string",
+          "description": "Base64 encoded file content"
+        }
+      },
+      "required": [
+        "repository",
+        "format",
+        "artifact_id",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "DevOps"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Sonatype Nexus"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

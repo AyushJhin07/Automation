@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.zoho-crm.create_record.schema.json",
-  "title": "Zoho Crm - Create Record",
+  "title": "Zoho CRM - Create Record",
   "description": "Create a new record",
   "type": "object",
   "required": [
@@ -40,13 +40,55 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "module": {
+          "type": "string",
+          "enum": [
+            "Leads",
+            "Contacts",
+            "Accounts",
+            "Deals",
+            "Tasks",
+            "Events",
+            "Calls",
+            "Solutions",
+            "Products",
+            "Quotes",
+            "Sales_Orders",
+            "Purchase_Orders",
+            "Invoices",
+            "Campaigns",
+            "Vendors"
+          ],
+          "description": "Module name"
+        },
         "data": {
-          "description": "Record data",
           "type": "object",
-          "additionalProperties": true
+          "description": "Record data"
+        },
+        "duplicate_check_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to check for duplicates"
+        },
+        "apply_feature_execution": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Features to apply"
+        },
+        "trigger": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Triggers to execute"
         }
       },
       "required": [
+        "module",
         "data"
       ],
       "additionalProperties": false
@@ -62,11 +104,11 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",
-          "const": "Zoho Crm"
+          "const": "Zoho CRM"
         },
         "requiredScopes": {
           "type": "array",

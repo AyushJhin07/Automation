@@ -41,28 +41,43 @@
       "type": "object",
       "properties": {
         "contactId": {
-          "description": "HubSpot contact ID",
-          "type": "string"
+          "type": "string",
+          "description": "HubSpot contact ID"
         },
         "email": {
-          "description": "Contact's email address",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Contact's email address"
         },
         "firstname": {
-          "description": "Contact's first name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's first name"
         },
         "lastname": {
-          "description": "Contact's last name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's last name"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact's phone number"
         },
         "company": {
-          "description": "Contact's company name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's company"
         },
-        "notes": {
-          "description": "Additional notes about the contact",
-          "type": "string"
+        "lifecyclestage": {
+          "type": "string",
+          "enum": [
+            "subscriber",
+            "lead",
+            "marketingqualifiedlead",
+            "salesqualifiedlead",
+            "opportunity",
+            "customer",
+            "evangelist",
+            "other"
+          ],
+          "description": "Contact's lifecycle stage"
         }
       },
       "required": [
@@ -92,9 +107,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "contacts"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

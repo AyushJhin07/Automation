@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.xero.create_payment.schema.json",
+  "title": "Xero - Create Payment",
+  "description": "Create a new payment",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.xero.create_payment",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "invoice": {
+          "type": "object",
+          "properties": {
+            "invoiceID": {
+              "type": "string"
+            }
+          },
+          "description": "Invoice to apply payment to"
+        },
+        "account": {
+          "type": "object",
+          "properties": {
+            "accountID": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string"
+            }
+          },
+          "description": "Account for payment"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Payment date"
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Payment amount"
+        },
+        "currencyRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Currency rate"
+        },
+        "reference": {
+          "type": "string",
+          "description": "Payment reference"
+        },
+        "isReconciled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether payment is reconciled"
+        }
+      },
+      "required": [
+        "invoice",
+        "account",
+        "date",
+        "amount"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Xero"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

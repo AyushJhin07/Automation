@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.slack.list_channels.schema.json",
   "title": "Slack - List Channels",
-  "description": "Get a list of channels",
+  "description": "List all channels in the workspace",
   "type": "object",
   "required": [
     "id",
@@ -41,14 +41,14 @@
       "type": "object",
       "properties": {
         "types": {
-          "description": "Channel types to include",
           "type": "string",
-          "default": "public_channel,private_channel"
+          "default": "public_channel",
+          "description": "Channel types to include (public_channel, private_channel, mpim, im)"
         },
         "limit": {
-          "description": "Maximum number of channels to return",
           "type": "number",
-          "default": 100
+          "default": 100,
+          "description": "Maximum number of channels to return"
         }
       },
       "required": [],
@@ -76,9 +76,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "channels:read"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

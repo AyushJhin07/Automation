@@ -41,58 +41,72 @@
       "type": "object",
       "properties": {
         "projectKey": {
-          "description": "Project key (e.g., PROJ)",
-          "type": "string"
+          "type": "string",
+          "description": "Project key (e.g., PROJ)"
         },
         "summary": {
-          "description": "Issue summary/title",
-          "type": "string"
+          "type": "string",
+          "description": "Issue summary/title"
         },
         "description": {
-          "description": "Issue description",
-          "type": "string"
+          "type": "string",
+          "description": "Issue description"
         },
         "issueType": {
-          "description": "Type of issue to create",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "Bug",
+            "Task",
+            "Story",
+            "Epic",
+            "Subtask"
+          ],
+          "description": "Type of issue to create"
         },
         "priority": {
-          "description": "Issue priority",
           "type": "string",
-          "default": "Medium"
+          "enum": [
+            "Highest",
+            "High",
+            "Medium",
+            "Low",
+            "Lowest"
+          ],
+          "default": "Medium",
+          "description": "Issue priority"
         },
         "assignee": {
-          "description": "Assignee account ID or email",
-          "type": "string"
+          "type": "string",
+          "description": "Assignee account ID or email"
         },
         "reporter": {
-          "description": "Reporter account ID or email",
-          "type": "string"
+          "type": "string",
+          "description": "Reporter account ID or email"
         },
         "labels": {
-          "description": "Array of labels to add to the issue",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Issue labels"
         },
         "components": {
-          "description": "Array of component names",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Component IDs or names"
         },
         "fixVersions": {
-          "description": "Array of fix version names",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Fix version IDs or names"
         },
-        "dueDate": {
-          "description": "Due date (YYYY-MM-DD)",
-          "type": "string"
+        "customFields": {
+          "type": "object",
+          "description": "Custom field values as key-value pairs"
         }
       },
       "required": [
@@ -124,9 +138,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write:jira-work"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

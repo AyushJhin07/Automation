@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.outlook.get_messages.schema.json",
+  "title": "Microsoft Outlook - Get Messages",
+  "description": "Get email messages",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.outlook.get_messages",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "folderId": {
+          "type": "string",
+          "description": "Folder ID (default: inbox)"
+        },
+        "$top": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Number of messages to return"
+        },
+        "$skip": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Number of messages to skip"
+        },
+        "$orderby": {
+          "type": "string",
+          "description": "Order by field"
+        },
+        "$filter": {
+          "type": "string",
+          "description": "Filter expression"
+        },
+        "$search": {
+          "type": "string",
+          "description": "Search query"
+        },
+        "$select": {
+          "type": "string",
+          "description": "Select specific fields"
+        },
+        "$expand": {
+          "type": "string",
+          "description": "Expand related data"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft Outlook"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

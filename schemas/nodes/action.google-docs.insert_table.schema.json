@@ -40,27 +40,34 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "docId": {
-          "description": "ID of the document",
-          "type": "string"
+        "documentId": {
+          "type": "string",
+          "description": "Document ID"
         },
         "rows": {
-          "description": "Number of rows in the table",
-          "type": "number"
+          "type": "number",
+          "minimum": 1,
+          "description": "Number of rows"
         },
-        "cols": {
-          "description": "Number of columns in the table",
-          "type": "number"
+        "columns": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Number of columns"
         },
-        "location": {
-          "description": "Index location to insert the table",
-          "type": "number"
+        "index": {
+          "type": "number",
+          "default": 1,
+          "description": "Index to insert table at"
+        },
+        "segmentId": {
+          "type": "string",
+          "description": "Segment ID for tab-specific insertion"
         }
       },
       "required": [
-        "docId",
+        "documentId",
         "rows",
-        "cols"
+        "columns"
       ],
       "additionalProperties": false
     },
@@ -86,9 +93,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/documents"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

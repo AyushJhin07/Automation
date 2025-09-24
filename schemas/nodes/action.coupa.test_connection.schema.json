@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.coupa.test_connection.schema.json",
   "title": "Coupa - Test Connection",
-  "description": "Test the connection to Coupa and verify authentication",
+  "description": "Test the connection to Coupa",
   "type": "object",
   "required": [
     "id",
@@ -54,7 +54,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Procurement"
+          "const": "Finance"
         },
         "appName": {
           "type": "string",
@@ -65,23 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read"
-          ]
-        },
-        "rateLimits": {
-          "type": "object",
-          "properties": {
-            "requestsPerSecond": {
-              "type": "number"
-            },
-            "requestsPerMinute": {
-              "type": "number"
-            },
-            "dailyLimit": {
-              "type": "number"
-            }
-          }
+          "default": []
         }
       },
       "additionalProperties": false

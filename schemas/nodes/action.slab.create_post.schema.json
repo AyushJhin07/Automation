@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.slab.create_post.schema.json",
+  "title": "Slab - Create Post",
+  "description": "Create a new post",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.slab.create_post",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Post title"
+        },
+        "content": {
+          "type": "string",
+          "description": "Post content in Markdown"
+        },
+        "topic_id": {
+          "type": "string",
+          "description": "Topic ID to create post in"
+        },
+        "parent_id": {
+          "type": "string",
+          "description": "Parent post ID for creating a sub-post"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "team",
+            "organization",
+            "public"
+          ],
+          "default": "team",
+          "description": "Post visibility"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "topic_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Knowledge Base"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Slab"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

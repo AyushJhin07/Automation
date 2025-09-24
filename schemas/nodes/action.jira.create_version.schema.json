@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.jira.create_version.schema.json",
+  "title": "Jira - Create Version",
+  "description": "Create a new version in a project",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.jira.create_version",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Version name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Version description"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Project ID"
+        },
+        "released": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the version is released"
+        },
+        "archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the version is archived"
+        },
+        "releaseDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Release date (YYYY-MM-DD)"
+        }
+      },
+      "required": [
+        "name",
+        "projectId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Jira"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

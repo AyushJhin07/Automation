@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.jira.create_project.schema.json",
   "title": "Jira - Create Project",
-  "description": "Create a new project in Jira",
+  "description": "Create a new Jira project",
   "type": "object",
   "required": [
     "id",
@@ -41,44 +41,39 @@
       "type": "object",
       "properties": {
         "key": {
-          "description": "Project key (uppercase letters, numbers, underscores)",
-          "type": "string"
+          "type": "string",
+          "description": "Project key (2-10 uppercase characters)"
         },
         "name": {
-          "description": "Project name",
-          "type": "string"
+          "type": "string",
+          "description": "Project name"
         },
         "projectTypeKey": {
-          "description": "Type of project",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "software",
+            "service_desk",
+            "business"
+          ],
+          "description": "Type of project to create"
         },
         "projectTemplateKey": {
-          "description": "Project template",
-          "type": "string"
+          "type": "string",
+          "description": "Template key for project creation"
         },
         "description": {
-          "description": "Project description",
-          "type": "string"
+          "type": "string",
+          "description": "Project description"
         },
         "leadAccountId": {
-          "description": "Account ID of the project lead",
-          "type": "string"
-        },
-        "url": {
-          "description": "Project URL",
-          "type": "string"
-        },
-        "assigneeType": {
-          "description": "Default assignee for new issues",
           "type": "string",
-          "default": "PROJECT_LEAD"
+          "description": "Account ID of the project lead"
         }
       },
       "required": [
         "key",
         "name",
-        "projectTypeKey",
-        "leadAccountId"
+        "projectTypeKey"
       ],
       "additionalProperties": false
     },
@@ -104,9 +99,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "manage:jira-project"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

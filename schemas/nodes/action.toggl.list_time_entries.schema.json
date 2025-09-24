@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.toggl.list_time_entries.schema.json",
+  "title": "Toggl Track - List Time Entries",
+  "description": "List time entries with optional filters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.toggl.list_time_entries",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "number",
+          "description": "Workspace ID"
+        },
+        "user_id": {
+          "type": "number",
+          "description": "User ID to filter entries"
+        },
+        "project_id": {
+          "type": "number",
+          "description": "Project ID to filter entries"
+        },
+        "client_id": {
+          "type": "number",
+          "description": "Client ID to filter entries"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Start date filter (YYYY-MM-DD)"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "description": "End date filter (YYYY-MM-DD)"
+        },
+        "since": {
+          "type": "number",
+          "description": "Unix timestamp to get entries modified since"
+        },
+        "before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Get entries before this date (ISO 8601)"
+        },
+        "after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Get entries after this date (ISO 8601)"
+        }
+      },
+      "required": [
+        "workspace_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Time Tracking"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Toggl Track"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -41,22 +41,22 @@
       "type": "object",
       "properties": {
         "channel": {
-          "description": "Channel ID",
-          "type": "string"
-        },
-        "ts": {
-          "description": "Message timestamp",
-          "type": "string"
+          "type": "string",
+          "description": "Channel where the message to add reaction to was posted"
         },
         "name": {
-          "description": "Reaction emoji name",
-          "type": "string"
+          "type": "string",
+          "description": "Reaction (emoji) name"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of the message to add reaction to"
         }
       },
       "required": [
         "channel",
-        "ts",
-        "name"
+        "name",
+        "timestamp"
       ],
       "additionalProperties": false
     },
@@ -82,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "reactions:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

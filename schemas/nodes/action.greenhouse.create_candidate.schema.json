@@ -40,28 +40,187 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "firstName": {
-          "description": "First name",
-          "type": "string"
+        "first_name": {
+          "type": "string",
+          "description": "First name"
         },
-        "lastName": {
-          "description": "Last name",
-          "type": "string"
+        "last_name": {
+          "type": "string",
+          "description": "Last name"
         },
-        "email": {
-          "description": "Email address",
-          "type": "string"
+        "company": {
+          "type": "string",
+          "description": "Current company"
         },
-        "phone": {
-          "description": "Phone number",
-          "type": "string"
+        "title": {
+          "type": "string",
+          "description": "Current title"
+        },
+        "phone_numbers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "mobile",
+                  "skype",
+                  "other"
+                ]
+              }
+            }
+          },
+          "description": "Phone numbers"
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "other"
+                ]
+              }
+            }
+          },
+          "description": "Addresses"
+        },
+        "email_addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "format": "email"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "personal",
+                  "work",
+                  "other"
+                ]
+              }
+            }
+          },
+          "description": "Email addresses"
+        },
+        "website_addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "format": "uri"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "personal",
+                  "company",
+                  "portfolio",
+                  "blog",
+                  "social",
+                  "other"
+                ]
+              }
+            }
+          },
+          "description": "Website addresses"
+        },
+        "social_media_addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Social media addresses"
+        },
+        "recruiter": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "description": "Recruiter information"
+        },
+        "coordinator": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "description": "Coordinator information"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags"
+        },
+        "custom_fields": {
+          "type": "object",
+          "description": "Custom field values"
+        },
+        "activity_feed_notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "user_id": {
+                "type": "number"
+              },
+              "private": {
+                "type": "boolean",
+                "default": false
+              },
+              "visibility": {
+                "type": "string",
+                "enum": [
+                  "admin_only",
+                  "private",
+                  "public"
+                ]
+              }
+            }
+          },
+          "description": "Activity feed notes"
         }
       },
-      "required": [
-        "firstName",
-        "lastName",
-        "email"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -75,7 +234,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Recruitment"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -86,9 +245,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "candidates:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

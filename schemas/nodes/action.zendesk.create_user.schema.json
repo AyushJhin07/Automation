@@ -40,20 +40,126 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string"
-        },
-        "role": {
-          "type": "string",
-          "default": "end-user"
+        "user": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "alias": {
+              "type": "string"
+            },
+            "active": {
+              "type": "boolean",
+              "default": true
+            },
+            "verified": {
+              "type": "boolean",
+              "default": false
+            },
+            "shared": {
+              "type": "boolean",
+              "default": false
+            },
+            "shared_agent": {
+              "type": "boolean",
+              "default": false
+            },
+            "locale": {
+              "type": "string"
+            },
+            "locale_id": {
+              "type": "number"
+            },
+            "time_zone": {
+              "type": "string"
+            },
+            "last_login_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "shared_phone_number": {
+              "type": "string"
+            },
+            "photo": {
+              "type": "object"
+            },
+            "role_type": {
+              "type": "number"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "end-user",
+                "agent",
+                "admin"
+              ]
+            },
+            "custom_role_id": {
+              "type": "number"
+            },
+            "moderator": {
+              "type": "boolean",
+              "default": false
+            },
+            "ticket_restriction": {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "groups",
+                "organization",
+                "requested",
+                "none"
+              ]
+            },
+            "only_private_comments": {
+              "type": "boolean",
+              "default": false
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "details": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "organization_id": {
+              "type": "number"
+            },
+            "default_group_id": {
+              "type": "number"
+            },
+            "signature": {
+              "type": "string"
+            },
+            "user_fields": {
+              "type": "object"
+            },
+            "external_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "email"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
-        "name",
-        "email"
+        "user"
       ],
       "additionalProperties": false
     },

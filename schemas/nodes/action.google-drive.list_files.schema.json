@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-drive.list_files.schema.json",
   "title": "Google Drive - List Files",
-  "description": "List files in Drive",
+  "description": "List files in Google Drive",
   "type": "object",
   "required": [
     "id",
@@ -40,14 +40,39 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "q": {
-          "description": "Query string to filter files",
-          "type": "string"
+        "folderId": {
+          "type": "string",
+          "description": "ID of the folder to list (optional)"
         },
-        "pageSize": {
-          "description": "Maximum number of files to return",
+        "query": {
+          "type": "string",
+          "description": "Search query (e.g., 'name contains \"report\"')"
+        },
+        "maxResults": {
           "type": "number",
-          "default": 10
+          "default": 100,
+          "maximum": 1000,
+          "description": "Maximum number of files to return"
+        },
+        "orderBy": {
+          "type": "string",
+          "enum": [
+            "createdTime",
+            "folder",
+            "modifiedByMeTime",
+            "modifiedTime",
+            "name",
+            "quotaBytesUsed",
+            "recency",
+            "sharedWithMeTime",
+            "starred",
+            "viewedByMeTime"
+          ],
+          "description": "Sort order"
+        },
+        "fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to return"
         }
       },
       "required": [],
@@ -75,9 +100,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive.metadata.readonly"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

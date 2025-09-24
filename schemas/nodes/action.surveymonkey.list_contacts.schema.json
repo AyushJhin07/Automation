@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.surveymonkey.list_contacts.schema.json",
+  "title": "SurveyMonkey - List Contacts",
+  "description": "List all contacts",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.surveymonkey.list_contacts",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 50,
+          "description": "Number of contacts per page"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "date_modified",
+            "date_created",
+            "email",
+            "first_name",
+            "last_name"
+          ],
+          "description": "Sort criteria"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "default": "ASC",
+          "description": "Sort order"
+        },
+        "first_name": {
+          "type": "string",
+          "description": "Filter by first name"
+        },
+        "last_name": {
+          "type": "string",
+          "description": "Filter by last name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Filter by email"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Feedback"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SurveyMonkey"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

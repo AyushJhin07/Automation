@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zendesk.list_users.schema.json",
+  "title": "Zendesk - List Users",
+  "description": "List users with optional filters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zendesk.list_users",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "end-user",
+            "agent",
+            "admin"
+          ],
+          "description": "Filter by user role"
+        },
+        "role[]": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "end-user",
+              "agent",
+              "admin"
+            ]
+          },
+          "description": "Filter by multiple roles"
+        },
+        "permission_set": {
+          "type": "number",
+          "description": "Filter by permission set ID"
+        },
+        "external_id": {
+          "type": "string",
+          "description": "Filter by external ID"
+        },
+        "page[size]": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100,
+          "description": "Number of users per page"
+        },
+        "page[after]": {
+          "type": "string",
+          "description": "Cursor for pagination"
+        },
+        "page[before]": {
+          "type": "string",
+          "description": "Cursor for pagination"
+        },
+        "sort": {
+          "type": "string",
+          "description": "Sort criteria"
+        },
+        "include": {
+          "type": "string",
+          "description": "Related objects to include"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zendesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

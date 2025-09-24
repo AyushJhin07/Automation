@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.sharepoint.create_folder.schema.json",
+  "title": "SharePoint - Create Folder",
+  "description": "Create a new folder",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sharepoint.create_folder",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "description": "SharePoint site ID"
+        },
+        "driveId": {
+          "type": "string",
+          "description": "Drive ID"
+        },
+        "parentFolderId": {
+          "type": "string",
+          "description": "Parent folder ID"
+        },
+        "folderName": {
+          "type": "string",
+          "description": "Name of the new folder"
+        },
+        "conflictBehavior": {
+          "type": "string",
+          "enum": [
+            "fail",
+            "replace",
+            "rename"
+          ],
+          "default": "fail",
+          "description": "What to do if folder already exists"
+        }
+      },
+      "required": [
+        "siteId",
+        "folderName"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "File Storage"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SharePoint"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

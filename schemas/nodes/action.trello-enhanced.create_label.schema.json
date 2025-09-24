@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.trello-enhanced.create_label.schema.json",
+  "title": "Trello Enhanced - Create Label",
+  "description": "Create a new label on a board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.trello-enhanced.create_label",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "idBoard": {
+          "type": "string",
+          "description": "Board ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Label name"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "yellow",
+            "purple",
+            "blue",
+            "red",
+            "green",
+            "orange",
+            "black",
+            "sky",
+            "pink",
+            "lime"
+          ],
+          "description": "Label color"
+        }
+      },
+      "required": [
+        "idBoard",
+        "name",
+        "color"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Trello Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

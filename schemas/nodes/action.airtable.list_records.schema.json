@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.airtable.list_records.schema.json",
   "title": "Airtable - List Records",
-  "description": "List records from table",
+  "description": "List records from a table",
   "type": "object",
   "required": [
     "id",
@@ -41,25 +41,56 @@
       "type": "object",
       "properties": {
         "baseId": {
-          "description": "Base ID",
-          "type": "string"
+          "type": "string",
+          "description": "Base ID"
         },
         "tableId": {
-          "description": "Table ID",
-          "type": "string"
+          "type": "string",
+          "description": "Table ID or name"
         },
-        "maxRecords": {
-          "description": "Maximum records",
-          "type": "number",
-          "default": 100
-        },
-        "view": {
-          "description": "View name",
-          "type": "string"
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to include"
         },
         "filterByFormula": {
-          "description": "Filter formula",
-          "type": "string"
+          "type": "string",
+          "description": "Formula to filter records"
+        },
+        "maxRecords": {
+          "type": "number",
+          "maximum": 100,
+          "description": "Maximum number of records"
+        },
+        "pageSize": {
+          "type": "number",
+          "maximum": 100,
+          "description": "Page size"
+        },
+        "sort": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              }
+            }
+          },
+          "description": "Sort configuration"
+        },
+        "view": {
+          "type": "string",
+          "description": "View name"
         }
       },
       "required": [
@@ -79,7 +110,7 @@
         },
         "category": {
           "type": "string",
-          "const": "database"
+          "const": "Database"
         },
         "appName": {
           "type": "string",
@@ -90,9 +121,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "data:read"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

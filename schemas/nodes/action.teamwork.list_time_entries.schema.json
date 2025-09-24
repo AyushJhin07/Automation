@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.teamwork.list_time_entries.schema.json",
+  "title": "Teamwork - List Time Entries",
+  "description": "List time entries with filters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.teamwork.list_time_entries",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "Filter by project ID"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Filter by task ID"
+        },
+        "person_id": {
+          "type": "string",
+          "description": "Filter by person ID"
+        },
+        "from_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter entries from date (YYYY-MM-DD)"
+        },
+        "to_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter entries to date (YYYY-MM-DD)"
+        },
+        "billable": {
+          "type": "boolean",
+          "description": "Filter by billable status"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 25,
+          "description": "Number of entries per page"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Teamwork"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

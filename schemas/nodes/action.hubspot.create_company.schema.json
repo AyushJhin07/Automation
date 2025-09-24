@@ -41,36 +41,40 @@
       "type": "object",
       "properties": {
         "name": {
-          "description": "Company name",
-          "type": "string"
+          "type": "string",
+          "description": "Company name"
         },
         "domain": {
-          "description": "Company website domain",
-          "type": "string"
+          "type": "string",
+          "description": "Company domain"
         },
         "industry": {
-          "description": "Company industry",
-          "type": "string"
+          "type": "string",
+          "description": "Company industry"
         },
         "phone": {
-          "description": "Company phone number",
-          "type": "string"
+          "type": "string",
+          "description": "Company phone number"
         },
         "city": {
-          "description": "Company city",
-          "type": "string"
+          "type": "string",
+          "description": "Company city"
         },
         "state": {
-          "description": "Company state/region",
-          "type": "string"
+          "type": "string",
+          "description": "Company state"
         },
         "country": {
-          "description": "Company country",
-          "type": "string"
+          "type": "string",
+          "description": "Company country"
         },
         "numberofemployees": {
-          "description": "Number of employees",
-          "type": "number"
+          "type": "number",
+          "description": "Number of employees"
+        },
+        "annualrevenue": {
+          "type": "number",
+          "description": "Annual revenue"
         }
       },
       "required": [
@@ -100,9 +104,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "contacts"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

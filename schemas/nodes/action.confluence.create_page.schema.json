@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.confluence.create_page.schema.json",
-  "title": "Confluence - Create Page",
-  "description": "Create a new Confluence page",
+  "title": "Atlassian Confluence - Create Page",
+  "description": "Create a new page in Confluence",
   "type": "object",
   "required": [
     "id",
@@ -40,34 +40,76 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "space_key": {
-          "description": "Space key",
-          "type": "string"
+        "cloudid": {
+          "type": "string",
+          "description": "Atlassian cloud ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "page",
+            "blogpost"
+          ],
+          "default": "page",
+          "description": "Content type"
         },
         "title": {
-          "description": "Page title",
-          "type": "string"
+          "type": "string",
+          "description": "Page title"
         },
-        "content": {
-          "description": "Page content (Confluence storage format)",
-          "type": "string"
+        "space": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "description": "Space information"
         },
-        "parent_id": {
-          "description": "Parent page ID",
-          "type": "string"
+        "body": {
+          "type": "object",
+          "properties": {
+            "storage": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "representation": {
+                  "type": "string",
+                  "enum": [
+                    "storage",
+                    "view",
+                    "wiki"
+                  ]
+                }
+              }
+            }
+          },
+          "description": "Page content"
         },
-        "labels": {
-          "description": "Page labels",
+        "ancestors": {
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Parent pages"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Page metadata"
         }
       },
       "required": [
-        "space_key",
+        "cloudid",
         "title",
-        "content"
+        "space",
+        "body"
       ],
       "additionalProperties": false
     },
@@ -82,20 +124,18 @@
         },
         "category": {
           "type": "string",
-          "const": "Collaboration"
+          "const": "Documentation"
         },
         "appName": {
           "type": "string",
-          "const": "Confluence"
+          "const": "Atlassian Confluence"
         },
         "requiredScopes": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [
-            "write:confluence-content"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

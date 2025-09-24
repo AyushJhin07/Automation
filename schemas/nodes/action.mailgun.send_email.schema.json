@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailgun.send_email.schema.json",
+  "title": "Mailgun - Send Email",
+  "description": "Send an email message",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailgun.send_email",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "type": "string",
+          "description": "Your Mailgun domain"
+        },
+        "from": {
+          "type": "string",
+          "description": "Email address of the sender"
+        },
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Email address(es) of the recipient(s)"
+        },
+        "cc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Same as To but for CC"
+        },
+        "bcc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Same as To but for BCC"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Message subject"
+        },
+        "text": {
+          "type": "string",
+          "description": "Body of the message (text version)"
+        },
+        "html": {
+          "type": "string",
+          "description": "Body of the message (HTML version)"
+        },
+        "attachment": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "File attachment URLs"
+        },
+        "inline": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Attachment with inline disposition"
+        },
+        "tag": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tag string for tracking purposes"
+        },
+        "dkim": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enables/disables DKIM signatures"
+        },
+        "deliverytime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Desired time of delivery"
+        },
+        "testmode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enables sending in test mode"
+        },
+        "tracking": {
+          "type": "boolean",
+          "description": "Toggles tracking on a per-message basis"
+        },
+        "tracking-clicks": {
+          "type": "boolean",
+          "description": "Toggles clicks tracking on a per-message basis"
+        },
+        "tracking-opens": {
+          "type": "boolean",
+          "description": "Toggles opens tracking on a per-message basis"
+        },
+        "require-tls": {
+          "type": "boolean",
+          "default": false,
+          "description": "Requires recipient TLS verification"
+        },
+        "skip-verification": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip recipient verification"
+        }
+      },
+      "required": [
+        "domain",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailgun"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

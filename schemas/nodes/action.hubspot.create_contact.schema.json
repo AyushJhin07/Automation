@@ -41,36 +41,57 @@
       "type": "object",
       "properties": {
         "email": {
-          "description": "Contact's email address",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Contact's email address"
         },
         "firstname": {
-          "description": "Contact's first name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's first name"
         },
         "lastname": {
-          "description": "Contact's last name",
-          "type": "string"
-        },
-        "company": {
-          "description": "Contact's company name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's last name"
         },
         "phone": {
-          "description": "Contact's phone number",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's phone number"
+        },
+        "company": {
+          "type": "string",
+          "description": "Contact's company"
         },
         "website": {
-          "description": "Contact's website",
-          "type": "string"
+          "type": "string",
+          "description": "Contact's website"
         },
         "lifecyclestage": {
-          "description": "Contact's lifecycle stage",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "subscriber",
+            "lead",
+            "marketingqualifiedlead",
+            "salesqualifiedlead",
+            "opportunity",
+            "customer",
+            "evangelist",
+            "other"
+          ],
+          "description": "Contact's lifecycle stage"
         },
-        "lead_status": {
-          "description": "Lead status",
-          "type": "string"
+        "hs_lead_status": {
+          "type": "string",
+          "enum": [
+            "NEW",
+            "OPEN",
+            "IN_PROGRESS",
+            "OPEN_DEAL",
+            "UNQUALIFIED",
+            "ATTEMPTED_TO_CONTACT",
+            "CONNECTED",
+            "BAD_TIMING"
+          ],
+          "description": "Lead status"
         }
       },
       "required": [
@@ -100,9 +121,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "contacts"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

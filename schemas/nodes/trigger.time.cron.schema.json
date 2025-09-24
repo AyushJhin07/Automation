@@ -1,37 +1,145 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.time.cron.schema.json",
-  "title": "Cron Time Trigger Node",
+  "title": "Time Trigger - Cron",
   "description": "A time-based trigger that runs on a cron schedule",
   "type": "object",
-  "required": ["schedule"],
+  "required": [
+    "id",
+    "type",
+    "position"
+  ],
   "properties": {
-    "schedule": {
+    "id": {
       "type": "string",
-      "pattern": "^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\d+(ns|us|µs|ms|s|m|h))+)|(((\\d+,)+\\d+|(\\d+([/-])\\d+)|\\d+|\\*) ?){5,7}$",
-      "description": "Cron expression or Apps Script trigger frequency",
-      "examples": [
-        "0 9 * * 1-5",
-        "@daily", 
-        "@hourly",
-        "*/15 * * * *"
-      ]
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
     },
-    "timezone": {
+    "type": {
       "type": "string",
-      "default": "America/New_York",
-      "description": "Timezone for the schedule"
+      "const": "trigger.time.cron",
+      "description": "Node type identifier"
     },
-    "enabled": {
-      "type": "boolean",
-      "default": true,
-      "description": "Whether this trigger is active"
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
     },
-    "description": {
-      "type": "string",
-      "maxLength": 200,
-      "description": "Human-readable description of when this runs"
+    "params": {
+      "type": "object",
+      "properties": {
+        "schedule": {
+          "type": "string",
+          "pattern": "^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\d+(ns|us|µs|ms|s|m|h))+)|(((\\d+,)+\\d+|(\\d+([/-])\\d+)|\\d+|\\*) ?){5,7}$",
+          "description": "Cron expression or Apps Script trigger frequency",
+          "examples": [
+            "0 9 * * 1-5",
+            "@daily",
+            "@hourly",
+            "*/15 * * * *"
+          ]
+        },
+        "timezone": {
+          "type": "string",
+          "default": "America/New_York",
+          "description": "Timezone for the schedule"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this trigger is active"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Human-readable description of when this runs"
+        }
+      },
+      "required": [
+        "schedule"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "schedule": {
+          "type": "string",
+          "pattern": "^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\d+(ns|us|µs|ms|s|m|h))+)|(((\\d+,)+\\d+|(\\d+([/-])\\d+)|\\d+|\\*) ?){5,7}$",
+          "description": "Cron expression or Apps Script trigger frequency",
+          "examples": [
+            "0 9 * * 1-5",
+            "@daily",
+            "@hourly",
+            "*/15 * * * *"
+          ]
+        },
+        "timezone": {
+          "type": "string",
+          "default": "America/New_York",
+          "description": "Timezone for the schedule"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this trigger is active"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Human-readable description of when this runs"
+        }
+      },
+      "required": [
+        "schedule"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "default": "Scheduled Trigger"
+        },
+        "description": {
+          "type": "string",
+          "default": "Runs on an automated schedule defined by a cron expression"
+        },
+        "category": {
+          "type": "string",
+          "const": "Automation"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Time Scheduler"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "params"
+      ]
+    },
+    {
+      "required": [
+        "parameters"
+      ]
+    }
+  ]
 }

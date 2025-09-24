@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoom-enhanced.update_meeting.schema.json",
+  "title": "Zoom Enhanced - Update Meeting",
+  "description": "Update meeting details",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoom-enhanced.update_meeting",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "meetingId": {
+          "type": "string",
+          "description": "Meeting ID"
+        },
+        "occurrence_id": {
+          "type": "string",
+          "description": "Occurrence ID for recurring meetings"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Meeting topic"
+        },
+        "type": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            8
+          ],
+          "description": "Meeting type"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Meeting start time (ISO 8601)"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Meeting duration in minutes"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone"
+        },
+        "password": {
+          "type": "string",
+          "description": "Meeting password"
+        },
+        "agenda": {
+          "type": "string",
+          "description": "Meeting agenda"
+        },
+        "recurrence": {
+          "type": "object",
+          "description": "Recurrence settings"
+        },
+        "settings": {
+          "type": "object",
+          "description": "Meeting settings"
+        },
+        "tracking_fields": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Tracking fields"
+        }
+      },
+      "required": [
+        "meetingId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoom Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.greenhouse.list_jobs.schema.json",
+  "title": "Greenhouse - List Jobs",
+  "description": "List all jobs",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.greenhouse.list_jobs",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100,
+          "description": "Number of jobs per page"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "created_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return jobs created before this timestamp"
+        },
+        "created_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return jobs created after this timestamp"
+        },
+        "updated_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return jobs updated before this timestamp"
+        },
+        "updated_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return jobs updated after this timestamp"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed",
+            "draft"
+          ],
+          "description": "Filter by job status"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Greenhouse"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

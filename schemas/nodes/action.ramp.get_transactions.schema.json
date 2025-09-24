@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.ramp.get_transactions.schema.json",
+  "title": "Ramp - Get Transactions",
+  "description": "Get list of transactions",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.ramp.get_transactions",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 25,
+          "description": "Number of transactions to return"
+        },
+        "start": {
+          "type": "string",
+          "description": "Pagination cursor"
+        },
+        "from_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter transactions from this date"
+        },
+        "to_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter transactions to this date"
+        },
+        "card_id": {
+          "type": "string",
+          "description": "Filter by card ID"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "Filter by user ID"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Ramp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

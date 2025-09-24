@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.okta.deactivate_user.schema.json",
   "title": "Okta - Deactivate User",
-  "description": "Deactivate a user account",
+  "description": "Deactivate a user",
   "type": "object",
   "required": [
     "id",
@@ -41,13 +41,13 @@
       "type": "object",
       "properties": {
         "userId": {
-          "description": "User ID",
-          "type": "string"
+          "type": "string",
+          "description": "User ID"
         },
         "sendEmail": {
-          "description": "Send deactivation email",
           "type": "boolean",
-          "default": false
+          "default": false,
+          "description": "Whether to send deactivation email"
         }
       },
       "required": [
@@ -66,7 +66,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Identity Management"
+          "const": "Security"
         },
         "appName": {
           "type": "string",
@@ -77,9 +77,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "users:manage"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.calendly.get_scheduled_events.schema.json",
+  "title": "Calendly - Get Scheduled Events",
+  "description": "Retrieve scheduled events",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.calendly.get_scheduled_events",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "User URI"
+        },
+        "organization": {
+          "type": "string",
+          "description": "Organization URI"
+        },
+        "count": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20,
+          "description": "Number of events to return"
+        },
+        "page_token": {
+          "type": "string",
+          "description": "Pagination token"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "start_time:asc",
+            "start_time:desc"
+          ],
+          "description": "Sort order"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "canceled"
+          ],
+          "description": "Event status filter"
+        },
+        "min_start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Minimum start time filter"
+        },
+        "max_start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Maximum start time filter"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Scheduling"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Calendly"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

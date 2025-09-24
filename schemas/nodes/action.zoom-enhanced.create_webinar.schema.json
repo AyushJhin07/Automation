@@ -1,0 +1,273 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoom-enhanced.create_webinar.schema.json",
+  "title": "Zoom Enhanced - Create Webinar",
+  "description": "Schedule a new webinar",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoom-enhanced.create_webinar",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID or email address"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Webinar topic"
+        },
+        "type": {
+          "type": "number",
+          "enum": [
+            5,
+            6,
+            9
+          ],
+          "default": 5,
+          "description": "Webinar type (5=webinar, 6=recurring webinar no fixed time, 9=recurring webinar fixed time)"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Webinar start time (ISO 8601)"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Webinar duration in minutes"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone"
+        },
+        "password": {
+          "type": "string",
+          "description": "Webinar password"
+        },
+        "agenda": {
+          "type": "string",
+          "description": "Webinar agenda"
+        },
+        "recurrence": {
+          "type": "object",
+          "description": "Recurrence settings"
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "host_video": {
+              "type": "boolean",
+              "default": false
+            },
+            "panelists_video": {
+              "type": "boolean",
+              "default": false
+            },
+            "practice_session": {
+              "type": "boolean",
+              "default": false
+            },
+            "hd_video": {
+              "type": "boolean",
+              "default": false
+            },
+            "approval_type": {
+              "type": "number",
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            },
+            "registration_type": {
+              "type": "number",
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            },
+            "audio": {
+              "type": "string",
+              "enum": [
+                "both",
+                "telephony",
+                "voip"
+              ]
+            },
+            "auto_recording": {
+              "type": "string",
+              "enum": [
+                "local",
+                "cloud",
+                "none"
+              ]
+            },
+            "enforce_login": {
+              "type": "boolean",
+              "default": false
+            },
+            "enforce_login_domains": {
+              "type": "string"
+            },
+            "alternative_hosts": {
+              "type": "string"
+            },
+            "close_registration": {
+              "type": "boolean",
+              "default": false
+            },
+            "show_share_button": {
+              "type": "boolean",
+              "default": false
+            },
+            "allow_multiple_devices": {
+              "type": "boolean",
+              "default": false
+            },
+            "on_demand": {
+              "type": "boolean",
+              "default": false
+            },
+            "global_dial_in_countries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "contact_name": {
+              "type": "string"
+            },
+            "contact_email": {
+              "type": "string",
+              "format": "email"
+            },
+            "registrants_email_notification": {
+              "type": "boolean",
+              "default": true
+            },
+            "post_webinar_survey": {
+              "type": "boolean",
+              "default": false
+            },
+            "survey_url": {
+              "type": "string"
+            },
+            "registrants_restrict_number": {
+              "type": "number"
+            },
+            "notify_registrants": {
+              "type": "boolean",
+              "default": true
+            },
+            "webinar_live_stream": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "live_streaming_service": {
+                  "type": "string"
+                },
+                "page_url": {
+                  "type": "string"
+                },
+                "stream_key": {
+                  "type": "string"
+                },
+                "stream_url": {
+                  "type": "string"
+                }
+              }
+            },
+            "email_language": {
+              "type": "string"
+            },
+            "panelists_invitation_email_notification": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "description": "Webinar settings"
+        },
+        "tracking_fields": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Tracking fields"
+        },
+        "template_id": {
+          "type": "string",
+          "description": "Webinar template ID"
+        }
+      },
+      "required": [
+        "userId",
+        "topic"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoom Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

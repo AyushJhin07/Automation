@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.freshdesk.ticket_created.schema.json",
   "title": "Freshdesk - Ticket Created",
-  "description": "Triggered when a ticket is created",
+  "description": "Triggered when a new ticket is created",
   "type": "object",
   "required": [
     "id",
@@ -39,7 +39,12 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "group_id": {
+          "type": "number",
+          "description": "Filter by group"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },

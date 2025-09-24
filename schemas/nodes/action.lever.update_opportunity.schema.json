@@ -40,19 +40,77 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "opportunity_id": {
-          "description": "Opportunity ID",
-          "type": "string"
+        "id": {
+          "type": "string",
+          "description": "Opportunity ID"
         },
-        "updates": {
-          "description": "Fields to update",
+        "name": {
+          "type": "string",
+          "description": "Candidate name"
+        },
+        "headline": {
+          "type": "string",
+          "description": "Candidate headline"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Candidate summary"
+        },
+        "location": {
+          "type": "string",
+          "description": "Candidate location"
+        },
+        "phone": {
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "home",
+                "work",
+                "mobile",
+                "other"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "description": "Phone number"
+        },
+        "emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "Email addresses"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags to apply"
+        },
+        "owner": {
+          "type": "string",
+          "description": "User ID of opportunity owner"
+        },
+        "followers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "User IDs of followers"
+        },
+        "stage": {
+          "type": "string",
+          "description": "Stage ID"
         }
       },
       "required": [
-        "opportunity_id",
-        "updates"
+        "id"
       ],
       "additionalProperties": false
     },
@@ -67,7 +125,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Recruitment"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -78,9 +136,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "opportunities:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

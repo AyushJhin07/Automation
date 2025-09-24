@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.dynamics365.create_account.schema.json",
+  "title": "Microsoft Dynamics 365 - Create Account",
+  "description": "Create a new account record",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.dynamics365.create_account",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Account name"
+        },
+        "accountnumber": {
+          "type": "string",
+          "description": "Account number"
+        },
+        "telephone1": {
+          "type": "string",
+          "description": "Main phone number"
+        },
+        "emailaddress1": {
+          "type": "string",
+          "format": "email",
+          "description": "Primary email address"
+        },
+        "websiteurl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Website URL"
+        },
+        "address1_line1": {
+          "type": "string",
+          "description": "Street address line 1"
+        },
+        "address1_city": {
+          "type": "string",
+          "description": "City"
+        },
+        "address1_stateorprovince": {
+          "type": "string",
+          "description": "State or province"
+        },
+        "address1_postalcode": {
+          "type": "string",
+          "description": "Postal code"
+        },
+        "address1_country": {
+          "type": "string",
+          "description": "Country"
+        },
+        "industrycode": {
+          "type": "number",
+          "description": "Industry code"
+        },
+        "revenue": {
+          "type": "number",
+          "description": "Annual revenue"
+        },
+        "numberofemployees": {
+          "type": "number",
+          "description": "Number of employees"
+        },
+        "description": {
+          "type": "string",
+          "description": "Account description"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft Dynamics 365"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

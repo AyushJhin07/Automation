@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.update_customer.schema.json",
   "title": "Shopify - Update Customer",
-  "description": "Update customer information",
+  "description": "Update an existing customer",
   "type": "object",
   "required": [
     "id",
@@ -40,29 +40,38 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "customerId": {
-          "description": "Customer ID",
-          "type": "string"
+        "customer_id": {
+          "type": "string",
+          "description": "Customer ID to update"
         },
         "first_name": {
-          "description": "Customer first name",
-          "type": "string"
+          "type": "string",
+          "description": "Customer's first name"
         },
         "last_name": {
-          "description": "Customer last name",
-          "type": "string"
+          "type": "string",
+          "description": "Customer's last name"
         },
         "email": {
-          "description": "Customer email",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Customer's email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer's phone number"
         },
         "tags": {
-          "description": "Customer tags",
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated customer tags"
+        },
+        "accepts_marketing": {
+          "type": "boolean",
+          "description": "Whether customer accepts marketing"
         }
       },
       "required": [
-        "customerId"
+        "customer_id"
       ],
       "additionalProperties": false
     },
@@ -88,9 +97,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_customers"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

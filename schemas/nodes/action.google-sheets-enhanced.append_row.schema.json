@@ -41,19 +41,28 @@
       "type": "object",
       "properties": {
         "spreadsheetId": {
-          "description": "Spreadsheet ID",
-          "type": "string"
+          "type": "string",
+          "description": "Spreadsheet ID"
         },
         "sheet": {
-          "description": "Sheet name",
-          "type": "string"
+          "type": "string",
+          "description": "Sheet name or range (e.g., 'Sheet1' or 'Sheet1!A1:C1')"
         },
         "values": {
-          "description": "Array of cell values",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Array of cell values to append"
+        },
+        "valueInputOption": {
+          "type": "string",
+          "enum": [
+            "RAW",
+            "USER_ENTERED"
+          ],
+          "default": "USER_ENTERED",
+          "description": "How values should be interpreted"
         }
       },
       "required": [
@@ -85,9 +94,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/spreadsheets"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

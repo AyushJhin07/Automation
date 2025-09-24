@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.concur.create_expense_entry.schema.json",
+  "title": "SAP Concur - Create Expense Entry",
+  "description": "Create a new expense entry",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.concur.create_expense_entry",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "description": "Report ID"
+        },
+        "ExpenseTypeCode": {
+          "type": "string",
+          "description": "Expense type code"
+        },
+        "TransactionDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Transaction date"
+        },
+        "TransactionAmount": {
+          "type": "number",
+          "description": "Transaction amount"
+        },
+        "TransactionCurrencyCode": {
+          "type": "string",
+          "description": "Transaction currency"
+        },
+        "Description": {
+          "type": "string",
+          "description": "Expense description"
+        },
+        "VendorDescription": {
+          "type": "string",
+          "description": "Vendor description"
+        },
+        "LocationName": {
+          "type": "string",
+          "description": "Location name"
+        },
+        "Comment": {
+          "type": "string",
+          "description": "Entry comment"
+        }
+      },
+      "required": [
+        "reportId",
+        "ExpenseTypeCode",
+        "TransactionDate",
+        "TransactionAmount"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SAP Concur"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

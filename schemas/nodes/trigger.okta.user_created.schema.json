@@ -39,7 +39,12 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "description": "Filter by group ID"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -54,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Identity Management"
+          "const": "Security"
         },
         "appName": {
           "type": "string",
@@ -65,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "users:read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify-enhanced.create_webhook.schema.json",
+  "title": "Shopify Enhanced - Create Webhook",
+  "description": "Create a new webhook",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify-enhanced.create_webhook",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "webhook": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "enum": [
+                "orders/create",
+                "orders/delete",
+                "orders/updated",
+                "orders/paid",
+                "orders/cancelled",
+                "orders/fulfilled",
+                "orders/partially_fulfilled",
+                "order_transactions/create",
+                "carts/create",
+                "carts/update",
+                "checkouts/create",
+                "checkouts/delete",
+                "checkouts/update",
+                "refunds/create",
+                "products/create",
+                "products/update",
+                "products/delete",
+                "collections/create",
+                "collections/update",
+                "collections/delete",
+                "customer_groups/create",
+                "customer_groups/update",
+                "customer_groups/delete",
+                "customers/create",
+                "customers/delete",
+                "customers/disable",
+                "customers/enable",
+                "customers/update",
+                "fulfillments/create",
+                "fulfillments/update",
+                "shop/update",
+                "disputes/create",
+                "disputes/update",
+                "app/uninstalled",
+                "channels/delete",
+                "product_publications/create",
+                "product_publications/delete",
+                "product_publications/update",
+                "collection_publications/create",
+                "collection_publications/delete",
+                "collection_publications/update",
+                "variants/in_stock",
+                "variants/out_of_stock",
+                "inventory_levels/connect",
+                "inventory_levels/update",
+                "inventory_levels/disconnect",
+                "inventory_items/create",
+                "inventory_items/update",
+                "inventory_items/delete",
+                "locations/create",
+                "locations/update",
+                "locations/delete",
+                "tender_transactions/create",
+                "customers_marketing_consent/update",
+                "customers_email_marketing_consent/update",
+                "subscription_billing_attempts/success",
+                "subscription_billing_attempts/failure",
+                "subscription_billing_attempts/challenged",
+                "subscription_contracts/create",
+                "subscription_contracts/update",
+                "bulk_operations/finish",
+                "domains/create",
+                "domains/update",
+                "domains/destroy"
+              ]
+            },
+            "address": {
+              "type": "string",
+              "format": "uri"
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json",
+                "xml"
+              ],
+              "default": "json"
+            }
+          },
+          "required": [
+            "topic",
+            "address"
+          ],
+          "additionalProperties": false,
+          "description": "Webhook data"
+        }
+      },
+      "required": [
+        "webhook"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

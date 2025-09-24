@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-sheets-enhanced.sort_range.schema.json",
+  "title": "Google Sheets Enhanced - Sort Range",
+  "description": "Sort a range of cells",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-sheets-enhanced.sort_range",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "spreadsheetId": {
+          "type": "string",
+          "description": "Spreadsheet ID"
+        },
+        "range": {
+          "type": "string",
+          "description": "Range to sort"
+        },
+        "sortSpecs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dimensionIndex": {
+                "type": "number"
+              },
+              "sortOrder": {
+                "type": "string",
+                "enum": [
+                  "ASCENDING",
+                  "DESCENDING"
+                ]
+              }
+            }
+          },
+          "description": "Sort specifications"
+        }
+      },
+      "required": [
+        "spreadsheetId",
+        "range",
+        "sortSpecs"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Sheets Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

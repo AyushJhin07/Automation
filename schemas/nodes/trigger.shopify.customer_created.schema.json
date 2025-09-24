@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.shopify.customer_created.schema.json",
   "title": "Shopify - Customer Created",
-  "description": "Trigger when new customer is created",
+  "description": "Triggered when a new customer is created",
   "type": "object",
   "required": [
     "id",
@@ -39,12 +39,7 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {
-        "tags": {
-          "description": "Filter by customer tags",
-          "type": "string"
-        }
-      },
+      "properties": {},
       "required": [],
       "additionalProperties": false
     },
@@ -70,9 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_customers"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

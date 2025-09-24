@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.guru.create_card.schema.json",
+  "title": "Guru - Create Card",
+  "description": "Create a new card",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.guru.create_card",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "preferredPhrase": {
+          "type": "string",
+          "description": "Card title/preferred phrase"
+        },
+        "content": {
+          "type": "string",
+          "description": "Card content in HTML"
+        },
+        "collection": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "description": "Collection to add card to"
+        },
+        "verificationState": {
+          "type": "string",
+          "enum": [
+            "NEEDS_VERIFICATION",
+            "VERIFIED"
+          ],
+          "default": "NEEDS_VERIFICATION",
+          "description": "Verification state"
+        },
+        "verificationInterval": {
+          "type": "number",
+          "minimum": 30,
+          "description": "Verification interval in days"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags to add to the card"
+        },
+        "shareStatus": {
+          "type": "string",
+          "enum": [
+            "TEAM",
+            "PRIVATE"
+          ],
+          "default": "TEAM",
+          "description": "Share status"
+        }
+      },
+      "required": [
+        "preferredPhrase",
+        "content",
+        "collection"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Knowledge Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Guru"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

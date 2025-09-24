@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoho-books.create_invoice.schema.json",
+  "title": "Zoho Books - Create Invoice",
+  "description": "Create a new invoice",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoho-books.create_invoice",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customerId": {
+          "type": "string",
+          "description": "Customer ID"
+        },
+        "invoiceNumber": {
+          "type": "string",
+          "description": "Invoice number"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Invoice date"
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Due date"
+        },
+        "lineItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "itemId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "rate": {
+                "type": "number",
+                "minimum": 0
+              },
+              "quantity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "unit": {
+                "type": "string"
+              },
+              "discount": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "taxId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "rate",
+              "quantity"
+            ]
+          },
+          "description": "Invoice line items"
+        },
+        "discount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Discount amount or percentage"
+        },
+        "isDiscountBeforeTax": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether discount is applied before tax"
+        },
+        "discountType": {
+          "type": "string",
+          "enum": [
+            "entity_level",
+            "item_level"
+          ],
+          "description": "Discount type"
+        },
+        "exchangeRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Exchange rate"
+        },
+        "recurringInvoiceId": {
+          "type": "string",
+          "description": "Recurring invoice ID"
+        },
+        "salespersonName": {
+          "type": "string",
+          "description": "Salesperson name"
+        },
+        "customFields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "customfieldId": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Custom fields"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes"
+        },
+        "terms": {
+          "type": "string",
+          "description": "Terms and conditions"
+        }
+      },
+      "required": [
+        "customerId",
+        "lineItems"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoho Books"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

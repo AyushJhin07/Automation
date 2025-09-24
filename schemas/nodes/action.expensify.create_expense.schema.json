@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.expensify.create_expense.schema.json",
+  "title": "Expensify - Create Expense",
+  "description": "Create a new expense",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.expensify.create_expense",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "partnerUserSecret": {
+          "type": "string",
+          "description": "Partner user secret"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Expense amount in cents"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD",
+          "description": "Currency code"
+        },
+        "merchant": {
+          "type": "string",
+          "description": "Merchant name"
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "description": "Expense date (YYYY-MM-DD)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Expense category"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Expense tag"
+        },
+        "billable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Is expense billable"
+        },
+        "reimbursable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is expense reimbursable"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Expense comment"
+        },
+        "receiptFilename": {
+          "type": "string",
+          "description": "Receipt filename"
+        },
+        "receiptData": {
+          "type": "string",
+          "description": "Receipt data (base64 encoded)"
+        }
+      },
+      "required": [
+        "partnerUserSecret",
+        "amount",
+        "merchant",
+        "created"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Expensify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

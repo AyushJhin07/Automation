@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.quickbooks.create_item.schema.json",
+  "title": "QuickBooks - Create Item",
+  "description": "Create a new item",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.quickbooks.create_item",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "companyId": {
+          "type": "string",
+          "description": "Company ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Item name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Item description"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Inventory",
+            "NonInventory",
+            "Service"
+          ],
+          "description": "Item type"
+        },
+        "trackQtyOnHand": {
+          "type": "boolean",
+          "description": "Track quantity on hand"
+        },
+        "unitPrice": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Unit price"
+        },
+        "incomeAccountRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Income account reference"
+        },
+        "expenseAccountRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Expense account reference"
+        },
+        "assetAccountRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Asset account reference"
+        },
+        "taxable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether item is taxable"
+        },
+        "salesTaxCodeRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Sales tax code reference"
+        },
+        "purchaseTaxCodeRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Purchase tax code reference"
+        }
+      },
+      "required": [
+        "companyId",
+        "name",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "QuickBooks"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

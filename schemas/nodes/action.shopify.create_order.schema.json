@@ -41,26 +41,127 @@
       "type": "object",
       "properties": {
         "line_items": {
-          "description": "Order line items",
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "type": "object",
+            "properties": {
+              "variant_id": {
+                "type": "string"
+              },
+              "product_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              },
+              "price": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Order line items"
         },
         "customer": {
-          "description": "Customer information",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            }
+          },
+          "description": "Customer information"
         },
         "billing_address": {
-          "description": "Billing address",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "address1": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "province": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "zip": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            }
+          },
+          "description": "Billing address"
         },
         "shipping_address": {
-          "description": "Shipping address",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "address1": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "province": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "zip": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            }
+          },
+          "description": "Shipping address"
+        },
+        "financial_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "authorized",
+            "paid"
+          ],
+          "default": "pending",
+          "description": "Financial status of the order"
+        },
+        "send_receipt": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send order confirmation email"
+        },
+        "send_fulfillment_receipt": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send fulfillment notification email"
         }
       },
       "required": [
@@ -90,9 +191,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_orders"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -54,7 +54,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Recruitment"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -65,9 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "opportunities:read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

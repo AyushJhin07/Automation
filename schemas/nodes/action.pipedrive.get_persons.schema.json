@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.pipedrive.get_persons.schema.json",
+  "title": "Pipedrive - Get Persons",
+  "description": "Get list of persons",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.pipedrive.get_persons",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "number",
+          "description": "Filter by user ID"
+        },
+        "filter_id": {
+          "type": "number",
+          "description": "Filter ID to apply"
+        },
+        "first_char": {
+          "type": "string",
+          "description": "Filter by first character of name"
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Pagination start"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Number of persons to return"
+        },
+        "sort": {
+          "type": "string",
+          "description": "Sort field and direction"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Pipedrive"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

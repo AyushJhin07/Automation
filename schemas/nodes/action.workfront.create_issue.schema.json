@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.workfront.create_issue.schema.json",
+  "title": "Adobe Workfront - Create Issue",
+  "description": "Create a new issue",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.workfront.create_issue",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Issue name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Issue description"
+        },
+        "projectID": {
+          "type": "string",
+          "description": "Project ID"
+        },
+        "assignedToID": {
+          "type": "string",
+          "description": "Assigned user ID"
+        },
+        "submittedByID": {
+          "type": "string",
+          "description": "Submitted by user ID"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Issue priority"
+        },
+        "severity": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Issue severity"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "NEW",
+            "INP",
+            "CLS",
+            "REO"
+          ],
+          "description": "Issue status"
+        },
+        "resolutionType": {
+          "type": "string",
+          "enum": [
+            "FIXED",
+            "WONTFIX",
+            "DUPLICATE",
+            "CANNOT_REPRODUCE"
+          ],
+          "description": "Resolution type"
+        },
+        "plannedCompletionDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Planned completion date"
+        }
+      },
+      "required": [
+        "name",
+        "projectID"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adobe Workfront"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

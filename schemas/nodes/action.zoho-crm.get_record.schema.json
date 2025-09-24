@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.zoho-crm.get_record.schema.json",
-  "title": "Zoho Crm - Get Record",
-  "description": "Retrieve a specific record",
+  "title": "Zoho CRM - Get Record",
+  "description": "Get a specific record",
   "type": "object",
   "required": [
     "id",
@@ -40,13 +40,39 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "id": {
-          "description": "Record ID",
-          "type": "string"
+        "module": {
+          "type": "string",
+          "enum": [
+            "Leads",
+            "Contacts",
+            "Accounts",
+            "Deals",
+            "Tasks",
+            "Events",
+            "Calls",
+            "Solutions",
+            "Products",
+            "Quotes",
+            "Sales_Orders",
+            "Purchase_Orders",
+            "Invoices",
+            "Campaigns",
+            "Vendors"
+          ],
+          "description": "Module name"
+        },
+        "record_id": {
+          "type": "string",
+          "description": "Record ID"
+        },
+        "fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to retrieve"
         }
       },
       "required": [
-        "id"
+        "module",
+        "record_id"
       ],
       "additionalProperties": false
     },
@@ -61,11 +87,11 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",
-          "const": "Zoho Crm"
+          "const": "Zoho CRM"
         },
         "requiredScopes": {
           "type": "array",

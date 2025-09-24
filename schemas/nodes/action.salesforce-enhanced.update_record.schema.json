@@ -40,19 +40,23 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "id": {
-          "description": "Record ID",
-          "type": "string"
+        "sobjectType": {
+          "type": "string",
+          "description": "SObject type"
         },
-        "data": {
-          "description": "Updated data",
+        "recordId": {
+          "type": "string",
+          "description": "Record ID"
+        },
+        "fields": {
           "type": "object",
-          "additionalProperties": true
+          "description": "Fields to update"
         }
       },
       "required": [
-        "id",
-        "data"
+        "sobjectType",
+        "recordId",
+        "fields"
       ],
       "additionalProperties": false
     },
@@ -67,7 +71,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",

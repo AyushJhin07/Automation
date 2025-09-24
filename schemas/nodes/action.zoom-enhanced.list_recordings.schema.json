@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoom-enhanced.list_recordings.schema.json",
+  "title": "Zoom Enhanced - List Recordings",
+  "description": "List cloud recordings for a user",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoom-enhanced.list_recordings",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID or email address"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 30,
+          "maximum": 300,
+          "default": 30,
+          "description": "Number of recordings per page"
+        },
+        "next_page_token": {
+          "type": "string",
+          "description": "Next page token for pagination"
+        },
+        "mc": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "description": "Query multicloud recordings"
+        },
+        "trash": {
+          "type": "boolean",
+          "description": "Query recordings from trash"
+        },
+        "from": {
+          "type": "string",
+          "format": "date",
+          "description": "Start date (YYYY-MM-DD)"
+        },
+        "to": {
+          "type": "string",
+          "format": "date",
+          "description": "End date (YYYY-MM-DD)"
+        },
+        "trash_type": {
+          "type": "string",
+          "enum": [
+            "meeting_recordings",
+            "recording_file"
+          ],
+          "description": "Trash type filter"
+        },
+        "meeting_id": {
+          "type": "number",
+          "description": "Meeting ID filter"
+        }
+      },
+      "required": [
+        "userId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoom Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

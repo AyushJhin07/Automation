@@ -41,16 +41,16 @@
       "type": "object",
       "properties": {
         "channel": {
-          "description": "Channel ID",
-          "type": "string"
+          "type": "string",
+          "description": "Channel ID to send message to"
         },
         "text": {
-          "description": "Message text",
-          "type": "string"
+          "type": "string",
+          "description": "Message text content"
         },
         "post_at": {
-          "description": "Unix timestamp when to send",
-          "type": "number"
+          "type": "number",
+          "description": "Unix timestamp for when to send the message"
         }
       },
       "required": [
@@ -82,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "chat:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

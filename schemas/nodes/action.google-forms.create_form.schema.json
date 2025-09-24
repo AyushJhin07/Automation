@@ -40,14 +40,23 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "title": {
-          "description": "Form title",
-          "type": "string"
+        "info": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "documentTitle": {
+              "type": "string"
+            }
+          },
+          "description": "Form information"
         }
       },
-      "required": [
-        "title"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -72,9 +81,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/forms"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

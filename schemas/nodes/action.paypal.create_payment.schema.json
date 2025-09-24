@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.paypal.create_payment.schema.json",
+  "title": "PayPal - Create Payment",
+  "description": "Create a direct payment (legacy API)",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.paypal.create_payment",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "intent": {
+          "type": "string",
+          "enum": [
+            "sale",
+            "authorize",
+            "order"
+          ],
+          "description": "Payment intent"
+        },
+        "payer": {
+          "type": "object",
+          "properties": {
+            "payment_method": {
+              "type": "string",
+              "enum": [
+                "credit_card",
+                "paypal"
+              ]
+            },
+            "funding_instruments": {
+              "type": "array"
+            }
+          },
+          "description": "Payer information"
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "object"
+              },
+              "description": {
+                "type": "string"
+              },
+              "invoice_number": {
+                "type": "string"
+              },
+              "custom": {
+                "type": "string"
+              },
+              "payment_options": {
+                "type": "object"
+              },
+              "soft_descriptor": {
+                "type": "string"
+              },
+              "item_list": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Transaction details"
+        },
+        "redirect_urls": {
+          "type": "object",
+          "properties": {
+            "return_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "cancel_url": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "description": "Redirect URLs for payment completion"
+        }
+      },
+      "required": [
+        "intent",
+        "payer",
+        "transactions"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Payments"
+        },
+        "appName": {
+          "type": "string",
+          "const": "PayPal"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

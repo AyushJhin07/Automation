@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.square.create_payment.schema.json",
+  "title": "Square - Create Payment",
+  "description": "Create a new payment",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.square.create_payment",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "description": "The ID of the payment source (card nonce, gift card, etc.)"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "description": "Unique string to ensure idempotency"
+        },
+        "amount_money": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "number",
+              "description": "Amount in smallest currency unit"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD)"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "additionalProperties": false,
+          "description": "Payment amount"
+        },
+        "location_id": {
+          "type": "string",
+          "description": "Location ID"
+        },
+        "reference_id": {
+          "type": "string",
+          "description": "External reference ID"
+        },
+        "note": {
+          "type": "string",
+          "description": "Payment note"
+        },
+        "autocomplete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to complete the payment automatically"
+        }
+      },
+      "required": [
+        "source_id",
+        "idempotency_key",
+        "amount_money"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Square"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

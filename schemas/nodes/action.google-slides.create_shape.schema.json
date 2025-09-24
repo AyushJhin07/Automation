@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-slides.create_shape.schema.json",
+  "title": "Google Slides - Create Shape",
+  "description": "Create a shape on a slide",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-slides.create_shape",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "presentationId": {
+          "type": "string",
+          "description": "Presentation ID"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "Slide ID to add shape to"
+        },
+        "objectId": {
+          "type": "string",
+          "description": "Object ID for the shape"
+        },
+        "shapeType": {
+          "type": "string",
+          "enum": [
+            "TEXT_BOX",
+            "RECTANGLE",
+            "ROUND_RECTANGLE",
+            "ELLIPSE",
+            "ARC",
+            "BENT_ARROW",
+            "BENT_UP_ARROW",
+            "BEVEL",
+            "BLOCK_ARC",
+            "BRACE_PAIR",
+            "BRACKET_PAIR",
+            "CAN",
+            "CHEVRON",
+            "CHORD",
+            "CLOUD",
+            "CORNER",
+            "CUBE",
+            "CURVED_DOWN_ARROW",
+            "CURVED_LEFT_ARROW",
+            "CURVED_RIGHT_ARROW",
+            "CURVED_UP_ARROW",
+            "DECAGON",
+            "DIAGONAL_STRIPE",
+            "DIAMOND",
+            "DODECAGON",
+            "DONUT",
+            "DOUBLE_WAVE",
+            "DOWN_ARROW",
+            "DOWN_ARROW_CALLOUT",
+            "FOLDED_CORNER",
+            "FRAME",
+            "HALF_FRAME",
+            "HEART",
+            "HEPTAGON",
+            "HEXAGON",
+            "HOME_PLATE",
+            "HORIZONTAL_SCROLL",
+            "IRREGULAR_SEAL_1",
+            "IRREGULAR_SEAL_2",
+            "LEFT_ARROW",
+            "LEFT_ARROW_CALLOUT",
+            "LEFT_BRACE",
+            "LEFT_BRACKET",
+            "LEFT_RIGHT_ARROW",
+            "LEFT_RIGHT_ARROW_CALLOUT",
+            "LEFT_RIGHT_UP_ARROW",
+            "LEFT_UP_ARROW",
+            "LIGHTNING_BOLT",
+            "MATH_DIVIDE",
+            "MATH_EQUAL",
+            "MATH_MINUS",
+            "MATH_MULTIPLY",
+            "MATH_NOT_EQUAL",
+            "MATH_PLUS",
+            "MOON",
+            "NONE",
+            "NO_SMOKING",
+            "NOTCHED_RIGHT_ARROW",
+            "OCTAGON",
+            "PARALLELOGRAM",
+            "PENTAGON",
+            "PIE",
+            "PLAQUE",
+            "PLUS",
+            "QUAD_ARROW",
+            "QUAD_ARROW_CALLOUT",
+            "RIBBON",
+            "RIBBON_2",
+            "RIGHT_ARROW",
+            "RIGHT_ARROW_CALLOUT",
+            "RIGHT_BRACE",
+            "RIGHT_BRACKET",
+            "RIGHT_TRIANGLE",
+            "ROUND_1_RECTANGLE",
+            "ROUND_2_DIAGONAL_RECTANGLE",
+            "ROUND_2_SAME_RECTANGLE",
+            "SMILEY_FACE",
+            "SNIP_1_RECTANGLE",
+            "SNIP_2_DIAGONAL_RECTANGLE",
+            "SNIP_2_SAME_RECTANGLE",
+            "SNIP_ROUND_RECTANGLE",
+            "STAR_10",
+            "STAR_12",
+            "STAR_16",
+            "STAR_24",
+            "STAR_32",
+            "STAR_4",
+            "STAR_5",
+            "STAR_6",
+            "STAR_7",
+            "STAR_8",
+            "STRIPED_RIGHT_ARROW",
+            "SUN",
+            "TRAPEZOID",
+            "TRIANGLE",
+            "UP_ARROW",
+            "UP_ARROW_CALLOUT",
+            "UP_DOWN_ARROW",
+            "UTURN_ARROW",
+            "VERTICAL_SCROLL",
+            "WAVE",
+            "WEDGE_ELLIPSE_CALLOUT",
+            "WEDGE_RECTANGLE_CALLOUT",
+            "WEDGE_ROUND_RECTANGLE_CALLOUT"
+          ],
+          "description": "Shape type"
+        },
+        "elementProperties": {
+          "type": "object",
+          "properties": {
+            "pageObjectId": {
+              "type": "string"
+            },
+            "size": {
+              "type": "object"
+            },
+            "transform": {
+              "type": "object"
+            }
+          },
+          "description": "Element properties"
+        }
+      },
+      "required": [
+        "presentationId",
+        "pageId",
+        "objectId",
+        "shapeType"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Slides"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

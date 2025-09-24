@@ -41,8 +41,12 @@
       "type": "object",
       "properties": {
         "targetStage": {
-          "description": "Specific stage to monitor for",
-          "type": "string"
+          "type": "string",
+          "description": "Specific stage to watch for"
+        },
+        "pipeline": {
+          "type": "string",
+          "description": "Specific pipeline to monitor"
         }
       },
       "required": [],
@@ -70,9 +74,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "contacts"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

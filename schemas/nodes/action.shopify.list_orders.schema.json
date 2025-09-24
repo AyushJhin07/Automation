@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.list_orders.schema.json",
+  "title": "Shopify - List Orders",
+  "description": "Retrieve a list of orders",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify.list_orders",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "default": 50,
+          "maximum": 250,
+          "description": "Number of orders to retrieve"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed",
+            "cancelled",
+            "any"
+          ],
+          "default": "any",
+          "description": "Filter by order status"
+        },
+        "financial_status": {
+          "type": "string",
+          "enum": [
+            "authorized",
+            "pending",
+            "paid",
+            "partially_paid",
+            "refunded",
+            "voided",
+            "partially_refunded",
+            "any"
+          ],
+          "default": "any",
+          "description": "Filter by financial status"
+        },
+        "fulfillment_status": {
+          "type": "string",
+          "enum": [
+            "shipped",
+            "partial",
+            "unshipped",
+            "any"
+          ],
+          "default": "any",
+          "description": "Filter by fulfillment status"
+        },
+        "created_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by minimum creation date"
+        },
+        "created_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by maximum creation date"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ecommerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -41,31 +41,31 @@
       "type": "object",
       "properties": {
         "channel": {
-          "description": "Channel ID or user ID to send message to",
-          "type": "string"
+          "type": "string",
+          "description": "Channel ID or user ID to send message to"
         },
         "text": {
-          "description": "Message text content",
-          "type": "string"
+          "type": "string",
+          "description": "Message text content"
         },
         "username": {
-          "description": "Bot username override",
-          "type": "string"
+          "type": "string",
+          "description": "Bot username override"
         },
         "icon_emoji": {
-          "description": "Emoji icon for the message",
-          "type": "string"
+          "type": "string",
+          "description": "Emoji icon for the message"
         },
         "thread_ts": {
-          "description": "Timestamp of parent message to reply in thread",
-          "type": "string"
+          "type": "string",
+          "description": "Timestamp of parent message to reply in thread"
         },
         "blocks": {
-          "description": "Rich message blocks for formatting",
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "type": "object"
+          },
+          "description": "Rich message blocks for formatting"
         }
       },
       "required": [

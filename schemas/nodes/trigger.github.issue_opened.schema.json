@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.github.issue_opened.schema.json",
   "title": "GitHub - Issue Opened",
-  "description": "Trigger when issue is opened",
+  "description": "Triggered when a new issue is opened",
   "type": "object",
   "required": [
     "id",
@@ -41,18 +41,22 @@
       "type": "object",
       "properties": {
         "owner": {
-          "description": "Repository owner",
-          "type": "string"
+          "type": "string",
+          "description": "Repository owner to filter"
         },
         "repo": {
-          "description": "Repository name",
-          "type": "string"
+          "type": "string",
+          "description": "Repository name to filter"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by specific labels"
         }
       },
-      "required": [
-        "owner",
-        "repo"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -66,7 +70,7 @@
         },
         "category": {
           "type": "string",
-          "const": "development"
+          "const": "Development"
         },
         "appName": {
           "type": "string",
@@ -77,9 +81,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "issues"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

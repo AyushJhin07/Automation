@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github-enhanced.create_repository.schema.json",
+  "title": "GitHub Enhanced - Create Repository",
+  "description": "Create a new repository",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github-enhanced.create_repository",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Repository name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Repository description"
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "description": "Homepage URL"
+        },
+        "private": {
+          "type": "boolean",
+          "default": false,
+          "description": "Private repository"
+        },
+        "has_issues": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable issues"
+        },
+        "has_projects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable projects"
+        },
+        "has_wiki": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable wiki"
+        },
+        "has_downloads": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable downloads"
+        },
+        "is_template": {
+          "type": "boolean",
+          "default": false,
+          "description": "Template repository"
+        },
+        "team_id": {
+          "type": "number",
+          "description": "Team with admin permissions"
+        },
+        "auto_init": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-initialize with README"
+        },
+        "gitignore_template": {
+          "type": "string",
+          "description": "Gitignore template"
+        },
+        "license_template": {
+          "type": "string",
+          "description": "License template"
+        },
+        "allow_squash_merge": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow squash merging"
+        },
+        "allow_merge_commit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow merge commits"
+        },
+        "allow_rebase_merge": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow rebase merging"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Developer Tools"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

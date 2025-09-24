@@ -41,16 +41,16 @@
       "type": "object",
       "properties": {
         "channel": {
-          "description": "Channel containing the message",
-          "type": "string"
+          "type": "string",
+          "description": "Channel containing the message"
         },
         "timestamp": {
-          "description": "Timestamp of the message",
-          "type": "string"
+          "type": "string",
+          "description": "Timestamp of the message"
         },
         "name": {
-          "description": "Emoji name (without colons)",
-          "type": "string"
+          "type": "string",
+          "description": "Emoji name (without colons)"
         }
       },
       "required": [
@@ -82,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "reactions:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

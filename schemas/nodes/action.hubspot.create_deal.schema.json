@@ -41,28 +41,38 @@
       "type": "object",
       "properties": {
         "dealname": {
-          "description": "Name of the deal",
-          "type": "string"
+          "type": "string",
+          "description": "Name of the deal"
         },
         "amount": {
-          "description": "Deal amount in the account's currency",
-          "type": "number"
+          "type": "number",
+          "description": "Deal amount"
         },
         "dealstage": {
-          "description": "Current stage of the deal",
-          "type": "string"
+          "type": "string",
+          "description": "Deal stage"
         },
         "pipeline": {
-          "description": "Sales pipeline ID",
-          "type": "string"
+          "type": "string",
+          "description": "Deal pipeline"
         },
         "closedate": {
-          "description": "Expected close date (YYYY-MM-DD)",
-          "type": "string"
+          "type": "string",
+          "format": "date",
+          "description": "Expected close date (YYYY-MM-DD)"
         },
         "hubspot_owner_id": {
-          "description": "HubSpot user ID of the deal owner",
-          "type": "string"
+          "type": "string",
+          "description": "Owner ID for the deal"
+        },
+        "dealtype": {
+          "type": "string",
+          "enum": [
+            "newbusiness",
+            "existingbusiness",
+            "renewal"
+          ],
+          "description": "Type of deal"
         }
       },
       "required": [
@@ -92,9 +102,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "contacts"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

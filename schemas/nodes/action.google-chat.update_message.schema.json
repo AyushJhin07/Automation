@@ -40,23 +40,28 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "spaceId": {
-          "description": "Space ID",
-          "type": "string"
-        },
-        "messageId": {
-          "description": "Message ID",
-          "type": "string"
+        "name": {
+          "type": "string",
+          "description": "Message name (spaces/AAABBB/messages/CCCDDD)"
         },
         "text": {
-          "description": "New message text",
-          "type": "string"
+          "type": "string",
+          "description": "Updated message text"
+        },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Updated card attachments"
+        },
+        "updateMask": {
+          "type": "string",
+          "description": "Fields to update"
         }
       },
       "required": [
-        "spaceId",
-        "messageId",
-        "text"
+        "name"
       ],
       "additionalProperties": false
     },
@@ -82,9 +87,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/chat.messages"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-drive.delete_file.schema.json",
   "title": "Google Drive - Delete File",
-  "description": "Delete a file from Drive",
+  "description": "Delete a file permanently",
   "type": "object",
   "required": [
     "id",
@@ -41,8 +41,8 @@
       "type": "object",
       "properties": {
         "fileId": {
-          "description": "ID of the file to delete",
-          "type": "string"
+          "type": "string",
+          "description": "ID of the file to delete"
         }
       },
       "required": [
@@ -72,9 +72,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

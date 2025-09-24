@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoom-enhanced.list_meetings.schema.json",
+  "title": "Zoom Enhanced - List Meetings",
+  "description": "List meetings for a user",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoom-enhanced.list_meetings",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID or email address"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "live",
+            "upcoming"
+          ],
+          "default": "scheduled",
+          "description": "Meeting type to list"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 30,
+          "maximum": 300,
+          "default": 30,
+          "description": "Number of meetings per page"
+        },
+        "next_page_token": {
+          "type": "string",
+          "description": "Next page token for pagination"
+        },
+        "page_number": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Page number (deprecated, use next_page_token)"
+        }
+      },
+      "required": [
+        "userId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoom Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

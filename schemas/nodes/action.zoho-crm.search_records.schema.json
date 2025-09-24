@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoho-crm.search_records.schema.json",
+  "title": "Zoho CRM - Search Records",
+  "description": "Search records using criteria",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoho-crm.search_records",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "module": {
+          "type": "string",
+          "enum": [
+            "Leads",
+            "Contacts",
+            "Accounts",
+            "Deals",
+            "Tasks",
+            "Events",
+            "Calls",
+            "Solutions",
+            "Products",
+            "Quotes",
+            "Sales_Orders",
+            "Purchase_Orders",
+            "Invoices",
+            "Campaigns",
+            "Vendors"
+          ],
+          "description": "Module name"
+        },
+        "criteria": {
+          "type": "string",
+          "description": "Search criteria"
+        },
+        "email": {
+          "type": "string",
+          "description": "Search by email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Search by phone"
+        },
+        "word": {
+          "type": "string",
+          "description": "Search by word"
+        },
+        "converted": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false",
+            "both"
+          ],
+          "description": "Filter by conversion status"
+        },
+        "approved": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false",
+            "both"
+          ],
+          "description": "Filter by approval status"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 200,
+          "description": "Records per page"
+        },
+        "fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to retrieve"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "description": "Sort order"
+        },
+        "sort_by": {
+          "type": "string",
+          "description": "Field to sort by"
+        }
+      },
+      "required": [
+        "module"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoho CRM"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

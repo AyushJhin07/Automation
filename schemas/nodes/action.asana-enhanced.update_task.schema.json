@@ -40,19 +40,43 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "taskId": {
-          "description": "Task ID",
-          "type": "string"
+        "task_gid": {
+          "type": "string",
+          "description": "Task global ID"
         },
-        "fields": {
-          "description": "Fields to update",
-          "type": "object",
-          "additionalProperties": true
+        "name": {
+          "type": "string",
+          "description": "Task name"
+        },
+        "assignee": {
+          "type": "string",
+          "description": "Assignee user ID or email"
+        },
+        "description": {
+          "type": "string",
+          "description": "Task description/notes"
+        },
+        "due_on": {
+          "type": "string",
+          "format": "date",
+          "description": "Due date (YYYY-MM-DD)"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Mark task as completed"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high"
+          ],
+          "description": "Task priority"
         }
       },
       "required": [
-        "taskId",
-        "fields"
+        "task_gid"
       ],
       "additionalProperties": false
     },

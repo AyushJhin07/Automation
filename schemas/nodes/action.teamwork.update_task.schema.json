@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.teamwork.update_task.schema.json",
+  "title": "Teamwork - Update Task",
+  "description": "Update an existing task",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.teamwork.update_task",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID"
+        },
+        "content": {
+          "type": "string",
+          "description": "Task name/content"
+        },
+        "description": {
+          "type": "string",
+          "description": "Task description"
+        },
+        "responsible_party_id": {
+          "type": "string",
+          "description": "User ID of the person responsible for the task"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "Task priority"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Task due date (YYYY-MM-DD)"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Task start date (YYYY-MM-DD)"
+        },
+        "estimated_minutes": {
+          "type": "number",
+          "description": "Estimated time in minutes"
+        },
+        "tags": {
+          "type": "string",
+          "description": "Comma-separated list of tags"
+        },
+        "private": {
+          "type": "boolean",
+          "description": "Whether the task is private"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the task is completed"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Teamwork"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -40,13 +40,12 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "repo_slug": {
-          "type": "string"
+        "workspace": {
+          "type": "string",
+          "description": "Filter by workspace"
         }
       },
-      "required": [
-        "repo_slug"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -60,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Developer Tools"
+          "const": "Development"
         },
         "appName": {
           "type": "string",
@@ -71,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "pullrequests:read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.datadog.get_monitors.schema.json",
+  "title": "Datadog - Get Monitors",
+  "description": "List monitors",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.datadog.get_monitors",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "group_states": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Alert",
+              "Ignored",
+              "No Data",
+              "OK",
+              "Skipped",
+              "Unknown",
+              "Warn"
+            ]
+          },
+          "description": "Filter by group states"
+        },
+        "name": {
+          "type": "string",
+          "description": "Filter by monitor name"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by tags"
+        },
+        "monitor_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by monitor tags"
+        },
+        "with_downtimes": {
+          "type": "boolean",
+          "description": "Include downtime info"
+        },
+        "id_offset": {
+          "type": "number",
+          "description": "Pagination offset"
+        },
+        "page": {
+          "type": "number",
+          "description": "Page number"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Page size"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Monitoring"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Datadog"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -41,17 +41,49 @@
       "type": "object",
       "properties": {
         "primaryEmail": {
-          "description": "Primary email address",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Primary email address"
         },
         "name": {
-          "description": "Name object with givenName and familyName",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "givenName": {
+              "type": "string"
+            },
+            "familyName": {
+              "type": "string"
+            }
+          },
+          "description": "User's name"
         },
         "password": {
-          "description": "User password",
-          "type": "string"
+          "type": "string",
+          "description": "User password"
+        },
+        "changePasswordAtNextLogin": {
+          "type": "boolean",
+          "default": true,
+          "description": "Force password change on next login"
+        },
+        "orgUnitPath": {
+          "type": "string",
+          "default": "/",
+          "description": "Organizational unit path"
+        },
+        "suspended": {
+          "type": "boolean",
+          "default": false,
+          "description": "Account suspended status"
+        },
+        "recoveryEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Recovery email address"
+        },
+        "recoveryPhone": {
+          "type": "string",
+          "description": "Recovery phone number"
         }
       },
       "required": [
@@ -83,9 +115,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/admin.directory.user"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

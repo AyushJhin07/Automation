@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.notion.query_database.schema.json",
   "title": "Notion - Query Database",
-  "description": "Query Notion database",
+  "description": "Query a Notion database with filters and sorts",
   "type": "object",
   "required": [
     "id",
@@ -40,25 +40,35 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "databaseId": {
-          "description": "Database ID",
-          "type": "string"
+        "database_id": {
+          "type": "string",
+          "description": "ID of the database to query"
         },
         "filter": {
-          "description": "Query filter",
           "type": "object",
-          "additionalProperties": true
+          "description": "Filter conditions for the query"
         },
         "sorts": {
-          "description": "Sort criteria",
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "type": "object"
+          },
+          "description": "Sort conditions for the query"
+        },
+        "start_cursor": {
+          "type": "string",
+          "description": "Pagination cursor"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100,
+          "description": "Number of results to return"
         }
       },
       "required": [
-        "databaseId"
+        "database_id"
       ],
       "additionalProperties": false
     },
@@ -73,7 +83,7 @@
         },
         "category": {
           "type": "string",
-          "const": "productivity"
+          "const": "Productivity"
         },
         "appName": {
           "type": "string",
@@ -84,9 +94,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -40,19 +40,29 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "pageId": {
-          "description": "Page ID",
-          "type": "string"
+        "page_id": {
+          "type": "string",
+          "description": "Page ID to update"
         },
         "properties": {
-          "description": "Properties to update",
           "type": "object",
-          "additionalProperties": true
+          "description": "Properties to update"
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "Archive the page"
+        },
+        "icon": {
+          "type": "object",
+          "description": "Update page icon"
+        },
+        "cover": {
+          "type": "object",
+          "description": "Update page cover"
         }
       },
       "required": [
-        "pageId",
-        "properties"
+        "page_id"
       ],
       "additionalProperties": false
     },

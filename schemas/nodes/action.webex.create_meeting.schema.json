@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.webex.create_meeting.schema.json",
+  "title": "Cisco Webex - Create Meeting",
+  "description": "Schedule a new meeting",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.webex.create_meeting",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Meeting title"
+        },
+        "agenda": {
+          "type": "string",
+          "description": "Meeting agenda"
+        },
+        "password": {
+          "type": "string",
+          "description": "Meeting password"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Meeting start time (ISO 8601)"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Meeting end time (ISO 8601)"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Meeting timezone"
+        },
+        "recurrence": {
+          "type": "string",
+          "description": "Recurrence pattern"
+        },
+        "enabledAutoRecordMeeting": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to auto-record meeting"
+        },
+        "allowAnyUserToBeCoHost": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether any user can be co-host"
+        },
+        "enabledJoinBeforeHost": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether users can join before host"
+        },
+        "enableConnectAudioBeforeHost": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether audio connects before host"
+        },
+        "joinBeforeHostMinutes": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 15,
+          "description": "Minutes before host can join"
+        },
+        "excludePassword": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to exclude password from invite"
+        },
+        "publicMeeting": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether meeting is public"
+        },
+        "reminderTime": {
+          "type": "number",
+          "description": "Reminder time in minutes"
+        },
+        "unlockedMeetingJoinSecurity": {
+          "type": "string",
+          "enum": [
+            "allowJoin",
+            "allowJoinWithLobby",
+            "blockFromJoin"
+          ],
+          "description": "Join security for unlocked meetings"
+        },
+        "sessionTypeId": {
+          "type": "number",
+          "description": "Session type ID"
+        },
+        "enabledWebcastView": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to enable webcast view"
+        },
+        "panelists": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Meeting panelists"
+        },
+        "invitees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "coHost": {
+                "type": "boolean"
+              }
+            }
+          },
+          "description": "Meeting invitees"
+        }
+      },
+      "required": [
+        "title",
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Cisco Webex"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.webflow.create_webhook.schema.json",
+  "title": "Webflow - Create Webhook",
+  "description": "Create a new webhook",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.webflow.create_webhook",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site ID"
+        },
+        "triggerType": {
+          "type": "string",
+          "enum": [
+            "form_submission",
+            "site_publish",
+            "ecomm_new_order",
+            "ecomm_order_changed",
+            "ecomm_inventory_changed",
+            "membership_user_account_added",
+            "membership_user_account_updated",
+            "collection_item_created",
+            "collection_item_changed",
+            "collection_item_deleted"
+          ],
+          "description": "Webhook trigger type"
+        },
+        "url": {
+          "type": "string",
+          "description": "Webhook URL"
+        },
+        "filter": {
+          "type": "object",
+          "description": "Optional filter criteria"
+        }
+      },
+      "required": [
+        "site_id",
+        "triggerType",
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Website Builders"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Webflow"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

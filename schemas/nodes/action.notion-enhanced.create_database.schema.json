@@ -40,19 +40,43 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "parentPageId": {
-          "description": "Parent page ID",
-          "type": "string"
-        },
-        "schema": {
-          "description": "Database schema",
+        "parent": {
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "page_id"
+              ]
+            },
+            "page_id": {
+              "type": "string"
+            }
+          },
+          "description": "Parent page"
+        },
+        "title": {
+          "type": "array",
+          "description": "Database title"
+        },
+        "description": {
+          "type": "array",
+          "description": "Database description"
+        },
+        "properties": {
+          "type": "object",
+          "description": "Database schema properties"
+        },
+        "is_inline": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether database is inline"
         }
       },
       "required": [
-        "parentPageId",
-        "schema"
+        "parent",
+        "title",
+        "properties"
       ],
       "additionalProperties": false
     },

@@ -41,17 +41,11 @@
       "type": "object",
       "properties": {
         "title": {
-          "description": "Title of the presentation",
-          "type": "string"
-        },
-        "folderId": {
-          "description": "ID of folder to create in",
-          "type": "string"
+          "type": "string",
+          "description": "Presentation title"
         }
       },
-      "required": [
-        "title"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -76,10 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/presentations",
-            "https://www.googleapis.com/auth/drive.file"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

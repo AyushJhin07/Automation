@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.surveymonkey.list_collectors.schema.json",
+  "title": "SurveyMonkey - List Collectors",
+  "description": "List collectors for a survey",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.surveymonkey.list_collectors",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "survey_id": {
+          "type": "string",
+          "description": "Survey ID"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 50,
+          "description": "Number of collectors per page"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "date_modified",
+            "date_created"
+          ],
+          "description": "Sort criteria"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "default": "DESC",
+          "description": "Sort order"
+        },
+        "name": {
+          "type": "string",
+          "description": "Filter by collector name"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter collectors created after this date"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter collectors created before this date"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "type",
+              "status",
+              "date_created",
+              "date_modified",
+              "url"
+            ]
+          },
+          "description": "Additional fields to include"
+        }
+      },
+      "required": [
+        "survey_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Feedback"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SurveyMonkey"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

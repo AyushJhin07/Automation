@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gitlab.create_merge_request.schema.json",
+  "title": "GitLab - Create Merge Request",
+  "description": "Create a new merge request",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gitlab.create_merge_request",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Project ID or path"
+        },
+        "source_branch": {
+          "type": "string",
+          "description": "Source branch"
+        },
+        "target_branch": {
+          "type": "string",
+          "description": "Target branch"
+        },
+        "title": {
+          "type": "string",
+          "description": "Merge request title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Merge request description"
+        },
+        "assignee_id": {
+          "type": "number",
+          "description": "Assignee user ID"
+        },
+        "milestone_id": {
+          "type": "number",
+          "description": "Milestone ID"
+        },
+        "labels": {
+          "type": "string",
+          "description": "Comma-separated label names"
+        },
+        "remove_source_branch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Remove source branch when merged"
+        },
+        "squash": {
+          "type": "boolean",
+          "default": false,
+          "description": "Squash commits when merging"
+        }
+      },
+      "required": [
+        "id",
+        "source_branch",
+        "target_branch",
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Developer Tools"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitLab"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

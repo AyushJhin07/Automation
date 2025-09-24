@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.pipedrive.create_organization.schema.json",
+  "title": "Pipedrive - Create Organization",
+  "description": "Create a new organization",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.pipedrive.create_organization",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Organization name"
+        },
+        "owner_id": {
+          "type": "number",
+          "description": "Owner user ID"
+        },
+        "visible_to": {
+          "type": "string",
+          "enum": [
+            "1",
+            "3",
+            "5",
+            "7"
+          ],
+          "description": "Visibility setting"
+        },
+        "address": {
+          "type": "string",
+          "description": "Address"
+        },
+        "address_subpremise": {
+          "type": "string",
+          "description": "Address subpremise"
+        },
+        "address_street_number": {
+          "type": "string",
+          "description": "Street number"
+        },
+        "address_route": {
+          "type": "string",
+          "description": "Route"
+        },
+        "address_sublocality": {
+          "type": "string",
+          "description": "Sublocality"
+        },
+        "address_locality": {
+          "type": "string",
+          "description": "Locality"
+        },
+        "address_admin_area_level_1": {
+          "type": "string",
+          "description": "Admin area level 1"
+        },
+        "address_admin_area_level_2": {
+          "type": "string",
+          "description": "Admin area level 2"
+        },
+        "address_country": {
+          "type": "string",
+          "description": "Country"
+        },
+        "address_postal_code": {
+          "type": "string",
+          "description": "Postal code"
+        },
+        "address_formatted_address": {
+          "type": "string",
+          "description": "Formatted address"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Pipedrive"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

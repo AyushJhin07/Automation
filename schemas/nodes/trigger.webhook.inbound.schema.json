@@ -1,21 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/trigger.webhook.inbound.schema.json",
+  "title": "Webhook Inbound Trigger",
+  "description": "Receives external HTTP requests to trigger workflows",
   "type": "object",
-  "title": "Webhook Inbound Trigger Node",
-  "description": "Schema for webhook trigger nodes that receive HTTP requests",
+  "required": [
+    "id",
+    "type",
+    "position"
+  ],
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[a-zA-Z0-9_-]+$"
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
     },
     "type": {
       "type": "string",
-      "const": "trigger.webhook.inbound"
+      "const": "trigger.webhook.inbound",
+      "description": "Node type identifier"
     },
-    "name": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 100
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
     },
     "params": {
       "type": "object",
@@ -23,64 +42,200 @@
         "path": {
           "type": "string",
           "pattern": "^/[a-zA-Z0-9_/-]*$",
-          "default": "/webhook"
+          "default": "/webhook",
+          "description": "Relative path that will receive webhook requests"
         },
         "method": {
           "type": "string",
-          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
-          "default": "POST"
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ],
+          "default": "POST",
+          "description": "HTTP method expected for the webhook"
         },
         "authRequired": {
           "type": "boolean",
-          "default": false
+          "default": false,
+          "description": "Require authentication before accepting requests"
         },
         "authType": {
           "type": "string",
-          "enum": ["bearer", "basic", "api_key", "none"],
-          "default": "none"
+          "enum": [
+            "bearer",
+            "basic",
+            "api_key",
+            "none"
+          ],
+          "default": "none",
+          "description": "Authentication strategy for incoming requests"
         },
         "secret": {
           "type": "string",
-          "description": "Secret for webhook verification"
+          "description": "Secret token used to verify webhook payloads"
         },
         "responseType": {
           "type": "string",
-          "enum": ["json", "text", "html"],
-          "default": "json"
+          "enum": [
+            "json",
+            "text",
+            "html"
+          ],
+          "default": "json",
+          "description": "Format of the response sent back to the webhook caller"
         },
         "responseMessage": {
           "type": "string",
-          "default": "Webhook received successfully"
+          "default": "Webhook received successfully",
+          "description": "Message returned when the webhook is accepted"
         },
         "filters": {
           "type": "object",
           "properties": {
             "contentType": {
-              "type": "string"
+              "type": "string",
+              "description": "Expected Content-Type header value"
             },
             "headers": {
               "type": "object",
               "additionalProperties": {
                 "type": "string"
-              }
+              },
+              "description": "Specific headers that must be present"
             },
             "bodyContains": {
-              "type": "string"
+              "type": "string",
+              "description": "String that must be present in the request body"
             }
-          }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/[a-zA-Z0-9_/-]*$",
+          "default": "/webhook",
+          "description": "Relative path that will receive webhook requests"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ],
+          "default": "POST",
+          "description": "HTTP method expected for the webhook"
+        },
+        "authRequired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require authentication before accepting requests"
+        },
+        "authType": {
+          "type": "string",
+          "enum": [
+            "bearer",
+            "basic",
+            "api_key",
+            "none"
+          ],
+          "default": "none",
+          "description": "Authentication strategy for incoming requests"
+        },
+        "secret": {
+          "type": "string",
+          "description": "Secret token used to verify webhook payloads"
+        },
+        "responseType": {
+          "type": "string",
+          "enum": [
+            "json",
+            "text",
+            "html"
+          ],
+          "default": "json",
+          "description": "Format of the response sent back to the webhook caller"
+        },
+        "responseMessage": {
+          "type": "string",
+          "default": "Webhook received successfully",
+          "description": "Message returned when the webhook is accepted"
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "description": "Expected Content-Type header value"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Specific headers that must be present"
+            },
+            "bodyContains": {
+              "type": "string",
+              "description": "String that must be present in the request body"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "default": "Incoming Webhook"
+        },
+        "description": {
+          "type": "string",
+          "default": "Starts a workflow when an external system sends an HTTP request"
+        },
+        "category": {
+          "type": "string",
+          "const": "Webhooks"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Webhook Listener"
         }
       },
       "additionalProperties": false
-    },
-    "position": {
-      "type": "object",
-      "properties": {
-        "x": {"type": "number"},
-        "y": {"type": "number"}
-      },
-      "required": ["x", "y"]
     }
   },
-  "required": ["id", "type"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "params"
+      ]
+    },
+    {
+      "required": [
+        "parameters"
+      ]
+    }
+  ]
 }

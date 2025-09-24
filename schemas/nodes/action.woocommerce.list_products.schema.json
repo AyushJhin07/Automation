@@ -1,0 +1,240 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.woocommerce.list_products.schema.json",
+  "title": "WooCommerce - List Products",
+  "description": "List all products",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.woocommerce.list_products",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "enum": [
+            "view",
+            "edit"
+          ],
+          "default": "view",
+          "description": "Request context"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10,
+          "description": "Products per page"
+        },
+        "search": {
+          "type": "string",
+          "description": "Search query"
+        },
+        "after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Created after date"
+        },
+        "before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Created before date"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Product IDs to include"
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Product IDs to exclude"
+        },
+        "parent": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Parent product IDs"
+        },
+        "parent_exclude": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Parent product IDs to exclude"
+        },
+        "slug": {
+          "type": "string",
+          "description": "Product slug"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "any",
+            "draft",
+            "pending",
+            "private",
+            "publish"
+          ],
+          "default": "any",
+          "description": "Product status"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "simple",
+            "grouped",
+            "external",
+            "variable"
+          ],
+          "description": "Product type"
+        },
+        "sku": {
+          "type": "string",
+          "description": "Product SKU"
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Whether product is featured"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category slug"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Tag slug"
+        },
+        "shipping_class": {
+          "type": "string",
+          "description": "Shipping class slug"
+        },
+        "attribute": {
+          "type": "string",
+          "description": "Attribute slug"
+        },
+        "attribute_term": {
+          "type": "string",
+          "description": "Attribute term slug"
+        },
+        "tax_class": {
+          "type": "string",
+          "description": "Tax class"
+        },
+        "min_price": {
+          "type": "string",
+          "description": "Minimum price"
+        },
+        "max_price": {
+          "type": "string",
+          "description": "Maximum price"
+        },
+        "stock_status": {
+          "type": "string",
+          "enum": [
+            "instock",
+            "outofstock",
+            "onbackorder"
+          ],
+          "description": "Stock status"
+        },
+        "orderby": {
+          "type": "string",
+          "enum": [
+            "date",
+            "id",
+            "include",
+            "title",
+            "slug",
+            "price",
+            "popularity",
+            "rating",
+            "menu_order"
+          ],
+          "default": "date",
+          "description": "Sort field"
+        },
+        "order": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "default": "desc",
+          "description": "Sort order"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "WooCommerce"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

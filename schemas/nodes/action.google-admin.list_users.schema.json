@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-admin.list_users.schema.json",
   "title": "Google Admin - List Users",
-  "description": "List domain users",
+  "description": "List users in the domain",
   "type": "object",
   "required": [
     "id",
@@ -40,13 +40,57 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "customer": {
+          "type": "string",
+          "default": "my_customer",
+          "description": "Customer ID"
+        },
         "domain": {
-          "description": "Domain to search",
-          "type": "string"
+          "type": "string",
+          "description": "Domain name"
+        },
+        "maxResults": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100,
+          "description": "Maximum results"
+        },
+        "orderBy": {
+          "type": "string",
+          "enum": [
+            "email",
+            "familyName",
+            "givenName"
+          ],
+          "description": "Sort field"
+        },
+        "sortOrder": {
+          "type": "string",
+          "enum": [
+            "ASCENDING",
+            "DESCENDING"
+          ],
+          "description": "Sort order"
         },
         "query": {
-          "description": "Search query",
-          "type": "string"
+          "type": "string",
+          "description": "Search query"
+        },
+        "projection": {
+          "type": "string",
+          "enum": [
+            "basic",
+            "custom",
+            "full"
+          ],
+          "default": "full",
+          "description": "Fields to include"
+        },
+        "showDeleted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include deleted users"
         }
       },
       "required": [],
@@ -74,9 +118,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/admin.directory.user.readonly"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

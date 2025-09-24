@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.github.create_issue.schema.json",
   "title": "GitHub - Create Issue",
-  "description": "Create new GitHub issue",
+  "description": "Create a new issue in a repository",
   "type": "object",
   "required": [
     "id",
@@ -41,34 +41,38 @@
       "type": "object",
       "properties": {
         "owner": {
-          "description": "Repository owner",
-          "type": "string"
+          "type": "string",
+          "description": "Repository owner (username or organization)"
         },
         "repo": {
-          "description": "Repository name",
-          "type": "string"
+          "type": "string",
+          "description": "Repository name"
         },
         "title": {
-          "description": "Issue title",
-          "type": "string"
+          "type": "string",
+          "description": "Issue title"
         },
         "body": {
-          "description": "Issue description",
-          "type": "string"
-        },
-        "labels": {
-          "description": "Issue labels",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "type": "string",
+          "description": "Issue body/description"
         },
         "assignees": {
-          "description": "Issue assignees",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "List of usernames to assign to the issue"
+        },
+        "milestone": {
+          "type": "number",
+          "description": "Milestone number"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of label names"
         }
       },
       "required": [
@@ -89,7 +93,7 @@
         },
         "category": {
           "type": "string",
-          "const": "development"
+          "const": "Development"
         },
         "appName": {
           "type": "string",
@@ -100,9 +104,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "issues"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

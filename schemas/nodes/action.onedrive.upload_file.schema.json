@@ -40,23 +40,32 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "fileName": {
+          "type": "string",
+          "description": "File name"
+        },
+        "content": {
+          "type": "string",
+          "description": "File content (base64 encoded)"
+        },
         "folderId": {
-          "description": "Folder ID",
-          "type": "string"
+          "type": "string",
+          "description": "Folder ID to upload to"
         },
-        "name": {
-          "description": "File name",
-          "type": "string"
-        },
-        "base64": {
-          "description": "Base64 encoded file content",
-          "type": "string"
+        "conflictBehavior": {
+          "type": "string",
+          "enum": [
+            "rename",
+            "replace",
+            "fail"
+          ],
+          "default": "rename",
+          "description": "Behavior when file exists"
         }
       },
       "required": [
-        "folderId",
-        "name",
-        "base64"
+        "fileName",
+        "content"
       ],
       "additionalProperties": false
     },
@@ -71,7 +80,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Cloud Storage"
+          "const": "Storage"
         },
         "appName": {
           "type": "string",
@@ -82,9 +91,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "Files.ReadWrite"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

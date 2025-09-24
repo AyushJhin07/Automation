@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-admin.get_user.schema.json",
+  "title": "Google Admin - Get User",
+  "description": "Get user information",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-admin.get_user",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userKey": {
+          "type": "string",
+          "description": "User email or ID"
+        },
+        "projection": {
+          "type": "string",
+          "enum": [
+            "basic",
+            "custom",
+            "full"
+          ],
+          "default": "full",
+          "description": "Fields to include"
+        },
+        "customFieldMask": {
+          "type": "string",
+          "description": "Custom fields to include"
+        },
+        "viewType": {
+          "type": "string",
+          "enum": [
+            "admin_view",
+            "domain_public"
+          ],
+          "default": "admin_view",
+          "description": "View type"
+        }
+      },
+      "required": [
+        "userKey"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Admin"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Admin"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

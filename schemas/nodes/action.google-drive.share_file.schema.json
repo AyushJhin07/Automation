@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-drive.share_file.schema.json",
   "title": "Google Drive - Share File",
-  "description": "Share a file with a user",
+  "description": "Share a file with users or make it public",
   "type": "object",
   "required": [
     "id",
@@ -41,28 +41,44 @@
       "type": "object",
       "properties": {
         "fileId": {
-          "description": "ID of the file to share",
-          "type": "string"
+          "type": "string",
+          "description": "ID of the file to share"
         },
-        "email": {
-          "description": "Email address of the user to share with",
-          "type": "string"
+        "emailAddress": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the user to share with"
         },
         "role": {
-          "description": "Role to assign",
           "type": "string",
           "enum": [
             "reader",
             "writer",
             "commenter",
             "owner"
-          ]
+          ],
+          "default": "reader",
+          "description": "Permission role for the user"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "user",
+            "group",
+            "domain",
+            "anyone"
+          ],
+          "default": "user",
+          "description": "Type of permission"
+        },
+        "sendNotificationEmail": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to send notification email"
         }
       },
       "required": [
-        "fileId",
-        "email",
-        "role"
+        "fileId"
       ],
       "additionalProperties": false
     },
@@ -88,9 +104,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

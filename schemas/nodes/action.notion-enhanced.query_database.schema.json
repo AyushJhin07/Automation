@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.notion-enhanced.query_database.schema.json",
   "title": "Notion Enhanced - Query Database",
-  "description": "Query a database with filters and sorts",
+  "description": "Query a database with filters and sorting",
   "type": "object",
   "required": [
     "id",
@@ -40,25 +40,32 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "databaseId": {
-          "description": "Database ID",
-          "type": "string"
+        "database_id": {
+          "type": "string",
+          "description": "Database ID to query"
         },
         "filter": {
-          "description": "Filter criteria",
           "type": "object",
-          "additionalProperties": true
+          "description": "Filter conditions"
         },
         "sorts": {
-          "description": "Sort criteria",
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Sort conditions"
+        },
+        "start_cursor": {
+          "type": "string",
+          "description": "Pagination cursor"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100,
+          "description": "Number of results per page"
         }
       },
       "required": [
-        "databaseId"
+        "database_id"
       ],
       "additionalProperties": false
     },

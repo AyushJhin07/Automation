@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mixpanel.engage_profile_set.schema.json",
+  "title": "Mixpanel - Set Profile Properties",
+  "description": "Set properties on a user profile",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mixpanel.engage_profile_set",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "distinct_id": {
+          "type": "string",
+          "description": "Unique identifier for the user"
+        },
+        "properties": {
+          "type": "object",
+          "description": "Properties to set on the profile"
+        },
+        "ip": {
+          "type": "string",
+          "description": "IP address of the user"
+        },
+        "time": {
+          "type": "number",
+          "description": "Unix timestamp"
+        },
+        "ignore_time": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, Mixpanel will not automatically update the Last Seen property"
+        },
+        "ignore_alias": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, Mixpanel will not alias the distinct_id"
+        }
+      },
+      "required": [
+        "distinct_id",
+        "properties"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mixpanel"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

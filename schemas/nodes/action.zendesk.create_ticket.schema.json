@@ -40,23 +40,157 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "subject": {
-          "type": "string"
-        },
-        "comment": {
+        "ticket": {
           "type": "object",
-          "additionalProperties": true
-        },
-        "priority": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
+          "properties": {
+            "subject": {
+              "type": "string"
+            },
+            "comment": {
+              "type": "object",
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "html_body": {
+                  "type": "string"
+                },
+                "public": {
+                  "type": "boolean",
+                  "default": true
+                }
+              },
+              "required": [
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "requester": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                }
+              },
+              "additionalProperties": false
+            },
+            "submitter_id": {
+              "type": "number"
+            },
+            "assignee_id": {
+              "type": "number"
+            },
+            "group_id": {
+              "type": "number"
+            },
+            "collaborator_ids": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "follower_ids": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "email_cc_ids": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "organization_id": {
+              "type": "number"
+            },
+            "external_id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "problem",
+                "incident",
+                "question",
+                "task"
+              ]
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "urgent",
+                "high",
+                "normal",
+                "low"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "new",
+                "open",
+                "pending",
+                "hold",
+                "solved",
+                "closed"
+              ]
+            },
+            "recipient": {
+              "type": "string"
+            },
+            "requester_id": {
+              "type": "number"
+            },
+            "brand_id": {
+              "type": "number"
+            },
+            "due_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "ticket_form_id": {
+              "type": "number"
+            },
+            "is_public": {
+              "type": "boolean",
+              "default": true
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "custom_fields": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "via": {
+              "type": "object"
+            },
+            "problem_id": {
+              "type": "number"
+            },
+            "forum_topic_id": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "subject",
+            "comment"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
-        "subject",
-        "comment"
+        "ticket"
       ],
       "additionalProperties": false
     },

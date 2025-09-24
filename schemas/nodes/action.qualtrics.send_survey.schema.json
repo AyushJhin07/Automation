@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.qualtrics.send_survey.schema.json",
+  "title": "Qualtrics - Send Survey",
+  "description": "Send survey to contacts",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.qualtrics.send_survey",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "surveyId": {
+          "type": "string",
+          "description": "Survey ID"
+        },
+        "sendDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Send date (optional, defaults to now)"
+        },
+        "fromEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "From email address"
+        },
+        "fromName": {
+          "type": "string",
+          "description": "From name"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Email subject"
+        },
+        "messageId": {
+          "type": "string",
+          "description": "Message template ID"
+        },
+        "mailingListId": {
+          "type": "string",
+          "description": "Mailing list ID"
+        },
+        "contactId": {
+          "type": "string",
+          "description": "Individual contact ID"
+        },
+        "embeddedData": {
+          "type": "object",
+          "description": "Embedded data"
+        }
+      },
+      "required": [
+        "surveyId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Surveys"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Qualtrics"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

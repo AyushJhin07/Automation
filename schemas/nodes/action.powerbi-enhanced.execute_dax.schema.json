@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.powerbi-enhanced.execute_dax.schema.json",
+  "title": "Power BI Enhanced - Execute DAX Query",
+  "description": "Execute DAX query against dataset",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.powerbi-enhanced.execute_dax",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "datasetId": {
+          "type": "string",
+          "description": "Dataset ID"
+        },
+        "groupId": {
+          "type": "string",
+          "description": "Workspace ID (optional)"
+        },
+        "query": {
+          "type": "string",
+          "description": "DAX query"
+        },
+        "serializerSettings": {
+          "type": "object",
+          "properties": {
+            "includeNulls": {
+              "type": "boolean"
+            }
+          },
+          "description": "Serializer settings"
+        },
+        "impersonatedUserName": {
+          "type": "string",
+          "description": "Impersonated user name for RLS"
+        }
+      },
+      "required": [
+        "datasetId",
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Power BI Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.coda.list_rows.schema.json",
+  "title": "Coda - List Rows",
+  "description": "List rows in a table",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.coda.list_rows",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "description": "Document ID"
+        },
+        "tableIdOrName": {
+          "type": "string",
+          "description": "Table ID or name"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 25,
+          "description": "Number of rows to return"
+        },
+        "pageToken": {
+          "type": "string",
+          "description": "Pagination token"
+        },
+        "query": {
+          "type": "string",
+          "description": "Query filter"
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "natural",
+            "createdAt",
+            "updatedAt"
+          ],
+          "description": "Sort field"
+        },
+        "useColumnNames": {
+          "type": "boolean",
+          "description": "Use column names instead of IDs"
+        },
+        "valueFormat": {
+          "type": "string",
+          "enum": [
+            "simple",
+            "simpleWithArrays",
+            "rich"
+          ],
+          "description": "Value format"
+        },
+        "visibleOnly": {
+          "type": "boolean",
+          "description": "Return only visible rows"
+        }
+      },
+      "required": [
+        "docId",
+        "tableIdOrName"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Coda"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

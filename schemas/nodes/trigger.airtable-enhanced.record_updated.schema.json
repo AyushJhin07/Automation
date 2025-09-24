@@ -41,18 +41,11 @@
       "type": "object",
       "properties": {
         "baseId": {
-          "description": "Base ID",
-          "type": "string"
-        },
-        "table": {
-          "description": "Table name",
-          "type": "string"
+          "type": "string",
+          "description": "Filter by base"
         }
       },
-      "required": [
-        "baseId",
-        "table"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {

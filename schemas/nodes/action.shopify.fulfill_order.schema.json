@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.fulfill_order.schema.json",
   "title": "Shopify - Fulfill Order",
-  "description": "Fulfill an order",
+  "description": "Create a fulfillment for an order",
   "type": "object",
   "required": [
     "id",
@@ -40,31 +40,49 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "orderId": {
-          "description": "Order ID",
-          "type": "string"
+        "order_id": {
+          "type": "string",
+          "description": "Order ID to fulfill"
         },
         "location_id": {
-          "description": "Fulfillment location ID",
-          "type": "string"
+          "type": "string",
+          "description": "Location ID for fulfillment"
         },
         "tracking_number": {
-          "description": "Tracking number",
-          "type": "string"
+          "type": "string",
+          "description": "Tracking number"
         },
         "tracking_company": {
-          "description": "Tracking company",
-          "type": "string"
+          "type": "string",
+          "description": "Tracking company name"
+        },
+        "tracking_url": {
+          "type": "string",
+          "description": "Tracking URL"
         },
         "notify_customer": {
-          "description": "Send notification to customer",
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Send notification to customer"
+        },
+        "line_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Line items to fulfill"
         }
       },
       "required": [
-        "orderId",
-        "location_id"
+        "order_id"
       ],
       "additionalProperties": false
     },
@@ -90,9 +108,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_fulfillments"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

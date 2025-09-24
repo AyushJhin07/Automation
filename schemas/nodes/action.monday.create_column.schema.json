@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.monday.create_column.schema.json",
+  "title": "Monday.com - Create Column",
+  "description": "Create a new column in a board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.monday.create_column",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "type": "number",
+          "description": "Board ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Column title"
+        },
+        "column_type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "long_text",
+            "numbers",
+            "rating",
+            "status",
+            "dropdown",
+            "people",
+            "timeline",
+            "date",
+            "checkbox",
+            "email",
+            "phone",
+            "link",
+            "file",
+            "tags",
+            "hour",
+            "week",
+            "location",
+            "creation_log",
+            "country",
+            "auto_number",
+            "last_updated",
+            "formula",
+            "dependency",
+            "progress",
+            "mirror",
+            "button"
+          ],
+          "description": "Column type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Column description"
+        },
+        "defaults": {
+          "type": "object",
+          "description": "Default column settings"
+        }
+      },
+      "required": [
+        "board_id",
+        "title",
+        "column_type"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Monday.com"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

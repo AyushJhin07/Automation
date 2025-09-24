@@ -40,20 +40,68 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "workspace": {
+          "type": "string",
+          "description": "Workspace name"
+        },
         "repo_slug": {
-          "type": "string"
+          "type": "string",
+          "description": "Repository slug"
         },
         "title": {
-          "type": "string"
+          "type": "string",
+          "description": "Issue title"
         },
         "content": {
-          "type": "string"
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "string"
+            },
+            "markup": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "creole",
+                "plaintext"
+              ]
+            }
+          },
+          "description": "Issue content"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "bug",
+            "enhancement",
+            "proposal",
+            "task"
+          ],
+          "description": "Issue kind"
         },
         "priority": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "trivial",
+            "minor",
+            "major",
+            "critical",
+            "blocker"
+          ],
+          "description": "Issue priority"
+        },
+        "assignee": {
+          "type": "object",
+          "properties": {
+            "account_id": {
+              "type": "string"
+            }
+          },
+          "description": "Issue assignee"
         }
       },
       "required": [
+        "workspace",
         "repo_slug",
         "title"
       ],
@@ -70,7 +118,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Developer Tools"
+          "const": "Development"
         },
         "appName": {
           "type": "string",
@@ -81,9 +129,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "issues:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

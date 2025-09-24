@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.tableau.update_workbook.schema.json",
+  "title": "Tableau - Update Workbook",
+  "description": "Update workbook properties",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.tableau.update_workbook",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "description": "Site ID"
+        },
+        "workbookId": {
+          "type": "string",
+          "description": "Workbook ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Workbook name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Workbook description"
+        },
+        "showTabs": {
+          "type": "boolean",
+          "description": "Show tabs"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Project ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Owner ID"
+        }
+      },
+      "required": [
+        "siteId",
+        "workbookId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Tableau"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

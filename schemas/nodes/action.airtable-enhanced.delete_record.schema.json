@@ -41,21 +41,21 @@
       "type": "object",
       "properties": {
         "baseId": {
-          "description": "Base ID",
-          "type": "string"
+          "type": "string",
+          "description": "Airtable base ID"
         },
-        "table": {
-          "description": "Table name",
-          "type": "string"
+        "tableId": {
+          "type": "string",
+          "description": "Table name or ID"
         },
         "recordId": {
-          "description": "Record ID",
-          "type": "string"
+          "type": "string",
+          "description": "Record ID"
         }
       },
       "required": [
         "baseId",
-        "table",
+        "tableId",
         "recordId"
       ],
       "additionalProperties": false

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.notion.create_database_entry.schema.json",
   "title": "Notion - Create Database Entry",
-  "description": "Create entry in Notion database",
+  "description": "Create a new entry in a Notion database",
   "type": "object",
   "required": [
     "id",
@@ -40,18 +40,24 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "databaseId": {
-          "description": "Database ID",
-          "type": "string"
+        "database_id": {
+          "type": "string",
+          "description": "ID of the database"
         },
         "properties": {
-          "description": "Entry properties",
           "type": "object",
-          "additionalProperties": true
+          "description": "Entry properties matching database schema"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Array of block objects for entry content"
         }
       },
       "required": [
-        "databaseId",
+        "database_id",
         "properties"
       ],
       "additionalProperties": false
@@ -67,7 +73,7 @@
         },
         "category": {
           "type": "string",
-          "const": "productivity"
+          "const": "Productivity"
         },
         "appName": {
           "type": "string",
@@ -78,9 +84,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

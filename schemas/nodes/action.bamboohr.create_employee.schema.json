@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.bamboohr.create_employee.schema.json",
   "title": "BambooHR - Create Employee",
-  "description": "Add a new employee to BambooHR",
+  "description": "Create a new employee",
   "type": "object",
   "required": [
     "id",
@@ -40,28 +40,43 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "companyDomain": {
+          "type": "string",
+          "description": "Company domain"
+        },
         "firstName": {
-          "description": "First name",
-          "type": "string"
+          "type": "string",
+          "description": "First name"
         },
         "lastName": {
-          "description": "Last name",
-          "type": "string"
+          "type": "string",
+          "description": "Last name"
         },
         "workEmail": {
-          "description": "Work email address",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Work email"
         },
         "hireDate": {
-          "description": "Hire date (YYYY-MM-DD)",
-          "type": "string"
+          "type": "string",
+          "format": "date",
+          "description": "Hire date"
         },
         "department": {
-          "description": "Department",
-          "type": "string"
+          "type": "string",
+          "description": "Department"
+        },
+        "jobTitle": {
+          "type": "string",
+          "description": "Job title"
+        },
+        "supervisor": {
+          "type": "string",
+          "description": "Supervisor ID"
         }
       },
       "required": [
+        "companyDomain",
         "firstName",
         "lastName"
       ],
@@ -78,7 +93,7 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -89,9 +104,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "employees:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

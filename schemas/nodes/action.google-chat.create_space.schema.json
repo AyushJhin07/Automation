@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-chat.create_space.schema.json",
   "title": "Google Chat - Create Space",
-  "description": "Create a new chat space",
+  "description": "Create a new Chat space",
   "type": "object",
   "required": [
     "id",
@@ -40,21 +40,42 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "name": {
-          "description": "Space name",
-          "type": "string"
+        "displayName": {
+          "type": "string",
+          "description": "Space display name"
         },
-        "members": {
-          "description": "Array of member emails",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "spaceType": {
+          "type": "string",
+          "enum": [
+            "SPACE",
+            "GROUP_CHAT",
+            "DIRECT_MESSAGE"
+          ],
+          "default": "SPACE",
+          "description": "Type of space"
+        },
+        "threaded": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable threaded conversations"
+        },
+        "externalUserAllowed": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow external users"
+        },
+        "spaceHistoryState": {
+          "type": "string",
+          "enum": [
+            "HISTORY_OFF",
+            "HISTORY_ON"
+          ],
+          "default": "HISTORY_ON",
+          "description": "Chat history setting"
         }
       },
       "required": [
-        "name",
-        "members"
+        "displayName"
       ],
       "additionalProperties": false
     },
@@ -80,9 +101,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/chat.spaces"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.sageintacct.create_customer.schema.json",
+  "title": "Sage Intacct - Create Customer",
+  "description": "Create a new customer",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sageintacct.create_customer",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customerid": {
+          "type": "string",
+          "description": "Customer ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Customer name"
+        },
+        "displaycontact": {
+          "type": "object",
+          "properties": {
+            "contactname": {
+              "type": "string"
+            },
+            "companyname": {
+              "type": "string"
+            },
+            "mailaddress": {
+              "type": "object",
+              "properties": {
+                "address1": {
+                  "type": "string"
+                },
+                "address2": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                }
+              }
+            },
+            "phone1": {
+              "type": "string"
+            },
+            "email1": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "description": "Display contact information"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive"
+          ],
+          "default": "active",
+          "description": "Customer status"
+        },
+        "billto": {
+          "type": "object",
+          "properties": {
+            "contactname": {
+              "type": "string"
+            },
+            "companyname": {
+              "type": "string"
+            },
+            "mailaddress": {
+              "type": "object",
+              "properties": {
+                "address1": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Bill to contact information"
+        },
+        "shipto": {
+          "type": "object",
+          "properties": {
+            "contactname": {
+              "type": "string"
+            },
+            "companyname": {
+              "type": "string"
+            },
+            "mailaddress": {
+              "type": "object",
+              "properties": {
+                "address1": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Ship to contact information"
+        }
+      },
+      "required": [
+        "customerid",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Sage Intacct"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -41,20 +41,25 @@
       "type": "object",
       "properties": {
         "query": {
-          "description": "Search query",
-          "type": "string"
+          "type": "string",
+          "description": "Search query string"
         },
         "properties": {
-          "description": "Properties to retrieve",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Properties to return"
         },
         "limit": {
-          "description": "Number of results",
           "type": "number",
-          "default": 10
+          "default": 10,
+          "maximum": 100,
+          "description": "Number of results to return"
+        },
+        "filters": {
+          "type": "object",
+          "description": "Filter criteria for search"
         }
       },
       "required": [],
@@ -82,9 +87,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "crm.objects.contacts.read"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

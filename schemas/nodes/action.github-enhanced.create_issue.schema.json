@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.github-enhanced.create_issue.schema.json",
   "title": "GitHub Enhanced - Create Issue",
-  "description": "Create a new issue",
+  "description": "Create a new issue in a repository",
   "type": "object",
   "required": [
     "id",
@@ -40,20 +40,43 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "owner": {
+          "type": "string",
+          "description": "Repository owner"
+        },
         "repo": {
-          "description": "Repository (owner/repo)",
-          "type": "string"
+          "type": "string",
+          "description": "Repository name"
         },
         "title": {
-          "description": "Issue title",
-          "type": "string"
+          "type": "string",
+          "description": "Issue title"
         },
         "body": {
-          "description": "Issue body",
-          "type": "string"
+          "type": "string",
+          "description": "Issue body"
+        },
+        "assignees": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Usernames to assign"
+        },
+        "milestone": {
+          "type": "number",
+          "description": "Milestone number"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Issue labels"
         }
       },
       "required": [
+        "owner",
         "repo",
         "title"
       ],
@@ -70,7 +93,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Development"
+          "const": "Developer Tools"
         },
         "appName": {
           "type": "string",
@@ -81,9 +104,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "repo"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

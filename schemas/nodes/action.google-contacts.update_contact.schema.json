@@ -41,18 +41,65 @@
       "type": "object",
       "properties": {
         "resourceName": {
-          "description": "Contact resource name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact resource name"
         },
-        "fields": {
-          "description": "Fields to update",
-          "type": "object",
-          "additionalProperties": true
+        "updatePersonFields": {
+          "type": "string",
+          "description": "Fields to update"
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "givenName": {
+                "type": "string"
+              },
+              "familyName": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Updated names"
+        },
+        "emailAddresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "format": "email"
+              },
+              "type": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Updated email addresses"
+        },
+        "phoneNumbers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Updated phone numbers"
         }
       },
       "required": [
-        "resourceName",
-        "fields"
+        "resourceName"
       ],
       "additionalProperties": false
     },
@@ -67,7 +114,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Productivity"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",
@@ -78,9 +125,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/contacts"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

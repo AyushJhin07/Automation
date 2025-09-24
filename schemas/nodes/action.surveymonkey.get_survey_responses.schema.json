@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.surveymonkey.get_survey_responses.schema.json",
+  "title": "SurveyMonkey - Get Survey Responses",
+  "description": "Get responses for a survey",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.surveymonkey.get_survey_responses",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "survey_id": {
+          "type": "string",
+          "description": "Survey ID"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50,
+          "description": "Number of responses per page"
+        },
+        "start_created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter responses created after this date"
+        },
+        "end_created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter responses created before this date"
+        },
+        "start_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter responses modified after this date"
+        },
+        "end_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter responses modified before this date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "partial",
+            "overquota",
+            "disqualified"
+          ],
+          "description": "Filter by response status"
+        },
+        "email": {
+          "type": "string",
+          "description": "Filter by respondent email"
+        },
+        "first_name": {
+          "type": "string",
+          "description": "Filter by respondent first name"
+        },
+        "last_name": {
+          "type": "string",
+          "description": "Filter by respondent last name"
+        },
+        "ip_address": {
+          "type": "string",
+          "description": "Filter by IP address"
+        },
+        "custom": {
+          "type": "string",
+          "description": "Filter by custom value"
+        },
+        "total_time_max": {
+          "type": "number",
+          "description": "Filter by maximum completion time in seconds"
+        },
+        "total_time_min": {
+          "type": "number",
+          "description": "Filter by minimum completion time in seconds"
+        },
+        "total_time_units": {
+          "type": "string",
+          "enum": [
+            "seconds",
+            "minutes",
+            "hours"
+          ],
+          "description": "Time units for total_time filters"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "default": "DESC",
+          "description": "Sort order"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "date_modified"
+          ],
+          "description": "Sort criteria"
+        }
+      },
+      "required": [
+        "survey_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Feedback"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SurveyMonkey"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

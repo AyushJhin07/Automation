@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.miro.create_shape.schema.json",
+  "title": "Miro - Create Shape",
+  "description": "Create a shape on a board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.miro.create_shape",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "boardId": {
+          "type": "string",
+          "description": "Board ID"
+        },
+        "content": {
+          "type": "string",
+          "description": "Shape text content"
+        },
+        "shape": {
+          "type": "string",
+          "enum": [
+            "rectangle",
+            "round_rectangle",
+            "circle",
+            "triangle",
+            "rhombus",
+            "parallelogram",
+            "trapezoid",
+            "pentagon",
+            "hexagon",
+            "octagon",
+            "wedge_round_rectangle_callout",
+            "star",
+            "flow_chart_predefined_process",
+            "cloud",
+            "cross",
+            "can",
+            "right_arrow",
+            "left_arrow",
+            "left_right_arrow",
+            "left_right_up_arrow"
+          ],
+          "description": "Shape type"
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "type": "string"
+            },
+            "fillColor": {
+              "type": "string"
+            },
+            "fontFamily": {
+              "type": "string",
+              "enum": [
+                "arial",
+                "cursive",
+                "impact",
+                "times_new_roman"
+              ]
+            },
+            "fontSize": {
+              "type": "number"
+            },
+            "textAlign": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right"
+              ]
+            },
+            "textAlignVertical": {
+              "type": "string",
+              "enum": [
+                "top",
+                "middle",
+                "bottom"
+              ]
+            },
+            "borderColor": {
+              "type": "string"
+            },
+            "borderWidth": {
+              "type": "number"
+            },
+            "borderStyle": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "dotted",
+                "dashed"
+              ]
+            }
+          },
+          "description": "Shape styling"
+        },
+        "geometry": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            }
+          },
+          "description": "Shape dimensions"
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "center"
+              ],
+              "default": "center"
+            }
+          },
+          "description": "Shape position on board"
+        }
+      },
+      "required": [
+        "boardId",
+        "shape"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Collaboration"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Miro"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

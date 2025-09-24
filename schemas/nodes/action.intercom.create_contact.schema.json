@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.intercom.create_contact.schema.json",
+  "title": "Intercom - Create Contact",
+  "description": "Create a new contact",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.intercom.create_contact",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "lead"
+          ],
+          "default": "user",
+          "description": "Contact role"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name"
+        },
+        "avatar": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "avatar"
+              ]
+            },
+            "image_url": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "description": "Avatar information"
+        },
+        "owner_id": {
+          "type": "number",
+          "description": "Owner admin ID"
+        },
+        "social_profiles": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "social_profile.list"
+              ]
+            },
+            "social_profiles": {
+              "type": "array"
+            }
+          },
+          "description": "Social profiles"
+        },
+        "utm_campaign": {
+          "type": "string",
+          "description": "UTM campaign"
+        },
+        "utm_content": {
+          "type": "string",
+          "description": "UTM content"
+        },
+        "utm_medium": {
+          "type": "string",
+          "description": "UTM medium"
+        },
+        "utm_source": {
+          "type": "string",
+          "description": "UTM source"
+        },
+        "utm_term": {
+          "type": "string",
+          "description": "UTM term"
+        },
+        "custom_attributes": {
+          "type": "object",
+          "description": "Custom attributes object"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Intercom"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -40,14 +40,16 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "databaseId": {
-          "description": "Database ID to monitor",
-          "type": "string"
+        "database_id": {
+          "type": "string",
+          "description": "Filter by specific database"
+        },
+        "property_changed": {
+          "type": "string",
+          "description": "Filter by specific property changes"
         }
       },
-      "required": [
-        "databaseId"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {

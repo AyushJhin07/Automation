@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.navan.create_expense.schema.json",
+  "title": "Navan - Create Expense",
+  "description": "Create a new expense",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.navan.create_expense",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "description": "User ID"
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Expense amount"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code"
+        },
+        "merchant": {
+          "type": "string",
+          "description": "Merchant name"
+        },
+        "category": {
+          "type": "string",
+          "description": "Expense category"
+        },
+        "description": {
+          "type": "string",
+          "description": "Expense description"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Expense date"
+        },
+        "receipt_url": {
+          "type": "string",
+          "description": "Receipt image URL"
+        }
+      },
+      "required": [
+        "user_id",
+        "amount",
+        "currency",
+        "merchant",
+        "category"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Navan"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

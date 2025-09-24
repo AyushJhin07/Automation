@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.adyen.create_payment.schema.json",
+  "title": "Adyen - Create Payment",
+  "description": "Create a new payment",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.adyen.create_payment",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "object",
+          "properties": {
+            "currency": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "description": "Payment amount"
+        },
+        "reference": {
+          "type": "string",
+          "description": "Payment reference"
+        },
+        "paymentMethod": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "encryptedCardNumber": {
+              "type": "string"
+            },
+            "encryptedExpiryMonth": {
+              "type": "string"
+            },
+            "encryptedExpiryYear": {
+              "type": "string"
+            },
+            "encryptedSecurityCode": {
+              "type": "string"
+            }
+          },
+          "description": "Payment method details"
+        },
+        "returnUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Return URL after payment"
+        },
+        "merchantAccount": {
+          "type": "string",
+          "description": "Merchant account identifier"
+        },
+        "shopperEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Shopper email"
+        },
+        "shopperReference": {
+          "type": "string",
+          "description": "Shopper reference"
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "Country code"
+        }
+      },
+      "required": [
+        "amount",
+        "reference",
+        "paymentMethod",
+        "returnUrl",
+        "merchantAccount"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adyen"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

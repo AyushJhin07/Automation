@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify-enhanced.get_orders.schema.json",
+  "title": "Shopify Enhanced - Get Orders",
+  "description": "Get list of orders",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify-enhanced.get_orders",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 250,
+          "default": 50,
+          "description": "Number of orders to return"
+        },
+        "since_id": {
+          "type": "number",
+          "description": "Show orders after specified ID"
+        },
+        "created_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show orders created after date"
+        },
+        "created_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show orders created before date"
+        },
+        "updated_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show orders updated after date"
+        },
+        "updated_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show orders updated before date"
+        },
+        "processed_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show orders processed after date"
+        },
+        "processed_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show orders processed before date"
+        },
+        "attribution_app_id": {
+          "type": "number",
+          "description": "Filter by attribution app ID"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed",
+            "cancelled",
+            "any"
+          ],
+          "default": "open",
+          "description": "Filter by order status"
+        },
+        "financial_status": {
+          "type": "string",
+          "enum": [
+            "authorized",
+            "pending",
+            "paid",
+            "partially_paid",
+            "refunded",
+            "voided",
+            "partially_refunded",
+            "any"
+          ],
+          "description": "Filter by financial status"
+        },
+        "fulfillment_status": {
+          "type": "string",
+          "enum": [
+            "shipped",
+            "partial",
+            "unshipped",
+            "any",
+            "unfulfilled"
+          ],
+          "description": "Filter by fulfillment status"
+        },
+        "fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to include"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

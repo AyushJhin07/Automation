@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify.update_inventory.schema.json",
   "title": "Shopify - Update Inventory",
-  "description": "Update inventory levels",
+  "description": "Update inventory levels for a variant",
   "type": "object",
   "required": [
     "id",
@@ -41,22 +41,22 @@
       "type": "object",
       "properties": {
         "inventory_item_id": {
-          "description": "Inventory item ID",
-          "type": "string"
+          "type": "string",
+          "description": "Inventory item ID"
         },
         "location_id": {
-          "description": "Location ID",
-          "type": "string"
+          "type": "string",
+          "description": "Location ID"
         },
-        "available": {
-          "description": "Available quantity",
-          "type": "number"
+        "available_adjustment": {
+          "type": "number",
+          "description": "Inventory adjustment amount"
         }
       },
       "required": [
         "inventory_item_id",
         "location_id",
-        "available"
+        "available_adjustment"
       ],
       "additionalProperties": false
     },
@@ -82,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_inventory"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -54,7 +54,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Productivity"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",
@@ -65,9 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/contacts.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

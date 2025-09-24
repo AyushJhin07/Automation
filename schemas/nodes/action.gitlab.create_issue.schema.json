@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gitlab.create_issue.schema.json",
+  "title": "GitLab - Create Issue",
+  "description": "Create a new issue in a project",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gitlab.create_issue",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Project ID or path"
+        },
+        "title": {
+          "type": "string",
+          "description": "Issue title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Issue description"
+        },
+        "assignee_ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "User IDs to assign"
+        },
+        "milestone_id": {
+          "type": "number",
+          "description": "Milestone ID"
+        },
+        "labels": {
+          "type": "string",
+          "description": "Comma-separated label names"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Due date"
+        },
+        "weight": {
+          "type": "number",
+          "description": "Issue weight"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Developer Tools"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitLab"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

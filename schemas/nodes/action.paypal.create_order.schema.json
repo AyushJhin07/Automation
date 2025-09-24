@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.paypal.create_order.schema.json",
+  "title": "PayPal - Create Order",
+  "description": "Create a PayPal order for payment processing",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.paypal.create_order",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "intent": {
+          "type": "string",
+          "enum": [
+            "CAPTURE",
+            "AUTHORIZE"
+          ],
+          "description": "Order intent - CAPTURE for immediate payment, AUTHORIZE for delayed capture"
+        },
+        "purchase_units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "object",
+                "properties": {
+                  "currency_code": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currency_code",
+                  "value"
+                ]
+              },
+              "description": {
+                "type": "string"
+              },
+              "custom_id": {
+                "type": "string"
+              },
+              "invoice_id": {
+                "type": "string"
+              },
+              "soft_descriptor": {
+                "type": "string"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "shipping": {
+                "type": "object"
+              },
+              "payments": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "amount"
+            ]
+          },
+          "description": "Array of purchase units for the order"
+        },
+        "application_context": {
+          "type": "object",
+          "properties": {
+            "brand_name": {
+              "type": "string"
+            },
+            "locale": {
+              "type": "string"
+            },
+            "landing_page": {
+              "type": "string",
+              "enum": [
+                "LOGIN",
+                "BILLING",
+                "NO_PREFERENCE"
+              ]
+            },
+            "shipping_preference": {
+              "type": "string",
+              "enum": [
+                "GET_FROM_FILE",
+                "NO_SHIPPING",
+                "SET_PROVIDED_ADDRESS"
+              ]
+            },
+            "user_action": {
+              "type": "string",
+              "enum": [
+                "CONTINUE",
+                "PAY_NOW"
+              ]
+            },
+            "payment_method": {
+              "type": "object",
+              "properties": {
+                "payer_selected": {
+                  "type": "string"
+                },
+                "payee_preferred": {
+                  "type": "string",
+                  "enum": [
+                    "UNRESTRICTED",
+                    "IMMEDIATE_PAYMENT_REQUIRED"
+                  ]
+                }
+              }
+            },
+            "return_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "cancel_url": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "description": "Application context for the order"
+        },
+        "payer": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "object"
+            },
+            "email_address": {
+              "type": "string",
+              "format": "email"
+            },
+            "payer_id": {
+              "type": "string"
+            },
+            "address": {
+              "type": "object"
+            }
+          },
+          "description": "Payer information"
+        }
+      },
+      "required": [
+        "intent",
+        "purchase_units"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Payments"
+        },
+        "appName": {
+          "type": "string",
+          "const": "PayPal"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -40,17 +40,21 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "companyDomain": {
+          "type": "string",
+          "description": "Company domain"
+        },
         "employeeId": {
-          "description": "Employee ID",
-          "type": "string"
+          "type": "string",
+          "description": "Employee ID"
         },
         "fields": {
-          "description": "Fields to update",
           "type": "object",
-          "additionalProperties": true
+          "description": "Fields to update"
         }
       },
       "required": [
+        "companyDomain",
         "employeeId",
         "fields"
       ],
@@ -67,7 +71,7 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -78,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "employees:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

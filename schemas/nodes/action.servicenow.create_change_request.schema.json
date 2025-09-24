@@ -41,34 +41,84 @@
       "type": "object",
       "properties": {
         "short_description": {
-          "description": "Brief summary of the change",
-          "type": "string"
+          "type": "string",
+          "description": "Short description"
         },
         "description": {
-          "description": "Detailed description",
-          "type": "string"
+          "type": "string",
+          "description": "Detailed description"
         },
         "type": {
-          "description": "Change type",
           "type": "string",
           "enum": [
-            "Standard",
-            "Normal",
-            "Emergency"
-          ]
+            "standard",
+            "normal",
+            "emergency"
+          ],
+          "description": "Change type"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "description": "Priority level"
         },
         "risk": {
-          "description": "Risk level",
           "type": "string",
           "enum": [
-            "High",
-            "Moderate",
-            "Low"
-          ]
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "description": "Risk level"
+        },
+        "impact": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ],
+          "description": "Impact level"
+        },
+        "requested_by": {
+          "type": "string",
+          "description": "Requested by user"
+        },
+        "assignment_group": {
+          "type": "string",
+          "description": "Assignment group"
+        },
+        "assigned_to": {
+          "type": "string",
+          "description": "Assigned user"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Planned start date"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Planned end date"
         },
         "implementation_plan": {
-          "description": "Implementation plan",
-          "type": "string"
+          "type": "string",
+          "description": "Implementation plan"
+        },
+        "backout_plan": {
+          "type": "string",
+          "description": "Backout plan"
+        },
+        "test_plan": {
+          "type": "string",
+          "description": "Test plan"
         }
       },
       "required": [
@@ -87,7 +137,7 @@
         },
         "category": {
           "type": "string",
-          "const": "ITSM"
+          "const": "IT Service Management"
         },
         "appName": {
           "type": "string",
@@ -98,9 +148,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "change_write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

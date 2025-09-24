@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.webex.send_message.schema.json",
+  "title": "Cisco Webex - Send Message",
+  "description": "Send a message to a room",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.webex.send_message",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Room ID"
+        },
+        "parentId": {
+          "type": "string",
+          "description": "Parent message ID for replies"
+        },
+        "text": {
+          "type": "string",
+          "description": "Message text"
+        },
+        "markdown": {
+          "type": "string",
+          "description": "Message in markdown format"
+        },
+        "html": {
+          "type": "string",
+          "description": "Message in HTML format"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "File URLs to attach"
+        },
+        "toPersonId": {
+          "type": "string",
+          "description": "Person ID for direct message"
+        },
+        "toPersonEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Person email for direct message"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Cisco Webex"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

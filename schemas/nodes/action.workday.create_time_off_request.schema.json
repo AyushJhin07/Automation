@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.workday.create_time_off_request.schema.json",
+  "title": "Workday - Create Time Off Request",
+  "description": "Create a new time off request",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.workday.create_time_off_request",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "workerId": {
+          "type": "string",
+          "description": "Worker ID"
+        },
+        "timeOffType": {
+          "type": "string",
+          "enum": [
+            "Vacation",
+            "Sick",
+            "Personal",
+            "Bereavement",
+            "Jury Duty",
+            "Military",
+            "Other"
+          ],
+          "description": "Type of time off"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Start date of time off"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date",
+          "description": "End date of time off"
+        },
+        "isFullDay": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether it's a full day request"
+        },
+        "startTime": {
+          "type": "string",
+          "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Start time (HH:MM) if partial day"
+        },
+        "endTime": {
+          "type": "string",
+          "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "End time (HH:MM) if partial day"
+        },
+        "comments": {
+          "type": "string",
+          "description": "Additional comments"
+        }
+      },
+      "required": [
+        "workerId",
+        "timeOffType",
+        "startDate",
+        "endDate"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Workday"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

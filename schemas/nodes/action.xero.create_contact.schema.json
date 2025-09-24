@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.xero.create_contact.schema.json",
+  "title": "Xero - Create Contact",
+  "description": "Create a new contact",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.xero.create_contact",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Contact name"
+        },
+        "contactNumber": {
+          "type": "string",
+          "description": "Contact number"
+        },
+        "accountNumber": {
+          "type": "string",
+          "description": "Account number"
+        },
+        "contactStatus": {
+          "type": "string",
+          "enum": [
+            "ACTIVE",
+            "ARCHIVED"
+          ],
+          "default": "ACTIVE",
+          "description": "Contact status"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name"
+        },
+        "emailAddress": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address"
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "addressType": {
+                "type": "string",
+                "enum": [
+                  "POBOX",
+                  "STREET"
+                ]
+              },
+              "addressLine1": {
+                "type": "string"
+              },
+              "addressLine2": {
+                "type": "string"
+              },
+              "addressLine3": {
+                "type": "string"
+              },
+              "addressLine4": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "region": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Contact addresses"
+        },
+        "phones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneType": {
+                "type": "string",
+                "enum": [
+                  "DEFAULT",
+                  "DDI",
+                  "MOBILE",
+                  "FAX"
+                ]
+              },
+              "phoneNumber": {
+                "type": "string"
+              },
+              "phoneAreaCode": {
+                "type": "string"
+              },
+              "phoneCountryCode": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Contact phone numbers"
+        },
+        "isSupplier": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether contact is a supplier"
+        },
+        "isCustomer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether contact is a customer"
+        },
+        "defaultCurrency": {
+          "type": "string",
+          "description": "Default currency code"
+        },
+        "website": {
+          "type": "string",
+          "description": "Website URL"
+        },
+        "brandingTheme": {
+          "type": "string",
+          "description": "Branding theme ID"
+        },
+        "taxNumber": {
+          "type": "string",
+          "description": "Tax number"
+        },
+        "accountsReceivableTaxType": {
+          "type": "string",
+          "description": "Accounts receivable tax type"
+        },
+        "accountsPayableTaxType": {
+          "type": "string",
+          "description": "Accounts payable tax type"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Xero"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gitlab.create_project.schema.json",
+  "title": "GitLab - Create Project",
+  "description": "Create a new project",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gitlab.create_project",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name"
+        },
+        "path": {
+          "type": "string",
+          "description": "Project path"
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "private",
+            "internal",
+            "public"
+          ],
+          "default": "private",
+          "description": "Project visibility"
+        },
+        "issues_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable issues"
+        },
+        "merge_requests_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable merge requests"
+        },
+        "wiki_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable wiki"
+        },
+        "snippets_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable snippets"
+        },
+        "namespace_id": {
+          "type": "number",
+          "description": "Namespace ID"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Developer Tools"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitLab"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

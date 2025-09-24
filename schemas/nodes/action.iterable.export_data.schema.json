@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.iterable.export_data.schema.json",
+  "title": "Iterable - Export Data",
+  "description": "Export user data",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.iterable.export_data",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dataTypeName": {
+          "type": "string",
+          "enum": [
+            "user",
+            "emailSend",
+            "emailOpen",
+            "emailClick",
+            "emailBounce",
+            "emailComplaint",
+            "emailUnSubscribe",
+            "emailSubscribe",
+            "pushSend",
+            "pushOpen",
+            "pushUninstall",
+            "pushBounce",
+            "inAppSend",
+            "inAppOpen",
+            "inAppClick",
+            "inAppDelete",
+            "smsSend",
+            "smsReceived",
+            "smsBounce",
+            "smsClick",
+            "purchase",
+            "customEvent",
+            "hostedUnsubscribeClick"
+          ],
+          "description": "Type of data to export"
+        },
+        "range": {
+          "type": "string",
+          "enum": [
+            "Today",
+            "Yesterday",
+            "BeforeToday"
+          ],
+          "description": "Date range for export"
+        },
+        "startDateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start date for custom range"
+        },
+        "endDateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End date for custom range"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv",
+            "json"
+          ],
+          "default": "csv",
+          "description": "Export format"
+        },
+        "delimiter": {
+          "type": "string",
+          "default": ",",
+          "description": "CSV delimiter"
+        },
+        "onlyFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only include specific fields"
+        },
+        "omitFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Omit specific fields"
+        }
+      },
+      "required": [
+        "dataTypeName"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Iterable"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

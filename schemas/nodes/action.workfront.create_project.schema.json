@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.workfront.create_project.schema.json",
+  "title": "Adobe Workfront - Create Project",
+  "description": "Create a new project",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.workfront.create_project",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description"
+        },
+        "ownerID": {
+          "type": "string",
+          "description": "Project owner ID"
+        },
+        "sponsorID": {
+          "type": "string",
+          "description": "Project sponsor ID"
+        },
+        "templateID": {
+          "type": "string",
+          "description": "Template ID to create project from"
+        },
+        "groupID": {
+          "type": "string",
+          "description": "Group ID"
+        },
+        "companyID": {
+          "type": "string",
+          "description": "Company ID"
+        },
+        "plannedStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Planned start date"
+        },
+        "plannedCompletionDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Planned completion date"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Project priority (1=Low, 2=Normal, 3=High, 4=Urgent)"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PLN",
+            "CUR",
+            "CPL",
+            "DAD",
+            "REJ",
+            "IDA"
+          ],
+          "description": "Project status"
+        },
+        "portfolioID": {
+          "type": "string",
+          "description": "Portfolio ID"
+        },
+        "programID": {
+          "type": "string",
+          "description": "Program ID"
+        },
+        "budgetedCost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Budgeted cost"
+        },
+        "budgetedHours": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Budgeted hours"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adobe Workfront"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

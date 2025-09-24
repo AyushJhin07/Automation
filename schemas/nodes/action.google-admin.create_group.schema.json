@@ -41,12 +41,17 @@
       "type": "object",
       "properties": {
         "email": {
-          "description": "Group email address",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Group email address"
         },
         "name": {
-          "description": "Group name",
-          "type": "string"
+          "type": "string",
+          "description": "Group name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Group description"
         }
       },
       "required": [
@@ -77,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/admin.directory.group"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false
