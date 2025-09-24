@@ -11,19 +11,16 @@ import {
   type WorkflowMetadataSource,
 } from '@shared/workflow/metadata';
 import type { WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
+import {
+  resolveConnectorMetadata,
+  type ConnectorDefinition,
+} from './metadata-resolvers';
 
 export type { WorkflowMetadata as WorkflowNodeMetadata } from '@shared/workflow/metadata';
 
 type MetadataSource = WorkflowMetadataSource;
 
 const canonicalize = canonicalizeMetadataKey;
-
-type ConnectorDefinition = {
-  id?: string;
-  name?: string;
-  actions?: Array<{ id?: string; name?: string; title?: string; parameters?: { properties?: Record<string, any> } }>;
-  triggers?: Array<{ id?: string; name?: string; title?: string; parameters?: { properties?: Record<string, any> } }>;
-};
 
 type EnrichContext = {
   answers?: Record<string, any>;
@@ -426,6 +423,7 @@ const buildSchemaFromConnector = (properties?: Record<string, any>): Record<stri
 
 const deriveMetadata = (
   node: Partial<WorkflowNode>,
+  connector: ConnectorDefinition | undefined,
   params: Record<string, any>,
   answers: Record<string, any>,
   existing: WorkflowMetadata
@@ -439,14 +437,14 @@ const deriveMetadata = (
   const op = node.op ?? node.data?.operation ?? node.data?.actionId ?? '';
   const operationId = normalizeOperationId(op);
 
-  const connector = findConnector(app);
-  const opDefinition = findOperation(connector, nodeType ?? '', operationId);
+  const connectorDefinition = connector;
+  const opDefinition = findOperation(connectorDefinition, nodeType ?? '', operationId);
   const schemaFromConnector = buildSchemaFromConnector(opDefinition?.parameters?.properties);
 
   if (schemaFromConnector) {
     metadata.schema = schemaFromConnector;
     metadata.outputSchema = schemaFromConnector;
-    derivedFrom.push(`connector:${canonicalize(connector?.id ?? app)}`);
+    derivedFrom.push(`connector:${canonicalize(connectorDefinition?.id ?? app)}`);
     const schemaColumns = Object.keys(schemaFromConnector);
     if (schemaColumns.length > 0) {
       metadata.columns = unique([...(metadata.columns ?? existingColumns), ...schemaColumns]);
@@ -517,23 +515,62 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
     {};
   const answers = context.answers ?? {};
 
+  const nodeType =
+    typeof node.type === 'string' ? node.type : (node?.data as any)?.nodeType ?? '';
+  const app =
+    node.app ??
+    node.data?.app ??
+    node.data?.connectorId ??
+    (typeof nodeType === 'string' ? nodeType.split('.')?.[1] : '');
+  const rawOperation =
+    node.op ??
+    node.data?.operation ??
+    node.data?.actionId ??
+    (typeof nodeType === 'string' ? nodeType.split('.').pop() : '');
+  const operationName =
+    typeof rawOperation === 'string'
+      ? rawOperation.split('.').pop() ?? rawOperation
+      : '';
+  const connector = findConnector(app);
+  const authCandidate =
+    (node as any)?.auth ??
+    node.data?.auth ??
+    node.data?.authentication ??
+    node.data?.credentials ??
+    node.data?.authConfig;
+  const auth =
+    authCandidate && typeof authCandidate === 'object' ? (authCandidate as Record<string, any>) : undefined;
+
+  const resolverResult = resolveConnectorMetadata(app, {
+    node,
+    params,
+    answers,
+    connector,
+    operation: rawOperation,
+    auth,
+  });
+  const resolverMetadata = resolverResult.metadata;
+  const resolverOutputMetadata = resolverResult.outputMetadata ?? resolverResult.metadata;
+
   const existingOutput = mergeMetadataSources(
     node.data?.outputMetadata as any,
-    (node as any)?.outputMetadata
+    (node as any)?.outputMetadata,
+    resolverOutputMetadata
   );
   const combinedExisting = mergeMetadataSources(
     node.metadata as any,
     node.data?.metadata as any,
+    resolverMetadata,
     existingOutput
   );
-  const derived = deriveMetadata(node, params, answers, combinedExisting);
+  const derived = deriveMetadata(node, connector, params, answers, combinedExisting);
   const metadata = mergeMetadataSources(combinedExisting, derived);
   const outputMetadata = mergeMetadataSources(existingOutput, metadata);
 
   const data = {
     ...(node.data || {}),
-    app: node.data?.app ?? node.app,
-    operation: node.data?.operation ?? node.op?.split('.').pop() ?? node.data?.actionId,
+    app: node.data?.app ?? node.app ?? app,
+    operation: node.data?.operation ?? (operationName || undefined) ?? node.data?.actionId,
     parameters: node.data?.parameters ?? params,
     config: node.data?.config ?? params,
     metadata,
