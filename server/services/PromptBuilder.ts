@@ -20,6 +20,7 @@ function getGasOnlyApps() {
     { id: "slides",       title: "Google Slides",ops: ["create_presentation","add_slide","replace_text"] },
     { id: "contacts",     title: "Google Contacts", ops: ["create_contact","update_contact","find_contact"] },
     { id: "chat",         title: "Google Chat",  ops: ["send_message"] },
+    { id: "time",         title: "Time Triggers", ops: ["schedule","delay","every_hour","every_day"] },
     { id: "core",         title: "Core (GAS Utilities)", ops: ["http_request","transform","schedule","branch","merge"] },
   ];
 }
@@ -134,7 +135,7 @@ Return ONLY valid JSON that matches the schema.
  */
 export function getAllowlistForMode(mode: PlannerMode): Set<string> {
   if (mode === "gas-only") {
-    return new Set(["gmail","sheets","drive","calendar","docs","forms","slides","contacts","chat","core"]);
+    return new Set(["gmail","sheets","drive","calendar","docs","forms","slides","contacts","chat","time","core"]);
   }
   // Build from live registry
   const catalog = connectorRegistry.getNodeCatalog();
