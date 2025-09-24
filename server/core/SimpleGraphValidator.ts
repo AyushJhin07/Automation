@@ -170,6 +170,11 @@ export class SimpleGraphValidator {
 
   private validateNode(node: any): ValidationError[] {
     const errors: ValidationError[] = [];
+    const hasValue = (value: unknown): boolean => {
+      if (value === undefined || value === null) return false;
+      if (typeof value === 'string') return value.trim().length > 0;
+      return true;
+    };
 
     if (!node.id || typeof node.id !== 'string') {
       errors.push({
@@ -199,12 +204,23 @@ export class SimpleGraphValidator {
     }
 
     // Validate required parameters based on node type
-    if (node.type?.startsWith('action.gmail.') && !node.params?.recipient) {
-      errors.push({
-        path: `/nodes/${node.id}/params/recipient`,
-        message: 'Gmail action nodes require a recipient parameter',
-        severity: 'error'
-      });
+    if (node.type?.startsWith('action.gmail')) {
+      const recipient =
+        node.params?.recipient ??
+        node.params?.to ??
+        node.data?.config?.recipient ??
+        node.data?.config?.to ??
+        node.data?.parameters?.recipient ??
+        node.data?.parameters?.to ??
+        (node.data as any)?.params?.recipient ??
+        (node.data as any)?.params?.to;
+      if (!hasValue(recipient)) {
+        errors.push({
+          path: `/nodes/${node.id}/params/recipient`,
+          message: 'Gmail action nodes require a recipient parameter',
+          severity: 'error'
+        });
+      }
     }
 
     if (node.type?.startsWith('action.sheets.') && !node.params?.spreadsheetId) {
@@ -215,12 +231,29 @@ export class SimpleGraphValidator {
       });
     }
 
-    if (node.type?.startsWith('trigger.time.') && !node.params?.schedule) {
-      errors.push({
-        path: `/nodes/${node.id}/params/schedule`,
-        message: 'Time trigger nodes require a schedule parameter',
-        severity: 'error'
-      });
+    if (node.type?.startsWith('trigger.time')) {
+      const params =
+        node.params ??
+        node.data?.config ??
+        node.data?.parameters ??
+        (typeof node.data === 'object' ? (node.data as any)?.params : undefined) ??
+        {};
+      const hasSchedule =
+        hasValue((params as any).schedule) ||
+        hasValue((params as any).cron) ||
+        hasValue((params as any).frequency) ||
+        hasValue((params as any).interval) ||
+        hasValue((params as any).every) ||
+        hasValue((params as any).minutes) ||
+        hasValue((params as any).hours) ||
+        hasValue((params as any).days);
+      if (!hasSchedule) {
+        errors.push({
+          path: `/nodes/${node.id}/params/schedule`,
+          message: 'Time trigger nodes require a schedule parameter',
+          severity: 'error'
+        });
+      }
     }
 
     // Validate position coordinates
