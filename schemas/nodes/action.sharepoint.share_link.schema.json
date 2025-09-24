@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.sharepoint.share_link.schema.json",
-  "title": "SharePoint - Share Link",
-  "description": "Create a sharing link for an item",
+  "title": "SharePoint - Create Sharing Link",
+  "description": "Create a sharing link for a file or folder",
   "type": "object",
   "required": [
     "id",
@@ -40,22 +40,51 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "siteId": {
+          "type": "string",
+          "description": "SharePoint site ID"
+        },
+        "driveId": {
+          "type": "string",
+          "description": "Drive ID"
+        },
         "itemId": {
-          "description": "Item ID",
-          "type": "string"
+          "type": "string",
+          "description": "File or folder ID"
         },
         "type": {
-          "description": "Link type",
           "type": "string",
           "enum": [
             "view",
-            "edit"
-          ]
+            "edit",
+            "embed"
+          ],
+          "default": "view",
+          "description": "Type of sharing link"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "anonymous",
+            "organization",
+            "users"
+          ],
+          "default": "anonymous",
+          "description": "Who can access the link"
+        },
+        "password": {
+          "type": "string",
+          "description": "Password for the link"
+        },
+        "expirationDateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Link expiration date"
         }
       },
       "required": [
-        "itemId",
-        "type"
+        "siteId",
+        "itemId"
       ],
       "additionalProperties": false
     },
@@ -70,7 +99,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Collaboration"
+          "const": "File Storage"
         },
         "appName": {
           "type": "string",
@@ -81,9 +110,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "Sites.ReadWrite.All"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

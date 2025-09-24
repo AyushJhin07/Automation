@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.stripe.subscription_created.schema.json",
   "title": "Stripe - Subscription Created",
-  "description": "Trigger when new subscription is created",
+  "description": "Triggered when a new subscription is created",
   "type": "object",
   "required": [
     "id",
@@ -39,7 +39,12 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "description": "Filter by specific customer"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -54,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "payments"
+          "const": "Payments"
         },
         "appName": {
           "type": "string",
@@ -65,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_write"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

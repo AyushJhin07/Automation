@@ -41,30 +41,37 @@
       "type": "object",
       "properties": {
         "subject": {
-          "description": "Ticket subject",
-          "type": "string"
+          "type": "string",
+          "description": "Ticket subject"
         },
         "content": {
-          "description": "Ticket content",
-          "type": "string"
+          "type": "string",
+          "description": "Ticket content/description"
         },
-        "priority": {
-          "description": "Ticket priority",
+        "hs_pipeline": {
+          "type": "string",
+          "description": "Ticket pipeline"
+        },
+        "hs_pipeline_stage": {
+          "type": "string",
+          "description": "Ticket stage"
+        },
+        "hs_ticket_priority": {
           "type": "string",
           "enum": [
             "LOW",
             "MEDIUM",
             "HIGH"
-          ]
+          ],
+          "description": "Ticket priority"
         },
-        "status": {
-          "description": "Ticket status",
-          "type": "string"
+        "hubspot_owner_id": {
+          "type": "string",
+          "description": "Owner ID for the ticket"
         }
       },
       "required": [
-        "subject",
-        "content"
+        "subject"
       ],
       "additionalProperties": false
     },
@@ -90,9 +97,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "tickets"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

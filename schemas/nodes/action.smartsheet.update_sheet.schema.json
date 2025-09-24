@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.smartsheet.update_sheet.schema.json",
+  "title": "Smartsheet - Update Sheet",
+  "description": "Update sheet properties",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.smartsheet.update_sheet",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "sheetId": {
+          "type": "string",
+          "description": "Sheet ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Sheet name"
+        },
+        "userSettings": {
+          "type": "object",
+          "properties": {
+            "criticalPathEnabled": {
+              "type": "boolean"
+            },
+            "displaySummaryTasks": {
+              "type": "boolean"
+            }
+          },
+          "description": "User settings"
+        },
+        "projectSettings": {
+          "type": "object",
+          "properties": {
+            "workingDays": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nonWorkingDays": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "lengthOfDay": {
+              "type": "number"
+            }
+          },
+          "description": "Project settings"
+        }
+      },
+      "required": [
+        "sheetId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Smartsheet"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

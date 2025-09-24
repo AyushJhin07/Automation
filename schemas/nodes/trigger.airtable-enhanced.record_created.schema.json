@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.airtable-enhanced.record_created.schema.json",
   "title": "Airtable Enhanced - Record Created",
-  "description": "Triggered when a record is created",
+  "description": "Triggered when a new record is created",
   "type": "object",
   "required": [
     "id",
@@ -41,18 +41,15 @@
       "type": "object",
       "properties": {
         "baseId": {
-          "description": "Base ID",
-          "type": "string"
+          "type": "string",
+          "description": "Filter by base"
         },
-        "table": {
-          "description": "Table name",
-          "type": "string"
+        "tableId": {
+          "type": "string",
+          "description": "Filter by table"
         }
       },
-      "required": [
-        "baseId",
-        "table"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {

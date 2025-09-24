@@ -39,7 +39,12 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "sobjectType": {
+          "type": "string",
+          "description": "Filter by SObject type"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -54,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",

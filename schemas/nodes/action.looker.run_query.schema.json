@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.looker.run_query.schema.json",
+  "title": "Looker - Run Query",
+  "description": "Run an inline query",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.looker.run_query",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Model name"
+        },
+        "explore": {
+          "type": "string",
+          "description": "Explore name"
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Dimensions to include"
+        },
+        "measures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Measures to include"
+        },
+        "filters": {
+          "type": "object",
+          "description": "Filters to apply"
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sort order"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50000,
+          "description": "Row limit for results"
+        },
+        "columnLimit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Column limit for results"
+        },
+        "resultFormat": {
+          "type": "string",
+          "enum": [
+            "json",
+            "csv",
+            "txt",
+            "html",
+            "xlsx"
+          ],
+          "default": "json",
+          "description": "Format for results"
+        }
+      },
+      "required": [
+        "model",
+        "explore"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Looker"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

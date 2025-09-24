@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.stripe.payment_succeeded.schema.json",
   "title": "Stripe - Payment Succeeded",
-  "description": "Trigger when payment is successful",
+  "description": "Triggered when a payment is successfully processed",
   "type": "object",
   "required": [
     "id",
@@ -40,9 +40,13 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "minAmount": {
-          "description": "Minimum amount filter",
-          "type": "number"
+        "customer_id": {
+          "type": "string",
+          "description": "Filter by specific customer"
+        },
+        "amount_threshold": {
+          "type": "number",
+          "description": "Minimum payment amount to trigger"
         }
       },
       "required": [],
@@ -59,7 +63,7 @@
         },
         "category": {
           "type": "string",
-          "const": "payments"
+          "const": "Payments"
         },
         "appName": {
           "type": "string",
@@ -70,9 +74,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_write"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

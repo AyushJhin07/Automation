@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.argocd.create_application.schema.json",
+  "title": "Argo CD - Create Application",
+  "description": "Create a new Argo CD application",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.argocd.create_application",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application name"
+        },
+        "namespace": {
+          "type": "string",
+          "default": "argocd",
+          "description": "Argo CD namespace"
+        },
+        "repo_url": {
+          "type": "string",
+          "description": "Git repository URL"
+        },
+        "path": {
+          "type": "string",
+          "default": ".",
+          "description": "Path within the repository"
+        },
+        "target_revision": {
+          "type": "string",
+          "default": "HEAD",
+          "description": "Git revision (branch, tag, commit)"
+        },
+        "destination_server": {
+          "type": "string",
+          "default": "https://kubernetes.default.svc",
+          "description": "Kubernetes cluster server"
+        },
+        "destination_namespace": {
+          "type": "string",
+          "default": "default",
+          "description": "Target namespace"
+        },
+        "auto_sync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic sync"
+        }
+      },
+      "required": [
+        "name",
+        "repo_url"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "DevOps"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Argo CD"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

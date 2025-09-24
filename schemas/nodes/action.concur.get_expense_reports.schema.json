@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.concur.get_expense_reports.schema.json",
+  "title": "SAP Concur - Get Expense Reports",
+  "description": "Retrieve expense reports",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.concur.get_expense_reports",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 25,
+          "description": "Number of reports to return"
+        },
+        "offset": {
+          "type": "string",
+          "description": "Pagination offset"
+        },
+        "user": {
+          "type": "string",
+          "description": "Filter by user login ID"
+        },
+        "paymentStatusCode": {
+          "type": "string",
+          "enum": [
+            "NOT_PAID",
+            "EXTRACTED",
+            "PAID",
+            "PAYC_SENT"
+          ],
+          "description": "Filter by payment status"
+        },
+        "approvalStatusCode": {
+          "type": "string",
+          "enum": [
+            "A_AAFH",
+            "A_ACCO",
+            "A_APPR",
+            "A_EXTF",
+            "A_FILE",
+            "A_NOTF",
+            "A_PBDG",
+            "A_PEND",
+            "A_PVAL",
+            "A_RESU",
+            "A_RHLD",
+            "A_SUBM",
+            "A_TEXP",
+            "A_TRVL"
+          ],
+          "description": "Filter by approval status"
+        },
+        "modifiedDateAfter": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by modification date"
+        },
+        "modifiedDateBefore": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by modification date"
+        },
+        "createDateAfter": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by creation date"
+        },
+        "createDateBefore": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by creation date"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SAP Concur"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

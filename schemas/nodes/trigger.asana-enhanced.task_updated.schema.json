@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.asana-enhanced.task_updated.schema.json",
   "title": "Asana Enhanced - Task Updated",
-  "description": "Triggered when a task is updated",
+  "description": "Triggered when a task is modified",
   "type": "object",
   "required": [
     "id",
@@ -40,14 +40,19 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "projectId": {
-          "description": "Project ID to monitor",
-          "type": "string"
+        "project": {
+          "type": "string",
+          "description": "Filter by specific project"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific fields to watch for changes"
         }
       },
-      "required": [
-        "projectId"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {

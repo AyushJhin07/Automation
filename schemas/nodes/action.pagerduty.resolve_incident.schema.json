@@ -40,21 +40,22 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "incident_id": {
-          "description": "Incident ID",
-          "type": "string"
+        "id": {
+          "type": "string",
+          "description": "Incident ID"
         },
         "from": {
-          "description": "Email of user resolving",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Email of the user resolving"
         },
         "resolution": {
-          "description": "Resolution notes",
-          "type": "string"
+          "type": "string",
+          "description": "Resolution notes"
         }
       },
       "required": [
-        "incident_id",
+        "id",
         "from"
       ],
       "additionalProperties": false
@@ -70,7 +71,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Incident Management"
+          "const": "Monitoring"
         },
         "appName": {
           "type": "string",
@@ -81,9 +82,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "incidents:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

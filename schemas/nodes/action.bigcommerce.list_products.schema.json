@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.bigcommerce.list_products.schema.json",
+  "title": "BigCommerce - List Products",
+  "description": "List products with optional filtering",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.bigcommerce.list_products",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 250,
+          "default": 50,
+          "description": "Number of products to return"
+        },
+        "page": {
+          "type": "number",
+          "description": "Page number"
+        },
+        "name": {
+          "type": "string",
+          "description": "Filter by product name"
+        },
+        "sku": {
+          "type": "string",
+          "description": "Filter by SKU"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "physical",
+            "digital"
+          ],
+          "description": "Filter by product type"
+        },
+        "categories:in": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Filter by category IDs"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-Commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "BigCommerce"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

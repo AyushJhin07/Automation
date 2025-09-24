@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hubspot-enhanced.create_deal.schema.json",
+  "title": "HubSpot Enhanced - Create Deal",
+  "description": "Create a new deal",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hubspot-enhanced.create_deal",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "type": "object",
+          "properties": {
+            "dealname": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            },
+            "dealstage": {
+              "type": "string"
+            },
+            "pipeline": {
+              "type": "string"
+            },
+            "closedate": {
+              "type": "string",
+              "format": "date"
+            },
+            "hubspot_owner_id": {
+              "type": "string"
+            },
+            "dealtype": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "hs_priority": {
+              "type": "string",
+              "enum": [
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+              ]
+            },
+            "hs_forecast_amount": {
+              "type": "number"
+            },
+            "hs_forecast_probability": {
+              "type": "number"
+            },
+            "createdate": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "description": "Deal properties"
+        },
+        "associations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "object"
+              },
+              "types": {
+                "type": "array"
+              }
+            }
+          },
+          "description": "Associations to contacts and companies"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HubSpot Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

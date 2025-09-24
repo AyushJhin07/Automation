@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.looker.create_scheduled_plan.schema.json",
+  "title": "Looker - Create Scheduled Plan",
+  "description": "Create a new scheduled plan",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.looker.create_scheduled_plan",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Plan name"
+        },
+        "lookId": {
+          "type": "string",
+          "description": "Look ID to schedule"
+        },
+        "dashboardId": {
+          "type": "string",
+          "description": "Dashboard ID to schedule"
+        },
+        "crontab": {
+          "type": "string",
+          "description": "Cron expression for schedule"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone for schedule"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether plan is enabled"
+        },
+        "destinationAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Email addresses for delivery"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "csv",
+            "txt",
+            "html",
+            "xlsx",
+            "png",
+            "jpg",
+            "pdf"
+          ],
+          "default": "pdf",
+          "description": "Format for delivery"
+        }
+      },
+      "required": [
+        "name",
+        "crontab"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Looker"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

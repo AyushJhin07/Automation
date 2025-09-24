@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.outlook.create_contact.schema.json",
+  "title": "Microsoft Outlook - Create Contact",
+  "description": "Create a new contact",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.outlook.create_contact",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "givenName": {
+          "type": "string",
+          "description": "First name"
+        },
+        "surname": {
+          "type": "string",
+          "description": "Last name"
+        },
+        "emailAddresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "businessPhones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "homePhones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mobilePhone": {
+          "type": "string"
+        },
+        "jobTitle": {
+          "type": "string"
+        },
+        "companyName": {
+          "type": "string"
+        },
+        "department": {
+          "type": "string"
+        },
+        "officeLocation": {
+          "type": "string"
+        },
+        "homeAddress": {
+          "type": "object",
+          "properties": {
+            "street": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            },
+            "countryOrRegion": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "businessAddress": {
+          "type": "object",
+          "properties": {
+            "street": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            },
+            "countryOrRegion": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft Outlook"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

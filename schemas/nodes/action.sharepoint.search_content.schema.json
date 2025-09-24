@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.sharepoint.search_content.schema.json",
+  "title": "SharePoint - Search Content",
+  "description": "Search for content across SharePoint",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sharepoint.search_content",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query"
+        },
+        "siteId": {
+          "type": "string",
+          "description": "Limit search to specific site"
+        },
+        "entityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "driveItem",
+              "list",
+              "listItem",
+              "site"
+            ]
+          },
+          "description": "Types of entities to search"
+        },
+        "top": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of results to return"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "File Storage"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SharePoint"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

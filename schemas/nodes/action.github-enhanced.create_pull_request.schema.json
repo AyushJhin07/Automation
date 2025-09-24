@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github-enhanced.create_pull_request.schema.json",
+  "title": "GitHub Enhanced - Create Pull Request",
+  "description": "Create a new pull request",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github-enhanced.create_pull_request",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "Repository owner"
+        },
+        "repo": {
+          "type": "string",
+          "description": "Repository name"
+        },
+        "title": {
+          "type": "string",
+          "description": "Pull request title"
+        },
+        "head": {
+          "type": "string",
+          "description": "Source branch"
+        },
+        "base": {
+          "type": "string",
+          "description": "Target branch"
+        },
+        "body": {
+          "type": "string",
+          "description": "Pull request body"
+        },
+        "draft": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create as draft"
+        },
+        "maintainer_can_modify": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow maintainer edits"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "title",
+        "head",
+        "base"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Developer Tools"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

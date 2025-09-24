@@ -96,14 +96,17 @@ export class SimpleGraphValidator {
       
       if (!valid && validate.errors) {
         for (const error of validate.errors) {
+          const instancePath = error.instancePath || '/';
+          const readableLocation = instancePath === '/' ? 'root' : instancePath;
+
           errors.push({
-            path: error.instancePath || '/',
-            message: `Schema validation: ${error.message || 'Invalid data'} at ${error.dataPath || 'root'}`,
+            path: instancePath,
+            message: `Schema validation error at ${readableLocation}: ${error.message || 'Invalid data'}`,
             severity: 'error',
             code: 'SCHEMA_VALIDATION',
             details: {
               keyword: error.keyword,
-              dataPath: error.dataPath,
+              instancePath: error.instancePath,
               schemaPath: error.schemaPath,
               params: error.params
             }

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.datadog.create_event.schema.json",
   "title": "Datadog - Create Event",
-  "description": "Create a new event",
+  "description": "Create an event in Datadog",
   "type": "object",
   "required": [
     "id",
@@ -41,19 +41,53 @@
       "type": "object",
       "properties": {
         "title": {
-          "type": "string"
+          "type": "string",
+          "description": "Event title"
         },
         "text": {
-          "type": "string"
+          "type": "string",
+          "description": "Event description"
         },
-        "alert_type": {
-          "type": "string"
+        "date_happened": {
+          "type": "number",
+          "description": "Event timestamp (Unix epoch)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "low"
+          ],
+          "description": "Event priority"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host associated with the event"
         },
         "tags": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Event tags"
+        },
+        "alert_type": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "success"
+          ],
+          "description": "Alert type"
+        },
+        "aggregation_key": {
+          "type": "string",
+          "description": "Aggregation key"
+        },
+        "source_type_name": {
+          "type": "string",
+          "description": "Source type"
         }
       },
       "required": [

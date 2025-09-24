@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.slack-enhanced.schedule_message.schema.json",
   "title": "Slack Enhanced - Schedule Message",
-  "description": "Schedule a message for later",
+  "description": "Schedule a message to be sent later",
   "type": "object",
   "required": [
     "id",
@@ -41,22 +41,76 @@
       "type": "object",
       "properties": {
         "channel": {
-          "description": "Channel ID",
-          "type": "string"
+          "type": "string",
+          "description": "Channel ID or name"
         },
         "text": {
-          "description": "Message text",
-          "type": "string"
+          "type": "string",
+          "description": "Message text"
         },
-        "postAt": {
-          "description": "Unix timestamp when to post",
-          "type": "string"
+        "post_at": {
+          "type": "number",
+          "description": "Unix timestamp representing when the message should be posted"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use for the message"
+        },
+        "icon_emoji": {
+          "type": "string",
+          "description": "Emoji to use as the icon for this message"
+        },
+        "icon_url": {
+          "type": "string",
+          "description": "URL to an image to use as the icon for this message"
+        },
+        "link_names": {
+          "type": "boolean",
+          "description": "Find and link channel names and usernames"
+        },
+        "unfurl_links": {
+          "type": "boolean",
+          "description": "Enable unfurling of primarily text-based content"
+        },
+        "unfurl_media": {
+          "type": "boolean",
+          "description": "Disable unfurling of media content"
+        },
+        "parse": {
+          "type": "string",
+          "enum": [
+            "full",
+            "none"
+          ],
+          "description": "Change how messages are treated"
+        },
+        "thread_ts": {
+          "type": "string",
+          "description": "Provide another message's ts value to make this message a reply"
+        },
+        "reply_broadcast": {
+          "type": "boolean",
+          "description": "Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel"
+        },
+        "blocks": {
+          "type": "array",
+          "description": "A JSON-based array of structured blocks",
+          "items": {
+            "type": "object"
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "description": "A JSON-based array of structured attachments",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "required": [
         "channel",
         "text",
-        "postAt"
+        "post_at"
       ],
       "additionalProperties": false
     },
@@ -82,9 +136,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "chat:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

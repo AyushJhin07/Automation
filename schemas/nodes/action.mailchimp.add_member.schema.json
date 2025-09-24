@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.add_member.schema.json",
+  "title": "Mailchimp - Add Member",
+  "description": "Add or update a list member",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp.add_member",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "listId": {
+          "type": "string",
+          "description": "The unique ID for the list"
+        },
+        "emailAddress": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address for a subscriber"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "subscribed",
+            "unsubscribed",
+            "cleaned",
+            "pending"
+          ],
+          "description": "Subscriber's current status"
+        },
+        "mergeFields": {
+          "type": "object",
+          "description": "An individual merge variable and its value"
+        },
+        "interests": {
+          "type": "object",
+          "description": "The key of this object's properties is the ID of the interest"
+        },
+        "language": {
+          "type": "string",
+          "description": "If set, the subscriber's language"
+        },
+        "vip": {
+          "type": "boolean",
+          "description": "VIP status for subscriber"
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          },
+          "description": "Subscriber location information"
+        },
+        "ipSignup": {
+          "type": "string",
+          "description": "IP address the subscriber signed up from"
+        },
+        "timestampSignup": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time the subscriber signed up"
+        },
+        "ipOpt": {
+          "type": "string",
+          "description": "The IP address the subscriber used to confirm"
+        },
+        "timestampOpt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time the subscriber confirmed"
+        }
+      },
+      "required": [
+        "listId",
+        "emailAddress",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

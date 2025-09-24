@@ -1,0 +1,249 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify-enhanced.create_order.schema.json",
+  "title": "Shopify Enhanced - Create Order",
+  "description": "Create a new order",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify-enhanced.create_order",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "line_items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "variant_id": {
+                    "type": "number"
+                  },
+                  "quantity": {
+                    "type": "number",
+                    "minimum": 1
+                  },
+                  "price": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "sku": {
+                    "type": "string"
+                  },
+                  "grams": {
+                    "type": "number"
+                  },
+                  "vendor": {
+                    "type": "string"
+                  },
+                  "product_id": {
+                    "type": "number"
+                  },
+                  "requires_shipping": {
+                    "type": "boolean"
+                  },
+                  "taxable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "quantity"
+                ]
+              }
+            },
+            "billing_address": {
+              "type": "object",
+              "properties": {
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "address1": {
+                  "type": "string"
+                },
+                "address2": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "province": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                },
+                "company": {
+                  "type": "string"
+                }
+              }
+            },
+            "shipping_address": {
+              "type": "object",
+              "properties": {
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "address1": {
+                  "type": "string"
+                },
+                "address2": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "province": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                },
+                "company": {
+                  "type": "string"
+                }
+              }
+            },
+            "financial_status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "authorized",
+                "paid",
+                "partially_paid",
+                "refunded",
+                "voided",
+                "partially_refunded",
+                "unpaid"
+              ]
+            },
+            "send_receipt": {
+              "type": "boolean",
+              "default": false
+            },
+            "send_fulfillment_receipt": {
+              "type": "boolean",
+              "default": false
+            },
+            "inventory_behaviour": {
+              "type": "string",
+              "enum": [
+                "bypass",
+                "decrement_ignoring_policy",
+                "decrement_obeying_policy"
+              ]
+            },
+            "note": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "string"
+            },
+            "test": {
+              "type": "boolean",
+              "default": false
+            },
+            "total_tax": {
+              "type": "string"
+            },
+            "currency": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "line_items"
+          ],
+          "additionalProperties": false,
+          "description": "Order data"
+        }
+      },
+      "required": [
+        "order"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

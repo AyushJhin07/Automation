@@ -41,7 +41,8 @@
       "type": "object",
       "properties": {
         "workflow_id": {
-          "type": "string"
+          "type": "string",
+          "description": "Workflow ID to cancel"
         }
       },
       "required": [
@@ -60,7 +61,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Developer Tools"
+          "const": "Development"
         },
         "appName": {
           "type": "string",

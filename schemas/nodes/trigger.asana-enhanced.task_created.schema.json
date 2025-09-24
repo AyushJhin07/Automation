@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.asana-enhanced.task_created.schema.json",
   "title": "Asana Enhanced - Task Created",
-  "description": "Triggered when a task is created",
+  "description": "Triggered when a new task is created",
   "type": "object",
   "required": [
     "id",
@@ -40,14 +40,16 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "projectId": {
-          "description": "Project ID to monitor",
-          "type": "string"
+        "project": {
+          "type": "string",
+          "description": "Filter by specific project"
+        },
+        "assignee": {
+          "type": "string",
+          "description": "Filter by specific assignee"
         }
       },
-      "required": [
-        "projectId"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {

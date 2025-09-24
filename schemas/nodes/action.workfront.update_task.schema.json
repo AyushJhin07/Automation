@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.workfront.update_task.schema.json",
+  "title": "Adobe Workfront - Update Task",
+  "description": "Update an existing task",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.workfront.update_task",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "taskID": {
+          "type": "string",
+          "description": "Task ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Task name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Task description"
+        },
+        "assignedToID": {
+          "type": "string",
+          "description": "Assigned user ID"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "NEW",
+            "INP",
+            "CPL"
+          ],
+          "description": "Task status"
+        },
+        "priority": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Task priority"
+        },
+        "percentComplete": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent complete"
+        },
+        "plannedStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Planned start date"
+        },
+        "plannedCompletionDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Planned completion date"
+        },
+        "actualStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Actual start date"
+        },
+        "actualCompletionDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Actual completion date"
+        }
+      },
+      "required": [
+        "taskID"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adobe Workfront"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

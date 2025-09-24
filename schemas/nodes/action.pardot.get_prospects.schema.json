@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.pardot.get_prospects.schema.json",
+  "title": "Pardot - Get Prospects",
+  "description": "Get list of prospects",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.pardot.get_prospects",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 200,
+          "description": "Number of prospects to return"
+        },
+        "offset": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of prospects to skip"
+        },
+        "created_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter prospects created after this date"
+        },
+        "created_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter prospects created before this date"
+        },
+        "updated_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter prospects updated after this date"
+        },
+        "updated_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter prospects updated before this date"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "created_at",
+            "id",
+            "probability",
+            "value"
+          ],
+          "description": "Sort field"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "ascending",
+            "descending"
+          ],
+          "description": "Sort order"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Pardot"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

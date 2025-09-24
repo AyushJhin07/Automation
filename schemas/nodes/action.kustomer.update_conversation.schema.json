@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.kustomer.update_conversation.schema.json",
+  "title": "Kustomer - Update Conversation",
+  "description": "Update an existing conversation",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.kustomer.update_conversation",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "description": "Conversation ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Conversation title"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "lowest",
+            "low",
+            "normal",
+            "high",
+            "highest"
+          ],
+          "description": "Conversation priority"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "snoozed",
+            "closed"
+          ],
+          "description": "Conversation status"
+        },
+        "assignedTeamId": {
+          "type": "string",
+          "description": "Assigned team ID"
+        },
+        "assignedUserId": {
+          "type": "string",
+          "description": "Assigned user ID"
+        },
+        "custom": {
+          "type": "object",
+          "description": "Custom attributes"
+        }
+      },
+      "required": [
+        "conversationId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Kustomer"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.trello.create_card.schema.json",
+  "title": "Trello - Create Card",
+  "description": "Create a new card",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.trello.create_card",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Card name"
+        },
+        "desc": {
+          "type": "string",
+          "description": "Card description"
+        },
+        "pos": {
+          "type": "string",
+          "description": "Position of the card (top, bottom, or positive number)"
+        },
+        "due": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Due date (ISO 8601 format)"
+        },
+        "dueComplete": {
+          "type": "boolean",
+          "description": "Whether the due date is complete"
+        },
+        "idList": {
+          "type": "string",
+          "description": "List ID"
+        },
+        "idMembers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of member IDs"
+        },
+        "idLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of label IDs"
+        },
+        "urlSource": {
+          "type": "string",
+          "description": "URL source for the card"
+        },
+        "fileSource": {
+          "type": "string",
+          "description": "File source for the card"
+        },
+        "idCardSource": {
+          "type": "string",
+          "description": "ID of card to copy from"
+        },
+        "keepFromSource": {
+          "type": "string",
+          "description": "Components to copy from source card"
+        },
+        "address": {
+          "type": "string",
+          "description": "Address for location"
+        },
+        "locationName": {
+          "type": "string",
+          "description": "Location name"
+        },
+        "coordinates": {
+          "type": "string",
+          "description": "GPS coordinates"
+        }
+      },
+      "required": [
+        "name",
+        "idList"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Trello"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

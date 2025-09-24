@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.coda.list_tables.schema.json",
+  "title": "Coda - List Tables",
+  "description": "List tables in a document",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.coda.list_tables",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "description": "Document ID"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 25,
+          "description": "Number of tables to return"
+        },
+        "pageToken": {
+          "type": "string",
+          "description": "Pagination token"
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "name",
+            "createdAt",
+            "tableType"
+          ],
+          "description": "Sort field"
+        },
+        "tableTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "table",
+              "view"
+            ]
+          },
+          "description": "Filter by table types"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Coda"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

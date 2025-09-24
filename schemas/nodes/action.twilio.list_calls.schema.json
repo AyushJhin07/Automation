@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.twilio.list_calls.schema.json",
+  "title": "Twilio - List Calls",
+  "description": "List calls with optional filters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.twilio.list_calls",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "account_sid": {
+          "type": "string",
+          "description": "Account SID (defaults to main account)"
+        },
+        "to": {
+          "type": "string",
+          "description": "Filter by recipient phone number"
+        },
+        "from": {
+          "type": "string",
+          "description": "Filter by caller phone number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "ringing",
+            "in-progress",
+            "completed",
+            "busy",
+            "failed",
+            "no-answer",
+            "canceled"
+          ],
+          "description": "Filter by call status"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by start time"
+        },
+        "start_time_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter calls started before time"
+        },
+        "start_time_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter calls started after time"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by end time"
+        },
+        "end_time_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter calls ended before time"
+        },
+        "end_time_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter calls ended after time"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 50,
+          "description": "Number of calls per page"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Page number to retrieve"
+        },
+        "page_token": {
+          "type": "string",
+          "description": "Page token for pagination"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Twilio"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

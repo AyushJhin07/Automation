@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.slack-enhanced.get_channel_history.schema.json",
+  "title": "Slack Enhanced - Get Channel History",
+  "description": "Fetch a conversation's history of messages and events",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.slack-enhanced.get_channel_history",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "type": "string",
+          "description": "Channel ID"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Paginate through collections of data by setting cursor equal to the next_cursor attribute"
+        },
+        "inclusive": {
+          "type": "boolean",
+          "description": "Include messages with latest or oldest timestamp in results"
+        },
+        "latest": {
+          "type": "string",
+          "description": "End of time range of messages to include in results"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Number of messages to return"
+        },
+        "oldest": {
+          "type": "string",
+          "description": "Start of time range of messages to include in results"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Slack Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

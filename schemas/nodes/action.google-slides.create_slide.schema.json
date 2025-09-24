@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-slides.create_slide.schema.json",
+  "title": "Google Slides - Create Slide",
+  "description": "Create a new slide",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-slides.create_slide",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "presentationId": {
+          "type": "string",
+          "description": "Presentation ID"
+        },
+        "slideLayoutReference": {
+          "type": "object",
+          "properties": {
+            "predefinedLayout": {
+              "type": "string",
+              "enum": [
+                "BLANK",
+                "CAPTION_ONLY",
+                "TITLE",
+                "TITLE_AND_BODY",
+                "TITLE_AND_TWO_COLUMNS",
+                "TITLE_ONLY",
+                "SECTION_HEADER",
+                "SECTION_TITLE_AND_DESCRIPTION",
+                "ONE_COLUMN_TEXT",
+                "MAIN_POINT",
+                "BIG_NUMBER"
+              ],
+              "description": "Predefined layout"
+            },
+            "layoutId": {
+              "type": "string"
+            }
+          },
+          "description": "Slide layout reference"
+        },
+        "objectId": {
+          "type": "string",
+          "description": "Object ID for the slide"
+        },
+        "insertionIndex": {
+          "type": "number",
+          "description": "Index to insert slide at"
+        },
+        "placeholderIdMappings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Placeholder ID mappings"
+        }
+      },
+      "required": [
+        "presentationId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Slides"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

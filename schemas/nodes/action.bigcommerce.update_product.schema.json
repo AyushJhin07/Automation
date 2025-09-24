@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.bigcommerce.update_product.schema.json",
+  "title": "BigCommerce - Update Product",
+  "description": "Update an existing product",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.bigcommerce.update_product",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "product_id": {
+          "type": "number",
+          "description": "Product ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name"
+        },
+        "price": {
+          "type": "number",
+          "description": "Product price"
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description"
+        },
+        "inventory_level": {
+          "type": "number",
+          "description": "Inventory level"
+        }
+      },
+      "required": [
+        "product_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-Commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "BigCommerce"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.get_members.schema.json",
+  "title": "Mailchimp - Get Members",
+  "description": "Get information about members in a list",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp.get_members",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "listId": {
+          "type": "string",
+          "description": "The unique ID for the list"
+        },
+        "count": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Number of members to return"
+        },
+        "offset": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of members to skip"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "subscribed",
+            "unsubscribed",
+            "cleaned",
+            "pending"
+          ],
+          "description": "Filter by subscriber status"
+        },
+        "sinceLastChanged": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by last changed date"
+        },
+        "beforeLastChanged": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by last changed date"
+        },
+        "sinceTimestampOpt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by opt-in time"
+        },
+        "beforeTimestampOpt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by opt-in time"
+        }
+      },
+      "required": [
+        "listId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

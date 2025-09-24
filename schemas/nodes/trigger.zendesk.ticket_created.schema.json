@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.zendesk.ticket_created.schema.json",
   "title": "Zendesk - Ticket Created",
-  "description": "Triggered when a ticket is created",
+  "description": "Triggered when a new ticket is created",
   "type": "object",
   "required": [
     "id",
@@ -39,7 +39,48 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "assignee_id": {
+          "type": "number",
+          "description": "Filter by assignee ID"
+        },
+        "group_id": {
+          "type": "number",
+          "description": "Filter by group ID"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "urgent",
+            "high",
+            "normal",
+            "low"
+          ],
+          "description": "Filter by priority"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "open",
+            "pending",
+            "hold",
+            "solved",
+            "closed"
+          ],
+          "description": "Filter by status"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "problem",
+            "incident",
+            "question",
+            "task"
+          ],
+          "description": "Filter by ticket type"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },

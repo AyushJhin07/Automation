@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify-enhanced.get_customers.schema.json",
+  "title": "Shopify Enhanced - Get Customers",
+  "description": "Get list of customers",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify-enhanced.get_customers",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 250,
+          "default": 50,
+          "description": "Number of customers to return"
+        },
+        "since_id": {
+          "type": "number",
+          "description": "Show customers after specified ID"
+        },
+        "created_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show customers created after date"
+        },
+        "created_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show customers created before date"
+        },
+        "updated_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show customers updated after date"
+        },
+        "updated_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show customers updated before date"
+        },
+        "fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to include"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

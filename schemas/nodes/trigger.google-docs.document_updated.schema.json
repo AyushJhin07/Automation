@@ -40,14 +40,12 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "docId": {
-          "description": "ID of the document to monitor",
-          "type": "string"
+        "documentId": {
+          "type": "string",
+          "description": "Filter by specific document"
         }
       },
-      "required": [
-        "docId"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -72,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/documents.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

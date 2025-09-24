@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.workfront.log_time.schema.json",
+  "title": "Adobe Workfront - Log Time",
+  "description": "Log time on a task or project",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.workfront.log_time",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "taskID": {
+          "type": "string",
+          "description": "Task ID"
+        },
+        "projectID": {
+          "type": "string",
+          "description": "Project ID"
+        },
+        "issueID": {
+          "type": "string",
+          "description": "Issue ID"
+        },
+        "hours": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Hours to log"
+        },
+        "entryDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Entry date"
+        },
+        "description": {
+          "type": "string",
+          "description": "Time entry description"
+        },
+        "hourTypeID": {
+          "type": "string",
+          "description": "Hour type ID"
+        }
+      },
+      "required": [
+        "hours",
+        "entryDate"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adobe Workfront"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

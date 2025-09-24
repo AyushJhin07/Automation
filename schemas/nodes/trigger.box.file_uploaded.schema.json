@@ -41,7 +41,8 @@
       "type": "object",
       "properties": {
         "folder_id": {
-          "type": "string"
+          "type": "string",
+          "description": "Filter by folder"
         }
       },
       "required": [],
@@ -58,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "File Storage"
+          "const": "Storage"
         },
         "appName": {
           "type": "string",

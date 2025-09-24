@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.expensify.export_report.schema.json",
+  "title": "Expensify - Export Report",
+  "description": "Export an expense report",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.expensify.export_report",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "partnerUserSecret": {
+          "type": "string",
+          "description": "Partner user secret"
+        },
+        "reportIDList": {
+          "type": "string",
+          "description": "Comma-separated report IDs"
+        },
+        "template": {
+          "type": "string",
+          "description": "Export template code"
+        },
+        "fileExtension": {
+          "type": "string",
+          "enum": [
+            "csv",
+            "pdf"
+          ],
+          "default": "csv",
+          "description": "Export file format"
+        },
+        "onReceive": {
+          "type": "string",
+          "enum": [
+            "returnRandomFileName",
+            "markAsExported"
+          ],
+          "description": "Action on export"
+        }
+      },
+      "required": [
+        "partnerUserSecret",
+        "reportIDList"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Expensify"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

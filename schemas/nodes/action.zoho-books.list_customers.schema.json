@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoho-books.list_customers.schema.json",
+  "title": "Zoho Books - List Customers",
+  "description": "List all customers",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoho-books.list_customers",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "perPage": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 200,
+          "description": "Number of customers per page"
+        },
+        "sortColumn": {
+          "type": "string",
+          "enum": [
+            "contact_name",
+            "company_name",
+            "email",
+            "outstanding_receivable_amount",
+            "created_time"
+          ],
+          "description": "Sort column"
+        },
+        "sortOrder": {
+          "type": "string",
+          "enum": [
+            "A",
+            "D"
+          ],
+          "description": "Sort order (A=ascending, D=descending)"
+        },
+        "filterBy": {
+          "type": "string",
+          "enum": [
+            "Status.All",
+            "Status.Active",
+            "Status.Inactive"
+          ],
+          "description": "Filter by status"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoho Books"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

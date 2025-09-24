@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.adobesign.create_agreement.schema.json",
+  "title": "Adobe Acrobat Sign - Create Agreement",
+  "description": "Create a new agreement for signature",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.adobesign.create_agreement",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Agreement name"
+        },
+        "fileInfos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "documentURL": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Array of file information objects"
+        },
+        "participantSetsInfo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "memberInfos": {
+                "type": "array"
+              },
+              "order": {
+                "type": "number"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "SIGNER",
+                  "APPROVER",
+                  "DELEGATOR",
+                  "FORM_FILLER"
+                ]
+              }
+            }
+          },
+          "description": "Array of participant set information"
+        },
+        "signatureType": {
+          "type": "string",
+          "enum": [
+            "ESIGN",
+            "WRITTEN"
+          ],
+          "default": "ESIGN",
+          "description": "Signature type"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "IN_PROCESS",
+            "AUTHORING"
+          ],
+          "default": "IN_PROCESS",
+          "description": "Agreement state"
+        },
+        "emailOption": {
+          "type": "object",
+          "properties": {
+            "sendOptions": {
+              "type": "object"
+            },
+            "reminderFrequency": {
+              "type": "string"
+            }
+          },
+          "description": "Email options"
+        },
+        "externalId": {
+          "type": "string",
+          "description": "External ID for tracking"
+        },
+        "message": {
+          "type": "string",
+          "description": "Custom message to participants"
+        }
+      },
+      "required": [
+        "name",
+        "fileInfos",
+        "participantSetsInfo"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-Signature"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adobe Acrobat Sign"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.confluence.get_spaces.schema.json",
+  "title": "Atlassian Confluence - Get Spaces",
+  "description": "Get Confluence spaces",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.confluence.get_spaces",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "cloudid": {
+          "type": "string",
+          "description": "Atlassian cloud ID"
+        },
+        "spaceKey": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by space keys"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "global",
+            "personal"
+          ],
+          "description": "Space type filter"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "current",
+            "archived"
+          ],
+          "description": "Space status filter"
+        },
+        "label": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by labels"
+        },
+        "favourite": {
+          "type": "boolean",
+          "description": "Filter by favourite status"
+        },
+        "expand": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Properties to expand"
+        },
+        "start": {
+          "type": "number",
+          "description": "Starting index"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 25,
+          "description": "Number of spaces to return"
+        }
+      },
+      "required": [
+        "cloudid"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Documentation"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Atlassian Confluence"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

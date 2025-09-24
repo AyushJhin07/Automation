@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hubspot-enhanced.create_contact.schema.json",
+  "title": "HubSpot Enhanced - Create Contact",
+  "description": "Create a new contact",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hubspot-enhanced.create_contact",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "firstname": {
+              "type": "string"
+            },
+            "lastname": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "company": {
+              "type": "string"
+            },
+            "jobtitle": {
+              "type": "string"
+            },
+            "website": {
+              "type": "string",
+              "format": "uri"
+            },
+            "lifecyclestage": {
+              "type": "string",
+              "enum": [
+                "subscriber",
+                "lead",
+                "marketingqualifiedlead",
+                "salesqualifiedlead",
+                "opportunity",
+                "customer",
+                "evangelist",
+                "other"
+              ]
+            },
+            "leadstatus": {
+              "type": "string"
+            },
+            "hs_lead_status": {
+              "type": "string"
+            },
+            "hubspot_owner_id": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "zip": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            }
+          },
+          "description": "Contact properties"
+        },
+        "associations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "object"
+              },
+              "types": {
+                "type": "array"
+              }
+            }
+          },
+          "description": "Associations to other objects"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HubSpot Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

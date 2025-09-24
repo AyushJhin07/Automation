@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.bitbucket.create_webhook.schema.json",
+  "title": "Bitbucket - Create Webhook",
+  "description": "Create a repository webhook",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.bitbucket.create_webhook",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "workspace": {
+          "type": "string",
+          "description": "Workspace name"
+        },
+        "repo_slug": {
+          "type": "string",
+          "description": "Repository slug"
+        },
+        "description": {
+          "type": "string",
+          "description": "Webhook description"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Webhook URL"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether webhook is active"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Events to trigger webhook"
+        }
+      },
+      "required": [
+        "workspace",
+        "repo_slug",
+        "url",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Development"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Bitbucket"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

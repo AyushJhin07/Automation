@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.paypal.refund_capture.schema.json",
+  "title": "PayPal - Refund Capture",
+  "description": "Refund a captured payment",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.paypal.refund_capture",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "capture_id": {
+          "type": "string",
+          "description": "Capture ID to refund"
+        },
+        "amount": {
+          "type": "object",
+          "properties": {
+            "currency_code": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "description": "Refund amount (omit for full refund)"
+        },
+        "note_to_payer": {
+          "type": "string",
+          "description": "Note to include with the refund"
+        },
+        "invoice_id": {
+          "type": "string",
+          "description": "Invoice ID for the refund"
+        }
+      },
+      "required": [
+        "capture_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Payments"
+        },
+        "appName": {
+          "type": "string",
+          "const": "PayPal"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

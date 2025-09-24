@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.create_campaign.schema.json",
   "title": "Mailchimp - Create Campaign",
-  "description": "Create email campaign",
+  "description": "Create a new campaign",
   "type": "object",
   "required": [
     "id",
@@ -41,7 +41,6 @@
       "type": "object",
       "properties": {
         "type": {
-          "description": "Campaign type",
           "type": "string",
           "enum": [
             "regular",
@@ -49,36 +48,114 @@
             "absplit",
             "rss",
             "variate"
-          ]
+          ],
+          "description": "The campaign type"
         },
-        "listId": {
-          "description": "Audience list ID",
-          "type": "string"
+        "recipients": {
+          "type": "object",
+          "properties": {
+            "listId": {
+              "type": "string"
+            },
+            "segmentOpts": {
+              "type": "object"
+            }
+          },
+          "description": "List settings for the campaign"
         },
-        "subject": {
-          "description": "Email subject",
-          "type": "string"
+        "settings": {
+          "type": "object",
+          "properties": {
+            "subjectLine": {
+              "type": "string"
+            },
+            "previewText": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "fromName": {
+              "type": "string"
+            },
+            "replyTo": {
+              "type": "string",
+              "format": "email"
+            },
+            "useConversation": {
+              "type": "boolean"
+            },
+            "toName": {
+              "type": "string"
+            },
+            "folderId": {
+              "type": "string"
+            },
+            "authenticate": {
+              "type": "boolean"
+            },
+            "autoFooter": {
+              "type": "boolean"
+            },
+            "inlineCss": {
+              "type": "boolean"
+            },
+            "autoTweet": {
+              "type": "boolean"
+            },
+            "fbComments": {
+              "type": "boolean"
+            },
+            "timewarp": {
+              "type": "boolean"
+            },
+            "templateId": {
+              "type": "number"
+            },
+            "dragAndDrop": {
+              "type": "boolean"
+            }
+          },
+          "description": "The settings for your campaign"
         },
-        "fromName": {
-          "description": "From name",
-          "type": "string"
+        "tracking": {
+          "type": "object",
+          "properties": {
+            "opens": {
+              "type": "boolean"
+            },
+            "htmlClicks": {
+              "type": "boolean"
+            },
+            "textClicks": {
+              "type": "boolean"
+            },
+            "goalTracking": {
+              "type": "boolean"
+            },
+            "ecomm360": {
+              "type": "boolean"
+            },
+            "googleAnalytics": {
+              "type": "string"
+            },
+            "clicktale": {
+              "type": "string"
+            }
+          },
+          "description": "The tracking options for a campaign"
         },
-        "fromEmail": {
-          "description": "From email",
-          "type": "string"
+        "rssOpts": {
+          "type": "object",
+          "description": "RSS options for a campaign"
         },
-        "content": {
-          "description": "Email content",
-          "type": "string"
+        "socialCard": {
+          "type": "object",
+          "description": "The preview for the campaign in social networks"
         }
       },
       "required": [
-        "type",
-        "listId",
-        "subject",
-        "fromName",
-        "fromEmail",
-        "content"
+        "type"
       ],
       "additionalProperties": false
     },
@@ -93,7 +170,7 @@
         },
         "category": {
           "type": "string",
-          "const": "marketing"
+          "const": "Marketing"
         },
         "appName": {
           "type": "string",
@@ -104,9 +181,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

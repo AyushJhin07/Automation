@@ -41,8 +41,12 @@
       "type": "object",
       "properties": {
         "folderId": {
-          "description": "Monitor files in specific folder only",
-          "type": "string"
+          "type": "string",
+          "description": "Monitor specific folder (optional)"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "Filter by file type"
         }
       },
       "required": [],
@@ -70,9 +74,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive.metadata.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

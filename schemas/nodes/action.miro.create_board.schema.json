@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.miro.create_board.schema.json",
+  "title": "Miro - Create Board",
+  "description": "Create a new board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.miro.create_board",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Board name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Board description"
+        },
+        "teamId": {
+          "type": "string",
+          "description": "Team ID to create board in"
+        },
+        "policy": {
+          "type": "object",
+          "properties": {
+            "permissionsPolicy": {
+              "type": "object",
+              "properties": {
+                "collaborationToolsStartAccess": {
+                  "type": "string",
+                  "enum": [
+                    "all_editors",
+                    "board_owners_and_coowners"
+                  ]
+                },
+                "copyAccess": {
+                  "type": "string",
+                  "enum": [
+                    "anyone",
+                    "team_members",
+                    "team_editors",
+                    "board_owners_and_coowners"
+                  ]
+                },
+                "sharingAccess": {
+                  "type": "string",
+                  "enum": [
+                    "team_members",
+                    "team_editors",
+                    "board_owners_and_coowners"
+                  ]
+                }
+              }
+            },
+            "sharingPolicy": {
+              "type": "object",
+              "properties": {
+                "access": {
+                  "type": "string",
+                  "enum": [
+                    "private",
+                    "view",
+                    "comment",
+                    "edit"
+                  ],
+                  "default": "private"
+                },
+                "inviteToAccountAndBoardLinkAccess": {
+                  "type": "string",
+                  "enum": [
+                    "no_access",
+                    "view",
+                    "comment",
+                    "edit"
+                  ]
+                },
+                "organizationAccess": {
+                  "type": "string",
+                  "enum": [
+                    "no_access",
+                    "view",
+                    "comment",
+                    "edit"
+                  ]
+                },
+                "teamAccess": {
+                  "type": "string",
+                  "enum": [
+                    "no_access",
+                    "view",
+                    "comment",
+                    "edit"
+                  ]
+                }
+              }
+            }
+          },
+          "description": "Board policy settings"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Collaboration"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Miro"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

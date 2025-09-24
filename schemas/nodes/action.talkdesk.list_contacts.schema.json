@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.talkdesk.list_contacts.schema.json",
+  "title": "Talkdesk - List Contacts",
+  "description": "List all contacts",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.talkdesk.list_contacts",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20,
+          "description": "Number of contacts per page"
+        },
+        "search": {
+          "type": "string",
+          "description": "Search query"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Filter by tag"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Talkdesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

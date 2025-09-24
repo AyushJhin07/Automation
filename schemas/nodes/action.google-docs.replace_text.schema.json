@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-docs.replace_text.schema.json",
   "title": "Google Docs - Replace Text",
-  "description": "Find and replace text in a document",
+  "description": "Replace all instances of text",
   "type": "object",
   "required": [
     "id",
@@ -40,23 +40,36 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "docId": {
-          "description": "ID of the document",
-          "type": "string"
+        "documentId": {
+          "type": "string",
+          "description": "Document ID"
         },
-        "find": {
-          "description": "Text to find",
-          "type": "string"
+        "replaceText": {
+          "type": "string",
+          "description": "New text"
         },
-        "replace": {
-          "description": "Text to replace with",
-          "type": "string"
+        "containsText": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "matchCase": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "description": "Text to find and replace"
+        },
+        "tabId": {
+          "type": "string",
+          "description": "Tab ID for tab-specific replacement"
         }
       },
       "required": [
-        "docId",
-        "find",
-        "replace"
+        "documentId",
+        "replaceText",
+        "containsText"
       ],
       "additionalProperties": false
     },
@@ -82,9 +95,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/documents"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

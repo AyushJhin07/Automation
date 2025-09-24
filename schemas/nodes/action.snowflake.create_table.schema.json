@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.snowflake.create_table.schema.json",
+  "title": "Snowflake - Create Table",
+  "description": "Create a new table",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.snowflake.create_table",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Schema name"
+        },
+        "table_name": {
+          "type": "string",
+          "description": "Table name"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "nullable": {
+                "type": "boolean",
+                "default": true
+              },
+              "default": {
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ]
+          },
+          "description": "Table columns definition"
+        },
+        "cluster_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Clustering keys"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Table comment"
+        }
+      },
+      "required": [
+        "table_name",
+        "columns"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Data & Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Snowflake"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

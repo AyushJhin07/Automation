@@ -41,16 +41,52 @@
       "type": "object",
       "properties": {
         "task_id": {
-          "type": "string"
+          "type": "string",
+          "description": "Task ID to update"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Task name"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Task description"
         },
         "status": {
-          "type": "string"
+          "type": "string",
+          "description": "Task status"
+        },
+        "priority": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "description": "Task priority"
+        },
+        "assignees": {
+          "type": "object",
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "rem": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Assignees to add or remove"
+        },
+        "due_date": {
+          "type": "number",
+          "description": "Due date as Unix timestamp"
         }
       },
       "required": [

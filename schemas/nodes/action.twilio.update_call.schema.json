@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.twilio.update_call.schema.json",
+  "title": "Twilio - Update Call",
+  "description": "Update an in-progress call",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.twilio.update_call",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "account_sid": {
+          "type": "string",
+          "description": "Account SID (defaults to main account)"
+        },
+        "sid": {
+          "type": "string",
+          "description": "Call SID"
+        },
+        "url": {
+          "type": "string",
+          "description": "New TwiML URL to execute"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for URL"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "canceled",
+            "completed"
+          ],
+          "description": "New call status"
+        },
+        "fallback_url": {
+          "type": "string",
+          "description": "New fallback URL"
+        },
+        "fallback_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for fallback URL"
+        },
+        "status_callback": {
+          "type": "string",
+          "description": "New status callback URL"
+        },
+        "status_callback_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for status callback"
+        },
+        "twiml": {
+          "type": "string",
+          "description": "TwiML instructions to execute"
+        }
+      },
+      "required": [
+        "sid"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Twilio"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

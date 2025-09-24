@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.workfront.create_document.schema.json",
+  "title": "Adobe Workfront - Create Document",
+  "description": "Create a new document",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.workfront.create_document",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Document name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Document description"
+        },
+        "docObjCode": {
+          "type": "string",
+          "enum": [
+            "PROJ",
+            "TASK",
+            "OPTASK",
+            "USER",
+            "COMP"
+          ],
+          "description": "Object type to attach document to"
+        },
+        "objID": {
+          "type": "string",
+          "description": "Object ID to attach document to"
+        },
+        "currentVersion": {
+          "type": "object",
+          "properties": {
+            "fileName": {
+              "type": "string"
+            },
+            "handle": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "description": "Current version details"
+        }
+      },
+      "required": [
+        "name",
+        "docObjCode",
+        "objID"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Adobe Workfront"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

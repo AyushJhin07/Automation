@@ -41,26 +41,30 @@
       "type": "object",
       "properties": {
         "baseId": {
-          "description": "Base ID",
-          "type": "string"
+          "type": "string",
+          "description": "Airtable base ID"
         },
-        "table": {
-          "description": "Table name",
-          "type": "string"
+        "tableId": {
+          "type": "string",
+          "description": "Table name or ID"
         },
         "recordId": {
-          "description": "Record ID",
-          "type": "string"
+          "type": "string",
+          "description": "Record ID"
         },
         "fields": {
-          "description": "Fields to update",
           "type": "object",
-          "additionalProperties": true
+          "description": "Updated fields"
+        },
+        "typecast": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically typecast field values"
         }
       },
       "required": [
         "baseId",
-        "table",
+        "tableId",
         "recordId",
         "fields"
       ],

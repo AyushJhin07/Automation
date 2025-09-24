@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.quickbooks.create_invoice.schema.json",
+  "title": "QuickBooks - Create Invoice",
+  "description": "Create a new invoice",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.quickbooks.create_invoice",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "companyId": {
+          "type": "string",
+          "description": "Company ID"
+        },
+        "customerRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Customer reference"
+        },
+        "txnDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Transaction date"
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Due date"
+        },
+        "line": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "detailType": {
+                "type": "string",
+                "enum": [
+                  "SalesItemLineDetail"
+                ]
+              },
+              "salesItemLineDetail": {
+                "type": "object",
+                "properties": {
+                  "itemRef": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "qty": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "unitPrice": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "taxCodeRef": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "amount",
+              "detailType"
+            ]
+          },
+          "description": "Invoice line items"
+        },
+        "billAddr": {
+          "type": "object",
+          "properties": {
+            "line1": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "countrySubDivisionCode": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            }
+          },
+          "description": "Billing address"
+        },
+        "shipAddr": {
+          "type": "object",
+          "properties": {
+            "line1": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "countrySubDivisionCode": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            }
+          },
+          "description": "Shipping address"
+        },
+        "emailStatus": {
+          "type": "string",
+          "enum": [
+            "NotSet",
+            "NeedToSend",
+            "EmailSent"
+          ],
+          "description": "Email status"
+        },
+        "billEmail": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "description": "Bill email address"
+        },
+        "salesTermRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            }
+          },
+          "description": "Sales terms reference"
+        },
+        "customerMemo": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            }
+          },
+          "description": "Customer memo"
+        },
+        "privateNote": {
+          "type": "string",
+          "description": "Private note"
+        }
+      },
+      "required": [
+        "companyId",
+        "customerRef",
+        "line"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "QuickBooks"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

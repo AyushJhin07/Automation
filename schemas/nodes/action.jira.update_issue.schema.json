@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.jira.update_issue.schema.json",
   "title": "Jira - Update Issue",
-  "description": "Update an existing issue in Jira",
+  "description": "Update an existing issue",
   "type": "object",
   "required": [
     "id",
@@ -41,35 +41,46 @@
       "type": "object",
       "properties": {
         "issueIdOrKey": {
-          "description": "Issue ID or key (e.g., PROJ-123)",
-          "type": "string"
+          "type": "string",
+          "description": "Issue ID or key (e.g., PROJ-123)"
         },
         "summary": {
-          "description": "Issue summary/title",
-          "type": "string"
+          "type": "string",
+          "description": "Issue summary/title"
         },
         "description": {
-          "description": "Issue description",
-          "type": "string"
+          "type": "string",
+          "description": "Issue description"
         },
         "assignee": {
-          "description": "Assignee account ID or email",
-          "type": "string"
+          "type": "string",
+          "description": "Assignee account ID or email"
         },
         "priority": {
-          "description": "Issue priority",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "Highest",
+            "High",
+            "Medium",
+            "Low",
+            "Lowest"
+          ],
+          "description": "Issue priority"
+        },
+        "status": {
+          "type": "string",
+          "description": "Issue status (e.g., In Progress, Done)"
         },
         "labels": {
-          "description": "Array of labels",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Issue labels"
         },
-        "dueDate": {
-          "description": "Due date (YYYY-MM-DD)",
-          "type": "string"
+        "customFields": {
+          "type": "object",
+          "description": "Custom field values as key-value pairs"
         }
       },
       "required": [
@@ -99,9 +110,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write:jira-work"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

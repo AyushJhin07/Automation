@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.smartsheet.send_sheet.schema.json",
+  "title": "Smartsheet - Send Sheet",
+  "description": "Send a sheet via email",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.smartsheet.send_sheet",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "sheetId": {
+          "type": "string",
+          "description": "Sheet ID"
+        },
+        "sendTo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          },
+          "description": "Recipients"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Email subject"
+        },
+        "message": {
+          "type": "string",
+          "description": "Email message"
+        },
+        "ccMe": {
+          "type": "boolean",
+          "default": false,
+          "description": "CC sender"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "PDF",
+            "EXCEL",
+            "PDF_GANTT"
+          ],
+          "description": "Attachment format"
+        },
+        "formatDetails": {
+          "type": "object",
+          "properties": {
+            "paperSize": {
+              "type": "string",
+              "enum": [
+                "LETTER",
+                "LEGAL",
+                "A4",
+                "A3",
+                "A2",
+                "A1",
+                "A0"
+              ]
+            },
+            "orientation": {
+              "type": "string",
+              "enum": [
+                "PORTRAIT",
+                "LANDSCAPE"
+              ]
+            }
+          },
+          "description": "Format details"
+        }
+      },
+      "required": [
+        "sheetId",
+        "sendTo",
+        "subject",
+        "format"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Smartsheet"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

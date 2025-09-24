@@ -40,21 +40,26 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "orderId": {
-          "description": "Order ID",
-          "type": "string"
+        "order_id": {
+          "type": "string",
+          "description": "Order ID to update"
         },
         "note": {
-          "description": "Order note",
-          "type": "string"
+          "type": "string",
+          "description": "Order note"
         },
         "tags": {
-          "description": "Order tags",
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated order tags"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Customer email"
         }
       },
       "required": [
-        "orderId"
+        "order_id"
       ],
       "additionalProperties": false
     },
@@ -80,9 +85,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_orders"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

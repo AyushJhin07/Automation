@@ -65,23 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read:user"
-          ]
-        },
-        "rateLimits": {
-          "type": "object",
-          "properties": {
-            "requestsPerSecond": {
-              "type": "number"
-            },
-            "requestsPerMinute": {
-              "type": "number"
-            },
-            "dailyLimit": {
-              "type": "number"
-            }
-          }
+          "default": []
         }
       },
       "additionalProperties": false

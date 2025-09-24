@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.coupa.create_purchase_order.schema.json",
+  "title": "Coupa - Create Purchase Order",
+  "description": "Create a new purchase order",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.coupa.create_purchase_order",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "requisition-header": {
+          "type": "object",
+          "properties": {
+            "requested-by": {
+              "type": "object"
+            },
+            "ship-to-address": {
+              "type": "object"
+            },
+            "supplier": {
+              "type": "object"
+            },
+            "currency": {
+              "type": "object"
+            }
+          },
+          "description": "Purchase order header information"
+        },
+        "order-lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              },
+              "price": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "currency": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Order line items"
+        }
+      },
+      "required": [
+        "requisition-header"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Coupa"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

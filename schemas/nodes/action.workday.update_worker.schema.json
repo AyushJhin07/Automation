@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.workday.update_worker.schema.json",
   "title": "Workday - Update Worker",
-  "description": "Update worker information",
+  "description": "Update an existing worker",
   "type": "object",
   "required": [
     "id",
@@ -41,18 +41,116 @@
       "type": "object",
       "properties": {
         "workerId": {
-          "description": "Worker ID",
-          "type": "string"
+          "type": "string",
+          "description": "Worker ID"
         },
         "personalData": {
-          "description": "Updated personal data",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "firstName": {
+              "type": "string"
+            },
+            "lastName": {
+              "type": "string"
+            },
+            "middleName": {
+              "type": "string"
+            },
+            "preferredName": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "dateOfBirth": {
+              "type": "string",
+              "format": "date"
+            },
+            "gender": {
+              "type": "string",
+              "enum": [
+                "Male",
+                "Female",
+                "Other",
+                "Prefer not to say"
+              ]
+            },
+            "maritalStatus": {
+              "type": "string",
+              "enum": [
+                "Single",
+                "Married",
+                "Divorced",
+                "Widowed",
+                "Other"
+              ]
+            }
+          },
+          "description": "Personal information to update"
         },
-        "positionData": {
-          "description": "Updated position data",
+        "jobData": {
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "jobTitle": {
+              "type": "string"
+            },
+            "department": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "managerId": {
+              "type": "string"
+            },
+            "employmentType": {
+              "type": "string",
+              "enum": [
+                "Full-time",
+                "Part-time",
+                "Contract",
+                "Temporary"
+              ]
+            },
+            "jobLevel": {
+              "type": "string"
+            }
+          },
+          "description": "Job-related information to update"
+        },
+        "compensationData": {
+          "type": "object",
+          "properties": {
+            "baseSalary": {
+              "type": "number",
+              "minimum": 0
+            },
+            "currency": {
+              "type": "string"
+            },
+            "payFrequency": {
+              "type": "string",
+              "enum": [
+                "Weekly",
+                "Bi-weekly",
+                "Monthly",
+                "Annual"
+              ]
+            },
+            "payGroup": {
+              "type": "string"
+            }
+          },
+          "description": "Compensation information to update"
+        },
+        "effectiveDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Effective date for the changes"
         }
       },
       "required": [
@@ -71,7 +169,7 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -82,9 +180,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "staffing"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

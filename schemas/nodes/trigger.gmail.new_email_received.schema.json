@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.gmail.new_email_received.schema.json",
   "title": "Gmail - New Email Received",
-  "description": "Trigger when new email is received",
+  "description": "Triggered when a new email is received",
   "type": "object",
   "required": [
     "id",
@@ -40,14 +40,17 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "labelName": {
-          "description": "Filter by label name",
-          "type": "string",
-          "default": "INBOX"
-        },
         "query": {
-          "description": "Gmail search query filter",
-          "type": "string"
+          "type": "string",
+          "description": "Gmail query to filter emails (e.g., 'from:example@gmail.com', 'has:attachment')",
+          "default": "is:unread"
+        },
+        "labelIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by specific label IDs"
         }
       },
       "required": [],
@@ -64,7 +67,7 @@
         },
         "category": {
           "type": "string",
-          "const": "communication"
+          "const": "Communication"
         },
         "appName": {
           "type": "string",
@@ -75,9 +78,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/gmail.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

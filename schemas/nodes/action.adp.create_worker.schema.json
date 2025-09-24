@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.adp.create_worker.schema.json",
+  "title": "ADP Workforce Now - Create Worker",
+  "description": "Create a new worker record",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.adp.create_worker",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "associateOID": {
+          "type": "string",
+          "description": "Associate OID"
+        },
+        "workerDates": {
+          "type": "object",
+          "properties": {
+            "originalHireDate": {
+              "type": "string",
+              "format": "date"
+            },
+            "rehireDate": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          "description": "Worker dates"
+        },
+        "person": {
+          "type": "object",
+          "properties": {
+            "legalName": {
+              "type": "object",
+              "properties": {
+                "givenName": {
+                  "type": "string"
+                },
+                "familyName1": {
+                  "type": "string"
+                },
+                "middleName": {
+                  "type": "string"
+                }
+              }
+            },
+            "communication": {
+              "type": "object",
+              "properties": {
+                "emails": {
+                  "type": "array"
+                },
+                "phones": {
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "description": "Person information"
+        },
+        "workAssignments": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Work assignments"
+        }
+      },
+      "required": [
+        "person"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR"
+        },
+        "appName": {
+          "type": "string",
+          "const": "ADP Workforce Now"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

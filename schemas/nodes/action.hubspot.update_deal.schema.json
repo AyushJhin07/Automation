@@ -41,18 +41,29 @@
       "type": "object",
       "properties": {
         "dealId": {
-          "description": "Deal ID to update",
-          "type": "string"
+          "type": "string",
+          "description": "HubSpot deal ID"
         },
-        "properties": {
-          "description": "Deal properties to update",
-          "type": "object",
-          "additionalProperties": true
+        "dealname": {
+          "type": "string",
+          "description": "Name of the deal"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Deal amount"
+        },
+        "dealstage": {
+          "type": "string",
+          "description": "Deal stage"
+        },
+        "closedate": {
+          "type": "string",
+          "format": "date",
+          "description": "Expected close date (YYYY-MM-DD)"
         }
       },
       "required": [
-        "dealId",
-        "properties"
+        "dealId"
       ],
       "additionalProperties": false
     },
@@ -78,9 +89,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "crm.objects.deals.write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

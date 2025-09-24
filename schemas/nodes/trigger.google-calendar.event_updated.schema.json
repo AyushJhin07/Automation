@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.google-calendar.event_updated.schema.json",
   "title": "Google Calendar - Event Updated",
-  "description": "Triggered when an event is updated",
+  "description": "Triggered when an event is modified",
   "type": "object",
   "required": [
     "id",
@@ -41,8 +41,8 @@
       "type": "object",
       "properties": {
         "calendarId": {
-          "description": "Monitor specific calendar",
-          "type": "string"
+          "type": "string",
+          "description": "Monitor specific calendar (optional)"
         }
       },
       "required": [],
@@ -70,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/calendar.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

@@ -51,19 +51,9 @@ interface NodeSchema {
   description: string;
   type: string;
   required: string[];
-  properties: {
-    id: any;
-    type: any;
-    position: any;
-    parameters: {
-      type: string;
-      properties: Record<string, any>;
-      required: string[];
-      additionalProperties: boolean;
-    };
-    metadata?: any;
-  };
+  properties: Record<string, any>;
   additionalProperties: boolean;
+  anyOf?: Array<Record<string, any>>;
 }
 
 export class NodeSchemaGenerator {
@@ -75,11 +65,12 @@ export class NodeSchemaGenerator {
     this.connectorsPath = join(process.cwd(), 'connectors');
     this.schemasPath = join(process.cwd(), 'schemas');
     this.nodesSchemasPath = join(this.schemasPath, 'nodes');
-    
+
     // Ensure directories exist
     if (!existsSync(this.schemasPath)) {
       mkdirSync(this.schemasPath, { recursive: true });
     }
+
     if (!existsSync(this.nodesSchemasPath)) {
       mkdirSync(this.nodesSchemasPath, { recursive: true });
     }
@@ -113,6 +104,10 @@ export class NodeSchemaGenerator {
         }
       }
 
+      const staticGenerated = this.generateStaticNodeSchemas();
+      results.generated += staticGenerated;
+      console.log(`✅ Generated ${staticGenerated} static node schemas`);
+
       console.log(`\n🎯 Schema generation complete: ${results.generated} schemas generated, ${results.errors.length} errors`);
       return results;
 
@@ -130,7 +125,9 @@ export class NodeSchemaGenerator {
   private getConnectorFiles(): string[] {
     try {
       const files = readdirSync(this.connectorsPath);
-      return files.filter(file => file.endsWith('.json'));
+      return files
+        .filter(file => file.endsWith('.json'))
+        .sort((a, b) => a.localeCompare(b));
     } catch (error) {
       console.warn(`⚠️ Could not read connectors directory: ${error}`);
       return [];
@@ -176,7 +173,8 @@ export class NodeSchemaGenerator {
    */
   private createActionSchema(appName: string, action: ConnectorFunction, connector: ConnectorData): NodeSchema {
     const nodeType = `action.${appName}.${action.id}`;
-    
+    const parametersSchema = this.buildParametersSchema(action.parameters || action.params);
+
     return {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: `https://apps-script-studio.com/schemas/nodes/${nodeType}.schema.json`,
@@ -204,12 +202,7 @@ export class NodeSchemaGenerator {
           required: ["x", "y"],
           additionalProperties: false
         },
-        parameters: {
-          type: "object",
-          properties: this.convertParametersToJsonSchema(action.parameters || action.params || {}),
-          required: this.getRequiredParameters(action.parameters || action.params || {}),
-          additionalProperties: false
-        },
+        parameters: parametersSchema,
         metadata: {
           type: "object",
           properties: {
@@ -243,7 +236,8 @@ export class NodeSchemaGenerator {
    */
   private createTriggerSchema(appName: string, trigger: ConnectorFunction, connector: ConnectorData): NodeSchema {
     const nodeType = `trigger.${appName}.${trigger.id}`;
-    
+    const parametersSchema = this.buildParametersSchema(trigger.parameters || trigger.params);
+
     return {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: `https://apps-script-studio.com/schemas/nodes/${nodeType}.schema.json`,
@@ -271,12 +265,7 @@ export class NodeSchemaGenerator {
           required: ["x", "y"],
           additionalProperties: false
         },
-        parameters: {
-          type: "object",
-          properties: this.convertParametersToJsonSchema(trigger.parameters || trigger.params || {}),
-          required: this.getRequiredParameters(trigger.parameters || trigger.params || {}),
-          additionalProperties: false
-        },
+        parameters: parametersSchema,
         metadata: {
           type: "object",
           properties: {
@@ -370,12 +359,274 @@ export class NodeSchemaGenerator {
   }
 
   /**
+   * Normalize parameter definitions from connectors into JSON Schema format
+   */
+  private buildParametersSchema(parameters?: any): { type: string; properties: Record<string, any>; required: string[]; additionalProperties: boolean } {
+    const baseSchema = {
+      type: 'object',
+      properties: {} as Record<string, any>,
+      required: [] as string[],
+      additionalProperties: false
+    };
+
+    if (!parameters || (typeof parameters === 'object' && Object.keys(parameters).length === 0)) {
+      return baseSchema;
+    }
+
+    if (typeof parameters === 'object' && !Array.isArray(parameters)) {
+      const hasSchemaLikeKeys = Object.prototype.hasOwnProperty.call(parameters, 'properties');
+
+      if (hasSchemaLikeKeys) {
+        const schema = JSON.parse(JSON.stringify(parameters));
+
+        if (!schema.type) {
+          schema.type = 'object';
+        }
+
+        if (!schema.properties || typeof schema.properties !== 'object') {
+          schema.properties = {};
+        }
+
+        if (!Array.isArray(schema.required)) {
+          schema.required = schema.required ? [].concat(schema.required) : [];
+        }
+
+        if (schema.additionalProperties === undefined) {
+          schema.additionalProperties = false;
+        }
+
+        return schema;
+      }
+    }
+
+    return {
+      ...baseSchema,
+      properties: this.convertParametersToJsonSchema(parameters as Record<string, any>),
+      required: this.getRequiredParameters(parameters as Record<string, any>)
+    };
+  }
+
+  /**
    * Get required parameters from connector function
    */
   private getRequiredParameters(parameters: Record<string, any>): string[] {
     return Object.entries(parameters)
       .filter(([_, param]) => param.required === true)
       .map(([key, _]) => key);
+  }
+
+  /**
+   * Generate static node schemas that are not derived from connector files
+   */
+  private generateStaticNodeSchemas(): number {
+    const timeParamsSchema = {
+      type: 'object',
+      properties: {
+        schedule: {
+          type: 'string',
+          pattern:
+            '^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\\d+(ns|us|µs|ms|s|m|h))+)|(((\\\d+,)+\\\d+|(\\\d+([/-])\\\d+)|\\\d+|\\*) ?){5,7}$',
+          description: 'Cron expression or Apps Script trigger frequency',
+          examples: ['0 9 * * 1-5', '@daily', '@hourly', '*/15 * * * *']
+        },
+        timezone: {
+          type: 'string',
+          default: 'America/New_York',
+          description: 'Timezone for the schedule'
+        },
+        enabled: {
+          type: 'boolean',
+          default: true,
+          description: 'Whether this trigger is active'
+        },
+        description: {
+          type: 'string',
+          maxLength: 200,
+          description: 'Human-readable description of when this runs'
+        }
+      },
+      required: ['schedule'],
+      additionalProperties: false
+    };
+
+    const webhookParamsSchema = {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          pattern: '^/[a-zA-Z0-9_/-]*$',
+          default: '/webhook',
+          description: 'Relative path that will receive webhook requests'
+        },
+        method: {
+          type: 'string',
+          enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+          default: 'POST',
+          description: 'HTTP method expected for the webhook'
+        },
+        authRequired: {
+          type: 'boolean',
+          default: false,
+          description: 'Require authentication before accepting requests'
+        },
+        authType: {
+          type: 'string',
+          enum: ['bearer', 'basic', 'api_key', 'none'],
+          default: 'none',
+          description: 'Authentication strategy for incoming requests'
+        },
+        secret: {
+          type: 'string',
+          description: 'Secret token used to verify webhook payloads'
+        },
+        responseType: {
+          type: 'string',
+          enum: ['json', 'text', 'html'],
+          default: 'json',
+          description: 'Format of the response sent back to the webhook caller'
+        },
+        responseMessage: {
+          type: 'string',
+          default: 'Webhook received successfully',
+          description: 'Message returned when the webhook is accepted'
+        },
+        filters: {
+          type: 'object',
+          properties: {
+            contentType: {
+              type: 'string',
+              description: 'Expected Content-Type header value'
+            },
+            headers: {
+              type: 'object',
+              additionalProperties: { type: 'string' },
+              description: 'Specific headers that must be present'
+            },
+            bodyContains: {
+              type: 'string',
+              description: 'String that must be present in the request body'
+            }
+          },
+          additionalProperties: false
+        }
+      },
+      required: ['path'],
+      additionalProperties: false
+    };
+
+    const staticNodes: Array<{ filename: string; schema: NodeSchema }> = [
+      {
+        filename: 'trigger.time.cron.schema.json',
+        schema: {
+          $schema: 'http://json-schema.org/draft-07/schema#',
+          $id: 'https://apps-script-studio.com/schemas/nodes/trigger.time.cron.schema.json',
+          title: 'Time Trigger - Cron',
+          description: 'A time-based trigger that runs on a cron schedule',
+          type: 'object',
+          required: ['id', 'type', 'position'],
+          properties: {
+            id: {
+              type: 'string',
+              pattern: '^[a-zA-Z0-9_-]+$',
+              description: 'Unique identifier for the node'
+            },
+            type: {
+              type: 'string',
+              const: 'trigger.time.cron',
+              description: 'Node type identifier'
+            },
+            position: {
+              type: 'object',
+              properties: {
+                x: { type: 'number' },
+                y: { type: 'number' }
+              },
+              required: ['x', 'y'],
+              additionalProperties: false
+            },
+            params: timeParamsSchema,
+            parameters: timeParamsSchema,
+            metadata: {
+              type: 'object',
+              properties: {
+                label: { type: 'string', default: 'Scheduled Trigger' },
+                description: {
+                  type: 'string',
+                  default: 'Runs on an automated schedule defined by a cron expression'
+                },
+                category: { type: 'string', const: 'Automation' },
+                appName: { type: 'string', const: 'Time Scheduler' }
+              },
+              additionalProperties: false
+            }
+          },
+          additionalProperties: false,
+          anyOf: [
+            { required: ['params'] },
+            { required: ['parameters'] }
+          ]
+        }
+      },
+      {
+        filename: 'trigger.webhook.inbound.schema.json',
+        schema: {
+          $schema: 'http://json-schema.org/draft-07/schema#',
+          $id: 'https://apps-script-studio.com/schemas/nodes/trigger.webhook.inbound.schema.json',
+          title: 'Webhook Inbound Trigger',
+          description: 'Receives external HTTP requests to trigger workflows',
+          type: 'object',
+          required: ['id', 'type', 'position'],
+          properties: {
+            id: {
+              type: 'string',
+              pattern: '^[a-zA-Z0-9_-]+$',
+              description: 'Unique identifier for the node'
+            },
+            type: {
+              type: 'string',
+              const: 'trigger.webhook.inbound',
+              description: 'Node type identifier'
+            },
+            position: {
+              type: 'object',
+              properties: {
+                x: { type: 'number' },
+                y: { type: 'number' }
+              },
+              required: ['x', 'y'],
+              additionalProperties: false
+            },
+            params: webhookParamsSchema,
+            parameters: webhookParamsSchema,
+            metadata: {
+              type: 'object',
+              properties: {
+                label: { type: 'string', default: 'Incoming Webhook' },
+                description: {
+                  type: 'string',
+                  default: 'Starts a workflow when an external system sends an HTTP request'
+                },
+                category: { type: 'string', const: 'Webhooks' },
+                appName: { type: 'string', const: 'Webhook Listener' }
+              },
+              additionalProperties: false
+            }
+          },
+          additionalProperties: false,
+          anyOf: [
+            { required: ['params'] },
+            { required: ['parameters'] }
+          ]
+        }
+      }
+    ];
+
+    for (const staticNode of staticNodes) {
+      const schemaPath = join(this.nodesSchemasPath, staticNode.filename);
+      writeFileSync(schemaPath, JSON.stringify(staticNode.schema, null, 2));
+    }
+
+    return staticNodes.length;
   }
 
   /**
@@ -435,7 +686,7 @@ export class NodeSchemaGenerator {
       const graphSchema = JSON.parse(readFileSync(graphSchemaPath, 'utf-8'));
       
       // Get all node schema files
-      const nodeSchemaFiles = readdirSync(this.nodesSchemasPath);
+      const nodeSchemaFiles = readdirSync(this.nodesSchemasPath).sort((a, b) => a.localeCompare(b));
       const nodeTypes = nodeSchemaFiles
         .filter(file => file.endsWith('.schema.json'))
         .map(file => file.replace('.schema.json', ''));

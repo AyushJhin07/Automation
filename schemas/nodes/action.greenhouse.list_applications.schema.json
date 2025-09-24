@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.greenhouse.list_applications.schema.json",
+  "title": "Greenhouse - List Applications",
+  "description": "List job applications",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.greenhouse.list_applications",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100,
+          "description": "Number of applications per page"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "created_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return applications created before this timestamp"
+        },
+        "created_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return applications created after this timestamp"
+        },
+        "last_activity_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Return applications with activity after this timestamp"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "rejected",
+            "hired"
+          ],
+          "description": "Filter by application status"
+        },
+        "job_id": {
+          "type": "number",
+          "description": "Filter by job ID"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Greenhouse"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

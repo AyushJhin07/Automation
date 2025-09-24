@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.coda.update_row.schema.json",
+  "title": "Coda - Update Row",
+  "description": "Update a row in a table",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.coda.update_row",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "description": "Document ID"
+        },
+        "tableIdOrName": {
+          "type": "string",
+          "description": "Table ID or name"
+        },
+        "rowIdOrName": {
+          "type": "string",
+          "description": "Row ID or name"
+        },
+        "row": {
+          "type": "object",
+          "properties": {
+            "cells": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Updated row data"
+        },
+        "disableParsing": {
+          "type": "boolean",
+          "description": "Disable parsing of cell values"
+        }
+      },
+      "required": [
+        "docId",
+        "tableIdOrName",
+        "rowIdOrName",
+        "row"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Coda"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

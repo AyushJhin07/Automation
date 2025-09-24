@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.servicenow.get_incidents.schema.json",
+  "title": "ServiceNow - Get Incidents",
+  "description": "Get list of incidents",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.servicenow.get_incidents",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "sysparm_query": {
+          "type": "string",
+          "description": "Query filter"
+        },
+        "sysparm_limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 100,
+          "description": "Maximum number of records"
+        },
+        "sysparm_offset": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of records to skip"
+        },
+        "sysparm_fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to return"
+        },
+        "sysparm_display_value": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false",
+            "all"
+          ],
+          "default": "false",
+          "description": "Return display values"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "IT Service Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "ServiceNow"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

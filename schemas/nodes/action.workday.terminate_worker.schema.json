@@ -41,22 +41,44 @@
       "type": "object",
       "properties": {
         "workerId": {
-          "description": "Worker ID",
-          "type": "string"
+          "type": "string",
+          "description": "Worker ID"
         },
         "terminationDate": {
-          "description": "Termination date (YYYY-MM-DD)",
-          "type": "string"
+          "type": "string",
+          "format": "date",
+          "description": "Termination date"
         },
-        "reason": {
-          "description": "Termination reason",
-          "type": "string"
+        "terminationReason": {
+          "type": "string",
+          "enum": [
+            "Voluntary",
+            "Involuntary",
+            "Retirement",
+            "End of Contract",
+            "Other"
+          ],
+          "description": "Reason for termination"
+        },
+        "lastDayWorked": {
+          "type": "string",
+          "format": "date",
+          "description": "Last day worked"
+        },
+        "eligibleForRehire": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether eligible for rehire"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes"
         }
       },
       "required": [
         "workerId",
         "terminationDate",
-        "reason"
+        "terminationReason"
       ],
       "additionalProperties": false
     },
@@ -71,7 +93,7 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -82,9 +104,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "staffing"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

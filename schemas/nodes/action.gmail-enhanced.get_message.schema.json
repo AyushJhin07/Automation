@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gmail-enhanced.get_message.schema.json",
+  "title": "Gmail Enhanced - Get Message",
+  "description": "Get a specific email message",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gmail-enhanced.get_message",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "default": "me",
+          "description": "User's email address or 'me'"
+        },
+        "id": {
+          "type": "string",
+          "description": "Message ID"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "minimal",
+            "full",
+            "raw",
+            "metadata"
+          ],
+          "default": "full",
+          "description": "Message format"
+        },
+        "metadataHeaders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Headers to include when format is metadata"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Gmail Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

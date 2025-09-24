@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.greenhouse.candidate_created.schema.json",
   "title": "Greenhouse - Candidate Created",
-  "description": "Triggered when a candidate is created",
+  "description": "Triggered when a new candidate is created",
   "type": "object",
   "required": [
     "id",
@@ -54,7 +54,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Recruitment"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -65,9 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "candidates:read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.airtable-enhanced.list_records.schema.json",
+  "title": "Airtable Enhanced - List Records",
+  "description": "List records from a table",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.airtable-enhanced.list_records",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "baseId": {
+          "type": "string",
+          "description": "Airtable base ID"
+        },
+        "tableId": {
+          "type": "string",
+          "description": "Table name or ID"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to retrieve"
+        },
+        "filterByFormula": {
+          "type": "string",
+          "description": "Formula to filter records"
+        },
+        "maxRecords": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100,
+          "description": "Maximum records to return"
+        },
+        "pageSize": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100,
+          "description": "Page size"
+        },
+        "sort": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              }
+            }
+          },
+          "description": "Sort configuration"
+        },
+        "view": {
+          "type": "string",
+          "description": "View name"
+        },
+        "cellFormat": {
+          "type": "string",
+          "enum": [
+            "json",
+            "string"
+          ],
+          "default": "json",
+          "description": "Cell format"
+        },
+        "timeZone": {
+          "type": "string",
+          "description": "Timezone for date fields"
+        },
+        "userLocale": {
+          "type": "string",
+          "description": "User locale"
+        }
+      },
+      "required": [
+        "baseId",
+        "tableId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Database"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Airtable Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

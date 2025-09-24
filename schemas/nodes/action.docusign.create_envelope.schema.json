@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.docusign.create_envelope.schema.json",
+  "title": "DocuSign - Create Envelope",
+  "description": "Create a new envelope for signature",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.docusign.create_envelope",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "description": "DocuSign account ID"
+        },
+        "emailSubject": {
+          "type": "string",
+          "description": "Email subject for the envelope"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "sent",
+            "created",
+            "draft"
+          ],
+          "default": "sent",
+          "description": "Envelope status"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "documentBase64": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "fileExtension": {
+                "type": "string"
+              },
+              "documentId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "documentBase64",
+              "name",
+              "documentId"
+            ]
+          },
+          "description": "Documents to be signed"
+        },
+        "recipients": {
+          "type": "object",
+          "properties": {
+            "signers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "recipientId": {
+                    "type": "string"
+                  },
+                  "routingOrder": {
+                    "type": "string"
+                  },
+                  "tabs": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "email",
+                  "name",
+                  "recipientId"
+                ]
+              }
+            },
+            "carbonCopies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "recipientId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Envelope recipients"
+        },
+        "eventNotification": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "loggingEnabled": {
+              "type": "boolean"
+            },
+            "requireAcknowledgment": {
+              "type": "boolean"
+            },
+            "envelopeEvents": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "recipientEvents": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Event notification settings"
+        }
+      },
+      "required": [
+        "accountId",
+        "emailSubject",
+        "documents",
+        "recipients"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Document Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "DocuSign"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.sap-ariba.get_analytical_reporting.schema.json",
+  "title": "SAP Ariba - Get Analytical Reporting",
+  "description": "Get analytical reporting data",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sap-ariba.get_analytical_reporting",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "realm": {
+          "type": "string",
+          "description": "Ariba realm"
+        },
+        "viewTemplateName": {
+          "type": "string",
+          "description": "View template name"
+        },
+        "filters": {
+          "type": "object",
+          "description": "Filter criteria"
+        },
+        "select": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to select"
+        },
+        "$top": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Number of records to return"
+        },
+        "$skip": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of records to skip"
+        }
+      },
+      "required": [
+        "realm",
+        "viewTemplateName"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "ERP"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SAP Ariba"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

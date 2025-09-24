@@ -40,18 +40,31 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "parent_folder_id": {
-          "type": "string"
+        "parent_id": {
+          "type": "string",
+          "default": "0",
+          "description": "Parent folder ID (0 for root)"
         },
         "file_name": {
-          "type": "string"
+          "type": "string",
+          "description": "File name"
         },
         "file_content": {
-          "type": "string"
+          "type": "string",
+          "description": "File content or URL"
+        },
+        "content_created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Content creation date"
+        },
+        "content_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Content modification date"
         }
       },
       "required": [
-        "parent_folder_id",
         "file_name",
         "file_content"
       ],
@@ -68,7 +81,7 @@
         },
         "category": {
           "type": "string",
-          "const": "File Storage"
+          "const": "Storage"
         },
         "appName": {
           "type": "string",

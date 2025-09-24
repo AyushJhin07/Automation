@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.monday-enhanced.get_boards.schema.json",
+  "title": "Monday.com Enhanced - Get Boards",
+  "description": "Get list of boards",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.monday-enhanced.get_boards",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 25,
+          "description": "Number of boards to return"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Specific board IDs to retrieve"
+        },
+        "board_kind": {
+          "type": "string",
+          "enum": [
+            "public",
+            "private",
+            "share"
+          ],
+          "description": "Filter by board kind"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "archived",
+            "deleted"
+          ],
+          "default": "active",
+          "description": "Filter by board state"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Monday.com Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

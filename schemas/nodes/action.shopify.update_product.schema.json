@@ -40,34 +40,37 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "productId": {
-          "description": "Product ID",
-          "type": "string"
+        "product_id": {
+          "type": "string",
+          "description": "Product ID to update"
         },
         "title": {
-          "description": "Product title",
-          "type": "string"
+          "type": "string",
+          "description": "Product title"
         },
         "body_html": {
-          "description": "Product description",
-          "type": "string"
-        },
-        "status": {
-          "description": "Product status",
           "type": "string",
-          "enum": [
-            "active",
-            "archived",
-            "draft"
-          ]
+          "description": "Product description (HTML)"
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Product vendor"
+        },
+        "product_type": {
+          "type": "string",
+          "description": "Product type/category"
         },
         "tags": {
-          "description": "Product tags",
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated tags"
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the product is published"
         }
       },
       "required": [
-        "productId"
+        "product_id"
       ],
       "additionalProperties": false
     },
@@ -93,9 +96,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_products"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

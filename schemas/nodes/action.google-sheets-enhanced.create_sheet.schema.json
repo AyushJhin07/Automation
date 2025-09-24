@@ -41,12 +41,28 @@
       "type": "object",
       "properties": {
         "spreadsheetId": {
-          "description": "Spreadsheet ID",
-          "type": "string"
+          "type": "string",
+          "description": "Spreadsheet ID"
         },
         "title": {
-          "description": "Sheet title",
-          "type": "string"
+          "type": "string",
+          "description": "Sheet title"
+        },
+        "index": {
+          "type": "number",
+          "description": "Position index for the sheet"
+        },
+        "gridProperties": {
+          "type": "object",
+          "properties": {
+            "rowCount": {
+              "type": "number"
+            },
+            "columnCount": {
+              "type": "number"
+            }
+          },
+          "description": "Grid properties for the sheet"
         }
       },
       "required": [
@@ -77,9 +93,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/spreadsheets"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

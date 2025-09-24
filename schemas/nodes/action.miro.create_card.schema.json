@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.miro.create_card.schema.json",
+  "title": "Miro - Create Card",
+  "description": "Create a card on a board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.miro.create_card",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "boardId": {
+          "type": "string",
+          "description": "Board ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Card title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Card description"
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "cardTheme": {
+              "type": "string",
+              "enum": [
+                "#2d7ff9",
+                "#18a0fb",
+                "#0ca789",
+                "#8fd14f",
+                "#fac710",
+                "#f24726",
+                "#da3782",
+                "#9510ac",
+                "#c1c1c1",
+                "#767676"
+              ]
+            }
+          },
+          "description": "Card styling"
+        },
+        "geometry": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            }
+          },
+          "description": "Card dimensions"
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "origin": {
+              "type": "string",
+              "enum": [
+                "center"
+              ],
+              "default": "center"
+            }
+          },
+          "description": "Card position on board"
+        }
+      },
+      "required": [
+        "boardId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Collaboration"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Miro"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.notion.search.schema.json",
+  "title": "Notion - Search",
+  "description": "Search pages and databases",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.notion.search",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query text"
+        },
+        "filter": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string",
+              "enum": [
+                "page",
+                "database"
+              ],
+              "description": "Filter by object type"
+            },
+            "property": {
+              "type": "string",
+              "enum": [
+                "object"
+              ],
+              "description": "Property to filter on"
+            }
+          },
+          "description": "Filter for search results"
+        },
+        "sort": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": [
+                "ascending",
+                "descending"
+              ],
+              "description": "Sort direction"
+            },
+            "timestamp": {
+              "type": "string",
+              "enum": [
+                "last_edited_time"
+              ],
+              "description": "Sort by timestamp"
+            }
+          },
+          "description": "Sort configuration"
+        },
+        "start_cursor": {
+          "type": "string",
+          "description": "Pagination cursor"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100,
+          "description": "Number of results to return"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Productivity"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Notion"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

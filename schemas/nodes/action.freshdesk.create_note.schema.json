@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.freshdesk.create_note.schema.json",
+  "title": "Freshdesk - Create Note",
+  "description": "Add a private note to a ticket",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.freshdesk.create_note",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {
+          "type": "number",
+          "description": "Ticket ID"
+        },
+        "body": {
+          "type": "string",
+          "description": "Note content"
+        },
+        "private": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is private note"
+        },
+        "user_id": {
+          "type": "number",
+          "description": "Agent user ID"
+        },
+        "notify_emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "Notify these emails"
+        }
+      },
+      "required": [
+        "ticket_id",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Freshdesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

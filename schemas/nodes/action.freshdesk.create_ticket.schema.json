@@ -40,26 +40,93 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "subject": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
+        "name": {
+          "type": "string",
+          "description": "Requester name"
         },
         "email": {
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Requester email"
         },
-        "priority": {
-          "type": "string"
+        "subject": {
+          "type": "string",
+          "description": "Ticket subject"
+        },
+        "description": {
+          "type": "string",
+          "description": "Ticket description"
         },
         "status": {
-          "type": "string"
+          "type": "number",
+          "enum": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "description": "Ticket status (2=Open, 3=Pending, 4=Resolved, 5=Closed)"
+        },
+        "priority": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "description": "Ticket priority (1=Low, 2=Medium, 3=High, 4=Urgent)"
+        },
+        "source": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            7,
+            8,
+            9,
+            10
+          ],
+          "description": "Ticket source (1=Email, 2=Portal, 3=Phone, 7=Chat, 8=Mobihelp, 9=Feedback, 10=Outbound Email)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Ticket type"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ticket tags"
+        },
+        "cc_emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "CC email addresses"
+        },
+        "custom_fields": {
+          "type": "object",
+          "description": "Custom field values"
+        },
+        "due_by": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Due date"
+        },
+        "fr_due_by": {
+          "type": "string",
+          "format": "date-time",
+          "description": "First response due date"
         }
       },
       "required": [
         "subject",
-        "description",
-        "email"
+        "description"
       ],
       "additionalProperties": false
     },

@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.teamwork.list_tasks.schema.json",
+  "title": "Teamwork - List Tasks",
+  "description": "List tasks with filters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.teamwork.list_tasks",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "Filter by project ID"
+        },
+        "task_list_id": {
+          "type": "string",
+          "description": "Filter by task list ID"
+        },
+        "responsible_party_id": {
+          "type": "string",
+          "description": "Filter by responsible person ID"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Filter by completion status"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "Filter by priority"
+        },
+        "due_date_from": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter tasks with due date from (YYYY-MM-DD)"
+        },
+        "due_date_to": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter tasks with due date to (YYYY-MM-DD)"
+        },
+        "created_after": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter tasks created after date (YYYY-MM-DD)"
+        },
+        "created_before": {
+          "type": "string",
+          "format": "date",
+          "description": "Filter tasks created before date (YYYY-MM-DD)"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "page_size": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 25,
+          "description": "Number of tasks per page"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Teamwork"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

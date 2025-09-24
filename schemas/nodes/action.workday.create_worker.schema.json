@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.workday.create_worker.schema.json",
   "title": "Workday - Create Worker",
-  "description": "Create a new worker in Workday",
+  "description": "Create a new worker",
   "type": "object",
   "required": [
     "id",
@@ -41,24 +41,121 @@
       "type": "object",
       "properties": {
         "personalData": {
-          "description": "Worker personal information",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "firstName": {
+              "type": "string"
+            },
+            "lastName": {
+              "type": "string"
+            },
+            "middleName": {
+              "type": "string"
+            },
+            "preferredName": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "dateOfBirth": {
+              "type": "string",
+              "format": "date"
+            },
+            "gender": {
+              "type": "string",
+              "enum": [
+                "Male",
+                "Female",
+                "Other",
+                "Prefer not to say"
+              ]
+            },
+            "maritalStatus": {
+              "type": "string",
+              "enum": [
+                "Single",
+                "Married",
+                "Divorced",
+                "Widowed",
+                "Other"
+              ]
+            }
+          },
+          "description": "Personal information"
         },
-        "positionData": {
-          "description": "Position and employment data",
+        "jobData": {
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "jobTitle": {
+              "type": "string"
+            },
+            "department": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "managerId": {
+              "type": "string"
+            },
+            "startDate": {
+              "type": "string",
+              "format": "date"
+            },
+            "employmentType": {
+              "type": "string",
+              "enum": [
+                "Full-time",
+                "Part-time",
+                "Contract",
+                "Temporary"
+              ]
+            },
+            "jobLevel": {
+              "type": "string"
+            }
+          },
+          "description": "Job-related information"
         },
-        "hireDate": {
-          "description": "Hire date (YYYY-MM-DD)",
-          "type": "string"
+        "compensationData": {
+          "type": "object",
+          "properties": {
+            "baseSalary": {
+              "type": "number",
+              "minimum": 0
+            },
+            "currency": {
+              "type": "string",
+              "default": "USD"
+            },
+            "payFrequency": {
+              "type": "string",
+              "enum": [
+                "Weekly",
+                "Bi-weekly",
+                "Monthly",
+                "Annual"
+              ]
+            },
+            "payGroup": {
+              "type": "string"
+            }
+          },
+          "description": "Compensation information"
+        },
+        "workerId": {
+          "type": "string",
+          "description": "Optional worker ID (if not provided, will be auto-generated)"
         }
       },
       "required": [
         "personalData",
-        "positionData",
-        "hireDate"
+        "jobData"
       ],
       "additionalProperties": false
     },
@@ -73,7 +170,7 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -84,9 +181,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "staffing"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

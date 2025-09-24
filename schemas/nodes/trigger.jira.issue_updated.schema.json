@@ -41,12 +41,15 @@
       "type": "object",
       "properties": {
         "projectKey": {
-          "description": "Specific project to monitor",
-          "type": "string"
+          "type": "string",
+          "description": "Filter by specific project key"
         },
-        "fieldChanged": {
-          "description": "Specific field to monitor for changes",
-          "type": "string"
+        "fieldsToWatch": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific fields to watch for changes"
         }
       },
       "required": [],
@@ -74,9 +77,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read:jira-work"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

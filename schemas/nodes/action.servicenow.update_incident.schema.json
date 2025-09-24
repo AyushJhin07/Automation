@@ -40,35 +40,64 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "incident_id": {
-          "description": "Incident sys_id",
-          "type": "string"
+        "sys_id": {
+          "type": "string",
+          "description": "Incident sys_id"
+        },
+        "short_description": {
+          "type": "string",
+          "description": "Short description"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description"
         },
         "state": {
-          "description": "Incident state",
           "type": "string",
           "enum": [
-            "New",
-            "In Progress",
-            "Resolved",
-            "Closed"
-          ]
+            "1",
+            "2",
+            "3",
+            "6",
+            "7",
+            "8"
+          ],
+          "description": "Incident state"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "description": "Priority level"
+        },
+        "assignment_group": {
+          "type": "string",
+          "description": "Assignment group"
+        },
+        "assigned_to": {
+          "type": "string",
+          "description": "Assigned user"
         },
         "work_notes": {
-          "description": "Work notes to add",
-          "type": "string"
+          "type": "string",
+          "description": "Work notes"
         },
-        "resolution_code": {
-          "description": "Resolution code",
-          "type": "string"
+        "close_code": {
+          "type": "string",
+          "description": "Close code"
         },
-        "resolution_notes": {
-          "description": "Resolution notes",
-          "type": "string"
+        "close_notes": {
+          "type": "string",
+          "description": "Close notes"
         }
       },
       "required": [
-        "incident_id"
+        "sys_id"
       ],
       "additionalProperties": false
     },
@@ -83,7 +112,7 @@
         },
         "category": {
           "type": "string",
-          "const": "ITSM"
+          "const": "IT Service Management"
         },
         "appName": {
           "type": "string",
@@ -94,9 +123,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "incident_write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

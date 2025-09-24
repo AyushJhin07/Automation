@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.asana-enhanced.create_project.schema.json",
+  "title": "Asana Enhanced - Create Project",
+  "description": "Create a new project",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.asana-enhanced.create_project",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name"
+        },
+        "workspace": {
+          "type": "string",
+          "description": "Workspace ID"
+        },
+        "team": {
+          "type": "string",
+          "description": "Team ID"
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "dark-pink",
+            "dark-green",
+            "dark-blue",
+            "dark-red",
+            "dark-teal",
+            "dark-brown",
+            "dark-orange",
+            "dark-purple",
+            "dark-warm-gray",
+            "light-pink",
+            "light-green",
+            "light-blue",
+            "light-red",
+            "light-teal",
+            "light-yellow",
+            "light-orange",
+            "light-purple",
+            "light-warm-gray"
+          ],
+          "description": "Project color"
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "list",
+            "board"
+          ],
+          "description": "Project layout"
+        },
+        "privacy_setting": {
+          "type": "string",
+          "enum": [
+            "public_to_workspace",
+            "public_to_team",
+            "private"
+          ],
+          "description": "Project privacy setting"
+        }
+      },
+      "required": [
+        "name",
+        "workspace"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Asana Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

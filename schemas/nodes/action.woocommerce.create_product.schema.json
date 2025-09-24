@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.woocommerce.create_product.schema.json",
+  "title": "WooCommerce - Create Product",
+  "description": "Create a new product",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.woocommerce.create_product",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Product name"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "simple",
+            "grouped",
+            "external",
+            "variable"
+          ],
+          "default": "simple",
+          "description": "Product type"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "pending",
+            "private",
+            "publish"
+          ],
+          "default": "publish",
+          "description": "Product status"
+        },
+        "featured": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether product is featured"
+        },
+        "catalog_visibility": {
+          "type": "string",
+          "enum": [
+            "visible",
+            "catalog",
+            "search",
+            "hidden"
+          ],
+          "default": "visible",
+          "description": "Catalog visibility"
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description"
+        },
+        "short_description": {
+          "type": "string",
+          "description": "Product short description"
+        },
+        "sku": {
+          "type": "string",
+          "description": "Product SKU"
+        },
+        "price": {
+          "type": "string",
+          "description": "Product price"
+        },
+        "regular_price": {
+          "type": "string",
+          "description": "Product regular price"
+        },
+        "sale_price": {
+          "type": "string",
+          "description": "Product sale price"
+        },
+        "manage_stock": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to manage stock"
+        },
+        "stock_quantity": {
+          "type": "number",
+          "description": "Stock quantity"
+        },
+        "stock_status": {
+          "type": "string",
+          "enum": [
+            "instock",
+            "outofstock",
+            "onbackorder"
+          ],
+          "default": "instock",
+          "description": "Stock status"
+        },
+        "weight": {
+          "type": "string",
+          "description": "Product weight"
+        },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "length": {
+              "type": "string"
+            },
+            "width": {
+              "type": "string"
+            },
+            "height": {
+              "type": "string"
+            }
+          },
+          "description": "Product dimensions"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Product categories"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Product tags"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Product images"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "WooCommerce"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

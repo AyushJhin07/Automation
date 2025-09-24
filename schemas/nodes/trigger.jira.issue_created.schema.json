@@ -41,12 +41,16 @@
       "type": "object",
       "properties": {
         "projectKey": {
-          "description": "Specific project to monitor",
-          "type": "string"
+          "type": "string",
+          "description": "Filter by specific project key"
         },
         "issueType": {
-          "description": "Specific issue type to monitor",
-          "type": "string"
+          "type": "string",
+          "description": "Filter by issue type"
+        },
+        "assignee": {
+          "type": "string",
+          "description": "Filter by assignee account ID"
         }
       },
       "required": [],
@@ -74,9 +78,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read:jira-work"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

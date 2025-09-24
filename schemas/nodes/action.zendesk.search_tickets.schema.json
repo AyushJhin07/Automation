@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zendesk.search_tickets.schema.json",
+  "title": "Zendesk - Search Tickets",
+  "description": "Search tickets using query parameters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zendesk.search_tickets",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query (e.g., 'type:ticket status:open')"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "created_at",
+            "updated_at",
+            "priority",
+            "status",
+            "ticket_type"
+          ],
+          "description": "Sort field"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "default": "desc",
+          "description": "Sort order"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 15,
+          "description": "Number of results per page"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Page number"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zendesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

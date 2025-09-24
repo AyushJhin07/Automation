@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.coupa.get_purchase_orders.schema.json",
+  "title": "Coupa - Get Purchase Orders",
+  "description": "Retrieve purchase orders",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.coupa.get_purchase_orders",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50,
+          "description": "Number of purchase orders to return"
+        },
+        "offset": {
+          "type": "number",
+          "description": "Pagination offset"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "pending_approval",
+            "approved",
+            "pending_receipt",
+            "received",
+            "closed"
+          ],
+          "description": "Filter by status"
+        },
+        "exported": {
+          "type": "boolean",
+          "description": "Filter by export status"
+        },
+        "supplier-id": {
+          "type": "number",
+          "description": "Filter by supplier ID"
+        },
+        "created-at[gt]": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Created after date"
+        },
+        "created-at[lt]": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Created before date"
+        },
+        "updated-at[gt]": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Updated after date"
+        },
+        "updated-at[lt]": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Updated before date"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Finance"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Coupa"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

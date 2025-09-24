@@ -1,0 +1,421 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.sendgrid.send_email.schema.json",
+  "title": "SendGrid - Send Email",
+  "description": "Send an email",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.sendgrid.send_email",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "personalizations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "email"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "cc": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "bcc": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "subject": {
+                "type": "string"
+              },
+              "headers": {
+                "type": "object"
+              },
+              "substitutions": {
+                "type": "object"
+              },
+              "dynamic_template_data": {
+                "type": "object"
+              },
+              "custom_args": {
+                "type": "object"
+              },
+              "send_at": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "from": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "additionalProperties": false
+        },
+        "reply_to": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "reply_to_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "subject": {
+          "type": "string",
+          "description": "Email subject"
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "text/plain",
+                  "text/html"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "disposition": {
+                "type": "string",
+                "enum": [
+                  "inline",
+                  "attachment"
+                ]
+              },
+              "content_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "filename"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "template_id": {
+          "type": "string",
+          "description": "Dynamic template ID"
+        },
+        "headers": {
+          "type": "object",
+          "description": "Custom headers"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Categories for analytics"
+        },
+        "custom_args": {
+          "type": "object",
+          "description": "Custom arguments"
+        },
+        "send_at": {
+          "type": "number",
+          "description": "Unix timestamp to send at"
+        },
+        "batch_id": {
+          "type": "string",
+          "description": "Batch ID for cancellation"
+        },
+        "asm": {
+          "type": "object",
+          "properties": {
+            "group_id": {
+              "type": "number"
+            },
+            "groups_to_display": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "ip_pool_name": {
+          "type": "string",
+          "description": "IP pool name"
+        },
+        "mail_settings": {
+          "type": "object",
+          "properties": {
+            "bypass_list_management": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "footer": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "html": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "sandbox_mode": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "tracking_settings": {
+          "type": "object",
+          "properties": {
+            "click_tracking": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                },
+                "enable_text": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "open_tracking": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                },
+                "substitution_tag": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "subscription_tracking": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "html": {
+                  "type": "string"
+                },
+                "substitution_tag": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "ganalytics": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean"
+                },
+                "utm_source": {
+                  "type": "string"
+                },
+                "utm_medium": {
+                  "type": "string"
+                },
+                "utm_term": {
+                  "type": "string"
+                },
+                "utm_content": {
+                  "type": "string"
+                },
+                "utm_campaign": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "personalizations",
+        "from"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SendGrid"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

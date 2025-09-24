@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.marketo.create_program.schema.json",
+  "title": "Marketo - Create Program",
+  "description": "Create a new program",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.marketo.create_program",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Program name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Program description"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Default",
+            "Email",
+            "Event",
+            "Webinar",
+            "Nurture",
+            "Content",
+            "Engagement",
+            "Social"
+          ],
+          "description": "Program type"
+        },
+        "channel": {
+          "type": "string",
+          "description": "Program channel"
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Parent folder ID"
+        },
+        "costs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Program costs"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "channel",
+        "folderId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Marketo"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

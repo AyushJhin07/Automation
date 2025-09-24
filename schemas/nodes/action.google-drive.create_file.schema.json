@@ -41,27 +41,30 @@
       "type": "object",
       "properties": {
         "name": {
-          "description": "Name of the file to create",
-          "type": "string"
+          "type": "string",
+          "description": "Name of the file to create"
         },
         "mimeType": {
-          "description": "MIME type of the file",
           "type": "string",
           "enum": [
             "application/vnd.google-apps.document",
             "application/vnd.google-apps.spreadsheet",
             "application/vnd.google-apps.presentation",
             "text/plain",
-            "application/pdf"
-          ]
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "application/json"
+          ],
+          "description": "MIME type of the file"
         },
         "folderId": {
-          "description": "ID of the parent folder",
-          "type": "string"
+          "type": "string",
+          "description": "ID of the parent folder"
         },
         "contentBase64": {
-          "description": "Base64-encoded file content",
-          "type": "string"
+          "type": "string",
+          "description": "Base64-encoded file content"
         }
       },
       "required": [
@@ -92,9 +95,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive.file"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

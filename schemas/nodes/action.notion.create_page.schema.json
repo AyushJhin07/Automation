@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.notion.create_page.schema.json",
   "title": "Notion - Create Page",
-  "description": "Create new Notion page",
+  "description": "Create a new page in Notion",
   "type": "object",
   "required": [
     "id",
@@ -41,26 +41,69 @@
       "type": "object",
       "properties": {
         "parent": {
-          "description": "Parent page or database",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "database_id",
+                "page_id",
+                "workspace"
+              ],
+              "description": "Type of parent"
+            },
+            "database_id": {
+              "type": "string",
+              "description": "Database ID (if parent type is database_id)"
+            },
+            "page_id": {
+              "type": "string",
+              "description": "Page ID (if parent type is page_id)"
+            }
+          },
+          "description": "Parent page, database, or workspace"
         },
         "properties": {
-          "description": "Page properties",
           "type": "object",
-          "additionalProperties": true
+          "description": "Page properties (varies by database schema)"
         },
         "children": {
-          "description": "Page content blocks",
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "type": "object"
+          },
+          "description": "Array of block objects for page content"
+        },
+        "icon": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "emoji",
+                "external",
+                "file"
+              ]
+            },
+            "emoji": {
+              "type": "string"
+            },
+            "external": {
+              "type": "object"
+            },
+            "file": {
+              "type": "object"
+            }
+          },
+          "description": "Page icon"
+        },
+        "cover": {
+          "type": "object",
+          "description": "Page cover image"
         }
       },
       "required": [
-        "parent",
-        "properties"
+        "parent"
       ],
       "additionalProperties": false
     },
@@ -75,7 +118,7 @@
         },
         "category": {
           "type": "string",
-          "const": "productivity"
+          "const": "Productivity"
         },
         "appName": {
           "type": "string",
@@ -86,9 +129,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

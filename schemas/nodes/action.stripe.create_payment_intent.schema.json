@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.stripe.create_payment_intent.schema.json",
   "title": "Stripe - Create Payment Intent",
-  "description": "Create a payment intent",
+  "description": "Create a payment intent for processing payments",
   "type": "object",
   "required": [
     "id",
@@ -41,26 +41,65 @@
       "type": "object",
       "properties": {
         "amount": {
-          "description": "Payment amount in cents",
-          "type": "number"
+          "type": "number",
+          "minimum": 1,
+          "description": "Payment amount in smallest currency unit (e.g., cents)"
         },
         "currency": {
-          "description": "Currency code",
           "type": "string",
-          "default": "usd"
+          "description": "Three-letter ISO currency code (e.g., usd, eur)"
         },
-        "customerId": {
-          "description": "Customer ID",
-          "type": "string"
+        "customer": {
+          "type": "string",
+          "description": "Customer ID"
         },
         "description": {
-          "description": "Payment description",
-          "type": "string"
+          "type": "string",
+          "description": "Payment description"
+        },
+        "payment_method": {
+          "type": "string",
+          "description": "Payment method ID"
+        },
+        "payment_method_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "card"
+          ],
+          "description": "Allowed payment method types"
+        },
+        "confirm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to confirm the payment intent immediately"
+        },
+        "receipt_email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address for receipt"
+        },
+        "setup_future_usage": {
+          "type": "string",
+          "enum": [
+            "on_session",
+            "off_session"
+          ],
+          "description": "Setup for future usage"
+        },
+        "shipping": {
+          "type": "object",
+          "description": "Shipping information"
+        },
+        "statement_descriptor": {
+          "type": "string",
+          "description": "Statement descriptor"
         },
         "metadata": {
-          "description": "Custom metadata",
           "type": "object",
-          "additionalProperties": true
+          "description": "Custom metadata"
         }
       },
       "required": [
@@ -80,7 +119,7 @@
         },
         "category": {
           "type": "string",
-          "const": "payments"
+          "const": "Payments"
         },
         "appName": {
           "type": "string",
@@ -91,9 +130,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

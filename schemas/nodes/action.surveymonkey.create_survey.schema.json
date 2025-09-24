@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.surveymonkey.create_survey.schema.json",
+  "title": "SurveyMonkey - Create Survey",
+  "description": "Create a new survey",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.surveymonkey.create_survey",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Survey title"
+        },
+        "nickname": {
+          "type": "string",
+          "description": "Survey nickname"
+        },
+        "language": {
+          "type": "string",
+          "default": "en",
+          "description": "Survey language code"
+        },
+        "question_count": {
+          "type": "number",
+          "description": "Number of questions in the survey"
+        },
+        "page_count": {
+          "type": "number",
+          "description": "Number of pages in the survey"
+        },
+        "folder_id": {
+          "type": "string",
+          "description": "Folder ID to organize the survey"
+        },
+        "template_id": {
+          "type": "string",
+          "description": "Template ID to create survey from"
+        },
+        "from_survey_id": {
+          "type": "string",
+          "description": "Survey ID to copy from"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Feedback"
+        },
+        "appName": {
+          "type": "string",
+          "const": "SurveyMonkey"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

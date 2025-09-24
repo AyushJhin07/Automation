@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.grafana.create_datasource.schema.json",
+  "title": "Grafana - Create Datasource",
+  "description": "Create a new data source",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.grafana.create_datasource",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Data source name"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "prometheus",
+            "influxdb",
+            "elasticsearch",
+            "mysql",
+            "postgres"
+          ],
+          "description": "Data source type"
+        },
+        "url": {
+          "type": "string",
+          "description": "Data source URL"
+        },
+        "access": {
+          "type": "string",
+          "enum": [
+            "proxy",
+            "direct"
+          ],
+          "default": "proxy",
+          "description": "Access mode"
+        },
+        "basic_auth": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable basic authentication"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "DevOps"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Grafana"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

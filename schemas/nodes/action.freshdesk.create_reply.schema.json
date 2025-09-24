@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.freshdesk.create_reply.schema.json",
+  "title": "Freshdesk - Create Reply",
+  "description": "Reply to a ticket",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.freshdesk.create_reply",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {
+          "type": "number",
+          "description": "Ticket ID"
+        },
+        "body": {
+          "type": "string",
+          "description": "Reply content"
+        },
+        "from_email": {
+          "type": "string",
+          "format": "email",
+          "description": "From email address"
+        },
+        "user_id": {
+          "type": "number",
+          "description": "Agent user ID"
+        },
+        "cc_emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "CC email addresses"
+        },
+        "bcc_emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "BCC email addresses"
+        }
+      },
+      "required": [
+        "ticket_id",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Freshdesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

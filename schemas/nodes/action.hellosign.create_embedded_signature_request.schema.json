@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hellosign.create_embedded_signature_request.schema.json",
+  "title": "HelloSign - Create Embedded Signature Request",
+  "description": "Create embedded signature request",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hellosign.create_embedded_signature_request",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "description": "Client ID for embedded signing"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the signature request"
+        },
+        "signers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email_address": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "email_address",
+              "name"
+            ]
+          },
+          "description": "List of signers"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "File URLs or base64 encoded files"
+        },
+        "test_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Test mode"
+        }
+      },
+      "required": [
+        "client_id",
+        "signers"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Documents"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HelloSign"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.successfactors.list_employees.schema.json",
-  "title": "SuccessFactors - List Employees",
-  "description": "Retrieve list of employees",
+  "title": "SAP SuccessFactors - List Employees",
+  "description": "List employees with optional filters",
   "type": "object",
   "required": [
     "id",
@@ -40,14 +40,26 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "filter": {
-          "description": "OData filter expression",
-          "type": "string"
+        "department": {
+          "type": "string",
+          "description": "Filter by department"
         },
-        "top": {
-          "description": "Number of records to return",
+        "manager_id": {
+          "type": "string",
+          "description": "Filter by manager"
+        },
+        "limit": {
           "type": "number",
-          "default": 100
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20,
+          "description": "Number of employees to return"
+        },
+        "offset": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of employees to skip"
         }
       },
       "required": [],
@@ -64,20 +76,18 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
-          "const": "SuccessFactors"
+          "const": "SAP SuccessFactors"
         },
         "requiredScopes": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [
-            "employee_profile"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

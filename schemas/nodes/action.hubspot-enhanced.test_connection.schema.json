@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.hubspot-enhanced.test_connection.schema.json",
-  "title": "Hubspot Enhanced - Test Connection",
-  "description": "Test the connection to Hubspot Enhanced and verify authentication",
+  "title": "HubSpot Enhanced - Test Connection",
+  "description": "Test the connection to HubSpot",
   "type": "object",
   "required": [
     "id",
@@ -54,34 +54,18 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",
-          "const": "Hubspot Enhanced"
+          "const": "HubSpot Enhanced"
         },
         "requiredScopes": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [
-            "oauth"
-          ]
-        },
-        "rateLimits": {
-          "type": "object",
-          "properties": {
-            "requestsPerSecond": {
-              "type": "number"
-            },
-            "requestsPerMinute": {
-              "type": "number"
-            },
-            "dailyLimit": {
-              "type": "number"
-            }
-          }
+          "default": []
         }
       },
       "additionalProperties": false

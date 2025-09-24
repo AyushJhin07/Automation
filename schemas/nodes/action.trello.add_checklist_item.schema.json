@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.trello.add_checklist_item.schema.json",
+  "title": "Trello - Add Checklist Item",
+  "description": "Add an item to a checklist",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.trello.add_checklist_item",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "idChecklist": {
+          "type": "string",
+          "description": "Checklist ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Item name"
+        },
+        "pos": {
+          "type": "string",
+          "description": "Position of the item"
+        },
+        "checked": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the item is checked"
+        },
+        "due": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Due date for the item"
+        },
+        "idMember": {
+          "type": "string",
+          "description": "Member ID to assign to the item"
+        }
+      },
+      "required": [
+        "idChecklist",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Trello"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

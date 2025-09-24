@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.teamwork.create_milestone.schema.json",
+  "title": "Teamwork - Create Milestone",
+  "description": "Create a new milestone",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.teamwork.create_milestone",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "Project ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Milestone title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Milestone description"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date",
+          "description": "Milestone deadline (YYYY-MM-DD)"
+        },
+        "responsible_party_id": {
+          "type": "string",
+          "description": "Person responsible for the milestone"
+        },
+        "notify_everyone": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to notify all project members"
+        },
+        "private": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the milestone is private"
+        },
+        "tags": {
+          "type": "string",
+          "description": "Comma-separated list of tags"
+        }
+      },
+      "required": [
+        "project_id",
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Teamwork"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

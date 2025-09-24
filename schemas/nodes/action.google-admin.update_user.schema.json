@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-admin.update_user.schema.json",
   "title": "Google Admin - Update User",
-  "description": "Update user account",
+  "description": "Update user information",
   "type": "object",
   "required": [
     "id",
@@ -41,18 +41,40 @@
       "type": "object",
       "properties": {
         "userKey": {
-          "description": "User key or email",
-          "type": "string"
+          "type": "string",
+          "description": "User email or ID"
         },
-        "fields": {
-          "description": "Fields to update",
+        "name": {
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "givenName": {
+              "type": "string"
+            },
+            "familyName": {
+              "type": "string"
+            }
+          },
+          "description": "Updated name"
+        },
+        "suspended": {
+          "type": "boolean",
+          "description": "Suspend/unsuspend user"
+        },
+        "orgUnitPath": {
+          "type": "string",
+          "description": "New organizational unit"
+        },
+        "password": {
+          "type": "string",
+          "description": "New password"
+        },
+        "changePasswordAtNextLogin": {
+          "type": "boolean",
+          "description": "Force password change"
         }
       },
       "required": [
-        "userKey",
-        "fields"
+        "userKey"
       ],
       "additionalProperties": false
     },
@@ -78,9 +100,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/admin.directory.user"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

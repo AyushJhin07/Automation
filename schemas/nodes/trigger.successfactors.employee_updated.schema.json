@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.successfactors.employee_updated.schema.json",
-  "title": "SuccessFactors - Employee Updated",
-  "description": "Triggered when employee data is updated",
+  "title": "SAP SuccessFactors - Employee Updated",
+  "description": "Triggered when employee information is updated",
   "type": "object",
   "required": [
     "id",
@@ -39,7 +39,12 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "department": {
+          "type": "string",
+          "description": "Filter by department"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -54,20 +59,18 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
-          "const": "SuccessFactors"
+          "const": "SAP SuccessFactors"
         },
         "requiredScopes": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [
-            "employee_profile"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

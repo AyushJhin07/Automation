@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.iterable.track_event.schema.json",
+  "title": "Iterable - Track Event",
+  "description": "Track a custom event for a user",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.iterable.track_event",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID"
+        },
+        "eventName": {
+          "type": "string",
+          "description": "Event name"
+        },
+        "dataFields": {
+          "type": "object",
+          "description": "Event data fields"
+        },
+        "campaignId": {
+          "type": "number",
+          "description": "Campaign ID"
+        },
+        "templateId": {
+          "type": "number",
+          "description": "Template ID"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Unix timestamp when event occurred"
+        },
+        "id": {
+          "type": "string",
+          "description": "Event ID for deduplication"
+        }
+      },
+      "required": [
+        "eventName"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Iterable"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.toggl.start_time_entry.schema.json",
+  "title": "Toggl Track - Start Time Entry",
+  "description": "Start a new time entry",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.toggl.start_time_entry",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "number",
+          "description": "Workspace ID"
+        },
+        "description": {
+          "type": "string",
+          "description": "Time entry description"
+        },
+        "project_id": {
+          "type": "number",
+          "description": "Project ID"
+        },
+        "task_id": {
+          "type": "number",
+          "description": "Task ID"
+        },
+        "billable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the time entry is billable"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start time (ISO 8601 format)"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Duration in seconds (for completed entries)"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of tags"
+        },
+        "created_with": {
+          "type": "string",
+          "description": "Name of the client/application"
+        }
+      },
+      "required": [
+        "workspace_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Time Tracking"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Toggl Track"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

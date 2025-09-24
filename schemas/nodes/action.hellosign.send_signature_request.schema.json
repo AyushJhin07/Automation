@@ -1,0 +1,261 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hellosign.send_signature_request.schema.json",
+  "title": "HelloSign - Send Signature Request",
+  "description": "Send a signature request",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hellosign.send_signature_request",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title of the signature request"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject of the signature request email"
+        },
+        "message": {
+          "type": "string",
+          "description": "Custom message for the signature request"
+        },
+        "signers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email_address": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              },
+              "order": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "email_address",
+              "name"
+            ]
+          },
+          "description": "List of signers"
+        },
+        "cc_email_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "CC email addresses"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "File URLs or base64 encoded files"
+        },
+        "file_urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "URLs of files to be signed"
+        },
+        "use_text_tags": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable text tags for form fields"
+        },
+        "hide_text_tags": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide text tags after parsing"
+        },
+        "allow_decline": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow signers to decline"
+        },
+        "allow_reassign": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow signers to reassign"
+        },
+        "reminders": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "number",
+              "minimum": 1
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "Reminder settings"
+        },
+        "expires_at": {
+          "type": "number",
+          "description": "Unix timestamp when request expires"
+        },
+        "form_fields_per_document": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "document_index": {
+                "type": "number",
+                "minimum": 0
+              },
+              "form_fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "api_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "signature",
+                        "text",
+                        "date",
+                        "checkbox",
+                        "dropdown",
+                        "hyperlink",
+                        "initials",
+                        "radio"
+                      ]
+                    },
+                    "x": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 1
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 1
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "signer": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "api_id",
+                    "name",
+                    "type",
+                    "x",
+                    "y",
+                    "width",
+                    "height",
+                    "signer"
+                  ]
+                }
+              }
+            }
+          },
+          "description": "Form fields for each document"
+        },
+        "custom_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Custom fields"
+        }
+      },
+      "required": [
+        "signers"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Documents"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HelloSign"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

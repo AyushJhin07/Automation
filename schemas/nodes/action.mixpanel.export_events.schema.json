@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mixpanel.export_events.schema.json",
+  "title": "Mixpanel - Export Events",
+  "description": "Export events from Mixpanel",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mixpanel.export_events",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "from_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Start date (YYYY-MM-DD)"
+        },
+        "to_date": {
+          "type": "string",
+          "format": "date",
+          "description": "End date (YYYY-MM-DD)"
+        },
+        "event": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of event names to export"
+        },
+        "where": {
+          "type": "string",
+          "description": "Expression to filter events"
+        },
+        "bucket": {
+          "type": "string",
+          "description": "Data bucket"
+        }
+      },
+      "required": [
+        "from_date",
+        "to_date"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mixpanel"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp-enhanced.add_subscriber.schema.json",
+  "title": "Mailchimp Enhanced - Add Subscriber",
+  "description": "Add a new subscriber to a list",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp-enhanced.add_subscriber",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "list_id": {
+          "type": "string",
+          "description": "List ID"
+        },
+        "email_address": {
+          "type": "string",
+          "format": "email",
+          "description": "Subscriber email address"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "subscribed",
+            "unsubscribed",
+            "cleaned",
+            "pending"
+          ],
+          "default": "subscribed",
+          "description": "Subscriber status"
+        },
+        "merge_fields": {
+          "type": "object",
+          "properties": {
+            "FNAME": {
+              "type": "string"
+            },
+            "LNAME": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true,
+          "description": "Merge fields"
+        },
+        "interests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "Interest categories"
+        },
+        "language": {
+          "type": "string",
+          "description": "Language preference"
+        },
+        "vip": {
+          "type": "boolean",
+          "description": "VIP status"
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "marketing_permissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "marketing_permission_id": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "ip_signup": {
+          "type": "string",
+          "description": "IP address when user signed up"
+        },
+        "timestamp_signup": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when user signed up"
+        },
+        "ip_opt": {
+          "type": "string",
+          "description": "IP address when user confirmed opt-in"
+        },
+        "timestamp_opt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when user confirmed opt-in"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for the subscriber"
+        }
+      },
+      "required": [
+        "list_id",
+        "email_address"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

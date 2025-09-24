@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.slack-enhanced.send_direct_message.schema.json",
+  "title": "Slack Enhanced - Send Direct Message",
+  "description": "Send a direct message to a user",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.slack-enhanced.send_direct_message",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "User ID or username"
+        },
+        "text": {
+          "type": "string",
+          "description": "Message text"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use for the message"
+        },
+        "icon_emoji": {
+          "type": "string",
+          "description": "Emoji to use as the icon for this message"
+        },
+        "icon_url": {
+          "type": "string",
+          "description": "URL to an image to use as the icon for this message"
+        },
+        "link_names": {
+          "type": "boolean",
+          "description": "Find and link channel names and usernames"
+        },
+        "unfurl_links": {
+          "type": "boolean",
+          "description": "Enable unfurling of primarily text-based content"
+        },
+        "unfurl_media": {
+          "type": "boolean",
+          "description": "Disable unfurling of media content"
+        },
+        "parse": {
+          "type": "string",
+          "enum": [
+            "full",
+            "none"
+          ],
+          "description": "Change how messages are treated"
+        },
+        "mrkdwn": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disable Slack markup parsing by setting to false"
+        },
+        "blocks": {
+          "type": "array",
+          "description": "A JSON-based array of structured blocks",
+          "items": {
+            "type": "object"
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "description": "A JSON-based array of structured attachments",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "user",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Slack Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

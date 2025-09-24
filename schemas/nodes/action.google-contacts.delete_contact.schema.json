@@ -41,8 +41,8 @@
       "type": "object",
       "properties": {
         "resourceName": {
-          "description": "Contact resource name",
-          "type": "string"
+          "type": "string",
+          "description": "Contact resource name"
         }
       },
       "required": [
@@ -61,7 +61,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Productivity"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",
@@ -72,9 +72,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/contacts"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

@@ -40,27 +40,73 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "workspace": {
+          "type": "string",
+          "description": "Workspace name"
+        },
         "repo_slug": {
-          "type": "string"
+          "type": "string",
+          "description": "Repository slug"
         },
         "title": {
-          "type": "string"
-        },
-        "source_branch": {
-          "type": "string"
-        },
-        "destination_branch": {
-          "type": "string"
+          "type": "string",
+          "description": "Pull request title"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Pull request description"
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "branch": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Source branch"
+        },
+        "destination": {
+          "type": "object",
+          "properties": {
+            "branch": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Destination branch"
+        },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account_id": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Pull request reviewers"
+        },
+        "close_source_branch": {
+          "type": "boolean",
+          "description": "Close source branch after merge"
         }
       },
       "required": [
+        "workspace",
         "repo_slug",
         "title",
-        "source_branch",
-        "destination_branch"
+        "source",
+        "destination"
       ],
       "additionalProperties": false
     },
@@ -75,7 +121,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Developer Tools"
+          "const": "Development"
         },
         "appName": {
           "type": "string",
@@ -86,9 +132,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "pullrequests:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

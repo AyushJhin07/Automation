@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.databricks.create_job.schema.json",
+  "title": "Databricks - Create Job",
+  "description": "Create a new job",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.databricks.create_job",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Job name"
+        },
+        "new_cluster": {
+          "type": "object",
+          "description": "New cluster configuration"
+        },
+        "existing_cluster_id": {
+          "type": "string",
+          "description": "Existing cluster ID"
+        },
+        "notebook_task": {
+          "type": "object",
+          "description": "Notebook task configuration"
+        },
+        "spark_jar_task": {
+          "type": "object",
+          "description": "Spark JAR task configuration"
+        },
+        "libraries": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Job libraries"
+        },
+        "email_notifications": {
+          "type": "object",
+          "properties": {
+            "on_start": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "on_success": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "on_failure": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Email notification settings"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "description": "Job timeout in seconds"
+        },
+        "max_retries": {
+          "type": "number",
+          "description": "Maximum retry attempts"
+        },
+        "min_retry_interval_millis": {
+          "type": "number",
+          "description": "Minimum retry interval in milliseconds"
+        },
+        "retry_on_timeout": {
+          "type": "boolean",
+          "description": "Retry on timeout"
+        },
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "quartz_cron_expression": {
+              "type": "string"
+            },
+            "timezone_id": {
+              "type": "string"
+            }
+          },
+          "description": "Job schedule configuration"
+        },
+        "max_concurrent_runs": {
+          "type": "number",
+          "description": "Maximum concurrent runs"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Data Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Databricks"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

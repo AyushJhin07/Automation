@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.toggl.list_projects.schema.json",
+  "title": "Toggl Track - List Projects",
+  "description": "List all projects in a workspace",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.toggl.list_projects",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "number",
+          "description": "Workspace ID"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Filter by active status"
+        },
+        "since": {
+          "type": "number",
+          "description": "Unix timestamp to get projects modified since"
+        },
+        "billable": {
+          "type": "boolean",
+          "description": "Filter by billable status"
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "List of user IDs to filter by project membership"
+        },
+        "client_ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "List of client IDs to filter by"
+        }
+      },
+      "required": [
+        "workspace_id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Time Tracking"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Toggl Track"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

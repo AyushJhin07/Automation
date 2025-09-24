@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.ringcentral.get_call_log.schema.json",
+  "title": "RingCentral - Get Call Log",
+  "description": "Get call log records",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.ringcentral.get_call_log",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "extensionNumber": {
+          "type": "string",
+          "description": "Extension number"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number"
+        },
+        "direction": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Inbound",
+              "Outbound"
+            ]
+          },
+          "description": "Call direction"
+        },
+        "type": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Voice",
+              "Fax"
+            ]
+          },
+          "description": "Call type"
+        },
+        "view": {
+          "type": "string",
+          "enum": [
+            "Simple",
+            "Detailed"
+          ],
+          "default": "Simple",
+          "description": "View type"
+        },
+        "withRecording": {
+          "type": "boolean",
+          "description": "Filter by recording availability"
+        },
+        "recordingType": {
+          "type": "string",
+          "enum": [
+            "Automatic",
+            "OnDemand"
+          ],
+          "description": "Recording type"
+        },
+        "dateFrom": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start date"
+        },
+        "dateTo": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End date"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1
+        },
+        "perPage": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "RingCentral"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

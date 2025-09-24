@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.google-contacts.list_contacts.schema.json",
+  "title": "Google Contacts - List Contacts",
+  "description": "List contacts",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.google-contacts.list_contacts",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "pageSize": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Number of contacts to return"
+        },
+        "pageToken": {
+          "type": "string",
+          "description": "Page token for pagination"
+        },
+        "personFields": {
+          "type": "string",
+          "default": "names,emailAddresses,phoneNumbers",
+          "description": "Fields to include"
+        },
+        "sortOrder": {
+          "type": "string",
+          "enum": [
+            "LAST_MODIFIED_ASCENDING",
+            "LAST_MODIFIED_DESCENDING",
+            "FIRST_NAME_ASCENDING",
+            "LAST_NAME_ASCENDING"
+          ],
+          "description": "Sort order"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Google Contacts"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

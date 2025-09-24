@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.twilio.buy_phone_number.schema.json",
+  "title": "Twilio - Buy Phone Number",
+  "description": "Purchase a phone number",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.twilio.buy_phone_number",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "account_sid": {
+          "type": "string",
+          "description": "Account SID (defaults to main account)"
+        },
+        "phone_number": {
+          "type": "string",
+          "description": "Phone number to purchase (E.164 format)"
+        },
+        "area_code": {
+          "type": "string",
+          "description": "Area code to search in"
+        },
+        "friendly_name": {
+          "type": "string",
+          "description": "Human-readable name for the number"
+        },
+        "voice_url": {
+          "type": "string",
+          "description": "URL to handle incoming voice calls"
+        },
+        "voice_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for voice URL"
+        },
+        "voice_fallback_url": {
+          "type": "string",
+          "description": "Fallback URL for voice calls"
+        },
+        "voice_fallback_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for voice fallback URL"
+        },
+        "status_callback": {
+          "type": "string",
+          "description": "URL for status callbacks"
+        },
+        "status_callback_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for status callback"
+        },
+        "voice_caller_id_lookup": {
+          "type": "boolean",
+          "description": "Whether to enable caller ID lookup"
+        },
+        "voice_application_sid": {
+          "type": "string",
+          "description": "Application SID for voice calls"
+        },
+        "sms_url": {
+          "type": "string",
+          "description": "URL to handle incoming SMS"
+        },
+        "sms_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for SMS URL"
+        },
+        "sms_fallback_url": {
+          "type": "string",
+          "description": "Fallback URL for SMS"
+        },
+        "sms_fallback_method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "POST",
+          "description": "HTTP method for SMS fallback URL"
+        },
+        "sms_application_sid": {
+          "type": "string",
+          "description": "Application SID for SMS"
+        },
+        "address_sid": {
+          "type": "string",
+          "description": "Address SID for identity verification"
+        },
+        "emergency_status": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Inactive"
+          ],
+          "description": "Emergency calling status"
+        },
+        "emergency_address_sid": {
+          "type": "string",
+          "description": "Emergency address SID"
+        },
+        "trunk_sid": {
+          "type": "string",
+          "description": "Trunk SID for SIP trunking"
+        },
+        "identity_sid": {
+          "type": "string",
+          "description": "Identity SID for regulatory compliance"
+        },
+        "bundle_sid": {
+          "type": "string",
+          "description": "Bundle SID for regulatory compliance"
+        }
+      },
+      "required": [
+        "phone_number"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Twilio"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

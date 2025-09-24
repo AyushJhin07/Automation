@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.salesforce-enhanced.get_record.schema.json",
   "title": "Salesforce Enhanced - Get Record",
-  "description": "Retrieve a specific record",
+  "description": "Get a record by ID",
   "type": "object",
   "required": [
     "id",
@@ -40,13 +40,25 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "id": {
-          "description": "Record ID",
-          "type": "string"
+        "sobjectType": {
+          "type": "string",
+          "description": "SObject type"
+        },
+        "recordId": {
+          "type": "string",
+          "description": "Record ID"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to retrieve"
         }
       },
       "required": [
-        "id"
+        "sobjectType",
+        "recordId"
       ],
       "additionalProperties": false
     },
@@ -61,7 +73,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Business Apps"
+          "const": "CRM"
         },
         "appName": {
           "type": "string",

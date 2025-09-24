@@ -18,12 +18,14 @@ const sampleWorkflow = {
       type: 'trigger.time.cron',
       label: 'Scheduled trigger',
       params: { schedule: '0 9 * * *', timezone: 'America/New_York' },
+      parameters: { schedule: '0 9 * * *', timezone: 'America/New_York' },
       position: { x: 100, y: 120 },
       data: {
         label: 'Scheduled trigger',
         description: 'Runs every morning at 9AM',
         app: 'time',
         function: 'cron',
+        params: { schedule: '0 9 * * *', timezone: 'America/New_York' },
         parameters: { schedule: '0 9 * * *', timezone: 'America/New_York' },
         metadata: {
           description: 'Runs every day at 9AM',
@@ -35,12 +37,14 @@ const sampleWorkflow = {
       type: 'action.sheets.append_row',
       label: 'Append row',
       params: { spreadsheetId: 'sheet-123', sheetName: 'Sheet1', range: 'A1:B1', values: ['A', 'B'] },
+      parameters: { spreadsheetId: 'sheet-123', sheetName: 'Sheet1', range: 'A1:B1', values: ['A', 'B'] },
       position: { x: 360, y: 180 },
       data: {
         label: 'Append row',
         description: 'Add a new row to Sheets',
         app: 'sheets',
         function: 'append_row',
+        params: { spreadsheetId: 'sheet-123', sheetName: 'Sheet1', range: 'A1:B1', values: ['A', 'B'] },
         parameters: { spreadsheetId: 'sheet-123', sheetName: 'Sheet1', range: 'A1:B1', values: ['A', 'B'] },
         metadata: {
           sample: { sheetId: 'sheet-123', values: ['A', 'B'] }

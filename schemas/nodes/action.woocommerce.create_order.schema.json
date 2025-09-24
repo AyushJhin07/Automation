@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.woocommerce.create_order.schema.json",
+  "title": "WooCommerce - Create Order",
+  "description": "Create a new order",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.woocommerce.create_order",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "payment_method": {
+          "type": "string",
+          "description": "Payment method ID"
+        },
+        "payment_method_title": {
+          "type": "string",
+          "description": "Payment method title"
+        },
+        "set_paid": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to mark order as paid"
+        },
+        "billing": {
+          "type": "object",
+          "properties": {
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "company": {
+              "type": "string"
+            },
+            "address_1": {
+              "type": "string"
+            },
+            "address_2": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "postcode": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "phone": {
+              "type": "string"
+            }
+          },
+          "description": "Billing address"
+        },
+        "shipping": {
+          "type": "object",
+          "properties": {
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "company": {
+              "type": "string"
+            },
+            "address_1": {
+              "type": "string"
+            },
+            "address_2": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "postcode": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            }
+          },
+          "description": "Shipping address"
+        },
+        "line_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": {
+                "type": "number"
+              },
+              "variation_id": {
+                "type": "number"
+              },
+              "quantity": {
+                "type": "number",
+                "minimum": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "sku": {
+                "type": "string"
+              },
+              "price": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product_id",
+              "quantity"
+            ]
+          },
+          "description": "Order line items"
+        },
+        "shipping_lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "method_id": {
+                "type": "string"
+              },
+              "method_title": {
+                "type": "string"
+              },
+              "total": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Shipping lines"
+        },
+        "fee_lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "total": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Fee lines"
+        },
+        "coupon_lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Coupon lines"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "processing",
+            "on-hold",
+            "completed",
+            "cancelled",
+            "refunded",
+            "failed",
+            "trash"
+          ],
+          "default": "pending",
+          "description": "Order status"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code"
+        },
+        "customer_id": {
+          "type": "number",
+          "description": "Customer ID"
+        },
+        "customer_note": {
+          "type": "string",
+          "description": "Customer note"
+        },
+        "meta_data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Meta data"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "WooCommerce"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

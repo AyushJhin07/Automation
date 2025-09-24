@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.notion.database_entry_created.schema.json",
   "title": "Notion - Database Entry Created",
-  "description": "Trigger when database entry is created",
+  "description": "Triggered when a new entry is added to a database",
   "type": "object",
   "required": [
     "id",
@@ -40,14 +40,12 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "databaseId": {
-          "description": "Database ID",
-          "type": "string"
+        "database_id": {
+          "type": "string",
+          "description": "Specific database to monitor"
         }
       },
-      "required": [
-        "databaseId"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -61,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "productivity"
+          "const": "Productivity"
         },
         "appName": {
           "type": "string",
@@ -72,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

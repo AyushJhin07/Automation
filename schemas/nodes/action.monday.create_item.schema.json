@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.monday.create_item.schema.json",
+  "title": "Monday.com - Create Item",
+  "description": "Create a new item in a board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.monday.create_item",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "type": "number",
+          "description": "Board ID"
+        },
+        "group_id": {
+          "type": "string",
+          "description": "Group ID within the board"
+        },
+        "item_name": {
+          "type": "string",
+          "description": "Name of the item"
+        },
+        "column_values": {
+          "type": "object",
+          "description": "Column values as JSON object"
+        },
+        "create_labels_if_missing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create labels if they don't exist"
+        }
+      },
+      "required": [
+        "board_id",
+        "item_name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Monday.com"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.dropbox.download_file.schema.json",
   "title": "Dropbox - Download File",
-  "description": "Download file from Dropbox",
+  "description": "Download a file from Dropbox",
   "type": "object",
   "required": [
     "id",
@@ -41,8 +41,8 @@
       "type": "object",
       "properties": {
         "path": {
-          "description": "File path in Dropbox",
-          "type": "string"
+          "type": "string",
+          "description": "File path in Dropbox"
         }
       },
       "required": [
@@ -61,7 +61,7 @@
         },
         "category": {
           "type": "string",
-          "const": "storage"
+          "const": "File Storage"
         },
         "appName": {
           "type": "string",
@@ -72,9 +72,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "files.content.read"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

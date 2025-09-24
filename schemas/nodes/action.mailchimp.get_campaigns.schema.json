@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.get_campaigns.schema.json",
+  "title": "Mailchimp - Get Campaigns",
+  "description": "Get all campaigns",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp.get_campaigns",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Number of campaigns to return"
+        },
+        "offset": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of campaigns to skip"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "regular",
+            "plaintext",
+            "absplit",
+            "rss",
+            "variate"
+          ],
+          "description": "Filter by campaign type"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "save",
+            "paused",
+            "schedule",
+            "sending",
+            "sent"
+          ],
+          "description": "Filter by campaign status"
+        },
+        "beforeSendTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by send time"
+        },
+        "sinceSendTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by send time"
+        },
+        "beforeCreateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by create time"
+        },
+        "sinceCreateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by create time"
+        },
+        "listId": {
+          "type": "string",
+          "description": "Filter by list ID"
+        },
+        "folderId": {
+          "type": "string",
+          "description": "Filter by folder ID"
+        },
+        "sortField": {
+          "type": "string",
+          "enum": [
+            "create_time",
+            "send_time"
+          ],
+          "description": "Field to sort by"
+        },
+        "sortDir": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "description": "Sort direction"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

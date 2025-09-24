@@ -1,0 +1,374 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zoom-enhanced.create_meeting.schema.json",
+  "title": "Zoom Enhanced - Create Meeting",
+  "description": "Schedule a new meeting",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zoom-enhanced.create_meeting",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID or email address"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Meeting topic"
+        },
+        "type": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            8
+          ],
+          "default": 2,
+          "description": "Meeting type (1=instant, 2=scheduled, 3=recurring no fixed time, 8=recurring fixed time)"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Meeting start time (ISO 8601)"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Meeting duration in minutes"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone"
+        },
+        "password": {
+          "type": "string",
+          "description": "Meeting password"
+        },
+        "agenda": {
+          "type": "string",
+          "description": "Meeting agenda"
+        },
+        "recurrence": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "number",
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            },
+            "repeat_interval": {
+              "type": "number"
+            },
+            "weekly_days": {
+              "type": "string"
+            },
+            "monthly_day": {
+              "type": "number"
+            },
+            "monthly_week": {
+              "type": "number"
+            },
+            "monthly_week_day": {
+              "type": "number"
+            },
+            "end_times": {
+              "type": "number"
+            },
+            "end_date_time": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "description": "Recurrence settings"
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "host_video": {
+              "type": "boolean",
+              "default": false
+            },
+            "participant_video": {
+              "type": "boolean",
+              "default": false
+            },
+            "cn_meeting": {
+              "type": "boolean",
+              "default": false
+            },
+            "in_meeting": {
+              "type": "boolean",
+              "default": false
+            },
+            "join_before_host": {
+              "type": "boolean",
+              "default": false
+            },
+            "jbh_time": {
+              "type": "number",
+              "enum": [
+                0,
+                5,
+                10
+              ]
+            },
+            "mute_upon_entry": {
+              "type": "boolean",
+              "default": false
+            },
+            "watermark": {
+              "type": "boolean",
+              "default": false
+            },
+            "use_pmi": {
+              "type": "boolean",
+              "default": false
+            },
+            "approval_type": {
+              "type": "number",
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            },
+            "registration_type": {
+              "type": "number",
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            },
+            "audio": {
+              "type": "string",
+              "enum": [
+                "both",
+                "telephony",
+                "voip"
+              ]
+            },
+            "auto_recording": {
+              "type": "string",
+              "enum": [
+                "local",
+                "cloud",
+                "none"
+              ]
+            },
+            "enforce_login": {
+              "type": "boolean",
+              "default": false
+            },
+            "enforce_login_domains": {
+              "type": "string"
+            },
+            "alternative_hosts": {
+              "type": "string"
+            },
+            "close_registration": {
+              "type": "boolean",
+              "default": false
+            },
+            "show_share_button": {
+              "type": "boolean",
+              "default": false
+            },
+            "allow_multiple_devices": {
+              "type": "boolean",
+              "default": false
+            },
+            "registrants_confirmation_email": {
+              "type": "boolean",
+              "default": true
+            },
+            "waiting_room": {
+              "type": "boolean",
+              "default": false
+            },
+            "request_permission_to_unmute_participants": {
+              "type": "boolean",
+              "default": false
+            },
+            "global_dial_in_countries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "global_dial_in_numbers": {
+              "type": "array"
+            },
+            "contact_name": {
+              "type": "string"
+            },
+            "contact_email": {
+              "type": "string",
+              "format": "email"
+            },
+            "registrants_email_notification": {
+              "type": "boolean",
+              "default": true
+            },
+            "meeting_authentication": {
+              "type": "boolean",
+              "default": false
+            },
+            "authentication_option": {
+              "type": "string"
+            },
+            "authentication_domains": {
+              "type": "string"
+            },
+            "authentication_name": {
+              "type": "string"
+            },
+            "additional_data_center_regions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "breakout_room": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "rooms": {
+                  "type": "array"
+                }
+              }
+            },
+            "internal_meeting": {
+              "type": "boolean",
+              "default": false
+            },
+            "continuous_meeting_chat": {
+              "type": "object",
+              "properties": {
+                "enable": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "auto_add_invited_external_users": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            },
+            "participant_focused_meeting": {
+              "type": "boolean",
+              "default": false
+            },
+            "push_change_to_calendar": {
+              "type": "boolean",
+              "default": false
+            },
+            "resources": {
+              "type": "array"
+            },
+            "auto_start_meeting_summary": {
+              "type": "boolean",
+              "default": false
+            },
+            "auto_start_ai_companion_questions": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "description": "Meeting settings"
+        },
+        "tracking_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Tracking fields"
+        },
+        "template_id": {
+          "type": "string",
+          "description": "Meeting template ID"
+        }
+      },
+      "required": [
+        "userId",
+        "topic"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zoom Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

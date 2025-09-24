@@ -41,24 +41,20 @@
       "type": "object",
       "properties": {
         "issueIdOrKey": {
-          "description": "Issue ID or key (e.g., PROJ-123)",
-          "type": "string"
+          "type": "string",
+          "description": "Issue ID or key"
         },
         "transitionId": {
-          "description": "ID of the transition to perform",
-          "type": "string"
+          "type": "string",
+          "description": "ID of the transition to execute"
         },
         "comment": {
-          "description": "Comment to add during transition",
-          "type": "string"
+          "type": "string",
+          "description": "Optional comment for the transition"
         },
-        "assignee": {
-          "description": "New assignee account ID",
-          "type": "string"
-        },
-        "resolution": {
-          "description": "Resolution when closing issue",
-          "type": "string"
+        "fields": {
+          "type": "object",
+          "description": "Field values to set during transition"
         }
       },
       "required": [
@@ -89,9 +85,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write:jira-work"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

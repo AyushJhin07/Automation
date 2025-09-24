@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gmail-enhanced.search_messages.schema.json",
+  "title": "Gmail Enhanced - Search Messages",
+  "description": "Advanced message search",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gmail-enhanced.search_messages",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "default": "me",
+          "description": "User's email address or 'me'"
+        },
+        "query": {
+          "type": "string",
+          "description": "Gmail search query"
+        },
+        "from": {
+          "type": "string",
+          "description": "From email address"
+        },
+        "to": {
+          "type": "string",
+          "description": "To email address"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject contains"
+        },
+        "hasAttachment": {
+          "type": "boolean",
+          "description": "Has attachment"
+        },
+        "isUnread": {
+          "type": "boolean",
+          "description": "Is unread"
+        },
+        "dateAfter": {
+          "type": "string",
+          "format": "date",
+          "description": "After date (YYYY/MM/DD)"
+        },
+        "dateBefore": {
+          "type": "string",
+          "format": "date",
+          "description": "Before date (YYYY/MM/DD)"
+        },
+        "maxResults": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100,
+          "description": "Maximum results"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Gmail Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

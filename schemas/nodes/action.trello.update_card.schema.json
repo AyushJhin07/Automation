@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.trello.update_card.schema.json",
+  "title": "Trello - Update Card",
+  "description": "Update card details",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.trello.update_card",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Card ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Card name"
+        },
+        "desc": {
+          "type": "string",
+          "description": "Card description"
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Whether the card is closed"
+        },
+        "idMembers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of member IDs"
+        },
+        "idAttachmentCover": {
+          "type": "string",
+          "description": "ID of attachment to use as cover"
+        },
+        "idList": {
+          "type": "string",
+          "description": "List ID to move card to"
+        },
+        "idLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of label IDs"
+        },
+        "idBoard": {
+          "type": "string",
+          "description": "Board ID to move card to"
+        },
+        "pos": {
+          "type": "string",
+          "description": "Position of the card"
+        },
+        "due": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Due date (ISO 8601 format)"
+        },
+        "dueComplete": {
+          "type": "boolean",
+          "description": "Whether the due date is complete"
+        },
+        "subscribed": {
+          "type": "boolean",
+          "description": "Whether the user is subscribed to the card"
+        },
+        "address": {
+          "type": "string",
+          "description": "Address for location"
+        },
+        "locationName": {
+          "type": "string",
+          "description": "Location name"
+        },
+        "coordinates": {
+          "type": "string",
+          "description": "GPS coordinates"
+        },
+        "cover": {
+          "type": "object",
+          "description": "Cover settings"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Trello"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

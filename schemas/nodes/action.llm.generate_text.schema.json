@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.llm.generate_text.schema.json",
+  "title": "LLM (Large Language Model) - Generate Text",
+  "description": "Generate text using a language model",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.llm.generate_text",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Input prompt for text generation"
+        },
+        "model": {
+          "type": "string",
+          "enum": [
+            "gpt-4",
+            "gpt-4-turbo",
+            "gpt-3.5-turbo",
+            "claude-3-opus",
+            "claude-3-sonnet"
+          ],
+          "default": "gpt-3.5-turbo",
+          "description": "Language model to use"
+        },
+        "max_tokens": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4096,
+          "default": 1000,
+          "description": "Maximum number of tokens to generate"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.7,
+          "description": "Sampling temperature for randomness"
+        },
+        "top_p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1,
+          "description": "Nucleus sampling parameter"
+        },
+        "frequency_penalty": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2,
+          "default": 0,
+          "description": "Frequency penalty for token repetition"
+        },
+        "presence_penalty": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2,
+          "default": 0,
+          "description": "Presence penalty for new topics"
+        },
+        "stop_sequences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Stop sequences to end generation"
+        },
+        "system_message": {
+          "type": "string",
+          "description": "System message to set behavior"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "AI/ML"
+        },
+        "appName": {
+          "type": "string",
+          "const": "LLM (Large Language Model)"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

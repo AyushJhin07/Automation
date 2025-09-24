@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.iterable.send_email.schema.json",
+  "title": "Iterable - Send Email",
+  "description": "Send a transactional email",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.iterable.send_email",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "campaignId": {
+          "type": "number",
+          "description": "Campaign ID"
+        },
+        "recipientEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Recipient email address"
+        },
+        "recipientUserId": {
+          "type": "string",
+          "description": "Recipient user ID"
+        },
+        "dataFields": {
+          "type": "object",
+          "description": "Data fields for personalization"
+        },
+        "sendAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Schedule send time"
+        },
+        "allowRepeatMarketingSends": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow repeat sends for marketing campaigns"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata"
+        }
+      },
+      "required": [
+        "campaignId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Iterable"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.shopify.order_created.schema.json",
   "title": "Shopify - Order Created",
-  "description": "Trigger when new order is placed",
+  "description": "Triggered when a new order is created",
   "type": "object",
   "required": [
     "id",
@@ -40,29 +40,25 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "status": {
-          "description": "Filter by order status",
-          "type": "string",
-          "enum": [
-            "open",
-            "closed",
-            "cancelled",
-            "any"
-          ],
-          "default": "any"
-        },
         "financial_status": {
-          "description": "Filter by financial status",
           "type": "string",
           "enum": [
-            "pending",
+            "any",
             "authorized",
-            "paid",
-            "refunded",
-            "voided",
-            "any"
+            "pending",
+            "paid"
           ],
-          "default": "any"
+          "description": "Filter by financial status"
+        },
+        "fulfillment_status": {
+          "type": "string",
+          "enum": [
+            "any",
+            "shipped",
+            "partial",
+            "unshipped"
+          ],
+          "description": "Filter by fulfillment status"
         }
       },
       "required": [],
@@ -90,9 +86,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_orders"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

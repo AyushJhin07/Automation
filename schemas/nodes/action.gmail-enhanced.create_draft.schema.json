@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.gmail-enhanced.create_draft.schema.json",
   "title": "Gmail Enhanced - Create Draft",
-  "description": "Create an email draft",
+  "description": "Create a draft email",
   "type": "object",
   "required": [
     "id",
@@ -40,17 +40,26 @@
     "parameters": {
       "type": "object",
       "properties": {
+        "userId": {
+          "type": "string",
+          "default": "me",
+          "description": "User's email address or 'me'"
+        },
         "to": {
-          "description": "Recipient email",
-          "type": "string"
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "Recipient email addresses"
         },
         "subject": {
-          "description": "Email subject",
-          "type": "string"
+          "type": "string",
+          "description": "Email subject"
         },
         "body": {
-          "description": "Email body",
-          "type": "string"
+          "type": "string",
+          "description": "Email body"
         }
       },
       "required": [
@@ -82,9 +91,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/gmail.compose"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

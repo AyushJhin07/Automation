@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.outlook.create_calendar_event.schema.json",
+  "title": "Microsoft Outlook - Create Calendar Event",
+  "description": "Create a new calendar event",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.outlook.create_calendar_event",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "Event subject"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "Text",
+                "HTML"
+              ]
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "start": {
+          "type": "object",
+          "properties": {
+            "dateTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "timeZone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "dateTime"
+          ],
+          "additionalProperties": false
+        },
+        "end": {
+          "type": "object",
+          "properties": {
+            "dateTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "timeZone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "dateTime"
+          ],
+          "additionalProperties": false
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "displayName": {
+              "type": "string"
+            },
+            "address": {
+              "type": "object"
+            },
+            "coordinates": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "attendees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "emailAddress": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "address"
+                ],
+                "additionalProperties": false
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "optional",
+                  "resource"
+                ]
+              }
+            },
+            "required": [
+              "emailAddress"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "isAllDay": {
+          "type": "boolean",
+          "default": false
+        },
+        "recurrence": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "object"
+            },
+            "range": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "reminderMinutesBeforeStart": {
+          "type": "number",
+          "description": "Reminder time in minutes"
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Normal",
+            "High"
+          ],
+          "default": "Normal"
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": [
+            "Normal",
+            "Personal",
+            "Private",
+            "Confidential"
+          ],
+          "default": "Normal"
+        },
+        "showAs": {
+          "type": "string",
+          "enum": [
+            "Free",
+            "Tentative",
+            "Busy",
+            "Oof",
+            "WorkingElsewhere",
+            "Unknown"
+          ],
+          "default": "Busy"
+        }
+      },
+      "required": [
+        "subject",
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft Outlook"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

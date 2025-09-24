@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.okta.update_user.schema.json",
   "title": "Okta - Update User",
-  "description": "Update an existing user",
+  "description": "Update user information",
   "type": "object",
   "required": [
     "id",
@@ -41,18 +41,55 @@
       "type": "object",
       "properties": {
         "userId": {
-          "description": "User ID",
-          "type": "string"
+          "type": "string",
+          "description": "User ID"
         },
         "profile": {
-          "description": "User profile data",
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "firstName": {
+              "type": "string"
+            },
+            "lastName": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "login": {
+              "type": "string"
+            },
+            "mobilePhone": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "department": {
+              "type": "string"
+            },
+            "manager": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "credentials": {
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "object"
+            },
+            "recovery_question": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
-        "userId",
-        "profile"
+        "userId"
       ],
       "additionalProperties": false
     },
@@ -67,7 +104,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Identity Management"
+          "const": "Security"
         },
         "appName": {
           "type": "string",
@@ -78,9 +115,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "users:manage"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

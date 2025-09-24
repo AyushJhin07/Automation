@@ -39,7 +39,12 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "pipeline": {
+          "type": "string",
+          "description": "Specific pipeline to monitor"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -65,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "crm.objects.deals.read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.github.create_webhook.schema.json",
+  "title": "GitHub - Create Webhook",
+  "description": "Create a repository webhook",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.github.create_webhook",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "Repository owner"
+        },
+        "repo": {
+          "type": "string",
+          "description": "Repository name"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Webhook URL"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "push"
+          ],
+          "description": "List of events to trigger webhook"
+        },
+        "content_type": {
+          "type": "string",
+          "enum": [
+            "json",
+            "form"
+          ],
+          "default": "json",
+          "description": "Content type for webhook payload"
+        },
+        "secret": {
+          "type": "string",
+          "description": "Secret for webhook signature verification"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether webhook is active"
+        }
+      },
+      "required": [
+        "owner",
+        "repo",
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Development"
+        },
+        "appName": {
+          "type": "string",
+          "const": "GitHub"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

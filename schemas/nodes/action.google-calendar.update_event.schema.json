@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-calendar.update_event.schema.json",
   "title": "Google Calendar - Update Event",
-  "description": "Update an existing event",
+  "description": "Update an existing calendar event",
   "type": "object",
   "required": [
     "id",
@@ -41,22 +41,79 @@
       "type": "object",
       "properties": {
         "calendarId": {
-          "description": "Calendar ID",
-          "type": "string"
+          "type": "string",
+          "default": "primary",
+          "description": "Calendar ID"
         },
         "eventId": {
-          "description": "Event ID",
-          "type": "string"
+          "type": "string",
+          "description": "Event ID to update"
         },
-        "fields": {
-          "description": "Fields to update",
+        "summary": {
+          "type": "string",
+          "description": "Event title/summary"
+        },
+        "description": {
+          "type": "string",
+          "description": "Event description"
+        },
+        "location": {
+          "type": "string",
+          "description": "Event location"
+        },
+        "start": {
           "type": "object",
-          "additionalProperties": true
+          "properties": {
+            "dateTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "date": {
+              "type": "string",
+              "format": "date"
+            },
+            "timeZone": {
+              "type": "string"
+            }
+          },
+          "description": "Start time"
+        },
+        "end": {
+          "type": "object",
+          "properties": {
+            "dateTime": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "date": {
+              "type": "string",
+              "format": "date"
+            },
+            "timeZone": {
+              "type": "string"
+            }
+          },
+          "description": "End time"
+        },
+        "attendees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Event attendees"
         }
       },
       "required": [
-        "eventId",
-        "fields"
+        "eventId"
       ],
       "additionalProperties": false
     },
@@ -82,9 +139,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/calendar.events"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

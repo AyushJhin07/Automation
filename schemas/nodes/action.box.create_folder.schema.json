@@ -41,15 +41,17 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Folder name"
         },
-        "parent_folder_id": {
-          "type": "string"
+        "parent_id": {
+          "type": "string",
+          "default": "0",
+          "description": "Parent folder ID"
         }
       },
       "required": [
-        "name",
-        "parent_folder_id"
+        "name"
       ],
       "additionalProperties": false
     },
@@ -64,7 +66,7 @@
         },
         "category": {
           "type": "string",
-          "const": "File Storage"
+          "const": "Storage"
         },
         "appName": {
           "type": "string",

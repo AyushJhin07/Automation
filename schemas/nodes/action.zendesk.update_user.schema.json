@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.zendesk.update_user.schema.json",
+  "title": "Zendesk - Update User",
+  "description": "Update user details",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.zendesk.update_user",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "number",
+          "description": "User ID"
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "alias": {
+              "type": "string"
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "verified": {
+              "type": "boolean"
+            },
+            "shared": {
+              "type": "boolean"
+            },
+            "shared_agent": {
+              "type": "boolean"
+            },
+            "locale": {
+              "type": "string"
+            },
+            "locale_id": {
+              "type": "number"
+            },
+            "time_zone": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "end-user",
+                "agent",
+                "admin"
+              ]
+            },
+            "custom_role_id": {
+              "type": "number"
+            },
+            "moderator": {
+              "type": "boolean"
+            },
+            "ticket_restriction": {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "groups",
+                "organization",
+                "requested",
+                "none"
+              ]
+            },
+            "only_private_comments": {
+              "type": "boolean"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "details": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "organization_id": {
+              "type": "number"
+            },
+            "default_group_id": {
+              "type": "number"
+            },
+            "signature": {
+              "type": "string"
+            },
+            "user_fields": {
+              "type": "object"
+            },
+            "external_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "user"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Zendesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

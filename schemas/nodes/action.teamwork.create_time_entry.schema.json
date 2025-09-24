@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.teamwork.create_time_entry.schema.json",
+  "title": "Teamwork - Create Time Entry",
+  "description": "Create a new time entry",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.teamwork.create_time_entry",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "Project ID"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Task ID (optional)"
+        },
+        "person_id": {
+          "type": "string",
+          "description": "Person ID who logged the time"
+        },
+        "description": {
+          "type": "string",
+          "description": "Time entry description"
+        },
+        "hours": {
+          "type": "number",
+          "description": "Number of hours"
+        },
+        "minutes": {
+          "type": "number",
+          "description": "Number of minutes"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of time entry (YYYY-MM-DD)"
+        },
+        "time": {
+          "type": "string",
+          "description": "Time of entry (HH:MM)"
+        },
+        "is_billable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether time is billable"
+        },
+        "tags": {
+          "type": "string",
+          "description": "Comma-separated list of tags"
+        }
+      },
+      "required": [
+        "project_id",
+        "person_id",
+        "description",
+        "hours",
+        "date"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Teamwork"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

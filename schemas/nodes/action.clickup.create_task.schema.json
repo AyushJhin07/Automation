@@ -41,22 +41,83 @@
       "type": "object",
       "properties": {
         "list_id": {
-          "type": "string"
+          "type": "string",
+          "description": "List ID where task will be created"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Task name"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Task description"
         },
         "assignees": {
           "type": "array",
           "items": {
+            "type": "number"
+          },
+          "description": "Array of assignee user IDs"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
             "type": "string"
-          }
+          },
+          "description": "Array of tag names"
+        },
+        "status": {
+          "type": "string",
+          "description": "Task status"
         },
         "priority": {
-          "type": "string"
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "description": "Task priority (1=urgent, 2=high, 3=normal, 4=low)"
+        },
+        "due_date": {
+          "type": "number",
+          "description": "Due date as Unix timestamp"
+        },
+        "due_date_time": {
+          "type": "boolean",
+          "description": "Include time in due date"
+        },
+        "time_estimate": {
+          "type": "number",
+          "description": "Time estimate in milliseconds"
+        },
+        "start_date": {
+          "type": "number",
+          "description": "Start date as Unix timestamp"
+        },
+        "start_date_time": {
+          "type": "boolean",
+          "description": "Include time in start date"
+        },
+        "notify_all": {
+          "type": "boolean",
+          "description": "Notify all team members"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Parent task ID"
+        },
+        "links_to": {
+          "type": "string",
+          "description": "Task ID to link to"
+        },
+        "custom_fields": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Custom field values"
         }
       },
       "required": [

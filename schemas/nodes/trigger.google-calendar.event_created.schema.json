@@ -41,8 +41,8 @@
       "type": "object",
       "properties": {
         "calendarId": {
-          "description": "Monitor specific calendar",
-          "type": "string"
+          "type": "string",
+          "description": "Monitor specific calendar (optional)"
         }
       },
       "required": [],
@@ -70,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/calendar.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

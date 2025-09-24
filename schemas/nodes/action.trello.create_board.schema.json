@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.trello.create_board.schema.json",
+  "title": "Trello - Create Board",
+  "description": "Create a new board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.trello.create_board",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Board name"
+        },
+        "desc": {
+          "type": "string",
+          "description": "Board description"
+        },
+        "idOrganization": {
+          "type": "string",
+          "description": "Organization ID"
+        },
+        "idBoardSource": {
+          "type": "string",
+          "description": "ID of board to copy from"
+        },
+        "keepFromSource": {
+          "type": "string",
+          "description": "Components to copy from source board"
+        },
+        "powerUps": {
+          "type": "string",
+          "description": "Power-ups to enable"
+        },
+        "prefs_permissionLevel": {
+          "type": "string",
+          "enum": [
+            "private",
+            "org",
+            "public"
+          ],
+          "default": "private",
+          "description": "Permission level"
+        },
+        "prefs_voting": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "members",
+            "observers",
+            "org",
+            "public"
+          ],
+          "default": "disabled",
+          "description": "Voting permission"
+        },
+        "prefs_comments": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "members",
+            "observers",
+            "org",
+            "public"
+          ],
+          "default": "members",
+          "description": "Comment permission"
+        },
+        "prefs_invitations": {
+          "type": "string",
+          "enum": [
+            "members",
+            "admins"
+          ],
+          "default": "members",
+          "description": "Invitation permission"
+        },
+        "prefs_selfJoin": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether users can join themselves"
+        },
+        "prefs_cardCovers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to show card covers"
+        },
+        "prefs_background": {
+          "type": "string",
+          "description": "Background color or image"
+        },
+        "prefs_cardAging": {
+          "type": "string",
+          "enum": [
+            "pirate",
+            "regular"
+          ],
+          "default": "regular",
+          "description": "Card aging style"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Trello"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

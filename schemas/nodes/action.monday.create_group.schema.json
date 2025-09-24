@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.monday.create_group.schema.json",
+  "title": "Monday.com - Create Group",
+  "description": "Create a new group in a board",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.monday.create_group",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "type": "number",
+          "description": "Board ID"
+        },
+        "group_name": {
+          "type": "string",
+          "description": "Name of the group"
+        },
+        "group_color": {
+          "type": "string",
+          "enum": [
+            "#037f4c",
+            "#00c875",
+            "#9cd326",
+            "#cab641",
+            "#ffcb00",
+            "#784bd1",
+            "#a25ddc",
+            "#0086c0",
+            "#579bfc",
+            "#66ccff",
+            "#bb3354",
+            "#e2445c",
+            "#ff158a",
+            "#ff5ac4",
+            "#ff642e",
+            "#fdab3d",
+            "#7f5347",
+            "#c4c4c4",
+            "#808080"
+          ],
+          "description": "Group color"
+        },
+        "relative_position_after": {
+          "type": "string",
+          "description": "Position after this group ID"
+        }
+      },
+      "required": [
+        "board_id",
+        "group_name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Monday.com"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.airtable.create_record.schema.json",
   "title": "Airtable - Create Record",
-  "description": "Create new record in table",
+  "description": "Create a new record in a table",
   "type": "object",
   "required": [
     "id",
@@ -41,17 +41,21 @@
       "type": "object",
       "properties": {
         "baseId": {
-          "description": "Base ID",
-          "type": "string"
+          "type": "string",
+          "description": "Base ID"
         },
         "tableId": {
-          "description": "Table ID",
-          "type": "string"
+          "type": "string",
+          "description": "Table ID or name"
         },
         "fields": {
-          "description": "Record fields",
           "type": "object",
-          "additionalProperties": true
+          "description": "Record fields as key-value pairs"
+        },
+        "typecast": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically format data"
         }
       },
       "required": [
@@ -72,7 +76,7 @@
         },
         "category": {
           "type": "string",
-          "const": "database"
+          "const": "Database"
         },
         "appName": {
           "type": "string",
@@ -83,9 +87,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "data:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

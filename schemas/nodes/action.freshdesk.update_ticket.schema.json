@@ -40,18 +40,52 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "ticket_id": {
-          "type": "string"
+        "id": {
+          "type": "number",
+          "description": "Ticket ID"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Ticket subject"
+        },
+        "description": {
+          "type": "string",
+          "description": "Ticket description"
         },
         "status": {
-          "type": "string"
+          "type": "number",
+          "enum": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "description": "Ticket status"
         },
         "priority": {
-          "type": "string"
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "description": "Ticket priority"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ticket tags"
+        },
+        "custom_fields": {
+          "type": "object",
+          "description": "Custom field values"
         }
       },
       "required": [
-        "ticket_id"
+        "id"
       ],
       "additionalProperties": false
     },

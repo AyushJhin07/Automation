@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.quickbooks.create_payment.schema.json",
+  "title": "QuickBooks - Create Payment",
+  "description": "Create a payment",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.quickbooks.create_payment",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "companyId": {
+          "type": "string",
+          "description": "Company ID"
+        },
+        "customerRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Customer reference"
+        },
+        "totalAmt": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total payment amount"
+        },
+        "txnDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Transaction date"
+        },
+        "paymentMethodRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Payment method reference"
+        },
+        "depositToAccountRef": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "description": "Deposit to account reference"
+        },
+        "line": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "linkedTxn": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "txnId": {
+                      "type": "string"
+                    },
+                    "txnType": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "description": "Payment line items"
+        },
+        "privateNote": {
+          "type": "string",
+          "description": "Private note"
+        }
+      },
+      "required": [
+        "companyId",
+        "customerRef",
+        "totalAmt"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Accounting"
+        },
+        "appName": {
+          "type": "string",
+          "const": "QuickBooks"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

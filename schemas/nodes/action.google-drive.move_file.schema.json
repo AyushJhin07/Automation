@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.google-drive.move_file.schema.json",
   "title": "Google Drive - Move File",
-  "description": "Move a file to another folder",
+  "description": "Move a file to a different folder",
   "type": "object",
   "required": [
     "id",
@@ -41,17 +41,21 @@
       "type": "object",
       "properties": {
         "fileId": {
-          "description": "ID of the file to move",
-          "type": "string"
+          "type": "string",
+          "description": "ID of the file to move"
         },
-        "targetFolderId": {
-          "description": "ID of the target folder",
-          "type": "string"
+        "newParentId": {
+          "type": "string",
+          "description": "ID of the new parent folder"
+        },
+        "removeParents": {
+          "type": "string",
+          "description": "Comma-separated list of parent IDs to remove"
         }
       },
       "required": [
         "fileId",
-        "targetFolderId"
+        "newParentId"
       ],
       "additionalProperties": false
     },
@@ -77,9 +81,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

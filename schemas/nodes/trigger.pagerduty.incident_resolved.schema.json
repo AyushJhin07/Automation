@@ -39,7 +39,15 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "service_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by service IDs"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -54,7 +62,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Incident Management"
+          "const": "Monitoring"
         },
         "appName": {
           "type": "string",
@@ -65,9 +73,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "incidents:read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

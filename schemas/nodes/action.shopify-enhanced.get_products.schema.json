@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.shopify-enhanced.get_products.schema.json",
+  "title": "Shopify Enhanced - Get Products",
+  "description": "Get list of products",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.shopify-enhanced.get_products",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 250,
+          "default": 50,
+          "description": "Number of products to return"
+        },
+        "since_id": {
+          "type": "number",
+          "description": "Show products after specified ID"
+        },
+        "created_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show products created after date"
+        },
+        "created_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show products created before date"
+        },
+        "updated_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show products updated after date"
+        },
+        "updated_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show products updated before date"
+        },
+        "published_at_min": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show products published after date"
+        },
+        "published_at_max": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Show products published before date"
+        },
+        "published_status": {
+          "type": "string",
+          "enum": [
+            "published",
+            "unpublished",
+            "any"
+          ],
+          "description": "Filter by published status"
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Filter by vendor"
+        },
+        "product_type": {
+          "type": "string",
+          "description": "Filter by product type"
+        },
+        "collection_id": {
+          "type": "number",
+          "description": "Filter by collection ID"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "archived",
+            "draft"
+          ],
+          "description": "Filter by status"
+        },
+        "presentment_currencies": {
+          "type": "string",
+          "description": "Comma-separated list of currency codes"
+        },
+        "fields": {
+          "type": "string",
+          "description": "Comma-separated list of fields to include"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "E-commerce"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Shopify Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

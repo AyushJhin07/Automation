@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.dropbox-enhanced.copy_file.schema.json",
+  "title": "Dropbox Enhanced - Copy File",
+  "description": "Copy a file or folder",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.dropbox-enhanced.copy_file",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "from_path": {
+          "type": "string",
+          "description": "Source path"
+        },
+        "to_path": {
+          "type": "string",
+          "description": "Destination path"
+        },
+        "allow_shared_folder": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow copying shared folders"
+        },
+        "autorename": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-rename if destination exists"
+        },
+        "allow_ownership_transfer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow ownership transfer"
+        }
+      },
+      "required": [
+        "from_path",
+        "to_path"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "File Storage"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Dropbox Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

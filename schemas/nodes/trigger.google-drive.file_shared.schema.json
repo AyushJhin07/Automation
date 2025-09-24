@@ -40,9 +40,9 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "fileId": {
-          "description": "Monitor specific file only",
-          "type": "string"
+        "folderId": {
+          "type": "string",
+          "description": "Monitor specific folder (optional)"
         }
       },
       "required": [],
@@ -70,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "https://www.googleapis.com/auth/drive.metadata.readonly"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

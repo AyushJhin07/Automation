@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.slack-enhanced.upload_file.schema.json",
   "title": "Slack Enhanced - Upload File",
-  "description": "Upload a file to a channel",
+  "description": "Upload or create a file",
   "type": "object",
   "required": [
     "id",
@@ -40,24 +40,40 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "channel": {
-          "description": "Channel ID",
-          "type": "string"
+        "channels": {
+          "type": "string",
+          "description": "Comma-separated list of channel names or IDs where the file will be shared"
+        },
+        "content": {
+          "type": "string",
+          "description": "File contents via a POST variable"
+        },
+        "file": {
+          "type": "string",
+          "description": "File contents via multipart/form-data"
         },
         "filename": {
-          "description": "File name",
-          "type": "string"
+          "type": "string",
+          "description": "Filename of file"
         },
-        "base64": {
-          "description": "Base64 encoded file content",
-          "type": "string"
+        "filetype": {
+          "type": "string",
+          "description": "A file type identifier"
+        },
+        "initial_comment": {
+          "type": "string",
+          "description": "The message text introducing the file in specified channels"
+        },
+        "thread_ts": {
+          "type": "string",
+          "description": "Provide another message's ts value to upload this file as a reply"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of file"
         }
       },
-      "required": [
-        "channel",
-        "filename",
-        "base64"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -82,9 +98,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "files:write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

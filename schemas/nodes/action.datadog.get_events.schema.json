@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.datadog.get_events.schema.json",
+  "title": "Datadog - Get Events",
+  "description": "Retrieve events from Datadog",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.datadog.get_events",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "number",
+          "description": "Start timestamp (Unix epoch)"
+        },
+        "end": {
+          "type": "number",
+          "description": "End timestamp (Unix epoch)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "low"
+          ],
+          "description": "Filter by priority"
+        },
+        "sources": {
+          "type": "string",
+          "description": "Comma-separated list of sources"
+        },
+        "tags": {
+          "type": "string",
+          "description": "Comma-separated list of tags"
+        },
+        "unaggregated": {
+          "type": "boolean",
+          "description": "Return unaggregated events"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Monitoring"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Datadog"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

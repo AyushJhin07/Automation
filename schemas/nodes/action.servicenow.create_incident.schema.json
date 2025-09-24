@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.servicenow.create_incident.schema.json",
   "title": "ServiceNow - Create Incident",
-  "description": "Create a new incident in ServiceNow",
+  "description": "Create a new incident",
   "type": "object",
   "required": [
     "id",
@@ -41,38 +41,69 @@
       "type": "object",
       "properties": {
         "short_description": {
-          "description": "Brief summary of the incident",
-          "type": "string"
+          "type": "string",
+          "description": "Short description of the incident"
         },
         "description": {
-          "description": "Detailed description",
-          "type": "string"
-        },
-        "urgency": {
-          "description": "Incident urgency",
           "type": "string",
-          "enum": [
-            "1",
-            "2",
-            "3"
-          ]
-        },
-        "impact": {
-          "description": "Incident impact",
-          "type": "string",
-          "enum": [
-            "1",
-            "2",
-            "3"
-          ]
+          "description": "Detailed description"
         },
         "caller_id": {
-          "description": "User who reported the incident",
-          "type": "string"
+          "type": "string",
+          "description": "Caller user ID"
+        },
+        "category": {
+          "type": "string",
+          "description": "Incident category"
+        },
+        "subcategory": {
+          "type": "string",
+          "description": "Incident subcategory"
+        },
+        "urgency": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ],
+          "description": "Urgency level (1=High, 2=Medium, 3=Low)"
+        },
+        "impact": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ],
+          "description": "Impact level (1=High, 2=Medium, 3=Low)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "description": "Priority level"
         },
         "assignment_group": {
-          "description": "Group to assign incident to",
-          "type": "string"
+          "type": "string",
+          "description": "Assignment group"
+        },
+        "assigned_to": {
+          "type": "string",
+          "description": "Assigned user"
+        },
+        "location": {
+          "type": "string",
+          "description": "Location"
+        },
+        "configuration_item": {
+          "type": "string",
+          "description": "Configuration item"
         }
       },
       "required": [
@@ -91,7 +122,7 @@
         },
         "category": {
           "type": "string",
-          "const": "ITSM"
+          "const": "IT Service Management"
         },
         "appName": {
           "type": "string",
@@ -102,9 +133,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "incident_write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

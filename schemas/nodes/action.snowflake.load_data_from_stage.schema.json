@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.snowflake.load_data_from_stage.schema.json",
+  "title": "Snowflake - Load Data from Stage",
+  "description": "Load data from a stage into a table",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.snowflake.load_data_from_stage",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Schema name"
+        },
+        "table_name": {
+          "type": "string",
+          "description": "Target table name"
+        },
+        "stage_name": {
+          "type": "string",
+          "description": "Stage name"
+        },
+        "file_pattern": {
+          "type": "string",
+          "description": "File pattern to match"
+        },
+        "file_format": {
+          "type": "string",
+          "description": "File format name or options"
+        },
+        "copy_options": {
+          "type": "object",
+          "description": "COPY command options"
+        }
+      },
+      "required": [
+        "table_name",
+        "stage_name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Data & Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Snowflake"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

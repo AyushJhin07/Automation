@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.dropbox-enhanced.upload_file.schema.json",
+  "title": "Dropbox Enhanced - Upload File",
+  "description": "Upload a file to Dropbox",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.dropbox-enhanced.upload_file",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Destination path in Dropbox"
+        },
+        "content": {
+          "type": "string",
+          "description": "File content (base64 encoded)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "add",
+            "overwrite",
+            "update"
+          ],
+          "default": "add",
+          "description": "Write mode"
+        },
+        "autorename": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-rename if file exists"
+        },
+        "client_modified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Client modification time"
+        },
+        "mute": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mute notifications"
+        },
+        "strict_conflict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force conflict resolution"
+        }
+      },
+      "required": [
+        "path",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "File Storage"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Dropbox Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

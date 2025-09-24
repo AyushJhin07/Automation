@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.dropbox.file_uploaded.schema.json",
   "title": "Dropbox - File Uploaded",
-  "description": "Trigger when file is uploaded",
+  "description": "Triggered when a file is uploaded",
   "type": "object",
   "required": [
     "id",
@@ -40,9 +40,9 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "path": {
-          "description": "Monitor specific path",
-          "type": "string"
+        "path_prefix": {
+          "type": "string",
+          "description": "Monitor specific path"
         }
       },
       "required": [],
@@ -59,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "storage"
+          "const": "File Storage"
         },
         "appName": {
           "type": "string",
@@ -70,9 +70,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "files.metadata.read"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

@@ -39,7 +39,16 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "department": {
+          "type": "string",
+          "description": "Filter by department"
+        },
+        "location": {
+          "type": "string",
+          "description": "Filter by location"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -54,7 +63,7 @@
         },
         "category": {
           "type": "string",
-          "const": "HR Management"
+          "const": "HR"
         },
         "appName": {
           "type": "string",
@@ -65,9 +74,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "staffing"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

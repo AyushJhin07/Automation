@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.hubspot-enhanced.create_company.schema.json",
+  "title": "HubSpot Enhanced - Create Company",
+  "description": "Create a new company",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.hubspot-enhanced.create_company",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "domain": {
+              "type": "string"
+            },
+            "industry": {
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "zip": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            },
+            "address2": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "founded_year": {
+              "type": "string"
+            },
+            "hubspot_owner_id": {
+              "type": "string"
+            },
+            "is_public": {
+              "type": "boolean"
+            },
+            "numberofemployees": {
+              "type": "number"
+            },
+            "annualrevenue": {
+              "type": "number"
+            },
+            "lifecyclestage": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "website": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "description": "Company properties"
+        },
+        "associations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "object"
+              },
+              "types": {
+                "type": "array"
+              }
+            }
+          },
+          "description": "Associations to other objects"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "CRM"
+        },
+        "appName": {
+          "type": "string",
+          "const": "HubSpot Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

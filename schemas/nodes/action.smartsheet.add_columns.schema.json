@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.smartsheet.add_columns.schema.json",
+  "title": "Smartsheet - Add Columns",
+  "description": "Add columns to a sheet",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.smartsheet.add_columns",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "sheetId": {
+          "type": "string",
+          "description": "Sheet ID"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "TEXT_NUMBER",
+                  "DATE",
+                  "DATETIME",
+                  "CONTACT_LIST",
+                  "CHECKBOX",
+                  "PICKLIST",
+                  "DURATION",
+                  "PREDECESSOR",
+                  "ABSTRACT_DATETIME"
+                ]
+              },
+              "index": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "symbol": {
+                "type": "string"
+              },
+              "systemColumnType": {
+                "type": "string"
+              },
+              "autoNumberFormat": {
+                "type": "object",
+                "properties": {
+                  "prefix": {
+                    "type": "string"
+                  },
+                  "suffix": {
+                    "type": "string"
+                  },
+                  "startingNumber": {
+                    "type": "number"
+                  },
+                  "fill": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "title",
+              "type"
+            ]
+          },
+          "description": "Columns to add"
+        }
+      },
+      "required": [
+        "sheetId",
+        "columns"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Project Management"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Smartsheet"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

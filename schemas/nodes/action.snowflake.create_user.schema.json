@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.snowflake.create_user.schema.json",
+  "title": "Snowflake - Create User",
+  "description": "Create a new user",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.snowflake.create_user",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "User name"
+        },
+        "password": {
+          "type": "string",
+          "description": "User password"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email"
+        },
+        "first_name": {
+          "type": "string",
+          "description": "First name"
+        },
+        "last_name": {
+          "type": "string",
+          "description": "Last name"
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "default_warehouse": {
+          "type": "string",
+          "description": "Default warehouse"
+        },
+        "default_namespace": {
+          "type": "string",
+          "description": "Default namespace (database.schema)"
+        },
+        "default_role": {
+          "type": "string",
+          "description": "Default role"
+        },
+        "must_change_password": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether user must change password on first login"
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether user is disabled"
+        },
+        "comment": {
+          "type": "string",
+          "description": "User comment"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Data & Analytics"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Snowflake"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

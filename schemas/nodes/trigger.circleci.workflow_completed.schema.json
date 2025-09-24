@@ -41,12 +41,11 @@
       "type": "object",
       "properties": {
         "project_slug": {
-          "type": "string"
+          "type": "string",
+          "description": "Filter by project"
         }
       },
-      "required": [
-        "project_slug"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -60,7 +59,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Developer Tools"
+          "const": "Development"
         },
         "appName": {
           "type": "string",

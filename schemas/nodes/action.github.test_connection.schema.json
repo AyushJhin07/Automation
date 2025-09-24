@@ -54,7 +54,7 @@
         },
         "category": {
           "type": "string",
-          "const": "development"
+          "const": "Development"
         },
         "appName": {
           "type": "string",
@@ -65,23 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "user:read"
-          ]
-        },
-        "rateLimits": {
-          "type": "object",
-          "properties": {
-            "requestsPerSecond": {
-              "type": "number"
-            },
-            "requestsPerMinute": {
-              "type": "number"
-            },
-            "dailyLimit": {
-              "type": "number"
-            }
-          }
+          "default": []
         }
       },
       "additionalProperties": false

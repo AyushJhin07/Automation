@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.send_campaign.schema.json",
   "title": "Mailchimp - Send Campaign",
-  "description": "Send email campaign",
+  "description": "Send a campaign immediately",
   "type": "object",
   "required": [
     "id",
@@ -41,8 +41,8 @@
       "type": "object",
       "properties": {
         "campaignId": {
-          "description": "Campaign ID",
-          "type": "string"
+          "type": "string",
+          "description": "The unique ID for the campaign"
         }
       },
       "required": [
@@ -61,7 +61,7 @@
         },
         "category": {
           "type": "string",
-          "const": "marketing"
+          "const": "Marketing"
         },
         "appName": {
           "type": "string",
@@ -72,9 +72,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

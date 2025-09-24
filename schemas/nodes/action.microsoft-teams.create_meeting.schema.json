@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.microsoft-teams.create_meeting.schema.json",
+  "title": "Microsoft Teams - Create Meeting",
+  "description": "Create a Teams meeting",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.microsoft-teams.create_meeting",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "Meeting subject"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Meeting start time (ISO 8601)"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Meeting end time (ISO 8601)"
+        },
+        "attendees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "optional"
+                ]
+              }
+            }
+          },
+          "description": "Meeting attendees"
+        },
+        "location": {
+          "type": "string",
+          "description": "Meeting location"
+        },
+        "body": {
+          "type": "string",
+          "description": "Meeting body/description"
+        }
+      },
+      "required": [
+        "subject",
+        "start_time",
+        "end_time"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Communication"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft Teams"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -41,29 +41,72 @@
       "type": "object",
       "properties": {
         "first_name": {
-          "description": "Customer first name",
-          "type": "string"
+          "type": "string",
+          "description": "Customer's first name"
         },
         "last_name": {
-          "description": "Customer last name",
-          "type": "string"
+          "type": "string",
+          "description": "Customer's last name"
         },
         "email": {
-          "description": "Customer email",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Customer's email address"
         },
         "phone": {
-          "description": "Customer phone",
-          "type": "string"
+          "type": "string",
+          "description": "Customer's phone number"
         },
         "tags": {
-          "description": "Customer tags",
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated customer tags"
+        },
+        "accepts_marketing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether customer accepts marketing"
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              },
+              "address1": {
+                "type": "string"
+              },
+              "address2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "province": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "default": {
+                "type": "boolean"
+              }
+            }
+          },
+          "description": "Customer addresses"
         }
       },
       "required": [
-        "first_name",
-        "last_name",
         "email"
       ],
       "additionalProperties": false
@@ -90,9 +133,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "write_customers"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

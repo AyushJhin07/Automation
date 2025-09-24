@@ -41,15 +41,20 @@
       "type": "object",
       "properties": {
         "project_slug": {
-          "type": "string"
+          "type": "string",
+          "description": "Project slug (vcs-slug/org-name/repo-name)"
         },
         "branch": {
           "type": "string",
-          "default": "main"
+          "description": "Branch to trigger pipeline for"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Tag to trigger pipeline for"
         },
         "parameters": {
           "type": "object",
-          "additionalProperties": true
+          "description": "Pipeline parameters"
         }
       },
       "required": [
@@ -68,7 +73,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Developer Tools"
+          "const": "Development"
         },
         "appName": {
           "type": "string",

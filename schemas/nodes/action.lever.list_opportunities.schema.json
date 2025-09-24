@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.lever.list_opportunities.schema.json",
+  "title": "Lever - List Opportunities",
+  "description": "List job opportunities (candidates)",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.lever.list_opportunities",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10,
+          "description": "Number of opportunities to return"
+        },
+        "offset": {
+          "type": "string",
+          "description": "Pagination offset cursor"
+        },
+        "posted_after": {
+          "type": "number",
+          "description": "Unix timestamp - opportunities posted after this time"
+        },
+        "posted_before": {
+          "type": "number",
+          "description": "Unix timestamp - opportunities posted before this time"
+        },
+        "updated_after": {
+          "type": "number",
+          "description": "Unix timestamp - opportunities updated after this time"
+        },
+        "updated_before": {
+          "type": "number",
+          "description": "Unix timestamp - opportunities updated before this time"
+        },
+        "posting_id": {
+          "type": "string",
+          "description": "Filter by posting ID"
+        },
+        "stage_id": {
+          "type": "string",
+          "description": "Filter by stage ID"
+        },
+        "source_id": {
+          "type": "string",
+          "description": "Filter by source ID"
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "Include archived opportunities"
+        },
+        "confidentiality": {
+          "type": "string",
+          "enum": [
+            "confidential",
+            "non-confidential"
+          ],
+          "description": "Filter by confidentiality"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Filter by candidate email"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "HR"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Lever"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

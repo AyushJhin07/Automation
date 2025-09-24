@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.freshdesk.list_tickets.schema.json",
+  "title": "Freshdesk - List Tickets",
+  "description": "List tickets with filters",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.freshdesk.list_tickets",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "enum": [
+            "new_and_my_open",
+            "watching",
+            "spam",
+            "deleted"
+          ],
+          "description": "Filter preset"
+        },
+        "page": {
+          "type": "number",
+          "minimum": 1,
+          "default": 1,
+          "description": "Page number"
+        },
+        "per_page": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 30,
+          "description": "Tickets per page"
+        },
+        "order_by": {
+          "type": "string",
+          "enum": [
+            "created_at",
+            "due_by",
+            "updated_at",
+            "status"
+          ],
+          "description": "Sort field"
+        },
+        "order_type": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "description": "Sort order"
+        },
+        "updated_since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Updated since date"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "requester",
+              "company",
+              "stats"
+            ]
+          },
+          "description": "Additional data to include"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Customer Support"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Freshdesk"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

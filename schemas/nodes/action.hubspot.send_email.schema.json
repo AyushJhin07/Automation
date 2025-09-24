@@ -41,27 +41,26 @@
       "type": "object",
       "properties": {
         "emailId": {
-          "description": "HubSpot email template ID",
-          "type": "string"
+          "type": "number",
+          "description": "HubSpot email template ID"
         },
-        "recipient": {
-          "description": "Recipient email address",
-          "type": "string"
+        "to": {
+          "type": "string",
+          "format": "email",
+          "description": "Recipient email address"
         },
         "contactProperties": {
-          "description": "Contact properties for personalization",
           "type": "object",
-          "additionalProperties": true
+          "description": "Contact properties for personalization"
         },
         "customProperties": {
-          "description": "Custom properties for email personalization",
           "type": "object",
-          "additionalProperties": true
+          "description": "Custom properties for personalization"
         }
       },
       "required": [
         "emailId",
-        "recipient"
+        "to"
       ],
       "additionalProperties": false
     },
@@ -87,9 +86,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "content"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

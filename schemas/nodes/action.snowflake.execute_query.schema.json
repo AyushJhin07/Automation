@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.snowflake.execute_query.schema.json",
   "title": "Snowflake - Execute Query",
-  "description": "Execute a SQL query in Snowflake",
+  "description": "Execute a SQL query",
   "type": "object",
   "required": [
     "id",
@@ -41,25 +41,35 @@
       "type": "object",
       "properties": {
         "sql": {
-          "description": "SQL query to execute",
-          "type": "string"
-        },
-        "warehouse": {
-          "description": "Warehouse to use",
-          "type": "string"
+          "type": "string",
+          "description": "SQL query to execute"
         },
         "database": {
-          "description": "Database to use",
-          "type": "string"
+          "type": "string",
+          "description": "Database name"
         },
         "schema": {
-          "description": "Schema to use",
-          "type": "string"
+          "type": "string",
+          "description": "Schema name"
+        },
+        "warehouse": {
+          "type": "string",
+          "description": "Warehouse name"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role to use for the query"
         },
         "timeout": {
-          "description": "Query timeout in seconds",
           "type": "number",
-          "default": 300
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 30,
+          "description": "Query timeout in seconds"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Query parameters for parameterized queries"
         }
       },
       "required": [
@@ -78,7 +88,7 @@
         },
         "category": {
           "type": "string",
-          "const": "Data Analytics"
+          "const": "Data & Analytics"
         },
         "appName": {
           "type": "string",
@@ -89,9 +99,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "query:execute"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

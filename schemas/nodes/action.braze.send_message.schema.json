@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.braze.send_message.schema.json",
+  "title": "Braze - Send Message",
+  "description": "Send a message to users",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.braze.send_message",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "campaign_id": {
+          "type": "string",
+          "description": "Campaign ID"
+        },
+        "send_id": {
+          "type": "string",
+          "description": "Send ID for tracking"
+        },
+        "trigger_properties": {
+          "type": "object",
+          "description": "Properties for message personalization"
+        },
+        "broadcast": {
+          "type": "boolean",
+          "description": "Send to entire segment"
+        },
+        "audience": {
+          "type": "object",
+          "properties": {
+            "AND": {
+              "type": "array",
+              "description": "Audience filters"
+            }
+          },
+          "description": "Target audience"
+        },
+        "recipients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "external_user_id": {
+                "type": "string"
+              },
+              "user_alias": {
+                "type": "object"
+              },
+              "trigger_properties": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Specific recipients"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Braze"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

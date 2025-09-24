@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.gmail-enhanced.create_label.schema.json",
+  "title": "Gmail Enhanced - Create Label",
+  "description": "Create a new label",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.gmail-enhanced.create_label",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "default": "me",
+          "description": "User's email address or 'me'"
+        },
+        "name": {
+          "type": "string",
+          "description": "Label name"
+        },
+        "messageListVisibility": {
+          "type": "string",
+          "enum": [
+            "show",
+            "hide"
+          ],
+          "default": "show",
+          "description": "Message list visibility"
+        },
+        "labelListVisibility": {
+          "type": "string",
+          "enum": [
+            "labelShow",
+            "labelShowIfUnread",
+            "labelHide"
+          ],
+          "default": "labelShow",
+          "description": "Label list visibility"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "system",
+            "user"
+          ],
+          "default": "user",
+          "description": "Label type"
+        },
+        "color": {
+          "type": "object",
+          "properties": {
+            "textColor": {
+              "type": "string"
+            },
+            "backgroundColor": {
+              "type": "string"
+            }
+          },
+          "description": "Label color"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Gmail Enhanced"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

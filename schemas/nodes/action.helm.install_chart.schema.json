@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.helm.install_chart.schema.json",
+  "title": "Helm - Install Chart",
+  "description": "Install a Helm chart",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.helm.install_chart",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "release_name": {
+          "type": "string",
+          "description": "Release name"
+        },
+        "chart": {
+          "type": "string",
+          "description": "Chart name or path"
+        },
+        "namespace": {
+          "type": "string",
+          "default": "default",
+          "description": "Kubernetes namespace"
+        },
+        "values": {
+          "type": "object",
+          "description": "Chart values to override"
+        },
+        "version": {
+          "type": "string",
+          "description": "Chart version"
+        },
+        "repository": {
+          "type": "string",
+          "description": "Helm repository URL"
+        }
+      },
+      "required": [
+        "release_name",
+        "chart"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "DevOps"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Helm"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

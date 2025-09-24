@@ -1,0 +1,274 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.outlook.send_email.schema.json",
+  "title": "Microsoft Outlook - Send Email",
+  "description": "Send an email",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.outlook.send_email",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string"
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "contentType": {
+                  "type": "string",
+                  "enum": [
+                    "Text",
+                    "HTML"
+                  ],
+                  "default": "HTML"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content"
+              ],
+              "additionalProperties": false
+            },
+            "toRecipients": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "address"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "emailAddress"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "ccRecipients": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "address"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "bccRecipients": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "address"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "replyTo": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "@odata.type": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "contentBytes": {
+                    "type": "string"
+                  },
+                  "contentType": {
+                    "type": "string"
+                  },
+                  "contentId": {
+                    "type": "string"
+                  },
+                  "isInline": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "importance": {
+              "type": "string",
+              "enum": [
+                "Low",
+                "Normal",
+                "High"
+              ],
+              "default": "Normal"
+            },
+            "inferenceClassification": {
+              "type": "string",
+              "enum": [
+                "Focused",
+                "Other"
+              ]
+            },
+            "internetMessageHeaders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "subject",
+            "body",
+            "toRecipients"
+          ],
+          "additionalProperties": false
+        },
+        "saveToSentItems": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Email"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Microsoft Outlook"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

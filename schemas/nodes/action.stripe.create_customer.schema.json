@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/action.stripe.create_customer.schema.json",
   "title": "Stripe - Create Customer",
-  "description": "Create a new customer",
+  "description": "Create a new customer in Stripe",
   "type": "object",
   "required": [
     "id",
@@ -41,30 +41,81 @@
       "type": "object",
       "properties": {
         "email": {
-          "description": "Customer email",
-          "type": "string"
+          "type": "string",
+          "format": "email",
+          "description": "Customer email address"
         },
         "name": {
-          "description": "Customer name",
-          "type": "string"
+          "type": "string",
+          "description": "Customer full name"
         },
         "phone": {
-          "description": "Customer phone",
-          "type": "string"
+          "type": "string",
+          "description": "Customer phone number"
         },
         "description": {
-          "description": "Customer description",
-          "type": "string"
+          "type": "string",
+          "description": "Customer description"
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "line1": {
+              "type": "string"
+            },
+            "line2": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "postal_code": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            }
+          },
+          "description": "Customer address"
+        },
+        "shipping": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "address": {
+              "type": "object"
+            }
+          },
+          "description": "Customer shipping information"
         },
         "metadata": {
-          "description": "Custom metadata",
           "type": "object",
-          "additionalProperties": true
+          "description": "Custom metadata key-value pairs"
+        },
+        "payment_method": {
+          "type": "string",
+          "description": "Default payment method ID"
+        },
+        "balance": {
+          "type": "number",
+          "description": "Customer account balance in cents"
+        },
+        "tax_exempt": {
+          "type": "string",
+          "enum": [
+            "none",
+            "exempt",
+            "reverse"
+          ],
+          "description": "Customer tax exemption status"
         }
       },
-      "required": [
-        "email"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "metadata": {
@@ -78,7 +129,7 @@
         },
         "category": {
           "type": "string",
-          "const": "payments"
+          "const": "Payments"
         },
         "appName": {
           "type": "string",
@@ -89,9 +140,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_write"
-          ]
+          "default": []
         }
       },
       "additionalProperties": false

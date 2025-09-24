@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://apps-script-studio.com/schemas/nodes/trigger.shopify.order_paid.schema.json",
   "title": "Shopify - Order Paid",
-  "description": "Trigger when order is paid",
+  "description": "Triggered when an order is paid",
   "type": "object",
   "required": [
     "id",
@@ -39,12 +39,7 @@
     },
     "parameters": {
       "type": "object",
-      "properties": {
-        "amount_threshold": {
-          "description": "Minimum order amount",
-          "type": "number"
-        }
-      },
+      "properties": {},
       "required": [],
       "additionalProperties": false
     },
@@ -70,9 +65,7 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "read_orders"
-          ]
+          "default": []
         },
         "outputSchema": {
           "type": "object",

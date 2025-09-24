@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://apps-script-studio.com/schemas/nodes/action.mailchimp.set_campaign_content.schema.json",
+  "title": "Mailchimp - Set Campaign Content",
+  "description": "Set the content for a campaign",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "position",
+    "parameters"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the node"
+    },
+    "type": {
+      "type": "string",
+      "const": "action.mailchimp.set_campaign_content",
+      "description": "Node type identifier"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "campaignId": {
+          "type": "string",
+          "description": "The unique ID for the campaign"
+        },
+        "html": {
+          "type": "string",
+          "description": "The raw HTML for the campaign"
+        },
+        "plainText": {
+          "type": "string",
+          "description": "The plain-text portion of the campaign"
+        },
+        "template": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "sections": {
+              "type": "object"
+            }
+          },
+          "description": "Content for the campaign using a template"
+        },
+        "archive": {
+          "type": "object",
+          "description": "Content for the campaign using an archive"
+        },
+        "url": {
+          "type": "string",
+          "description": "A URL to import content from"
+        }
+      },
+      "required": [
+        "campaignId"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "const": "Marketing"
+        },
+        "appName": {
+          "type": "string",
+          "const": "Mailchimp"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
