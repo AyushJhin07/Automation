@@ -6,6 +6,8 @@ import { Router } from 'express';
 import { WorkflowStoreService } from '../workflow/workflow-store.js';
 import { productionGraphCompiler } from '../core/ProductionGraphCompiler.js';
 import { productionDeployer } from '../core/ProductionDeployer.js';
+import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/WorkflowRuntimeService.js';
+import { getErrorMessage } from '../types/common.js';
 
 export const workflowReadRouter = Router();
 
@@ -195,42 +197,6 @@ const computeExecutionOrder = (nodes: any[], edges: any[]) => {
   return order;
 };
 
-const summarizeNodeExecution = (node: any, index: number) => {
-  const now = new Date();
-  const params = node.params || {};
-  const app = node.app || node.data?.app || 'core';
-  const operation =
-    node.data?.function ||
-    node.data?.operation ||
-    node.op ||
-    (typeof node.type === 'string' ? node.type.split('.').pop() : 'operation');
-
-  const preview = {
-    app,
-    operation,
-    parameters: params,
-    sample: node.data?.metadata?.sample || node.data?.metadata?.sampleRow,
-  };
-
-  const logs = [
-    `Validated ${Object.keys(params).length} parameter${Object.keys(params).length === 1 ? '' : 's'}`,
-    `Simulated ${app}.${operation}`,
-  ];
-
-  if (node.data?.metadata?.description) {
-    logs.push(`Description: ${node.data.metadata.description}`);
-  }
-
-  return {
-    status: 'success',
-    finishedAt: now.toISOString(),
-    durationMs: 45 + index * 20,
-    preview,
-    summary: `Completed ${app}.${operation}`,
-    logs,
-  };
-};
-
 // Get specific workflow for Graph Editor loading
 workflowReadRouter.get('/workflows/:id', (req, res) => {
   try {
@@ -398,20 +364,34 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     const nodeMap = new Map(nodes.map((node: any) => [String(node.id), node]));
     const order = computeExecutionOrder(nodes, edges);
     const results: Record<string, any> = {};
+    const nodeOutputs: Record<string, any> = {};
+    const executionId = `${id}-${Date.now()}`;
+    const runtimeContext = {
+      workflowId: id,
+      executionId,
+      userId: (req as any)?.user?.id,
+      timezone: req.body?.timezone || 'UTC',
+      nodeOutputs
+    };
+    const requestOptions = (req.body?.options && typeof req.body.options === 'object') ? req.body.options : {};
+    const stopOnError = Boolean(requestOptions.stopOnError);
     let encounteredError = !deploymentPreview.success;
 
     sendEvent({
       type: 'start',
       workflowId: id,
+      executionId,
       nodeCount: nodes.length,
       requiredScopes: compilation.requiredScopes,
-      estimatedSize: compilation.estimatedSize
+      estimatedSize: compilation.estimatedSize,
+      mode: 'live-run'
     });
 
     if (deploymentPreview.logs.length > 0) {
       sendEvent({
         type: 'deployment',
         workflowId: id,
+        executionId,
         success: deploymentPreview.success,
         logs: deploymentPreview.logs.slice(0, 25),
         error: deploymentPreview.error
@@ -437,35 +417,61 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       });
 
       try {
-        const result = summarizeNodeExecution(node, stepIndex);
-        results[nodeId] = { status: 'success', label, result };
+        const nodeResult = await workflowRuntimeService.executeNode(node, runtimeContext);
+        const finishedAt = new Date().toISOString();
+
+        const eventResult = {
+          summary: nodeResult.summary,
+          output: nodeResult.output,
+          preview: nodeResult.preview,
+          logs: nodeResult.logs,
+          diagnostics: nodeResult.diagnostics,
+          parameters: nodeResult.parameters,
+          finishedAt
+        };
+
+        results[nodeId] = {
+          status: 'success',
+          label,
+          result: eventResult
+        };
 
         sendEvent({
           type: 'node-complete',
           workflowId: id,
+          executionId,
           nodeId,
           label,
-          result
+          result: eventResult
         });
 
         console.log(`✅ [${id}] Completed node ${nodeId}`);
       } catch (error: any) {
         encounteredError = true;
+
+        const isWorkflowError = error instanceof WorkflowNodeExecutionError;
+        const message = isWorkflowError ? error.message : getErrorMessage(error);
         const errorPayload = {
-          message: error?.message || 'Node execution failed',
+          message,
+          details: isWorkflowError ? error.details : undefined,
           stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
         };
 
         results[nodeId] = { status: 'error', label, error: errorPayload };
 
-        console.error(`❌ [${id}] Node ${nodeId} failed:`, error?.message || error);
+        console.error(`❌ [${id}] Node ${nodeId} failed:`, message);
         sendEvent({
           type: 'node-error',
           workflowId: id,
+          executionId,
           nodeId,
           label,
           error: errorPayload
         });
+
+        if (stopOnError) {
+          break;
+        }
       }
     }
 
@@ -476,6 +482,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     sendEvent({
       type: 'summary',
       workflowId: id,
+      executionId,
       success: !encounteredError,
       message: summaryMessage,
       requiredScopes: compilation.requiredScopes,

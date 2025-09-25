@@ -109,15 +109,19 @@ try {
 
   assert.ok(events.some((event) => event.type === 'node-start'), 'should emit node-start events');
 
-  const completed = events.find((event) => event.type === 'node-complete');
-  assert.ok(completed, 'should emit node-complete events');
-  assert.ok(['node-1', 'node-2'].includes(completed.nodeId), 'node-complete should reference a workflow node');
-  assert.ok(completed.result?.preview?.app, 'node-complete event should include preview metadata');
+  const triggerCompleted = events.find((event) => event.type === 'node-complete' && event.nodeId === 'node-1');
+  assert.ok(triggerCompleted, 'trigger node should emit node-complete event');
+  assert.ok(triggerCompleted.result?.preview, 'trigger completion should include preview payload');
+
+  const actionError = events.find((event) => event.type === 'node-error' && event.nodeId === 'node-2');
+  assert.ok(actionError, 'action node should emit node-error event when credentials are missing');
+  assert.match(actionError.error?.message || '', /connection/i, 'node-error should explain missing connection');
 
   const summary = events.find((event) => event.type === 'summary');
   assert.ok(summary, 'should emit summary event at the end');
-  assert.equal(summary.success, true, 'summary should report success for sample workflow');
-  assert.ok(summary.results?.['node-2'], 'summary should include per-node results');
+  assert.equal(summary.success, false, 'summary should report failure when a node errors');
+  assert.ok(summary.message?.toLowerCase().includes('error'), 'summary message should mention errors');
+  assert.equal(summary.results?.['node-2']?.status, 'error', 'summary should capture per-node error status');
 
   console.log('Workflow execute endpoint emits streaming step results.');
 } finally {
