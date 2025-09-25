@@ -13,6 +13,7 @@ export interface IntegrationConfig {
   appName: string;
   credentials: APICredentials;
   additionalConfig?: Record<string, any>;
+  connectionId?: string;
 }
 
 export interface FunctionExecutionParams {
@@ -20,6 +21,8 @@ export interface FunctionExecutionParams {
   functionId: string;
   parameters: Record<string, any>;
   credentials: APICredentials;
+  additionalConfig?: Record<string, any>;
+  connectionId?: string;
 }
 
 export interface FunctionExecutionResult {
@@ -51,13 +54,18 @@ export class IntegrationManager {
     'zoom'
   ]);
 
+  private buildClientKey(appKey: string, connectionId?: string): string {
+    return connectionId ? `${appKey}::${connectionId}` : appKey;
+  }
+
   /**
    * Initialize integration for an application
    */
   public async initializeIntegration(config: IntegrationConfig): Promise<APIResponse<any>> {
     try {
       const appKey = config.appName.toLowerCase();
-      
+      const clientKey = this.buildClientKey(appKey, config.connectionId);
+
       if (!this.supportedApps.has(appKey)) {
         return {
           success: false,
@@ -82,7 +90,7 @@ export class IntegrationManager {
         };
       }
 
-      this.clients.set(appKey, client);
+      this.clients.set(clientKey, client);
 
       return {
         success: true,
@@ -107,6 +115,7 @@ export class IntegrationManager {
   public async executeFunction(params: FunctionExecutionParams): Promise<FunctionExecutionResult> {
     const startTime = Date.now();
     const appKey = params.appName.toLowerCase();
+    const clientKey = this.buildClientKey(appKey, params.connectionId);
 
     try {
       // Check if app is supported
@@ -121,12 +130,14 @@ export class IntegrationManager {
       }
 
       // Get or create client
-      let client = this.clients.get(appKey);
+      let client = this.clients.get(clientKey);
       if (!client) {
         // Try to initialize the integration
         const initResult = await this.initializeIntegration({
           appName: params.appName,
-          credentials: params.credentials
+          credentials: params.credentials,
+          additionalConfig: params.additionalConfig,
+          connectionId: params.connectionId
         });
 
         if (!initResult.success) {
@@ -139,7 +150,7 @@ export class IntegrationManager {
           };
         }
 
-        client = this.clients.get(appKey);
+        client = this.clients.get(clientKey);
       }
 
       if (!client) {
@@ -150,6 +161,10 @@ export class IntegrationManager {
           functionId: params.functionId,
           executionTime: Date.now() - startTime
         };
+      }
+
+      if (typeof client.updateCredentials === 'function') {
+        client.updateCredentials(params.credentials);
       }
 
       // Execute the function
@@ -224,7 +239,14 @@ export class IntegrationManager {
    */
   public removeIntegration(appName: string): boolean {
     const appKey = appName.toLowerCase();
-    return this.clients.delete(appKey);
+    let removed = false;
+    for (const key of Array.from(this.clients.keys())) {
+      if (key === appKey || key.startsWith(`${appKey}::`)) {
+        this.clients.delete(key);
+        removed = true;
+      }
+    }
+    return removed;
   }
 
   /**
@@ -232,8 +254,9 @@ export class IntegrationManager {
    */
   public getIntegrationStatus(appName: string): { connected: boolean; client?: BaseAPIClient } {
     const appKey = appName.toLowerCase();
-    const client = this.clients.get(appKey);
-    
+    const client = this.clients.get(appKey) || Array.from(this.clients.entries())
+      .find(([key]) => key.startsWith(`${appKey}::`))?.[1];
+
     return {
       connected: !!client,
       client
