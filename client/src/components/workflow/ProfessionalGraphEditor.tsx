@@ -31,6 +31,7 @@ import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel';
 import { buildMetadataFromNode } from './metadata';
+import { normalizeWorkflowNode } from './graphSync';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
@@ -1374,64 +1375,16 @@ const GraphEditorContent = () => {
 
         // --- Normalize nodes to ReactFlow format (no try/catch inside map) ---
         const makeRFNode = (node: any, index: number) => {
-          const app =
-            (node.app ||
-              node.data?.app ||
-              node.type?.split?.(".")?.[1] ||
-              "core") + "";
-          const operation =
-            (node.operation ||
-              node.data?.function ||
-              node.data?.actionId ||
-              "noop") + "";
-
-          const metadata = buildMetadataFromNode(node);
-
-          const params =
-            node.data?.parameters ??
-            node.parameters ??
-            node.data?.params ??
-            node.params ??
-            node.data?.config ??
-            node.config ??
-            {};
-
-          const baseData = {
-            label:
-              node.data?.label ||
-              node.label ||
-              `${app}:${operation}`.toUpperCase(),
-            description:
-              node.data?.description || node.description || "Action node",
-            app,
-            function: operation,
-            nodeType: "action.core",
-            icon: node.data?.icon || "🔧",
-            color:
-              node.data?.color ||
-              (app.toLowerCase() === "gmail"
-                ? "#EA4335"
-                : app.toLowerCase() === "sheets"
-                ? "#34A853"
-                : app.toLowerCase() === "transform"
-                ? "#FF6D01"
-                : "#9AA0A6"),
-            connectorId: node.data?.connectorId || app,
-            actionId: operation,
-            metadata,
-            isValid: true,
-            loadSource,
-          };
-          const normalizedData = applyExecutionStateDefaults(syncNodeParameters(baseData, params));
+          const normalized = normalizeWorkflowNode(node, {
+            index,
+            loadSource: loadSource ?? undefined,
+          });
 
           return {
-            id: `${node.id || `node_${index}`}`,
-            type: "action.core",
-            position: {
-              x: node.position?.x ?? 100 + (index % 6) * 260,
-              y: node.position?.y ?? 120 + Math.floor(index / 6) * 180,
-            },
-            data: normalizedData,
+            id: normalized.id,
+            type: normalized.role,
+            position: normalized.position,
+            data: applyExecutionStateDefaults(normalized.data),
           } as any;
         };
 
@@ -1559,38 +1512,18 @@ const GraphEditorContent = () => {
     if (!isNewAIFormat && !workflowData.workflow?.graph) return;
     
     const graphData = isNewAIFormat ? workflowData : workflowData.workflow.graph;
-    const newNodes: Node[] = [];
-    const newEdges: Edge[] = [];
-    
-    // Convert to ReactFlow nodes
-    graphData.nodes.forEach((node: any, index: number) => {
-      const nodeType = node.function?.includes('search') || node.function?.includes('monitor') ? 'trigger' :
-                      node.function?.includes('append') || node.function?.includes('create') || node.function?.includes('update') ? 'action' : 
-                      'transform';
-      
-      const existingData = (node.data && typeof node.data === 'object') ? node.data : {};
-      const params =
-        existingData.parameters ??
-        node.parameters ??
-        existingData.params ??
-        node.params ??
-        {};
-
-      const baseData = {
-        ...existingData,
-        label: existingData.label || node.function || node.app || 'Unknown',
-        description: existingData.description || node.type || node.app,
-        app: existingData.app || node.app || 'Unknown',
-      };
-      const mergedData = applyExecutionStateDefaults(syncNodeParameters(baseData, params));
-
-      newNodes.push({
-        id: node.id,
-        type: nodeType,
-        position: node.position || { x: 100 + index * 250, y: 200 },
-        data: mergedData,
-      });
+    const origin = workflowData?.workflow ? 'ai-builder' : workflowData?.loadSource ?? graphData?.loadSource ?? null;
+    const newNodes: Node[] = (graphData.nodes || []).map((node: any, index: number) => {
+      const normalized = normalizeWorkflowNode(node, { index, loadSource: origin ?? undefined });
+      return {
+        id: normalized.id,
+        type: normalized.role,
+        position: normalized.position,
+        data: applyExecutionStateDefaults(normalized.data),
+      } as Node;
     });
+
+    const newEdges: Edge[] = [];
     
     // Convert edges/connections
     const connections = graphData.edges || graphData.connections || [];

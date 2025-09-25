@@ -1145,8 +1145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Execute function on integrated application
   app.post('/api/integrations/execute', authenticateToken, checkQuota, async (req, res) => {
     try {
-      const { appName, functionId, parameters, credentials } = req.body;
-      
+      const { appName, functionId, parameters, credentials, additionalConfig, connectionId } = req.body;
+
       if (!appName || !functionId || !parameters || !credentials) {
         return res.status(400).json({
           success: false,
@@ -1158,7 +1158,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appName,
         functionId,
         parameters,
-        credentials
+        credentials,
+        additionalConfig,
+        connectionId
       });
 
       // Track usage
@@ -2501,12 +2503,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           // Use the integrationManager to test the connection
-          const testResult = await integrationManager.executeFunction(
-            connection.provider,
-            'test_connection',
-            {},
-            userId
-          );
+          const testResult = await integrationManager.executeFunction({
+            appName: connection.provider,
+            functionId: 'test_connection',
+            parameters: {},
+            credentials: connection.credentials || {},
+            connectionId: connection.id
+          });
           
           healthChecks[connection.provider] = {
             status: testResult.success ? 'healthy' : 'error',
@@ -2582,12 +2585,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Test the specific connection
-        const testResult = await integrationManager.executeFunction(
-          provider,
-          'test_connection',
-          {},
-          userId
-        );
+        const testResult = await integrationManager.executeFunction({
+          appName: provider,
+          functionId: 'test_connection',
+          parameters: {},
+          credentials: connection.credentials || {},
+          connectionId: connection.id
+        });
         
         res.json({
           success: true,
