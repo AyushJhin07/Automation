@@ -1,341 +1,270 @@
-// SLACK API CLIENT
-// Auto-generated API client for Slack integration
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface SlackAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
+interface SlackMessageParams {
+  channel: string;
+  text: string;
+  thread_ts?: string;
+  blocks?: any[];
+  attachments?: any[];
+  icon_emoji?: string;
+  username?: string;
 }
 
-export class SlackAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: SlackAPIClientConfig;
+interface SlackInviteParams {
+  channel: string;
+  users: string | string[];
+}
 
-  constructor(config: SlackAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://slack.com/api';
+interface SlackUploadParams {
+  channels?: string;
+  content: string;
+  filename: string;
+  filetype?: string;
+  initial_comment?: string;
+  title?: string;
+}
+
+interface SlackChannelParams {
+  channel: string;
+}
+
+interface SlackScheduleParams {
+  channel: string;
+  text: string;
+  post_at: number;
+  thread_ts?: string;
+}
+
+interface SlackReactionParams {
+  channel: string;
+  timestamp: string;
+  name: string;
+}
+
+interface SlackListChannelsParams {
+  types?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+interface SlackListUsersParams {
+  limit?: number;
+  cursor?: string;
+}
+
+interface SlackUserParams {
+  user: string;
+}
+
+interface SlackCreateChannelParams {
+  name: string;
+  is_private?: boolean;
+}
+
+interface SlackAPIResponse<T = any> {
+  ok: boolean;
+  error?: string;
+  [key: string]: any;
+  result?: T;
+}
+
+/**
+ * Minimal Slack Web API client backed by the shared BaseAPIClient implementation.
+ * Only the operations that the automation runtime invokes are implemented here so we can
+ * reliably execute Slack nodes at runtime without falling back to "not implemented" errors.
+ */
+export class SlackAPIClient extends BaseAPIClient {
+  constructor(credentials: APICredentials) {
+    if (!credentials.accessToken) {
+      throw new Error('Slack integration requires an access token');
+    }
+
+    super('https://slack.com/api', credentials);
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${this.credentials.accessToken}`
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/auth/test');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    const response = await this.post<SlackAPIResponse>('/auth.test');
+    return this.normalizeSlackResponse(response);
   }
 
+  public async sendMessage(params: SlackMessageParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['channel', 'text']);
 
-  /**
-   * Send a message to a Slack channel or user
-   */
-  async sendMessage(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/send_message', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Send Message failed: ${error}`);
-    }
+    const response = await this.post<SlackAPIResponse>('/chat.postMessage', {
+      channel: params.channel,
+      text: params.text,
+      thread_ts: params.thread_ts,
+      blocks: params.blocks,
+      attachments: params.attachments,
+      icon_emoji: params.icon_emoji,
+      username: params.username
+    });
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Create a new Slack channel
-   */
-  async createChannel(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_channel', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Channel failed: ${error}`);
-    }
+  public async createChannel(params: SlackCreateChannelParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['name']);
+
+    const response = await this.post<SlackAPIResponse>('/conversations.create', {
+      name: params.name,
+      is_private: params.is_private ?? false
+    });
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Upload a file to Slack
-   */
-  async uploadFile(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/upload_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Upload File failed: ${error}`);
-    }
+  public async inviteToChannel(params: SlackInviteParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['channel', 'users']);
+
+    const users = Array.isArray(params.users) ? params.users.join(',') : params.users;
+    const response = await this.post<SlackAPIResponse>('/conversations.invite', {
+      channel: params.channel,
+      users
+    });
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Add an emoji reaction to a message
-   */
-  async addReaction(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/add_reaction', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Add Reaction failed: ${error}`);
+  public async uploadFile(params: SlackUploadParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['content', 'filename']);
+
+    const form = new FormData();
+    form.set('content', params.content);
+    form.set('filename', params.filename);
+    if (params.channels) form.set('channels', params.channels);
+    if (params.filetype) form.set('filetype', params.filetype);
+    if (params.initial_comment) form.set('initial_comment', params.initial_comment);
+    if (params.title) form.set('title', params.title);
+
+    const response = await fetch(`${this.baseURL}/files.upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.credentials.accessToken}`
+      },
+      body: form
+    });
+
+    const data = (await response.json()) as SlackAPIResponse;
+    if (!response.ok || !data.ok) {
+      return {
+        success: false,
+        error: data.error || `HTTP ${response.status}`,
+        data
+      };
     }
+
+    return {
+      success: true,
+      data
+    };
   }
 
-  /**
-   * Set the status for the authenticated user
-   */
-  async setStatus(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/set_status', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Set User Status failed: ${error}`);
-    }
+  public async getChannelInfo(params: SlackChannelParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['channel']);
+    const response = await this.get<SlackAPIResponse>(
+      `/conversations.info${this.buildQueryString({ channel: params.channel })}`
+    );
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Reply to a message in a thread
-   */
-  async replyInThread(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/reply_in_thread', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Reply in Thread failed: ${error}`);
-    }
+  public async listChannels(params: SlackListChannelsParams = {}): Promise<APIResponse<any>> {
+    const response = await this.get<SlackAPIResponse>(
+      `/conversations.list${this.buildQueryString({
+        types: params.types,
+        limit: params.limit,
+        cursor: params.cursor
+      })}`
+    );
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Update an existing message
-   */
-  async updateMessage(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_message', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Message failed: ${error}`);
-    }
+  public async getUserInfo(params: SlackUserParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['user']);
+    const response = await this.get<SlackAPIResponse>(
+      `/users.info${this.buildQueryString({ user: params.user })}`
+    );
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Delete a message
-   */
-  async deleteMessage(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/delete_message', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Delete Message failed: ${error}`);
-    }
+  public async listUsers(params: SlackListUsersParams = {}): Promise<APIResponse<any>> {
+    const response = await this.get<SlackAPIResponse>(
+      `/users.list${this.buildQueryString({ limit: params.limit, cursor: params.cursor })}`
+    );
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Schedule a message to be sent later
-   */
-  async scheduleMessage(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/schedule_message', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Schedule Message failed: ${error}`);
-    }
+  public async addReaction(params: SlackReactionParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['channel', 'timestamp', 'name']);
+
+    const response = await this.post<SlackAPIResponse>('/reactions.add', {
+      channel: params.channel,
+      timestamp: params.timestamp,
+      name: params.name
+    });
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Pin a message to a channel
-   */
-  async pinMessage(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/pin_message', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Pin Message failed: ${error}`);
-    }
+  public async removeReaction(params: SlackReactionParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['channel', 'timestamp', 'name']);
+
+    const response = await this.post<SlackAPIResponse>('/reactions.remove', {
+      channel: params.channel,
+      timestamp: params.timestamp,
+      name: params.name
+    });
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Unpin a message from a channel
-   */
-  async unpinMessage(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/unpin_message', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Unpin Message failed: ${error}`);
-    }
+  public async scheduleMessage(params: SlackScheduleParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['channel', 'text', 'post_at']);
+
+    const response = await this.post<SlackAPIResponse>('/chat.scheduleMessage', {
+      channel: params.channel,
+      text: params.text,
+      post_at: params.post_at,
+      thread_ts: params.thread_ts
+    });
+
+    return this.normalizeSlackResponse(response);
   }
 
-  /**
-   * Remove a reaction from a message
-   */
-  async removeReaction(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/remove_reaction', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Remove Reaction failed: ${error}`);
+  private normalizeSlackResponse<T>(response: APIResponse<SlackAPIResponse<T>>): APIResponse<T> {
+    if (!response.success) {
+      return response as APIResponse<T>;
     }
-  }
 
-  /**
-   * Get a list of workspace users
-   */
-  async listUsers(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_users', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Users failed: ${error}`);
+    const body = response.data;
+    if (!body) {
+      return {
+        success: true
+      };
     }
-  }
 
-  /**
-   * Get a list of channels
-   */
-  async listChannels(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_channels', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Channels failed: ${error}`);
+    if (!body.ok) {
+      return {
+        success: false,
+        error: body.error || 'Unknown Slack API error',
+        data: body as any
+      };
     }
-  }
 
-  /**
-   * Archive a channel
-   */
-  async archiveChannel(params: Record<string, any> = {}): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/archive_channel', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Archive Channel failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Triggered when a new message is posted
-   */
-  async pollNewMessage(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/new_message', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling New Message failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a new channel is created
-   */
-  async pollNewChannel(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/new_channel', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling New Channel Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a new user joins the workspace
-   */
-  async pollUserJoined(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/user_joined', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling User Joined Workspace failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a message is edited
-   */
-  async pollMessageEdited(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/message_edited', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Message Edited failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a reaction is removed from a message
-   */
-  async pollReactionRemoved(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/reaction_removed', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Reaction Removed failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a file is uploaded
-   */
-  async pollFileUploaded(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/file_uploaded', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling File Uploaded failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a user leaves the workspace
-   */
-  async pollUserLeft(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/user_left', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling User Left failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a channel is archived
-   */
-  async pollChannelArchived(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/channel_archived', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Channel Archived failed:`, error);
-      return [];
-    }
+    const { ok, error, ...rest } = body;
+    return {
+      success: true,
+      data: rest as T
+    };
   }
 }
