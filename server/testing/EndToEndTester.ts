@@ -415,6 +415,7 @@ export class EndToEndTester {
           appName: 'gmail',
           functionId: 'nonexistent_function',
           parameters: {},
+          credentials: {},
           connectionId: 'test-connection'
         });
         return false;
@@ -431,6 +432,7 @@ export class EndToEndTester {
           appName: 'gmail',
           functionId: 'send_email',
           parameters: { to: 'test@example.com', subject: 'Test' },
+          credentials: {},
           connectionId: 'nonexistent-connection'
         });
         return false;
