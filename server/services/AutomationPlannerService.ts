@@ -839,10 +839,154 @@ If false: Follow-up questions are needed`;
         prompt: completenessPrompt
       });
 
-      return response.trim().toLowerCase() === 'true';
+      const interpreted = interpretCompletionResponse(response);
+      if (typeof interpreted === 'boolean') {
+        return interpreted;
+      }
+
+      console.warn('⚠️ LLM returned non-boolean completeness response, falling back to heuristics', {
+        snippet: response.slice(0, 120)
+      });
     } catch (error) {
-      console.error('❌ Completeness check failed:', error);
-      return false; // Default to asking questions
+      console.error('❌ Completeness check failed, using heuristics instead:', error);
     }
+
+    return heuristicallyDeterminePromptCompleteness(userPrompt);
   }
+}
+
+function interpretCompletionResponse(rawResponse: string): boolean | null {
+  if (!rawResponse) {
+    return null;
+  }
+
+  const normalized = rawResponse.trim();
+  const lowered = normalized.toLowerCase();
+
+  if (lowered === 'true') {
+    return true;
+  }
+
+  if (lowered === 'false') {
+    return false;
+  }
+
+  if (lowered.startsWith('yes')) {
+    return true;
+  }
+
+  if (lowered.startsWith('no')) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(normalized);
+
+    if (typeof parsed === 'boolean') {
+      return parsed;
+    }
+
+    if (typeof parsed === 'string') {
+      return interpretCompletionResponse(parsed);
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const candidateKeys = [
+        'is_complete',
+        'isComplete',
+        'complete',
+        'completed',
+        'ready',
+        'answer',
+        'result'
+      ];
+
+      for (const key of candidateKeys) {
+        const value = (parsed as Record<string, unknown>)[key];
+        if (typeof value === 'boolean') {
+          return value;
+        }
+        if (typeof value === 'string') {
+          const interpreted = interpretCompletionResponse(value);
+          if (typeof interpreted === 'boolean') {
+            return interpreted;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to parse LLM completeness response as JSON', { error, rawResponse: rawResponse.slice(0, 120) });
+  }
+
+  return null;
+}
+
+function heuristicallyDeterminePromptCompleteness(prompt: string): boolean {
+  const normalized = prompt.toLowerCase();
+
+  const TRIGGER_KEYWORDS = [
+    'when ',
+    'whenever ',
+    'every ',
+    'each ',
+    'on new',
+    'on form',
+    'upon ',
+    'at ',
+    'schedule',
+    'trigger'
+  ];
+
+  const DATA_KEYWORDS = [
+    'sheet',
+    'spreadsheet',
+    'row',
+    'column',
+    'table',
+    'database',
+    'crm',
+    'notion',
+    'airtable',
+    'drive',
+    'calendar',
+    'gmail',
+    'email',
+    'inbox',
+    'form',
+    'webhook',
+    'api',
+    'http',
+    'https'
+  ];
+
+  const ACTION_KEYWORDS = [
+    'send',
+    'email',
+    'notify',
+    'create',
+    'update',
+    'append',
+    'add',
+    'write',
+    'post',
+    'message',
+    'upload',
+    'sync',
+    'generate'
+  ];
+
+  const hasTrigger = keywordMatch(normalized, TRIGGER_KEYWORDS);
+  const hasDataSource = keywordMatch(normalized, DATA_KEYWORDS);
+  const hasAction = keywordMatch(normalized, ACTION_KEYWORDS);
+  const hasSpecificDetail = /https?:\/\/|column\s+[a-z0-9]+|label\s+|template|subject|named\s|exact\s|\b(id|ids)\b|"[^"]+"|\d{3,}/.test(
+    normalized
+  );
+
+  const score = [hasTrigger, hasDataSource, hasAction, hasSpecificDetail].filter(Boolean).length;
+
+  return (hasTrigger && hasDataSource && hasAction) || (score >= 3 && hasSpecificDetail);
+}
+
+function keywordMatch(haystack: string, needles: string[]): boolean {
+  return needles.some((needle) => haystack.includes(needle));
 }
