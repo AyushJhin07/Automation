@@ -17,6 +17,7 @@ import {
   type JSONSchema
 } from "../SmartParametersPanel";
 import { buildMetadataFromNode } from "../metadata";
+import { normalizeWorkflowNode } from "../graphSync";
 
 const upstreamNodes: UpstreamNodeSummary[] = [
   {
@@ -597,5 +598,54 @@ try {
 } finally {
   console.error = originalError;
 }
+
+const triggerNodeInput = {
+  id: "trigger-1",
+  type: "trigger.gmail",
+  app: "gmail",
+  function: "email_received",
+  data: {
+    label: "When a Gmail message arrives",
+    config: { query: "is:unread", label: "Invoices" }
+  },
+};
+
+const normalizedTrigger = normalizeWorkflowNode(triggerNodeInput, { loadSource: "ai-builder" });
+
+assert.equal(normalizedTrigger.role, "trigger", "gmail trigger should map to trigger role");
+assert.equal(normalizedTrigger.data.parameters.query, "is:unread", "trigger parameters should include Gmail query");
+assert.equal(normalizedTrigger.data.app, "gmail", "trigger app should remain gmail");
+assert.equal(normalizedTrigger.data.loadSource, "ai-builder", "loadSource hint should be preserved when provided");
+assert.ok(
+  (normalizedTrigger.data.metadata?.columns ?? []).includes("query"),
+  "trigger metadata should expose query column for quick picks"
+);
+
+const actionNodeInput = {
+  id: "action-1",
+  type: "action.sheets",
+  app: "sheets",
+  function: "append_row",
+  position: { x: "480", y: 260 },
+  data: {
+    label: "Append invoice",
+    config: {
+      spreadsheetId: "sheet-123",
+      sheetName: "Invoices",
+      range: "A1:C1",
+      values: ["{{trigger.subject}}", "{{trigger.amount}}", "{{trigger.sender}}"],
+    },
+  },
+};
+
+const normalizedAction = normalizeWorkflowNode(actionNodeInput, { index: 2 });
+
+assert.equal(normalizedAction.role, "action", "sheets append should remain an action node");
+assert.equal(normalizedAction.position.x, 480, "string based coordinates should coerce to numbers");
+assert.equal(normalizedAction.data.parameters.range, "A1:C1", "action parameters should merge config values");
+assert.ok(
+  normalizedAction.data.metadata?.sample?.sheetName === "Invoices",
+  "action metadata sampling should include sheet name from config"
+);
 
 console.log("SmartParametersPanel metadata helper checks (including sheet metadata) passed.");
