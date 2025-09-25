@@ -1,122 +1,128 @@
-// AIRTABLE API CLIENT
-// Auto-generated API client for Airtable integration
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
+interface AirtableBaseParams {
+  baseId: string;
+  tableId: string;
+}
 
-export interface AirtableAPIClientConfig {
-  apiKey: string;
+interface AirtableCreateRecordParams extends AirtableBaseParams {
+  fields: Record<string, any>;
+  typecast?: boolean;
+}
+
+interface AirtableUpdateRecordParams extends AirtableBaseParams {
+  recordId: string;
+  fields: Record<string, any>;
+  typecast?: boolean;
+}
+
+interface AirtableDeleteRecordParams extends AirtableBaseParams {
+  recordId: string;
+}
+
+interface AirtableGetRecordParams extends AirtableBaseParams {
+  recordId: string;
+}
+
+interface AirtableListRecordsParams extends AirtableBaseParams {
+  fields?: string[];
+  filterByFormula?: string;
+  maxRecords?: number;
+  pageSize?: number;
+  sort?: Array<{ field: string; direction?: 'asc' | 'desc' }>;
+  view?: string;
+  cellFormat?: 'json' | 'string';
+  timeZone?: string;
+  userLocale?: string;
+  offset?: string;
 }
 
 export class AirtableAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: AirtableAPIClientConfig;
+  constructor(credentials: APICredentials) {
+    if (!credentials.apiKey) {
+      throw new Error('Airtable integration requires an API key');
+    }
 
-  constructor(config: AirtableAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.airtable.com';
+    super('https://api.airtable.com/v0', credentials);
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.apiKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${this.credentials.apiKey}`
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/meta/whoami');
   }
 
-
-  /**
-   * Create new record in table
-   */
-  async createRecord({ baseId: string, tableId: string, fields: Record<string, any> }: { baseId: string, tableId: string, fields: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Record failed: ${error}`);
-    }
+  public async createRecord(params: AirtableCreateRecordParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['baseId', 'tableId', 'fields']);
+    return this.post(
+      `/${params.baseId}/${encodeURIComponent(params.tableId)}`,
+      {
+        fields: params.fields,
+        typecast: params.typecast ?? false
+      }
+    );
   }
 
-  /**
-   * Update existing record
-   */
-  async updateRecord({ baseId: string, tableId: string, recordId: string, fields: Record<string, any> }: { baseId: string, tableId: string, recordId: string, fields: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Record failed: ${error}`);
-    }
+  public async updateRecord(params: AirtableUpdateRecordParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['baseId', 'tableId', 'recordId', 'fields']);
+    return this.patch(
+      `/${params.baseId}/${encodeURIComponent(params.tableId)}/${params.recordId}`,
+      {
+        fields: params.fields,
+        typecast: params.typecast ?? false
+      }
+    );
   }
 
-  /**
-   * Delete record from table
-   */
-  async deleteRecord({ baseId: string, tableId: string, recordId: string }: { baseId: string, tableId: string, recordId: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/delete_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Delete Record failed: ${error}`);
-    }
+  public async getRecord(params: AirtableGetRecordParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['baseId', 'tableId', 'recordId']);
+    return this.get(
+      `/${params.baseId}/${encodeURIComponent(params.tableId)}/${params.recordId}`
+    );
   }
 
-  /**
-   * List records from table
-   */
-  async listRecords({ baseId: string, tableId: string, maxRecords?: number, view?: string, filterByFormula?: string }: { baseId: string, tableId: string, maxRecords?: number, view?: string, filterByFormula?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_records', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Records failed: ${error}`);
-    }
+  public async deleteRecord(params: AirtableDeleteRecordParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['baseId', 'tableId', 'recordId']);
+    return this.delete(
+      `/${params.baseId}/${encodeURIComponent(params.tableId)}/${params.recordId}`
+    );
   }
 
+  public async listRecords(params: AirtableListRecordsParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['baseId', 'tableId']);
 
-  /**
-   * Poll for Trigger when new record is created
-   */
-  async pollRecordCreated({ baseId: string, tableId: string }: { baseId: string, tableId: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Created failed:`, error);
-      return [];
+    const searchParams = new URLSearchParams();
+    if (params.fields) {
+      params.fields.forEach(field => searchParams.append('fields[]', field));
     }
-  }
 
-  /**
-   * Poll for Trigger when record is updated
-   */
-  async pollRecordUpdated({ baseId: string, tableId: string }: { baseId: string, tableId: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_updated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Updated failed:`, error);
-      return [];
+    if (params.sort) {
+      params.sort.forEach((sort, index) => {
+        if (sort.field) {
+          searchParams.append(`sort[${index}][field]`, sort.field);
+        }
+        if (sort.direction) {
+          searchParams.append(`sort[${index}][direction]`, sort.direction);
+        }
+      });
     }
+
+    if (params.filterByFormula) searchParams.set('filterByFormula', params.filterByFormula);
+    if (params.maxRecords !== undefined) searchParams.set('maxRecords', String(params.maxRecords));
+    if (params.pageSize !== undefined) searchParams.set('pageSize', String(params.pageSize));
+    if (params.view) searchParams.set('view', params.view);
+    if (params.cellFormat) searchParams.set('cellFormat', params.cellFormat);
+    if (params.timeZone) searchParams.set('timeZone', params.timeZone);
+    if (params.userLocale) searchParams.set('userLocale', params.userLocale);
+    if (params.offset) searchParams.set('offset', params.offset);
+
+    const query = searchParams.toString();
+    return this.get(
+      `/${params.baseId}/${encodeURIComponent(params.tableId)}${query ? `?${query}` : ''}`
+    );
   }
 }
