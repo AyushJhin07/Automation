@@ -3,6 +3,7 @@ import { detectAppsFromPrompt, getAppById, generateCompleteAppDatabase, TOTAL_SU
 import { IntelligentFunctionMapper } from './intelligentFunctionMapper';
 import { AIWorkflowIntelligence } from './aiWorkflowIntelligence';
 import { getErrorMessage } from './types/common';
+import { LLMProviderService } from './services/LLMProviderService';
 
 interface AIModelConfig {
   name: string;
@@ -120,23 +121,131 @@ class MultiAIService {
   }
 
   // Add missing generateText method for pure AI workflow generation
-  public static async generateText(prompt: string, options: {model?: string, maxTokens?: number, temperature?: number} = {}): Promise<string> {
+  public static async generateText(
+    promptOrOptions: string | { prompt: string; model?: string; maxTokens?: number; temperature?: number }
+  ): Promise<string> {
+    const { prompt, model, maxTokens, temperature } = this.normalizeGenerateArgs(promptOrOptions);
+
     console.log('🤖 MultiAIService.generateText called');
-    
+    console.log('📝 Prompt length:', prompt.length);
+
     try {
-      // Use existing LLM infrastructure
-      const model = options.model || 'gemini-1.5-flash';
-      
-      // For now, return a simple response to avoid crashes
-      // TODO: Integrate with actual LLM providers
-      console.log('🔄 Generating text with model:', model);
-      
-      return `{"analysis": "AI analyzed the user request", "workflow": {"id": "ai-generated", "name": "AI Generated Workflow", "nodes": [], "edges": [], "meta": {"automationType": "ai_generated"}}}`;
-      
+      const preferredProvider = model ? this.detectProviderFromModel(model) : undefined;
+      const llmResult = await LLMProviderService.generateText(prompt, {
+        preferredProvider,
+        model,
+        maxTokens,
+        temperature,
+      });
+
+      console.log('✅ LLM response received', {
+        provider: llmResult.provider,
+        model: llmResult.model,
+        responseLength: llmResult.text.length,
+      });
+
+      return llmResult.text;
     } catch (error) {
       console.error('❌ generateText failed:', error);
-      throw new Error('LLM text generation failed');
+      return this.getStructuredFallbackResponse();
     }
+  }
+
+  private static normalizeGenerateArgs(
+    promptOrOptions: string | { prompt: string; model?: string; maxTokens?: number; temperature?: number }
+  ): { prompt: string; model?: string; maxTokens?: number; temperature?: number } {
+    if (typeof promptOrOptions === 'string') {
+      return { prompt: promptOrOptions };
+    }
+
+    if (!promptOrOptions?.prompt) {
+      throw new Error('Prompt is required for generateText');
+    }
+
+    return promptOrOptions;
+  }
+
+  private static detectProviderFromModel(model: string): 'gemini' | 'openai' | 'claude' | undefined {
+    const lowerModel = model.toLowerCase();
+
+    if (lowerModel.includes('gemini')) {
+      return 'gemini';
+    }
+
+    if (lowerModel.includes('gpt') || lowerModel.includes('openai')) {
+      return 'openai';
+    }
+
+    if (lowerModel.includes('claude')) {
+      return 'claude';
+    }
+
+    return undefined;
+  }
+
+  private static getStructuredFallbackResponse(): string {
+    const fallbackPlan = {
+      apps: ['gmail', 'sheets'],
+      trigger: {
+        type: 'time',
+        app: 'time',
+        operation: 'schedule',
+        description: 'Time-based trigger',
+        required_inputs: ['frequency'],
+        missing_inputs: ['frequency'],
+      },
+      steps: [
+        {
+          app: 'gmail',
+          operation: 'search_emails',
+          description: 'Search emails',
+          required_inputs: ['search_query'],
+          missing_inputs: ['search_query'],
+        },
+      ],
+      missing_inputs: [
+        {
+          id: 'frequency',
+          question: 'How often should this automation run?',
+          type: 'select',
+          required: true,
+          category: 'trigger',
+        },
+        {
+          id: 'search_query',
+          question: 'What email search criteria should we use?',
+          type: 'text',
+          required: true,
+          category: 'action',
+        },
+      ],
+      workflow_name: 'Custom Automation',
+      description: 'Automated workflow',
+      complexity: 'medium',
+    };
+
+    const fallbackResponse = {
+      status: 'llm_fallback',
+      message: 'LLM provider unavailable. Returning structured fallback response.',
+      is_complete: false,
+      questions: fallbackPlan.missing_inputs?.map((input) => ({
+        id: input.id,
+        question: input.question,
+        type: input.type,
+        required: input.required,
+        category: input.category,
+      })) || [],
+      workflow_draft: {
+        nodes: [],
+        edges: [],
+        metadata: {
+          automationType: 'fallback',
+        },
+      },
+      ...fallbackPlan,
+    };
+
+    return JSON.stringify(fallbackResponse);
   }
 
   private static async callAIModel(model: AIModelConfig, prompt: string): Promise<Omit<AIAnalysisResult, 'processingTime' | 'modelUsed'>> {
