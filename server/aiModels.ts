@@ -3,6 +3,7 @@ import { detectAppsFromPrompt, getAppById, generateCompleteAppDatabase, TOTAL_SU
 import { IntelligentFunctionMapper } from './intelligentFunctionMapper';
 import { AIWorkflowIntelligence } from './aiWorkflowIntelligence';
 import { getErrorMessage } from './types/common';
+import { LLMProviderService } from './services/LLMProviderService';
 
 interface AIModelConfig {
   name: string;
@@ -120,23 +121,131 @@ class MultiAIService {
   }
 
   // Add missing generateText method for pure AI workflow generation
-  public static async generateText(prompt: string, options: {model?: string, maxTokens?: number, temperature?: number} = {}): Promise<string> {
+  public static async generateText(
+    promptOrOptions: string | { prompt: string; model?: string; maxTokens?: number; temperature?: number }
+  ): Promise<string> {
+    const { prompt, model, maxTokens, temperature } = this.normalizeGenerateArgs(promptOrOptions);
+
     console.log('🤖 MultiAIService.generateText called');
-    
+    console.log('📝 Prompt length:', prompt.length);
+
     try {
-      // Use existing LLM infrastructure
-      const model = options.model || 'gemini-1.5-flash';
-      
-      // For now, return a simple response to avoid crashes
-      // TODO: Integrate with actual LLM providers
-      console.log('🔄 Generating text with model:', model);
-      
-      return `{"analysis": "AI analyzed the user request", "workflow": {"id": "ai-generated", "name": "AI Generated Workflow", "nodes": [], "edges": [], "meta": {"automationType": "ai_generated"}}}`;
-      
+      const preferredProvider = model ? this.detectProviderFromModel(model) : undefined;
+      const llmResult = await LLMProviderService.generateText(prompt, {
+        preferredProvider,
+        model,
+        maxTokens,
+        temperature,
+      });
+
+      console.log('✅ LLM response received', {
+        provider: llmResult.provider,
+        model: llmResult.model,
+        responseLength: llmResult.text.length,
+      });
+
+      return llmResult.text;
     } catch (error) {
       console.error('❌ generateText failed:', error);
-      throw new Error('LLM text generation failed');
+      return this.getStructuredFallbackResponse();
     }
+  }
+
+  private static normalizeGenerateArgs(
+    promptOrOptions: string | { prompt: string; model?: string; maxTokens?: number; temperature?: number }
+  ): { prompt: string; model?: string; maxTokens?: number; temperature?: number } {
+    if (typeof promptOrOptions === 'string') {
+      return { prompt: promptOrOptions };
+    }
+
+    if (!promptOrOptions?.prompt) {
+      throw new Error('Prompt is required for generateText');
+    }
+
+    return promptOrOptions;
+  }
+
+  private static detectProviderFromModel(model: string): 'gemini' | 'openai' | 'claude' | undefined {
+    const lowerModel = model.toLowerCase();
+
+    if (lowerModel.includes('gemini')) {
+      return 'gemini';
+    }
+
+    if (lowerModel.includes('gpt') || lowerModel.includes('openai')) {
+      return 'openai';
+    }
+
+    if (lowerModel.includes('claude')) {
+      return 'claude';
+    }
+
+    return undefined;
+  }
+
+  private static getStructuredFallbackResponse(): string {
+    const fallbackPlan = {
+      apps: ['gmail', 'sheets'],
+      trigger: {
+        type: 'time',
+        app: 'time',
+        operation: 'schedule',
+        description: 'Time-based trigger',
+        required_inputs: ['frequency'],
+        missing_inputs: ['frequency'],
+      },
+      steps: [
+        {
+          app: 'gmail',
+          operation: 'search_emails',
+          description: 'Search emails',
+          required_inputs: ['search_query'],
+          missing_inputs: ['search_query'],
+        },
+      ],
+      missing_inputs: [
+        {
+          id: 'frequency',
+          question: 'How often should this automation run?',
+          type: 'select',
+          required: true,
+          category: 'trigger',
+        },
+        {
+          id: 'search_query',
+          question: 'What email search criteria should we use?',
+          type: 'text',
+          required: true,
+          category: 'action',
+        },
+      ],
+      workflow_name: 'Custom Automation',
+      description: 'Automated workflow',
+      complexity: 'medium',
+    };
+
+    const fallbackResponse = {
+      status: 'llm_fallback',
+      message: 'LLM provider unavailable. Returning structured fallback response.',
+      is_complete: false,
+      questions: fallbackPlan.missing_inputs?.map((input) => ({
+        id: input.id,
+        question: input.question,
+        type: input.type,
+        required: input.required,
+        category: input.category,
+      })) || [],
+      workflow_draft: {
+        nodes: [],
+        edges: [],
+        metadata: {
+          automationType: 'fallback',
+        },
+      },
+      ...fallbackPlan,
+    };
+
+    return JSON.stringify(fallbackResponse);
   }
 
   private static async callAIModel(model: AIModelConfig, prompt: string): Promise<Omit<AIAnalysisResult, 'processingTime' | 'modelUsed'>> {
@@ -415,53 +524,30 @@ export function registerAIWorkflowRoutes(app: express.Application) {
 
 async function generateWorkflowFromAnalysis(analysis: AIAnalysisResult, originalPrompt: string) {
   console.log(`🔧 Generating workflow from comprehensive analysis...`);
-  
-  // Get the comprehensive intelligence analysis
-  const intelligence = await AIWorkflowIntelligence.analyzeAutomationRequest(originalPrompt);
-  
-  // Build workflow structure with logical function selection
-  const nodes: any[] = [];
-  const connections: any[] = [];
-  
-  // Create nodes based on intelligent analysis
-  intelligence.logicalFunctions.forEach((funcMapping, index) => {
-    const nodeId = `${funcMapping.app.toLowerCase().replace(/\s+/g, '-')}-${index}`;
-    
-    // ChatGPT Fix: Ensure node.type is one of trigger/action/transform
-    const role = (() => {
-      const f = (funcMapping.function || "").toLowerCase();
-      if (f.includes("new_") || f.includes("watch") || f.includes("trigger")) return "trigger";
-      if (f.includes("classify") || f.includes("filter") || f.includes("parse") || f.includes("transform")) return "transform";
-      return "action";
-    })();
 
-    nodes.push({
-      id: nodeId,
-      type: role, // <<<< this is the important change
-      app: funcMapping.app,
-      function: funcMapping.function,
-      functionName: funcMapping.function,
-      parameters: funcMapping.parameters,
-      position: { x: 100 + (index * 220), y: 100 + (index % 2) * 120 },
-      icon: getIconForApp(funcMapping.app),
-      color: getColorForApp(funcMapping.app),
-      aiReason: funcMapping.reason,
-      confidence: intelligence.confidence,
-      isRequired: funcMapping.isRequired
-    });
-    
-    // Create logical connections based on data flow
-    if (index > 0) {
-      connections.push({
-        id: `conn-${index}`,
-        source: nodes[index - 1].id,
-        target: nodeId,
-        dataType: intelligence.dataFlow[index - 1]?.dataOut[0] || 'data'
-      });
-    }
+  const intelligence = await AIWorkflowIntelligence.analyzeAutomationRequest(originalPrompt);
+
+  const nodes: any[] = [];
+  const edges: any[] = [];
+  const connections: any[] = [];
+
+  const triggerNode = buildTriggerNode(intelligence);
+  nodes.push(triggerNode);
+
+  let previousNodeId = triggerNode.id;
+
+  intelligence.logicalFunctions.forEach((funcMapping, index) => {
+    const actionNode = buildActionNode(funcMapping, index, intelligence);
+    nodes.push(actionNode);
+
+    const edgeId = `edge-${previousNodeId}-${actionNode.id}`;
+    const edge = { id: edgeId, source: previousNodeId, target: actionNode.id };
+    edges.push(edge);
+    connections.push({ ...edge, dataType: 'data' });
+
+    previousNodeId = actionNode.id;
   });
 
-  // Generate intelligent Google Apps Script code
   const appsScriptCode = generateIntelligentAppsScriptCode(intelligence, nodes);
 
   return {
@@ -469,12 +555,304 @@ async function generateWorkflowFromAnalysis(analysis: AIAnalysisResult, original
     title: generateIntelligentTitle(intelligence.intent, originalPrompt),
     description: intelligence.businessLogic,
     nodes,
+    edges,
     connections,
+    meta: {
+      description: intelligence.businessLogic,
+      intent: intelligence.intent,
+      triggerType: intelligence.triggerType
+    },
     appsScriptCode,
     estimatedValue: analysis.estimatedValue,
     complexity: analysis.complexity,
-    intelligence // Include the full intelligence analysis
+    intelligence
   };
+}
+
+function buildTriggerNode(intelligence: any) {
+  const firstFlowApp = intelligence.dataFlow?.[0]?.app || intelligence.logicalFunctions?.[0]?.app;
+  const canonicalApp = normalizeAppId(firstFlowApp);
+
+  let triggerApp = 'time';
+  let triggerOperation = 'schedule';
+  let triggerConfig: Record<string, any> = { frequency: 15, unit: 'minutes' };
+  let triggerLabel = 'Run on a schedule';
+
+  if (intelligence.triggerType === 'event') {
+    if (canonicalApp === 'gmail') {
+      triggerApp = 'gmail';
+      triggerOperation = 'email_received';
+      const gmailStep = intelligence.logicalFunctions.find((step: any) => normalizeAppId(step.app) === 'gmail');
+      const parameters = gmailStep?.parameters || {};
+      triggerConfig = {
+        query: parameters.query || 'is:unread'
+      };
+      triggerLabel = 'When a new email matches a query';
+    } else if (canonicalApp === 'sheets') {
+      triggerApp = 'sheets';
+      triggerOperation = 'onEdit';
+      triggerConfig = {
+        sheetName: intelligence.logicalFunctions.find((step: any) => normalizeAppId(step.app) === 'sheets')?.parameters?.sheetName || 'Sheet1'
+      };
+      triggerLabel = 'When a row changes in Google Sheets';
+    }
+  } else if (intelligence.triggerType === 'schedule') {
+    triggerConfig = {
+      frequency: intelligence.logicalFunctions.length > 1 ? 5 : 15,
+      unit: 'minutes'
+    };
+  }
+
+  const displayApp = getDisplayNameForApp(triggerApp);
+
+  return {
+    id: 'trigger-1',
+    type: `trigger.${triggerApp}`,
+    app: triggerApp,
+    function: triggerOperation,
+    functionName: triggerOperation,
+    position: { x: 80, y: 160 },
+    icon: getIconForApp(displayApp),
+    color: getColorForApp(displayApp),
+    aiReason: `Automation starts when ${triggerLabel.toLowerCase()}`,
+    data: {
+      label: triggerLabel,
+      app: triggerApp,
+      operation: triggerOperation,
+      config: triggerConfig,
+      parameters: triggerConfig,
+      triggerType: intelligence.triggerType,
+      metadata: { systemGenerated: true },
+      displayName: displayApp
+    },
+    params: triggerConfig,
+    op: `trigger.${triggerApp}:${triggerOperation}`,
+    metadata: { systemGenerated: true },
+    displayName: displayApp
+  };
+}
+
+function buildActionNode(funcMapping: any, index: number, intelligence: any) {
+  const canonicalApp = normalizeAppId(funcMapping.app);
+  const displayApp = getDisplayNameForApp(canonicalApp, funcMapping.app);
+  const normalizedOperation = normalizeOperationName(canonicalApp, funcMapping.function);
+
+  const nodeId = `${canonicalApp || 'step'}-${index + 1}`;
+  const role = inferNodeRole(normalizedOperation, index);
+  const config = buildConfigForOperation(canonicalApp, normalizedOperation, funcMapping);
+
+  return {
+    id: nodeId,
+    type: `${role}.${canonicalApp}`,
+    app: canonicalApp,
+    function: normalizedOperation,
+    functionName: normalizedOperation,
+    position: { x: 320 + (index * 240), y: 160 + (index % 2) * 140 },
+    icon: getIconForApp(displayApp),
+    color: getColorForApp(displayApp),
+    aiReason: funcMapping.reason,
+    confidence: intelligence.confidence,
+    isRequired: funcMapping.isRequired,
+    data: {
+      label: `${displayApp} • ${formatOperationLabel(normalizedOperation)}`,
+      app: canonicalApp,
+      operation: normalizedOperation,
+      config,
+      parameters: config,
+      metadata: {
+        aiReason: funcMapping.reason,
+        required: funcMapping.isRequired === true
+      },
+      displayName: displayApp
+    },
+    params: config,
+    op: `${role}.${canonicalApp}:${normalizedOperation}`,
+    metadata: {
+      aiReason: funcMapping.reason,
+      required: funcMapping.isRequired === true
+    },
+    displayName: displayApp
+  };
+}
+
+function normalizeAppId(app: string | undefined): string {
+  if (!app) return 'unknown';
+  const lookup = app.trim().toLowerCase();
+  const mapping: Record<string, string> = {
+    gmail: 'gmail',
+    'google mail': 'gmail',
+    'google workspace gmail': 'gmail',
+    'google sheets': 'sheets',
+    sheets: 'sheets',
+    'google sheet': 'sheets',
+    'google drive': 'drive',
+    drive: 'drive',
+    'google calendar': 'calendar',
+    calendar: 'calendar',
+    slack: 'slack',
+    salesforce: 'salesforce',
+    hubspot: 'hubspot',
+    notion: 'notion',
+    airtable: 'airtable',
+    shopify: 'shopify',
+    stripe: 'stripe',
+    zapier: 'zapier'
+  };
+  return mapping[lookup] || lookup.replace(/[^a-z0-9]+/g, '-');
+}
+
+function getDisplayNameForApp(appId: string, fallback?: string) {
+  const displayMap: Record<string, string> = {
+    gmail: 'Gmail',
+    sheets: 'Google Sheets',
+    drive: 'Google Drive',
+    calendar: 'Google Calendar',
+    slack: 'Slack',
+    salesforce: 'Salesforce',
+    hubspot: 'HubSpot',
+    notion: 'Notion',
+    airtable: 'Airtable',
+    shopify: 'Shopify',
+    stripe: 'Stripe',
+    time: 'Schedule'
+  };
+  return displayMap[appId] || fallback || (appId ? appId.replace(/-/g, ' ') : 'Unknown');
+}
+
+function normalizeOperationName(appId: string, operation: string | undefined) {
+  if (!operation) return 'run';
+  const normalized = operation.trim().toLowerCase().replace(/\s+/g, '_');
+  const aliases: Record<string, Record<string, string>> = {
+    gmail: {
+      send_email: 'sendEmail',
+      sendemail: 'sendEmail',
+      reply_to_email: 'send_reply',
+      set_auto_reply: 'send_reply',
+      send_reply: 'send_reply',
+      search_emails: 'search_emails'
+    },
+    sheets: {
+      append_row: 'append_row',
+      add_row: 'append_row',
+      log_row: 'append_row',
+      update_row: 'updateCell',
+      update_cell: 'updateCell',
+      read_range: 'getRow',
+      get_row: 'getRow'
+    },
+    slack: {
+      send_message: 'send_message',
+      post_message: 'send_message'
+    },
+    salesforce: {
+      create_lead: 'create_lead'
+    },
+    hubspot: {
+      create_contact: 'create_contact'
+    },
+    time: {
+      schedule: 'schedule'
+    }
+  };
+
+  const appAliases = aliases[appId] || {};
+  return appAliases[normalized] || normalized;
+}
+
+function inferNodeRole(operation: string, index: number): 'trigger' | 'action' | 'transform' {
+  if (operation.startsWith('on') || operation.includes('trigger')) {
+    return 'trigger';
+  }
+  if (operation.includes('classify') || operation.includes('transform')) {
+    return 'transform';
+  }
+  return index === 0 ? 'action' : 'action';
+}
+
+function buildConfigForOperation(appId: string, operation: string, funcMapping: any) {
+  const parameters = { ...(funcMapping.parameters || {}) };
+
+  if (appId === 'gmail') {
+    if (operation === 'search_emails') {
+      return {
+        query: parameters.query || 'is:unread',
+        maxResults: parameters.maxResults || 20
+      };
+    }
+    if (operation === 'sendEmail') {
+      return {
+        to: parameters.to || '{{recipient}}',
+        subject: parameters.subject || 'Automated update',
+        body: parameters.body || 'Generated by automation'
+      };
+    }
+    if (operation === 'send_reply') {
+      return {
+        responseTemplate:
+          parameters.responseTemplate || 'Thanks {{from}}, we received your message.',
+        markAsReplied: parameters.markAsReplied ?? true
+      };
+    }
+  }
+
+  if (appId === 'sheets') {
+    if (operation === 'append_row') {
+      return {
+        spreadsheetId: parameters.spreadsheetId || '{{spreadsheetId}}',
+        sheetName: parameters.sheetName || 'Sheet1',
+        columns: parameters.columns || ['Name', 'Email', 'Details', 'Status', 'Timestamp']
+      };
+    }
+    if (operation === 'getRow') {
+      return {
+        spreadsheetId: parameters.spreadsheetId || '{{spreadsheetId}}',
+        sheetName: parameters.sheetName || 'Sheet1'
+      };
+    }
+    if (operation === 'updateCell') {
+      return {
+        spreadsheetId: parameters.spreadsheetId || '{{spreadsheetId}}',
+        sheetName: parameters.sheetName || 'Sheet1',
+        cell: parameters.cell || 'A2',
+        value: parameters.value || '{{value}}'
+      };
+    }
+  }
+
+  if (appId === 'slack' && operation === 'send_message') {
+    return {
+      channel: parameters.channel || '#general',
+      message: parameters.message || 'Automation update: {{subject}}'
+    };
+  }
+
+  if (appId === 'salesforce' && operation === 'create_lead') {
+    return {
+      firstName: parameters.firstName || '{{first_name}}',
+      lastName: parameters.lastName || '{{last_name}}',
+      email: parameters.email || '{{email}}',
+      company: parameters.company || '{{company}}'
+    };
+  }
+
+  if (appId === 'hubspot' && operation === 'create_contact') {
+    return {
+      firstName: parameters.firstName || '{{first_name}}',
+      lastName: parameters.lastName || '{{last_name}}',
+      email: parameters.email || '{{email}}'
+    };
+  }
+
+  return Object.keys(parameters).length > 0 ? parameters : { placeholder: true };
+}
+
+function formatOperationLabel(operation: string) {
+  if (!operation) return 'Action';
+  return operation
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^./, (s) => s.toUpperCase());
 }
 
 function getFunctionForApp(app: string, prompt: string): string {
