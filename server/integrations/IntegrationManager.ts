@@ -2,14 +2,18 @@
 // Provides unified interface for executing functions across all integrated applications
 
 import { BaseAPIClient, APICredentials, APIResponse } from './BaseAPIClient';
+import { AirtableAPIClient } from './AirtableAPIClient';
 import { GmailAPIClient } from './GmailAPIClient';
+import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
+import { SlackAPIClient } from './SlackAPIClient';
 import { getErrorMessage } from '../types/common';
 
 export interface IntegrationConfig {
   appName: string;
   credentials: APICredentials;
   additionalConfig?: Record<string, any>;
+  connectionId?: string;
 }
 
 export interface FunctionExecutionParams {
@@ -17,6 +21,8 @@ export interface FunctionExecutionParams {
   functionId: string;
   parameters: Record<string, any>;
   credentials: APICredentials;
+  additionalConfig?: Record<string, any>;
+  connectionId?: string;
 }
 
 export interface FunctionExecutionResult {
@@ -48,13 +54,18 @@ export class IntegrationManager {
     'zoom'
   ]);
 
+  private buildClientKey(appKey: string, connectionId?: string): string {
+    return connectionId ? `${appKey}::${connectionId}` : appKey;
+  }
+
   /**
    * Initialize integration for an application
    */
   public async initializeIntegration(config: IntegrationConfig): Promise<APIResponse<any>> {
     try {
       const appKey = config.appName.toLowerCase();
-      
+      const clientKey = this.buildClientKey(appKey, config.connectionId);
+
       if (!this.supportedApps.has(appKey)) {
         return {
           success: false,
@@ -79,7 +90,7 @@ export class IntegrationManager {
         };
       }
 
-      this.clients.set(appKey, client);
+      this.clients.set(clientKey, client);
 
       return {
         success: true,
@@ -104,6 +115,7 @@ export class IntegrationManager {
   public async executeFunction(params: FunctionExecutionParams): Promise<FunctionExecutionResult> {
     const startTime = Date.now();
     const appKey = params.appName.toLowerCase();
+    const clientKey = this.buildClientKey(appKey, params.connectionId);
 
     try {
       // Check if app is supported
@@ -118,12 +130,14 @@ export class IntegrationManager {
       }
 
       // Get or create client
-      let client = this.clients.get(appKey);
+      let client = this.clients.get(clientKey);
       if (!client) {
         // Try to initialize the integration
         const initResult = await this.initializeIntegration({
           appName: params.appName,
-          credentials: params.credentials
+          credentials: params.credentials,
+          additionalConfig: params.additionalConfig,
+          connectionId: params.connectionId
         });
 
         if (!initResult.success) {
@@ -136,7 +150,7 @@ export class IntegrationManager {
           };
         }
 
-        client = this.clients.get(appKey);
+        client = this.clients.get(clientKey);
       }
 
       if (!client) {
@@ -147,6 +161,10 @@ export class IntegrationManager {
           functionId: params.functionId,
           executionTime: Date.now() - startTime
         };
+      }
+
+      if (typeof client.updateCredentials === 'function') {
+        client.updateCredentials(params.credentials);
       }
 
       // Execute the function
@@ -221,7 +239,14 @@ export class IntegrationManager {
    */
   public removeIntegration(appName: string): boolean {
     const appKey = appName.toLowerCase();
-    return this.clients.delete(appKey);
+    let removed = false;
+    for (const key of Array.from(this.clients.keys())) {
+      if (key === appKey || key.startsWith(`${appKey}::`)) {
+        this.clients.delete(key);
+        removed = true;
+      }
+    }
+    return removed;
   }
 
   /**
@@ -229,8 +254,9 @@ export class IntegrationManager {
    */
   public getIntegrationStatus(appName: string): { connected: boolean; client?: BaseAPIClient } {
     const appKey = appName.toLowerCase();
-    const client = this.clients.get(appKey);
-    
+    const client = this.clients.get(appKey) || Array.from(this.clients.entries())
+      .find(([key]) => key.startsWith(`${appKey}::`))?.[1];
+
     return {
       connected: !!client,
       client
@@ -256,21 +282,41 @@ export class IntegrationManager {
           throw new Error('Shopify integration requires shopDomain in additionalConfig');
         }
         return new ShopifyAPIClient({ ...credentials, shopDomain: additionalConfig.shopDomain });
+
+      case 'slack': {
+        const accessToken = credentials.accessToken ?? credentials.botToken;
+        if (!accessToken) {
+          throw new Error('Slack integration requires an access token');
+        }
+        return new SlackAPIClient({ ...credentials, accessToken });
+      }
+
+      case 'notion': {
+        const accessToken = credentials.accessToken ?? credentials.integrationToken;
+        if (!accessToken) {
+          throw new Error('Notion integration requires an access token');
+        }
+        return new NotionAPIClient({ ...credentials, accessToken });
+      }
+
+      case 'airtable': {
+        if (!credentials.apiKey) {
+          throw new Error('Airtable integration requires an API key');
+        }
+        return new AirtableAPIClient(credentials);
+      }
       
-      // TODO: Add other API clients as they are implemented
-      case 'stripe':
-      case 'mailchimp':
-      case 'twilio':
-      case 'airtable':
-      case 'dropbox':
-      case 'github':
-      case 'slack':
-      case 'notion':
-      case 'trello':
-      case 'asana':
-      case 'hubspot':
-      case 'salesforce':
-      case 'zoom':
+        // TODO: Add other API clients as they are implemented
+        case 'stripe':
+        case 'mailchimp':
+        case 'twilio':
+        case 'dropbox':
+        case 'github':
+        case 'trello':
+        case 'asana':
+        case 'hubspot':
+        case 'salesforce':
+        case 'zoom':
         // For now, return null for unimplemented clients
         // These will be implemented in subsequent iterations
         return null;
@@ -294,10 +340,25 @@ export class IntegrationManager {
     if (appKey === 'gmail' && client instanceof GmailAPIClient) {
       return this.executeGmailFunction(client, functionId, parameters);
     }
-    
+
     // Shopify functions
     if (appKey === 'shopify' && client instanceof ShopifyAPIClient) {
       return this.executeShopifyFunction(client, functionId, parameters);
+    }
+
+    // Slack functions
+    if (appKey === 'slack' && client instanceof SlackAPIClient) {
+      return this.executeSlackFunction(client, functionId, parameters);
+    }
+
+    // Notion functions
+    if (appKey === 'notion' && client instanceof NotionAPIClient) {
+      return this.executeNotionFunction(client, functionId, parameters);
+    }
+
+    // Airtable functions
+    if (appKey === 'airtable' && client instanceof AirtableAPIClient) {
+      return this.executeAirtableFunction(client, functionId, parameters);
     }
 
     // TODO: Add other application function executions
@@ -386,6 +447,106 @@ export class IntegrationManager {
         return {
           success: false,
           error: `Unknown Shopify function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeSlackFunction(
+    client: SlackAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'test_connection':
+        return client.testConnection();
+      case 'send_message':
+        return client.sendMessage(parameters);
+      case 'create_channel':
+        return client.createChannel(parameters);
+      case 'invite_to_channel': {
+        const users = Array.isArray(parameters.users)
+          ? parameters.users.join(',')
+          : parameters.users;
+        return client.inviteToChannel({ ...parameters, users });
+      }
+      case 'upload_file':
+        return client.uploadFile(parameters);
+      case 'get_channel_info':
+        return client.getChannelInfo(parameters);
+      case 'list_channels':
+        return client.listChannels(parameters);
+      case 'get_user_info':
+        return client.getUserInfo(parameters);
+      case 'list_users':
+        return client.listUsers(parameters);
+      case 'add_reaction':
+        return client.addReaction(parameters);
+      case 'remove_reaction':
+        return client.removeReaction(parameters);
+      case 'schedule_message':
+        return client.scheduleMessage(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Slack function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeNotionFunction(
+    client: NotionAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'test_connection':
+        return client.testConnection();
+      case 'create_page':
+        return client.createPage(parameters);
+      case 'update_page':
+        return client.updatePage(parameters);
+      case 'get_page':
+        return client.getPage(parameters);
+      case 'create_database_entry':
+        return client.createDatabaseEntry(parameters);
+      case 'query_database':
+        return client.queryDatabase(parameters);
+      case 'append_block_children':
+        return client.appendBlockChildren(parameters);
+      case 'update_block':
+        return client.updateBlock(parameters);
+      case 'get_block_children':
+        return client.getBlockChildren(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Notion function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeAirtableFunction(
+    client: AirtableAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'test_connection':
+        return client.testConnection();
+      case 'create_record':
+        return client.createRecord(parameters);
+      case 'update_record':
+        return client.updateRecord(parameters);
+      case 'get_record':
+        return client.getRecord(parameters);
+      case 'delete_record':
+        return client.deleteRecord(parameters);
+      case 'list_records':
+        return client.listRecords(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Airtable function: ${functionId}`
         };
     }
   }
