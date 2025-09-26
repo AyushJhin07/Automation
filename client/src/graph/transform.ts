@@ -11,6 +11,14 @@ export function specToReactFlow(spec: AutomationSpec) {
         ? 'transform'
         : 'action';
 
+    const parameters = { ...(n.inputs || {}) };
+    const auth = n.auth ? { ...n.auth } : undefined;
+    const connectionId = auth?.connectionId;
+
+    if (connectionId && parameters.connectionId === undefined) {
+      parameters.connectionId = connectionId;
+    }
+
     return {
       id: n.id,
       type: reactFlowType,
@@ -19,8 +27,10 @@ export function specToReactFlow(spec: AutomationSpec) {
         label: n.label,
         app: n.app,
         function: n.type,
-        parameters: n.inputs || {},
+        parameters,
         outputs: n.outputs || [],
+        auth,
+        connectionId,
         ports: {
           inputs: Object.keys(n.inputs || {}),
           outputs: n.outputs || []
