@@ -1469,7 +1469,7 @@ const GraphEditorContent = () => {
       setShowWelcomeModal(false);
 
       const firstNode = specNodes[0] as any;
-      setSelectedNode(firstNode);
+      setSelectedNodeId(String(firstNode.id));
       setNodes((prev: any) => prev.map((n: any) => ({ ...n, selected: n.id === firstNode.id })));
       specHydratedRef.current = true;
     } catch (error) {
