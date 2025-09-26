@@ -27,6 +27,8 @@ export function specToReactFlow(spec: AutomationSpec) {
         label: n.label,
         app: n.app,
         function: n.type,
+        type: n.type,
+        nodeType: n.type,
         parameters,
         outputs: n.outputs || [],
         auth,
