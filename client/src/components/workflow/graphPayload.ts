@@ -94,7 +94,12 @@ export const serializeGraphPayload = ({
       node.data?.nodeType,
       node.nodeType as string | undefined,
       typeof node.type === 'string' ? node.type : undefined,
-      sanitizedData.type
+      sanitizedData.type,
+      node.data?.type,
+      sanitizedData.function,
+      node.data?.function,
+      sanitizedData.operation,
+      node.data?.operation
     ];
     const canonicalType = candidateTypes.find((value) => typeof value === 'string' && value.includes('.'))
       || candidateTypes.find((value) => typeof value === 'string' && value.trim().length > 0)
