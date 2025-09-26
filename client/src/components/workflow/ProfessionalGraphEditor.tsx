@@ -32,6 +32,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel';
 import { buildMetadataFromNode } from './metadata';
 import { normalizeWorkflowNode } from './graphSync';
+import { applyExecutionStateDefaults, sanitizeExecutionState, serializeGraphPayload } from './graphPayload';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
@@ -285,32 +286,6 @@ const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
   error: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.7)]'
 };
 
-const applyExecutionStateDefaults = (data: any = {}) => {
-  const base = (data && typeof data === 'object') ? { ...data } : {};
-  if (!('executionStatus' in base)) {
-    base.executionStatus = 'idle';
-  }
-  if (!('executionError' in base)) {
-    base.executionError = null;
-  }
-  if (!('lastExecution' in base)) {
-    base.lastExecution = null;
-  }
-  return base;
-};
-
-const sanitizeExecutionState = (data: any = {}) => {
-  if (!data || typeof data !== 'object') {
-    return data;
-  }
-  const sanitized = { ...data };
-  delete sanitized.executionStatus;
-  delete sanitized.executionError;
-  delete sanitized.lastExecution;
-  delete sanitized.isRunning;
-  delete sanitized.isCompleted;
-  return sanitized;
-};
 
 const getAppIcon = (appName: string) => {
   return appIconsMap[appName.toLowerCase()] || appIconsMap.default;
@@ -1170,104 +1145,15 @@ const GraphEditorContent = () => {
   }, [setNodes]);
 
   const createGraphPayload = useCallback((workflowIdentifier: string) => {
-    const uniqueScopes = new Set<string>();
-    const nowIso = new Date().toISOString();
-    const metadataSource: Record<string, any> = (spec?.metadata && typeof spec.metadata === 'object')
-      ? spec.metadata
-      : {};
-    const metadataCreatedAt =
-      (typeof metadataSource.createdAt === 'string' && metadataSource.createdAt) ||
-      (typeof metadataSource.created_at === 'string' && metadataSource.created_at) ||
-      nowIso;
-    const metadataVersion =
-      (typeof metadataSource.version === 'string' && metadataSource.version.trim().length > 0)
-        ? metadataSource.version.trim()
-        : '1.0.0';
-
-    const serializedNodes = nodes.map((node, index) => {
-      const baseData = applyExecutionStateDefaults(node.data || {});
-      const sanitizedData = sanitizeExecutionState(baseData);
-      const params = sanitizedData.parameters ?? sanitizedData.params ?? baseData.parameters ?? {};
-      sanitizedData.parameters = params;
-      sanitizedData.params = params;
-
-      if (Array.isArray(sanitizedData.requiredScopes)) {
-        sanitizedData.requiredScopes.forEach((scope: string) => uniqueScopes.add(scope));
-      }
-
-      const candidateTypes: Array<string | undefined> = [
-        sanitizedData.nodeType,
-        node.data?.nodeType,
-        node.nodeType as string | undefined,
-        typeof node.type === 'string' ? node.type : undefined,
-        sanitizedData.type
-      ];
-      const canonicalType = candidateTypes.find((value) => typeof value === 'string' && value.includes('.'))
-        || candidateTypes.find((value) => typeof value === 'string' && value.trim().length > 0)
-        || (sanitizedData.kind ? `${sanitizedData.kind}.custom` : 'action.custom');
-
-      if (sanitizedData) {
-        sanitizedData.nodeType = canonicalType;
-        sanitizedData.type = canonicalType;
-      }
-
-      const position = (node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number')
-        ? node.position
-        : { x: Number(node.position?.x) || 0, y: Number(node.position?.y) || 0 };
-
-      return {
-        id: String(node.id),
-        type: canonicalType,
-        nodeType: canonicalType,
-        label: sanitizedData.label || node.data?.label || `Node ${index + 1}`,
-        params,
-        data: sanitizedData,
-        app: sanitizedData.app || node.data?.app,
-        position,
-      };
+    const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? spec.metadata : undefined;
+    return serializeGraphPayload({
+      nodes,
+      edges,
+      workflowIdentifier,
+      specName: spec?.name,
+      specVersion: spec?.version,
+      metadata,
     });
-
-    const serializedEdges = edges
-      .filter((edge) => edge.source && edge.target)
-      .map((edge, index) => {
-        const source = String(edge.source);
-        const target = String(edge.target);
-        const baseData = edge.data ?? {};
-        const edgeId =
-          typeof edge.id === 'string' && edge.id.trim().length > 0
-            ? edge.id
-            : `edge-${index}-${source}-${target}`;
-
-        return {
-          id: edgeId,
-          source,
-          target,
-          from: source,
-          to: target,
-          label: edge.label || baseData.label || '',
-          dataType: baseData.dataType || 'default',
-          sourceHandle: edge.sourceHandle ?? baseData.sourceHandle,
-          targetHandle: edge.targetHandle ?? baseData.targetHandle,
-          data: baseData,
-        };
-      });
-
-    return {
-      id: String(workflowIdentifier),
-      name: spec?.name || 'Graph Editor Workflow',
-      version: typeof spec?.version === 'number' ? spec.version : 1,
-      nodes: serializedNodes,
-      edges: serializedEdges,
-      scopes: Array.from(uniqueScopes),
-      secrets: [],
-      metadata: {
-        ...metadataSource,
-        version: metadataVersion,
-        createdAt: metadataCreatedAt,
-        updatedAt: nowIso,
-        runPreview: true,
-      }
-    };
   }, [nodes, edges, spec]);
 
   // P1-8: Enhanced Graph Editor autoload robustness (scanner-safe version)
