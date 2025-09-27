@@ -80,11 +80,13 @@ import {
   BookOpen,
   MapPin,
   Calculator,
-  CheckCircle2
+  CheckCircle2,
+  Link
 } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { NodeConfigurationModal } from './NodeConfigurationModal';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -1098,6 +1100,13 @@ const GraphEditorContent = () => {
   const lastExecution = selectedNode?.data?.lastExecution;
   const [labelValue, setLabelValue] = useState<string>('');
   const [descValue, setDescValue] = useState<string>('');
+  // Node configuration modal state
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configFunctions, setConfigFunctions] = useState<any[]>([]);
+  const [configConnections, setConfigConnections] = useState<any[]>([]);
+  const [configOAuthProviders, setConfigOAuthProviders] = useState<any[]>([]);
+  const [configNodeData, setConfigNodeData] = useState<any | null>(null);
+  const [configLoading, setConfigLoading] = useState(false);
 
   useEffect(() => {
     setLabelValue(selectedNode?.data?.label || '');
@@ -1126,6 +1135,119 @@ const GraphEditorContent = () => {
       })
     );
   }, [setNodes]);
+
+  // Helper to normalize app name used by APIs
+  const normalizeAppName = (raw?: string): string => {
+    if (!raw) return '';
+    const v = String(raw).toLowerCase();
+    // common aliases
+    if (v.includes('gmail')) return 'gmail';
+    if (v.includes('sheet')) return 'google-sheets';
+    if (v.includes('slack')) return 'slack';
+    if (v.includes('notion')) return 'notion';
+    if (v.includes('airtable')) return 'airtable';
+    if (v.includes('shopify')) return 'shopify';
+    return v;
+  };
+
+  const openNodeConfigModal = async (node: any) => {
+    try {
+      setConfigLoading(true);
+      const appName = normalizeAppName(node?.data?.app || node?.data?.application || '');
+      const role = String(node?.type || '').startsWith('trigger') ? 'trigger' : 'action';
+      const functionId = node?.data?.actionId || node?.data?.triggerId || node?.data?.function || node?.data?.operation;
+      const params = node?.data?.parameters || node?.data?.params || {};
+      const connectionId = node?.data?.connectionId || node?.data?.auth?.connectionId || params?.connectionId;
+
+      // Prepare node data for modal
+      setConfigNodeData({
+        id: String(node.id),
+        type: role,
+        appName: appName || 'gmail',
+        functionId: functionId,
+        label: node?.data?.label || node?.id,
+        parameters: params,
+        connectionId: connectionId
+      });
+
+      // Fetch functions for app
+      let funcs: any[] = [];
+      if (appName) {
+        try {
+          const res = await fetch(`/api/functions/${encodeURIComponent(appName)}`);
+          const j = await res.json();
+          funcs = j?.data?.functions || j?.functions || [];
+        } catch {}
+      }
+      setConfigFunctions(funcs);
+
+      // Fetch user connections (optional, requires auth)
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/connections', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+        const j = await res.json().catch(() => ({}));
+        const list = j?.connections || [];
+        setConfigConnections(Array.isArray(list) ? list : []);
+      } catch {
+        setConfigConnections([]);
+      }
+
+      // Fetch OAuth providers (public)
+      try {
+        const res = await fetch('/api/oauth/providers');
+        const j = await res.json().catch(() => ({}));
+        const list = j?.data?.providers || j?.providers || [];
+        setConfigOAuthProviders(Array.isArray(list) ? list : []);
+      } catch {
+        setConfigOAuthProviders([]);
+      }
+
+      setConfigOpen(true);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const handleNodeConfigSave = (updated: any) => {
+    // Persist selected function, connectionId, and parameters back into node data
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (String(n.id) !== String(updated.id)) return n;
+        const baseData: any = { ...(n.data || {}) };
+        const params: any = { ...(baseData.parameters || baseData.params || {}) };
+
+        if (updated.functionId) {
+          baseData.function = updated.functionId;
+          baseData.operation = updated.functionId;
+          // preserve original actionId/triggerId for display if present
+          if ((updated.type || '').toLowerCase() === 'action') baseData.actionId = updated.functionId;
+          if ((updated.type || '').toLowerCase() === 'trigger') baseData.triggerId = updated.functionId;
+        }
+
+        if (updated.parameters && typeof updated.parameters === 'object') {
+          Object.assign(params, updated.parameters);
+        }
+
+        baseData.parameters = params;
+        baseData.params = params;
+
+        // Connection propagation
+        const cid = updated.connectionId || params.connectionId;
+        baseData.connectionId = cid || undefined;
+        baseData.auth = { ...(baseData.auth || {}), connectionId: cid || undefined };
+        params.connectionId = cid || undefined;
+
+        // Label update
+        if (updated.label) baseData.label = updated.label;
+
+        return { ...n, data: baseData } as any;
+      })
+    );
+    setConfigOpen(false);
+    toast.success('Node configured');
+  };
 
   const resetExecutionHighlights = useCallback(() => {
     setNodes((nds) =>
@@ -1985,6 +2107,86 @@ const GraphEditorContent = () => {
                   rows={3}
                 />
               </div>
+
+              {/* Authentication (Connection / Inline Credentials) */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <label className="text-sm font-semibold text-slate-700 mb-3 block flex items-center gap-2">
+                  <Link className="w-4 h-4 text-slate-500" />
+                  Authentication
+                </label>
+
+                {/* Connection ID */}
+                <div className="space-y-1 mb-3">
+                  <div className="text-xs font-medium text-slate-600">Connection ID (optional)</div>
+                  <Input
+                    value={String((selectedNode?.data as any)?.connectionId || '')}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setNodes((nds) => nds.map((n) => {
+                        if (n.id !== selectedNode?.id) return n;
+                        const baseData: any = { ...(n.data || {}) };
+                        const params: any = { ...(baseData.parameters || baseData.params || {}) };
+                        baseData.connectionId = next || undefined;
+                        baseData.auth = { ...(baseData.auth || {}), connectionId: next || undefined };
+                        params.connectionId = next || undefined;
+                        return { ...n, data: { ...baseData, parameters: params, params } } as any;
+                      }));
+                    }}
+                    placeholder="e.g. conn_abc123 (if using saved connection)"
+                    className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+                  />
+                  <div className="text-[11px] text-slate-500">
+                    If set, the server will use your saved connection. Leave empty to use inline credentials below.
+                  </div>
+                </div>
+
+                {/* Inline credentials JSON */}
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-slate-600">Inline credentials JSON (for quick tests)</div>
+                  <Textarea
+                    value={() => {
+                      try {
+                        const creds = (selectedNode?.data as any)?.credentials ?? (selectedNode?.data as any)?.parameters?.credentials;
+                        return creds ? JSON.stringify(creds, null, 2) : '';
+                      } catch {
+                        return '';
+                      }
+                    }()}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      // Keep text in place but only commit on blur/valid JSON to avoid thrash
+                      (void text);
+                    }}
+                    onBlur={(e) => {
+                      const text = e.target.value.trim();
+                      setNodes((nds) => nds.map((n) => {
+                        if (n.id !== selectedNode?.id) return n;
+                        const baseData: any = { ...(n.data || {}) };
+                        const params: any = { ...(baseData.parameters || baseData.params || {}) };
+                        if (!text) {
+                          delete baseData.credentials;
+                          if (params.credentials !== undefined) delete params.credentials;
+                          return { ...n, data: { ...baseData, parameters: params, params } } as any;
+                        }
+                        try {
+                          const parsed = JSON.parse(text);
+                          baseData.credentials = parsed;
+                          params.credentials = parsed;
+                          return { ...n, data: { ...baseData, parameters: params, params } } as any;
+                        } catch {
+                          return n;
+                        }
+                      }));
+                    }}
+                    placeholder='{"accessToken":"..."} or {"apiKey":"..."}'
+                    className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none"
+                    rows={6}
+                  />
+                  <div className="text-[11px] text-slate-500">
+                    Stored only in this workflow preview. The server will prefer inline credentials when provided.
+                  </div>
+                </div>
+              </div>
             </div>
             
             {/* ChatGPT Schema Fix: Smart Parameters Panel */}
@@ -1999,6 +2201,21 @@ const GraphEditorContent = () => {
                 Actions
               </label>
               <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (selectedNode) openNodeConfigModal(selectedNode);
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="w-full bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 hover:border-blue-400 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Configure Node
+                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -2048,6 +2265,26 @@ const GraphEditorContent = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* Node Configuration Modal */}
+      {configOpen && selectedNode && (
+        <NodeConfigurationModal
+          isOpen={configOpen}
+          onClose={() => setConfigOpen(false)}
+          nodeData={configNodeData || {
+            id: String(selectedNode.id),
+            type: String(selectedNode.type).startsWith('trigger') ? 'trigger' : 'action',
+            appName: normalizeAppName(selectedNode?.data?.app || ''),
+            functionId: selectedNode?.data?.actionId || selectedNode?.data?.triggerId || selectedNode?.data?.function || selectedNode?.data?.operation,
+            label: selectedNode?.data?.label || String(selectedNode.id),
+            parameters: selectedNode?.data?.parameters || selectedNode?.data?.params || {},
+            connectionId: selectedNode?.data?.connectionId || selectedNode?.data?.auth?.connectionId || (selectedNode?.data?.parameters || {}).connectionId
+          }}
+          onSave={handleNodeConfigSave}
+          availableFunctions={configFunctions}
+          connections={configConnections}
+          oauthProviders={configOAuthProviders}
+        />
       )}
     </div>
   );
