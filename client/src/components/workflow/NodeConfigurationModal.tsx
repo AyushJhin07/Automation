@@ -460,13 +460,23 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
           {/* Parameters Tab */}
           <TabsContent value="parameters" className="mt-4">
             {selectedFunction ? (
-              <DynamicParameterForm
-                functionDef={selectedFunction}
-                initialValues={parameterValues}
-                onSubmit={handleParameterSubmit}
-                onCancel={onClose}
-                isLoading={isLoading}
-              />
+              <>
+                <DynamicParameterForm
+                  app={nodeData.appName}
+                  operation={selectedFunction.id}
+                  parameters={parameterValues}
+                  onChange={(p) => setParameterValues(p)}
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="outline" onClick={onClose}>Cancel</Button>
+                  <Button
+                    onClick={() => handleParameterSubmit(parameterValues)}
+                    disabled={!selectedConnection}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </>
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
