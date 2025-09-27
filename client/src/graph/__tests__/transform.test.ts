@@ -29,6 +29,12 @@ const spec = {
 
 const { nodes, edges } = specToReactFlow(spec);
 
+const reactNode = nodes[0];
+
+assert.equal(reactNode.data.connectionId, 'conn-123');
+assert.equal(reactNode.data.auth?.connectionId, 'conn-123');
+assert.equal(reactNode.data.parameters.connectionId, 'conn-123');
+
 const payload = serializeGraphPayload({
   nodes,
   edges,
@@ -98,4 +104,32 @@ assert.equal(actionNode?.type, 'action.example.run');
 assert.equal(actionNode?.nodeType, 'action.example.run');
 assert.equal(actionNode?.data?.type, 'action.example.run');
 assert.equal(actionNode?.data?.nodeType, 'action.example.run');
+
+const inputsOnlySpec = {
+  version: '1.0' as const,
+  name: 'Inputs Carry Connection',
+  triggers: [],
+  nodes: [
+    {
+      id: 'node-2',
+      type: 'action.example',
+      app: 'example-app',
+      label: 'Example Node With Params',
+      inputs: {
+        connectionId: 'conn-from-inputs',
+        foo: 'baz'
+      },
+      outputs: []
+    }
+  ],
+  edges: []
+};
+
+const inputsOnlyGraph = specToReactFlow(inputsOnlySpec);
+
+const inputsOnlyNode = inputsOnlyGraph.nodes[0];
+
+assert.equal(inputsOnlyNode.data.parameters.connectionId, 'conn-from-inputs');
+assert.equal(inputsOnlyNode.data.connectionId, 'conn-from-inputs');
+assert.equal(inputsOnlyNode.data.auth?.connectionId, undefined);
 
