@@ -1182,25 +1182,26 @@ const GraphEditorContent = () => {
   };
 
   const openNodeConfigModal = async (node: any) => {
+    // Open immediately for snappy UX; load data in background
+    const appName = normalizeAppName(node?.data?.app || node?.data?.application || '');
+    const role = String(node?.type || '').startsWith('trigger') ? 'trigger' : 'action';
+    const functionId = node?.data?.actionId || node?.data?.triggerId || node?.data?.function || node?.data?.operation;
+    const params = node?.data?.parameters || node?.data?.params || {};
+    const connectionId = node?.data?.connectionId || node?.data?.auth?.connectionId || params?.connectionId;
+
+    setConfigNodeData({
+      id: String(node.id),
+      type: role,
+      appName: appName || 'gmail',
+      functionId: functionId,
+      label: node?.data?.label || node?.id,
+      parameters: params,
+      connectionId: connectionId
+    });
+    setConfigOpen(true);
+
     try {
       setConfigLoading(true);
-      const appName = normalizeAppName(node?.data?.app || node?.data?.application || '');
-      const role = String(node?.type || '').startsWith('trigger') ? 'trigger' : 'action';
-      const functionId = node?.data?.actionId || node?.data?.triggerId || node?.data?.function || node?.data?.operation;
-      const params = node?.data?.parameters || node?.data?.params || {};
-      const connectionId = node?.data?.connectionId || node?.data?.auth?.connectionId || params?.connectionId;
-
-      // Prepare node data for modal
-      setConfigNodeData({
-        id: String(node.id),
-        type: role,
-        appName: appName || 'gmail',
-        functionId: functionId,
-        label: node?.data?.label || node?.id,
-        parameters: params,
-        connectionId: connectionId
-      });
-
       // Fetch functions for app
       let funcs: any[] = [];
       if (appName) {
@@ -1234,8 +1235,6 @@ const GraphEditorContent = () => {
       } catch {
         setConfigOAuthProviders([]);
       }
-
-      setConfigOpen(true);
     } finally {
       setConfigLoading(false);
     }
