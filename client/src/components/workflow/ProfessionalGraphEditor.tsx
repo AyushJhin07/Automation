@@ -2144,14 +2144,14 @@ const GraphEditorContent = () => {
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-slate-600">Inline credentials JSON (for quick tests)</div>
                   <Textarea
-                    value={() => {
+                    value={(function () {
                       try {
                         const creds = (selectedNode?.data as any)?.credentials ?? (selectedNode?.data as any)?.parameters?.credentials;
                         return creds ? JSON.stringify(creds, null, 2) : '';
                       } catch {
                         return '';
                       }
-                    }()}
+                    })()}
                     onChange={(e) => {
                       const text = e.target.value;
                       // Keep text in place but only commit on blur/valid JSON to avoid thrash
