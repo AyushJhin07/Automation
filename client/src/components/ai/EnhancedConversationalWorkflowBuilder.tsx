@@ -571,14 +571,45 @@ You can try:
         name: `Automation: ${promptValue.substring(0, 60)}`,
         description: promptValue,
         triggers: [],
-        nodes: (graph.nodes || []).map((n: any) => ({
-          id: n.id,
-          type: n.type || n.data?.function || 'core.noop',
-          app: n.app || n.data?.app || 'built_in',
-          label: n.label || n.data?.label || n.id,
-          inputs: n.data?.parameters || n.parameters || {},
-          outputs: n.outputs || []
-        })),
+        nodes: (graph.nodes || []).map((n: any) => {
+          const parameters = {
+            ...(typeof n.data?.parameters === 'object' ? n.data.parameters : {}),
+            ...(typeof n.parameters === 'object' ? n.parameters : {})
+          };
+
+          const authSource = (n.auth || n.data?.auth) ?? undefined;
+          const connectionId =
+            n.connectionId ||
+            n.data?.connectionId ||
+            authSource?.connectionId ||
+            parameters.connectionId ||
+            n.parameters?.connectionId ||
+            n.data?.parameters?.connectionId;
+
+          let auth = authSource ? { ...authSource } : undefined;
+
+          if (connectionId) {
+            if (parameters.connectionId === undefined) {
+              parameters.connectionId = connectionId;
+            }
+
+            if (!auth) {
+              auth = { connectionId };
+            } else if (!auth.connectionId) {
+              auth = { ...auth, connectionId };
+            }
+          }
+
+          return {
+            id: n.id,
+            type: n.type || n.data?.function || 'core.noop',
+            app: n.app || n.data?.app || 'built_in',
+            label: n.label || n.data?.label || n.id,
+            inputs: parameters,
+            outputs: n.outputs || [],
+            auth
+          };
+        }),
         edges: (graph.edges || graph.connections || []).map((e: any) => ({
           from: { nodeId: e.source || e.from, port: e.sourceHandle || e.dataType || 'out' },
           to: { nodeId: e.target || e.to, port: e.targetHandle || 'in' }

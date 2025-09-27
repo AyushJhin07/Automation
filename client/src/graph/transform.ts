@@ -13,7 +13,7 @@ export function specToReactFlow(spec: AutomationSpec) {
 
     const parameters = { ...(n.inputs || {}) };
     const auth = n.auth ? { ...n.auth } : undefined;
-    const connectionId = auth?.connectionId;
+    const connectionId = auth?.connectionId ?? parameters.connectionId;
 
     if (connectionId && parameters.connectionId === undefined) {
       parameters.connectionId = connectionId;
