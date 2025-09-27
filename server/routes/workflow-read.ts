@@ -310,6 +310,20 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Workflow graph is empty' });
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const firstNode = Array.isArray(graphSource.nodes) ? graphSource.nodes[0] : null;
+        console.log('🧩 Workflow execution debug: node sample', firstNode ? {
+          id: firstNode.id,
+          app: firstNode.app,
+          connectionId: firstNode.connectionId || firstNode?.data?.connectionId || firstNode?.params?.connectionId,
+          hasInlineCredentials: Boolean(firstNode?.data?.credentials || firstNode?.params?.credentials)
+        } : null);
+      } catch (debugError) {
+        console.warn('Workflow debug logging failed:', debugError);
+      }
+    }
+
     const compilation = productionGraphCompiler.compile(graphSource, {
       includeLogging: true,
       includeErrorHandling: true,

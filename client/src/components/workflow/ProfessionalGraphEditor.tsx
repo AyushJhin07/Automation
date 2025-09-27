@@ -1100,6 +1100,7 @@ const GraphEditorContent = () => {
   const lastExecution = selectedNode?.data?.lastExecution;
   const [labelValue, setLabelValue] = useState<string>('');
   const [descValue, setDescValue] = useState<string>('');
+  const [credentialsDraft, setCredentialsDraft] = useState<string>('');
   // Node configuration modal state
   const [configOpen, setConfigOpen] = useState(false);
   const [configFunctions, setConfigFunctions] = useState<any[]>([]);
@@ -1112,6 +1113,36 @@ const GraphEditorContent = () => {
     setLabelValue(selectedNode?.data?.label || '');
     setDescValue(selectedNode?.data?.description || '');
   }, [selectedNodeId, selectedNode?.data?.label, selectedNode?.data?.description]);
+
+  useEffect(() => {
+    if (!selectedNode) {
+      setCredentialsDraft('');
+      return;
+    }
+    try {
+      const inlineCreds = (selectedNode.data?.credentials ?? selectedNode.data?.parameters?.credentials) as any;
+      if (inlineCreds && typeof inlineCreds === 'object') {
+        setCredentialsDraft(JSON.stringify(inlineCreds, null, 2));
+      } else {
+        setCredentialsDraft('');
+      }
+    } catch {
+      setCredentialsDraft('');
+    }
+  }, [selectedNode]);
+
+  const nodeRequiresConnection = useCallback((node: any) => {
+    if (!node) return false;
+    const role = String(node.type || node?.data?.role || '').toLowerCase();
+    if (role.includes('trigger') || role.includes('transform')) {
+      return false;
+    }
+    const data: any = node.data || {};
+    const params: any = data.parameters || data.params || {};
+    const connectionId = data.connectionId || data.auth?.connectionId || params.connectionId;
+    const hasInlineCredentials = Boolean(data.credentials || params.credentials);
+    return !connectionId && !hasInlineCredentials;
+  }, []);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
@@ -1610,6 +1641,16 @@ const GraphEditorContent = () => {
   
   const onRunWorkflow = useCallback(async () => {
     if (nodes.length === 0) {
+      return;
+    }
+
+    const missingConnectionNode = nodes.find((node) => nodeRequiresConnection(node));
+    if (missingConnectionNode) {
+      const missingLabel = missingConnectionNode.data?.label || missingConnectionNode.id;
+      const message = `Connect an account for "${missingLabel}" before running`;
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      await openNodeConfigModal(missingConnectionNode);
       return;
     }
 
@@ -2142,41 +2183,66 @@ const GraphEditorContent = () => {
 
                 {/* Inline credentials JSON */}
                 <div className="space-y-1">
-                  <div className="text-xs font-medium text-slate-600">Inline credentials JSON (for quick tests)</div>
+              <div className="text-xs font-medium text-slate-600">Inline credentials JSON (for quick tests)</div>
+                  {selectedNode && nodeRequiresConnection(selectedNode) && (
+                    <Alert className="bg-amber-50 border-amber-200 text-amber-900">
+                      <AlertDescription className="flex flex-col gap-2">
+                        This step needs a connected account. Use the button below to connect one—it’s the easiest option for non-technical users.
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (selectedNode) openNodeConfigModal(selectedNode);
+                          }}
+                          className="self-start bg-amber-500 text-white hover:bg-amber-600"
+                        >
+                          Connect Account
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <Textarea
-                    value={(function () {
-                      try {
-                        const creds = (selectedNode?.data as any)?.credentials ?? (selectedNode?.data as any)?.parameters?.credentials;
-                        return creds ? JSON.stringify(creds, null, 2) : '';
-                      } catch {
-                        return '';
-                      }
-                    })()}
+                    value={credentialsDraft}
                     onChange={(e) => {
-                      const text = e.target.value;
-                      // Keep text in place but only commit on blur/valid JSON to avoid thrash
-                      (void text);
+                      setCredentialsDraft(e.target.value);
                     }}
-                    onBlur={(e) => {
-                      const text = e.target.value.trim();
-                      setNodes((nds) => nds.map((n) => {
-                        if (n.id !== selectedNode?.id) return n;
-                        const baseData: any = { ...(n.data || {}) };
-                        const params: any = { ...(baseData.parameters || baseData.params || {}) };
-                        if (!text) {
-                          delete baseData.credentials;
-                          if (params.credentials !== undefined) delete params.credentials;
-                          return { ...n, data: { ...baseData, parameters: params, params } } as any;
-                        }
-                        try {
-                          const parsed = JSON.parse(text);
-                          baseData.credentials = parsed;
-                          params.credentials = parsed;
-                          return { ...n, data: { ...baseData, parameters: params, params } } as any;
-                        } catch {
-                          return n;
-                        }
-                      }));
+                    onBlur={() => {
+                      const text = credentialsDraft.trim();
+                      if (!selectedNode) return;
+
+                      if (!text) {
+                        setNodes((nds) =>
+                          nds.map((n) => {
+                            if (n.id !== selectedNode.id) return n;
+                            const baseData: any = { ...(n.data || {}) };
+                            const params: any = { ...(baseData.parameters || baseData.params || {}) };
+                            delete baseData.credentials;
+                            if (params.credentials !== undefined) delete params.credentials;
+                            return { ...n, data: { ...baseData, parameters: params, params } } as any;
+                          })
+                        );
+                        setCredentialsDraft('');
+                        return;
+                      }
+
+                      try {
+                        const parsed = JSON.parse(text);
+                        setNodes((nds) =>
+                          nds.map((n) => {
+                            if (n.id !== selectedNode.id) return n;
+                            const baseData: any = { ...(n.data || {}) };
+                            const params: any = { ...(baseData.parameters || baseData.params || {}) };
+                            baseData.credentials = parsed;
+                            params.credentials = parsed;
+                            return { ...n, data: { ...baseData, parameters: params, params } } as any;
+                          })
+                        );
+                        setCredentialsDraft(JSON.stringify(parsed, null, 2));
+                        toast.success('Inline credentials saved');
+                      } catch (err) {
+                        toast.error('Invalid JSON. Please enter valid credentials.');
+                      }
                     }}
                     placeholder='{"accessToken":"..."} or {"apiKey":"..."}'
                     className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 transition-colors resize-none"
