@@ -702,7 +702,7 @@ export class ConnectorRegistry {
     const categories: Record<string, any> = {};
 
     for (const [appId, entry] of this.registry.entries()) {
-      if (entry.availability !== 'stable') {
+      if (entry.availability === 'disabled') {
         continue;
       }
       const def = entry.definition;
