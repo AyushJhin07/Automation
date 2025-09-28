@@ -7,6 +7,7 @@ import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
+import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
 import { getErrorMessage } from '../types/common';
 
 export interface IntegrationConfig {
@@ -36,23 +37,7 @@ export interface FunctionExecutionResult {
 
 export class IntegrationManager {
   private clients: Map<string, BaseAPIClient> = new Map();
-  private supportedApps = new Set([
-    'gmail',
-    'shopify',
-    'stripe',
-    'mailchimp',
-    'twilio',
-    'airtable',
-    'dropbox',
-    'github',
-    'slack',
-    'notion',
-    'trello',
-    'asana',
-    'hubspot',
-    'salesforce',
-    'zoom'
-  ]);
+  private supportedApps = new Set(IMPLEMENTED_CONNECTOR_IDS);
 
   private buildClientKey(appKey: string, connectionId?: string): string {
     return connectionId ? `${appKey}::${connectionId}` : appKey;
@@ -77,7 +62,7 @@ export class IntegrationManager {
       if (!client) {
         return {
           success: false,
-          error: `Failed to create API client for ${config.appName}`
+          error: `Application ${config.appName} is not yet implemented`
         };
       }
 
@@ -156,7 +141,7 @@ export class IntegrationManager {
       if (!client) {
         return {
           success: false,
-          error: `No client available for ${params.appName}`,
+          error: `Application ${params.appName} is not yet implemented`,
           appName: params.appName,
           functionId: params.functionId,
           executionTime: Date.now() - startTime

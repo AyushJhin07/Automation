@@ -5,6 +5,7 @@
   "category": "Communication",
   "icon": "mail",
   "color": "#EA4335",
+  "availability": "stable",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
