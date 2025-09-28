@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { resolveAppSchemaKey, resolveSchemaOperationKey } from '@shared/appSchemaAlias';
 import { APP_PARAMETER_SCHEMAS, getParameterSchema, validateParameters } from '../schemas/app-parameter-schemas.js';
 
 const router = Router();
@@ -28,8 +29,9 @@ router.get('/schemas', (req, res) => {
 router.get('/schemas/:app', (req, res) => {
   try {
     const { app } = req.params;
-    const schema = APP_PARAMETER_SCHEMAS[app];
-    
+    const resolvedApp = resolveAppSchemaKey(app) ?? app;
+    const schema = APP_PARAMETER_SCHEMAS[resolvedApp];
+
     if (!schema) {
       return res.status(404).json({
         success: false,
@@ -39,7 +41,8 @@ router.get('/schemas/:app', (req, res) => {
 
     res.json({
       success: true,
-      app,
+      app: resolvedApp,
+      requestedApp: app,
       schema,
       operations: Object.keys(schema)
     });
@@ -56,8 +59,10 @@ router.get('/schemas/:app', (req, res) => {
 router.get('/schemas/:app/:operation', (req, res) => {
   try {
     const { app, operation } = req.params;
-    const schema = getParameterSchema(app, operation);
-    
+    const resolvedApp = resolveAppSchemaKey(app) ?? app;
+    const resolvedOperation = resolveSchemaOperationKey(operation);
+    const schema = getParameterSchema(resolvedApp, resolvedOperation);
+
     if (!schema) {
       return res.status(404).json({
         success: false,
@@ -67,8 +72,10 @@ router.get('/schemas/:app/:operation', (req, res) => {
 
     res.json({
       success: true,
-      app,
-      operation,
+      app: resolvedApp,
+      requestedApp: app,
+      operation: resolvedOperation,
+      requestedOperation: operation,
       parameters: schema
     });
   } catch (error) {
@@ -84,6 +91,8 @@ router.get('/schemas/:app/:operation', (req, res) => {
 router.post('/schemas/:app/:operation/validate', (req, res) => {
   try {
     const { app, operation } = req.params;
+    const resolvedApp = resolveAppSchemaKey(app) ?? app;
+    const resolvedOperation = resolveSchemaOperationKey(operation);
     const { parameters } = req.body;
 
     if (!parameters || typeof parameters !== 'object') {
@@ -93,12 +102,14 @@ router.post('/schemas/:app/:operation/validate', (req, res) => {
       });
     }
 
-    const validation = validateParameters(app, operation, parameters);
+    const validation = validateParameters(resolvedApp, resolvedOperation, parameters);
 
     res.json({
       success: true,
-      app,
-      operation,
+      app: resolvedApp,
+      requestedApp: app,
+      operation: resolvedOperation,
+      requestedOperation: operation,
       validation: {
         isValid: validation.isValid,
         errors: validation.errors,

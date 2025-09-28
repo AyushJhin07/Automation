@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { buildSchemaRequestPaths } from '@shared/appSchemaAlias';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
@@ -64,7 +65,8 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
     const loadSchema = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}`);
+        const { schemaPath } = buildSchemaRequestPaths(app, operation);
+        const response = await fetch(schemaPath);
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -87,7 +89,8 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
 
     setValidationStatus('validating');
     try {
-      const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}/validate`, {
+      const { validationPath } = buildSchemaRequestPaths(app, operation);
+      const response = await fetch(validationPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parameters })
