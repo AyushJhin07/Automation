@@ -3,7 +3,9 @@ export const IMPLEMENTED_CONNECTOR_IDS = [
   'gmail',
   'notion',
   'shopify',
-  'slack'
+  'slack',
+  'sheets',
+  'time'
 ] as const;
 
 export const IMPLEMENTED_CONNECTOR_SET = new Set<string>(IMPLEMENTED_CONNECTOR_IDS);
