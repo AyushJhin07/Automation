@@ -9,6 +9,7 @@ import { useReactFlow, useStore } from "reactflow";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { buildMetadataFromNode } from "./metadata";
+import type { EvaluatedValue } from "../../../../shared/nodeGraphSchema";
 
 export type JSONSchema = {
   type?: string;
@@ -64,6 +65,113 @@ const uniqueStrings = (values: Array<string | undefined>): string[] => {
     }
   });
   return Array.from(set);
+};
+
+type LLMEvaluatedValue = Extract<EvaluatedValue, { mode: "llm" }>;
+
+const describeUpstreamForPrompt = (upstreamNodes: UpstreamNodeSummary[]): string => {
+  const labels = upstreamNodes
+    .map((node) => (node.data?.label || node.id || "").toString().trim())
+    .filter((label) => label.length > 0);
+
+  if (labels.length === 0) {
+    return "the connected upstream steps";
+  }
+
+  if (labels.length === 1) {
+    return `the "${labels[0]}" step`;
+  }
+
+  if (labels.length === 2) {
+    return `the "${labels[0]}" and "${labels[1]}" steps`;
+  }
+
+  const head = labels.slice(0, -1).map((label) => `"${label}"`).join(", ");
+  const tail = labels[labels.length - 1];
+  return `the ${head}, and "${tail}" steps`;
+};
+
+const buildDefaultLLMPrompt = (
+  fieldName: string,
+  fieldDef: JSONSchema,
+  upstreamNodes: UpstreamNodeSummary[]
+): string => {
+  const title = fieldDef?.title || fieldName;
+  const description = fieldDef?.description?.trim();
+  const typeHint = fieldDef?.type ? `Expected type: ${fieldDef.type}.` : "";
+  const upstreamHint = upstreamNodes.length
+    ? `Review data from ${describeUpstreamForPrompt(upstreamNodes)} to find the best match.`
+    : "Review available context to propose an appropriate value.";
+
+  return [
+    `You are mapping the "${title}" parameter for the current workflow step.`,
+    upstreamHint,
+    description ? `Field details: ${description}.` : "",
+    typeHint,
+    "Return only the selected value or field path without additional commentary."
+  ]
+    .filter(Boolean)
+    .join(" ");
+};
+
+export const createDefaultLLMValue = (
+  fieldName: string,
+  fieldDef: JSONSchema,
+  upstreamNodes: UpstreamNodeSummary[]
+): LLMEvaluatedValue => {
+  const prompt = buildDefaultLLMPrompt(fieldName, fieldDef, upstreamNodes);
+  const defaultModel: LLMEvaluatedValue["model"] = "openai:gpt-4o-mini";
+  const defaultProvider: LLMEvaluatedValue["provider"] = "openai";
+
+  const base: LLMEvaluatedValue = {
+    mode: "llm",
+    provider: defaultProvider,
+    model: defaultModel,
+    prompt,
+    temperature: 0.2,
+    maxTokens: 512,
+    cacheTtlSec: 300
+  };
+
+  if (fieldDef) {
+    base.jsonSchema = fieldDef;
+  }
+
+  return base;
+};
+
+export const mergeLLMValueWithDefaults = (
+  value: any,
+  fallback: LLMEvaluatedValue
+): LLMEvaluatedValue => {
+  const partial =
+    value && typeof value === "object" && value.mode === "llm"
+      ? (value as Partial<LLMEvaluatedValue>)
+      : {};
+
+  const merged: LLMEvaluatedValue = {
+    ...fallback,
+    ...partial,
+    prompt:
+      typeof partial.prompt === "string" && partial.prompt.trim().length > 0
+        ? partial.prompt
+        : fallback.prompt,
+    provider: partial.provider ?? fallback.provider,
+    model: partial.model ?? fallback.model,
+    temperature:
+      typeof partial.temperature === "number" ? partial.temperature : fallback.temperature,
+    maxTokens:
+      typeof partial.maxTokens === "number" ? partial.maxTokens : fallback.maxTokens,
+    cacheTtlSec:
+      typeof partial.cacheTtlSec === "number" ? partial.cacheTtlSec : fallback.cacheTtlSec,
+    jsonSchema: partial.jsonSchema ?? fallback.jsonSchema
+  };
+
+  if (partial.system !== undefined) {
+    merged.system = partial.system;
+  }
+
+  return merged;
 };
 
 const gatherMetadata = (node: UpstreamNodeSummary): NodeMetadataSummary => {
@@ -1062,7 +1170,7 @@ export function SmartParametersPanel() {
         return { mode: 'dynamic', staticValue: '', refNodeId: value.nodeId, refPath: value.path };
       }
       if (value.mode === 'llm') {
-        return { mode: 'llm', staticValue: '' };
+        return { mode: 'llm', staticValue: value };
       }
       if (value.mode === 'static') {
         return { mode: 'static', staticValue: value.value };
@@ -1092,7 +1200,23 @@ export function SmartParametersPanel() {
     }, [def, name, sheetMetadata?.tabs]);
 
     const rawValue = paramsDraft?.[name] ?? fieldDef?.default ?? defaults?.[name] ?? '';
-    const { mode, staticValue, refNodeId, refPath } = deriveFieldState(rawValue);
+    const llmDefaults = useMemo(
+      () => createDefaultLLMValue(name, fieldDef, upstreamNodes as UpstreamNodeSummary[]),
+      [name, fieldDef, upstreamNodes]
+    );
+    const llmValue = useMemo(() => {
+      if (isEvaluatedValue(rawValue) && rawValue.mode === 'llm') {
+        return mergeLLMValueWithDefaults(rawValue, llmDefaults);
+      }
+      return llmDefaults;
+    }, [rawValue, llmDefaults]);
+    const valueForDerivation = useMemo(() => {
+      if (isEvaluatedValue(rawValue) && rawValue.mode === 'llm') {
+        return llmValue;
+      }
+      return rawValue;
+    }, [rawValue, llmValue]);
+    const { mode, staticValue, refNodeId, refPath } = deriveFieldState(valueForDerivation);
     const isRequired = schema?.required?.includes(name) || false;
     const [localStatic, setLocalStatic] = useState<any>(staticValue ?? '');
     const upstreamIds = useMemo(() => upstreamNodes.map((n) => n.id).join('|'), [upstreamNodes]);
@@ -1100,6 +1224,9 @@ export function SmartParametersPanel() {
     const [localRefPath, setLocalRefPath] = useState<string>(refPath || '');
 
     useEffect(() => {
+      if (mode === 'llm') {
+        return;
+      }
       if (Array.isArray(staticValue)) {
         setLocalStatic(staticValue.join(','));
       } else if (typeof staticValue === 'object' && staticValue !== null) {
@@ -1137,8 +1264,7 @@ export function SmartParametersPanel() {
         setLocalRefPath('');
         setDynamicValue(name, firstNode, '');
       } else if (nextMode === 'llm') {
-        // LLM mode - no immediate value change, user needs to click "Map with AI"
-        // Keep current value as fallback
+        commitSingle(name, { ...llmValue });
       }
     };
 
