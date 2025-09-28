@@ -13,6 +13,8 @@ import {
   augmentSchemaWithSheetTabs,
   fetchSheetTabs,
   renderStaticFieldControl,
+  createDefaultLLMValue,
+  mergeLLMValueWithDefaults,
   type UpstreamNodeSummary,
   type JSONSchema
 } from "../SmartParametersPanel";
@@ -442,6 +444,36 @@ assert.ok(
     updatedPathsForSheet.includes("sheet"),
   "updated suggestions should include a sheet name quick pick"
 );
+
+// Ensure the AI Mapping mode placeholder keeps the LLM mode active so the UI can render the Map with AI button
+{
+  const fieldName = "recipient";
+  const fieldSchema: JSONSchema = {
+    type: "string",
+    title: "Recipient",
+    description: "Destination email address"
+  };
+  const llmDefaults = createDefaultLLMValue(fieldName, fieldSchema, upstreamNodes);
+  const placeholder = mergeLLMValueWithDefaults(
+    { mode: "ref", nodeId: upstreamNodes[0]!.id, path: "Email" },
+    llmDefaults
+  );
+
+  assert.equal(
+    placeholder.mode,
+    "llm",
+    "Switching to AI Mapping should yield an llm evaluated value"
+  );
+  assert.equal(
+    placeholder.provider,
+    "openai",
+    "LLM placeholder should target the default OpenAI provider"
+  );
+  assert.ok(
+    typeof placeholder.prompt === "string" && placeholder.prompt.includes("Recipient"),
+    "Default LLM prompt should reference the field name so the Map with AI button has context"
+  );
+}
 
 const paramSyncBase = {
   label: "Mailer",
