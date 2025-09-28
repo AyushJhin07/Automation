@@ -3,6 +3,7 @@
   "name": "Shopify",
   "category": "ecommerce",
   "description": "Shopify e-commerce platform integration with comprehensive store management capabilities",
+  "availability": "stable",
   "version": "1.3.0",
   "authentication": {
     "type": "oauth2",

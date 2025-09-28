@@ -553,7 +553,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasOAuth: entry.definition.authentication?.type === 'oauth2',
         hasWebhooks: entry.definition.triggers?.some(t => t.webhookSupport) || false,
         hasImplementation: entry.hasImplementation,
-        functionCount: entry.functionCount
+        functionCount: entry.functionCount,
+        availability: entry.availability
       }));
       
       // Apply filters
@@ -2127,7 +2128,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actionsCount: connector.actions?.length || 0,
           triggersCount: connector.triggers?.length || 0,
           hasOAuth: connector.authentication?.type === 'oauth2',
-          hasWebhooks: connector.triggers?.some(t => t.webhookSupport) || false
+          hasWebhooks: connector.triggers?.some(t => t.webhookSupport) || false,
+          availability: connector.availability,
+          hasImplementation: connector.hasImplementation
         })),
         total: connectors.length,
         responseTime: Date.now() - startTime
