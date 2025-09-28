@@ -415,13 +415,25 @@ export class WorkflowRuntimeService {
     return Object.keys(merged).length > 0 ? merged : undefined;
   }
 
+  /**
+   * Resolve credentials for a node by inspecting supported connection references.
+   * Serializers should populate one of the following locations when using stored connections:
+   * - node.data.auth.connectionId
+   * - node.data.connectionId
+   * - node.connectionId
+   * - node.params.connectionId
+   * - node.parameters.connectionId
+   * - node.data.parameters.connectionId
+   */
   private async resolveCredentials(node: any, userId?: string): Promise<CredentialResolution> {
     const inlineCredentials = this.extractInlineCredentials(node);
     const connectionId = this.selectString(
+      node?.data?.auth?.connectionId,
       node?.data?.connectionId,
       node?.connectionId,
       node?.params?.connectionId,
-      node?.parameters?.connectionId
+      node?.parameters?.connectionId,
+      node?.data?.parameters?.connectionId
     );
 
     if (inlineCredentials) {
