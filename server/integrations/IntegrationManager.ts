@@ -8,6 +8,7 @@ import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
 import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
 
 export interface IntegrationConfig {
@@ -261,7 +262,7 @@ export class IntegrationManager {
     switch (appKey) {
       case 'gmail':
         return new GmailAPIClient(credentials);
-      
+
       case 'shopify':
         if (!additionalConfig?.shopDomain) {
           throw new Error('Shopify integration requires shopDomain in additionalConfig');
@@ -290,7 +291,13 @@ export class IntegrationManager {
         }
         return new AirtableAPIClient(credentials);
       }
-      
+
+      case 'sheets':
+        return new LocalSheetsAPIClient(credentials);
+
+      case 'time':
+        return new LocalTimeAPIClient(credentials);
+
         // TODO: Add other API clients as they are implemented
         case 'stripe':
         case 'mailchimp':
@@ -346,12 +353,66 @@ export class IntegrationManager {
       return this.executeAirtableFunction(client, functionId, parameters);
     }
 
+    // Sheets functions
+    if (appKey === 'sheets' && client instanceof LocalSheetsAPIClient) {
+      return this.executeSheetsFunction(client, functionId, parameters);
+    }
+
+    // Time utility functions
+    if (appKey === 'time' && client instanceof LocalTimeAPIClient) {
+      return this.executeTimeFunction(client, functionId, parameters);
+    }
+
     // TODO: Add other application function executions
 
     return {
       success: false,
       error: `Function ${functionId} not implemented for ${appKey}`
     };
+  }
+
+  private async executeSheetsFunction(
+    client: LocalSheetsAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'append_row':
+      case 'appendrow':
+      case 'appendrows':
+        return client.appendRow(parameters);
+
+      case 'test_connection':
+        return client.testConnection();
+
+      default:
+        return {
+          success: false,
+          error: `Unknown Sheets function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeTimeFunction(
+    client: LocalTimeAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'delay':
+      case 'wait':
+      case 'sleep':
+        return client.delay(parameters);
+
+      case 'test_connection':
+        return client.testConnection();
+
+      default:
+        return {
+          success: false,
+          error: `Unknown Time function: ${functionId}`
+        };
+    }
   }
 
   /**
