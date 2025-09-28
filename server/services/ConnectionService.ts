@@ -34,6 +34,7 @@ export interface DecryptedConnection {
   provider: string;
   type: string;
   credentials: Record<string, any>;
+  iv: string;
   metadata?: Record<string, any>;
   isActive: boolean;
   lastTested?: Date;
@@ -91,7 +92,7 @@ export class ConnectionService {
       provider: request.provider,
       type: request.type,
       encryptedCredentials: encrypted.encryptedData,
-      credentialsIv: encrypted.iv,
+      iv: encrypted.iv,
       metadata: request.metadata || {},
       isActive: true,
     }).returning({ id: connections.id });
@@ -121,7 +122,7 @@ export class ConnectionService {
     // Decrypt credentials
     const credentials = EncryptionService.decryptCredentials(
       connection.encryptedCredentials,
-      connection.credentialsIv
+      connection.iv
     );
 
     return {
@@ -131,6 +132,7 @@ export class ConnectionService {
       provider: connection.provider,
       type: connection.type,
       credentials,
+      iv: connection.iv,
       metadata: connection.metadata,
       isActive: connection.isActive,
       lastTested: connection.lastTested,
@@ -165,7 +167,7 @@ export class ConnectionService {
     return userConnections.map(connection => {
       const credentials = EncryptionService.decryptCredentials(
         connection.encryptedCredentials,
-        connection.credentialsIv
+        connection.iv
       );
 
       return {
@@ -175,6 +177,7 @@ export class ConnectionService {
         provider: connection.provider,
         type: connection.type,
         credentials,
+        iv: connection.iv,
         metadata: connection.metadata,
         isActive: connection.isActive,
         lastTested: connection.lastTested,
@@ -373,7 +376,7 @@ export class ConnectionService {
       // Re-encrypt credentials
       const encrypted = EncryptionService.encryptCredentials(updates.credentials);
       updateData.encryptedCredentials = encrypted.encryptedData;
-      updateData.credentialsIv = encrypted.iv;
+      updateData.iv = encrypted.iv;
     }
 
     this.ensureDb();
