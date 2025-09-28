@@ -13,6 +13,8 @@ import {
   augmentSchemaWithSheetTabs,
   fetchSheetTabs,
   renderStaticFieldControl,
+  interpretAIMappingAvailability,
+  type AiModelsMetadata,
   type UpstreamNodeSummary,
   type JSONSchema
 } from "../SmartParametersPanel";
@@ -646,6 +648,33 @@ assert.equal(normalizedAction.data.parameters.range, "A1:C1", "action parameters
 assert.ok(
   normalizedAction.data.metadata?.sample?.sheetName === "Invoices",
   "action metadata sampling should include sheet name from config"
+);
+
+const disabledAIMetadata: AiModelsMetadata = {
+  llmAvailable: false,
+  providerCapabilities: { gemini: false, openai: false, claude: false }
+};
+
+assert.equal(
+  interpretAIMappingAvailability(disabledAIMetadata),
+  false,
+  "AI mapping helper should disable mapping when llmAvailable=false"
+);
+
+const partialAIMetadata: AiModelsMetadata = {
+  providerCapabilities: { gemini: true, openai: false, claude: false }
+};
+
+assert.equal(
+  interpretAIMappingAvailability(partialAIMetadata),
+  true,
+  "AI mapping helper should enable mapping when any provider capability is true"
+);
+
+assert.equal(
+  interpretAIMappingAvailability(null),
+  true,
+  "AI mapping helper should default to enabled when metadata is missing"
 );
 
 console.log("SmartParametersPanel metadata helper checks (including sheet metadata) passed.");

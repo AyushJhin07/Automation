@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { MultiAIService, buildWorkflowFromAnswersNew, generateWorkflowFromAnalysis } from '../aiModels';
-import { LLMProviderService } from '../services/LLMProviderService.js';
+import { LLMProviderService, NoLLMProvidersAvailableError, type LLMProviderCapabilities } from '../services/LLMProviderService.js';
 import { getErrorMessage } from '../types/common';
 
 export const aiRouter = Router();
@@ -130,22 +130,30 @@ aiRouter.post('/process-answers', async (req, res) => {
 // Get available AI models endpoint  
 aiRouter.get('/models', async (req, res) => {
   try {
-    // Return available models
+    const capabilities = LLMProviderService.getProviderCapabilities();
+    const availableProviders = Object.entries(capabilities)
+      .filter(([, enabled]) => enabled)
+      .map(([provider]) => provider);
+
+    const availableModels = [
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini' },
+      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'gemini' },
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)', provider: 'gemini' },
+      { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'claude' },
+      { id: 'gpt-4', name: 'GPT-4', provider: 'openai' }
+    ].filter((model) => capabilities[model.provider as keyof LLMProviderCapabilities]);
+
     res.json({
       success: true,
-      models: [
-        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini' },
-        { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'gemini' }, 
-        { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)', provider: 'gemini' },
-        { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'claude' },
-        { id: 'gpt-4', name: 'GPT-4', provider: 'openai' }
-      ]
+      models: availableModels,
+      providerCapabilities: capabilities,
+      llmAvailable: availableProviders.length > 0
     });
   } catch (error: any) {
     console.error('❌ AI models error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error?.message || 'Failed to get AI models' 
+    res.status(500).json({
+      success: false,
+      error: error?.message || 'Failed to get AI models'
     });
   }
 });
@@ -216,6 +224,14 @@ aiRouter.post('/map-params', async (req, res) => {
 
     res.json({ success: true, mapping });
   } catch (error) {
+    if (error instanceof NoLLMProvidersAvailableError) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI mapping is not available because no AI providers are configured.',
+        code: 'no_llm_providers'
+      });
+    }
+
     res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });

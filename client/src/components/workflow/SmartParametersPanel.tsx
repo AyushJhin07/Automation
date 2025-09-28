@@ -56,6 +56,65 @@ type MetadataRefreshState = {
 
 const METADATA_REFRESH_ENDPOINT = "/api/workflows/metadata/refresh";
 
+export type AiModelsMetadata = {
+  llmAvailable?: boolean;
+  providerCapabilities?: Record<string, boolean>;
+};
+
+let aiModelsMetadataCache: AiModelsMetadata | null = null;
+let aiModelsMetadataPromise: Promise<AiModelsMetadata | null> | null = null;
+
+export const interpretAIMappingAvailability = (metadata?: AiModelsMetadata | null): boolean => {
+  if (!metadata) return true;
+  if (typeof metadata.llmAvailable === "boolean") {
+    return metadata.llmAvailable;
+  }
+  if (metadata.providerCapabilities) {
+    return Object.values(metadata.providerCapabilities).some(Boolean);
+  }
+  return true;
+};
+
+const requestAiModelsMetadata = async (): Promise<AiModelsMetadata | null> => {
+  try {
+    const response = await fetch("/api/ai/models");
+    if (!response.ok) {
+      if (response.status === 503) {
+        return { llmAvailable: false };
+      }
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      llmAvailable: typeof data?.llmAvailable === "boolean" ? data.llmAvailable : undefined,
+      providerCapabilities: data?.providerCapabilities ?? undefined
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const loadAIMappingAvailability = async (): Promise<boolean> => {
+  if (aiModelsMetadataCache) {
+    return interpretAIMappingAvailability(aiModelsMetadataCache);
+  }
+
+  if (!aiModelsMetadataPromise) {
+    aiModelsMetadataPromise = requestAiModelsMetadata()
+      .then((metadata) => {
+        aiModelsMetadataCache = metadata;
+        return metadata;
+      })
+      .finally(() => {
+        aiModelsMetadataPromise = null;
+      });
+  }
+
+  const metadata = await aiModelsMetadataPromise;
+  return interpretAIMappingAvailability(metadata);
+};
+
 const uniqueStrings = (values: Array<string | undefined>): string[] => {
   const set = new Set<string>();
   values.forEach((value) => {
@@ -1098,6 +1157,7 @@ export function SmartParametersPanel() {
     const upstreamIds = useMemo(() => upstreamNodes.map((n) => n.id).join('|'), [upstreamNodes]);
     const [localRefNode, setLocalRefNode] = useState<string>(refNodeId || (upstreamNodes[0]?.id ?? ''));
     const [localRefPath, setLocalRefPath] = useState<string>(refPath || '');
+    const [isAIMappingAvailable, setIsAIMappingAvailable] = useState<boolean>(true);
 
     useEffect(() => {
       if (Array.isArray(staticValue)) {
@@ -1118,6 +1178,26 @@ export function SmartParametersPanel() {
       setLocalRefPath(refPath || '');
     }, [refNodeId, refPath, upstreamIds, upstreamNodes.length, node?.id]);
 
+    useEffect(() => {
+      let active = true;
+
+      loadAIMappingAvailability()
+        .then((available) => {
+          if (active) {
+            setIsAIMappingAvailable(available);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setIsAIMappingAvailable(true);
+          }
+        });
+
+      return () => {
+        active = false;
+      };
+    }, []);
+
     const handleModeChange = (nextMode: FieldMode) => {
       if (nextMode === mode) return;
       
@@ -1137,6 +1217,14 @@ export function SmartParametersPanel() {
         setLocalRefPath('');
         setDynamicValue(name, firstNode, '');
       } else if (nextMode === 'llm') {
+        if (!isAIMappingAvailable) {
+          setAiMapping({
+            isLoading: false,
+            result: null,
+            error: 'AI mapping is disabled until an AI provider is configured.'
+          });
+          return;
+        }
         // LLM mode - no immediate value change, user needs to click "Map with AI"
         // Keep current value as fallback
       }
@@ -1264,6 +1352,18 @@ export function SmartParametersPanel() {
 
         const result = await response.json();
 
+        if (response.status === 503 || result?.code === 'no_llm_providers') {
+          setIsAIMappingAvailable(false);
+          setAiMapping({
+            isLoading: false,
+            result: null,
+            error:
+              result?.error ||
+              'AI mapping is disabled until an AI provider is configured.'
+          });
+          return;
+        }
+
         if (result.success && result.mapping) {
           setAiMapping({ isLoading: false, result: result.mapping, error: null });
           
@@ -1296,7 +1396,11 @@ export function SmartParametersPanel() {
           <button
             type="button"
             onClick={handleAIMapping}
-            disabled={aiMapping.isLoading || upstreamNodes.length === 0}
+            disabled={
+              aiMapping.isLoading ||
+              upstreamNodes.length === 0 ||
+              !isAIMappingAvailable
+            }
             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             {aiMapping.isLoading ? (
@@ -1316,6 +1420,11 @@ export function SmartParametersPanel() {
           
           {upstreamNodes.length === 0 && (
             <span className="text-xs text-slate-500">Connect upstream nodes first</span>
+          )}
+          {!isAIMappingAvailable && upstreamNodes.length > 0 && (
+            <span className="text-xs text-slate-500">
+              Configure an AI provider to enable AI mapping.
+            </span>
           )}
         </div>
 
@@ -1378,7 +1487,9 @@ export function SmartParametersPanel() {
           >
             <option value="static">Static</option>
             <option value="dynamic" disabled={!upstreamNodes.length}>Dynamic</option>
-            <option value="llm" disabled={!upstreamNodes.length}>AI Mapping</option>
+            <option value="llm" disabled={!upstreamNodes.length || !isAIMappingAvailable}>
+              AI Mapping
+            </option>
           </select>
         </div>
 

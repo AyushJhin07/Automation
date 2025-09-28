@@ -5,10 +5,17 @@
  * Eliminates mixed provider usage and provides clear observability
  */
 
-interface LLMProviderCapabilities {
+export interface LLMProviderCapabilities {
   gemini: boolean;
   openai: boolean;
   claude: boolean;
+}
+
+export class NoLLMProvidersAvailableError extends Error {
+  constructor(message = 'No LLM providers are configured') {
+    super(message);
+    this.name = 'NoLLMProvidersAvailableError';
+  }
 }
 
 export class LLMProviderService {
@@ -16,7 +23,7 @@ export class LLMProviderService {
   /**
    * CRITICAL: Single source of truth for provider selection
    */
-  static selectProvider(): string {
+  static selectProvider(): string | null {
     const requested = (process.env.LLM_PROVIDER || '').toLowerCase();
     const capabilities = this.getProviderCapabilities();
     
@@ -48,8 +55,8 @@ export class LLMProviderService {
       return 'claude';
     }
 
-    console.warn('❌ No LLM providers available, using fallback');
-    return 'fallback';
+    console.warn('❌ No LLM providers available');
+    return null;
   }
 
   /**
@@ -106,6 +113,12 @@ export class LLMProviderService {
   } = {}): Promise<{ text: string; provider: string; model: string }> {
     
     const provider = options.preferredProvider || this.selectProvider();
+
+    if (!provider) {
+      console.error('❌ No LLM providers available for generateText request');
+      throw new NoLLMProvidersAvailableError();
+    }
+
     const model = options.model || this.getDefaultModel(provider);
     const apiKey = this.getAPIKey(provider);
 
@@ -278,7 +291,7 @@ export class LLMProviderService {
    * Get provider status for monitoring
    */
   static getProviderStatus(): {
-    selected: string;
+    selected: string | null;
     available: string[];
     capabilities: LLMProviderCapabilities;
     configured: boolean;
