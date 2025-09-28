@@ -435,39 +435,35 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }));
 
-// Database connection
-const connectionString = process.env.DATABASE_URL;
-
-let db: any = null;
-
-if (!connectionString) {
-  // In development, log a warning but don't crash
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('⚠️ DATABASE_URL not set - database features will be disabled in development');
-    db = null;
-  } else {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
-} else {
-  const sql = neon(connectionString);
-  db = drizzle(sql, {
-    schema: {
-      users,
-      connections,
-      workflows,
-      workflowExecutions,
-      usageTracking,
-      connectorDefinitions,
-      sessions,
-      usersRelations,
-      connectionsRelations,
-      workflowsRelations,
-      workflowExecutionsRelations,
-      usageTrackingRelations,
-      sessionsRelations,
-    },
-  });
-}
+export const workflowTriggers = pgTable(
+  'workflow_triggers',
+  {
+    id: text('id').primaryKey(),
+    workflowId: text('workflow_id').notNull(),
+    appId: text('app_id').notNull(),
+    triggerId: text('trigger_id').notNull(),
+    type: text('type').notNull(), // webhook | polling | schedule
+    endpoint: text('endpoint'),
+    secret: text('secret'),
+    isActive: boolean('is_active').default(true).notNull(),
+    dedupeState: json('dedupe_state').$type<{
+      tokens?: string[];
+      cursor?: string;
+      lastEventAt?: string;
+    }>(),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    lastRun: timestamp('last_run'),
+    nextRun: timestamp('next_run'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowIdx: index('workflow_triggers_workflow_idx').on(table.workflowId),
+    appTriggerIdx: index('workflow_triggers_app_trigger_idx').on(table.appId, table.triggerId),
+    typeIdx: index('workflow_triggers_type_idx').on(table.type),
+    activeIdx: index('workflow_triggers_active_idx').on(table.isActive),
+  })
+);
 
 // Webhook logs table for trigger event tracking
 export const webhookLogs = pgTable(
@@ -516,6 +512,43 @@ export const pollingTriggers = pgTable(
     activeIdx: index('polling_triggers_active_idx').on(table.isActive),
   })
 );
+
+// Database connection
+const connectionString = process.env.DATABASE_URL;
+
+let db: any = null;
+
+if (!connectionString) {
+  // In development, log a warning but don't crash
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ DATABASE_URL not set - database features will be disabled in development');
+    db = null;
+  } else {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+} else {
+  const sql = neon(connectionString);
+  db = drizzle(sql, {
+    schema: {
+      users,
+      connections,
+      workflows,
+      workflowExecutions,
+      usageTracking,
+      connectorDefinitions,
+      sessions,
+      webhookLogs,
+      pollingTriggers,
+      workflowTriggers,
+      usersRelations,
+      connectionsRelations,
+      workflowsRelations,
+      workflowExecutionsRelations,
+      usageTrackingRelations,
+      sessionsRelations,
+    },
+  });
+}
 
 export { db };
 

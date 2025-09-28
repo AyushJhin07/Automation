@@ -3,6 +3,8 @@ import { integrationManager } from '../integrations/IntegrationManager.js';
 import type { APICredentials } from '../integrations/BaseAPIClient.js';
 import type { ConnectionService } from '../services/ConnectionService.js';
 import { getErrorMessage } from '../types/common.js';
+import { db, workflows } from '../database/schema.js';
+import { eq } from 'drizzle-orm';
 
 interface WorkflowExecutionContext {
   workflowId: string;
@@ -19,6 +21,16 @@ interface NodeExecutionResult {
   logs: string[];
   parameters: Record<string, any>;
   diagnostics?: Record<string, any>;
+}
+
+interface TriggerDispatch {
+  workflowId: string;
+  triggerId: string;
+  appId: string;
+  payload: any;
+  dedupeToken?: string;
+  receivedAt?: Date;
+  source?: 'webhook' | 'polling';
 }
 
 interface CredentialResolutionSuccess {
@@ -67,6 +79,8 @@ export class WorkflowRuntimeService {
 
   private cachedConnectionService: ConnectionService | null | undefined;
   private connectionServiceError?: string;
+  private triggerQueue: TriggerDispatch[] = [];
+  private processingTriggerQueue = false;
 
   public async executeNode(node: any, context: WorkflowExecutionContext): Promise<NodeExecutionResult> {
     const role = this.inferRole(node);
@@ -214,6 +228,225 @@ export class WorkflowRuntimeService {
         executionTime: executionResponse.executionTime
       }
     };
+  }
+
+  public async enqueueTriggerEvent(event: TriggerDispatch): Promise<void> {
+    this.triggerQueue.push({ ...event, receivedAt: event.receivedAt ?? new Date() });
+
+    if (!this.processingTriggerQueue) {
+      this.processingTriggerQueue = true;
+      void this.processTriggerQueue();
+    }
+  }
+
+  private async processTriggerQueue(): Promise<void> {
+    try {
+      while (this.triggerQueue.length > 0) {
+        const next = this.triggerQueue.shift();
+        if (!next) {
+          continue;
+        }
+
+        try {
+          await this.executeWorkflowForTrigger(next);
+        } catch (error) {
+          console.error('❌ Failed to process trigger event:', getErrorMessage(error));
+        }
+      }
+    } finally {
+      this.processingTriggerQueue = false;
+    }
+  }
+
+  private async executeWorkflowForTrigger(event: TriggerDispatch): Promise<void> {
+    if (!event.workflowId) {
+      console.warn('⚠️ Trigger event missing workflowId; skipping execution');
+      return;
+    }
+
+    if (!db) {
+      console.warn('⚠️ Database unavailable; cannot load workflow for trigger execution');
+      return;
+    }
+
+    let workflowRecord: { id: string; graph: any; userId: string } | undefined;
+    try {
+      const rows = await db
+        .select({ id: workflows.id, graph: workflows.graph, userId: workflows.userId })
+        .from(workflows)
+        .where(eq(workflows.id, event.workflowId))
+        .limit(1);
+      workflowRecord = rows[0];
+    } catch (error) {
+      console.error('❌ Failed to load workflow for trigger execution:', getErrorMessage(error));
+      return;
+    }
+
+    if (!workflowRecord) {
+      console.warn(`⚠️ Workflow ${event.workflowId} not found; trigger ignored`);
+      return;
+    }
+
+    const graph = workflowRecord.graph || {};
+    const rawNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+    const rawEdges = Array.isArray(graph.edges) ? graph.edges : [];
+
+    if (rawNodes.length === 0) {
+      console.warn(`⚠️ Workflow ${event.workflowId} has no nodes to execute`);
+      return;
+    }
+
+    const normalizedNodes = rawNodes.map((node: any, index: number) => ({
+      ...node,
+      id: String(node?.id ?? node?.data?.id ?? `node-${index}`),
+    }));
+    const nodeMap = new Map<string, any>(normalizedNodes.map((node: any) => [node.id, node]));
+    const executionOrder = this.computeExecutionOrder(normalizedNodes, rawEdges);
+
+    const executionId = `${event.workflowId}-${Date.now()}`;
+    const nodeOutputs: Record<string, any> = {};
+    const context: WorkflowExecutionContext = {
+      workflowId: event.workflowId,
+      executionId,
+      userId: workflowRecord.userId,
+      nodeOutputs,
+    };
+
+    const triggerPayload =
+      event.payload && typeof event.payload === 'object'
+        ? { ...event.payload }
+        : { value: event.payload };
+
+    const triggerMetadata = {
+      appId: event.appId,
+      triggerId: event.triggerId,
+      dedupeToken: event.dedupeToken,
+      source: event.source || 'webhook',
+      receivedAt: (event.receivedAt || new Date()).toISOString(),
+    };
+
+    const triggerOutput = {
+      ...triggerPayload,
+      __trigger: triggerMetadata,
+    };
+
+    nodeOutputs['trigger'] = triggerOutput;
+
+    const normalizedApp = this.normalizeAppId(event.appId);
+    const normalizedTrigger = this.normalizeFunctionId(event.triggerId);
+
+    for (const node of normalizedNodes) {
+      if (this.inferRole(node) !== 'trigger') {
+        continue;
+      }
+
+      const nodeApp = this.normalizeAppId(
+        this.selectString(node?.app, node?.data?.app, node?.data?.application, node?.data?.connectorId),
+      );
+      const nodeTriggerId = this.normalizeFunctionId(
+        this.selectString(node?.data?.triggerId, node?.data?.function, node?.data?.operation, node?.triggerId),
+      );
+
+      if (
+        nodeApp === normalizedApp &&
+        (normalizedTrigger === null || nodeTriggerId === null || nodeTriggerId === normalizedTrigger)
+      ) {
+        nodeOutputs[node.id] = triggerOutput;
+      }
+    }
+
+    if (!normalizedNodes.some((node) => nodeOutputs[node.id])) {
+      const firstTrigger = normalizedNodes.find((node) => this.inferRole(node) === 'trigger');
+      if (firstTrigger) {
+        nodeOutputs[firstTrigger.id] = triggerOutput;
+      }
+    }
+
+    console.log(
+      `🚀 Executing workflow ${event.workflowId} for trigger ${event.appId}.${event.triggerId} (nodes=${executionOrder.length})`,
+    );
+
+    for (const nodeId of executionOrder) {
+      const node = nodeMap.get(nodeId);
+      if (!node) {
+        continue;
+      }
+
+      const role = this.inferRole(node);
+      if (role === 'trigger') {
+        if (!nodeOutputs[nodeId]) {
+          nodeOutputs[nodeId] = triggerOutput;
+        }
+        continue;
+      }
+
+      try {
+        const result = await this.executeNode(node, context);
+        nodeOutputs[nodeId] = result.output;
+      } catch (error) {
+        console.error(
+          `❌ Error executing node ${nodeId} in workflow ${event.workflowId}:`,
+          getErrorMessage(error),
+        );
+      }
+    }
+  }
+
+  private computeExecutionOrder(nodes: any[], edges: any[]): string[] {
+    const indegree = new Map<string, number>();
+    const adjacency = new Map<string, Set<string>>();
+
+    for (const node of nodes) {
+      indegree.set(node.id, 0);
+      adjacency.set(node.id, new Set());
+    }
+
+    for (const edge of edges) {
+      const source = String(edge?.source ?? edge?.from ?? '');
+      const target = String(edge?.target ?? edge?.to ?? '');
+      if (!adjacency.has(source) || !indegree.has(target)) {
+        continue;
+      }
+      const neighbours = adjacency.get(source)!;
+      if (!neighbours.has(target)) {
+        neighbours.add(target);
+        indegree.set(target, (indegree.get(target) || 0) + 1);
+      }
+    }
+
+    const queue: string[] = [];
+    indegree.forEach((value, key) => {
+      if (value === 0) {
+        queue.push(key);
+      }
+    });
+
+    const order: string[] = [];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      order.push(current);
+
+      const neighbours = adjacency.get(current);
+      if (!neighbours) {
+        continue;
+      }
+
+      for (const neighbour of neighbours) {
+        const nextValue = (indegree.get(neighbour) || 0) - 1;
+        indegree.set(neighbour, nextValue);
+        if (nextValue === 0) {
+          queue.push(neighbour);
+        }
+      }
+    }
+
+    for (const node of nodes) {
+      if (!order.includes(node.id)) {
+        order.push(node.id);
+      }
+    }
+
+    return order;
   }
 
   private inferRole(node: any): 'trigger' | 'action' | 'transform' {

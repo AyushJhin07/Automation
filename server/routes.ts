@@ -1912,7 +1912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register polling trigger
   app.post('/api/triggers/polling/register', authenticateToken, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const { id, appId, triggerId, workflowId, interval, dedupeKey, metadata } = req.body;
       
@@ -1946,6 +1946,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error('❌ Polling trigger registration error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime
+      });
+    }
+  });
+
+  app.post('/api/triggers/rehydrate', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+
+    try {
+      const count = await webhookManager.rehydratePollingSchedules();
+      res.json({
+        success: true,
+        triggers: count,
+        message: `Rehydrated ${count} polling schedules`,
+        responseTime: Date.now() - startTime
+      });
+    } catch (error) {
+      console.error('❌ Trigger rehydration error:', getErrorMessage(error));
       res.status(500).json({
         success: false,
         error: getErrorMessage(error),
