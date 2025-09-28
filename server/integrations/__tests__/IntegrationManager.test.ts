@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict';
 
-import { IntegrationManager } from '../IntegrationManager.js';
+import { BUILDER_CORE_APP_IDS, IntegrationManager } from '../IntegrationManager.js';
 import { APICredentials } from '../BaseAPIClient.js';
 import { IMPLEMENTED_CONNECTOR_IDS } from '../supportedApps.js';
 
 const manager = new IntegrationManager();
 
 const supportedApps = manager.getSupportedApplications().sort();
-const implementedApps = [...IMPLEMENTED_CONNECTOR_IDS].sort();
+const expectedApps = [...new Set([...IMPLEMENTED_CONNECTOR_IDS, ...BUILDER_CORE_APP_IDS])].sort();
 
 assert.deepEqual(
   supportedApps,
-  implementedApps,
-  'IntegrationManager supported apps should match the implemented connector list'
+  expectedApps,
+  'IntegrationManager supported apps should include implemented connectors and core builder apps'
 );
 
 const credentialFixtures: Record<string, { credentials: APICredentials; additionalConfig?: Record<string, any> }> = {
@@ -31,6 +31,12 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   slack: {
     credentials: { botToken: 'xoxb-test-token' }
+  },
+  sheets: {
+    credentials: { mode: 'local' }
+  },
+  time: {
+    credentials: { mode: 'local' }
   }
 };
 
@@ -40,7 +46,7 @@ const createClient = (manager as any).createAPIClient.bind(manager) as (
   additionalConfig?: Record<string, any>
 ) => unknown;
 
-for (const appId of IMPLEMENTED_CONNECTOR_IDS) {
+for (const appId of expectedApps) {
   const fixture = credentialFixtures[appId];
   assert.ok(fixture, `Missing credential fixture for supported app ${appId}`);
 
@@ -50,5 +56,5 @@ for (const appId of IMPLEMENTED_CONNECTOR_IDS) {
 
 console.log(
   'IntegrationManager createAPIClient returns concrete clients for:',
-  IMPLEMENTED_CONNECTOR_IDS.join(', ')
+  expectedApps.join(', ')
 );

@@ -10,6 +10,264 @@ import { SlackAPIClient } from './SlackAPIClient';
 import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
 import { getErrorMessage } from '../types/common';
 
+export const BUILDER_CORE_APP_IDS = ['sheets', 'time'] as const;
+
+class SheetsCoreClient extends BaseAPIClient {
+  private spreadsheets: Map<string, Map<string, any[][]>> = new Map();
+
+  constructor(credentials: APICredentials) {
+    super('local://sheets', credentials);
+  }
+
+  protected getAuthHeaders(): Record<string, string> {
+    return {};
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return {
+      success: true,
+      data: {
+        mode: 'local',
+        app: 'sheets'
+      }
+    };
+  }
+
+  public async execute(
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'append_row':
+      case 'append_rows':
+      case 'add_row':
+        return this.appendRow(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Sheets function: ${functionId}`
+        };
+    }
+  }
+
+  private appendRow(parameters: Record<string, any>): APIResponse<any> {
+    const spreadsheetId = this.resolveSpreadsheetId(parameters);
+    if (!spreadsheetId) {
+      return {
+        success: false,
+        error: 'Spreadsheet ID is required for append_row'
+      };
+    }
+
+    const sheetName = this.resolveSheetName(parameters);
+    if (!sheetName) {
+      return {
+        success: false,
+        error: 'Sheet name is required for append_row'
+      };
+    }
+
+    const rowValues = this.normalizeRowValues(parameters);
+    if (rowValues.length === 0) {
+      return {
+        success: false,
+        error: 'At least one value is required to append a row'
+      };
+    }
+
+    const sheet = this.getSheet(spreadsheetId, sheetName);
+    sheet.push(rowValues);
+
+    const rowIndex = sheet.length;
+
+    return {
+      success: true,
+      data: {
+        spreadsheetId,
+        sheetName,
+        values: rowValues,
+        rowIndex
+      }
+    };
+  }
+
+  private resolveSpreadsheetId(parameters: Record<string, any>): string | null {
+    const candidates = [
+      parameters.spreadsheetId,
+      parameters.sheetId,
+      parameters.id,
+      parameters.spreadsheetID
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return null;
+  }
+
+  private resolveSheetName(parameters: Record<string, any>): string | null {
+    const candidates = [parameters.sheetName, parameters.sheet, parameters.tab];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    const range = parameters.range || parameters.sheetRange;
+    if (typeof range === 'string' && range.includes('!')) {
+      return range.split('!')[0]?.trim() || null;
+    }
+
+    return 'Sheet1';
+  }
+
+  private normalizeRowValues(parameters: Record<string, any>): any[] {
+    const valueCandidates = [parameters.values, parameters.row, parameters.rowValues];
+    for (const candidate of valueCandidates) {
+      if (candidate == null) continue;
+      if (Array.isArray(candidate)) {
+        if (candidate.length > 0 && Array.isArray(candidate[0])) {
+          return candidate[0];
+        }
+        return candidate;
+      }
+      if (typeof candidate === 'object') {
+        return Object.values(candidate);
+      }
+      return [candidate];
+    }
+    return [];
+  }
+
+  private getSheet(spreadsheetId: string, sheetName: string): any[][] {
+    let sheets = this.spreadsheets.get(spreadsheetId);
+    if (!sheets) {
+      sheets = new Map();
+      this.spreadsheets.set(spreadsheetId, sheets);
+    }
+
+    let rows = sheets.get(sheetName);
+    if (!rows) {
+      rows = [];
+      sheets.set(sheetName, rows);
+    }
+
+    return rows;
+  }
+}
+
+class TimeCoreClient extends BaseAPIClient {
+  private readonly maxImmediateDelayMs = 60_000;
+
+  constructor(credentials: APICredentials) {
+    super('local://time', credentials);
+  }
+
+  protected getAuthHeaders(): Record<string, string> {
+    return {};
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return {
+      success: true,
+      data: {
+        mode: 'local',
+        app: 'time'
+      }
+    };
+  }
+
+  public async execute(
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'delay':
+      case 'wait':
+        return this.handleDelay(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Time function: ${functionId}`
+        };
+    }
+  }
+
+  private async handleDelay(parameters: Record<string, any>): Promise<APIResponse<any>> {
+    const requestedDelay = this.calculateDelayMs(parameters);
+    const delayMs = Math.max(0, requestedDelay);
+    const executedDelay = Math.min(delayMs, this.maxImmediateDelayMs);
+
+    if (executedDelay > 0) {
+      await this.sleep(executedDelay);
+    }
+
+    return {
+      success: true,
+      data: {
+        requestedDelayMs: delayMs,
+        executedDelayMs: executedDelay,
+        scheduledFor: delayMs > 0 ? new Date(Date.now() + delayMs).toISOString() : new Date().toISOString()
+      }
+    };
+  }
+
+  private calculateDelayMs(parameters: Record<string, any>): number {
+    const readNumber = (value: unknown): number => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    let total = 0;
+    total += readNumber(parameters.delayMs);
+    total += readNumber(parameters.durationMs);
+    total += readNumber(parameters.ms);
+
+    const seconds =
+      readNumber(parameters.delaySeconds) +
+      readNumber(parameters.seconds) +
+      readNumber(parameters.durationSeconds) +
+      readNumber(parameters.sec);
+    total += seconds * 1000;
+
+    const minutes =
+      readNumber(parameters.delayMinutes) +
+      readNumber(parameters.minutes) +
+      readNumber(parameters.durationMinutes) +
+      readNumber(parameters.min);
+    total += minutes * 60_000;
+
+    const hours =
+      readNumber(parameters.delayHours) +
+      readNumber(parameters.hours) +
+      readNumber(parameters.durationHours);
+    total += hours * 3_600_000;
+
+    const waitUntil = this.parseDate(parameters.waitUntil || parameters.until || parameters.resumeAt);
+    if (waitUntil) {
+      total = Math.max(total, waitUntil.getTime() - Date.now());
+    }
+
+    return total;
+  }
+
+  private parseDate(value: unknown): Date | null {
+    if (typeof value === 'string' && value.trim()) {
+      const timestamp = Date.parse(value);
+      if (!Number.isNaN(timestamp)) {
+        return new Date(timestamp);
+      }
+    }
+    if (value instanceof Date) {
+      return value;
+    }
+    return null;
+  }
+}
+
 export interface IntegrationConfig {
   appName: string;
   credentials: APICredentials;
@@ -37,7 +295,10 @@ export interface FunctionExecutionResult {
 
 export class IntegrationManager {
   private clients: Map<string, BaseAPIClient> = new Map();
-  private supportedApps = new Set(IMPLEMENTED_CONNECTOR_IDS);
+  private supportedApps = new Set<string>([
+    ...IMPLEMENTED_CONNECTOR_IDS,
+    ...BUILDER_CORE_APP_IDS
+  ]);
 
   private buildClientKey(appKey: string, connectionId?: string): string {
     return connectionId ? `${appKey}::${connectionId}` : appKey;
@@ -259,6 +520,12 @@ export class IntegrationManager {
     additionalConfig?: Record<string, any>
   ): BaseAPIClient | null {
     switch (appKey) {
+      case 'sheets':
+        return new SheetsCoreClient(credentials);
+
+      case 'time':
+        return new TimeCoreClient(credentials);
+
       case 'gmail':
         return new GmailAPIClient(credentials);
       
@@ -321,6 +588,16 @@ export class IntegrationManager {
     parameters: Record<string, any>
   ): Promise<APIResponse<any>> {
     
+    // Sheets functions
+    if (appKey === 'sheets' && client instanceof SheetsCoreClient) {
+      return client.execute(functionId, parameters);
+    }
+
+    // Time functions
+    if (appKey === 'time' && client instanceof TimeCoreClient) {
+      return client.execute(functionId, parameters);
+    }
+
     // Gmail functions
     if (appKey === 'gmail' && client instanceof GmailAPIClient) {
       return this.executeGmailFunction(client, functionId, parameters);
