@@ -4,7 +4,7 @@ import { compileToAppsScript } from '../workflow/compile-to-appsscript';
 import { healthMonitoringService } from '../services/HealthMonitoringService';
 import { convertToNodeGraph } from '../workflow/graph-format-converter';
 import { mapAnswersToBackendFormat, validateTriggerConfig } from '../utils/answer-field-mapper.js';
-import { WorkflowStoreService } from '../workflow/workflow-store.js';
+import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { AnswerNormalizerService } from '../services/AnswerNormalizerService.js';
 import { getAllowlistForMode, normalizeAppId, type PlannerMode } from '../services/PromptBuilder.js';
 
@@ -276,8 +276,19 @@ workflowBuildRouter.post('/build', async (req, res) => {
       codeSize: compiled.files.reduce((sum, f) => sum + f.content.length, 0)
     });
     
-    // CRITICAL FIX: Store workflow for Graph Editor handoff
-    WorkflowStoreService.store(workflowId, nodeGraph);
+    try {
+      await WorkflowRepository.saveWorkflowGraph({
+        id: workflowId,
+        userId: (req as any)?.user?.id,
+        name: nodeGraph?.name || graph?.name || 'Untitled Workflow',
+        description: graph?.meta?.description ?? null,
+        graph: nodeGraph,
+        metadata: response.metadata,
+        category: graph?.meta?.automationType ?? null,
+      });
+    } catch (storageError: any) {
+      console.error('❌ Failed to persist workflow graph:', storageError);
+    }
     
     // Record performance metrics
     healthMonitoringService.recordApiRequest(totalTime, false);

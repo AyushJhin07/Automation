@@ -6,7 +6,7 @@
 
 import { Router } from 'express';
 import { LLMProviderService } from '../services/LLMProviderService.js';
-import { WorkflowStoreService } from '../workflow/workflow-store.js';
+import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 
 const router = Router();
 
@@ -52,12 +52,12 @@ router.get('/health', async (req, res) => {
       checks: {
         database: await checkDatabase(),
         llm: await checkLLMProviders(),
-        workflows: checkWorkflowStore(),
+        workflows: await checkWorkflowRepository(),
         memory: checkMemoryUsage(),
         dependencies: checkDependencies()
       },
       metrics: {
-        totalWorkflows: WorkflowStoreService.getStats().totalWorkflows,
+        totalWorkflows: await WorkflowRepository.countWorkflows(),
         activeConnections: 0, // Would track actual connections in production
         memoryUsage: process.memoryUsage(),
         cpuUsage: process.cpuUsage().user / 1000000 // Convert to seconds
@@ -116,7 +116,7 @@ router.get('/metrics', async (req, res) => {
           analyticsEnabled: process.env.ENABLE_ANALYTICS === 'true'
         }
       },
-      workflows: WorkflowStoreService.getStats(),
+      workflows: await WorkflowRepository.getWorkflowMetrics(),
       llm: LLMProviderService.getProviderStatus(),
       timestamp: new Date().toISOString()
     };
@@ -227,22 +227,22 @@ async function checkLLMProviders(): Promise<HealthCheck> {
   }
 }
 
-function checkWorkflowStore(): HealthCheck {
+async function checkWorkflowRepository(): Promise<HealthCheck> {
   const startTime = Date.now();
-  
+
   try {
-    const stats = WorkflowStoreService.getStats();
-    
+    const metrics = await WorkflowRepository.getWorkflowMetrics();
+
     return {
       status: 'pass',
-      message: `Workflow store healthy: ${stats.totalWorkflows} workflows`,
+      message: `Workflow repository healthy: ${metrics.total} workflows`,
       responseTime: Date.now() - startTime,
-      details: stats
+      details: metrics
     };
-  } catch (error) {
+  } catch (error: any) {
     return {
       status: 'fail',
-      message: `Workflow store check failed: ${error.message}`,
+      message: `Workflow repository check failed: ${error?.message || 'Unknown error'}`,
       responseTime: Date.now() - startTime
     };
   }

@@ -441,9 +441,10 @@ const connectionString = process.env.DATABASE_URL;
 let db: any = null;
 
 if (!connectionString) {
-  // In development, log a warning but don't crash
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('⚠️ DATABASE_URL not set - database features will be disabled in development');
+  const environment = process.env.NODE_ENV ?? 'development';
+  // In development or test environments, log a warning but don't crash
+  if (environment === 'development' || environment === 'test') {
+    console.warn('⚠️ DATABASE_URL not set - database features will be disabled in development/test environments');
     db = null;
   } else {
     throw new Error('DATABASE_URL environment variable is required');
