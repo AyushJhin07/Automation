@@ -438,6 +438,88 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }));
 
+// Webhook logs table for trigger event tracking
+export const webhookLogs = pgTable(
+  'webhook_logs',
+  {
+    id: text('id').primaryKey(),
+    webhookId: text('webhook_id').notNull(),
+    workflowId: text('workflow_id').notNull(),
+    appId: text('app_id').notNull(),
+    triggerId: text('trigger_id').notNull(),
+    payload: json('payload').$type<any>(),
+    headers: json('headers').$type<Record<string, string>>(),
+    timestamp: timestamp('timestamp').defaultNow().notNull(),
+    signature: text('signature'),
+    processed: boolean('processed').default(false).notNull(),
+    source: text('source').default('webhook').notNull(),
+    dedupeToken: text('dedupe_token'),
+    error: text('error'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookIdIdx: index('webhook_logs_webhook_id_idx').on(table.webhookId),
+    appTriggerIdx: index('webhook_logs_app_trigger_idx').on(table.appId, table.triggerId),
+    timestampIdx: index('webhook_logs_timestamp_idx').on(table.timestamp),
+    processedIdx: index('webhook_logs_processed_idx').on(table.processed),
+    workflowIdx: index('webhook_logs_workflow_idx').on(table.workflowId),
+    sourceIdx: index('webhook_logs_source_idx').on(table.source),
+    dedupeIdx: index('webhook_logs_dedupe_idx').on(table.dedupeToken),
+  })
+);
+
+// Polling triggers table for scheduled trigger tracking
+export const pollingTriggers = pgTable(
+  'polling_triggers',
+  {
+    id: text('id').primaryKey(),
+    workflowId: text('workflow_id').notNull(),
+    appId: text('app_id').notNull(),
+    triggerId: text('trigger_id').notNull(),
+    interval: integer('interval').notNull(), // seconds
+    lastPoll: timestamp('last_poll'),
+    nextPoll: timestamp('next_poll').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    dedupeKey: text('dedupe_key'),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowIdIdx: index('polling_triggers_workflow_id_idx').on(table.workflowId),
+    appTriggerIdx: index('polling_triggers_app_trigger_idx').on(table.appId, table.triggerId),
+    nextPollIdx: index('polling_triggers_next_poll_idx').on(table.nextPoll),
+    activeIdx: index('polling_triggers_active_idx').on(table.isActive),
+  })
+);
+
+// Workflow triggers table for persisted trigger metadata
+export const workflowTriggers = pgTable(
+  'workflow_triggers',
+  {
+    id: text('id').primaryKey(),
+    workflowId: text('workflow_id').notNull(),
+    type: text('type').notNull(),
+    appId: text('app_id').notNull(),
+    triggerId: text('trigger_id').notNull(),
+    endpoint: text('endpoint'),
+    secret: text('secret'),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    dedupeState: json('dedupe_state').$type<{ tokens?: string[]; updatedAt?: string }>(),
+    isActive: boolean('is_active').default(true).notNull(),
+    lastSyncedAt: timestamp('last_synced_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowIdx: index('workflow_triggers_workflow_idx').on(table.workflowId),
+    appTriggerIdx: index('workflow_triggers_app_trigger_idx').on(table.appId, table.triggerId),
+    typeIdx: index('workflow_triggers_type_idx').on(table.type),
+    activeIdx: index('workflow_triggers_active_idx').on(table.isActive),
+  })
+);
+
 // Database connection
 const connectionString = process.env.DATABASE_URL;
 
@@ -469,57 +551,13 @@ if (!connectionString) {
       workflowExecutionsRelations,
       usageTrackingRelations,
       sessionsRelations,
+      webhookLogs,
+      pollingTriggers,
+      workflowTriggers,
     },
   });
 }
 
-// Webhook logs table for trigger event tracking
-export const webhookLogs = pgTable(
-  'webhook_logs',
-  {
-    id: text('id').primaryKey(),
-    webhookId: text('webhook_id').notNull(),
-    appId: text('app_id').notNull(),
-    triggerId: text('trigger_id').notNull(),
-    payload: json('payload').$type<any>(),
-    headers: json('headers').$type<Record<string, string>>(),
-    timestamp: timestamp('timestamp').defaultNow().notNull(),
-    signature: text('signature'),
-    processed: boolean('processed').default(false).notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-  },
-  (table) => ({
-    webhookIdIdx: index('webhook_logs_webhook_id_idx').on(table.webhookId),
-    appTriggerIdx: index('webhook_logs_app_trigger_idx').on(table.appId, table.triggerId),
-    timestampIdx: index('webhook_logs_timestamp_idx').on(table.timestamp),
-    processedIdx: index('webhook_logs_processed_idx').on(table.processed),
-  })
-);
-
-// Polling triggers table for scheduled trigger tracking
-export const pollingTriggers = pgTable(
-  'polling_triggers',
-  {
-    id: text('id').primaryKey(),
-    workflowId: text('workflow_id').notNull(),
-    appId: text('app_id').notNull(),
-    triggerId: text('trigger_id').notNull(),
-    interval: integer('interval').notNull(), // seconds
-    lastPoll: timestamp('last_poll'),
-    nextPoll: timestamp('next_poll').notNull(),
-    isActive: boolean('is_active').default(true).notNull(),
-    dedupeKey: text('dedupe_key'),
-    metadata: json('metadata').$type<Record<string, any>>(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (table) => ({
-    workflowIdIdx: index('polling_triggers_workflow_id_idx').on(table.workflowId),
-    appTriggerIdx: index('polling_triggers_app_trigger_idx').on(table.appId, table.triggerId),
-    nextPollIdx: index('polling_triggers_next_poll_idx').on(table.nextPoll),
-    activeIdx: index('polling_triggers_active_idx').on(table.isActive),
-  })
-);
 
 export { db };
 
