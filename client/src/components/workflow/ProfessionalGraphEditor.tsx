@@ -2189,10 +2189,18 @@ const GraphEditorContent = () => {
                         This step needs a connected account. Use the button below to connect one—it’s the easiest option for non-technical users.
                         <Button
                           size="sm"
+                          type="button"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (selectedNode) openNodeConfigModal(selectedNode);
+                            if (!selectedNode) {
+                              toast.error('Select a node to configure');
+                              return;
+                            }
+                            // Ensure the node stays selected
+                            setSelectedNodeId(String(selectedNode.id));
+                            toast.message('Opening connection setup…');
+                            void openNodeConfigModal(selectedNode);
                           }}
                           className="self-start bg-amber-500 text-white hover:bg-amber-600"
                         >
