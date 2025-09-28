@@ -15,6 +15,7 @@ import {
   renderStaticFieldControl,
   createDefaultLLMValue,
   mergeLLMValueWithDefaults,
+  parseAIMappingCapability,
   type UpstreamNodeSummary,
   type JSONSchema
 } from "../SmartParametersPanel";
@@ -92,6 +93,33 @@ assert.ok(amountSuggestion, "should surface Amount column quick pick");
 assert.ok(statusSuggestion, "should surface status field from output metadata");
 assert.ok(entireOutput.includes("node-1"), "should include entire output suggestions");
 assert.ok(entireOutput.includes("node-3"), "should include entire output for runtime metadata nodes");
+
+const disabledCapability = parseAIMappingCapability({
+  aiAvailable: false,
+  providers: { available: [] },
+  models: []
+});
+assert.equal(
+  disabledCapability.available,
+  false,
+  "AI mapping capability helper should report unavailable when backend disables providers"
+);
+assert.deepEqual(
+  disabledCapability.providers,
+  [],
+  "AI mapping capability helper should normalize provider lists"
+);
+
+const legacyCapability = parseAIMappingCapability({
+  models: [
+    { id: "gemini-1.5-flash", provider: "gemini" }
+  ]
+});
+assert.equal(
+  legacyCapability.available,
+  true,
+  "AI mapping capability helper should treat legacy payloads with models as available"
+);
 
 const resolverNodeFixtures: Array<{
   description: string;
