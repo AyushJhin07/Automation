@@ -5,6 +5,7 @@
   "category": "Communication",
   "icon": "slack",
   "color": "#4A154B",
+  "availability": "stable",
   "authentication": {
     "type": "oauth2",
     "authUrl": "https://slack.com/oauth/v2/authorize",
