@@ -5,7 +5,7 @@
  * schema-driven forms based on app-specific parameter definitions.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
+import { resolveAppSchemaKey, resolveOperationSchemaKey } from '../../../../shared/appSchemaAliases';
 import { 
   Bot, 
   HelpCircle, 
@@ -59,12 +60,15 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
 
+  const schemaApp = useMemo(() => resolveAppSchemaKey(app), [app]);
+  const schemaOperation = useMemo(() => resolveOperationSchemaKey(operation), [operation]);
+
   // Load parameter schema for the app/operation
   useEffect(() => {
     const loadSchema = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}`);
+        const response = await fetch(`/api/app-schemas/schemas/${schemaApp}/${schemaOperation}`);
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -79,7 +83,7 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
     };
 
     loadSchema();
-  }, [app, operation]);
+  }, [schemaApp, schemaOperation]);
 
   // Validate parameters against schema
   const validateParameters = async () => {
@@ -87,7 +91,7 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
 
     setValidationStatus('validating');
     try {
-      const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}/validate`, {
+      const response = await fetch(`/api/app-schemas/schemas/${schemaApp}/${schemaOperation}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parameters })

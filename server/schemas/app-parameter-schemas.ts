@@ -1,9 +1,11 @@
 /**
  * P1-6: Per-app typed parameter schemas for better UX
- * 
+ *
  * This file defines the parameter schemas for each application,
  * providing proper form validation, input types, and user guidance.
  */
+
+import { resolveAppSchemaKey, resolveOperationSchemaKey } from '../../shared/appSchemaAliases.js';
 
 export interface ParameterSchema {
   type: 'string' | 'number' | 'boolean' | 'email' | 'url' | 'select' | 'textarea' | 'password';
@@ -386,10 +388,12 @@ export const APP_PARAMETER_SCHEMAS: Record<string, AppParameterSchema> = {
 
 // Helper function to get schema for a specific app and operation
 export function getParameterSchema(app: string, operation: string): Record<string, ParameterSchema> | null {
-  const appSchema = APP_PARAMETER_SCHEMAS[app];
+  const canonicalApp = resolveAppSchemaKey(app);
+  const canonicalOperation = resolveOperationSchemaKey(operation);
+  const appSchema = APP_PARAMETER_SCHEMAS[canonicalApp];
   if (!appSchema) return null;
-  
-  return appSchema[operation] || null;
+
+  return appSchema[canonicalOperation] || null;
 }
 
 // Helper function to validate parameters against schema
