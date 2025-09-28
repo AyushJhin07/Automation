@@ -265,6 +265,7 @@ export const usageTracking = pgTable(
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
     date: timestamp('date').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(), // Add missing createdAt
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
     year: integer('year').notNull(), // Add missing year column
     month: integer('month').notNull(), // Add missing month column
     
