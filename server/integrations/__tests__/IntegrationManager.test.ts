@@ -31,6 +31,12 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   slack: {
     credentials: { botToken: 'xoxb-test-token' }
+  },
+  sheets: {
+    credentials: {}
+  },
+  time: {
+    credentials: {}
   }
 };
 
