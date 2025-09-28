@@ -47,9 +47,20 @@ export interface AutomationPlan {
   complexity: 'simple' | 'medium' | 'complex';
   estimated_setup_time: string;
   business_value: string;
+  follow_up_questions?: Array<{ id: string; question: string; category?: string; expected_format?: string }>;
 }
 
 export class AutomationPlannerService {
+
+  private static geminiJsonGenerator = generateJsonWithGemini;
+
+  static setGeminiJsonGenerator(generator: typeof generateJsonWithGemini) {
+    this.geminiJsonGenerator = generator;
+  }
+
+  static resetGeminiJsonGenerator() {
+    this.geminiJsonGenerator = generateJsonWithGemini;
+  }
   
   /**
    * ChatGPT Enhancement: Dynamic automation planning with registry integration
@@ -66,7 +77,7 @@ export class AutomationPlannerService {
       const systemPrompt = buildPlannerPrompt(userPrompt, resolvedMode);
       
       // Use JSON-safe generation
-      const jsonResponse = await generateJsonWithGemini('gemini-2.0-flash-exp', systemPrompt);
+      const jsonResponse = await this.geminiJsonGenerator('gemini-2.0-flash-exp', systemPrompt);
       
       let plan;
       try {
@@ -219,7 +230,7 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
       } catch (parseError) {
         console.error('❌ Failed to parse LLM planning response:', parseError);
         // Fallback plan
-        plan = this.createFallbackPlan(userPrompt);
+        plan = this.createFallbackPlan(userPrompt, resolvedMode);
       }
 
       // Validate and enhance the plan
@@ -236,7 +247,7 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
 
     } catch (error) {
       console.error('❌ LLM planning failed:', error);
-      return this.createFallbackPlan(userPrompt);
+      return this.createFallbackPlan(userPrompt, resolvedMode);
     }
   }
 
@@ -382,7 +393,11 @@ RESPOND WITH:
   /**
    * Create DYNAMIC fallback plan when LLM fails (analyzes prompt complexity)
    */
-  private static createFallbackPlan(userPrompt: string): AutomationPlan {
+  private static createFallbackPlan(userPrompt: string, mode?: PlannerMode): AutomationPlan {
+    if (mode === 'gas-only') {
+      return this.createModeFallbackPlan(userPrompt, mode);
+    }
+
     console.log('🔄 Creating dynamic fallback plan for:', userPrompt);
     
     const prompt = userPrompt.toLowerCase();
@@ -412,10 +427,12 @@ RESPOND WITH:
       apps.push('gmail', 'sheets');
     }
 
+    const uniqueApps = Array.from(new Set(apps));
+
     console.log('🔍 Detected apps from prompt:', apps);
 
     // DYNAMIC STEP GENERATION based on detected apps
-    apps.forEach((app, index) => {
+    uniqueApps.forEach((app) => {
       switch (app) {
         case 'gmail':
           steps.push({
@@ -659,10 +676,10 @@ RESPOND WITH:
       category: 'trigger'
     });
 
-    console.log(`🎯 Generated dynamic fallback plan: ${apps.length} apps, ${missingInputs.length} questions`);
+    console.log(`🎯 Generated dynamic fallback plan: ${uniqueApps.length} apps, ${missingInputs.length} questions`);
 
     return {
-      apps,
+      apps: uniqueApps,
       trigger: {
         type: 'time',
         app: 'time',
@@ -673,11 +690,99 @@ RESPOND WITH:
       },
       steps,
       missing_inputs: missingInputs,
-      workflow_name: this.generateWorkflowName(apps, userPrompt),
+      workflow_name: this.generateWorkflowName(uniqueApps, userPrompt),
       description: userPrompt,
-      complexity: this.assessComplexity(apps.length, missingInputs.length),
-      estimated_setup_time: this.estimateSetupTime(apps.length, missingInputs.length),
-      business_value: this.estimateBusinessValue(apps, userPrompt)
+      complexity: this.assessComplexity(uniqueApps.length, missingInputs.length),
+      estimated_setup_time: this.estimateSetupTime(uniqueApps.length, missingInputs.length),
+      business_value: this.estimateBusinessValue(uniqueApps, userPrompt),
+      follow_up_questions: missingInputs.map(input => ({
+        id: input.id,
+        question: input.question,
+        category: input.category,
+        expected_format: this.mapInputTypeToExpectedFormat(input.type)
+      }))
+    };
+  }
+
+  private static createModeFallbackPlan(userPrompt: string, mode: PlannerMode): AutomationPlan {
+    console.log('🔄 Creating constrained fallback plan for mode:', mode);
+
+    const apps = mode === 'gas-only' ? ['gmail', 'sheets'] : ['gmail', 'sheets', 'slack'];
+
+    const missingInputs: MissingInput[] = [
+      {
+        id: 'frequency',
+        question: 'How often should this automation run?',
+        type: 'select',
+        options: ['Every 5 minutes', 'Every 15 minutes', 'Every 30 minutes', 'Hourly', 'Daily'],
+        required: true,
+        category: 'trigger'
+      },
+      {
+        id: 'search_query',
+        question: 'What emails should we search for?',
+        type: 'text',
+        required: true,
+        category: 'data'
+      },
+      {
+        id: 'spreadsheet_id',
+        question: 'What Google Sheet should we use?',
+        type: 'url',
+        required: true,
+        category: 'data'
+      },
+      {
+        id: 'sheet_name',
+        question: 'Which sheet tab should we update?',
+        type: 'text',
+        required: true,
+        category: 'data'
+      }
+    ];
+
+    return {
+      apps,
+      trigger: { type: 'time', app: 'time', operation: 'schedule', description: 'Time-based trigger', required_inputs: ['frequency'], missing_inputs: ['frequency'] },
+      steps: [
+        {
+          app: 'gmail',
+          operation: 'search_emails',
+          required_inputs: ['search_query'],
+          missing_inputs: ['search_query'],
+          description: 'Search for emails'
+        },
+        {
+          app: 'sheets',
+          operation: 'append_row',
+          required_inputs: ['spreadsheet_id', 'sheet_name', 'values'],
+          missing_inputs: ['spreadsheet_id', 'sheet_name'],
+          description: 'Log data to spreadsheet'
+        },
+        ...(mode === 'all'
+          ? [
+              {
+                app: 'slack',
+                operation: 'send_message',
+                required_inputs: ['channel', 'message_template'],
+                missing_inputs: ['channel', 'message_template'],
+                description: 'Send Slack notification'
+              }
+            ]
+          : [])
+      ],
+      missing_inputs: missingInputs,
+      workflow_name: 'Email to Sheets Automation',
+      description: userPrompt || 'Monitor emails and log them to a spreadsheet',
+      complexity: 'simple',
+      estimated_setup_time: '15 minutes',
+      business_value: 'Save time on manual email processing',
+      follow_up_questions: missingInputs.map(input => ({
+        id: input.id,
+        question: input.question,
+        category: input.category,
+        expected_format: this.mapInputTypeToExpectedFormat(input.type)
+      }))
     };
   }
 
@@ -706,7 +811,7 @@ RESPOND WITH:
   private static estimateBusinessValue(apps: string[], prompt: string): string {
     const appCount = apps.length;
     const hasHighValueApps = apps.some(app => ['salesforce', 'hubspot', 'quickbooks', 'jira'].includes(app));
-    
+
     if (hasHighValueApps && appCount >= 4) {
       return 'High-value enterprise automation - save 10+ hours per week';
     } else if (appCount >= 3) {
@@ -716,48 +821,19 @@ RESPOND WITH:
     }
   }
 
-  /**
-   * ChatGPT Enhancement: Create fallback plan based on mode
-   */
-  private static createFallbackPlan(userPrompt: string, mode: PlannerMode): AutomationPlan {
-    console.log('🔄 Creating fallback plan for mode:', mode);
-    
-    const apps = mode === "gas-only" ? ["gmail", "sheets"] : ["gmail", "sheets", "slack"];
-    
-    return {
-      apps,
-      trigger: { type: 'time', app: 'time', operation: 'schedule' },
-      steps: [
-        {
-          app: 'gmail',
-          operation: 'search_emails',
-          required_inputs: ['search_query'],
-          missing_inputs: ['search_query'],
-          description: 'Search for emails'
-        },
-        {
-          app: 'sheets',
-          operation: 'append_row',
-          required_inputs: ['spreadsheet_id', 'sheet_name', 'values'],
-          missing_inputs: ['spreadsheet_id', 'sheet_name'],
-          description: 'Log data to spreadsheet'
-        }
-      ],
-      missing_inputs: [
-        { id: 'search_query', question: 'What emails should we search for?', type: 'text' },
-        { id: 'spreadsheet_id', question: 'What Google Sheet should we use?', type: 'url' },
-        { id: 'sheet_name', question: 'Which sheet tab?', type: 'text' }
-      ],
-      workflow_name: 'Email to Sheets Automation',
-      description: 'Monitor emails and log them to a spreadsheet',
-      complexity: 'simple',
-      business_value: 'Save time on manual email processing',
-      follow_up_questions: [
-        { id: 'search_query', question: 'What emails should we search for?', category: 'data', expected_format: 'free' },
-        { id: 'spreadsheet_id', question: 'What Google Sheet should we use?', category: 'data', expected_format: 'url' },
-        { id: 'sheet_name', question: 'Which sheet tab?', category: 'data', expected_format: 'free' }
-      ]
-    };
+  private static mapInputTypeToExpectedFormat(type: MissingInput['type'] | undefined): string {
+    switch (type) {
+      case 'url':
+        return 'url';
+      case 'email':
+        return 'email';
+      case 'number':
+        return 'number';
+      case 'select':
+        return 'list';
+      default:
+        return 'free';
+    }
   }
 
   /**
