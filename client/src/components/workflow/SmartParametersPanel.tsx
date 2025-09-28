@@ -57,6 +57,28 @@ type MetadataRefreshState = {
 
 const METADATA_REFRESH_ENDPOINT = "/api/workflows/metadata/refresh";
 
+const AI_MAPPING_DISABLED_MESSAGE =
+  "AI mapping is disabled until an AI provider is configured.";
+
+export type AIMappingCapability = {
+  available: boolean;
+  providers: string[];
+};
+
+export const parseAIMappingCapability = (response: any): AIMappingCapability => {
+  const providers = Array.isArray(response?.providers?.available)
+    ? response.providers.available.map((value: unknown) => String(value))
+    : [];
+
+  const hasModels = Array.isArray(response?.models) && response.models.length > 0;
+  const aiAvailable = typeof response?.aiAvailable === "boolean" ? response.aiAvailable : hasModels;
+
+  return {
+    available: Boolean(aiAvailable && (providers.length > 0 || hasModels)),
+    providers,
+  };
+};
+
 const uniqueStrings = (values: Array<string | undefined>): string[] => {
   const set = new Set<string>();
   values.forEach((value) => {
@@ -605,6 +627,7 @@ export function SmartParametersPanel() {
     error: null,
     reason: null,
   });
+  const [aiCapability, setAiCapability] = useState<AIMappingCapability | null>(null);
 
   useEffect(() => {
     storeNodesRef.current = storeNodes as any[];
@@ -626,6 +649,35 @@ export function SmartParametersPanel() {
     metadataRefreshAbortRef.current = null;
     setMetadataRefreshState({ status: "idle", error: null, reason: null });
   }, [node?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCapability = async () => {
+      try {
+        const response = await fetch("/api/ai/models");
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setAiCapability({ available: false, providers: [] });
+          return;
+        }
+
+        const data = await response.json();
+        setAiCapability(parseAIMappingCapability(data));
+      } catch {
+        if (!cancelled) {
+          setAiCapability({ available: false, providers: [] });
+        }
+      }
+    };
+
+    loadCapability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const refreshNodeMetadata = useCallback(
     async (params: any, reason?: string) => {
@@ -1245,12 +1297,23 @@ export function SmartParametersPanel() {
       setLocalRefPath(refPath || '');
     }, [refNodeId, refPath, upstreamIds, upstreamNodes.length, node?.id]);
 
+    const aiMappingUnavailable = aiCapability?.available === false;
+
     const handleModeChange = (nextMode: FieldMode) => {
       if (nextMode === mode) return;
-      
+
       // Reset AI mapping state when switching modes
       setAiMapping({ isLoading: false, result: null, error: null });
-      
+
+      if (aiMappingUnavailable && nextMode === 'llm') {
+        setAiMapping({
+          isLoading: false,
+          result: null,
+          error: AI_MAPPING_DISABLED_MESSAGE,
+        });
+        return;
+      }
+
       if (nextMode === 'static') {
         const initial = '';
         setLocalStatic(initial);
@@ -1360,6 +1423,15 @@ export function SmartParametersPanel() {
     }>({ isLoading: false, result: null, error: null });
 
     const handleAIMapping = async () => {
+      if (aiMappingUnavailable) {
+        setAiMapping({
+          isLoading: false,
+          result: null,
+          error: AI_MAPPING_DISABLED_MESSAGE,
+        });
+        return;
+      }
+
       if (upstreamNodes.length === 0) {
         setAiMapping({ isLoading: false, result: null, error: 'No upstream nodes available for mapping' });
         return;
@@ -1390,9 +1462,27 @@ export function SmartParametersPanel() {
 
         const result = await response.json();
 
+        if (response.status === 503 && result?.code === 'ai_mapping_disabled') {
+          setAiMapping({
+            isLoading: false,
+            result: null,
+            error: AI_MAPPING_DISABLED_MESSAGE,
+          });
+          return;
+        }
+
+        if (!response.ok) {
+          setAiMapping({
+            isLoading: false,
+            result: null,
+            error: result?.error || 'AI mapping failed',
+          });
+          return;
+        }
+
         if (result.success && result.mapping) {
           setAiMapping({ isLoading: false, result: result.mapping, error: null });
-          
+
           // Apply the AI mapping result
           if (result.mapping.nodeId && result.mapping.path) {
             setDynamicValue(name, result.mapping.nodeId, result.mapping.path);
@@ -1400,21 +1490,35 @@ export function SmartParametersPanel() {
             setLocalRefPath(result.mapping.path);
           }
         } else {
-          setAiMapping({ 
-            isLoading: false, 
-            result: null, 
-            error: result.error || 'AI mapping failed' 
+          setAiMapping({
+            isLoading: false,
+            result: null,
+            error: result.error || 'AI mapping failed'
           });
         }
       } catch (error) {
         console.error('AI mapping error:', error);
-        setAiMapping({ 
-          isLoading: false, 
-          result: null, 
-          error: 'Failed to connect to AI service' 
+        const fallbackMessage =
+          error instanceof Error ? error.message : 'Failed to connect to AI service';
+        setAiMapping({
+          isLoading: false,
+          result: null,
+          error: fallbackMessage || 'Failed to connect to AI service'
         });
       }
     };
+
+    useEffect(() => {
+      if (aiMappingUnavailable && mode === 'llm') {
+        setAiMapping({
+          isLoading: false,
+          result: null,
+          error: AI_MAPPING_DISABLED_MESSAGE,
+        });
+        handleModeChange('static');
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [aiMappingUnavailable, mode]);
 
     const renderLLMField = () => (
       <div className="space-y-3">
@@ -1422,7 +1526,11 @@ export function SmartParametersPanel() {
           <button
             type="button"
             onClick={handleAIMapping}
-            disabled={aiMapping.isLoading || upstreamNodes.length === 0}
+            disabled={
+              aiMapping.isLoading ||
+              upstreamNodes.length === 0 ||
+              aiMappingUnavailable
+            }
             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             {aiMapping.isLoading ? (
@@ -1440,10 +1548,13 @@ export function SmartParametersPanel() {
             )}
           </button>
           
-          {upstreamNodes.length === 0 && (
-            <span className="text-xs text-slate-500">Connect upstream nodes first</span>
-          )}
-        </div>
+            {upstreamNodes.length === 0 && (
+              <span className="text-xs text-slate-500">Connect upstream nodes first</span>
+            )}
+            {aiMappingUnavailable && (
+              <span className="text-xs text-slate-500">{AI_MAPPING_DISABLED_MESSAGE}</span>
+            )}
+          </div>
 
         {aiMapping.result && (
           <div className="bg-green-50 border border-green-200 rounded-md p-3">
@@ -1504,7 +1615,12 @@ export function SmartParametersPanel() {
           >
             <option value="static">Static</option>
             <option value="dynamic" disabled={!upstreamNodes.length}>Dynamic</option>
-            <option value="llm" disabled={!upstreamNodes.length}>AI Mapping</option>
+            <option
+              value="llm"
+              disabled={!upstreamNodes.length || aiMappingUnavailable}
+            >
+              AI Mapping
+            </option>
           </select>
         </div>
 
