@@ -23,15 +23,48 @@ declare global {
   }
 }
 
+const buildDevUser = () => {
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
+  const userId = process.env.DEV_AUTO_USER_ID || 'dev-user';
+
+  return {
+    id: userId,
+    email: process.env.DEV_AUTO_USER_EMAIL || 'developer@local.test',
+    name: process.env.DEV_AUTO_USER_NAME || 'Local Developer',
+    role: process.env.DEV_AUTO_USER_ROLE || 'developer',
+    planType: process.env.DEV_AUTO_USER_PLAN || 'pro',
+    isActive: true,
+    emailVerified: true,
+    monthlyApiCalls: 0,
+    monthlyTokensUsed: 0,
+    quotaApiCalls: 100000,
+    quotaTokens: 1000000,
+    createdAt: new Date(),
+  };
+};
+
+const devUser = buildDevUser();
+
+const shouldUseDevFallback = () => process.env.NODE_ENV === 'development' && Boolean(devUser);
+
 /**
  * Authentication middleware - verifies JWT token
  */
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : undefined;
 
-    if (!token) {
+    if (!token || token === 'null' || token === 'undefined') {
+      if (shouldUseDevFallback() && devUser) {
+        req.user = devUser;
+        return next();
+      }
       return res.status(401).json({
         success: false,
         error: 'Access token required'
@@ -67,19 +100,27 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : undefined;
 
-    if (token) {
+    if (token && token !== 'null' && token !== 'undefined') {
       const user = await authService.verifyToken(token);
       if (user) {
         req.user = user;
       }
+    } else if (shouldUseDevFallback() && devUser) {
+      req.user = devUser;
     }
 
     next();
   } catch (error) {
-    // Continue without authentication
-    next();
+    if (shouldUseDevFallback() && devUser) {
+      req.user = devUser;
+      next();
+    } else {
+      next();
+    }
   }
 };
 

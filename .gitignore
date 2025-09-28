@@ -10,3 +10,4 @@ vite.config.ts.*
 *.log
 logs/
 .temp-deployments/
+.data/

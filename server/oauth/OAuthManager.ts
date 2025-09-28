@@ -1478,15 +1478,16 @@ export class OAuthManager {
     }
 
     // Get stored connection
-    const connection = await connectionService.getConnection(userId, providerId);
-    if (!connection || !connection.refreshToken) {
+    const connection = await connectionService.getConnectionByProvider(userId, providerId);
+    const refreshToken = connection?.credentials?.refreshToken;
+    if (!connection || !refreshToken) {
       throw new Error('No refresh token available');
     }
 
     // Refresh tokens
     const tokenData = {
       grant_type: 'refresh_token',
-      refresh_token: connection.refreshToken,
+      refresh_token: refreshToken,
       client_id: provider.config.clientId,
       client_secret: provider.config.clientSecret
     };
@@ -1510,14 +1511,24 @@ export class OAuthManager {
       
       const newTokens: OAuthTokens = {
         accessToken: data.access_token,
-        refreshToken: data.refresh_token || connection.refreshToken,
+        refreshToken: data.refresh_token || refreshToken,
         expiresAt: data.expires_in ? Date.now() + (data.expires_in * 1000) : undefined,
         tokenType: data.token_type || 'Bearer',
         scope: data.scope
       };
 
       // Update stored connection
-      await connectionService.updateConnection(userId, providerId, newTokens);
+      await connectionService.storeConnection(
+        userId,
+        providerId,
+        newTokens,
+        connection.metadata?.userInfo,
+        {
+          name: connection.name,
+          metadata: connection.metadata,
+          type: (connection.type as any) ?? 'saas'
+        }
+      );
 
       return newTokens;
 

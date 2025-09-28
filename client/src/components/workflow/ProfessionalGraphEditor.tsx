@@ -1216,8 +1216,12 @@ const GraphEditorContent = () => {
       // Fetch user connections (optional, requires auth)
       try {
         const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token && token !== 'null' && token !== 'undefined') {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         const res = await fetch('/api/connections', {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+          headers: Object.keys(headers).length > 0 ? headers : undefined
         });
         const j = await res.json().catch(() => ({}));
         const list = j?.connections || [];
