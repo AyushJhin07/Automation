@@ -22,6 +22,7 @@ export interface AuthResponse {
     name?: string;
     role: string;
     planType: string;
+    emailVerified: boolean;
     quotaApiCalls: number;
     quotaTokens: number;
   };
@@ -111,6 +112,7 @@ export class AuthService {
         name: users.name,
         role: users.role,
         planType: users.planType,
+        emailVerified: users.emailVerified,
         quotaApiCalls: users.quotaApiCalls,
         quotaTokens: users.quotaTokens,
       });
@@ -190,6 +192,7 @@ export class AuthService {
           name: user.name,
           role: user.role,
           planType: user.planType,
+          emailVerified: user.emailVerified,
           quotaApiCalls: user.quotaApiCalls,
           quotaTokens: user.quotaTokens,
         },
@@ -261,6 +264,7 @@ export class AuthService {
           name: user.name,
           role: user.role,
           planType: user.planType,
+          emailVerified: user.emailVerified,
           quotaApiCalls: user.quotaApiCalls,
           quotaTokens: user.quotaTokens,
         },
