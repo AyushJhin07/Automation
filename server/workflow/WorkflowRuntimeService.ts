@@ -3,6 +3,8 @@ import { integrationManager } from '../integrations/IntegrationManager.js';
 import type { APICredentials } from '../integrations/BaseAPIClient.js';
 import type { ConnectionService } from '../services/ConnectionService.js';
 import { getErrorMessage } from '../types/common.js';
+import { WorkflowRepository } from './WorkflowRepository.js';
+import { workflowRuntime } from '../core/WorkflowRuntime.js';
 
 interface WorkflowExecutionContext {
   workflowId: string;
@@ -38,6 +40,17 @@ interface CredentialResolutionFailure {
 }
 
 type CredentialResolution = CredentialResolutionSuccess | CredentialResolutionFailure;
+
+interface TriggerWorkflowOptions {
+  workflowId: string;
+  triggerId: string;
+  appId: string;
+  source: 'webhook' | 'polling';
+  payload: any;
+  headers: Record<string, string>;
+  timestamp: Date;
+  dedupeToken?: string;
+}
 
 export class WorkflowNodeExecutionError extends Error {
   public readonly details?: Record<string, any>;
@@ -495,6 +508,40 @@ export class WorkflowRuntimeService {
       this.connectionServiceError = message;
       this.cachedConnectionService = null;
       return null;
+    }
+  }
+
+  public async triggerWorkflowExecution(options: TriggerWorkflowOptions): Promise<{ success: boolean; error?: string }> {
+    try {
+      const workflow = await WorkflowRepository.getWorkflowById(options.workflowId);
+      if (!workflow) {
+        return { success: false, error: `Workflow not found: ${options.workflowId}` };
+      }
+
+      if (!workflow.graph) {
+        return { success: false, error: 'Workflow graph is not available for execution' };
+      }
+
+      const initialData = {
+        trigger: {
+          id: options.triggerId,
+          appId: options.appId,
+          source: options.source,
+          payload: options.payload,
+          headers: options.headers,
+          dedupeToken: options.dedupeToken,
+          timestamp: options.timestamp.toISOString(),
+        },
+        payload: options.payload,
+      };
+
+      const execution = await workflowRuntime.executeWorkflow(workflow.graph as any, initialData, workflow.userId);
+      return {
+        success: execution.success,
+        error: execution.success ? undefined : execution.error,
+      };
+    } catch (error) {
+      return { success: false, error: getErrorMessage(error) };
     }
   }
 }

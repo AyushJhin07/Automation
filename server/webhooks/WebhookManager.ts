@@ -1,53 +1,28 @@
 // WEBHOOK MANAGEMENT SYSTEM
 // Handles webhook endpoints, polling triggers, and deduplication
 
-import { db } from '../database/schema';
 import { getErrorMessage } from '../types/common';
-import { eq, and, desc, sql } from 'drizzle-orm';
-import { webhookLogs, connectorDefinitions } from '../database/schema';
 import { createHash } from 'crypto';
-
-export interface WebhookTrigger {
-  id: string;
-  appId: string;
-  triggerId: string;
-  workflowId: string;
-  endpoint: string;
-  secret?: string;
-  isActive: boolean;
-  lastTriggered?: Date;
-  metadata: Record<string, any>;
-}
-
-export interface TriggerEvent {
-  webhookId: string;
-  appId: string;
-  triggerId: string;
-  payload: any;
-  headers: Record<string, string>;
-  timestamp: Date;
-  signature?: string;
-  processed: boolean;
-}
-
-export interface PollingTrigger {
-  id: string;
-  appId: string;
-  triggerId: string;
-  workflowId: string;
-  interval: number; // seconds
-  lastPoll?: Date;
-  nextPoll: Date;
-  isActive: boolean;
-  dedupeKey?: string;
-  metadata: Record<string, any>;
-}
+import { triggerPersistenceService } from '../services/TriggerPersistenceService';
+import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
+import { connectorRegistry } from '../ConnectorRegistry';
+import type { APICredentials } from '../integrations/BaseAPIClient';
+import type { ConnectionService } from '../services/ConnectionService';
+import { workflowRuntimeService } from '../workflow/WorkflowRuntimeService';
 
 export class WebhookManager {
   private static instance: WebhookManager;
   private activeWebhooks: Map<string, WebhookTrigger> = new Map();
   private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
-  private seenEvents: Set<string> = new Set(); // For deduplication
+  private pollingStartTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private pollingTriggers: Map<string, PollingTrigger> = new Map();
+  private dedupeCache: Map<string, Set<string>> = new Map();
+  private readonly persistence = triggerPersistenceService;
+  private readonly ready: Promise<void>;
+  private connectionServicePromise?: Promise<ConnectionService | null>;
+  private initializationError?: string;
+
+  private static readonly MAX_DEDUPE_TOKENS = 500;
 
   public static getInstance(): WebhookManager {
     if (!WebhookManager.instance) {
@@ -56,14 +31,52 @@ export class WebhookManager {
     return WebhookManager.instance;
   }
 
+  private constructor() {
+    this.ready = this.initializeFromPersistence();
+  }
+
+  private async initializeFromPersistence(): Promise<void> {
+    try {
+      const [dedupeState, webhooks, polling] = await Promise.all([
+        this.persistence.loadDedupeTokens(),
+        this.persistence.loadWebhookTriggers(),
+        this.persistence.loadPollingTriggers(),
+      ]);
+
+      for (const [id, tokens] of Object.entries(dedupeState)) {
+        this.dedupeCache.set(id, new Set(tokens));
+      }
+
+      webhooks.forEach((trigger) => {
+        this.activeWebhooks.set(trigger.id, trigger);
+      });
+
+      polling.forEach((trigger) => {
+        this.pollingTriggers.set(trigger.id, trigger);
+        this.schedulePollingTrigger(trigger);
+      });
+
+      if (webhooks.length > 0 || polling.length > 0) {
+        console.log(
+          `🔄 WebhookManager initialized with ${webhooks.length} webhooks and ${polling.length} polling triggers from persistent storage.`
+        );
+      }
+    } catch (error) {
+      this.initializationError = getErrorMessage(error);
+      console.error('❌ Failed to initialize WebhookManager from persistence:', this.initializationError);
+    }
+  }
+
   /**
    * Register a webhook trigger
    */
   async registerWebhook(trigger: Omit<WebhookTrigger, 'endpoint'>): Promise<string> {
     try {
+      await this.ready;
+
       const webhookId = this.generateWebhookId(trigger.appId, trigger.triggerId, trigger.workflowId);
       const endpoint = `/api/webhooks/${webhookId}`;
-      
+
       const webhookTrigger: WebhookTrigger = {
         ...trigger,
         id: webhookId,
@@ -72,10 +85,13 @@ export class WebhookManager {
       };
 
       this.activeWebhooks.set(webhookId, webhookTrigger);
-      
+
+      await this.persistence.saveWebhookTrigger(webhookTrigger);
+      await this.ensureDedupeSet(webhookId);
+
       console.log(`🔗 Registered webhook: ${endpoint} for ${trigger.appId}.${trigger.triggerId}`);
       return endpoint;
-      
+
     } catch (error) {
       console.error('❌ Failed to register webhook:', getErrorMessage(error));
       throw error;
@@ -87,6 +103,8 @@ export class WebhookManager {
    */
   async handleWebhook(webhookId: string, payload: any, headers: Record<string, string>, rawBody?: string): Promise<boolean> {
     try {
+      await this.ready;
+
       const webhook = this.activeWebhooks.get(webhookId);
       if (!webhook) {
         console.warn(`⚠️ Unknown webhook ID: ${webhookId}`);
@@ -104,34 +122,33 @@ export class WebhookManager {
         webhookId,
         appId: webhook.appId,
         triggerId: webhook.triggerId,
+        workflowId: webhook.workflowId,
         payload,
         headers,
         timestamp: new Date(),
         signature: headers['x-signature'] || headers['x-hub-signature-256'],
-        processed: false
+        processed: false,
+        source: 'webhook'
       };
 
       // Check for duplicates
       const eventHash = this.createEventHash(event);
-      if (this.seenEvents.has(eventHash)) {
+      if (this.hasSeenEvent(webhook.id, eventHash)) {
         console.log(`🔄 Duplicate webhook event ignored: ${webhookId}`);
         return true; // Return success but don't process
       }
 
       // Mark as seen for deduplication
-      this.seenEvents.add(eventHash);
-      
-      // Clean up old seen events (keep last 1000)
-      if (this.seenEvents.size > 1000) {
-        const oldEvents = Array.from(this.seenEvents).slice(0, 100);
-        oldEvents.forEach(hash => this.seenEvents.delete(hash));
-      }
-
-      // Log webhook event
-      await this.logWebhookEvent(event);
+      event.dedupeToken = eventHash;
+      await this.recordDedupeToken(webhook.id, eventHash);
 
       // Update last triggered time
       webhook.lastTriggered = new Date();
+      webhook.metadata = {
+        ...webhook.metadata,
+        lastTriggered: webhook.lastTriggered.toISOString(),
+      };
+      await this.persistence.saveWebhookTrigger(webhook);
 
       // Process the trigger (this would integrate with workflow engine)
       await this.processTriggerEvent(event);
@@ -150,26 +167,148 @@ export class WebhookManager {
    */
   async registerPollingTrigger(trigger: PollingTrigger): Promise<void> {
     try {
+      await this.ready;
       const pollId = trigger.id;
-      
-      // Clear existing interval if any
-      if (this.pollingIntervals.has(pollId)) {
-        clearInterval(this.pollingIntervals.get(pollId)!);
+
+      trigger.nextPoll = trigger.nextPoll instanceof Date ? trigger.nextPoll : new Date(trigger.nextPoll);
+      if (trigger.lastPoll && !(trigger.lastPoll instanceof Date)) {
+        trigger.lastPoll = new Date(trigger.lastPoll);
       }
 
-      // Set up polling interval
-      const interval = setInterval(async () => {
-        await this.executePoll(trigger);
-      }, trigger.interval * 1000);
+      this.pollingTriggers.set(pollId, trigger);
+      await this.persistence.savePollingTrigger(trigger);
+      await this.ensureDedupeSet(pollId);
+      this.schedulePollingTrigger(trigger);
 
-      this.pollingIntervals.set(pollId, interval);
-      
       console.log(`⏰ Registered polling trigger: ${trigger.appId}.${trigger.triggerId} (every ${trigger.interval}s)`);
-      
+
     } catch (error) {
       console.error('❌ Failed to register polling trigger:', getErrorMessage(error));
       throw error;
     }
+  }
+
+  private schedulePollingTrigger(trigger: PollingTrigger): void {
+    const pollId = trigger.id;
+
+    if (this.pollingIntervals.has(pollId)) {
+      clearInterval(this.pollingIntervals.get(pollId)!);
+      this.pollingIntervals.delete(pollId);
+    }
+
+    if (this.pollingStartTimeouts.has(pollId)) {
+      clearTimeout(this.pollingStartTimeouts.get(pollId)!);
+      this.pollingStartTimeouts.delete(pollId);
+    }
+
+    const delay = trigger.nextPoll ? trigger.nextPoll.getTime() - Date.now() : 0;
+    if (delay > 0) {
+      const timeout = setTimeout(() => {
+        this.pollingStartTimeouts.delete(pollId);
+        this.startPollingInterval(pollId);
+      }, delay);
+      this.pollingStartTimeouts.set(pollId, timeout);
+    } else {
+      this.startPollingInterval(pollId);
+    }
+  }
+
+  private startPollingInterval(triggerId: string): void {
+    const trigger = this.pollingTriggers.get(triggerId);
+    if (!trigger) {
+      return;
+    }
+
+    const intervalMs = Math.max(1000, trigger.interval * 1000);
+
+    if (this.pollingIntervals.has(triggerId)) {
+      clearInterval(this.pollingIntervals.get(triggerId)!);
+    }
+
+    const intervalHandle = setInterval(() => {
+      void this.executePollById(triggerId);
+    }, intervalMs);
+    this.pollingIntervals.set(triggerId, intervalHandle);
+
+    void this.executePollById(triggerId);
+  }
+
+  private async executePollById(triggerId: string): Promise<void> {
+    const trigger = this.pollingTriggers.get(triggerId);
+    if (!trigger) {
+      return;
+    }
+
+    await this.executePoll(trigger);
+  }
+
+  public async rehydratePollingSchedules(): Promise<{ total: number }> {
+    await this.ready;
+
+    for (const interval of this.pollingIntervals.values()) {
+      clearInterval(interval);
+    }
+    this.pollingIntervals.clear();
+
+    for (const timeout of this.pollingStartTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    this.pollingStartTimeouts.clear();
+
+    const triggers = await this.persistence.loadPollingTriggers();
+    this.pollingTriggers.clear();
+
+    const dedupeState = await this.persistence.loadDedupeTokens();
+    this.dedupeCache.clear();
+    for (const [id, tokens] of Object.entries(dedupeState)) {
+      this.dedupeCache.set(id, new Set(tokens));
+    }
+
+    triggers.forEach((trigger) => {
+      this.pollingTriggers.set(trigger.id, trigger);
+      this.schedulePollingTrigger(trigger);
+    });
+
+    console.log(`🔁 Rehydrated ${triggers.length} polling schedules from persistent storage.`);
+    return { total: triggers.length };
+  }
+
+  private async ensureDedupeSet(id: string): Promise<Set<string>> {
+    let existing = this.dedupeCache.get(id);
+    if (!existing) {
+      existing = new Set<string>();
+      this.dedupeCache.set(id, existing);
+      await this.persistence.persistDedupeTokens(id, []);
+    }
+    return existing;
+  }
+
+  private hasSeenEvent(id: string, token: string): boolean {
+    const set = this.dedupeCache.get(id);
+    return set ? set.has(token) : false;
+  }
+
+  private async recordDedupeToken(id: string, token: string): Promise<void> {
+    let set = this.dedupeCache.get(id);
+    if (!set) {
+      set = await this.ensureDedupeSet(id);
+    }
+
+    if (set.has(token)) {
+      return;
+    }
+
+    set.add(token);
+
+    if (set.size > WebhookManager.MAX_DEDUPE_TOKENS) {
+      const tokens = Array.from(set);
+      const overflow = tokens.length - WebhookManager.MAX_DEDUPE_TOKENS;
+      for (let i = 0; i < overflow; i++) {
+        set.delete(tokens[i]);
+      }
+    }
+
+    await this.persistence.persistDedupeTokens(id, Array.from(set));
   }
 
   /**
@@ -182,27 +321,31 @@ export class WebhookManager {
       }
 
       console.log(`🔄 Polling ${trigger.appId}.${trigger.triggerId}...`);
-      
+
       // Update poll times
       trigger.lastPoll = new Date();
       trigger.nextPoll = new Date(Date.now() + trigger.interval * 1000);
 
+      await this.persistence.updatePollingRuntimeState(trigger.id, trigger.lastPoll, trigger.nextPoll);
+
       // Execute the specific polling logic based on app and trigger
       const results = await this.executeAppSpecificPoll(trigger);
-      
+
       if (results && results.length > 0) {
         console.log(`📊 Poll found ${results.length} new items for ${trigger.appId}.${trigger.triggerId}`);
-        
+
         // Process each result as a trigger event
         for (const result of results) {
           const event: TriggerEvent = {
             webhookId: `poll-${trigger.id}`,
             appId: trigger.appId,
             triggerId: trigger.triggerId,
+            workflowId: trigger.workflowId,
             payload: result,
             headers: { 'x-trigger-type': 'polling' },
             timestamp: new Date(),
-            processed: false
+            processed: false,
+            source: 'polling'
           };
 
           // Check for duplicates using dedupe key
@@ -210,11 +353,19 @@ export class WebhookManager {
             const dedupeHash = createHash('md5')
               .update(`${trigger.id}-${result[trigger.dedupeKey]}`)
               .digest('hex');
-            
-            if (this.seenEvents.has(dedupeHash)) {
+
+            if (this.hasSeenEvent(trigger.id, dedupeHash)) {
               continue; // Skip duplicate
             }
-            this.seenEvents.add(dedupeHash);
+            event.dedupeToken = dedupeHash;
+            await this.recordDedupeToken(trigger.id, dedupeHash);
+          } else {
+            const fallbackToken = this.createEventHash(event);
+            if (this.hasSeenEvent(trigger.id, fallbackToken)) {
+              continue;
+            }
+            event.dedupeToken = fallbackToken;
+            await this.recordDedupeToken(trigger.id, fallbackToken);
           }
 
           await this.processTriggerEvent(event);
@@ -230,101 +381,174 @@ export class WebhookManager {
    * Execute app-specific polling logic
    */
   private async executeAppSpecificPoll(trigger: PollingTrigger): Promise<any[]> {
-    // This would integrate with the specific API clients
-    // For now, return empty array as placeholder
-    
-    switch (trigger.appId) {
-      case 'gmail':
-        return await this.pollGmail(trigger);
-      case 'slack':
-        return await this.pollSlack(trigger);
-      case 'shopify':
-        return await this.pollShopify(trigger);
-      case 'hubspot':
-        return await this.pollHubSpot(trigger);
-      default:
-        console.log(`⚠️ No polling implementation for ${trigger.appId}`);
+    try {
+      const context = await this.resolvePollingContext(trigger);
+      if (!context) {
+        console.warn(
+          `⚠️ Skipping polling for ${trigger.appId}.${trigger.triggerId} - missing credentials or connection context`
+        );
         return [];
+      }
+
+      const clientConstructor = this.resolveClientConstructor(trigger.appId);
+      if (!clientConstructor) {
+        console.warn(`⚠️ No API client registered for ${trigger.appId}`);
+        return [];
+      }
+
+      const methodName = this.resolvePollingMethodName(trigger);
+      const client: any = new clientConstructor(context.credentials, context.additionalConfig);
+
+      if (typeof client[methodName] !== 'function') {
+        console.warn(`⚠️ Polling method ${methodName} not implemented for ${trigger.appId}`);
+        return [];
+      }
+
+      const response = await client[methodName](context.parameters ?? {});
+      if (!response) {
+        return [];
+      }
+
+      return Array.isArray(response) ? response : [response];
+    } catch (error) {
+      console.error(
+        `❌ Failed to execute polling for ${trigger.appId}.${trigger.triggerId}:`,
+        getErrorMessage(error)
+      );
+      return [];
     }
   }
 
-  /**
-   * Gmail polling implementation
-   */
-  private async pollGmail(trigger: PollingTrigger): Promise<any[]> {
-    // Placeholder - would integrate with Gmail API
-    console.log(`📧 Polling Gmail for ${trigger.triggerId}...`);
-    return [];
+  private resolvePollingMethodName(trigger: PollingTrigger): string {
+    const metadataMethod = trigger.metadata?.pollMethod;
+    if (typeof metadataMethod === 'string' && metadataMethod.trim().length > 0) {
+      return metadataMethod.trim();
+    }
+
+    const parts = (trigger.triggerId || '')
+      .split(/[^a-zA-Z0-9]+/)
+      .filter((segment) => segment.length > 0)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1));
+
+    if (parts.length === 0) {
+      return 'poll';
+    }
+
+    return `poll${parts.join('')}`;
   }
 
-  /**
-   * Slack polling implementation  
-   */
-  private async pollSlack(trigger: PollingTrigger): Promise<any[]> {
-    // Placeholder - would integrate with Slack API
-    console.log(`💬 Polling Slack for ${trigger.triggerId}...`);
-    return [];
+  private resolveClientConstructor(appId: string): any {
+    const normalized = appId.toLowerCase();
+    const candidates = new Set<string>([
+      normalized,
+      normalized.replace(/-enhanced$/, ''),
+      normalized.replace(/_/g, '-'),
+      normalized.replace(/-/, '_'),
+    ]);
+
+    for (const candidate of candidates) {
+      const ctor = connectorRegistry.getAPIClient(candidate);
+      if (ctor) {
+        return ctor;
+      }
+    }
+
+    return undefined;
   }
 
-  /**
-   * Shopify polling implementation
-   */
-  private async pollShopify(trigger: PollingTrigger): Promise<any[]> {
-    // Placeholder - would integrate with Shopify API  
-    console.log(`🛒 Polling Shopify for ${trigger.triggerId}...`);
-    return [];
+  private async resolvePollingContext(trigger: PollingTrigger): Promise<{
+    credentials: APICredentials;
+    additionalConfig?: Record<string, any>;
+    parameters: Record<string, any>;
+  } | null> {
+    const metadata = trigger.metadata ?? {};
+    const parameters =
+      metadata.parameters && typeof metadata.parameters === 'object'
+        ? (metadata.parameters as Record<string, any>)
+        : {};
+
+    if (metadata.credentials) {
+      return {
+        credentials: (metadata.credentials as APICredentials),
+        additionalConfig: metadata.additionalConfig ?? {},
+        parameters,
+      };
+    }
+
+    if (metadata.connectionId && metadata.userId) {
+      const service = await this.getConnectionService();
+      if (service) {
+        try {
+          const connection = await service.getConnection(metadata.connectionId, metadata.userId);
+          if (connection) {
+            return {
+              credentials: (connection.credentials as APICredentials),
+              additionalConfig: { ...(connection.metadata ?? {}), ...(metadata.additionalConfig ?? {}) },
+              parameters,
+            };
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to load connection for polling trigger:', getErrorMessage(error));
+        }
+      }
+    }
+
+    if (metadata.allowUnauthenticated) {
+      return {
+        credentials: (metadata.credentials as APICredentials) ?? {},
+        additionalConfig: metadata.additionalConfig ?? {},
+        parameters,
+      };
+    }
+
+    return null;
   }
 
-  /**
-   * HubSpot polling implementation
-   */
-  private async pollHubSpot(trigger: PollingTrigger): Promise<any[]> {
-    // Placeholder - would integrate with HubSpot API
-    console.log(`🎯 Polling HubSpot for ${trigger.triggerId}...`);
-    return [];
+  private async getConnectionService(): Promise<ConnectionService | null> {
+    if (!this.connectionServicePromise) {
+      this.connectionServicePromise = import('../services/ConnectionService')
+        .then((module) => new module.ConnectionService())
+        .catch((error) => {
+          console.warn('⚠️ ConnectionService unavailable for polling triggers:', getErrorMessage(error));
+          return null;
+        });
+    }
+
+    return this.connectionServicePromise;
   }
 
   /**
    * Process a trigger event (integrate with workflow engine)
    */
   private async processTriggerEvent(event: TriggerEvent): Promise<void> {
+    let logId: string | null = null;
     try {
-      // This would integrate with the workflow execution engine
-      // For now, just log the event
-      console.log(`🔥 Trigger event: ${event.appId}.${event.triggerId}`, {
-        webhookId: event.webhookId,
-        timestamp: event.timestamp,
-        payloadSize: JSON.stringify(event.payload).length
-      });
-      
-      // Mark as processed
-      event.processed = true;
-      
-    } catch (error) {
-      console.error('❌ Error processing trigger event:', getErrorMessage(error));
-    }
-  }
+      logId = await this.persistence.logWebhookEvent(event);
+      if (logId) {
+        event.id = logId;
+      }
 
-  /**
-   * Log webhook event to database
-   */
-  private async logWebhookEvent(event: TriggerEvent): Promise<void> {
-    try {
-      if (db) {
-        await db.insert(webhookLogs).values({
-          id: this.generateEventId(),
-          webhookId: event.webhookId,
-          appId: event.appId,
-          triggerId: event.triggerId,
-          payload: event.payload,
-          headers: event.headers,
-          timestamp: event.timestamp,
-          signature: event.signature,
-          processed: event.processed
-        });
+      const executionResult = await workflowRuntimeService.triggerWorkflowExecution({
+        workflowId: event.workflowId,
+        triggerId: event.triggerId,
+        appId: event.appId,
+        source: event.source,
+        payload: event.payload,
+        headers: event.headers,
+        timestamp: event.timestamp,
+        dedupeToken: event.dedupeToken,
+      });
+
+      event.processed = executionResult.success;
+      await this.persistence.markWebhookEventProcessed(logId, executionResult);
+
+      if (!executionResult.success && executionResult.error) {
+        console.error('❌ Error processing trigger event:', executionResult.error);
       }
     } catch (error) {
-      console.error('❌ Failed to log webhook event:', getErrorMessage(error));
+      const message = getErrorMessage(error);
+      console.error('❌ Error processing trigger event:', message);
+      await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
     }
   }
 
@@ -826,9 +1050,11 @@ export class WebhookManager {
    * Create hash for event deduplication
    */
   private createEventHash(event: TriggerEvent): string {
-    return createHash('md5')
-      .update(`${event.webhookId}-${event.timestamp.getTime()}-${JSON.stringify(event.payload)}`)
-      .digest('hex');
+    const payload = event.payload ?? {};
+    const payloadString = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const base = `${event.workflowId}|${event.webhookId}|${event.triggerId}|${event.source}|${payloadString}`;
+
+    return createHash('md5').update(base).digest('hex');
   }
 
   /**
@@ -839,15 +1065,6 @@ export class WebhookManager {
       .update(`${appId}-${triggerId}-${workflowId}-${Date.now()}`)
       .digest('hex')
       .substring(0, 16);
-  }
-
-  /**
-   * Generate event ID
-   */
-  private generateEventId(): string {
-    return createHash('md5')
-      .update(`${Date.now()}-${Math.random()}`)
-      .digest('hex');
   }
 
   /**
@@ -867,22 +1084,36 @@ export class WebhookManager {
   /**
    * Deactivate webhook
    */
-  deactivateWebhook(webhookId: string): boolean {
+  async deactivateWebhook(webhookId: string): Promise<boolean> {
+    await this.ready;
+
     const webhook = this.activeWebhooks.get(webhookId);
-    if (webhook) {
-      webhook.isActive = false;
-      console.log(`🔴 Deactivated webhook: ${webhookId}`);
-      return true;
+    if (!webhook) {
+      return false;
     }
-    return false;
+
+    webhook.isActive = false;
+    this.dedupeCache.delete(webhookId);
+
+    try {
+      await this.persistence.deactivateTrigger(webhookId);
+    } catch (error) {
+      console.error('❌ Failed to persist webhook deactivation:', getErrorMessage(error));
+    }
+
+    console.log(`🔴 Deactivated webhook: ${webhookId}`);
+    return true;
   }
 
   /**
    * Remove webhook
    */
-  removeWebhook(webhookId: string): boolean {
+  async removeWebhook(webhookId: string): Promise<boolean> {
+    await this.ready;
     const removed = this.activeWebhooks.delete(webhookId);
     if (removed) {
+      this.dedupeCache.delete(webhookId);
+      await this.persistence.deactivateTrigger(webhookId);
       console.log(`🗑️ Removed webhook: ${webhookId}`);
     }
     return removed;
@@ -891,25 +1122,44 @@ export class WebhookManager {
   /**
    * Stop polling trigger
    */
-  stopPolling(pollId: string): boolean {
+  async stopPolling(pollId: string): Promise<boolean> {
+    await this.ready;
+
+    let stopped = false;
+
     const interval = this.pollingIntervals.get(pollId);
     if (interval) {
       clearInterval(interval);
       this.pollingIntervals.delete(pollId);
-      console.log(`⏹️ Stopped polling: ${pollId}`);
-      return true;
+      stopped = true;
     }
-    return false;
+
+    const timeout = this.pollingStartTimeouts.get(pollId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.pollingStartTimeouts.delete(pollId);
+      stopped = true;
+    }
+
+    if (stopped) {
+      this.pollingTriggers.delete(pollId);
+      await this.persistence.deactivateTrigger(pollId);
+      console.log(`⏹️ Stopped polling: ${pollId}`);
+    }
+
+    return stopped;
   }
 
   /**
    * Get webhook statistics
    */
   getStats(): any {
+    const dedupeSize = Array.from(this.dedupeCache.values()).reduce((total, set) => total + set.size, 0);
     return {
       activeWebhooks: this.activeWebhooks.size,
-      pollingTriggers: this.pollingIntervals.size,
-      seenEvents: this.seenEvents.size,
+      pollingTriggers: this.pollingTriggers.size,
+      pollingIntervals: this.pollingIntervals.size,
+      dedupeEntries: dedupeSize,
       webhooks: this.listWebhooks().map(w => ({
         id: w.id,
         app: w.appId,
