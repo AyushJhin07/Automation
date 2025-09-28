@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { MultiAIService, buildWorkflowFromAnswersNew, generateWorkflowFromAnalysis } from '../aiModels';
-import { LLMProviderService } from '../services/LLMProviderService.js';
+import { LLMProviderService, NoLLMProvidersError } from '../services/LLMProviderService.js';
 import { getErrorMessage } from '../types/common';
 
 export const aiRouter = Router();
@@ -130,22 +130,37 @@ aiRouter.post('/process-answers', async (req, res) => {
 // Get available AI models endpoint  
 aiRouter.get('/models', async (req, res) => {
   try {
-    // Return available models
+    const providerStatus = LLMProviderService.getProviderStatus();
+
+    const baseModels = [
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini' },
+      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'gemini' },
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)', provider: 'gemini' },
+      { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'claude' },
+      { id: 'gpt-4', name: 'GPT-4', provider: 'openai' }
+    ];
+
+    const availableProviders = Object.entries(providerStatus.capabilities)
+      .filter(([, isEnabled]) => isEnabled)
+      .map(([provider]) => provider);
+
+    const models = baseModels.filter((model) => availableProviders.includes(model.provider));
+
     res.json({
       success: true,
-      models: [
-        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini' },
-        { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'gemini' }, 
-        { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)', provider: 'gemini' },
-        { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'claude' },
-        { id: 'gpt-4', name: 'GPT-4', provider: 'openai' }
-      ]
+      models,
+      aiAvailable: providerStatus.configured,
+      providers: {
+        available: availableProviders,
+        requested: providerStatus.selected,
+        capabilities: providerStatus.capabilities
+      }
     });
   } catch (error: any) {
     console.error('❌ AI models error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error?.message || 'Failed to get AI models' 
+    res.status(500).json({
+      success: false,
+      error: error?.message || 'Failed to get AI models'
     });
   }
 });
@@ -184,6 +199,15 @@ aiRouter.post('/map-params', async (req, res) => {
       return res.status(400).json({ success: false, error: 'At least one upstream node with metadata is required.' });
     }
 
+    const status = LLMProviderService.getProviderStatus();
+    if (!status.configured) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI parameter mapping is disabled - no providers configured',
+        code: 'ai_mapping_disabled'
+      });
+    }
+
     const prompt = buildParameterMappingPrompt(parameter, upstream, instruction);
 
     const llmResult = await LLMProviderService.generateText(prompt, {
@@ -216,6 +240,14 @@ aiRouter.post('/map-params', async (req, res) => {
 
     res.json({ success: true, mapping });
   } catch (error) {
+    if (error instanceof NoLLMProvidersError) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI parameter mapping is disabled - no providers configured',
+        code: 'ai_mapping_disabled'
+      });
+    }
+
     res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
