@@ -1,8 +1,7 @@
 import { llmRegistry } from './LLMProvider';
 import { OpenAIProvider } from './providers/OpenAIProvider';
-// Future providers can be added here:
-// import { AnthropicProvider } from './providers/AnthropicProvider';
-// import { GoogleProvider } from './providers/GoogleProvider';
+import { GeminiProvider } from './providers/GeminiProvider';
+import { ClaudeProvider } from './providers/ClaudeProvider';
 
 export function registerLLMProviders() {
   console.log('🤖 Registering LLM providers...');
@@ -12,8 +11,9 @@ export function registerLLMProviders() {
   const available: Provider[] = [];
 
   // Register Gemini if API key is available
-  if (process.env.GEMINI_API_KEY) {
-    // Note: Using LLMProviderService which handles Gemini
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiApiKey) {
+    llmRegistry.register(new GeminiProvider(geminiApiKey));
     available.push('gemini');
     console.log('✅ Gemini provider registered');
   } else {
@@ -28,12 +28,22 @@ export function registerLLMProviders() {
   } else {
     console.log('⚠️ OPENAI_API_KEY not found - skipping OpenAI provider');
   }
+
+  // Register Claude if API key is available
+  if (process.env.CLAUDE_API_KEY) {
+    llmRegistry.register(new ClaudeProvider(process.env.CLAUDE_API_KEY));
+    available.push('claude');
+    console.log('✅ Claude provider registered');
+  } else {
+    console.log('⚠️ CLAUDE_API_KEY not found - skipping Claude provider');
+  }
   
   // Choose default intelligently (ChatGPT's fix)
   const defaultProvider =
     (available.includes(envProvider) && envProvider) ||
     (available.includes('gemini') ? 'gemini' :
-     available.includes('openai') ? 'openai' : null);
+     available.includes('openai') ? 'openai' :
+     available.includes('claude') ? 'claude' : null);
 
   if (!defaultProvider) {
     console.error('❌ No LLM provider available');
