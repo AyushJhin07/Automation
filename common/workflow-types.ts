@@ -11,6 +11,9 @@ export type WorkflowNode = {
   name: string;     // human name, e.g., 'Gmail Trigger'
   op: string;       // machine op, e.g., 'gmail.watchInbox'
   params: Record<string, any>;
+  connectionId?: string;
+  auth?: Record<string, any>;
+  credentials?: Record<string, any>;
   data?: {
     label?: string;
     operation?: string;
