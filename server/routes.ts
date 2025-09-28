@@ -36,6 +36,8 @@ import { endToEndTester } from "./testing/EndToEndTester";
 import { connectorSeeder } from "./database/seedConnectors";
 import { connectorRegistry } from "./ConnectorRegistry";
 import { webhookManager } from "./webhooks/WebhookManager";
+import { getAppFunctions } from './complete500Apps';
+import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 
 // Middleware
 import { 
