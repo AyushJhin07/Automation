@@ -3,7 +3,8 @@
  */
 
 import { Router } from 'express';
-import { APP_PARAMETER_SCHEMAS, getParameterSchema, validateParameters } from '../schemas/app-parameter-schemas.js';
+import { APP_PARAMETER_SCHEMAS, validateParameters } from '../schemas/app-parameter-schemas.js';
+import { resolveAppSchemaKey, resolveOperationSchemaKey } from '../../shared/appSchemaAliases.js';
 
 const router = Router();
 
@@ -28,8 +29,9 @@ router.get('/schemas', (req, res) => {
 router.get('/schemas/:app', (req, res) => {
   try {
     const { app } = req.params;
-    const schema = APP_PARAMETER_SCHEMAS[app];
-    
+    const resolvedApp = resolveAppSchemaKey(app);
+    const schema = APP_PARAMETER_SCHEMAS[resolvedApp];
+
     if (!schema) {
       return res.status(404).json({
         success: false,
@@ -39,7 +41,8 @@ router.get('/schemas/:app', (req, res) => {
 
     res.json({
       success: true,
-      app,
+      app: resolvedApp,
+      requestedApp: app,
       schema,
       operations: Object.keys(schema)
     });
@@ -56,8 +59,18 @@ router.get('/schemas/:app', (req, res) => {
 router.get('/schemas/:app/:operation', (req, res) => {
   try {
     const { app, operation } = req.params;
-    const schema = getParameterSchema(app, operation);
-    
+    const resolvedApp = resolveAppSchemaKey(app);
+    const appSchema = APP_PARAMETER_SCHEMAS[resolvedApp];
+    if (!appSchema) {
+      return res.status(404).json({
+        success: false,
+        error: `Schema not found for app: ${app}`
+      });
+    }
+
+    const operationKey = resolveOperationSchemaKey(operation, Object.keys(appSchema), resolvedApp);
+    const schema = appSchema[operationKey];
+
     if (!schema) {
       return res.status(404).json({
         success: false,
@@ -67,8 +80,10 @@ router.get('/schemas/:app/:operation', (req, res) => {
 
     res.json({
       success: true,
-      app,
-      operation,
+      app: resolvedApp,
+      requestedApp: app,
+      operation: operationKey,
+      requestedOperation: operation,
       parameters: schema
     });
   } catch (error) {
@@ -93,12 +108,24 @@ router.post('/schemas/:app/:operation/validate', (req, res) => {
       });
     }
 
-    const validation = validateParameters(app, operation, parameters);
+    const resolvedApp = resolveAppSchemaKey(app);
+    const appSchema = APP_PARAMETER_SCHEMAS[resolvedApp];
+    if (!appSchema) {
+      return res.status(404).json({
+        success: false,
+        error: `Schema not found for app: ${app}`
+      });
+    }
+
+    const operationKey = resolveOperationSchemaKey(operation, Object.keys(appSchema), resolvedApp);
+    const validation = validateParameters(resolvedApp, operationKey, parameters);
 
     res.json({
       success: true,
-      app,
-      operation,
+      app: resolvedApp,
+      requestedApp: app,
+      operation: operationKey,
+      requestedOperation: operation,
       validation: {
         isValid: validation.isValid,
         errors: validation.errors,

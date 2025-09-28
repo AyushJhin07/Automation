@@ -16,7 +16,7 @@
     "check:deps": "node scripts/check-deps.js",
     "fix:deps": "rm -rf node_modules package-lock.json && npm cache clean --force && npm install",
     "db:push": "drizzle-kit push",
-    "test": "tsx server/services/__tests__/AnswerNormalizerService.test.ts && tsx server/routes/__tests__/workflow-execute.test.ts && tsx client/src/components/workflow/__tests__/SmartParametersPanel.test.ts && tsx client/src/graph/__tests__/transform.test.ts"
+    "test": "tsx server/services/__tests__/AnswerNormalizerService.test.ts && tsx server/routes/__tests__/workflow-execute.test.ts && tsx server/routes/__tests__/app-schemas.test.ts && tsx client/src/components/workflow/__tests__/SmartParametersPanel.test.ts && tsx client/src/graph/__tests__/transform.test.ts"
   },
   "dependencies": {
     "@google/clasp": "^3.0.6-alpha",

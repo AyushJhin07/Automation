@@ -5,7 +5,7 @@
  * schema-driven forms based on app-specific parameter definitions.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
@@ -14,14 +14,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { 
-  Bot, 
-  HelpCircle, 
-  AlertCircle, 
+import {
+  Bot,
+  HelpCircle,
+  AlertCircle,
   CheckCircle,
   Loader2,
   Sparkles
 } from 'lucide-react';
+import { mapAppOperationToSchema } from '../../../../shared/appSchemaAliases';
 
 interface ParameterSchema {
   type: 'string' | 'number' | 'boolean' | 'email' | 'url' | 'select' | 'textarea' | 'password';
@@ -59,12 +60,24 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
 
+  const { appKey: schemaAppKey, operationKey: schemaOperationKey } = useMemo(
+    () => mapAppOperationToSchema(app, operation),
+    [app, operation]
+  );
+
   // Load parameter schema for the app/operation
   useEffect(() => {
     const loadSchema = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}`);
+        if (!schemaAppKey || !schemaOperationKey) {
+          setSchema(null);
+          return;
+        }
+
+        const response = await fetch(
+          `/api/app-schemas/schemas/${encodeURIComponent(schemaAppKey)}/${encodeURIComponent(schemaOperationKey)}`
+        );
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -79,7 +92,7 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
     };
 
     loadSchema();
-  }, [app, operation]);
+  }, [schemaAppKey, schemaOperationKey]);
 
   // Validate parameters against schema
   const validateParameters = async () => {
@@ -87,11 +100,19 @@ export const DynamicParameterForm: React.FC<DynamicParameterFormProps> = ({
 
     setValidationStatus('validating');
     try {
-      const response = await fetch(`/api/app-schemas/schemas/${app}/${operation}/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parameters })
-      });
+      if (!schemaAppKey || !schemaOperationKey) {
+        setValidationStatus('invalid');
+        return;
+      }
+
+      const response = await fetch(
+        `/api/app-schemas/schemas/${encodeURIComponent(schemaAppKey)}/${encodeURIComponent(schemaOperationKey)}/validate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parameters })
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();
