@@ -66,12 +66,15 @@ export const connections = pgTable(
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
     name: text('name').notNull(),
     provider: text('provider').notNull(), // gemini, openai, claude, slack, hubspot, jira, etc.
+    type: text('type').notNull().default('saas'), // llm, saas, database
     encryptedCredentials: text('encrypted_credentials').notNull(),
     iv: text('iv').notNull(), // AES-256-GCM IV
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastUsed: timestamp('last_used'),
     lastTested: timestamp('last_tested'),
+    testStatus: text('test_status'),
+    testError: text('test_error'),
     lastError: text('last_error'),
     isActive: boolean('is_active').default(true).notNull(),
     

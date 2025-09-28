@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { connections, users, db } from '../database/schema';
+import { connections, db } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
 
@@ -39,6 +39,7 @@ export interface DecryptedConnection {
   lastTested?: Date;
   testStatus?: string;
   testError?: string;
+  lastError?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,8 +47,8 @@ export interface DecryptedConnection {
 export class ConnectionService {
   private db: any;
 
-  constructor() {
-    this.db = db;
+  constructor(database: any = db) {
+    this.db = database;
     if (!this.db && process.env.NODE_ENV !== 'development') {
       throw new Error('Database connection not available');
     }
@@ -91,7 +92,7 @@ export class ConnectionService {
       provider: request.provider,
       type: request.type,
       encryptedCredentials: encrypted.encryptedData,
-      credentialsIv: encrypted.iv,
+      iv: encrypted.iv,
       metadata: request.metadata || {},
       isActive: true,
     }).returning({ id: connections.id });
@@ -121,7 +122,7 @@ export class ConnectionService {
     // Decrypt credentials
     const credentials = EncryptionService.decryptCredentials(
       connection.encryptedCredentials,
-      connection.credentialsIv
+      connection.iv
     );
 
     return {
@@ -136,6 +137,7 @@ export class ConnectionService {
       lastTested: connection.lastTested,
       testStatus: connection.testStatus,
       testError: connection.testError,
+      lastError: connection.lastError,
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
     };
@@ -165,7 +167,7 @@ export class ConnectionService {
     return userConnections.map(connection => {
       const credentials = EncryptionService.decryptCredentials(
         connection.encryptedCredentials,
-        connection.credentialsIv
+        connection.iv
       );
 
       return {
@@ -180,6 +182,7 @@ export class ConnectionService {
         lastTested: connection.lastTested,
         testStatus: connection.testStatus,
         testError: connection.testError,
+        lastError: connection.lastError,
         createdAt: connection.createdAt,
         updatedAt: connection.updatedAt,
       };
@@ -373,7 +376,7 @@ export class ConnectionService {
       // Re-encrypt credentials
       const encrypted = EncryptionService.encryptCredentials(updates.credentials);
       updateData.encryptedCredentials = encrypted.encryptedData;
-      updateData.credentialsIv = encrypted.iv;
+      updateData.iv = encrypted.iv;
     }
 
     this.ensureDb();
