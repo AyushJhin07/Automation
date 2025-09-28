@@ -37,6 +37,7 @@ export interface DecryptedConnection {
   name: string;
   provider: string;
   type: string;
+  iv: string;
   credentials: Record<string, any>;
   metadata?: Record<string, any>;
   isActive: boolean;
@@ -125,6 +126,7 @@ export class ConnectionService {
       name: record.name,
       provider: record.provider,
       type: record.type,
+      iv: record.iv,
       credentials,
       metadata: record.metadata,
       isActive: record.isActive,
@@ -236,6 +238,7 @@ export class ConnectionService {
       name: connection.name,
       provider: connection.provider,
       type: connection.type,
+      iv: connection.iv,
       credentials,
       metadata: connection.metadata,
       isActive: connection.isActive,
@@ -288,6 +291,7 @@ export class ConnectionService {
         name: connection.name,
         provider: connection.provider,
         type: connection.type,
+        iv: connection.iv,
         credentials,
         metadata: connection.metadata,
         isActive: connection.isActive,
@@ -336,6 +340,7 @@ export class ConnectionService {
       name: connection.name,
       provider: connection.provider,
       type: connection.type,
+      iv: connection.iv,
       credentials,
       metadata: connection.metadata,
       isActive: connection.isActive,
