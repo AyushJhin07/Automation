@@ -6,7 +6,7 @@
  */
 
 import { MultiAIService } from '../aiModels.js';
-import { buildPlannerPrompt, type PlannerMode } from "./PromptBuilder.js";
+import { buildPlannerPrompt, getAllowlistForMode, type PlannerMode } from "./PromptBuilder.js";
 import { generateJsonWithGemini } from '../llm/MultiAIService.js';
 
 export interface AutomationStep {
@@ -50,7 +50,17 @@ export interface AutomationPlan {
 }
 
 export class AutomationPlannerService {
-  
+
+  private static geminiJsonGenerator: typeof generateJsonWithGemini = generateJsonWithGemini;
+
+  static setGeminiJsonGenerator(generator: typeof generateJsonWithGemini) {
+    this.geminiJsonGenerator = generator;
+  }
+
+  static resetGeminiJsonGenerator() {
+    this.geminiJsonGenerator = generateJsonWithGemini;
+  }
+
   /**
    * ChatGPT Enhancement: Dynamic automation planning with registry integration
    */
@@ -66,7 +76,7 @@ export class AutomationPlannerService {
       const systemPrompt = buildPlannerPrompt(userPrompt, resolvedMode);
       
       // Use JSON-safe generation
-      const jsonResponse = await generateJsonWithGemini('gemini-2.0-flash-exp', systemPrompt);
+      const jsonResponse = await this.geminiJsonGenerator('gemini-2.0-flash-exp', systemPrompt);
       
       let plan;
       try {
@@ -219,7 +229,7 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
       } catch (parseError) {
         console.error('❌ Failed to parse LLM planning response:', parseError);
         // Fallback plan
-        plan = this.createFallbackPlan(userPrompt);
+        plan = this.createFallbackPlan(userPrompt, resolvedMode);
       }
 
       // Validate and enhance the plan
@@ -236,8 +246,8 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
 
     } catch (error) {
       console.error('❌ LLM planning failed:', error);
-      return this.createFallbackPlan(userPrompt);
-    }
+      return this.createFallbackPlan(userPrompt, resolvedMode);
+  }
   }
 
   /**
@@ -382,40 +392,62 @@ RESPOND WITH:
   /**
    * Create DYNAMIC fallback plan when LLM fails (analyzes prompt complexity)
    */
-  private static createFallbackPlan(userPrompt: string): AutomationPlan {
-    console.log('🔄 Creating dynamic fallback plan for:', userPrompt);
-    
+  private static createFallbackPlan(userPrompt: string, mode: PlannerMode = 'all'): AutomationPlan {
+    console.log('🔄 Creating dynamic fallback plan for:', userPrompt, 'with mode', mode);
+
     const prompt = userPrompt.toLowerCase();
-    const apps: string[] = [];
+    const allowlist = getAllowlistForMode(mode);
+    const enforceAllowlist = mode === 'gas-only';
+    const detectedApps = new Set<string>();
     const missingInputs: MissingInput[] = [];
     const steps: AutomationStep[] = [];
 
-    // DYNAMIC APP DETECTION
-    if (prompt.includes('email') || prompt.includes('gmail')) apps.push('gmail');
-    if (prompt.includes('sheet') || prompt.includes('spreadsheet')) apps.push('sheets');
-    if (prompt.includes('slack')) apps.push('slack');
-    if (prompt.includes('jira')) apps.push('jira');
-    if (prompt.includes('salesforce') || prompt.includes('crm')) apps.push('salesforce');
-    if (prompt.includes('docusign') || prompt.includes('contract') || prompt.includes('signature')) apps.push('docusign');
-    if (prompt.includes('notion')) apps.push('notion');
-    if (prompt.includes('calendly') || prompt.includes('calendar') || prompt.includes('meeting')) apps.push('calendly');
-    if (prompt.includes('mailchimp') || prompt.includes('email marketing')) apps.push('mailchimp');
-    if (prompt.includes('quickbooks') || prompt.includes('accounting') || prompt.includes('invoice')) apps.push('quickbooks');
-    if (prompt.includes('trello')) apps.push('trello');
-    if (prompt.includes('asana')) apps.push('asana');
-    if (prompt.includes('hubspot')) apps.push('hubspot');
-    if (prompt.includes('stripe') || prompt.includes('payment')) apps.push('stripe');
-    if (prompt.includes('shopify') || prompt.includes('ecommerce')) apps.push('shopify');
+    const considerApp = (app: string) => {
+      if (enforceAllowlist && allowlist.size > 0 && !allowlist.has(app)) {
+        return false;
+      }
+      detectedApps.add(app);
+      return true;
+    };
 
-    // Default to gmail+sheets if no apps detected
-    if (apps.length === 0) {
-      apps.push('gmail', 'sheets');
+    // DYNAMIC APP DETECTION
+    if (prompt.includes('email') || prompt.includes('gmail')) considerApp('gmail');
+    if (prompt.includes('sheet') || prompt.includes('spreadsheet')) considerApp('sheets');
+    if (prompt.includes('slack')) considerApp('slack');
+    if (prompt.includes('jira')) considerApp('jira');
+    if (prompt.includes('salesforce') || prompt.includes('crm')) considerApp('salesforce');
+    if (prompt.includes('docusign') || prompt.includes('contract') || prompt.includes('signature')) considerApp('docusign');
+    if (prompt.includes('notion')) considerApp('notion');
+    if (prompt.includes('calendly') || prompt.includes('calendar') || prompt.includes('meeting')) considerApp('calendly');
+    if (prompt.includes('mailchimp') || prompt.includes('email marketing')) considerApp('mailchimp');
+    if (prompt.includes('quickbooks') || prompt.includes('accounting') || prompt.includes('invoice')) considerApp('quickbooks');
+    if (prompt.includes('trello')) considerApp('trello');
+    if (prompt.includes('asana')) considerApp('asana');
+    if (prompt.includes('hubspot')) considerApp('hubspot');
+    if (prompt.includes('stripe') || prompt.includes('payment')) considerApp('stripe');
+    if (prompt.includes('shopify') || prompt.includes('ecommerce')) considerApp('shopify');
+
+    if (detectedApps.size === 0) {
+      ['gmail', 'sheets'].forEach(defaultApp => {
+        if (!enforceAllowlist || allowlist.has(defaultApp)) {
+          detectedApps.add(defaultApp);
+        }
+      });
     }
+
+    if (detectedApps.size === 0 && enforceAllowlist && allowlist.size > 0) {
+      for (const allowedApp of allowlist) {
+        detectedApps.add(allowedApp);
+        if (detectedApps.size >= 2) break;
+      }
+    }
+
+    const apps = Array.from(detectedApps);
 
     console.log('🔍 Detected apps from prompt:', apps);
 
     // DYNAMIC STEP GENERATION based on detected apps
-    apps.forEach((app, index) => {
+    apps.forEach(app => {
       switch (app) {
         case 'gmail':
           steps.push({
@@ -714,50 +746,6 @@ RESPOND WITH:
     } else {
       return 'Simple automation - save 2-3 hours per week';
     }
-  }
-
-  /**
-   * ChatGPT Enhancement: Create fallback plan based on mode
-   */
-  private static createFallbackPlan(userPrompt: string, mode: PlannerMode): AutomationPlan {
-    console.log('🔄 Creating fallback plan for mode:', mode);
-    
-    const apps = mode === "gas-only" ? ["gmail", "sheets"] : ["gmail", "sheets", "slack"];
-    
-    return {
-      apps,
-      trigger: { type: 'time', app: 'time', operation: 'schedule' },
-      steps: [
-        {
-          app: 'gmail',
-          operation: 'search_emails',
-          required_inputs: ['search_query'],
-          missing_inputs: ['search_query'],
-          description: 'Search for emails'
-        },
-        {
-          app: 'sheets',
-          operation: 'append_row',
-          required_inputs: ['spreadsheet_id', 'sheet_name', 'values'],
-          missing_inputs: ['spreadsheet_id', 'sheet_name'],
-          description: 'Log data to spreadsheet'
-        }
-      ],
-      missing_inputs: [
-        { id: 'search_query', question: 'What emails should we search for?', type: 'text' },
-        { id: 'spreadsheet_id', question: 'What Google Sheet should we use?', type: 'url' },
-        { id: 'sheet_name', question: 'Which sheet tab?', type: 'text' }
-      ],
-      workflow_name: 'Email to Sheets Automation',
-      description: 'Monitor emails and log them to a spreadsheet',
-      complexity: 'simple',
-      business_value: 'Save time on manual email processing',
-      follow_up_questions: [
-        { id: 'search_query', question: 'What emails should we search for?', category: 'data', expected_format: 'free' },
-        { id: 'spreadsheet_id', question: 'What Google Sheet should we use?', category: 'data', expected_format: 'url' },
-        { id: 'sheet_name', question: 'Which sheet tab?', category: 'data', expected_format: 'free' }
-      ]
-    };
   }
 
   /**
