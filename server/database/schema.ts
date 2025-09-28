@@ -29,6 +29,7 @@ export const users = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastLogin: timestamp('last_login'),
     isActive: boolean('is_active').default(true).notNull(),
+    emailVerified: boolean('email_verified').default(false).notNull(),
     quotaResetDate: timestamp('quota_reset_date').defaultNow().notNull(),
     
     // Usage quotas and tracking
@@ -53,6 +54,7 @@ export const users = pgTable(
     planIdx: index('users_plan_idx').on(table.plan),
     createdAtIdx: index('users_created_at_idx').on(table.createdAt),
     lastLoginIdx: index('users_last_login_idx').on(table.lastLogin),
+    emailVerifiedIdx: index('users_email_verified_idx').on(table.emailVerified, table.isActive),
     activeUsersIdx: index('users_active_idx').on(table.isActive, table.plan),
     quotaResetIdx: index('users_quota_reset_idx').on(table.quotaResetDate),
   })
