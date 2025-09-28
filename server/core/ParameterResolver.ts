@@ -152,8 +152,16 @@ async function resolveLLMValue(
   
   try {
     // Get LLM provider
-    const llmProvider = llmRegistry.get(provider);
-    
+    let llmProvider: ReturnType<typeof llmRegistry.get>;
+    try {
+      llmProvider = llmRegistry.get(provider);
+    } catch (registryError) {
+      const availableAdapters = llmRegistry.getAvailableProviders();
+      const message = `LLM provider adapter "${provider}" is not registered. Available adapters: ${availableAdapters.join(', ') || 'none'}.`;
+      console.warn(message);
+      return message;
+    }
+
     // Interpolate prompt with context
     const interpolatedPrompt = interpolatePrompt(prompt, context);
     

@@ -18,15 +18,37 @@ export class NoLLMProvidersError extends Error {
   }
 }
 
+import { llmRegistry } from '../llm/LLMProvider';
+
+type ProviderName = 'gemini' | 'openai' | 'claude';
+
+function getAdapterId(provider: ProviderName): 'google' | 'openai' | 'anthropic' {
+  switch (provider) {
+    case 'gemini':
+      return 'google';
+    case 'claude':
+      return 'anthropic';
+    case 'openai':
+    default:
+      return 'openai';
+  }
+}
+
+function hasRegisteredAdapter(provider: ProviderName): boolean {
+  const adapterId = getAdapterId(provider);
+  return llmRegistry.getAvailableProviders().includes(adapterId);
+}
+
 export class LLMProviderService {
-  
+
   /**
    * CRITICAL: Single source of truth for provider selection
    */
   static selectProvider(): string | null {
     const requested = (process.env.LLM_PROVIDER || '').toLowerCase();
     const capabilities = this.getProviderCapabilities();
-    
+    const missingAdapters: ProviderName[] = [];
+
     console.log('🎯 LLM Provider Selection:', {
       requested,
       capabilities,
@@ -35,24 +57,47 @@ export class LLMProviderService {
 
     // Honor explicit preference if available
     if (requested && capabilities[requested as keyof LLMProviderCapabilities]) {
-      console.log(`✅ Using requested provider: ${requested}`);
-      return requested;
+      const provider = requested as ProviderName;
+      if (hasRegisteredAdapter(provider)) {
+        console.log(`✅ Using requested provider: ${requested}`);
+        return requested;
+      }
+      missingAdapters.push(provider);
+      console.warn(`⚠️ Adapter for requested provider ${requested} is not registered. Falling back.`);
     }
 
     // Fallback hierarchy (prefer Gemini > OpenAI > Claude)
     if (capabilities.gemini) {
-      console.log('✅ Using Gemini (preferred fallback)');
-      return 'gemini';
+      if (hasRegisteredAdapter('gemini')) {
+        console.log('✅ Using Gemini (preferred fallback)');
+        return 'gemini';
+      }
+      missingAdapters.push('gemini');
     }
-    
+
     if (capabilities.openai) {
-      console.log('⚠️ Using OpenAI (Gemini not available)');
-      return 'openai';
+      if (hasRegisteredAdapter('openai')) {
+        console.log('⚠️ Using OpenAI (Gemini not available)');
+        return 'openai';
+      }
+      missingAdapters.push('openai');
     }
-    
+
     if (capabilities.claude) {
-      console.log('⚠️ Using Claude (Gemini/OpenAI not available)');
-      return 'claude';
+      if (hasRegisteredAdapter('claude')) {
+        console.log('⚠️ Using Claude (Gemini/OpenAI not available)');
+        return 'claude';
+      }
+      missingAdapters.push('claude');
+    }
+
+    if (missingAdapters.length > 0) {
+      const fallback = missingAdapters[0];
+      console.warn(
+        `⚠️ Returning provider ${fallback} despite missing adapter to allow direct API usage. ` +
+        'Call registerLLMProviders() to register adapters.',
+      );
+      return fallback;
     }
 
     console.warn('❌ No LLM providers available');
@@ -117,6 +162,11 @@ export class LLMProviderService {
     if (!provider) {
       throw new NoLLMProvidersError();
     }
+
+    if (!hasRegisteredAdapter(provider as ProviderName)) {
+      console.warn(`⚠️ LLM adapter for provider ${provider} is not registered. Proceeding with direct API call.`);
+    }
+
     const model = options.model || this.getDefaultModel(provider);
     const apiKey = this.getAPIKey(provider);
 
