@@ -9,6 +9,196 @@ import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
 import { getErrorMessage } from '../types/common';
 
+class LocalSheetsClient extends BaseAPIClient {
+  constructor(credentials: APICredentials) {
+    super('local://sheets', credentials);
+  }
+
+  protected getAuthHeaders(): Record<string, string> {
+    return {};
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return {
+      success: true,
+      data: {
+        mode: 'local',
+        app: 'sheets'
+      }
+    };
+  }
+
+  public async appendRow(parameters: Record<string, any>): Promise<APIResponse<any>> {
+    const rows = this.extractRows(parameters);
+
+    if (rows.length === 0) {
+      return {
+        success: false,
+        error: 'No row data provided for append_row'
+      };
+    }
+
+    const spreadsheetId =
+      parameters.spreadsheetId ??
+      parameters.sheetId ??
+      this.extractSpreadsheetId(parameters.sheet_url ?? parameters.spreadsheetUrl);
+
+    const sheetName =
+      parameters.sheetName ??
+      parameters.worksheetName ??
+      parameters.tabName ??
+      this.extractSheetNameFromRange(parameters.range);
+
+    return {
+      success: true,
+      data: {
+        mode: 'local',
+        operation: 'append_row',
+        spreadsheetId: spreadsheetId ?? null,
+        sheetName: sheetName ?? null,
+        appendedRowCount: rows.length,
+        appendedRows: rows
+      }
+    };
+  }
+
+  private extractRows(parameters: Record<string, any>): any[] {
+    const rows: any[] = [];
+
+    const pushRow = (row: any) => {
+      if (row == null) return;
+      if (Array.isArray(row) && row.length === 0) return;
+      if (typeof row === 'object' || Array.isArray(row)) {
+        rows.push(row);
+        return;
+      }
+      rows.push([row]);
+    };
+
+    const candidates = [
+      parameters.rows,
+      parameters.values,
+      parameters.row,
+      parameters.records,
+      parameters.data
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate == null) continue;
+      if (Array.isArray(candidate)) {
+        if (candidate.length > 0 && candidate.every(item => Array.isArray(item) || typeof item === 'object')) {
+          for (const item of candidate) {
+            pushRow(item);
+          }
+        } else {
+          pushRow(candidate);
+        }
+      } else if (typeof candidate === 'object') {
+        pushRow(candidate);
+      } else {
+        pushRow(candidate);
+      }
+    }
+
+    if (rows.length === 0 && typeof parameters === 'object') {
+      const fallback = { ...parameters };
+      delete fallback.credentials;
+      delete fallback.additionalConfig;
+      delete fallback.connectionId;
+      if (Object.keys(fallback).length > 0) {
+        rows.push(fallback);
+      }
+    }
+
+    return rows;
+  }
+
+  private extractSpreadsheetId(sheetUrl?: string): string | undefined {
+    if (!sheetUrl || typeof sheetUrl !== 'string') return undefined;
+    const match = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return match?.[1];
+  }
+
+  private extractSheetNameFromRange(range?: string): string | undefined {
+    if (!range || typeof range !== 'string') return undefined;
+    const parts = range.split('!');
+    return parts.length > 1 ? parts[0] : undefined;
+  }
+}
+
+class LocalTimeClient extends BaseAPIClient {
+  constructor(credentials: APICredentials) {
+    super('local://time', credentials);
+  }
+
+  protected getAuthHeaders(): Record<string, string> {
+    return {};
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return {
+      success: true,
+      data: {
+        mode: 'local',
+        app: 'time'
+      }
+    };
+  }
+
+  public async delay(parameters: Record<string, any>): Promise<APIResponse<any>> {
+    const delayMs = this.calculateDelayMs(parameters);
+    const scheduledTime = new Date(Date.now() + delayMs).toISOString();
+
+    return {
+      success: true,
+      data: {
+        mode: 'local',
+        operation: 'delay',
+        delayMs,
+        delaySeconds: Math.round(delayMs / 1000),
+        scheduledTime,
+        parameters
+      }
+    };
+  }
+
+  private calculateDelayMs(parameters: Record<string, any>): number {
+    const numeric = (value: any): number => {
+      const n = Number(value);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+
+    let total = 0;
+
+    const msSources = [parameters.delayMs, parameters.delay_ms, parameters.ms, parameters.milliseconds];
+    for (const value of msSources) total += numeric(value);
+
+    const secondSources = [parameters.delaySeconds, parameters.delay_seconds, parameters.seconds, parameters.secs];
+    for (const value of secondSources) total += numeric(value) * 1000;
+
+    const minuteSources = [parameters.delayMinutes, parameters.delay_minutes, parameters.minutes, parameters.mins];
+    for (const value of minuteSources) total += numeric(value) * 60 * 1000;
+
+    const hourSources = [parameters.delayHours, parameters.delay_hours, parameters.hours];
+    for (const value of hourSources) total += numeric(value) * 60 * 60 * 1000;
+
+    if (total === 0 && typeof parameters.duration === 'string') {
+      total = this.parseISODuration(parameters.duration);
+    }
+
+    return total || 0;
+  }
+
+  private parseISODuration(duration: string): number {
+    const match = duration.match(/P(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/i);
+    if (!match) return 0;
+    const hours = Number(match[1] || 0);
+    const minutes = Number(match[2] || 0);
+    const seconds = Number(match[3] || 0);
+    return (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+  }
+}
+
 export interface IntegrationConfig {
   appName: string;
   credentials: APICredentials;
@@ -51,7 +241,11 @@ export class IntegrationManager {
     'asana',
     'hubspot',
     'salesforce',
-    'zoom'
+    'zoom',
+    'sheets',
+    'google sheets',
+    'google-sheets',
+    'time'
   ]);
 
   private buildClientKey(appKey: string, connectionId?: string): string {
@@ -305,7 +499,15 @@ export class IntegrationManager {
         }
         return new AirtableAPIClient(credentials);
       }
-      
+
+      case 'sheets':
+      case 'google sheets':
+      case 'google-sheets':
+        return new LocalSheetsClient(credentials);
+
+      case 'time':
+        return new LocalTimeClient(credentials);
+
         // TODO: Add other API clients as they are implemented
         case 'stripe':
         case 'mailchimp':
@@ -359,6 +561,19 @@ export class IntegrationManager {
     // Airtable functions
     if (appKey === 'airtable' && client instanceof AirtableAPIClient) {
       return this.executeAirtableFunction(client, functionId, parameters);
+    }
+
+    // Local Sheets functions
+    if (
+      (appKey === 'sheets' || appKey === 'google sheets' || appKey === 'google-sheets') &&
+      client instanceof LocalSheetsClient
+    ) {
+      return this.executeSheetsFunction(client, functionId, parameters);
+    }
+
+    // Local Time functions
+    if (appKey === 'time' && client instanceof LocalTimeClient) {
+      return this.executeTimeFunction(client, functionId, parameters);
     }
 
     // TODO: Add other application function executions
@@ -547,6 +762,41 @@ export class IntegrationManager {
         return {
           success: false,
           error: `Unknown Airtable function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeSheetsFunction(
+    client: LocalSheetsClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'append_row':
+      case 'append_rows':
+        return client.appendRow(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Sheets function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeTimeFunction(
+    client: LocalTimeClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'delay':
+      case 'wait':
+      case 'sleep':
+        return client.delay(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Time function: ${functionId}`
         };
     }
   }
