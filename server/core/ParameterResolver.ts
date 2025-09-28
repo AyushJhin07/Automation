@@ -152,6 +152,12 @@ async function resolveLLMValue(
   
   try {
     // Get LLM provider
+    if (!llmRegistry.has(provider)) {
+      const message = `LLM provider adapter "${provider}" is not registered. Ensure registerLLMProviders() has been executed.`;
+      console.error(message);
+      return message;
+    }
+
     const llmProvider = llmRegistry.get(provider);
     
     // Interpolate prompt with context
@@ -202,7 +208,10 @@ async function resolveLLMValue(
     
   } catch (error) {
     console.error('❌ LLM parameter resolution failed:', error);
-    throw new Error(`LLM parameter resolution failed: ${error.message}`);
+    if (error instanceof Error) {
+      return `LLM parameter resolution failed: ${error.message}`;
+    }
+    return 'LLM parameter resolution failed: Unknown error';
   }
 }
 

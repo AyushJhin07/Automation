@@ -586,13 +586,13 @@ try {
     resolverContext
   );
 
-  assert.strictEqual(
-    llmFailureResult.summary,
-    null,
-    "LLM resolver failures should fall back to null values"
+  assert.ok(
+    typeof llmFailureResult.summary === "string" &&
+      llmFailureResult.summary.includes("LLM"),
+    "LLM resolver failures should return descriptive message"
   );
   assert.ok(
-    errorLogs.some((entry) => entry.includes("Failed to resolve parameter summary")),
+    errorLogs.some((entry) => entry.includes("LLM provider adapter")),
     "LLM resolver failure should emit telemetry error"
   );
 } finally {

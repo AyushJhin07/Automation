@@ -1,8 +1,7 @@
-import { llmRegistry } from './LLMProvider';
-import { OpenAIProvider } from './providers/OpenAIProvider';
-// Future providers can be added here:
-// import { AnthropicProvider } from './providers/AnthropicProvider';
-// import { GoogleProvider } from './providers/GoogleProvider';
+import { llmRegistry } from './LLMProvider.js';
+import { OpenAIProvider } from './providers/OpenAIProvider.js';
+import { GeminiProvider } from './providers/GeminiProvider.js';
+import { ClaudeProvider } from './providers/ClaudeProvider.js';
 
 export function registerLLMProviders() {
   console.log('🤖 Registering LLM providers...');
@@ -13,7 +12,7 @@ export function registerLLMProviders() {
 
   // Register Gemini if API key is available
   if (process.env.GEMINI_API_KEY) {
-    // Note: Using LLMProviderService which handles Gemini
+    llmRegistry.register(new GeminiProvider(process.env.GEMINI_API_KEY));
     available.push('gemini');
     console.log('✅ Gemini provider registered');
   } else {
@@ -29,11 +28,21 @@ export function registerLLMProviders() {
     console.log('⚠️ OPENAI_API_KEY not found - skipping OpenAI provider');
   }
   
+  // Register Claude if API key is available
+  if (process.env.CLAUDE_API_KEY) {
+    llmRegistry.register(new ClaudeProvider(process.env.CLAUDE_API_KEY));
+    available.push('claude');
+    console.log('✅ Claude provider registered');
+  } else {
+    console.log('⚠️ CLAUDE_API_KEY not found - skipping Claude provider');
+  }
+
   // Choose default intelligently (ChatGPT's fix)
   const defaultProvider =
     (available.includes(envProvider) && envProvider) ||
     (available.includes('gemini') ? 'gemini' :
-     available.includes('openai') ? 'openai' : null);
+     available.includes('openai') ? 'openai' :
+     available.includes('claude') ? 'claude' : null);
 
   if (!defaultProvider) {
     console.error('❌ No LLM provider available');
@@ -54,5 +63,5 @@ export function registerLLMProviders() {
 }
 
 // Re-export for easy access
-export { llmRegistry } from './LLMProvider';
-export type { LLMProvider, LLMResult, LLMMessage, LLMTool, LLMToolCall, LLMModelId } from './LLMProvider';
+export { llmRegistry } from './LLMProvider.js';
+export type { LLMProvider, LLMResult, LLMMessage, LLMTool, LLMToolCall, LLMModelId } from './LLMProvider.js';

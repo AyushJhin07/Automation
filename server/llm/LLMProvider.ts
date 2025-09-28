@@ -51,15 +51,19 @@ export interface LLMProvider {
 
 export class LLMRegistry {
   private providers = new Map<string, LLMProvider>();
-  
-  register(p: LLMProvider) { 
-    this.providers.set(p.id, p); 
+
+  register(p: LLMProvider) {
+    this.providers.set(p.id, p);
   }
-  
-  get(id: string) { 
-    const p = this.providers.get(id); 
-    if (!p) throw new Error(`LLM provider ${id} not found`); 
-    return p; 
+
+  has(id: string) {
+    return this.providers.has(id);
+  }
+
+  get(id: string) {
+    const p = this.providers.get(id);
+    if (!p) throw new Error(`LLM provider ${id} not found`);
+    return p;
   }
   
   getAvailableProviders(): string[] {
@@ -85,6 +89,10 @@ export class LLMRegistry {
       default:
         return [];
     }
+  }
+
+  clear() {
+    this.providers.clear();
   }
 }
 

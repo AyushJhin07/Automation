@@ -5,6 +5,8 @@
  * Eliminates mixed provider usage and provides clear observability
  */
 
+import { llmRegistry } from '../llm/LLMProvider.js';
+
 interface LLMProviderCapabilities {
   gemini: boolean;
   openai: boolean;
@@ -19,33 +21,51 @@ export class LLMProviderService {
   static selectProvider(): string {
     const requested = (process.env.LLM_PROVIDER || '').toLowerCase();
     const capabilities = this.getProviderCapabilities();
-    
+    const adapterAvailability = {
+      gemini: this.isAdapterRegistered('gemini'),
+      openai: this.isAdapterRegistered('openai'),
+      claude: this.isAdapterRegistered('claude'),
+    };
+
     console.log('🎯 LLM Provider Selection:', {
       requested,
       capabilities,
-      environmentProvider: process.env.LLM_PROVIDER
+      environmentProvider: process.env.LLM_PROVIDER,
+      adapterAvailability,
     });
 
     // Honor explicit preference if available
     if (requested && capabilities[requested as keyof LLMProviderCapabilities]) {
-      console.log(`✅ Using requested provider: ${requested}`);
-      return requested;
+      if (adapterAvailability[requested as keyof LLMProviderCapabilities]) {
+        console.log(`✅ Using requested provider: ${requested}`);
+        return requested;
+      }
+      console.warn(`⚠️ Requested provider ${requested} is configured but its adapter is not registered.`);
     }
 
     // Fallback hierarchy (prefer Gemini > OpenAI > Claude)
     if (capabilities.gemini) {
-      console.log('✅ Using Gemini (preferred fallback)');
-      return 'gemini';
+      if (adapterAvailability.gemini) {
+        console.log('✅ Using Gemini (preferred fallback)');
+        return 'gemini';
+      }
+      console.warn('⚠️ Gemini API key detected but adapter not registered.');
     }
-    
+
     if (capabilities.openai) {
-      console.log('⚠️ Using OpenAI (Gemini not available)');
-      return 'openai';
+      if (adapterAvailability.openai) {
+        console.log('⚠️ Using OpenAI (Gemini not available)');
+        return 'openai';
+      }
+      console.warn('⚠️ OpenAI API key detected but adapter not registered.');
     }
-    
+
     if (capabilities.claude) {
-      console.log('⚠️ Using Claude (Gemini/OpenAI not available)');
-      return 'claude';
+      if (adapterAvailability.claude) {
+        console.log('⚠️ Using Claude (Gemini/OpenAI not available)');
+        return 'claude';
+      }
+      console.warn('⚠️ Claude API key detected but adapter not registered.');
     }
 
     console.warn('❌ No LLM providers available, using fallback');
@@ -104,17 +124,25 @@ export class LLMProviderService {
     temperature?: number;
     maxTokens?: number;
   } = {}): Promise<{ text: string; provider: string; model: string }> {
-    
+
     const provider = options.preferredProvider || this.selectProvider();
     const model = options.model || this.getDefaultModel(provider);
     const apiKey = this.getAPIKey(provider);
+    const adapterRegistered = this.isAdapterRegistered(provider);
 
     console.log(`🤖 LLM Generation Request:`, {
       provider,
       model,
       promptLength: prompt.length,
-      hasApiKey: !!apiKey
+      hasApiKey: !!apiKey,
+      adapterRegistered,
     });
+
+    if (!adapterRegistered) {
+      const message = `LLM adapter for provider "${provider}" is not registered. Please ensure registerLLMProviders() has executed.`;
+      console.warn(message);
+      return { text: message, provider, model };
+    }
 
     if (!apiKey) {
       console.error(`❌ No API key available for provider: ${provider}`);
@@ -286,8 +314,8 @@ export class LLMProviderService {
     const selected = this.selectProvider();
     const capabilities = this.getProviderCapabilities();
     const available = Object.entries(capabilities)
-      .filter(([_, available]) => available)
-      .map(([provider, _]) => provider);
+      .filter(([provider, available]) => available && this.isAdapterRegistered(provider))
+      .map(([provider]) => provider);
 
     return {
       selected,
@@ -295,5 +323,23 @@ export class LLMProviderService {
       capabilities,
       configured: available.length > 0
     };
+  }
+
+  private static isAdapterRegistered(provider: string): boolean {
+    const registryId = this.mapProviderToRegistryId(provider);
+    return registryId ? llmRegistry.has(registryId) : false;
+  }
+
+  private static mapProviderToRegistryId(provider: string): string | null {
+    switch (provider) {
+      case 'gemini':
+        return 'google';
+      case 'openai':
+        return 'openai';
+      case 'claude':
+        return 'anthropic';
+      default:
+        return provider || null;
+    }
   }
 }

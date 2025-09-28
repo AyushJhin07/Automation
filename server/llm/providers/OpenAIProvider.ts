@@ -1,4 +1,4 @@
-import { LLMProvider, LLMResult, LLMModelId, LLMMessage, LLMTool } from '../LLMProvider';
+import { LLMProvider, LLMResult, LLMModelId, LLMMessage, LLMTool } from '../LLMProvider.js';
 
 export class OpenAIProvider implements LLMProvider {
   readonly id = 'openai';
