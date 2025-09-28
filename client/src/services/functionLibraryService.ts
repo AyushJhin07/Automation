@@ -30,10 +30,13 @@ class FunctionLibraryService {
    */
   private getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('token');
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
+    if (token && token !== 'null' && token !== 'undefined') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
   }
 
   /**

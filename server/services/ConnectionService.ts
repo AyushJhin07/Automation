@@ -1,7 +1,11 @@
 import { eq, and } from 'drizzle-orm';
-import { connections, users, db } from '../database/schema';
+import { randomUUID } from 'crypto';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { connections, db } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
+import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
 
 class ConnectionServiceError extends Error {
   constructor(message: string, public statusCode: number = 500) {
@@ -43,23 +47,97 @@ export interface DecryptedConnection {
   updatedAt: Date;
 }
 
+interface FileConnectionRecord {
+  id: string;
+  userId: string;
+  name: string;
+  provider: string;
+  type: string;
+  encryptedCredentials: string;
+  iv: string;
+  metadata?: Record<string, any>;
+  isActive: boolean;
+  lastTested?: string;
+  testStatus?: string;
+  testError?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class ConnectionService {
   private db: any;
+  private readonly useFileStore: boolean;
+  private readonly fileStorePath: string;
 
   constructor() {
     this.db = db;
-    if (!this.db && process.env.NODE_ENV !== 'development') {
-      throw new Error('Database connection not available');
+    this.useFileStore = !this.db;
+    this.fileStorePath = path.resolve(
+      process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections.json')
+    );
+
+    if (!this.db) {
+      if (process.env.NODE_ENV !== 'development') {
+        throw new Error('Database connection not available');
+      }
+      console.warn(`⚠️ ConnectionService: DATABASE_URL not set. Using local file store at ${this.fileStorePath}`);
     }
   }
 
   private ensureDb() {
-    if (!this.db) {
-      if (process.env.NODE_ENV === 'development') {
-        throw new ConnectionServiceError('Database not available in development mode. Set DATABASE_URL to enable database features.', 501);
-      }
+    if (!this.db && !this.useFileStore) {
       throw new Error('Database not available. Set DATABASE_URL.');
     }
+  }
+
+  private async ensureFileStoreDir(): Promise<void> {
+    const dir = path.dirname(this.fileStorePath);
+    await fs.mkdir(dir, { recursive: true });
+  }
+
+  private async readFileStore(): Promise<FileConnectionRecord[]> {
+    try {
+      const raw = await fs.readFile(this.fileStorePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed as FileConnectionRecord[];
+      }
+      return [];
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') {
+        return [];
+      }
+      console.error('❌ Failed to read connection file store:', error);
+      throw error;
+    }
+  }
+
+  private async writeFileStore(records: FileConnectionRecord[]): Promise<void> {
+    await this.ensureFileStoreDir();
+    await fs.writeFile(this.fileStorePath, JSON.stringify(records, null, 2), 'utf8');
+  }
+
+  private toDecryptedConnection(record: FileConnectionRecord): DecryptedConnection {
+    const credentials = EncryptionService.decryptCredentials(record.encryptedCredentials, record.iv);
+    return {
+      id: record.id,
+      userId: record.userId,
+      name: record.name,
+      provider: record.provider,
+      type: record.type,
+      credentials,
+      metadata: record.metadata,
+      isActive: record.isActive,
+      lastTested: record.lastTested ? new Date(record.lastTested) : undefined,
+      testStatus: record.testStatus,
+      testError: record.testError,
+      createdAt: new Date(record.createdAt),
+      updatedAt: new Date(record.updatedAt),
+    };
+  }
+
+  private encryptCredentials(credentials: Record<string, any>): { encryptedData: string; iv: string } {
+    return EncryptionService.encryptCredentials(credentials);
   }
 
   /**
@@ -81,17 +159,40 @@ export class ConnectionService {
     }
 
     // Encrypt credentials
-    const encrypted = EncryptionService.encryptCredentials(request.credentials);
+    const encrypted = this.encryptCredentials(request.credentials);
 
-    // Store in database
+    const normalizedProvider = request.provider.toLowerCase();
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const nowIso = new Date().toISOString();
+      const record: FileConnectionRecord = {
+        id: randomUUID(),
+        userId: request.userId,
+        name: request.name,
+        provider: normalizedProvider,
+        type: request.type,
+        encryptedCredentials: encrypted.encryptedData,
+        iv: encrypted.iv,
+        metadata: request.metadata || {},
+        isActive: true,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      records.push(record);
+      await this.writeFileStore(records);
+      console.log(`✅ Connection created (file store): ${record.id}`);
+      return record.id;
+    }
+
     this.ensureDb();
     const [connection] = await this.db.insert(connections).values({
       userId: request.userId,
       name: request.name,
-      provider: request.provider,
+      provider: normalizedProvider,
       type: request.type,
       encryptedCredentials: encrypted.encryptedData,
-      credentialsIv: encrypted.iv,
+      iv: encrypted.iv,
       metadata: request.metadata || {},
       isActive: true,
     }).returning({ id: connections.id });
@@ -104,6 +205,12 @@ export class ConnectionService {
    * Get decrypted connection by ID
    */
   public async getConnection(connectionId: string, userId: string): Promise<DecryptedConnection | null> {
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const record = records.find((conn) => conn.id === connectionId && conn.userId === userId && conn.isActive);
+      return record ? this.toDecryptedConnection(record) : null;
+    }
+
     this.ensureDb();
     const [connection] = await this.db
       .select()
@@ -118,10 +225,9 @@ export class ConnectionService {
       return null;
     }
 
-    // Decrypt credentials
     const credentials = EncryptionService.decryptCredentials(
       connection.encryptedCredentials,
-      connection.credentialsIv
+      connection.iv
     );
 
     return {
@@ -145,13 +251,22 @@ export class ConnectionService {
    * Get user's connections by provider
    */
   public async getUserConnections(userId: string, provider?: string): Promise<DecryptedConnection[]> {
+    const normalizedProvider = provider?.toLowerCase();
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      return records
+        .filter((conn) => conn.userId === userId && conn.isActive && (!normalizedProvider || conn.provider === normalizedProvider))
+        .map((record) => this.toDecryptedConnection(record));
+    }
+
     const whereConditions = [
       eq(connections.userId, userId),
       eq(connections.isActive, true)
     ];
 
-    if (provider) {
-      whereConditions.push(eq(connections.provider, provider));
+    if (normalizedProvider) {
+      whereConditions.push(eq(connections.provider, normalizedProvider));
     }
 
     this.ensureDb();
@@ -161,11 +276,10 @@ export class ConnectionService {
       .where(and(...whereConditions))
       .orderBy(connections.createdAt);
 
-    // Decrypt all connections
     return userConnections.map(connection => {
       const credentials = EncryptionService.decryptCredentials(
         connection.encryptedCredentials,
-        connection.credentialsIv
+        connection.iv
       );
 
       return {
@@ -184,6 +298,160 @@ export class ConnectionService {
         updatedAt: connection.updatedAt,
       };
     });
+  }
+
+  public async getConnectionByProvider(userId: string, provider: string): Promise<DecryptedConnection | null> {
+    const normalizedProvider = provider.toLowerCase();
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const record = records.find(
+        (conn) => conn.userId === userId && conn.provider === normalizedProvider && conn.isActive
+      );
+      return record ? this.toDecryptedConnection(record) : null;
+    }
+
+    const [connection] = await this.db
+      .select()
+      .from(connections)
+      .where(and(
+        eq(connections.userId, userId),
+        eq(connections.provider, normalizedProvider),
+        eq(connections.isActive, true)
+      ))
+      .limit(1);
+
+    if (!connection) {
+      return null;
+    }
+
+    const credentials = EncryptionService.decryptCredentials(
+      connection.encryptedCredentials,
+      connection.iv
+    );
+
+    return {
+      id: connection.id,
+      userId: connection.userId,
+      name: connection.name,
+      provider: connection.provider,
+      type: connection.type,
+      credentials,
+      metadata: connection.metadata,
+      isActive: connection.isActive,
+      lastTested: connection.lastTested,
+      testStatus: connection.testStatus,
+      testError: connection.testError,
+      createdAt: connection.createdAt,
+      updatedAt: connection.updatedAt,
+    };
+  }
+
+  public async storeConnection(
+    userId: string,
+    provider: string,
+    tokens: OAuthTokens,
+    userInfo?: OAuthUserInfo,
+    options: { name?: string; metadata?: Record<string, any>; type?: 'llm' | 'saas' | 'database' } = {}
+  ): Promise<string> {
+    const normalizedProvider = provider.toLowerCase();
+    const connectionName = options.name || userInfo?.email || normalizedProvider;
+    const credentialsPayload: Record<string, any> = {
+      ...tokens,
+      userInfo,
+    };
+    const encrypted = this.encryptCredentials(credentialsPayload);
+    const nowIso = new Date().toISOString();
+    const metadata = {
+      ...(options.metadata || {}),
+      refreshToken: Boolean(tokens.refreshToken),
+      expiresAt: tokens.expiresAt ? new Date(tokens.expiresAt).toISOString() : undefined,
+      userInfo,
+    };
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const existingIndex = records.findIndex(
+        (conn) => conn.userId === userId && conn.provider === normalizedProvider
+      );
+
+      if (existingIndex >= 0) {
+        const existing = records[existingIndex];
+        const updated: FileConnectionRecord = {
+          ...existing,
+          name: connectionName,
+          encryptedCredentials: encrypted.encryptedData,
+          iv: encrypted.iv,
+          metadata,
+          updatedAt: nowIso,
+          isActive: true,
+        };
+        records[existingIndex] = updated;
+        await this.writeFileStore(records);
+        console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
+        return updated.id;
+      }
+
+      const record: FileConnectionRecord = {
+        id: randomUUID(),
+        userId,
+        name: connectionName,
+        provider: normalizedProvider,
+        type: options.type || 'saas',
+        encryptedCredentials: encrypted.encryptedData,
+        iv: encrypted.iv,
+        metadata,
+        isActive: true,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      records.push(record);
+      await this.writeFileStore(records);
+      console.log(`✅ Stored connection (${normalizedProvider}) for ${userId}`);
+      return record.id;
+    }
+
+    const [existing] = await this.db
+      .select()
+      .from(connections)
+      .where(and(
+        eq(connections.userId, userId),
+        eq(connections.provider, normalizedProvider)
+      ))
+      .limit(1);
+
+    if (existing) {
+      await this.db
+        .update(connections)
+        .set({
+          name: connectionName,
+          encryptedCredentials: encrypted.encryptedData,
+          iv: encrypted.iv,
+          metadata,
+          updatedAt: new Date(),
+          isActive: true,
+        })
+        .where(eq(connections.id, existing.id));
+      console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
+      return existing.id;
+    }
+
+    const [created] = await this.db
+      .insert(connections)
+      .values({
+        userId,
+        name: connectionName,
+        provider: normalizedProvider,
+        type: options.type || 'saas',
+        encryptedCredentials: encrypted.encryptedData,
+        iv: encrypted.iv,
+        metadata,
+        isActive: true,
+      })
+      .returning({ id: connections.id });
+
+    console.log(`✅ Stored connection (${normalizedProvider}) for ${userId}`);
+    return created.id;
   }
 
   /**
@@ -342,6 +610,22 @@ export class ConnectionService {
    * Update connection test status
    */
   private async updateTestStatus(connectionId: string, success: boolean, message: string): Promise<void> {
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const index = records.findIndex((conn) => conn.id === connectionId);
+      if (index >= 0) {
+        records[index] = {
+          ...records[index],
+          lastTested: new Date().toISOString(),
+          testStatus: success ? 'success' : 'failed',
+          testError: success ? undefined : message,
+          updatedAt: new Date().toISOString(),
+        };
+        await this.writeFileStore(records);
+      }
+      return;
+    }
+
     this.ensureDb();
     await this.db
       .update(connections)
@@ -370,10 +654,27 @@ export class ConnectionService {
     if (updates.metadata) updateData.metadata = updates.metadata;
 
     if (updates.credentials) {
-      // Re-encrypt credentials
-      const encrypted = EncryptionService.encryptCredentials(updates.credentials);
+      const encrypted = this.encryptCredentials(updates.credentials);
       updateData.encryptedCredentials = encrypted.encryptedData;
-      updateData.credentialsIv = encrypted.iv;
+      updateData.iv = encrypted.iv;
+    }
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const index = records.findIndex((conn) => conn.id === connectionId && conn.userId === userId);
+      if (index >= 0) {
+        const existing = records[index];
+        records[index] = {
+          ...existing,
+          name: updateData.name ?? existing.name,
+          metadata: updateData.metadata ?? existing.metadata,
+          encryptedCredentials: updateData.encryptedCredentials ?? existing.encryptedCredentials,
+          iv: updateData.iv ?? existing.iv,
+          updatedAt: new Date().toISOString(),
+        };
+        await this.writeFileStore(records);
+      }
+      return;
     }
 
     this.ensureDb();
@@ -390,6 +691,20 @@ export class ConnectionService {
    * Delete connection (soft delete)
    */
   public async deleteConnection(connectionId: string, userId: string): Promise<void> {
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const index = records.findIndex((conn) => conn.id === connectionId && conn.userId === userId);
+      if (index >= 0) {
+        records[index] = {
+          ...records[index],
+          isActive: false,
+          updatedAt: new Date().toISOString(),
+        };
+        await this.writeFileStore(records);
+      }
+      return;
+    }
+
     this.ensureDb();
     await this.db
       .update(connections)

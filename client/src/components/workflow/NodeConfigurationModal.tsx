@@ -145,12 +145,15 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const handleTestConnection = async (connectionId: string) => {
     setIsTestingConnection(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/connections/${connectionId}/test`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers
         // Note: Server expects connection to already exist, no body needed
       });
 
@@ -174,12 +177,15 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
     setIsLoading(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/oauth/authorize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers,
         body: JSON.stringify({ 
           provider: oauthProvider.name,
           additionalParams: nodeData.appName === 'shopify' ? { shop: 'your-shop' } : undefined
