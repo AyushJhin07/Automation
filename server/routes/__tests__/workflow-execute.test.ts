@@ -4,7 +4,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import workflowReadRouter from '../workflow-read.js';
-import { WorkflowStoreService } from '../../workflow/workflow-store.js';
+import { WorkflowRepository } from '../../workflow/WorkflowRepository.js';
 
 const workflowId = 'wf-integration-test';
 
@@ -60,7 +60,14 @@ const sampleWorkflow = {
   }
 };
 
-WorkflowStoreService.store(workflowId, sampleWorkflow);
+await WorkflowRepository.saveWorkflowGraph({
+  id: workflowId,
+  userId: 'integration-test-user',
+  name: sampleWorkflow.name,
+  description: sampleWorkflow.metadata?.description ?? null,
+  graph: sampleWorkflow,
+  metadata: sampleWorkflow.metadata ?? null,
+});
 
 const app = express();
 app.use(express.json());
@@ -128,6 +135,5 @@ try {
   await new Promise<void>((resolve, reject) => {
     server.close((err) => (err ? reject(err) : resolve()));
   });
-  WorkflowStoreService.stopCleanupTimer();
-  WorkflowStoreService.clear(workflowId);
+  await WorkflowRepository.deleteWorkflow(workflowId);
 }

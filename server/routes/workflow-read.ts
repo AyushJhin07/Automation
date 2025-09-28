@@ -3,7 +3,7 @@
  */
 
 import { Router } from 'express';
-import { WorkflowStoreService } from '../workflow/workflow-store.js';
+import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { productionGraphCompiler } from '../core/ProductionGraphCompiler.js';
 import { productionDeployer } from '../core/ProductionDeployer.js';
 import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/WorkflowRuntimeService.js';
@@ -198,10 +198,10 @@ const computeExecutionOrder = (nodes: any[], edges: any[]) => {
 };
 
 // Get specific workflow for Graph Editor loading
-workflowReadRouter.get('/workflows/:id', (req, res) => {
+workflowReadRouter.get('/workflows/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -209,9 +209,9 @@ workflowReadRouter.get('/workflows/:id', (req, res) => {
       });
     }
 
-    const workflow = WorkflowStoreService.retrieve(id);
-    
-    if (!workflow) {
+    const workflowRecord = await WorkflowRepository.getWorkflowById(id);
+
+    if (!workflowRecord) {
       return res.status(404).json({
         success: false,
         error: `Workflow not found: ${id}`,
@@ -220,13 +220,17 @@ workflowReadRouter.get('/workflows/:id', (req, res) => {
     }
 
     console.log(`📋 Serving workflow ${id} for Graph Editor handoff`);
-    
+
+    const storedGraph = (workflowRecord as any)?.graph ?? workflowRecord;
+    const sanitizedGraph = sanitizeGraphForExecution(storedGraph);
+
     res.json({
       success: true,
-      graph: workflow,
+      graph: sanitizedGraph,
       metadata: {
         retrievedAt: new Date().toISOString(),
-        workflowId: id
+        workflowId: id,
+        updatedAt: workflowRecord.updatedAt
       }
     });
 
@@ -240,17 +244,31 @@ workflowReadRouter.get('/workflows/:id', (req, res) => {
 });
 
 // List all stored workflows (for debugging)
-workflowReadRouter.get('/workflows', (req, res) => {
+workflowReadRouter.get('/workflows', async (req, res) => {
   try {
-    const stats = WorkflowStoreService.getStats();
-    
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    const offset = typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined;
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const userIdQuery = typeof req.query.userId === 'string' ? req.query.userId : undefined;
+
+    const { workflows, total, limit: resolvedLimit, offset: resolvedOffset } = await WorkflowRepository.listWorkflows({
+      limit,
+      offset,
+      search,
+      userId: userIdQuery ?? (req as any)?.user?.id,
+    });
+
     res.json({
       success: true,
-      stats,
-      message: `${stats.totalWorkflows} workflows in store`
+      workflows,
+      pagination: {
+        total,
+        limit: resolvedLimit,
+        offset: resolvedOffset,
+      }
     });
   } catch (error) {
-    console.error('Error getting workflow stats:', error);
+    console.error('Error getting workflow statistics:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get workflow statistics'
@@ -259,15 +277,15 @@ workflowReadRouter.get('/workflows', (req, res) => {
 });
 
 // Clear specific workflow
-workflowReadRouter.delete('/workflows/:id', (req, res) => {
+workflowReadRouter.delete('/workflows/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const existed = WorkflowStoreService.clear(id);
+    const deleted = await WorkflowRepository.deleteWorkflow(id);
 
     res.json({
       success: true,
-      cleared: existed,
-      message: existed ? `Workflow ${id} cleared` : `Workflow ${id} was not found`
+      cleared: deleted,
+      message: deleted ? `Workflow ${id} cleared` : `Workflow ${id} was not found`
     });
   } catch (error) {
     console.error('Error clearing workflow:', error);
@@ -279,6 +297,10 @@ workflowReadRouter.delete('/workflows/:id', (req, res) => {
 });
 
 workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
+  let executionRecordId: string | null = null;
+  let executionStart = Date.now();
+  let executionMetadata: Record<string, any> | null = null;
+
   try {
     const { id } = req.params;
 
@@ -294,21 +316,48 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     if (providedGraph) {
       const sanitizedProvided = sanitizeGraphForExecution(providedGraph);
       sanitizedProvided.id = sanitizedProvided.id || id;
-      WorkflowStoreService.store(id, sanitizedProvided);
+      await WorkflowRepository.saveWorkflowGraph({
+        id,
+        userId: (req as any)?.user?.id,
+        name: sanitizedProvided?.name ?? sanitizedProvided?.graph?.name,
+        description: sanitizedProvided?.description ?? sanitizedProvided?.metadata?.description ?? null,
+        graph: sanitizedProvided,
+        metadata: sanitizedProvided?.metadata ?? null,
+      });
       graphSource = sanitizedProvided;
       console.log(`💾 Stored provided graph for workflow ${id} before execution preview`);
     } else {
-      const stored = WorkflowStoreService.retrieve(id);
+      const stored = await WorkflowRepository.getWorkflowById(id);
       if (!stored) {
         return res.status(404).json({ success: false, error: `Workflow not found: ${id}` });
       }
 
-      graphSource = sanitizeGraphForExecution(stored.graph ?? stored);
+      graphSource = sanitizeGraphForExecution((stored as any).graph ?? stored);
     }
 
     if (!graphSource || !Array.isArray(graphSource.nodes) || graphSource.nodes.length === 0) {
       return res.status(400).json({ success: false, error: 'Workflow graph is empty' });
     }
+
+    const requestOptions = (req.body?.options && typeof req.body.options === 'object') ? req.body.options : {};
+    executionStart = Date.now();
+    const executionRecord = await WorkflowRepository.createWorkflowExecution({
+      workflowId: id,
+      userId: (req as any)?.user?.id,
+      status: 'started',
+      triggerType: typeof requestOptions.triggerType === 'string' ? requestOptions.triggerType : 'manual',
+      triggerData: {
+        ...(requestOptions || {}),
+        preview: true,
+      },
+      metadata: {
+        preview: true,
+        requestedAt: new Date().toISOString(),
+      },
+    });
+    executionRecordId = executionRecord.id;
+    executionMetadata = (executionRecord.metadata as Record<string, any> | null) ?? null;
+    let executionFailed = false;
 
     if (process.env.NODE_ENV !== 'production') {
       try {
@@ -332,6 +381,19 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 
     if (!compilation.success) {
       console.warn(`⚠️ Compilation failed for workflow ${id}:`, compilation.error);
+      executionFailed = true;
+      if (executionRecordId) {
+        await WorkflowRepository.updateWorkflowExecution(executionRecordId, {
+          status: 'failed',
+          completedAt: new Date(),
+          duration: Date.now() - executionStart,
+          errorDetails: {
+            error: compilation.error,
+            stage: 'compile'
+          },
+          nodeResults: {},
+        });
+      }
       return res.status(422).json({
         success: false,
         error: compilation.error || 'Graph compilation failed',
@@ -387,7 +449,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       timezone: req.body?.timezone || 'UTC',
       nodeOutputs
     };
-    const requestOptions = (req.body?.options && typeof req.body.options === 'object') ? req.body.options : {};
+    const nodeResultsForStorage: Record<string, any> = {};
     const stopOnError = Boolean(requestOptions.stopOnError);
     let encounteredError = !deploymentPreview.success;
 
@@ -449,6 +511,10 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
           label,
           result: eventResult
         };
+        nodeResultsForStorage[nodeId] = {
+          status: 'success',
+          ...eventResult,
+        };
 
         sendEvent({
           type: 'node-complete',
@@ -472,6 +538,10 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
         };
 
         results[nodeId] = { status: 'error', label, error: errorPayload };
+        nodeResultsForStorage[nodeId] = {
+          status: 'error',
+          error: errorPayload,
+        };
 
         console.error(`❌ [${id}] Node ${nodeId} failed:`, message);
         sendEvent({
@@ -493,6 +563,26 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       ? `Workflow ${id} completed with errors`
       : `Workflow ${id} executed successfully`;
 
+    const finalStatus = encounteredError ? 'failed' : 'completed';
+    const completionTime = new Date();
+    const durationMs = Date.now() - executionStart;
+
+    if (!executionFailed && executionRecordId) {
+      const firstError = Object.values(nodeResultsForStorage).find((result: any) => result.status === 'error');
+      await WorkflowRepository.updateWorkflowExecution(executionRecordId, {
+        status: finalStatus,
+        completedAt: completionTime,
+        duration: durationMs,
+        nodeResults: nodeResultsForStorage,
+        errorDetails: encounteredError && firstError ? firstError.error : null,
+        metadata: {
+          ...(executionMetadata || {}),
+          preview: true,
+          finishedAt: completionTime.toISOString(),
+        },
+      });
+    }
+
     sendEvent({
       type: 'summary',
       workflowId: id,
@@ -509,6 +599,21 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     res.end();
   } catch (error: any) {
     console.error('❌ Error executing workflow preview:', error);
+    if (executionRecordId) {
+      try {
+        await WorkflowRepository.updateWorkflowExecution(executionRecordId, {
+          status: 'failed',
+          completedAt: new Date(),
+          duration: executionStart ? Date.now() - executionStart : null,
+          errorDetails: {
+            error: error?.message || 'Unknown execution error',
+            stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+          },
+        });
+      } catch (updateError) {
+        console.error('⚠️ Failed to update execution record after error:', updateError);
+      }
+    }
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
