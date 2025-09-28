@@ -16,12 +16,61 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
     const operation = node.op?.split('.').pop() || node.data?.operation || 'default';
     const app = node.app || node.type?.split('.')[1] || 'unknown';
     const nodeType = `${node.type?.split('.')[0] || node.type}.${app}.${operation}`;
-    
+
+    const params = { ...(node.params || node.data?.config || {}) };
+    const data = { ...(node.data || {}) } as Record<string, any>;
+
+    let auth = node.auth ? { ...node.auth } : data.auth ? { ...data.auth } : undefined;
+    const credentials = node.credentials
+      ? { ...node.credentials }
+      : data.credentials
+        ? { ...data.credentials }
+        : undefined;
+
+    const connectionId =
+      node.connectionId ??
+      data.connectionId ??
+      auth?.connectionId ??
+      params.connectionId ??
+      data.parameters?.connectionId;
+
+    if (connectionId) {
+      if (!params.connectionId) {
+        params.connectionId = connectionId;
+      }
+
+      if (!data.connectionId) {
+        data.connectionId = connectionId;
+      }
+
+      const parameters = { ...(data.parameters || {}) };
+      if (parameters.connectionId === undefined) {
+        parameters.connectionId = connectionId;
+      }
+      data.parameters = parameters;
+
+      if (auth) {
+        if (!auth.connectionId) {
+          auth = { ...auth, connectionId };
+        }
+      } else {
+        auth = { connectionId };
+      }
+    }
+
+    if (auth) {
+      data.auth = auth;
+    }
+
+    if (credentials) {
+      data.credentials = credentials;
+    }
+
     return {
       id: node.id,
       type: nodeType,
       label: node.name || node.data?.label || `${app} ${node.type}`,
-      params: node.params || node.data?.config || {},
+      params,
       position: node.position || {
         x: 100 + (index * 300), // Auto-layout horizontally
         y: 100 + (Math.floor(index / 3) * 200) // Wrap to new row every 3 nodes
@@ -29,11 +78,14 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
       color: getAppColor(app),
       icon: getAppIcon(app),
       // Preserve original data for Graph Editor
-      data: node.data,
+      data,
       app: app,
       op: node.op || `${app}.${operation}`,
       metadata: node.metadata,
-      outputMetadata: node.outputMetadata
+      outputMetadata: node.outputMetadata,
+      connectionId,
+      auth,
+      credentials
     };
   });
 

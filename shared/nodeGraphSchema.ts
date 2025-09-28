@@ -36,6 +36,9 @@ export interface GraphNode {
   data?: Record<string, any>;
   app?: string;
   op?: string;
+  connectionId?: string;
+  auth?: Record<string, any>;
+  credentials?: Record<string, any>;
 }
 
 export interface Edge {
