@@ -5,6 +5,7 @@
   "category": "Database",
   "icon": "airtable",
   "color": "#18BFFF",
+  "availability": "stable",
   "version": "1.0.0",
   "authentication": {
     "type": "api_key",

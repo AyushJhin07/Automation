@@ -9,6 +9,7 @@ import { ShopifyAPIClient } from './integrations/ShopifyAPIClient';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
+import { IMPLEMENTED_CONNECTOR_SET } from './integrations/supportedApps';
 
 interface ConnectorFunction {
   id: string;
@@ -26,6 +27,8 @@ interface ConnectorFunction {
   };
 }
 
+type ConnectorAvailability = 'stable' | 'experimental' | 'disabled';
+
 interface ConnectorDefinition {
   id: string;
   name: string;
@@ -33,6 +36,7 @@ interface ConnectorDefinition {
   category: string;
   icon?: string;
   color?: string;
+  availability?: ConnectorAvailability;
   authentication: {
     type: string;
     config: any;
@@ -57,6 +61,12 @@ interface ConnectorRegistryEntry {
   hasImplementation: boolean;
   functionCount: number;
   categories: string[];
+  availability: ConnectorAvailability;
+}
+
+interface ConnectorFilterOptions {
+  includeExperimental?: boolean;
+  includeDisabled?: boolean;
 }
 
 export class ConnectorRegistry {
@@ -399,12 +409,16 @@ export class ConnectorRegistry {
       try {
         const def = this.loadConnectorDefinition(file); // already joins connectorsPath
         const appId = def.id;
+        const availability = this.resolveAvailability(appId, def);
+        const hasImplementation = availability === 'stable' && IMPLEMENTED_CONNECTOR_SET.has(appId);
+        const normalizedDefinition: ConnectorDefinition = { ...def, availability };
         const entry: ConnectorRegistryEntry = {
-          definition: def,
-          apiClient: this.apiClients.get(appId),
-          hasImplementation: this.apiClients.has(appId),
+          definition: normalizedDefinition,
+          apiClient: hasImplementation ? this.apiClients.get(appId) : undefined,
+          hasImplementation,
           functionCount: (def.actions?.length || 0) + (def.triggers?.length || 0),
-          categories: [def.category]
+          categories: [def.category],
+          availability
         };
         this.registry.set(appId, entry);
         loaded++;
@@ -416,7 +430,8 @@ export class ConnectorRegistry {
     
     // ChatGPT Fix: Accurate implementation counting after loading
     try {
-      const allConnectors = this.getAllConnectors().map(entry => entry.definition);
+      const allConnectors = this.getAllConnectors({ includeExperimental: true, includeDisabled: true })
+        .map(entry => entry.definition);
       const stats = this.computeImplementedOps(allConnectors);
       const msg = `Connector health: ${stats.appsWithRealOps}/${stats.totalApps} apps have real compiler-backed ops (${stats.realOps}/${stats.totalOps} ops).`;
       console.log(msg); // INFO, not P0 CRITICAL
@@ -442,8 +457,22 @@ export class ConnectorRegistry {
   /**
    * Get all registered connectors
    */
-  public getAllConnectors(): ConnectorRegistryEntry[] {
-    return Array.from(this.registry.values());
+  public getAllConnectors(options: ConnectorFilterOptions = {}): ConnectorRegistryEntry[] {
+    return this.filterEntries(options);
+  }
+
+  /**
+   * List connector definitions for API responses
+   */
+  public async listConnectors(options: ConnectorFilterOptions = {}): Promise<Array<ConnectorDefinition & {
+    hasImplementation: boolean;
+    availability: ConnectorAvailability;
+  }>> {
+    return this.getAllConnectors(options).map(entry => ({
+      ...entry.definition,
+      availability: entry.availability,
+      hasImplementation: entry.hasImplementation
+    }));
   }
 
   /**
@@ -464,14 +493,19 @@ export class ConnectorRegistry {
    * Get API client for an app
    */
   public getAPIClient(appId: string): APIClientConstructor | undefined {
-    return this.registry.get(appId)?.apiClient;
+    const entry = this.registry.get(appId);
+    if (!entry || entry.availability !== 'stable') {
+      return undefined;
+    }
+    return entry.apiClient;
   }
 
   /**
    * Check if app has API implementation
    */
   public hasImplementation(appId: string): boolean {
-    return this.registry.get(appId)?.hasImplementation || false;
+    const entry = this.registry.get(appId);
+    return entry?.availability === 'stable' && entry?.hasImplementation === true;
   }
 
   /**
@@ -495,7 +529,7 @@ export class ConnectorRegistry {
   public searchConnectors(query: string): ConnectorRegistryEntry[] {
     const searchTerm = query.toLowerCase();
     
-    return Array.from(this.registry.values()).filter(entry => {
+    return this.filterEntries().filter(entry => {
       const def = entry.definition;
       return (
         def.name.toLowerCase().includes(searchTerm) ||
@@ -517,7 +551,7 @@ export class ConnectorRegistry {
    * Get connectors by category
    */
   public getConnectorsByCategory(category: string): ConnectorRegistryEntry[] {
-    return Array.from(this.registry.values()).filter(entry =>
+    return this.filterEntries().filter(entry =>
       entry.definition.category.toLowerCase() === category.toLowerCase()
     );
   }
@@ -527,7 +561,7 @@ export class ConnectorRegistry {
    */
   public getAllCategories(): string[] {
     const categories = new Set<string>();
-    this.registry.forEach(entry => {
+    this.filterEntries().forEach(entry => {
       categories.add(entry.definition.category);
     });
     return Array.from(categories).sort();
@@ -548,19 +582,21 @@ export class ConnectorRegistry {
       implementedConnectors: 0,
       totalFunctions: 0,
       byCategory: {} as Record<string, number>,
-      byImplementation: { implemented: 0, placeholder: 0 }
+      byImplementation: { implemented: 0, experimental: 0, disabled: 0 }
     };
 
-    this.registry.forEach(entry => {
-      if (entry.hasImplementation) {
+    this.filterEntries({ includeExperimental: true, includeDisabled: true }).forEach(entry => {
+      if (entry.hasImplementation && entry.availability === 'stable') {
         stats.implementedConnectors++;
         stats.byImplementation.implemented++;
+      } else if (entry.availability === 'disabled') {
+        stats.byImplementation.disabled++;
       } else {
-        stats.byImplementation.placeholder++;
+        stats.byImplementation.experimental++;
       }
-      
+
       stats.totalFunctions += entry.functionCount;
-      
+
       const category = entry.definition.category;
       stats.byCategory[category] = (stats.byCategory[category] || 0) + 1;
     });
@@ -644,6 +680,7 @@ export class ConnectorRegistry {
       actions: ConnectorFunction[];
       triggers: ConnectorFunction[];
       hasImplementation: boolean;
+      availability: ConnectorAvailability;
     }>;
     categories: Record<string, {
       name: string;
@@ -665,13 +702,17 @@ export class ConnectorRegistry {
     const categories: Record<string, any> = {};
 
     for (const [appId, entry] of this.registry.entries()) {
+      if (entry.availability !== 'stable') {
+        continue;
+      }
       const def = entry.definition;
       connectors[appId] = {
         name: def.name,
         category: def.category,
         actions: def.actions || [],
         triggers: def.triggers || [],
-        hasImplementation: entry.hasImplementation === true
+        hasImplementation: entry.hasImplementation === true,
+        availability: entry.availability
       };
 
       const pushNode = (type: 'action' | 'trigger', fn: ConnectorFunction) => {
@@ -710,6 +751,36 @@ export class ConnectorRegistry {
     }
 
     return { connectors, categories };
+  }
+
+  private resolveAvailability(appId: string, def: ConnectorDefinition): ConnectorAvailability {
+    const declared = def.availability;
+    if (declared === 'disabled') {
+      return 'disabled';
+    }
+    if (declared === 'stable') {
+      return IMPLEMENTED_CONNECTOR_SET.has(appId) ? 'stable' : 'experimental';
+    }
+    if (declared === 'experimental') {
+      return 'experimental';
+    }
+    if (IMPLEMENTED_CONNECTOR_SET.has(appId)) {
+      return 'stable';
+    }
+    return 'experimental';
+  }
+
+  private filterEntries(options: ConnectorFilterOptions = {}): ConnectorRegistryEntry[] {
+    const { includeExperimental = false, includeDisabled = false } = options;
+    return Array.from(this.registry.values()).filter(entry => {
+      if (entry.availability === 'disabled') {
+        return includeDisabled;
+      }
+      if (entry.availability === 'experimental') {
+        return includeExperimental;
+      }
+      return true;
+    });
   }
 }
 
