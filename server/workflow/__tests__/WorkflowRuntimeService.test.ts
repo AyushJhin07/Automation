@@ -73,9 +73,84 @@ async function runSheetsAndTimeRegression(): Promise<void> {
   assert.ok(context.nodeOutputs['time-node'], 'Time node output should be stored in execution context');
 }
 
+async function runConnectionIdAuthRegression(): Promise<void> {
+  const runtime = new WorkflowRuntimeService();
+
+  const context: ExecutionContext = {
+    workflowId: 'workflow-auth-connection',
+    executionId: 'exec-2',
+    nodeOutputs: {},
+    timezone: 'UTC',
+    userId: 'user-auth'
+  };
+
+  const mockConnectionService = {
+    async getConnection(connectionId: string, userId: string) {
+      assert.equal(connectionId, 'conn-auth-1', 'Runtime should request the configured connection id');
+      assert.equal(userId, 'user-auth', 'Runtime should request connection for current user');
+      return {
+        id: connectionId,
+        userId,
+        name: 'Auth Connection',
+        provider: 'sheets',
+        type: 'saas',
+        credentials: { local: true },
+        metadata: { additionalConfig: { sandbox: true } },
+        iv: 'iv',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    }
+  };
+
+  (runtime as any).getConnectionService = async () => mockConnectionService;
+
+  const actionNode = {
+    id: 'sheets-connection-node',
+    app: 'sheets',
+    function: 'append_row',
+    params: {
+      spreadsheetId: 'spreadsheet-auth',
+      sheetName: 'Logs',
+      values: ['delta', 'epsilon']
+    },
+    data: {
+      app: 'sheets',
+      function: 'append_row',
+      auth: { connectionId: 'conn-auth-1' },
+      parameters: {
+        spreadsheetId: 'spreadsheet-auth',
+        sheetName: 'Logs',
+        values: ['delta', 'epsilon']
+      }
+    }
+  };
+
+  const result = await runtime.executeNode(actionNode, context);
+
+  assert.equal(result.summary, 'Executed sheets.append_row', 'Action node should execute successfully');
+  assert.deepEqual(
+    result.output,
+    {
+      spreadsheetId: 'spreadsheet-auth',
+      sheetName: 'Logs',
+      rowIndex: 0,
+      values: ['delta', 'epsilon']
+    },
+    'Action node should return append_row metadata when using stored connection'
+  );
+
+  assert.ok(
+    context.nodeOutputs['sheets-connection-node'],
+    'Node output should be stored when connection is resolved from data.auth'
+  );
+}
+
 try {
   await runSheetsAndTimeRegression();
-  console.log('WorkflowRuntimeService Sheets + Time execution regression passed.');
+  await runConnectionIdAuthRegression();
+  console.log('WorkflowRuntimeService regressions passed.');
   process.exit(0);
 } catch (error) {
   console.error('WorkflowRuntimeService regression failed.', error);
