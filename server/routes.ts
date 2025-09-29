@@ -41,6 +41,7 @@ import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 import { normalizeAppId } from "./services/PromptBuilder.js";
 import { executionQueueService } from './services/ExecutionQueueService.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
+import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -575,14 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.get('/api/deployment/prerequisites', process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken, async (req, res) => {
-    try {
-      const result = await productionDeployer.validatePrerequisites();
-      res.json({ success: true, data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
+  registerDeploymentPrerequisiteRoutes(app);
 
   // ===== CONNECTOR FRAMEWORK ROUTES =====
 
