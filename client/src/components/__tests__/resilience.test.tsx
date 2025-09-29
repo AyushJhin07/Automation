@@ -8,6 +8,8 @@ import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/re
 import { AIWorkflowBuilder } from '../ai/AIWorkflowBuilder';
 import { EnhancedConversationalWorkflowBuilder } from '../ai/EnhancedConversationalWorkflowBuilder';
 import ConnectionManager from '../connections/ConnectionManager';
+import SmartParametersPanel from '../workflow/SmartParametersPanel';
+import ReactFlow, { ReactFlowProvider } from 'reactflow';
 import { useWorkflowState } from '@/store/workflowState';
 import { useAuthStore } from '@/store/authStore';
 
@@ -88,6 +90,34 @@ test('AIWorkflowBuilder disables deploy action and surfaces message when deploym
   assert.ok(alertText);
 });
 
+test('AIWorkflowBuilder surfaces inline planning error when planner returns 500', async () => {
+  global.fetch = (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    if (url === '/api/ai-planner/plan-workflow') {
+      return Promise.resolve(new Response('Planner offline', { status: 500, statusText: 'Server error' }));
+    }
+    if (url === '/api/ai/models') {
+      return Promise.resolve(new Response(JSON.stringify({ models: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  };
+
+  render(<AIWorkflowBuilder />);
+
+  const textarea = await screen.findByPlaceholderText(/Example: I want to track customer emails/i);
+  fireEvent.change(textarea, { target: { value: 'Create a sample workflow' } });
+
+  const generateButton = await screen.findByText(/Generate Workflow with AI/i);
+  fireEvent.click(generateButton);
+
+  await waitFor(() => screen.getByText(/Failed to plan automation \(500\)/i));
+  const inlineError = screen.getByText(/Failed to plan automation \(500\)/i);
+  assert.ok(inlineError);
+});
+
 test('Enhanced conversational builder guides the user when planning endpoint returns 500', async () => {
   global.fetch = (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input.toString();
@@ -124,6 +154,72 @@ test('Enhanced conversational builder guides the user when planning endpoint ret
   await waitFor(() => screen.getByText(/I can't reach the automation planner/i));
   const message = screen.getByText(/Please check your connection and try again when you're ready/i);
   assert.ok(message);
+});
+
+test('SmartParametersPanel surfaces inline sheet metadata error on failed fetch', async () => {
+  global.fetch = (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    if (url.startsWith('/api/google/sheets/')) {
+      return Promise.resolve(new Response('Metadata unavailable', { status: 503, statusText: 'Service Unavailable' }));
+    }
+    if (url.startsWith('/api/registry/op-schema')) {
+      return Promise.resolve(new Response(JSON.stringify({
+        success: true,
+        schema: {
+          type: 'object',
+          properties: {
+            spreadsheetId: { type: 'string', title: 'Spreadsheet' },
+            sheetName: { type: 'string', title: 'Sheet Name' }
+          }
+        }
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    if (url === '/api/ai/models') {
+      return Promise.resolve(new Response(JSON.stringify({ models: [], providers: { available: [] }, aiAvailable: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    if (url.startsWith('/api/registry/catalog')) {
+      return Promise.resolve(new Response(JSON.stringify({ catalog: { connectors: {} } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  };
+
+  const nodes = [
+    {
+      id: 'node-1',
+      type: 'default',
+      position: { x: 0, y: 0 },
+      data: {
+        label: 'Append Row',
+        app: 'sheets',
+        actionId: 'append_row',
+        parameters: { spreadsheetId: 'sheet-123' },
+      },
+      selected: true,
+    },
+  ];
+
+  render(
+    <ReactFlowProvider>
+      <div style={{ width: 800, height: 600 }}>
+        <ReactFlow nodes={nodes as any} edges={[]}>
+          <SmartParametersPanel />
+        </ReactFlow>
+      </div>
+    </ReactFlowProvider>
+  );
+
+  await waitFor(() => screen.getByText(/Sheet tabs unavailable/i));
+  const warning = screen.getByText(/Metadata unavailable/i);
+  assert.ok(warning);
 });
 
 test('ConnectionManager shows fallback state when connections API returns 500', async () => {
