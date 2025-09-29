@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PaywallModal } from '@/components/auth/PaywallModal';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Brain, 
   Sparkles, 
@@ -64,6 +66,9 @@ export const AIWorkflowBuilder: React.FC = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [step, setStep] = useState<'input' | 'questions' | 'ready'>('input');
   const [currentPlan, setCurrentPlan] = useState<any>(null); // Store automation plan
+  const [deploySupport, setDeploySupport] = useState<'checking' | 'supported' | 'unsupported'>('checking');
+  const [deployMessage, setDeployMessage] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Load available AI models on component mount
   useEffect(() => {
@@ -78,8 +83,48 @@ export const AIWorkflowBuilder: React.FC = () => {
         console.log('Could not load AI models, using fallback');
       }
     };
-    
+
     loadModels();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkDeploySupport = async () => {
+      try {
+        const response = await fetch('/api/workflow/deploy', { method: 'OPTIONS' });
+        if (cancelled) return;
+
+        const allowHeader = (response.headers.get('Allow') || response.headers.get('allow') || '')
+          .split(',')
+          .map((value) => value.trim().toUpperCase());
+        const postAllowed = allowHeader.includes('POST');
+
+        if (response.ok || postAllowed) {
+          setDeploySupport('supported');
+          setDeployMessage(null);
+        } else {
+          setDeploySupport('unsupported');
+          const statusText = response.statusText ? ` ${response.statusText}` : '';
+          setDeployMessage(
+            response.status === 404
+              ? 'This environment has not enabled automated deployment yet. You can still copy the Apps Script code below and deploy manually.'
+              : `Deployment endpoint responded with ${response.status}${statusText}. Copy the generated code to deploy manually.`
+          );
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Failed to verify deployment endpoint support', err);
+        setDeploySupport('unsupported');
+        setDeployMessage('We could not reach the deployment API. Please deploy manually or try again later.');
+      }
+    };
+
+    checkDeploySupport();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleGenerateWorkflow = async () => {
@@ -351,16 +396,29 @@ function processCustomerEmails() {
   };
 
   const handleDeployToGoogle = async () => {
-    if (!generatedWorkflow) return;
-    
+    if (!generatedWorkflow) {
+      toast({
+        variant: 'destructive',
+        title: 'Generate a workflow first',
+        description: 'Create or load a workflow before deploying it to Google.'
+      });
+      return;
+    }
+
+    if (deploySupport !== 'supported') {
+      toast({
+        variant: 'destructive',
+        title: 'Automatic deployment unavailable',
+        description: deployMessage || 'The deployment API is currently disabled. You can deploy manually using the generated code.'
+      });
+      return;
+    }
+
     try {
-      // TODO: Deploy to user's Google Apps Script
       const response = await fetch('/api/workflow/deploy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // TODO: Add JWT auth when available
-          // ...(jwt && { Authorization: `Bearer ${jwt}` })
         },
         body: JSON.stringify({
           files: generatedWorkflow.appsScriptCode ? [
@@ -373,12 +431,40 @@ function processCustomerEmails() {
           options: { projectName: generatedWorkflow.title }
         })
       });
-      
+
       if (response.ok) {
-        alert('Automation deployed to your Google account!');
+        toast({
+          title: 'Deployment started',
+          description: 'Check your Google Apps Script dashboard for the new project.'
+        });
+        return;
       }
-    } catch (err) {
-      alert('Deployment feature coming soon!');
+
+      let errorMessage = `Deployment failed with status ${response.status}`;
+      try {
+        const payload = await response.json();
+        if (payload?.error) {
+          errorMessage = payload.error;
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse deployment error response', parseError);
+      }
+
+      setDeployMessage(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'Deployment failed',
+        description: errorMessage
+      });
+    } catch (err: any) {
+      const message = err?.message || 'Unable to reach the deployment API.';
+      setDeployMessage(message);
+      setDeploySupport('unsupported');
+      toast({
+        variant: 'destructive',
+        title: 'Deployment unavailable',
+        description: `${message} Please deploy manually or try again later.`
+      });
     }
   };
 
@@ -730,18 +816,33 @@ function processCustomerEmails() {
           </Card>
 
           {/* Action Buttons */}
+          {deployMessage && (
+            <Alert variant="destructive" className="max-w-3xl mx-auto">
+              <AlertTitle>Automatic deployment unavailable</AlertTitle>
+              <AlertDescription>{deployMessage}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex gap-4 justify-center">
-            <Button 
+            <Button
               onClick={handleBuildWorkflow}
               className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3"
             >
               <Zap className="w-4 h-4 mr-2" />
               Open in Drag & Drop Builder
             </Button>
-            
-            <Button 
+
+            <Button
               onClick={handleDeployToGoogle}
               className="bg-green-600 hover:bg-green-700 text-lg px-8 py-3"
+              disabled={deploySupport !== 'supported' || !generatedWorkflow}
+              title={
+                !generatedWorkflow
+                  ? 'Generate a workflow before deploying to Google.'
+                  : deploySupport !== 'supported'
+                    ? deployMessage || 'Automatic deployment is currently disabled.'
+                    : undefined
+              }
             >
               <ArrowRight className="w-4 h-4 mr-2" />
               Deploy to Google Account
