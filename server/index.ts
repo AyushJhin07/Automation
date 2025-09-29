@@ -58,6 +58,8 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
   try {
     const { executionQueueService } = await import('./services/ExecutionQueueService.js');
+    const { WebhookManager } = await import('./webhooks/WebhookManager.js');
+    WebhookManager.configureQueueService(executionQueueService);
     executionQueueService.start();
   } catch (e) {
     console.warn('⚠️ Failed to start execution queue:', (e as any)?.message || e);
