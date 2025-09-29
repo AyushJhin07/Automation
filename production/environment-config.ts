@@ -76,7 +76,7 @@ HOST=0.0.0.0
 # =================================
 # DATABASE CONFIGURATION
 # =================================
-DATABASE_URL="postgresql://username:password@host:5432/automation_platform"
+DATABASE_URL="postgresql://automation_user:supersecurepassword@managed-postgres.example.com:5432/automation_platform"
 DATABASE_POOL_SIZE=20
 DATABASE_SSL=true
 

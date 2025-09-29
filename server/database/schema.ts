@@ -562,6 +562,14 @@ if (!connectionString) {
 }
 
 
+export function setDatabaseClientForTests(databaseClient: any): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('setDatabaseClientForTests should only be used in test environment');
+  }
+
+  db = databaseClient;
+}
+
 export { db };
 
 console.log('✅ Database schema loaded with comprehensive indexes and PII tracking for ALL applications');
