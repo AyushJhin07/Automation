@@ -786,16 +786,72 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
       });
       
       const prereqResponse = await fetch('/api/ai/deployment/prerequisites');
-      const prereqResult = await prereqResponse.json();
-      
-      if (!prereqResult.success || !prereqResult.canDeploy) {
+
+      if (!prereqResponse.ok) {
+        addMessage({
+          role: 'assistant',
+          content: `⚠️ **Couldn't Verify Deployment Prerequisites**
+
+The server responded with ${prereqResponse.status} ${prereqResponse.statusText || ''}. Please double-check your connection and try again.`.trim()
+        });
+        return;
+      }
+
+      let prereqResult: any;
+      try {
+        prereqResult = await prereqResponse.json();
+      } catch (error) {
+        console.error('Failed to parse deployment prerequisite response:', error);
+        addMessage({
+          role: 'assistant',
+          content: `⚠️ **Couldn't Understand Deployment Check**
+
+I wasn't able to read the response from the server. Please try again or review your local deployment setup.`
+        });
+        return;
+      }
+
+      const prereqData = (prereqResult && typeof prereqResult === 'object' && !Array.isArray(prereqResult))
+        ? (prereqResult.data && typeof prereqResult.data === 'object' ? prereqResult.data : prereqResult)
+        : null;
+
+      const isSuccessful = prereqResult?.success !== false;
+      const canDeploy = typeof prereqData?.valid === 'boolean'
+        ? prereqData.valid
+        : (typeof prereqData?.canDeploy === 'boolean' ? prereqData.canDeploy : false);
+
+      if (!isSuccessful || !canDeploy) {
+        const checkDetails = prereqData?.checks && typeof prereqData.checks === 'object'
+          ? Object.entries(prereqData.checks).map(([check, info]: [string, any]) => {
+              const status = info?.status;
+              const emoji = status === 'error' ? '❌' : status === 'available' ? '✅' : '⚠️';
+              return `• **${check}:** ${emoji} ${info?.message || 'Requires attention'}`;
+            })
+          : [];
+
+        const issueDetails = Array.isArray(prereqData?.issues)
+          ? prereqData!.issues.map((issue: string) => `• ${issue}`)
+          : [];
+
+        const recommendationDetails = Array.isArray(prereqData?.recommendations)
+          ? prereqData!.recommendations.map((rec: string) => `• ${rec}`)
+          : [];
+
+        const issueSectionLines = [...checkDetails, ...issueDetails];
+        const issueSection = issueSectionLines.length
+          ? issueSectionLines.join('\n')
+          : '• Deployment requirements could not be verified.';
+
+        const recommendationSection = recommendationDetails.length
+          ? `\n\n**Recommendations:**\n${recommendationDetails.join('\n')}`
+          : '';
+
         addMessage({
           role: 'assistant',
           content: `⚠️ **Deployment Prerequisites Not Met**
 
-${Object.entries(prereqResult.checks || {}).map(([check, info]: [string, any]) => 
-  `• **${check}:** ${info.status === 'error' ? '❌' : info.status === 'available' ? '✅' : '⚠️'} ${info.message}`
-).join('\n')}
+**Issues detected:**
+${issueSection}${recommendationSection}
 
 Please ensure all prerequisites are satisfied before deploying.`
         });
