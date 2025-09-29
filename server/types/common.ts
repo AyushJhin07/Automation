@@ -39,6 +39,7 @@ export interface NodeCatalog {
   nodes: NodeDefinition[];
   categories: string[];
   totalCount: number;
+  loops?: NodeDefinition[];
 }
 
 export interface NodeDefinition {

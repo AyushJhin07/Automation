@@ -447,7 +447,10 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       executionId,
       userId: (req as any)?.user?.id,
       timezone: req.body?.timezone || 'UTC',
-      nodeOutputs
+      nodeOutputs,
+      nodeMap,
+      edges,
+      skipNodes: new Set<string>()
     };
     const nodeResultsForStorage: Record<string, any> = {};
     const stopOnError = Boolean(requestOptions.stopOnError);
@@ -483,6 +486,10 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       stepIndex += 1;
 
       const label = node.label || node.data?.label || nodeId;
+
+      if (runtimeContext.skipNodes?.has(nodeId)) {
+        continue;
+      }
 
       console.log(`⏱️ [${id}] Running node ${nodeId} (${label})`);
       sendEvent({

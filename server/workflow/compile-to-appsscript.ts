@@ -9987,37 +9987,213 @@ function buildRealCodeFromGraph(graph: any): string {
   const emitted = new Set<string>();
   const supportedNodes: any[] = [];
   const unsupportedNodes: any[] = [];
-  
-  // P0 CRITICAL: Only include nodes with working implementations
-  for (const n of graph.nodes) {
-    const key = opKey(n);
+
+  const nodesById = new Map<string, any>();
+  for (const node of graph.nodes) {
+    if (node && typeof node.id !== 'undefined') {
+      nodesById.set(String(node.id), node);
+    }
+  }
+
+  const edges = Array.isArray(graph.edges) ? graph.edges : [];
+
+  const sanitizeAlias = (value: any, fallback: string, allowEmpty = false): string => {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+    }
+    if (allowEmpty) {
+      return '';
+    }
+    return fallback.replace(/[^a-zA-Z0-9_]/g, '_');
+  };
+
+  const toIdentifier = (value: string, fallback: string): string => {
+    const sanitized = value.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[^a-zA-Z_]+/, '');
+    return sanitized.length > 0 ? sanitized : fallback;
+  };
+
+  const orderBodyNodes = (bodyNodes: any[]): any[] => {
+    if (bodyNodes.length <= 1) {
+      return bodyNodes;
+    }
+    const idSet = new Set(bodyNodes.map((n: any) => String(n.id)));
+    const adjacency = new Map<string, Set<string>>();
+    const indegree = new Map<string, number>();
+
+    for (const node of bodyNodes) {
+      const id = String(node.id);
+      adjacency.set(id, new Set());
+      indegree.set(id, 0);
+    }
+
+    for (const edge of edges) {
+      const source = typeof edge.source === 'string' ? edge.source : edge.from;
+      const target = typeof edge.target === 'string' ? edge.target : edge.to;
+      if (!source || !target) continue;
+      if (!idSet.has(source) || !idSet.has(target)) continue;
+      const neighbours = adjacency.get(source)!;
+      if (!neighbours.has(target)) {
+        neighbours.add(target);
+        indegree.set(target, (indegree.get(target) ?? 0) + 1);
+      }
+    }
+
+    const queue: string[] = [];
+    for (const [id, degree] of indegree.entries()) {
+      if (degree === 0) {
+        queue.push(id);
+      }
+    }
+
+    const ordered: string[] = [];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      ordered.push(current);
+      for (const neighbour of adjacency.get(current) ?? []) {
+        const nextDegree = (indegree.get(neighbour) ?? 0) - 1;
+        indegree.set(neighbour, nextDegree);
+        if (nextDegree === 0) {
+          queue.push(neighbour);
+        }
+      }
+    }
+
+    for (const id of idSet) {
+      if (!ordered.includes(id)) {
+        ordered.push(id);
+      }
+    }
+
+    return ordered
+      .map(id => bodyNodes.find(node => String(node.id) === id))
+      .filter((node): node is any => Boolean(node));
+  };
+
+  const loopDefinitions = new Map<string, { node: any; bodyNodes: any[] }>();
+  const bodyNodeIds = new Set<string>();
+
+  for (const node of graph.nodes) {
+    const type = typeof node.type === 'string' ? node.type : '';
+    if (type.startsWith('loop')) {
+      const rawIds = Array.isArray(node.data?.bodyNodeIds)
+        ? node.data.bodyNodeIds
+        : Array.isArray(node.data?.loop?.bodyNodeIds)
+          ? node.data.loop.bodyNodeIds
+          : [];
+      const bodyNodes = (rawIds || [])
+        .map((id: any) => nodesById.get(String(id)))
+        .filter((n: any) => Boolean(n));
+      bodyNodes.forEach((body: any) => bodyNodeIds.add(String(body.id)));
+      loopDefinitions.set(String(node.id), { node, bodyNodes: orderBodyNodes(bodyNodes) });
+      continue;
+    }
+
+    const key = opKey(node);
     const gen = REAL_OPS[key];
     if (gen) {
-      supportedNodes.push(n);
+      supportedNodes.push(node);
     } else {
       unsupportedNodes.push({
-        id: n.id,
-        type: n.type,
+        id: node.id,
+        type: node.type,
         operation: key,
         reason: 'No REAL_OPS implementation'
       });
     }
   }
-  
+
   console.log(`🔧 P0 Build Analysis: ${supportedNodes.length} supported, ${unsupportedNodes.length} unsupported nodes`);
   if (unsupportedNodes.length > 0) {
     console.warn('⚠️ Unsupported operations:', unsupportedNodes.map(n => n.operation));
   }
-  
-  const allNodes = [...supportedNodes, ...unsupportedNodes];
-  const executionLines = allNodes.map((n: any) => {
-    const callLine = `  ctx = ${funcName(n)}(ctx);`;
-    const nodeId = typeof n.id === 'string' ? escapeForSingleQuotes(n.id) : '';
+
+  const executionPlan: Array<{ kind: 'node'; node: any } | { kind: 'loop'; node: any; bodyNodes: any[] }> = [];
+  for (const node of graph.nodes) {
+    const id = String(node.id);
+    if (loopDefinitions.has(id)) {
+      const def = loopDefinitions.get(id)!;
+      executionPlan.push({ kind: 'loop', node: def.node, bodyNodes: def.bodyNodes });
+    } else if (!bodyNodeIds.has(id)) {
+      executionPlan.push({ kind: 'node', node });
+    }
+  }
+
+  const renderNodeInvocation = (node: any, indent: string): string => {
+    const callLine = `${indent}ctx = ${funcName(node)}(ctx);`;
+    const nodeId = typeof node.id === 'string' ? escapeForSingleQuotes(node.id) : '';
     if (!nodeId) {
       return callLine;
     }
-    return `${callLine}\n  __storeNodeOutput('${nodeId}', ctx);`;
-  }).join('\n');
+    return `${callLine}\n${indent}__storeNodeOutput('${nodeId}', ctx);`;
+  };
+
+  const renderLoopInvocation = (step: { node: any; bodyNodes: any[] }): string => {
+    const params = step.node.params || step.node.data?.parameters || step.node.data?.config || {};
+    const rawCollection = params.collection ?? [];
+    const collectionLiteral = JSON.stringify(rawCollection !== undefined ? rawCollection : []);
+    const collectionExpr = typeof collectionLiteral === 'string' ? collectionLiteral : '[]';
+    const alias = sanitizeAlias(params.itemAlias ?? step.node.data?.itemAlias, 'item');
+    const aliasIdentifier = toIdentifier(alias, 'loopItem');
+    const indexAlias = sanitizeAlias(params.indexAlias ?? step.node.data?.parameters?.indexAlias, 'index', true);
+    const bodyLines = step.bodyNodes
+      .map(bodyNode => renderNodeInvocation(bodyNode, '      '))
+      .filter(Boolean)
+      .join('\n');
+
+    const lines = [
+      '  (function() {',
+      `    var __loopInput = ${collectionExpr};`,
+      "    var __loopItems = Array.isArray(__loopInput) ? __loopInput : (__loopInput && typeof __loopInput === 'object' ? Object.values(__loopInput) : []);",
+      '    var __loopResults = [];',
+      '    for (var __loopIndex = 0; __loopIndex < __loopItems.length; __loopIndex++) {',
+      `      var ${aliasIdentifier} = __loopItems[__loopIndex];`,
+      '      var __loopState = {',
+      '        index: __loopIndex,',
+      `        item: ${aliasIdentifier},`,
+      '        total: __loopItems.length,',
+      '        collection: __loopItems',
+      '      };',
+      `      __loopState['${alias}'] = ${aliasIdentifier};`
+    ];
+
+    if (indexAlias) {
+      lines.push(`      __loopState['${indexAlias}'] = __loopIndex;`);
+    }
+
+    lines.push(
+      `      __storeNodeOutput('${escapeForSingleQuotes(String(step.node.id))}', __loopState);`,
+      `      ctx['${alias}'] = ${aliasIdentifier};`
+    );
+
+    if (indexAlias) {
+      lines.push(`      ctx['${indexAlias}'] = __loopIndex;`);
+    }
+
+    if (bodyLines) {
+      lines.push(bodyLines);
+    }
+
+    lines.push(
+      `      __loopResults.push({ index: __loopIndex, item: ${aliasIdentifier} });`,
+      '    }',
+      `    __storeNodeOutput('${escapeForSingleQuotes(String(step.node.id))}', { collection: __loopItems, alias: '${alias}', ${indexAlias ? `indexAlias: '${indexAlias}', ` : ''}results: __loopResults, total: __loopItems.length, lastItem: __loopItems.length ? __loopItems[__loopItems.length - 1] : undefined });`,
+      '  })();'
+    );
+
+    return lines.join('\n');
+  };
+
+  const executionLines = executionPlan
+    .map(step => step.kind === 'loop' ? renderLoopInvocation(step) : renderNodeInvocation(step.node, '  '))
+    .filter(Boolean)
+    .join('\n');
+
+  const totalPlannedSteps = executionPlan.reduce((count, step) => {
+    if (step.kind === 'loop') {
+      return count + 1 + step.bodyNodes.length;
+    }
+    return count + 1;
+  }, 0);
 
   let body = `
 var __nodeOutputs = {};
@@ -10089,7 +10265,7 @@ function interpolate(t, ctx) {
 function main(ctx) {
   ctx = ctx || {};
   __resetNodeOutputs();
-  console.log('🚀 Starting workflow with ${allNodes.length} steps (${supportedNodes.length} native, ${unsupportedNodes.length} fallback)...');
+  console.log('🚀 Starting workflow with ${totalPlannedSteps} steps (${supportedNodes.length} native, ${unsupportedNodes.length} fallback)...');
 ${executionLines ? executionLines + '\n' : ''}  return ctx;
 }
 `;

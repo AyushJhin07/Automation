@@ -87,7 +87,7 @@
         },
         "type": {
           "type": "string",
-          "pattern": "^(trigger|action|transform|condition|delay|logger)(\\.[a-z0-9_-]+){1,5}$",
+          "pattern": "^(trigger|action|transform|condition|delay|logger|loop)(\\.[a-z0-9_-]+){1,5}$",
           "description": "Node type identifier in the format category.app.operation (e.g. action.gmail.send_email)"
         },
         "position": {
@@ -107,7 +107,27 @@
         },
         "data": {
           "type": "object",
-          "description": "Node-specific configuration data"
+          "description": "Node-specific configuration data",
+          "properties": {
+            "parameters": {
+              "type": "object",
+              "description": "Structured parameter values for the node"
+            },
+            "bodyNodeIds": {
+              "type": "array",
+              "description": "For loop nodes, the identifiers of nodes that execute within the loop body",
+              "items": {
+                "type": "string"
+              }
+            },
+            "itemAlias": {
+              "type": "string",
+              "description": "Optional alias that child nodes can use to reference the current loop item",
+              "minLength": 1,
+              "maxLength": 50
+            }
+          },
+          "additionalProperties": true
         },
         "label": {
           "type": "string",
@@ -149,5 +169,57 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "pattern": "^loop(\\.[a-z0-9_-]+){1,5}$"
+          }
+        },
+        "required": ["type"]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "Configuration for loop execution",
+            "required": ["parameters"],
+            "properties": {
+              "parameters": {
+                "type": "object",
+                "required": ["collection", "itemAlias"],
+                "properties": {
+                  "collection": {
+                    "description": "Value or reference resolving to the collection that should be iterated",
+                    "oneOf": [
+                      { "type": "array" },
+                      { "type": "object" },
+                      { "type": "string" },
+                      { "type": "number" },
+                      { "type": "boolean" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "itemAlias": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "description": "Name exposed to child nodes for the current item"
+                  }
+                }
+              },
+              "bodyNodeIds": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Identifiers for nodes that should execute inside the loop body"
+              }
+            }
+          }
+        },
+        "required": ["data"]
+      }
+    }
+  ]
 }

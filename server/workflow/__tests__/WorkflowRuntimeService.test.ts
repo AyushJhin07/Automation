@@ -73,8 +73,74 @@ async function runSheetsAndTimeRegression(): Promise<void> {
   assert.ok(context.nodeOutputs['time-node'], 'Time node output should be stored in execution context');
 }
 
+async function runLoopIterationTest(): Promise<void> {
+  const runtime = new WorkflowRuntimeService();
+
+  const loopNode = {
+    id: 'loop-1',
+    type: 'loop.collection.for_each',
+    label: 'Loop over names',
+    params: {
+      collection: ['alpha', 'beta', 'gamma'],
+      itemAlias: 'name'
+    },
+    data: {
+      parameters: {
+        collection: ['alpha', 'beta', 'gamma'],
+        itemAlias: 'name'
+      },
+      bodyNodeIds: ['transform-1']
+    }
+  };
+
+  const transformNode = {
+    id: 'transform-1',
+    type: 'transform.utility.capture',
+    params: {
+      value: { mode: 'ref', nodeId: 'loop-1', path: 'name' }
+    },
+    data: {
+      parameters: {
+        value: { mode: 'ref', nodeId: 'loop-1', path: 'name' }
+      }
+    }
+  };
+
+  const context: ExecutionContext = {
+    workflowId: 'workflow-loop-test',
+    executionId: 'exec-loop-1',
+    nodeOutputs: {},
+    nodeMap: new Map([
+      ['loop-1', loopNode],
+      ['transform-1', transformNode]
+    ]),
+    edges: [
+      { source: 'loop-1', target: 'transform-1', sourceHandle: 'body' }
+    ],
+    skipNodes: new Set<string>(),
+    timezone: 'UTC'
+  } as any;
+
+  const loopResult = await runtime.executeNode(loopNode, context);
+
+  assert.equal(loopResult.output.total, 3, 'Loop should iterate over three items');
+  assert.equal(loopResult.output.iterations.length, 3, 'Loop should record each iteration output');
+  assert.deepEqual(
+    loopResult.output.iterations.map((entry: any) => entry.outputs['transform-1']?.value ?? entry.outputs['transform-1']),
+    ['alpha', 'beta', 'gamma'],
+    'Child node output should match each collection item'
+  );
+  assert.ok(context.skipNodes?.has('transform-1'), 'Loop execution should mark child nodes as skipped for global run');
+  assert.equal(
+    context.nodeOutputs['transform-1']?.value,
+    'gamma',
+    'Transform node should store the most recent iteration output'
+  );
+}
+
 try {
   await runSheetsAndTimeRegression();
+  await runLoopIterationTest();
   console.log('WorkflowRuntimeService Sheets + Time execution regression passed.');
   process.exit(0);
 } catch (error) {

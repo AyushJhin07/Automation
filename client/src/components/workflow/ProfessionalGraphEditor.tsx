@@ -8,6 +8,7 @@ import ReactFlow, {
   addEdge,
   useNodesState,
   useEdgesState,
+  EdgeChange,
   Controls,
   Background,
   Connection,
@@ -81,7 +82,8 @@ import {
   MapPin,
   Calculator,
   CheckCircle2,
-  Link
+  Link,
+  Repeat
 } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
@@ -91,7 +93,7 @@ import { NodeConfigurationModal } from './NodeConfigurationModal';
 // Enhanced Node Template Interface
 interface NodeTemplate {
   id: string;
-  type: 'trigger' | 'action' | 'transform';
+  type: 'trigger' | 'action' | 'transform' | 'loop';
   category: string;
   label: string;
   description: string;
@@ -595,6 +597,118 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
   );
 };
 
+const LoopNode = ({ data, selected }: { data: any; selected: boolean }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
+  const ringClass = STATUS_RING[status];
+  const indicatorClass = STATUS_INDICATOR[status];
+  const statusLabel = STATUS_LABELS[status];
+  const parameters = data?.parameters ?? data?.params ?? {};
+  const alias = parameters.itemAlias || data?.itemAlias || 'item';
+  const collection = parameters.collection ?? data?.collection;
+  const collectionSummary = Array.isArray(collection)
+    ? `${collection.length} item${collection.length === 1 ? '' : 's'}`
+    : typeof collection === 'string'
+      ? collection
+      : collection
+        ? 'Configured'
+        : 'Not set';
+
+  return (
+    <div
+      className={clsx(
+        'relative bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
+        selected ? 'border-white shadow-xl scale-105' : 'border-teal-400/30',
+        'hover:shadow-2xl hover:scale-102 min-w-[220px] max-w-[300px]',
+        ringClass
+      )}
+    >
+      <div className="absolute -inset-1 bg-gradient-to-r from-teal-400 to-emerald-500 rounded-xl opacity-30 blur animate-pulse"></div>
+      <div className="relative bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-white/20 rounded-lg">
+              <Repeat className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-white font-semibold text-sm">LOOP</span>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-white hover:bg-white/20 p-1 h-6 w-6"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </Button>
+        </div>
+
+        <div className="text-white">
+          <h3 className="font-bold text-base mb-1">{data.label || 'For Each Item'}</h3>
+          <p className="text-emerald-100 text-xs mb-2 opacity-90">{data.description || 'Iterate over a collection of items.'}</p>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
+            <span className="px-2 py-1 bg-white/20 rounded-full text-white/90">Alias: {alias}</span>
+            <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">{collectionSummary}</span>
+          </div>
+
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <div className={clsx('w-2.5 h-2.5 rounded-full', indicatorClass)}></div>
+            <span className="text-white font-medium">{statusLabel}</span>
+          </div>
+
+          {status === 'error' && data.executionError?.message && (
+            <p className="mt-2 text-xs text-red-100 bg-black/20 border border-white/10 rounded-lg px-2 py-1">
+              {data.executionError.message}
+            </p>
+          )}
+
+          {status === 'success' && data.lastExecution?.summary && (
+            <p className="mt-2 text-xs text-emerald-100 bg-black/10 border border-white/10 rounded-lg px-2 py-1">
+              {data.lastExecution.summary}
+            </p>
+          )}
+        </div>
+
+        {isExpanded && (
+          <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
+            <div className="space-y-2 text-xs text-teal-100">
+              <div className="flex justify-between">
+                <span className="opacity-75">Collection</span>
+                <span className="font-medium truncate max-w-[140px] text-right">{collectionSummary}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="opacity-75">Item alias</span>
+                <span className="font-medium">{alias}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-3 h-3 bg-white border-2 border-emerald-500"
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="next"
+          className="w-3 h-3 bg-white border-2 border-emerald-500"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="body"
+          className="w-3 h-3 bg-white border-2 border-emerald-500 translate-y-1/2"
+        />
+        <div className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-emerald-200 uppercase tracking-wide">
+          Body
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Custom Edge Component
 const AnimatedEdge = ({ 
   id, 
@@ -640,6 +754,7 @@ const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
   action: ActionNode,
   transform: TransformNode,
+  loop: LoopNode,
 };
 
 // Edge Types
@@ -1134,7 +1249,7 @@ const GraphEditorContent = () => {
   const nodeRequiresConnection = useCallback((node: any) => {
     if (!node) return false;
     const role = String(node.type || node?.data?.role || '').toLowerCase();
-    if (role.includes('trigger') || role.includes('transform')) {
+    if (role.includes('trigger') || role.includes('transform') || role.includes('loop')) {
       return false;
     }
     const data: any = node.data || {};
@@ -1525,17 +1640,19 @@ const GraphEditorContent = () => {
       'gmail': '📧',
       'sheets': '📊',
       'core': '⚙️',
-      'transform': '🔄'
+      'transform': '🔄',
+      'loop': '🔁'
     };
     return icons[app.toLowerCase()] || '🔧';
   };
-  
+
   const getColorForApp = (app: string) => {
     const colors = {
       'gmail': '#EA4335',
       'sheets': '#34A853',
       'core': '#9AA0A6',
-      'transform': '#FF6D01'
+      'transform': '#FF6D01',
+      'loop': '#10B981'
     };
     return colors[app.toLowerCase()] || '#9AA0A6';
   };
@@ -1600,7 +1717,66 @@ const GraphEditorContent = () => {
       markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
     };
     setEdges((eds) => addEdge(edge, eds));
-  }, [setEdges]);
+
+    if (params.sourceHandle === 'body' && params.source && params.target) {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (String(node.id) !== String(params.source)) {
+            return node;
+          }
+          const existing = Array.isArray(node.data?.bodyNodeIds) ? [...node.data.bodyNodeIds] : [];
+          if (existing.includes(String(params.target))) {
+            return node;
+          }
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              bodyNodeIds: [...existing, String(params.target)],
+            },
+          };
+        })
+      );
+    }
+  }, [setEdges, setNodes]);
+
+  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    const removedIds = changes
+      .filter((change) => change.type === 'remove')
+      .map((change) => change.id);
+
+    onEdgesChange(changes);
+
+    if (removedIds.length === 0) {
+      return;
+    }
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        const currentIds = Array.isArray(node.data?.bodyNodeIds) ? node.data.bodyNodeIds : [];
+        if (currentIds.length === 0) {
+          return node;
+        }
+        const removedTargets = edges
+          .filter((edge) => removedIds.includes(edge.id) && edge.source === node.id && edge.sourceHandle === 'body')
+          .map((edge) => String(edge.target));
+        if (removedTargets.length === 0) {
+          return node;
+        }
+        const updatedIds = currentIds.filter((id: string) => !removedTargets.includes(String(id)));
+        if (updatedIds.length === currentIds.length) {
+          return node;
+        }
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            bodyNodeIds: updatedIds,
+          },
+        };
+      })
+    );
+  }, [onEdgesChange, setNodes, edges]);
   
   const onAddNode = useCallback((nodeType: string, nodeData: any) => {
     const viewport = getViewport();
@@ -1905,7 +2081,7 @@ const GraphEditorContent = () => {
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}

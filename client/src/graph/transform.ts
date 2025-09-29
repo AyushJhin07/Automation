@@ -9,7 +9,9 @@ export function specToReactFlow(spec: AutomationSpec) {
       ? 'trigger'
       : category === 'transform'
         ? 'transform'
-        : 'action';
+        : category === 'loop'
+          ? 'loop'
+          : 'action';
 
     const parameters = { ...(n.inputs || {}) };
     const auth = n.auth ? { ...n.auth } : undefined;

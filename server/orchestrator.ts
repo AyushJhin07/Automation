@@ -39,7 +39,7 @@ export class WorkflowOrchestrator {
   // Get capabilities for LLM planning
   public getCapabilities(): Capabilities {
     const catalog = this.nodeCatalog.getNodeCatalog();
-    const allNodes = { ...catalog.triggers, ...catalog.transforms, ...catalog.actions };
+    const allNodes = { ...catalog.triggers, ...catalog.transforms, ...catalog.actions, ...catalog.loops };
     
     const schemasByType: Record<string, any> = {};
     const scopesByType: Record<string, string[]> = {};

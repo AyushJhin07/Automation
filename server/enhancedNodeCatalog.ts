@@ -46,10 +46,14 @@ export class EnhancedNodeCatalog {
     const triggers: Record<string, NodeType> = {};
     const transforms: Record<string, NodeType> = {};
     const actions: Record<string, NodeType> = {};
+    const loops: Record<string, NodeType> = {};
 
     // Built-in Google Workspace nodes (from ChatGPT spec)
     this.addGoogleWorkspaceNodes(triggers, transforms, actions);
-    
+
+    // Built-in control flow nodes
+    this.addControlNodes(loops);
+
     // Add nodes for all 500+ apps from our database
     this.addAllAppNodes(triggers, transforms, actions);
 
@@ -57,13 +61,14 @@ export class EnhancedNodeCatalog {
       triggers,
       transforms,
       actions,
+      loops,
       categories: this.buildCategories()
     };
   }
 
   private addGoogleWorkspaceNodes(
-    triggers: Record<string, NodeType>, 
-    transforms: Record<string, NodeType>, 
+    triggers: Record<string, NodeType>,
+    transforms: Record<string, NodeType>,
     actions: Record<string, NodeType>
   ): void {
     // Triggers
@@ -324,6 +329,52 @@ export class EnhancedNodeCatalog {
     };
   }
 
+  private addControlNodes(loops: Record<string, NodeType>): void {
+    loops['loop.collection.for_each'] = {
+      id: 'loop.collection.for_each',
+      name: 'For Each Item',
+      description: 'Iterate over each element in a collection and execute the connected steps.',
+      category: 'loop',
+      app: 'Built-in',
+      paramsSchema: {
+        type: 'object',
+        required: ['collection', 'itemAlias'],
+        properties: {
+          collection: {
+            description: 'Reference or literal value that resolves to an array or object.',
+            anyOf: [
+              { type: 'array' },
+              { type: 'object' },
+              { type: 'string' },
+              { type: 'number' },
+              { type: 'boolean' }
+            ]
+          },
+          itemAlias: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 50,
+            description: 'Alias exposed to child nodes when referencing the current item.'
+          },
+          indexAlias: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 50,
+            description: 'Optional alias for the current index.'
+          }
+        }
+      },
+      requiredScopes: [],
+      icon: 'Repeat',
+      color: '#6366F1',
+      complexity: 'Medium',
+      examples: [
+        'Loop over spreadsheet rows and send an email for each entry.',
+        'Iterate through CRM records and update a status field.'
+      ]
+    };
+  }
+
   private addAllAppNodes(
     triggers: Record<string, NodeType>, 
     transforms: Record<string, NodeType>, 
@@ -572,7 +623,7 @@ export class EnhancedNodeCatalog {
       'Project Management': ['Asana', 'Trello', 'Monday.com', 'Jira'],
       'Marketing': ['Mailchimp', 'ConvertKit', 'ActiveCampaign'],
       'Data & Analytics': ['Airtable', 'Notion', 'Google Analytics'],
-      'Built-in': ['Time Triggers', 'Webhooks', 'Transforms', 'HTTP Requests']
+      'Built-in': ['Time Triggers', 'Webhooks', 'Transforms', 'HTTP Requests', 'Looping']
     };
   }
 }

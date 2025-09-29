@@ -12,6 +12,9 @@ interface WorkflowExecutionContext {
   userId?: string;
   nodeOutputs: Record<string, any>;
   timezone?: string;
+  nodeMap?: Map<string, any>;
+  edges?: Array<Record<string, any>>;
+  skipNodes?: Set<string>;
 }
 
 interface NodeExecutionResult {
@@ -136,6 +139,10 @@ export class WorkflowRuntimeService {
       };
     }
 
+    if (role === 'loop') {
+      return this.executeLoopNode(node, resolvedParams, context);
+    }
+
     const appId = this.normalizeAppId(
       this.selectString(
         node?.app,
@@ -229,7 +236,7 @@ export class WorkflowRuntimeService {
     };
   }
 
-  private inferRole(node: any): 'trigger' | 'action' | 'transform' {
+  private inferRole(node: any): 'trigger' | 'action' | 'transform' | 'loop' {
     const candidates = [
       node?.data?.role,
       node?.role,
@@ -245,9 +252,231 @@ export class WorkflowRuntimeService {
       if (value.includes('trigger')) return 'trigger';
       if (value.includes('transform')) return 'transform';
       if (value.includes('action')) return 'action';
+      if (value.includes('loop')) return 'loop';
     }
 
     return 'action';
+  }
+
+  private async executeLoopNode(
+    node: any,
+    resolvedParams: Record<string, any>,
+    context: WorkflowExecutionContext
+  ): Promise<NodeExecutionResult> {
+    const rawCollection = resolvedParams.collection ?? resolvedParams.items ?? [];
+    const items = this.normalizeLoopCollection(rawCollection);
+    const alias = this.normalizeLoopAlias(
+      this.selectString(
+        resolvedParams.itemAlias,
+        node?.data?.itemAlias,
+        node?.data?.parameters?.itemAlias
+      ) ?? 'item',
+      'item'
+    );
+    const indexAlias = this.normalizeLoopAlias(
+      this.selectString(resolvedParams.indexAlias, node?.data?.parameters?.indexAlias),
+      'index',
+      true
+    );
+
+    const bodyNodes = this.resolveLoopBodyNodes(node, context);
+    const iterationOutputs: Array<{ index: number; item: any; outputs: Record<string, any> }> = [];
+    const iterationLogs: string[] = [];
+
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index];
+      const loopState: Record<string, any> = {
+        item,
+        index,
+        total: items.length,
+        collection: items,
+        [alias]: item
+      };
+      if (indexAlias) {
+        loopState[indexAlias] = index;
+      }
+      context.nodeOutputs[node.id] = loopState;
+
+      const perIterationOutputs: Record<string, any> = {};
+
+      for (const bodyNode of bodyNodes) {
+        const result = await this.executeNode(bodyNode, context);
+        perIterationOutputs[bodyNode.id] = result.output;
+        iterationLogs.push(
+          `Item ${index + 1}/${items.length} → ${this.selectString(bodyNode?.label, bodyNode?.name, bodyNode?.id) ?? bodyNode.id}: ${result.summary}`
+        );
+      }
+
+      iterationOutputs.push({ index, item, outputs: perIterationOutputs });
+    }
+
+    const loopOutput = {
+      collection: items,
+      alias,
+      indexAlias: indexAlias || undefined,
+      iterations: iterationOutputs,
+      total: items.length,
+      lastItem: items.length > 0 ? items[items.length - 1] : undefined
+    };
+
+    context.nodeOutputs[node.id] = loopOutput;
+
+    if (context.skipNodes) {
+      for (const bodyNode of bodyNodes) {
+        context.skipNodes.add(String(bodyNode.id));
+      }
+    }
+
+    const logLines = [
+      `Prepared ${items.length} item${items.length === 1 ? '' : 's'} for iteration`,
+      ...iterationLogs.slice(0, 10)
+    ];
+
+    return {
+      summary: `Iterated ${items.length} item${items.length === 1 ? '' : 's'}`,
+      output: loopOutput,
+      preview: this.buildPreview(loopOutput),
+      logs: logLines,
+      parameters: resolvedParams,
+      diagnostics: {
+        role: 'loop',
+        iterations: items.length
+      }
+    };
+  }
+
+  private resolveLoopBodyNodes(node: any, context: WorkflowExecutionContext): any[] {
+    const idSources = [
+      node?.data?.bodyNodeIds,
+      node?.data?.loop?.bodyNodeIds,
+      node?.data?.parameters?.bodyNodeIds
+    ];
+
+    const ids = new Set<string>();
+    for (const source of idSources) {
+      if (!Array.isArray(source)) continue;
+      for (const id of source) {
+        if (typeof id === 'string' && id.trim().length > 0) {
+          ids.add(id.trim());
+        }
+      }
+    }
+
+    if (ids.size === 0) {
+      return [];
+    }
+
+    const resolved: any[] = [];
+    if (context.nodeMap instanceof Map) {
+      for (const id of ids) {
+        const found = context.nodeMap.get(id) ?? context.nodeMap.get(String(id));
+        if (found) {
+          resolved.push(found);
+        }
+      }
+    }
+
+    if (resolved.length === 0 && Array.isArray((context as any)?.nodes)) {
+      const allNodes = (context as any).nodes as any[];
+      for (const id of ids) {
+        const found = allNodes.find(n => String(n.id) === id);
+        if (found) {
+          resolved.push(found);
+        }
+      }
+    }
+
+    if (resolved.length === 0) {
+      return [];
+    }
+
+    return this.computeLoopBodyOrder(resolved, context.edges ?? []);
+  }
+
+  private computeLoopBodyOrder(nodes: any[], edges: Array<Record<string, any>>): any[] {
+    if (nodes.length <= 1) {
+      return nodes;
+    }
+
+    const idSet = new Set(nodes.map(n => String(n.id)));
+    const adjacency = new Map<string, Set<string>>();
+    const indegree = new Map<string, number>();
+
+    for (const node of nodes) {
+      const id = String(node.id);
+      adjacency.set(id, new Set());
+      indegree.set(id, 0);
+    }
+
+    for (const edge of edges) {
+      const source = this.selectString(edge.source, edge.from);
+      const target = this.selectString(edge.target, edge.to);
+      if (!source || !target) continue;
+      if (!idSet.has(source) || !idSet.has(target)) continue;
+
+      const neighbours = adjacency.get(source)!;
+      if (!neighbours.has(target)) {
+        neighbours.add(target);
+        indegree.set(target, (indegree.get(target) ?? 0) + 1);
+      }
+    }
+
+    const queue: string[] = [];
+    for (const [id, degree] of indegree.entries()) {
+      if (degree === 0) {
+        queue.push(id);
+      }
+    }
+
+    const orderedIds: string[] = [];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      orderedIds.push(current);
+      for (const neighbour of adjacency.get(current) ?? []) {
+        const nextDegree = (indegree.get(neighbour) ?? 0) - 1;
+        indegree.set(neighbour, nextDegree);
+        if (nextDegree === 0) {
+          queue.push(neighbour);
+        }
+      }
+    }
+
+    for (const id of idSet) {
+      if (!orderedIds.includes(id)) {
+        orderedIds.push(id);
+      }
+    }
+
+    return orderedIds
+      .map(id => nodes.find(node => String(node.id) === id))
+      .filter((node): node is any => Boolean(node));
+  }
+
+  private normalizeLoopCollection(value: any): any[] {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (value == null) {
+      return [];
+    }
+    if (typeof value === 'object') {
+      return Object.values(value);
+    }
+    return [value];
+  }
+
+  private normalizeLoopAlias(value: string | undefined | null, fallback: string, allowEmptyFallback = false): string {
+    const candidate =
+      typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : allowEmptyFallback
+          ? ''
+          : fallback;
+    const sanitized = candidate.replace(/[^a-zA-Z0-9_]/g, '_');
+    if (!sanitized && !allowEmptyFallback) {
+      return fallback;
+    }
+    return sanitized;
   }
 
   private extractParameters(node: any): Record<string, any> {

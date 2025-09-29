@@ -20,6 +20,18 @@ export interface NodeGraph {
   };
 }
 
+export interface LoopConfiguration {
+  collection?: ParamValue;
+  itemAlias?: string;
+  bodyNodeIds?: string[];
+}
+
+export interface LoopIterationResult {
+  index: number;
+  item: any;
+  outputs: Record<string, any>;
+}
+
 export interface GraphNode {
   id: string;
   type: string; // e.g., 'trigger.gmail.new_email', 'action.sheets.append_row'
@@ -33,7 +45,7 @@ export interface GraphNode {
   icon?: string;
   metadata?: WorkflowMetadata;
   outputMetadata?: WorkflowMetadata;
-  data?: Record<string, any>;
+  data?: Record<string, any> & { loop?: LoopConfiguration };
   app?: string;
   op?: string;
 }
@@ -70,6 +82,7 @@ export interface NodeCatalog {
   triggers: Record<string, NodeType>;
   transforms: Record<string, NodeType>;
   actions: Record<string, NodeType>;
+  loops: Record<string, NodeType>;
   categories: Record<string, string[]>;
 }
 
@@ -77,7 +90,7 @@ export interface NodeType {
   id: string;
   name: string;
   description: string;
-  category: 'trigger' | 'transform' | 'action';
+  category: 'trigger' | 'transform' | 'action' | 'loop';
   app: string;
   paramsSchema: {
     type: 'object';
