@@ -1277,12 +1277,6 @@ const GraphEditorContent = () => {
     void loadCatalog();
   }, [loadCatalog]);
 
-  useEffect(() => {
-    if (!catalogLoading) {
-      ensureSupportedNodes();
-    }
-  }, [catalogLoading, ensureSupportedNodes]);
-
   const nodeRequiresConnection = useCallback((node: any) => {
     if (!node) return false;
     const role = String(node.type || node?.data?.role || '').toLowerCase();
@@ -1350,6 +1344,12 @@ const GraphEditorContent = () => {
     }
     return true;
   }, [findUnsupportedNode, setRunBanner]);
+
+  useEffect(() => {
+    if (!catalogLoading) {
+      ensureSupportedNodes();
+    }
+  }, [catalogLoading, ensureSupportedNodes]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
