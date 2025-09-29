@@ -10,6 +10,9 @@ import {
   type workflows as workflowsTable,
   type workflowExecutions as workflowExecutionsTable,
 } from '../database/schema.js';
+import { ensureDatabaseReady, isDatabaseAvailable } from '../database/status.js';
+
+void ensureDatabaseReady();
 
 type WorkflowRow = typeof workflowsTable.$inferSelect;
 type WorkflowInsert = typeof workflowsTable.$inferInsert;
@@ -72,7 +75,7 @@ export class WorkflowRepository {
   private static cachedSystemUserId: string | null = null;
 
   private static isDatabaseEnabled(): boolean {
-    return Boolean(db);
+    return isDatabaseAvailable();
   }
 
   private static now(): Date {

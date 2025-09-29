@@ -6,8 +6,131 @@ import {
   pollingTriggers,
   workflowTriggers,
 } from '../database/schema';
+import { ensureDatabaseReady, isDatabaseAvailable } from '../database/status.js';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from '../webhooks/types';
 import { getErrorMessage } from '../types/common';
+
+void ensureDatabaseReady();
+
+class InMemoryTriggerPersistenceStore {
+  private workflowTriggers = new Map<string, any>();
+  private pollingTriggers = new Map<string, any>();
+  private webhookLogs = new Map<string, any>();
+  private dedupeTokens = new Map<string, string[]>();
+
+  public async getActiveWebhookTriggers() {
+    return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive !== false);
+  }
+
+  public async getActivePollingTriggers() {
+    return Array.from(this.pollingTriggers.values()).filter((row) => row.isActive !== false);
+  }
+
+  public async upsertWorkflowTrigger(record: any) {
+    const existing = this.workflowTriggers.get(record.id) ?? {};
+    const next = {
+      ...existing,
+      ...record,
+      metadata: record.metadata ?? existing.metadata ?? {},
+      dedupeState: record.dedupeState ?? existing.dedupeState ?? null,
+      isActive: record.isActive ?? existing.isActive ?? true,
+      updatedAt: new Date(),
+      createdAt: existing.createdAt ?? new Date(),
+    };
+    this.workflowTriggers.set(record.id, next);
+  }
+
+  public async upsertPollingTrigger(record: any) {
+    const existing = this.pollingTriggers.get(record.id) ?? {};
+    const next = {
+      ...existing,
+      ...record,
+      metadata: record.metadata ?? existing.metadata ?? {},
+      isActive: record.isActive ?? existing.isActive ?? true,
+      updatedAt: new Date(),
+      createdAt: existing.createdAt ?? new Date(),
+    };
+    this.pollingTriggers.set(record.id, next);
+  }
+
+  public async updatePollingRuntimeState({ id, lastPoll, nextPoll }: { id: string; lastPoll?: Date; nextPoll: Date }) {
+    const polling = this.pollingTriggers.get(id);
+    if (polling) {
+      polling.lastPoll = lastPoll ?? null;
+      polling.nextPoll = nextPoll;
+      polling.updatedAt = new Date();
+      this.pollingTriggers.set(id, polling);
+    }
+
+    const workflow = this.workflowTriggers.get(id);
+    if (workflow) {
+      workflow.updatedAt = new Date();
+      this.workflowTriggers.set(id, workflow);
+    }
+  }
+
+  public async deactivateTrigger(id: string) {
+    const workflow = this.workflowTriggers.get(id);
+    if (workflow) {
+      workflow.isActive = false;
+      workflow.updatedAt = new Date();
+      this.workflowTriggers.set(id, workflow);
+    }
+
+    const polling = this.pollingTriggers.get(id);
+    if (polling) {
+      polling.isActive = false;
+      polling.updatedAt = new Date();
+      this.pollingTriggers.set(id, polling);
+    }
+  }
+
+  public async logWebhookEvent(event: any) {
+    const now = new Date();
+    this.webhookLogs.set(event.id, {
+      ...event,
+      processed: event.processed ?? false,
+      executionId: event.executionId ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  public async markWebhookEventProcessed(id: string, result: { success: boolean; error?: string; executionId?: string }) {
+    const existing = this.webhookLogs.get(id);
+    if (!existing) {
+      return;
+    }
+
+    existing.processed = result.success;
+    existing.error = result.success ? null : result.error ?? null;
+    existing.executionId = result.executionId ?? existing.executionId ?? null;
+    existing.updatedAt = new Date();
+    this.webhookLogs.set(id, existing);
+  }
+
+  public async getDedupeTokens(): Promise<Record<string, string[]>> {
+    const result: Record<string, string[]> = {};
+    for (const [id, tokens] of this.dedupeTokens.entries()) {
+      result[id] = [...tokens];
+    }
+    return result;
+  }
+
+  public async persistDedupeTokens(id: string, tokens: string[]) {
+    this.dedupeTokens.set(id, [...tokens]);
+    const workflow = this.workflowTriggers.get(id);
+    if (workflow) {
+      workflow.dedupeState = { tokens: [...tokens], updatedAt: new Date().toISOString() };
+      workflow.updatedAt = new Date();
+      this.workflowTriggers.set(id, workflow);
+    }
+  }
+
+  public async getWebhookLog(id: string) {
+    return this.webhookLogs.get(id);
+  }
+}
 
 export interface TriggerExecutionResult {
   success: boolean;
@@ -15,8 +138,10 @@ export interface TriggerExecutionResult {
   executionId?: string;
 }
 
-class TriggerPersistenceService {
+export class TriggerPersistenceService {
   private static instance: TriggerPersistenceService;
+  private readonly memoryStore = new InMemoryTriggerPersistenceStore();
+  private hasLoggedFallback = false;
 
   private constructor() {}
 
@@ -28,7 +153,7 @@ class TriggerPersistenceService {
   }
 
   public isDatabaseEnabled(): boolean {
-    return Boolean(db);
+    return isDatabaseAvailable();
   }
 
   public async loadWebhookTriggers(): Promise<WebhookTrigger[]> {
@@ -376,12 +501,39 @@ class TriggerPersistenceService {
     }
   }
 
-  private requireDatabase(operation: string): any {
-    if (!db) {
-      const message = `Trigger persistence requires an active database connection (operation=${operation}).`;
-      throw new Error(message);
+  public static resetForTests(): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('TriggerPersistenceService.resetForTests is only available in test environments');
     }
-    return db;
+
+    TriggerPersistenceService.instance = new TriggerPersistenceService();
+  }
+
+  public getInMemoryStoreForTests(): InMemoryTriggerPersistenceStore {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('getInMemoryStoreForTests is only available in test environments');
+    }
+
+    return this.memoryStore;
+  }
+
+  private requireDatabase(operation: string): any {
+    if (isDatabaseAvailable() && db) {
+      return db;
+    }
+
+    this.logDatabaseFallback(operation);
+    return this.memoryStore;
+  }
+
+  private logDatabaseFallback(operation: string): void {
+    if (!this.hasLoggedFallback) {
+      console.warn(
+        `⚠️ Trigger persistence is using in-memory storage because the database schema check failed (operation=${operation}). ` +
+          'Run "npm run db:push" to apply migrations and restore persistent trigger storage.',
+      );
+      this.hasLoggedFallback = true;
+    }
   }
 
   private mapWebhookTriggerRow(row: any): WebhookTrigger {

@@ -6,6 +6,10 @@ process.env.DATABASE_URL = '';
 
 const schemaModule = await import('../../database/schema.js');
 const { workflows, users, setDatabaseClientForTests } = schemaModule;
+const {
+  setDatabaseAvailabilityForTests,
+  resetDatabaseAvailabilityOverrideForTests,
+} = await import('../../database/status.js');
 
 type TableType = typeof workflows | typeof users;
 
@@ -110,7 +114,7 @@ class FakeDb {
 
     const chunks: any[] = Array.isArray(condition.queryChunks) ? condition.queryChunks : [];
     const columnChunk = chunks.find((chunk) => chunk && typeof chunk === 'object' && 'name' in chunk);
-    const paramChunk = chunks.find((chunk) => chunk && typeof chunk === 'object' && 'value' in chunk);
+    const paramChunk = chunks.find((chunk) => chunk && typeof chunk === 'object' && 'brand' in chunk && 'value' in chunk);
 
     if (!columnChunk || !paramChunk) {
       throw new Error('Unsupported where clause for fake database');
@@ -143,7 +147,7 @@ class FakeDb {
 
 class InsertBuilder {
   private readonly tableName: string;
-  private values: Record<string, any> | null = null;
+  private insertValues: Record<string, any> | null = null;
   private conflict?: { target: any; set?: Record<string, any> };
 
   constructor(private readonly db: FakeDb, private readonly table: TableType) {
@@ -151,7 +155,7 @@ class InsertBuilder {
   }
 
   public values(values: Record<string, any>) {
-    this.values = values;
+    this.insertValues = values;
     return this;
   }
 
@@ -165,12 +169,12 @@ class InsertBuilder {
   }
 
   private async execute() {
-    if (!this.values) {
+    if (!this.insertValues) {
       throw new Error('Insert values must be provided before returning is called');
     }
 
     const table = this.db.getOrCreateTable(this.tableName);
-    const record = this.db.prepareInsertRecord(this.tableName, this.values);
+    const record = this.db.prepareInsertRecord(this.tableName, this.insertValues);
 
     if (this.conflict) {
       const conflictTarget = this.conflict.target;
@@ -243,6 +247,7 @@ class SelectBuilder {
 
 const fakeDb = new FakeDb();
 setDatabaseClientForTests(fakeDb);
+setDatabaseAvailabilityForTests(true);
 
 const { WorkflowRepository } = await import('../WorkflowRepository.js');
 
@@ -291,8 +296,10 @@ async function runWorkflowPersistenceIntegration(): Promise<void> {
 try {
   await runWorkflowPersistenceIntegration();
   console.log('WorkflowRepository database integration test passed.');
+  resetDatabaseAvailabilityOverrideForTests();
   process.exit(0);
 } catch (error) {
   console.error('WorkflowRepository database integration test failed.', error);
+  resetDatabaseAvailabilityOverrideForTests();
   process.exit(1);
 }
