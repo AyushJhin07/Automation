@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Link2, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +45,7 @@ export const ConnectionManager = () => {
   const [connectionName, setConnectionName] = useState('');
   const [credentialsText, setCredentialsText] = useState('');
   const [error, setError] = useState<string | undefined>();
+  const [loadError, setLoadError] = useState<string | undefined>();
 
   const llmProviders = useMemo(() => providers.filter((provider) => provider.type === 'llm'), [providers]);
 
@@ -65,36 +66,66 @@ export const ConnectionManager = () => {
         if (response.status === 401) {
           await logout(true);
         }
-        throw new Error('Failed to load providers');
+        const message = response.status >= 500
+          ? 'The connections directory is temporarily unavailable. Please try again later.'
+          : 'Failed to load available providers.';
+        setError(message);
+        setLoadError(message);
+        setProviders([]);
+        return;
       }
       const result = await response.json();
       if (result.success) {
         setProviders(result.providers || []);
+        setLoadError(undefined);
+      } else {
+        const message = result.error || 'Unable to load providers.';
+        setError(message);
+        setLoadError(message);
+        setProviders([]);
       }
     } catch (err) {
       console.error('Failed to load providers', err);
+      const message = 'Unable to contact the connections service. Please verify your network connection.';
       setProviders([]);
+      setError(message);
+      setLoadError(message);
     }
   };
 
   const loadConnections = async () => {
     setIsLoading(true);
+    setLoadError(undefined);
     try {
       const response = await authFetch('/api/connections');
       if (!response.ok) {
         if (response.status === 401) {
           await logout(true);
         }
-        throw new Error('Failed to load connections');
+        const message = response.status >= 500
+          ? 'We could not reach your saved connections. Please try again once the API is back online.'
+          : 'Failed to load connections. Please try again.';
+        setError(message);
+        setLoadError(message);
+        setConnections([]);
+        return;
       }
       const result = await response.json();
       if (result.success) {
         setConnections(result.connections || []);
+        setLoadError(undefined);
       } else {
-        setError(result.error || 'Unable to load connections');
+        const message = result.error || 'Unable to load connections.';
+        setConnections([]);
+        setError(message);
+        setLoadError(message);
       }
     } catch (err: any) {
-      setError(err?.message || 'Unable to load connections');
+      console.error('Failed to load connections', err);
+      const message = 'We could not reach your saved connections. Check your network connection and try again.';
+      setConnections([]);
+      setError(err?.message || message);
+      setLoadError(message);
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +154,10 @@ export const ConnectionManager = () => {
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create connection');
+        const message = result.error || 'Failed to create connection';
+        setError(message);
+        toast.error(message);
+        return;
       }
 
       toast.success('Connection created');
@@ -133,6 +167,7 @@ export const ConnectionManager = () => {
     } catch (err: any) {
       const message = err?.message || 'Failed to create connection';
       setError(message);
+      setLoadError(message);
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -146,12 +181,17 @@ export const ConnectionManager = () => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Connection test failed');
+        const message = result.error || 'Connection test failed';
+        setError(message);
+        toast.error(message);
+        return;
       }
       toast.success('Connection test passed');
       await loadConnections();
     } catch (err: any) {
-      toast.error(err?.message || 'Connection test failed');
+      const message = err?.message || 'Connection test failed';
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -162,12 +202,17 @@ export const ConnectionManager = () => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to delete connection');
+        const message = result.error || 'Failed to delete connection';
+        setError(message);
+        toast.error(message);
+        return;
       }
       toast.success('Connection deleted');
       await loadConnections();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete connection');
+      const message = err?.message || 'Failed to delete connection';
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -259,13 +304,22 @@ export const ConnectionManager = () => {
         <Separator />
 
         <div className="space-y-4">
+          {loadError && (
+            <Alert variant="destructive">
+              <AlertTitle>Connections service unavailable</AlertTitle>
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold uppercase text-muted-foreground">Saved connections</h3>
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </div>
           {connections.length === 0 && !isLoading ? (
             <p className="text-sm text-muted-foreground">
-              No connections yet. Create one above to start using it inside your workflows.
+              {loadError
+                ? 'We were unable to load your saved connections. They will appear here once the API is available again.'
+                : 'No connections yet. Create one above to start using it inside your workflows.'}
             </p>
           ) : (
             <div className="space-y-3">
