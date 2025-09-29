@@ -820,7 +820,13 @@ const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<str
 };
 
 // Sidebar Component (REPLACEMENT)
-const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: any) => void }) => {
+interface NodeSidebarProps {
+  onAddNode: (nodeType: string, nodeData: any) => void;
+  catalog: any | null;
+  loading?: boolean;
+}
+
+const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSidebarProps) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
@@ -848,7 +854,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
   const [apps, setApps] = useState<Record<string, AppGroup>>({});
   const [categories, setCategories] = useState<string[]>([]);
-  const isLoading = loading;
+  const isLoading = Boolean(catalogLoading);
 
   // Persist user preferences
   useEffect(() => {
@@ -1277,12 +1283,6 @@ const GraphEditorContent = () => {
     void loadCatalog();
   }, [loadCatalog]);
 
-  useEffect(() => {
-    if (!catalogLoading) {
-      ensureSupportedNodes();
-    }
-  }, [catalogLoading, ensureSupportedNodes]);
-
   const nodeRequiresConnection = useCallback((node: any) => {
     if (!node) return false;
     const role = String(node.type || node?.data?.role || '').toLowerCase();
@@ -1350,6 +1350,12 @@ const GraphEditorContent = () => {
     }
     return true;
   }, [findUnsupportedNode, setRunBanner]);
+
+  useEffect(() => {
+    if (!catalogLoading) {
+      ensureSupportedNodes();
+    }
+  }, [catalogLoading, ensureSupportedNodes]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
