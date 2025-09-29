@@ -7,7 +7,7 @@ import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
-import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { IMPLEMENTED_CONNECTOR_IDS, getImplementedConnector } from './supportedApps';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
 
@@ -184,11 +184,15 @@ export class IntegrationManager {
   /**
    * Test connection for an application
    */
-  public async testConnection(appName: string, credentials: APICredentials): Promise<APIResponse<any>> {
+  public async testConnection(
+    appName: string,
+    credentials: APICredentials,
+    additionalConfig?: Record<string, any>
+  ): Promise<APIResponse<any>> {
     const appKey = appName.toLowerCase();
 
     try {
-      const client = this.createAPIClient(appKey, credentials);
+      const client = this.createAPIClient(appKey, credentials, additionalConfig);
       if (!client) {
         return {
           success: false,
@@ -259,63 +263,35 @@ export class IntegrationManager {
     credentials: APICredentials, 
     additionalConfig?: Record<string, any>
   ): BaseAPIClient | null {
-    switch (appKey) {
-      case 'gmail':
-        return new GmailAPIClient(credentials);
-
-      case 'shopify':
-        if (!additionalConfig?.shopDomain) {
-          throw new Error('Shopify integration requires shopDomain in additionalConfig');
-        }
-        return new ShopifyAPIClient({ ...credentials, shopDomain: additionalConfig.shopDomain });
-
-      case 'slack': {
-        const accessToken = credentials.accessToken ?? credentials.botToken;
-        if (!accessToken) {
-          throw new Error('Slack integration requires an access token');
-        }
-        return new SlackAPIClient({ ...credentials, accessToken });
-      }
-
-      case 'notion': {
-        const accessToken = credentials.accessToken ?? credentials.integrationToken;
-        if (!accessToken) {
-          throw new Error('Notion integration requires an access token');
-        }
-        return new NotionAPIClient({ ...credentials, accessToken });
-      }
-
-      case 'airtable': {
-        if (!credentials.apiKey) {
-          throw new Error('Airtable integration requires an API key');
-        }
-        return new AirtableAPIClient(credentials);
-      }
-
-      case 'sheets':
-        return new LocalSheetsAPIClient(credentials);
-
-      case 'time':
-        return new LocalTimeAPIClient(credentials);
-
-        // TODO: Add other API clients as they are implemented
-        case 'stripe':
-        case 'mailchimp':
-        case 'twilio':
-        case 'dropbox':
-        case 'github':
-        case 'trello':
-        case 'asana':
-        case 'hubspot':
-        case 'salesforce':
-        case 'zoom':
-        // For now, return null for unimplemented clients
-        // These will be implemented in subsequent iterations
-        return null;
-      
-      default:
-        return null;
+    const implementation = getImplementedConnector(appKey);
+    if (!implementation) {
+      return null;
     }
+
+    if (appKey === 'slack') {
+      const accessToken = credentials.accessToken ?? credentials.botToken;
+      if (!accessToken) {
+        throw new Error('Slack integration requires an access token');
+      }
+      return new SlackAPIClient({ ...credentials, accessToken });
+    }
+
+    if (appKey === 'notion') {
+      const accessToken = credentials.accessToken ?? credentials.integrationToken;
+      if (!accessToken) {
+        throw new Error('Notion integration requires an access token');
+      }
+      return new NotionAPIClient({ ...credentials, accessToken });
+    }
+
+    if (appKey === 'airtable') {
+      if (!credentials.apiKey) {
+        throw new Error('Airtable integration requires an API key');
+      }
+      return new AirtableAPIClient(credentials);
+    }
+
+    return implementation.createClient(credentials, additionalConfig);
   }
 
   /**
