@@ -120,6 +120,177 @@ function replaceRefPlaceholders(content: string): string {
   return result;
 }
 
+function isConditionNode(node: any): boolean {
+  const type = typeof node?.type === 'string' ? node.type.toLowerCase() : '';
+  return type.startsWith('condition');
+}
+
+function normalizeBranchValue(value: any, fallback?: string | null): string | null {
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (value == null) {
+    return fallback ?? null;
+  }
+  const text = String(value).trim();
+  if (!text) return fallback ?? null;
+  const normalized = text.toLowerCase();
+  if (['true', 'yes', '1', 'y'].includes(normalized)) return 'true';
+  if (['false', 'no', '0', 'n'].includes(normalized)) return 'false';
+  return text;
+}
+
+function selectEdgeLabel(edge: any): string | undefined {
+  return [edge?.label, edge?.data?.label, edge?.branchLabel, edge?.data?.branchLabel, edge?.condition?.label]
+    .find(value => typeof value === 'string' && value.trim().length > 0);
+}
+
+function buildConditionBranchMappings(node: any, edgesBySource: Map<string, any[]>): Array<{
+  edgeId: string;
+  targetId: string;
+  label: string | null;
+  value: string | null;
+  isDefault: boolean;
+}> {
+  const nodeId = String(node?.id ?? '');
+  if (!nodeId) {
+    return [];
+  }
+
+  const edges = edgesBySource.get(nodeId) ?? [];
+  const mappings = edges
+    .map((edge, index) => {
+      const edgeId = edge?.id ? String(edge.id) : '';
+      const targetId = edge?.target ? String(edge.target) : edge?.to ? String(edge.to) : '';
+      if (!edgeId || !targetId) {
+        return null;
+      }
+
+      const label = selectEdgeLabel(edge) ?? '';
+      const rawValue = edge?.branchValue
+        ?? edge?.data?.branchValue
+        ?? edge?.condition?.value
+        ?? label
+        ?? '';
+
+      const value = normalizeBranchValue(rawValue, edges.length === 2 ? (index === 0 ? 'true' : 'false') : null);
+      const isDefault = Boolean(
+        edge?.isDefault
+          || edge?.default
+          || edge?.data?.isDefault
+          || edge?.data?.default
+          || edge?.condition?.default
+          || (typeof rawValue === 'string' && rawValue.toLowerCase() === 'default')
+      );
+
+      return {
+        edgeId,
+        targetId,
+        label: label || null,
+        value: value ?? null,
+        isDefault
+      };
+    })
+    .filter(Boolean) as Array<{ edgeId: string; targetId: string; label: string | null; value: string | null; isDefault: boolean }>;
+
+  if (mappings.length === 1) {
+    mappings[0].value = mappings[0].value ?? 'true';
+    mappings[0].isDefault = true;
+  }
+
+  if (mappings.length === 2) {
+    const hasTrue = mappings.some(branch => branch.value === 'true');
+    const hasFalse = mappings.some(branch => branch.value === 'false');
+    if (!hasTrue || !hasFalse) {
+      mappings[0].value = mappings[0].value ?? 'true';
+      mappings[1].value = mappings[1].value ?? 'false';
+    }
+  }
+
+  return mappings;
+}
+
+function buildEdgesBySource(edges: any[]): Map<string, any[]> {
+  const map = new Map<string, any[]>();
+  for (const edge of edges) {
+    const source = edge?.source ?? edge?.from;
+    const target = edge?.target ?? edge?.to;
+    if (!source || !target) continue;
+    const key = String(source);
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key)!.push(edge);
+  }
+  return map;
+}
+
+function computeTopologicalOrder(nodes: any[], edges: any[]): string[] {
+  const indegree = new Map<string, number>();
+  const adjacency = new Map<string, string[]>();
+
+  nodes.forEach(node => {
+    const id = String(node.id);
+    indegree.set(id, 0);
+    adjacency.set(id, []);
+  });
+
+  edges.forEach(edge => {
+    const from = String(edge?.source ?? edge?.from ?? '');
+    const to = String(edge?.target ?? edge?.to ?? '');
+    if (!adjacency.has(from) || !indegree.has(to)) {
+      return;
+    }
+    adjacency.get(from)!.push(to);
+    indegree.set(to, (indegree.get(to) ?? 0) + 1);
+  });
+
+  const queue: string[] = [];
+  nodes.forEach(node => {
+    const id = String(node.id);
+    if ((indegree.get(id) ?? 0) === 0) {
+      queue.push(id);
+    }
+  });
+
+  const order: string[] = [];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    order.push(current);
+    const neighbors = adjacency.get(current) ?? [];
+    for (const neighbor of neighbors) {
+      const next = (indegree.get(neighbor) ?? 0) - 1;
+      indegree.set(neighbor, next);
+      if (next === 0) {
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  const visited = new Set(order);
+  nodes.forEach(node => {
+    const id = String(node.id);
+    if (!visited.has(id)) {
+      order.push(id);
+    }
+  });
+
+  return order;
+}
+
+function computeRootNodeIds(nodes: any[], edges: any[]): string[] {
+  const indegree = new Map<string, number>();
+  nodes.forEach(node => indegree.set(String(node.id), 0));
+  edges.forEach(edge => {
+    const to = String(edge?.target ?? edge?.to ?? '');
+    if (!indegree.has(to)) return;
+    indegree.set(to, (indegree.get(to) ?? 0) + 1);
+  });
+  return nodes
+    .map(node => String(node.id))
+    .filter(id => (indegree.get(id) ?? 0) === 0);
+}
+
 
 
 
@@ -9983,44 +10154,61 @@ function step_logData(ctx) {
 }`
 };
 
+
 function buildRealCodeFromGraph(graph: any): string {
   const emitted = new Set<string>();
+  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  const edges = Array.isArray(graph.edges) ? graph.edges : [];
+  const nodeMap = new Map<string, any>();
+  nodes.forEach((node: any) => {
+    if (node && node.id != null) {
+      nodeMap.set(String(node.id), node);
+    }
+  });
+
+  const orderedIds = computeTopologicalOrder(nodes, edges);
+  const orderedNodes = orderedIds.map(id => nodeMap.get(id)).filter(Boolean) as any[];
+
   const supportedNodes: any[] = [];
   const unsupportedNodes: any[] = [];
-  
-  // P0 CRITICAL: Only include nodes with working implementations
-  for (const n of graph.nodes) {
-    const key = opKey(n);
+
+  for (const node of orderedNodes) {
+    if (isConditionNode(node)) {
+      supportedNodes.push(node);
+      continue;
+    }
+
+    const key = opKey(node);
     const gen = REAL_OPS[key];
     if (gen) {
-      supportedNodes.push(n);
+      supportedNodes.push(node);
     } else {
       unsupportedNodes.push({
-        id: n.id,
-        type: n.type,
+        id: node.id,
+        type: node.type,
         operation: key,
         reason: 'No REAL_OPS implementation'
       });
     }
   }
-  
+
   console.log(`🔧 P0 Build Analysis: ${supportedNodes.length} supported, ${unsupportedNodes.length} unsupported nodes`);
   if (unsupportedNodes.length > 0) {
     console.warn('⚠️ Unsupported operations:', unsupportedNodes.map(n => n.operation));
   }
-  
-  const allNodes = [...supportedNodes, ...unsupportedNodes];
-  const executionLines = allNodes.map((n: any) => {
-    const callLine = `  ctx = ${funcName(n)}(ctx);`;
-    const nodeId = typeof n.id === 'string' ? escapeForSingleQuotes(n.id) : '';
-    if (!nodeId) {
-      return callLine;
-    }
-    return `${callLine}\n  __storeNodeOutput('${nodeId}', ctx);`;
-  }).join('\n');
+
+  const edgesBySource = buildEdgesBySource(edges);
+  const rootNodeIds = computeRootNodeIds(nodes, edges);
+  const allNodes = orderedNodes;
+
+  const executionLines = allNodes
+    .map(node => generateExecutionBlock(node, edgesBySource))
+    .filter(Boolean)
+    .join('\n');
 
   let body = `
 var __nodeOutputs = {};
+var __executionFlags = {};
 
 function __resetNodeOutputs() {
   __nodeOutputs = {};
@@ -10039,6 +10227,36 @@ function __storeNodeOutput(nodeId, output) {
     return;
   }
   __nodeOutputs[nodeId] = __cloneNodeOutput(output);
+}
+
+function __initExecutionFlags() {
+  __executionFlags = {};
+}
+
+function __activateNode(nodeId) {
+  if (!nodeId) {
+    return;
+  }
+  __executionFlags[nodeId] = true;
+}
+
+function __completeNode(nodeId) {
+  if (!nodeId) {
+    return;
+  }
+  __executionFlags[nodeId] = false;
+}
+
+function __shouldExecute(nodeId) {
+  return Boolean(__executionFlags[nodeId]);
+}
+
+function __bootstrapExecution() {
+  __initExecutionFlags();
+  var roots = ${JSON.stringify(rootNodeIds)};
+  for (var i = 0; i < roots.length; i++) {
+    __activateNode(roots[i]);
+  }
 }
 
 function __normalizeRefPath(path) {
@@ -10083,28 +10301,34 @@ function __getNodeOutputValue(nodeId, path) {
 }
 
 function interpolate(t, ctx) {
-  return String(t).replace(/\\{\\{(.*?)\\}\\}/g, function(_, k) { return ctx[k.trim()] ?? ''; });
+  return String(t).replace(/\{\{(.*?)\}\}/g, function(_, k) { return ctx[k.trim()] ?? ''; });
 }
 
 function main(ctx) {
   ctx = ctx || {};
   __resetNodeOutputs();
+  __bootstrapExecution();
   console.log('🚀 Starting workflow with ${allNodes.length} steps (${supportedNodes.length} native, ${unsupportedNodes.length} fallback)...');
-${executionLines ? executionLines + '\n' : ''}  return ctx;
+${executionLines ? executionLines + '
+' : ''}  return ctx;
 }
 `;
 
-  // Generate functions for supported operations
-  for (const n of supportedNodes) {
-    const key = opKey(n);
+  for (const node of supportedNodes) {
+    if (isConditionNode(node)) {
+      const branches = buildConditionBranchMappings(node, edgesBySource);
+      body += '\n' + generateConditionNodeFunction(node, branches);
+      continue;
+    }
+
+    const key = opKey(node);
     const gen = REAL_OPS[key];
     if (gen && !emitted.has(key)) {
-      body += '\n' + gen(n.data?.config || n.params || {});
+      body += '\n' + gen(node.data?.config || node.params || {});
       emitted.add(key);
     }
   }
-  
-  // Generate fallback functions for unsupported nodes so the script still executes end-to-end
+
   for (const n of unsupportedNodes) {
     const fn = generateFallbackForNode(n);
     if (fn && !emitted.has(fn.__key)) {
@@ -10112,8 +10336,7 @@ ${executionLines ? executionLines + '\n' : ''}  return ctx;
       emitted.add(fn.__key);
     }
   }
-  
-  // Add build diagnostics
+
   if (unsupportedNodes.length > 0) {
     body += `
 // BUILD DIAGNOSTICS: Fallback operations
@@ -10124,6 +10347,150 @@ ${unsupportedNodes.map(n => `// - ${n.id}: ${n.operation} (${n.reason})`).join('
   }
 
   return replaceRefPlaceholders(body);
+}
+
+
+function generateExecutionBlock(node: any, edgesBySource: Map<string, any[]>): string {
+  if (!node || node.id == null) {
+    return '';
+  }
+
+  const nodeId = escapeForSingleQuotes(String(node.id));
+  const callExpression = `${funcName(node)}(ctx)`;
+
+  if (isConditionNode(node)) {
+    const branches = buildConditionBranchMappings(node, edgesBySource);
+    const branchJson = JSON.stringify(branches);
+    return `
+  if (__shouldExecute('${nodeId}')) {
+    var __conditionState = ${callExpression};
+    var __conditionOutput = (__conditionState && __conditionState.output) || {};
+    ctx = (__conditionState && __conditionState.context) || ctx;
+    __conditionOutput.availableBranches = ${branchJson};
+    __storeNodeOutput('${nodeId}', __conditionOutput);
+    __completeNode('${nodeId}');
+    ctx.__lastCondition = __conditionOutput;
+    var __branchMap = ${branchJson};
+    var __matched = false;
+    var __branchValue = __conditionOutput.matchedBranch;
+    for (var i = 0; i < __branchMap.length; i++) {
+      var __branch = __branchMap[i];
+      if (__branch.value && __branch.value === __branchValue) {
+        __activateNode(__branch.targetId);
+        __conditionOutput.selectedEdgeId = __branch.edgeId;
+        __conditionOutput.selectedTargetId = __branch.targetId;
+        __matched = true;
+      }
+    }
+    if (!__matched) {
+      for (var j = 0; j < __branchMap.length; j++) {
+        var __fallback = __branchMap[j];
+        if (__fallback.isDefault) {
+          __activateNode(__fallback.targetId);
+          __conditionOutput.selectedEdgeId = __fallback.edgeId;
+          __conditionOutput.selectedTargetId = __fallback.targetId;
+          __conditionOutput.matchedBranch = __fallback.value;
+          __matched = true;
+          break;
+        }
+      }
+    }
+    if (!__matched && __branchMap.length === 1) {
+      var __single = __branchMap[0];
+      __activateNode(__single.targetId);
+      __conditionOutput.selectedEdgeId = __single.edgeId;
+      __conditionOutput.selectedTargetId = __single.targetId;
+      __conditionOutput.matchedBranch = __single.value;
+    }
+  }
+`;
+  }
+
+  const outgoing = edgesBySource.get(String(node.id)) ?? [];
+  const activationLines = outgoing
+    .map(edge => {
+      const target = edge?.target ?? edge?.to;
+      if (!target) {
+        return null;
+      }
+      return `    __activateNode('${escapeForSingleQuotes(String(target))}');`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+  const activationBlock = activationLines ? activationLines + '\n' : '';
+
+  return `
+  if (__shouldExecute('${nodeId}')) {
+    ctx = ${callExpression};
+    __storeNodeOutput('${nodeId}', ctx);
+    __completeNode('${nodeId}');
+${activationBlock}  }
+`;
+}
+
+function generateConditionNodeFunction(node: any, branches: Array<{ edgeId: string; targetId: string; label: string | null; value: string | null; isDefault: boolean }>): string {
+  const functionName = funcName(node);
+  const configRule = node?.data?.config?.rule ?? node?.data?.rule;
+  const paramsRule = node?.params?.rule;
+  const ruleValue = configRule !== undefined ? configRule : (paramsRule !== undefined ? paramsRule : true);
+  const ruleJson = JSON.stringify(ruleValue);
+  const branchesJson = JSON.stringify(branches);
+
+  return `
+function ${functionName}(ctx) {
+  var context = ctx || {};
+  var rule = ${ruleJson};
+  var evaluations = [];
+  var evaluationError = null;
+  var rawValue;
+
+  try {
+    if (typeof rule === 'boolean') {
+      rawValue = rule;
+    } else if (typeof rule === 'number') {
+      rawValue = rule !== 0;
+    } else if (rule && typeof rule === 'object' && typeof rule.value !== 'undefined') {
+      rawValue = rule.value;
+    } else if (typeof rule === 'string' && rule.trim().length > 0) {
+      var sandbox = Object.assign({}, context, {
+        params: context,
+        parameters: context,
+        data: context,
+        nodes: __nodeOutputs,
+        nodeOutputs: __nodeOutputs
+      });
+      try {
+        rawValue = Function('scope', 'nodeOutputs', 'with(scope) { return (function() { return eval(arguments[0]); }).call(scope, arguments[2]); }')(sandbox, __nodeOutputs, rule);
+      } catch (innerError) {
+        evaluationError = innerError && innerError.message ? innerError.message : String(innerError);
+      }
+    } else {
+      rawValue = false;
+    }
+  } catch (error) {
+    evaluationError = error && error.message ? error.message : String(error);
+  }
+
+  if (typeof rawValue === 'undefined') {
+    rawValue = false;
+  }
+
+  var resultValue = Boolean(rawValue);
+  var matchedBranch = resultValue ? 'true' : 'false';
+  evaluations.push({ expression: rule, raw: rawValue, result: resultValue, error: evaluationError });
+
+  var output = {
+    expression: rule,
+    evaluations: evaluations,
+    matchedBranch: matchedBranch,
+    availableBranches: ${branchesJson},
+    error: evaluationError
+  };
+
+  return { context: context, output: output };
+}
+`;
 }
 
 function funcName(n: any) {

@@ -1,7 +1,7 @@
 import { buildMetadataFromNode } from './metadata';
 import { syncNodeParameters } from './SmartParametersPanel';
 
-export type NodeRole = 'trigger' | 'action' | 'transform';
+export type NodeRole = 'trigger' | 'action' | 'transform' | 'condition';
 
 export type NormalizedWorkflowNode = {
   id: string;
@@ -48,6 +48,7 @@ const roleFromString = (value?: string | null): NodeRole | null => {
   const normalized = value.toLowerCase();
   if (normalized.includes('trigger')) return 'trigger';
   if (normalized.includes('transform')) return 'transform';
+  if (normalized.includes('condition')) return 'condition';
   if (normalized.includes('action')) return 'action';
   return null;
 };
