@@ -123,7 +123,22 @@ What would you like to automate?`,
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        const statusText = response.statusText ? ` ${response.statusText}` : '';
+        const errorText = await response.text().catch(() => '');
+        const message = errorText?.trim()?.length
+          ? errorText
+          : `API Error: ${response.status}${statusText}`;
+
+        // Remove thinking message and surface inline error
+        setMessages(prev => prev.filter(m => m.id !== thinkingMessage.id));
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: `❌ Sorry, I encountered an error: ${message}\n\nPlease check your API key in Admin Settings and try again.`,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        return;
       }
 
       const aiResponse = await response.json();
