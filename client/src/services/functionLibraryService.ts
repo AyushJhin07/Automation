@@ -2,6 +2,7 @@
 // Provides type-safe access to application functions with caching and validation
 
 import { FunctionDefinition } from '../components/workflow/DynamicParameterForm';
+import { authStore } from '@/store/authStore';
 
 interface APIResponse<T> {
   success: boolean;
@@ -29,7 +30,7 @@ class FunctionLibraryService {
    * Get authentication headers
    */
   private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('token');
+    const token = authStore.getState().token;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     };
@@ -60,17 +61,21 @@ class FunctionLibraryService {
    */
   async getSupportedApplications(): Promise<string[]> {
     try {
-      const response = await fetch('/api/registry/connectors', {
+      const response = await fetch('/api/registry/catalog?implemented=true', {
         headers: this.getAuthHeaders()
       });
 
       const result = await response.json();
-      
-      if (result.success && result.connectors) {
-        return result.connectors.map((connector: any) => connector.definition.id);
-      } else {
-        throw new Error(result.error || 'Failed to fetch supported applications');
+
+      if (result.success && result.catalog?.connectors) {
+        const apps = Object.entries<any>(result.catalog.connectors)
+          .filter(([, def]) => def?.hasImplementation)
+          .map(([id]) => id);
+        const extras = ['core', 'built_in', 'time'];
+        return Array.from(new Set([...apps, ...extras]));
       }
+
+      throw new Error(result.error || 'Failed to fetch supported applications');
     } catch (error) {
       console.error('Error fetching supported applications:', error);
       throw error;
@@ -91,8 +96,15 @@ class FunctionLibraryService {
         headers: this.getAuthHeaders()
       });
 
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Connector ${appName} is not yet supported.`);
+        }
+        throw new Error(`Failed to fetch functions for ${appName}`);
+      }
+
       const result = await response.json();
-      
+
       if (result.success && result.functions) {
         // Convert connector functions to FunctionDefinition format
         const allFunctions: FunctionDefinition[] = [];

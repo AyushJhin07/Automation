@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import AuthInitializer from "@/components/auth/AuthInitializer";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AuthInitializer />
           <Navbar />
           <Routes>
             <Route path="/" element={<Index />} />
@@ -59,4 +61,3 @@ const App = () => (
 );
 
 export default App;
-

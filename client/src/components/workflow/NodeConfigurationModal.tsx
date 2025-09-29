@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { DynamicParameterForm, FunctionDefinition } from './DynamicParameterForm';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/authStore';
 
 interface NodeData {
   id: string;
@@ -76,6 +77,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [activeTab, setActiveTab] = useState<'function' | 'connection' | 'parameters'>('function');
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({});
+  const authFetch = useAuthStore((state) => state.authFetch);
 
   // Initialize state when modal opens
   useEffect(() => {
@@ -145,16 +147,8 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const handleTestConnection = async (connectionId: string) => {
     setIsTestingConnection(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token && token !== 'null' && token !== 'undefined') {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`/api/connections/${connectionId}/test`, {
-        method: 'POST',
-        headers
-        // Note: Server expects connection to already exist, no body needed
+      const response = await authFetch(`/api/connections/${connectionId}/test`, {
+        method: 'POST'
       });
 
       const result = await response.json();
@@ -177,15 +171,8 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token && token !== 'null' && token !== 'undefined') {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch('/api/oauth/authorize', {
+      const response = await authFetch('/api/oauth/authorize', {
         method: 'POST',
-        headers,
         body: JSON.stringify({ 
           provider: oauthProvider.name,
           additionalParams: nodeData.appName === 'shopify' ? { shop: 'your-shop' } : undefined
