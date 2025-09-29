@@ -12,6 +12,7 @@ interface WorkflowExecutionContext {
   userId?: string;
   nodeOutputs: Record<string, any>;
   timezone?: string;
+  edges?: Array<Record<string, any>>;
 }
 
 interface NodeExecutionResult {
@@ -136,6 +137,13 @@ export class WorkflowRuntimeService {
       };
     }
 
+    if (role === 'condition') {
+      const conditionResult = this.executeCondition(node, resolvedParams, context, label);
+      context.nodeOutputs[node.id] = conditionResult.output;
+
+      return conditionResult;
+    }
+
     const appId = this.normalizeAppId(
       this.selectString(
         node?.app,
@@ -229,7 +237,7 @@ export class WorkflowRuntimeService {
     };
   }
 
-  private inferRole(node: any): 'trigger' | 'action' | 'transform' {
+  private inferRole(node: any): 'trigger' | 'action' | 'transform' | 'condition' {
     const candidates = [
       node?.data?.role,
       node?.role,
@@ -244,10 +252,385 @@ export class WorkflowRuntimeService {
       const value = candidate.toLowerCase();
       if (value.includes('trigger')) return 'trigger';
       if (value.includes('transform')) return 'transform';
+      if (value.includes('condition')) return 'condition';
       if (value.includes('action')) return 'action';
     }
 
     return 'action';
+  }
+
+  private executeCondition(
+    node: any,
+    params: Record<string, any>,
+    context: WorkflowExecutionContext,
+    label: string
+  ): NodeExecutionResult {
+    const logs: string[] = [];
+    const evaluations: Array<Record<string, any>> = [];
+
+    const branches = this.collectConditionBranches(node, context.edges ?? []);
+    const rules = this.normalizeConditionRules(node, params);
+
+    const expression = this.selectString(
+      typeof params.rule === 'string' ? params.rule : undefined,
+      typeof params.expression === 'string' ? params.expression : undefined,
+      typeof params.condition === 'string' ? params.condition : undefined,
+      typeof node?.data?.config?.rule === 'string' ? node.data.config.rule : undefined,
+      typeof node?.data?.rule === 'string' ? node.data.rule : undefined
+    );
+
+    let matchedBranchValue: string | null = null;
+    let matchedEdgeId: string | null = null;
+    let matchedTargetId: string | null = null;
+    let matchedLabel: string | null = null;
+    let evaluationError: string | null = null;
+
+    const scope = this.buildConditionScope(params, context);
+
+    const evaluate = (candidate: any, branchValueHint?: string | null) => {
+      const result = this.evaluateConditionExpression(candidate, scope);
+      evaluations.push({
+        expression: typeof candidate === 'string' ? candidate : undefined,
+        raw: result.raw,
+        result: result.value,
+        error: result.error,
+        branchValue: branchValueHint ?? null
+      });
+      if (result.error) {
+        evaluationError = result.error;
+        logs.push(`Error evaluating condition: ${result.error}`);
+      }
+      return result.value;
+    };
+
+    if (rules.length > 0) {
+      for (const rule of rules) {
+        const { expression: candidateExpression, branchValue, label: ruleLabel, isDefault } = rule;
+        if (candidateExpression == null && !isDefault) {
+          continue;
+        }
+
+        const evaluation = candidateExpression == null ? true : evaluate(candidateExpression, branchValue);
+        if (evaluation) {
+          matchedBranchValue = branchValue ?? (isDefault ? 'true' : null);
+          matchedLabel = ruleLabel ?? null;
+          break;
+        }
+      }
+    }
+
+    if (!matchedBranchValue && expression) {
+      const evaluation = evaluate(expression);
+      matchedBranchValue = evaluation ? 'true' : 'false';
+    } else if (typeof params.rule === 'boolean') {
+      matchedBranchValue = params.rule ? 'true' : 'false';
+      evaluations.push({ expression: 'boolean', raw: params.rule, result: params.rule, branchValue: matchedBranchValue });
+    } else if (typeof params.rule === 'number') {
+      matchedBranchValue = params.rule ? 'true' : 'false';
+      evaluations.push({ expression: 'number', raw: params.rule, result: Boolean(params.rule), branchValue: matchedBranchValue });
+    } else if (params.rule && typeof params.rule === 'object' && 'value' in params.rule && typeof params.rule.value === 'boolean') {
+      matchedBranchValue = params.rule.value ? 'true' : 'false';
+      evaluations.push({
+        expression: 'object',
+        raw: params.rule.value,
+        result: Boolean(params.rule.value),
+        branchValue: matchedBranchValue
+      });
+    } else if (expression) {
+      const evaluation = evaluate(expression);
+      matchedBranchValue = evaluation ? 'true' : 'false';
+    }
+
+    if (!matchedBranchValue && branches.length === 1) {
+      matchedBranchValue = branches[0].value ?? 'true';
+      matchedLabel = branches[0].label ?? matchedLabel;
+    }
+
+    if (!matchedBranchValue) {
+      const defaultBranch = branches.find(branch => branch.isDefault);
+      if (defaultBranch) {
+        matchedBranchValue = defaultBranch.value ?? null;
+        matchedLabel = defaultBranch.label ?? matchedLabel;
+      }
+    }
+
+    if (matchedBranchValue) {
+      const branch = this.findMatchingBranch(branches, matchedBranchValue, matchedLabel);
+      if (branch) {
+        matchedBranchValue = branch.value ?? matchedBranchValue;
+        matchedEdgeId = branch.edgeId ?? null;
+        matchedTargetId = branch.targetId ?? null;
+        matchedLabel = branch.label ?? matchedLabel;
+      }
+    }
+
+    if (!matchedEdgeId && branches.length === 1) {
+      matchedEdgeId = branches[0].edgeId ?? null;
+      matchedTargetId = branches[0].targetId ?? null;
+      matchedLabel = branches[0].label ?? matchedLabel;
+      matchedBranchValue = branches[0].value ?? matchedBranchValue;
+    }
+
+    logs.push(
+      `Evaluated ${evaluations.length} condition${evaluations.length === 1 ? '' : 's'}${matchedBranchValue ? ` → matched "${matchedBranchValue}"` : ''}`
+    );
+
+    const output = {
+      expression: expression ?? null,
+      evaluations,
+      result: matchedBranchValue === 'true',
+      matchedBranch: matchedBranchValue,
+      matchedLabel,
+      selectedEdgeId: matchedEdgeId,
+      selectedTargetId: matchedTargetId,
+      availableBranches: branches,
+      error: evaluationError
+    };
+
+    const summary = matchedBranchValue
+      ? `Condition matched branch ${matchedLabel ? `"${matchedLabel}"` : matchedBranchValue}`
+      : `Evaluated condition ${label}`;
+
+    return {
+      summary,
+      output,
+      preview: this.buildPreview(output),
+      logs,
+      parameters: params,
+      diagnostics: {
+        role: 'condition',
+        expression: expression ?? null,
+        matchedBranch: matchedBranchValue,
+        matchedEdgeId,
+        matchedTargetId,
+        result: matchedBranchValue === 'true',
+        availableBranches: branches,
+        evaluationError
+      }
+    };
+  }
+
+  private normalizeConditionRules(node: any, params: Record<string, any>): Array<{
+    expression?: any;
+    branchValue?: string | null;
+    label?: string | null;
+    isDefault?: boolean;
+  }> {
+    const sources: Array<any> = [
+      params?.rules,
+      params?.branches,
+      node?.rules,
+      node?.data?.rules,
+      node?.data?.branches,
+      node?.data?.config?.rules,
+      node?.data?.config?.branches
+    ];
+
+    for (const source of sources) {
+      if (!Array.isArray(source)) continue;
+      return source.map((rule: any) => {
+        const branchValue = this.normalizeBranchValue(
+          this.selectString(
+            typeof rule?.value === 'string' ? rule.value : undefined,
+            typeof rule?.branchValue === 'string' ? rule.branchValue : undefined,
+            typeof rule?.branch === 'string' ? rule.branch : undefined,
+            typeof rule?.label === 'string' ? rule.label : undefined,
+            typeof rule?.id === 'string' ? rule.id : undefined
+          )
+        );
+
+        return {
+          expression: rule?.expression ?? rule?.rule ?? rule?.condition ?? rule?.when ?? null,
+          branchValue,
+          label: this.selectString(rule?.label, rule?.name, rule?.branch, rule?.value, rule?.id) ?? null,
+          isDefault: Boolean(rule?.default || rule?.isDefault || rule?.fallback)
+        };
+      });
+    }
+
+    return [];
+  }
+
+  private collectConditionBranches(node: any, edges: Array<Record<string, any>>): Array<{
+    edgeId: string | null;
+    targetId: string | null;
+    label: string | null;
+    value: string | null;
+    isDefault: boolean;
+  }> {
+    const nodeId = String(node?.id ?? '');
+    if (!nodeId) return [];
+
+    const outgoing = edges.filter(edge => String(edge.source ?? edge.from ?? '') === nodeId);
+    const mapped = outgoing.map(edge => {
+      const label = this.selectString(
+        typeof edge?.label === 'string' ? edge.label : undefined,
+        typeof edge?.branchLabel === 'string' ? edge.branchLabel : undefined,
+        typeof edge?.data?.label === 'string' ? edge.data.label : undefined,
+        typeof edge?.data?.branchLabel === 'string' ? edge.data.branchLabel : undefined,
+        typeof edge?.metadata?.label === 'string' ? edge.metadata.label : undefined
+      );
+
+      const branchValueRaw = this.selectString(
+        typeof edge?.branchValue === 'string' ? edge.branchValue : undefined,
+        typeof edge?.data?.branchValue === 'string' ? edge.data.branchValue : undefined,
+        typeof edge?.condition?.value === 'string' ? edge.condition.value : undefined,
+        typeof edge?.data?.value === 'string' ? edge.data.value : undefined,
+        label
+      );
+
+      return {
+        edgeId: edge?.id ? String(edge.id) : null,
+        targetId: edge?.target ? String(edge.target) : edge?.to ? String(edge.to) : null,
+        label: label ?? null,
+        value: this.normalizeBranchValue(branchValueRaw),
+        isDefault: Boolean(
+          edge?.isDefault ||
+            edge?.default ||
+            edge?.data?.isDefault ||
+            edge?.data?.default ||
+            edge?.metadata?.default ||
+            (branchValueRaw && branchValueRaw.toLowerCase() === 'default')
+        )
+      };
+    });
+
+    if (mapped.length === 1) {
+      mapped[0].value = mapped[0].value ?? 'true';
+      mapped[0].isDefault = true;
+    }
+
+    if (mapped.length === 2) {
+      const hasTrue = mapped.some(branch => branch.value === 'true');
+      const hasFalse = mapped.some(branch => branch.value === 'false');
+      if (!hasTrue || !hasFalse) {
+        mapped[0].value = mapped[0].value ?? 'true';
+        mapped[1].value = mapped[1].value ?? 'false';
+      }
+    }
+
+    return mapped;
+  }
+
+  private findMatchingBranch(
+    branches: Array<{ edgeId: string | null; targetId: string | null; label: string | null; value: string | null; isDefault: boolean }>,
+    branchValue: string,
+    branchLabel: string | null
+  ) {
+    const normalizedValue = this.normalizeBranchValue(branchValue);
+    let match = branches.find(branch => branch.value === normalizedValue);
+    if (!match && branchLabel) {
+      match = branches.find(branch => (branch.label ?? '').toLowerCase() === branchLabel.toLowerCase());
+    }
+    if (!match) {
+      match = branches.find(branch => branch.isDefault);
+    }
+    return match ?? null;
+  }
+
+  private buildConditionScope(params: Record<string, any>, context: WorkflowExecutionContext) {
+    const nodeOutputs = context.nodeOutputs ?? {};
+    const scope = {
+      params,
+      parameters: params,
+      data: params,
+      inputs: nodeOutputs,
+      nodes: nodeOutputs,
+      nodeOutputs,
+      timezone: context.timezone,
+      workflowId: context.workflowId,
+      executionId: context.executionId
+    } as Record<string, any>;
+
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof key === 'string') {
+        scope[key] = value;
+      }
+    }
+
+    return scope;
+  }
+
+  private evaluateConditionExpression(expression: any, scope: Record<string, any>): { value: boolean; raw: any; error?: string } {
+    if (typeof expression === 'boolean') {
+      return { value: expression, raw: expression };
+    }
+
+    if (typeof expression === 'number') {
+      return { value: expression !== 0, raw: expression };
+    }
+
+    if (expression == null) {
+      return { value: false, raw: expression, error: 'No condition expression provided' };
+    }
+
+    if (typeof expression === 'object' && 'value' in expression && typeof expression.value !== 'undefined') {
+      const raw = (expression as any).value;
+      return { value: Boolean(raw), raw };
+    }
+
+    const text = String(expression);
+    const preparedExpression = this.normalizeConditionExpressionText(text);
+
+    try {
+      const evaluator = Function(
+        'scope',
+        'nodeOutputs',
+        'with(scope) { return (function() { return eval(arguments[0]); }).call(scope, arguments[2]); }'
+      );
+
+      const raw = evaluator(scope, scope.nodeOutputs, preparedExpression);
+      return { value: Boolean(raw), raw };
+    } catch (error: any) {
+      return {
+        value: false,
+        raw: undefined,
+        error: typeof error?.message === 'string' ? error.message : String(error ?? 'Condition evaluation failed')
+      };
+    }
+  }
+
+
+
+  private normalizeConditionExpressionText(expression: string): string {
+    return expression.replace(/\[([^\]\s"'`]+)\]/g, (_match, group) => {
+      const key = String(group).trim();
+      if (!key) {
+        return '[]';
+      }
+      if (/^['"]/.test(key) || /^\d+$/.test(key)) {
+        return `[${key}]`;
+      }
+      const safe = key.replace(/\\/g, '\\').replace(/'/g, "\'");
+      return `['${safe}']`;
+    });
+  }
+
+  private normalizeBranchValue(value?: string | null): string | null {
+    if (typeof value === 'boolean') {
+      return value ? 'true' : 'false';
+    }
+
+    if (value == null) {
+      return null;
+    }
+
+    const text = String(value).trim();
+    if (!text) {
+      return null;
+    }
+
+    const normalized = text.toLowerCase();
+    if (['true', 'yes', 'y', '1'].includes(normalized)) {
+      return 'true';
+    }
+    if (['false', 'no', 'n', '0'].includes(normalized)) {
+      return 'false';
+    }
+    if (normalized === 'default') {
+      return 'default';
+    }
+    return text;
   }
 
   private extractParameters(node: any): Record<string, any> {

@@ -1,6 +1,6 @@
 import type { WorkflowMetadata } from '../shared/workflow/metadata';
 
-export type NodeType = 'trigger' | 'action' | 'transform';
+export type NodeType = 'trigger' | 'action' | 'transform' | 'condition';
 
 export type WorkflowNodeMetadata = WorkflowMetadata;
 
