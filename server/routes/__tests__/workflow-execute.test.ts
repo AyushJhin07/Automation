@@ -17,16 +17,35 @@ const sampleWorkflow = {
       id: 'node-1',
       type: 'trigger.time.cron',
       label: 'Scheduled trigger',
-      params: { schedule: '0 9 * * *', timezone: 'America/New_York' },
+      params: { schedule: '0 9 * * *', timezone: 'America/New_York', sampleValue: 99 },
       position: { x: 100, y: 120 },
       data: {
         label: 'Scheduled trigger',
         description: 'Runs every morning at 9AM',
         app: 'time',
         function: 'cron',
-        parameters: { schedule: '0 9 * * *', timezone: 'America/New_York' },
+        parameters: { schedule: '0 9 * * *', timezone: 'America/New_York', sampleValue: 99 },
         metadata: {
           description: 'Runs every day at 9AM',
+        }
+      }
+    },
+    {
+      id: 'node-condition',
+      type: 'condition.path.boolean',
+      label: 'Check sample value',
+      params: { rule: 'nodeOutputs["node-1"].sampleValue > 50' },
+      position: { x: 320, y: 150 },
+      data: {
+        label: 'Check sample value',
+        description: 'Route based on the trigger sample value',
+        role: 'condition',
+        config: {
+          rule: 'nodeOutputs["node-1"].sampleValue > 50',
+          branches: [
+            { label: 'true', value: 'true' },
+            { label: 'false', value: 'false' }
+          ]
         }
       }
     },
@@ -35,7 +54,7 @@ const sampleWorkflow = {
       type: 'action.sheets.append_row',
       label: 'Append row',
       params: { spreadsheetId: 'sheet-123', sheetName: 'Sheet1', range: 'A1:B1', values: ['A', 'B'] },
-      position: { x: 360, y: 180 },
+      position: { x: 560, y: 120 },
       data: {
         label: 'Append row',
         description: 'Add a new row to Sheets',
@@ -46,10 +65,39 @@ const sampleWorkflow = {
           sample: { sheetId: 'sheet-123', values: ['A', 'B'] }
         }
       }
+    },
+    {
+      id: 'node-3',
+      type: 'transform.utility.pass_through',
+      label: 'False branch log',
+      params: { value: 'no-op' },
+      position: { x: 560, y: 260 },
+      data: {
+        label: 'False branch log',
+        description: 'Provides an alternate branch for testing',
+        role: 'transform',
+        parameters: { value: 'no-op' }
+      }
     }
   ],
   edges: [
-    { id: 'edge-1', from: 'node-1', to: 'node-2', source: 'node-1', target: 'node-2' }
+    { id: 'edge-1', from: 'node-1', to: 'node-condition', source: 'node-1', target: 'node-condition' },
+    {
+      id: 'edge-condition-true',
+      from: 'node-condition',
+      to: 'node-2',
+      source: 'node-condition',
+      target: 'node-2',
+      label: 'true'
+    },
+    {
+      id: 'edge-condition-false',
+      from: 'node-condition',
+      to: 'node-3',
+      source: 'node-condition',
+      target: 'node-3',
+      label: 'false'
+    }
   ],
   scopes: [],
   secrets: [],
@@ -119,6 +167,14 @@ try {
   const triggerCompleted = events.find((event) => event.type === 'node-complete' && event.nodeId === 'node-1');
   assert.ok(triggerCompleted, 'trigger node should emit node-complete event');
   assert.ok(triggerCompleted.result?.preview, 'trigger completion should include preview payload');
+
+  const conditionCompleted = events.find((event) => event.type === 'node-complete' && event.nodeId === 'node-condition');
+  assert.ok(conditionCompleted, 'condition node should emit node-complete event');
+  assert.equal(conditionCompleted.result?.diagnostics?.matchedBranch, 'true', 'condition should select the true branch');
+  assert.equal(conditionCompleted.result?.diagnostics?.matchedEdgeId, 'edge-condition-true', 'condition diagnostics should include the selected edge id');
+  const branches = conditionCompleted.result?.diagnostics?.availableBranches;
+  assert.ok(Array.isArray(branches), 'condition diagnostics should include available branches');
+  assert.ok(branches.some((branch: any) => branch?.edgeId === 'edge-condition-true'), 'true branch metadata should be present');
 
   const actionError = events.find((event) => event.type === 'node-error' && event.nodeId === 'node-2');
   assert.ok(actionError, 'action node should emit node-error event when credentials are missing');

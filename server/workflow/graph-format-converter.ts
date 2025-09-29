@@ -90,12 +90,35 @@ export function convertToNodeGraph(workflowGraph: WorkflowGraph): NodeGraph {
   });
 
   // Convert edges from AI format to Graph Editor format
-  const graphEdges: Edge[] = enrichedGraph.edges.map(edge => ({
-    from: edge.source || edge.from,
-    to: edge.target || edge.to,
-    label: edge.label || '',
-    dataType: 'default'
-  }));
+  const graphEdges: Edge[] = enrichedGraph.edges.map(edge => {
+    const from = edge.source || edge.from;
+    const to = edge.target || edge.to;
+    const label = edge.label || edge.data?.label || '';
+    const branchLabel = edge.branchLabel || edge.data?.branchLabel || edge.condition?.label || label;
+    const branchValue = edge.branchValue || edge.data?.branchValue || edge.condition?.value;
+
+    const metadata = edge.metadata && typeof edge.metadata === 'object'
+      ? { ...edge.metadata }
+      : undefined;
+
+    const data = edge.data && typeof edge.data === 'object'
+      ? { ...edge.data }
+      : undefined;
+
+    return {
+      from,
+      to,
+      label,
+      dataType: edge.dataType || 'default',
+      branchLabel: branchLabel || undefined,
+      branchValue: branchValue || undefined,
+      sourceHandle: edge.sourceHandle || data?.sourceHandle,
+      targetHandle: edge.targetHandle || data?.targetHandle,
+      metadata,
+      data,
+      condition: edge.condition || data?.condition
+    };
+  });
   
   // Extract scopes and secrets from nodes
   const scopes = extractRequiredScopes(workflowGraph.nodes);
