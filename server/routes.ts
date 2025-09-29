@@ -39,6 +39,8 @@ import { webhookManager } from "./webhooks/WebhookManager";
 import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 import { normalizeAppId } from "./services/PromptBuilder.js";
+import { executionQueueService } from './services/ExecutionQueueService.js';
+import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -5308,3 +5310,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+  // ===== EXECUTION QUEUE ENDPOINTS =====
+  app.post('/api/workflows/:id/queue', optionalAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { triggerType, triggerData } = req.body || {};
+      const { executionId } = await executionQueueService.enqueue({
+        workflowId: id,
+        userId: (req as any)?.user?.id,
+        triggerType,
+        triggerData,
+      });
+      res.json({ success: true, executionId });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.get('/api/executions/:id', optionalAuth, async (req, res) => {
+    try {
+      const exec = await WorkflowRepository.getExecutionById(req.params.id);
+      if (!exec) return res.status(404).json({ success: false, error: 'Execution not found' });
+      res.json({ success: true, execution: exec });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });

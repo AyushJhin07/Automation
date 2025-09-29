@@ -6,7 +6,8 @@
     "dist",
     "**/*.test.ts",
     "server/integrations/**/*",
-    "server/codeToVisualConverter.ts"
+    "server/codeToVisualConverter.ts",
+    "server/workflow/compile-to-appsscript.ts"
   ],
   "compilerOptions": {
     "incremental": true,
