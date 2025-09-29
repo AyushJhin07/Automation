@@ -52,9 +52,11 @@ export interface OAuthState {
 export class OAuthManager {
   private providers: Map<string, OAuthProvider> = new Map();
   private pendingStates: Map<string, OAuthState> = new Map();
+  private disabledProviders: Map<string, { provider: OAuthProvider; reason: string }> = new Map();
 
   constructor() {
     this.initializeProviders();
+    this.validateProviderConfiguration();
   }
 
   /**
@@ -275,6 +277,26 @@ export class OAuthManager {
       },
     });
 
+    // Gmail (standard OAuth)
+    this.providers.set('gmail', {
+      name: 'gmail',
+      displayName: 'Gmail',
+      config: {
+        clientId: process.env.GMAIL_CLIENT_ID || '',
+        clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/gmail`,
+        scopes: [
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/gmail.send'
+        ],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+      },
+      pkceRequired: true,
+    });
+
     // Gmail Enhanced (correct Google OAuth 2.0 endpoints)
     this.providers.set('gmail-enhanced', {
       name: 'gmail-enhanced',
@@ -290,7 +312,9 @@ export class OAuthManager {
         ],
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
       },
+      pkceRequired: true,
     });
 
     // Hubspot Enhanced
@@ -1350,6 +1374,28 @@ export class OAuthManager {
     });
   }
 
+  private validateProviderConfiguration(): void {
+    const providers = Array.from(this.providers.entries());
+    providers.forEach(([id, provider]) => {
+      const missing: string[] = [];
+      if (!provider.config.clientId) {
+        missing.push('CLIENT_ID');
+      }
+      if (!provider.config.clientSecret) {
+        missing.push('CLIENT_SECRET');
+      }
+
+      if (missing.length > 0) {
+        this.providers.delete(id);
+        const envPrefix = provider.name.replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
+        const envVars = missing.map(suffix => `${envPrefix}_${suffix}`);
+        const reason = `Missing environment variables: ${envVars.join(', ')}`;
+        this.disabledProviders.set(id, { provider, reason });
+        console.warn(`⚠️ OAuth provider ${provider.displayName} disabled. ${reason}`);
+      }
+    });
+  }
+
   /**
    * Generate authorization URL with state and PKCE
    */
@@ -1677,6 +1723,13 @@ export class OAuthManager {
    */
   listProviders(): OAuthProvider[] {
     return Array.from(this.providers.values());
+  }
+
+  /**
+   * List providers that were disabled due to missing configuration
+   */
+  listDisabledProviders(): Array<{ provider: OAuthProvider; reason: string }> {
+    return Array.from(this.disabledProviders.values());
   }
 
   /**
