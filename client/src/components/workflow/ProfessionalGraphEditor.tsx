@@ -595,6 +595,125 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
   );
 };
 
+const ConditionNode = ({ data, selected }: { data: any; selected: boolean }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
+  const ringClass = STATUS_RING[status];
+  const indicatorClass = STATUS_INDICATOR[status];
+  const statusLabel = STATUS_LABELS[status];
+  const availableBranches = useMemo(() => {
+    if (Array.isArray(data?.availableBranches)) {
+      return data.availableBranches as Array<{ label?: string; value?: string }>;
+    }
+    if (Array.isArray(data?.branches)) {
+      return data.branches as Array<{ label?: string; value?: string }>;
+    }
+    if (Array.isArray(data?.config?.branches)) {
+      return data.config.branches as Array<{ label?: string; value?: string }>;
+    }
+    return [];
+  }, [data]);
+
+  const getBranchLabel = (value: string | undefined, fallback: string) => {
+    if (!value) return fallback;
+    const normalized = value.toLowerCase();
+    if (normalized === 'true') return 'True';
+    if (normalized === 'false') return 'False';
+    return value;
+  };
+
+  return (
+    <div
+      className={clsx(
+        'relative bg-gradient-to-br from-amber-500 to-rose-500 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
+        selected ? 'border-white shadow-xl scale-105' : 'border-amber-400/30',
+        'hover:shadow-2xl hover:scale-102 min-w-[220px] max-w-[300px]',
+        ringClass
+      )}
+    >
+      <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-rose-400 rounded-xl opacity-30 blur animate-pulse"></div>
+
+      <div className="relative bg-gradient-to-br from-amber-500 to-rose-500 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-white/20 rounded-lg">
+              <Filter className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-white font-semibold text-sm">CONDITION</span>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-white hover:bg-white/20 p-1 h-6 w-6"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </Button>
+        </div>
+
+        <div className="text-white">
+          <h3 className="font-bold text-base mb-1">{data.label || 'Condition'}</h3>
+          <p className="text-amber-100 text-xs mb-2 opacity-90">{data.description || 'Branch your workflow based on rules'}</p>
+
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <div className={clsx('w-2.5 h-2.5 rounded-full', indicatorClass)}></div>
+            <span className="text-white font-medium">{statusLabel}</span>
+          </div>
+
+          {Array.isArray(data?.lastExecution?.evaluations) && data.lastExecution.evaluations.length > 0 && (
+            <div className="mt-2 bg-black/20 rounded-lg px-2 py-1 text-[11px] text-white/80">
+              <p className="font-semibold">Last evaluation</p>
+              <p className="truncate text-white/70">{String(data.lastExecution.evaluations[0]?.expression ?? '')}</p>
+            </div>
+          )}
+        </div>
+
+        {isExpanded && (
+          <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
+            <div className="space-y-2 text-xs text-white/90">
+              {availableBranches.map((branch, index) => (
+                <div key={index} className="flex items-center justify-between gap-2">
+                  <span className="opacity-80">{branch.label || getBranchLabel(branch.value, index === 0 ? 'True path' : 'False path')}</span>
+                  <Badge className="bg-white/20 text-white border-white/30 text-[10px]">
+                    {getBranchLabel(branch.value, index === 0 ? 'True' : 'False')}
+                  </Badge>
+                </div>
+              ))}
+              {availableBranches.length === 0 && (
+                <p className="text-white/70">Connect branches to downstream steps</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <Handle
+          type="target"
+          id="input"
+          position={Position.Left}
+          className="w-3 h-3 bg-white border-2 border-amber-500"
+        />
+        <Handle
+          type="source"
+          id="true"
+          position={Position.Right}
+          className="w-3 h-3 bg-white border-2 border-emerald-500"
+          style={{ top: '35%' }}
+        />
+        <Handle
+          type="source"
+          id="false"
+          position={Position.Right}
+          className="w-3 h-3 bg-white border-2 border-rose-500"
+          style={{ top: '65%' }}
+        />
+
+        <div className="absolute right-3 top-[32%] text-[10px] text-white/80 uppercase tracking-wide">True</div>
+        <div className="absolute right-3 top-[62%] text-[10px] text-white/80 uppercase tracking-wide">False</div>
+      </div>
+    </div>
+  );
+};
+
 // Custom Edge Component
 const AnimatedEdge = ({ 
   id, 
@@ -640,6 +759,7 @@ const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
   action: ActionNode,
   transform: TransformNode,
+  condition: ConditionNode,
 };
 
 // Edge Types

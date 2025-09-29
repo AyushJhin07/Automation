@@ -447,7 +447,8 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       executionId,
       userId: (req as any)?.user?.id,
       timezone: req.body?.timezone || 'UTC',
-      nodeOutputs
+      nodeOutputs,
+      edges
     };
     const nodeResultsForStorage: Record<string, any> = {};
     const stopOnError = Boolean(requestOptions.stopOnError);

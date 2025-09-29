@@ -46,6 +46,13 @@ export interface Edge {
   to: string;
   label?: string;
   dataType?: string;
+  branchLabel?: string;
+  branchValue?: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  metadata?: Record<string, any>;
+  data?: Record<string, any>;
+  condition?: any;
 }
 
 export interface ValidationError {
