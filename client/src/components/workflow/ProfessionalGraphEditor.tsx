@@ -87,6 +87,7 @@ import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchem
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
+import { useAuthStore } from '@/store/authStore';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -824,8 +825,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
   });
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState(() => localStorage.getItem('sidebar_category') || 'all');
 
   // Data built from registry
   type NodeTpl = {
@@ -848,6 +848,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
   const [apps, setApps] = useState<Record<string, AppGroup>>({});
   const [categories, setCategories] = useState<string[]>([]);
+  const isLoading = loading;
 
   // Persist user preferences
   useEffect(() => {
@@ -859,125 +860,111 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
   }, [selectedCategory]);
 
   useEffect(() => {
-    void loadFromRegistry();
-  }, []);
+    const nextApps: Record<string, AppGroup> = {};
+    const catSet = new Set<string>();
 
-  const loadFromRegistry = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/registry/catalog");
-      const json = await res.json();
+    const builtInId = 'built_in';
+    nextApps[builtInId] = {
+      appId: builtInId,
+      appName: 'Built-in',
+      category: 'Built-in',
+      icon: appIconsMap[builtInId],
+      actions: [
+        {
+          id: 'action-http-request',
+          kind: 'action',
+          name: 'HTTP Request',
+          description: 'Call external API',
+          nodeType: 'action.http.request',
+          params: { method: 'GET', url: '', headers: {} },
+        },
+        {
+          id: 'transform-format-text',
+          kind: 'transform',
+          name: 'Format Text',
+          description: 'Template interpolation',
+          nodeType: 'transform.format.text',
+        },
+        {
+          id: 'transform-filter-data',
+          kind: 'transform',
+          name: 'Filter Data',
+          description: 'Filter items by condition',
+          nodeType: 'transform.filter.data',
+        },
+      ],
+      triggers: [
+        {
+          id: 'trigger-every-15-min',
+          kind: 'trigger',
+          name: 'Every 15 Minutes',
+          description: 'Run every 15 minutes',
+          nodeType: 'trigger.time.every15',
+          params: { everyMinutes: 15 },
+        },
+        {
+          id: 'trigger-every-hour',
+          kind: 'trigger',
+          name: 'Every Hour',
+          description: 'Run every hour',
+          nodeType: 'trigger.time.hourly',
+          params: { everyMinutes: 60 },
+        },
+        {
+          id: 'trigger-daily-9am',
+          kind: 'trigger',
+          name: 'Daily at 9 AM',
+          description: 'Run daily at 9 AM',
+          nodeType: 'trigger.time.daily9',
+          params: { atHour: 9 },
+        },
+      ],
+    };
+    catSet.add('Built-in');
 
-      const nextApps: Record<string, AppGroup> = {};
-      const catSet = new Set<string>();
-
-      // 1) Built-in utilities (time triggers etc.) – keep as its own "Built-in" app
-      const builtInId = "built_in";
-      nextApps[builtInId] = {
-        appId: builtInId,
-        appName: "Built-in",
-        category: "Built-in",
-        icon: appIconsMap[builtInId],
-        actions: [
-          {
-            id: "action-http-request",
-            kind: "action",
-            name: "HTTP Request",
-            description: "Call external API",
-            nodeType: "action.http.request",
-            params: { method: "GET", url: "", headers: {} },
-          },
-          {
-            id: "transform-format-text",
-            kind: "transform",
-            name: "Format Text",
-            description: "Template interpolation",
-            nodeType: "transform.format.text",
-          },
-          {
-            id: "transform-filter-data",
-            kind: "transform",
-            name: "Filter Data",
-            description: "Filter items by condition",
-            nodeType: "transform.filter.data",
-          },
-        ],
-        triggers: [
-          {
-            id: "trigger-every-15-min",
-            kind: "trigger",
-            name: "Every 15 Minutes",
-            description: "Run every 15 minutes",
-            nodeType: "trigger.time.every15",
-            params: { everyMinutes: 15 },
-          },
-          {
-            id: "trigger-every-hour",
-            kind: "trigger",
-            name: "Every Hour",
-            description: "Run every hour",
-            nodeType: "trigger.time.hourly",
-            params: { everyMinutes: 60 },
-          },
-          {
-            id: "trigger-daily-9am",
-            kind: "trigger",
-            name: "Daily at 9 AM",
-            description: "Run daily at 9 AM",
-            nodeType: "trigger.time.daily9",
-            params: { atHour: 9 },
-          },
-        ],
-      };
-      catSet.add("Built-in");
-
-      // 2) Real connectors from registry
-      if (json?.success && json?.catalog?.connectors) {
-        for (const [appId, def] of Object.entries<any>(json.catalog.connectors)) {
-          const appName = def.name || appId;
-          const category = def.category || "Business Apps";
-          catSet.add(category);
-
-          const Icon = appIconsMap[appId] || appIconsMap.default;
-
-          const actions: NodeTpl[] = (def.actions || []).map((a: any) => ({
-            id: `action-${appId}-${a.id}`,
-            kind: "action",
-            name: a.name,
-            description: a.description || "",
-            nodeType: `action.${appId}.${a.id}`,
-            params: a.parameters || {},
-          }));
-
-          const triggers: NodeTpl[] = (def.triggers || []).map((t: any) => ({
-            id: `trigger-${appId}-${t.id}`,
-            kind: "trigger",
-            name: t.name,
-            description: t.description || "",
-            nodeType: `trigger.${appId}.${t.id}`,
-            params: t.parameters || {},
-          }));
-
-          nextApps[appId] = {
-            appId,
-            appName,
-            category,
-            icon: Icon,
-            actions,
-            triggers,
-          };
+    if (catalog?.connectors) {
+      for (const [appId, def] of Object.entries<any>(catalog.connectors)) {
+        if (!def?.hasImplementation) {
+          continue;
         }
-      }
+        const appName = def.name || appId;
+        const category = def.category || 'Business Apps';
+        catSet.add(category);
 
-      setApps(nextApps);
-      setCategories(["all", ...Array.from(catSet).sort()]);
-      console.log(`🎊 Loaded ${Object.keys(nextApps).length} applications from registry`);
-    } catch (e) {
-      console.error("Failed to load catalog:", e);
-    } finally {
-      setLoading(false);
+        const Icon = appIconsMap[appId] || appIconsMap.default;
+
+        const actions: NodeTpl[] = (def.actions || []).map((a: any) => ({
+          id: `action-${appId}-${a.id}`,
+          kind: 'action',
+          name: a.name,
+          description: a.description || '',
+          nodeType: `action.${appId}.${a.id}`,
+          params: a.parameters || {},
+        }));
+
+        const triggers: NodeTpl[] = (def.triggers || []).map((t: any) => ({
+          id: `trigger-${appId}-${t.id}`,
+          kind: 'trigger',
+          name: t.name,
+          description: t.description || '',
+          nodeType: `trigger.${appId}.${t.id}`,
+          params: t.parameters || {},
+        }));
+
+        nextApps[appId] = {
+          appId,
+          appName,
+          category,
+          icon: Icon,
+          actions,
+          triggers,
+        };
+      }
     }
-  };
+
+    setApps(nextApps);
+    setCategories(['all', ...Array.from(catSet).sort()]);
+  }, [catalog]);
 
   // -------- Filtering logic --------
   const search = searchTerm.trim().toLowerCase();
@@ -1064,7 +1051,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
         )}
 
         {/* Small count */}
-        {!loading && (
+        {!isLoading && (
           <div className="text-xs text-gray-500 mt-2">
             {filteredNodes} of {totalNodes} nodes
             {search && <span className="ml-1">• Searching</span>}
@@ -1074,7 +1061,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
       {/* Apps list */}
       <div className="flex-1 overflow-y-auto p-3">
-        {loading ? (
+        {isLoading ? (
           <div className="text-gray-500 text-sm py-10 text-center">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             Loading applications…
@@ -1228,6 +1215,13 @@ const GraphEditorContent = () => {
   const [configOAuthProviders, setConfigOAuthProviders] = useState<any[]>([]);
   const [configNodeData, setConfigNodeData] = useState<any | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
+  const authFetch = useAuthStore((state) => state.authFetch);
+  const token = useAuthStore((state) => state.token);
+  const logout = useAuthStore((state) => state.logout);
+  const [catalog, setCatalog] = useState<any | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [supportedApps, setSupportedApps] = useState<Set<string>>(new Set(['core', 'built_in', 'time']));
+  const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
 
   useEffect(() => {
     setLabelValue(selectedNode?.data?.label || '');
@@ -1251,6 +1245,44 @@ const GraphEditorContent = () => {
     }
   }, [selectedNode]);
 
+  const loadCatalog = useCallback(async () => {
+    try {
+      setCatalogLoading(true);
+      const response = await fetch('/api/registry/catalog?implemented=true');
+      if (!response.ok) {
+        throw new Error(`Failed to load connector catalog (${response.status})`);
+      }
+      const json = await response.json();
+      if (!json?.success) {
+        throw new Error(json?.error || 'Failed to load connector catalog');
+      }
+
+      setCatalog(json.catalog || null);
+
+      const allowed = new Set<string>(['core', 'built_in', 'time']);
+      Object.entries<any>(json.catalog?.connectors || {}).forEach(([appId, def]) => {
+        if (def?.hasImplementation) {
+          allowed.add(appId);
+        }
+      });
+      setSupportedApps(allowed);
+    } catch (error) {
+      console.error('Failed to load connector catalog:', error);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    if (!catalogLoading) {
+      ensureSupportedNodes();
+    }
+  }, [catalogLoading, ensureSupportedNodes]);
+
   const nodeRequiresConnection = useCallback((node: any) => {
     if (!node) return false;
     const role = String(node.type || node?.data?.role || '').toLowerCase();
@@ -1263,6 +1295,61 @@ const GraphEditorContent = () => {
     const hasInlineCredentials = Boolean(data.credentials || params.credentials);
     return !connectionId && !hasInlineCredentials;
   }, []);
+
+  const allowedApps = useMemo(() => {
+    const set = new Set<string>(supportedApps);
+    set.add('core');
+    set.add('built_in');
+    set.add('time');
+    return set;
+  }, [supportedApps]);
+
+  const findUnsupportedNode = useCallback(() => {
+    return nodes.find((node) => {
+      const data: any = node.data || {};
+      const candidates = [
+        data.app,
+        data.application,
+        data.connectorId,
+        data.appId,
+        typeof data.nodeType === 'string' && data.nodeType.includes('.') ? data.nodeType.split('.')[1] : undefined,
+        typeof node.type === 'string' && node.type.includes('.') ? node.type.split('.')[1] : undefined,
+      ];
+
+      const candidate = candidates.find((value) => typeof value === 'string' && value.trim().length > 0);
+      if (!candidate) {
+        if (typeof node.type === 'string' && node.type.startsWith('transform')) {
+          return false;
+        }
+        return false;
+      }
+
+      const normalized = normalizeAppName(candidate);
+      if (!normalized || allowedApps.has(normalized)) {
+        return false;
+      }
+
+      if (typeof node.type === 'string' && (node.type.startsWith('transform') || node.type.startsWith('condition'))) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [nodes, allowedApps]);
+
+  const ensureSupportedNodes = useCallback(() => {
+    const unsupported = findUnsupportedNode();
+    if (unsupported) {
+      const data = unsupported.data || {};
+      const appName = data.app || data.application || unsupported.type || unsupported.id;
+      const message = `${appName} is not yet supported. Remove or replace this node before continuing.`;
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      setSelectedNodeId(String(unsupported.id));
+      return false;
+    }
+    return true;
+  }, [findUnsupportedNode, setRunBanner]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
@@ -1335,24 +1422,21 @@ const GraphEditorContent = () => {
 
       // Fetch user connections (optional, requires auth)
       try {
-        const token = localStorage.getItem('token');
-        const headers: Record<string, string> = {};
-        if (token && token !== 'null' && token !== 'undefined') {
-          headers['Authorization'] = `Bearer ${token}`;
+        if (!token) {
+          setConfigConnections([]);
+        } else {
+          const res = await authFetch('/api/connections');
+          const j = await res.json().catch(() => ({}));
+          const list = j?.connections || [];
+          setConfigConnections(Array.isArray(list) ? list : []);
         }
-        const res = await fetch('/api/connections', {
-          headers: Object.keys(headers).length > 0 ? headers : undefined
-        });
-        const j = await res.json().catch(() => ({}));
-        const list = j?.connections || [];
-        setConfigConnections(Array.isArray(list) ? list : []);
       } catch {
         setConfigConnections([]);
       }
 
       // Fetch OAuth providers (public)
       try {
-        const res = await fetch('/api/oauth/providers');
+        const res = token ? await authFetch('/api/oauth/providers') : await fetch('/api/oauth/providers');
         const j = await res.json().catch(() => ({}));
         const list = j?.data?.providers || j?.providers || [];
         setConfigOAuthProviders(Array.isArray(list) ? list : []);
@@ -1767,6 +1851,10 @@ const GraphEditorContent = () => {
       return;
     }
 
+    if (!ensureSupportedNodes()) {
+      return;
+    }
+
     const missingConnectionNode = nodes.find((node) => nodeRequiresConnection(node));
     if (missingConnectionNode) {
       const missingLabel = missingConnectionNode.data?.label || missingConnectionNode.id;
@@ -1943,12 +2031,61 @@ const GraphEditorContent = () => {
         resetExecutionHighlights();
       }, 1200);
     }
-  }, [nodes, activeWorkflowId, createGraphPayload, updateNodeExecution, resetExecutionHighlights, setNodes, setActiveWorkflowId]);
+  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, updateNodeExecution, resetExecutionHighlights, setNodes, setActiveWorkflowId]);
+
+  const onSaveWorkflow = useCallback(async () => {
+    if (nodes.length === 0) {
+      toast.error('Add at least one node before saving');
+      return;
+    }
+
+    if (!ensureSupportedNodes()) {
+      return;
+    }
+
+    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const payload = createGraphPayload(workflowIdentifier);
+
+    setSaveState('saving');
+    try {
+      const response = await authFetch('/api/flows/save', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: workflowIdentifier,
+          name: payload.name,
+          graph: payload,
+          metadata: payload.metadata
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        const message = result?.error || (response.status === 401 ? 'Sign in to save workflows' : 'Failed to save workflow');
+        if (response.status === 401) {
+          await logout(true);
+        }
+        throw new Error(message);
+      }
+
+      const savedId = result.workflowId || workflowIdentifier;
+      setActiveWorkflowId(savedId);
+      try {
+        localStorage.setItem('lastWorkflowId', savedId);
+      } catch (error) {
+        console.warn('Unable to persist workflow id after save:', error);
+      }
+      toast.success('Workflow saved');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to save workflow');
+    } finally {
+      setSaveState('idle');
+    }
+  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, authFetch, logout, setActiveWorkflowId]);
   
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <NodeSidebar onAddNode={onAddNode} />
+      <NodeSidebar onAddNode={onAddNode} catalog={catalog} loading={catalogLoading} />
       
       {/* Main Graph Area */}
       <div className="flex-1 relative">
@@ -2005,9 +2142,23 @@ const GraphEditorContent = () => {
                     )}
                   </Button>
                   
-                  <Button variant="outline" className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save
+                  <Button
+                    variant="outline"
+                    onClick={onSaveWorkflow}
+                    disabled={saveState === 'saving'}
+                    className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
+                  >
+                    {saveState === 'saving' ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </>
+                    )}
                   </Button>
                   
                   <Button variant="outline" className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">

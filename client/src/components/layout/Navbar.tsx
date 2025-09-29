@@ -1,7 +1,10 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import AuthDialog from "@/components/auth/AuthDialog";
 
 const navItems = [
   { to: "/", label: "Home" },
@@ -18,6 +21,11 @@ const navItems = [
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+  const status = useAuthStore((state) => state.status);
+  const logout = useAuthStore((state) => state.logout);
+  const [authOpen, setAuthOpen] = useState(false);
+  const isAuthLoading = status === 'loading';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -60,11 +68,32 @@ export const Navbar = () => {
               {item.label}
             </NavLink>
           ))}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isAuthLoading}>
+                  {user.name || user.email}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/settings">Account settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => logout()}>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="outline" onClick={() => setAuthOpen(true)} disabled={isAuthLoading}>
+              Sign in
+            </Button>
+          )}
           <Button asChild variant="hero">
             <Link to="/schedule">Book a 30‑min call</Link>
           </Button>
         </div>
       </nav>
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
     </header>
   );
 };

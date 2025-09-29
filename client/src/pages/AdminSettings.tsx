@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { 
   Settings, 
   Key, 
@@ -17,6 +18,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import ConnectionManager from '@/components/connections/ConnectionManager';
 
 export default function AdminSettings() {
   const [apiKeys, setApiKeys] = useState({
@@ -110,6 +112,10 @@ export default function AdminSettings() {
       
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto p-6 space-y-8">
+          <ConnectionManager />
+
+          <Separator />
+
           {/* Header */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-4">

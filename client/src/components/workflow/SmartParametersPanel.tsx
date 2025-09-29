@@ -965,16 +965,18 @@ export function SmartParametersPanel() {
         const empty = !nextSchema?.properties || Object.keys(nextSchema.properties).length === 0;
         if (empty) {
           try {
-            const res = await fetch('/api/registry/catalog');
+            const res = await fetch('/api/registry/catalog?implemented=true');
             const json = await res.json();
             const connectorsMap = json?.catalog?.connectors || {};
 
-            const list = Object.entries(connectorsMap).map(([id, def]: any) => ({
-              id,
-              name: def?.name,
-              actions: def?.actions || [],
-              triggers: def?.triggers || []
-            }));
+            const list = Object.entries(connectorsMap)
+              .filter(([, def]: any) => def?.hasImplementation)
+              .map(([id, def]: any) => ({
+                id,
+                name: def?.name,
+                actions: def?.actions || [],
+                triggers: def?.triggers || []
+              }));
 
             const match = list.find((c: any) => {
               const title = canonicalizeAppId(c?.name);

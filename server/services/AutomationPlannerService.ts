@@ -6,7 +6,7 @@
  */
 
 import { MultiAIService } from '../aiModels.js';
-import { buildPlannerPrompt, getAllowlistForMode, type PlannerMode } from "./PromptBuilder.js";
+import { buildPlannerPrompt, getAllowlistForMode, normalizeAppId, type PlannerMode } from "./PromptBuilder.js";
 import { generateJsonWithGemini } from '../llm/MultiAIService.js';
 
 export interface AutomationStep {
@@ -18,7 +18,7 @@ export interface AutomationStep {
 }
 
 export interface AutomationTrigger {
-  type: 'time' | 'webhook' | 'email' | 'spreadsheet' | 'form';
+  type: 'time' | 'webhook' | 'email' | 'spreadsheet' | 'form' | 'manual';
   app: string;
   operation: string;
   description: string;
@@ -47,6 +47,7 @@ export interface AutomationPlan {
   complexity: 'simple' | 'medium' | 'complex';
   estimated_setup_time: string;
   business_value: string;
+  follow_up_questions?: Array<Record<string, any>>;
 }
 
 export class AutomationPlannerService {
@@ -84,7 +85,7 @@ export class AutomationPlannerService {
       } catch (parseError) {
         console.error('❌ Failed to parse LLM plan response:', parseError);
         // Fallback to deterministic planning
-        return this.createFallbackPlan(userPrompt, resolvedMode);
+        return this.sanitizePlan(this.createFallbackPlan(userPrompt, resolvedMode), resolvedMode);
       }
       
       console.log('✅ Generated dynamic automation plan:', {
@@ -95,21 +96,29 @@ export class AutomationPlannerService {
       });
       
       // Convert to our internal format
-      return {
+      const convertedPlan: AutomationPlan = {
         apps: plan.apps || [],
-        trigger: plan.trigger || { type: 'manual', app: 'manual', operation: 'trigger' },
+        trigger: plan.trigger || { type: 'manual', app: 'manual', operation: 'trigger', description: 'Manual trigger', required_inputs: [], missing_inputs: [] },
         steps: plan.steps || [],
         missing_inputs: plan.missing_inputs || [],
         workflow_name: plan.workflow_name || 'Generated Workflow',
         description: plan.description || 'AI-generated automation workflow',
         complexity: plan.complexity || 'medium',
+        estimated_setup_time: plan.estimated_setup_time || '10-20m',
         business_value: plan.business_value || 'Automation efficiency',
         follow_up_questions: plan.follow_up_questions || []
       };
+
+      const sanitizedPlan = this.sanitizePlan(convertedPlan, resolvedMode);
+      if (sanitizedPlan.steps.length === 0 && sanitizedPlan.apps.length === 0) {
+        return this.sanitizePlan(this.createFallbackPlan(userPrompt, resolvedMode), resolvedMode);
+      }
+
+      return sanitizedPlan;
       
     } catch (error) {
       console.error('❌ LLM planning failed:', error);
-      return this.createFallbackPlan(userPrompt, resolvedMode);
+      return this.sanitizePlan(this.createFallbackPlan(userPrompt, resolvedMode), resolvedMode);
     }
 
     const planningPrompt = `You are a world-class automation planner with expertise in business processes and our 149 available applications.
@@ -229,7 +238,7 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
       } catch (parseError) {
         console.error('❌ Failed to parse LLM planning response:', parseError);
         // Fallback plan
-        plan = this.createFallbackPlan(userPrompt, resolvedMode);
+        plan = this.sanitizePlan(this.createFallbackPlan(userPrompt, resolvedMode), resolvedMode);
       }
 
       // Validate and enhance the plan
@@ -242,11 +251,11 @@ This plan will be used to generate ONLY the necessary follow-up questions and th
         missingInputsCount: plan.missing_inputs?.length || 0
       });
 
-      return plan;
+      return this.sanitizePlan(plan, resolvedMode);
 
     } catch (error) {
       console.error('❌ LLM planning failed:', error);
-      return this.createFallbackPlan(userPrompt, resolvedMode);
+      return this.sanitizePlan(this.createFallbackPlan(userPrompt, resolvedMode), resolvedMode);
   }
   }
 
@@ -389,6 +398,102 @@ RESPOND WITH:
     return config;
   }
 
+  private static sanitizePlan(plan: AutomationPlan, mode: PlannerMode): AutomationPlan {
+    if (!plan) {
+      return this.createFallbackPlan('Invalid plan', mode);
+    }
+
+    const allowlist = getAllowlistForMode(mode);
+    const normalizedAllowlist = new Set<string>();
+    allowlist.forEach((app) => normalizedAllowlist.add(normalizeAppId(app)));
+    normalizedAllowlist.add('core');
+    normalizedAllowlist.add('built_in');
+    normalizedAllowlist.add('time');
+
+    const uniqueApps = new Set<string>();
+
+    const sanitizedSteps = (plan.steps || [])
+      .filter((step) => {
+        const normalized = normalizeAppId(step.app);
+        if (!normalizedAllowlist.has(normalized)) {
+          return false;
+        }
+        uniqueApps.add(normalized);
+        return true;
+      })
+      .map((step) => ({
+        ...step,
+        app: normalizeAppId(step.app)
+      }));
+
+    let trigger: AutomationTrigger | undefined = plan.trigger;
+    if (trigger) {
+      const normalizedTriggerApp = normalizeAppId(trigger.app);
+      if (normalizedAllowlist.has(normalizedTriggerApp)) {
+        trigger = { ...trigger, app: normalizedTriggerApp };
+        uniqueApps.add(normalizedTriggerApp);
+      } else if (normalizedAllowlist.has('time')) {
+        trigger = {
+          type: 'time',
+          app: 'time',
+          operation: trigger.operation || 'schedule',
+          description: trigger.description || 'Time-based trigger',
+          required_inputs: trigger.required_inputs?.length ? trigger.required_inputs : ['frequency'],
+          missing_inputs: trigger.missing_inputs?.length ? trigger.missing_inputs : ['frequency'],
+        };
+        uniqueApps.add('time');
+      } else {
+        trigger = {
+          type: 'manual',
+          app: 'core',
+          operation: 'manual',
+          description: trigger.description || 'Manual trigger',
+          required_inputs: [],
+          missing_inputs: []
+        };
+        uniqueApps.add('core');
+      }
+    } else if (normalizedAllowlist.has('time')) {
+      trigger = {
+        type: 'time',
+        app: 'time',
+        operation: 'schedule',
+        description: 'Scheduled trigger',
+        required_inputs: ['frequency'],
+        missing_inputs: ['frequency']
+      };
+      uniqueApps.add('time');
+    } else {
+      trigger = {
+        type: 'manual',
+        app: 'core',
+        operation: 'manual',
+        description: 'Manual trigger',
+        required_inputs: [],
+        missing_inputs: []
+      };
+      uniqueApps.add('core');
+    }
+
+    (plan.apps || []).forEach((app) => {
+      const normalized = normalizeAppId(app);
+      if (normalizedAllowlist.has(normalized)) {
+        uniqueApps.add(normalized);
+      }
+    });
+
+    const apps = Array.from(uniqueApps);
+    const missingInputs = (plan.missing_inputs || []).filter(Boolean);
+
+    return {
+      ...plan,
+      apps,
+      trigger,
+      steps: sanitizedSteps,
+      missing_inputs: missingInputs,
+    };
+  }
+
   /**
    * Create DYNAMIC fallback plan when LLM fails (analyzes prompt complexity)
    */
@@ -397,7 +502,7 @@ RESPOND WITH:
 
     const prompt = userPrompt.toLowerCase();
     const allowlist = getAllowlistForMode(mode);
-    const enforceAllowlist = mode === 'gas-only';
+    const enforceAllowlist = allowlist.size > 0;
     const detectedApps = new Set<string>();
     const missingInputs: MissingInput[] = [];
     const steps: AutomationStep[] = [];
@@ -418,6 +523,7 @@ RESPOND WITH:
     if (prompt.includes('salesforce') || prompt.includes('crm')) considerApp('salesforce');
     if (prompt.includes('docusign') || prompt.includes('contract') || prompt.includes('signature')) considerApp('docusign');
     if (prompt.includes('notion')) considerApp('notion');
+    if (prompt.includes('airtable')) considerApp('airtable');
     if (prompt.includes('calendly') || prompt.includes('calendar') || prompt.includes('meeting')) considerApp('calendly');
     if (prompt.includes('mailchimp') || prompt.includes('email marketing')) considerApp('mailchimp');
     if (prompt.includes('quickbooks') || prompt.includes('accounting') || prompt.includes('invoice')) considerApp('quickbooks');
@@ -426,6 +532,7 @@ RESPOND WITH:
     if (prompt.includes('hubspot')) considerApp('hubspot');
     if (prompt.includes('stripe') || prompt.includes('payment')) considerApp('stripe');
     if (prompt.includes('shopify') || prompt.includes('ecommerce')) considerApp('shopify');
+    if (prompt.includes('schedule') || prompt.includes('every day') || prompt.includes('weekly')) considerApp('time');
 
     if (detectedApps.size === 0) {
       ['gmail', 'sheets'].forEach(defaultApp => {
@@ -525,6 +632,72 @@ RESPOND WITH:
           );
           break;
 
+        case 'airtable':
+          steps.push({
+            app: 'airtable',
+            operation: 'create_record',
+            description: 'Create a record in Airtable',
+            required_inputs: ['base_id', 'table_name', 'record_data'],
+            missing_inputs: ['base_id', 'table_name']
+          });
+          missingInputs.push(
+            {
+              id: 'airtable_base_id',
+              question: 'Which Airtable base ID should we use?',
+              type: 'text',
+              placeholder: 'appXXXXXXXXXXXXXX',
+              required: true,
+              category: 'action',
+              helpText: 'You can find the base ID in your Airtable API settings.'
+            },
+            {
+              id: 'airtable_table_name',
+              question: 'Which Airtable table should receive the record?',
+              type: 'text',
+              placeholder: 'Invoices',
+              required: true,
+              category: 'action'
+            }
+          );
+          break;
+
+        case 'notion':
+          steps.push({
+            app: 'notion',
+            operation: 'create_page',
+            description: 'Create or update a Notion page',
+            required_inputs: ['database_id', 'properties'],
+            missing_inputs: ['database_id']
+          });
+          missingInputs.push({
+            id: 'notion_database_id',
+            question: 'Which Notion database should store this information?',
+            type: 'text',
+            placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+            required: true,
+            category: 'action',
+            helpText: 'Open the database in a browser and copy the ID from the URL.'
+          });
+          break;
+
+        case 'shopify':
+          steps.push({
+            app: 'shopify',
+            operation: 'create_order',
+            description: 'Create or update an order in Shopify',
+            required_inputs: ['shop_domain', 'order_payload'],
+            missing_inputs: ['shop_domain']
+          });
+          missingInputs.push({
+            id: 'shopify_domain',
+            question: 'What is your Shopify shop domain?',
+            type: 'text',
+            placeholder: 'mystore.myshopify.com',
+            required: true,
+            category: 'action'
+          });
+          break;
+
         case 'jira':
           steps.push({
             app: 'jira',
@@ -583,49 +756,6 @@ RESPOND WITH:
               question: 'Should leads be auto-assigned to specific sales reps?',
               type: 'select',
               options: ['Auto-assign by territory', 'Assign to specific rep', 'Round-robin assignment', 'No auto-assignment'],
-              required: true,
-              category: 'action'
-            }
-          );
-          break;
-
-        case 'docusign':
-          missingInputs.push(
-            {
-              id: 'docusign_template_id',
-              question: 'What DocuSign template should be used for contracts?',
-              type: 'text',
-              placeholder: 'template_123456',
-              required: true,
-              category: 'action'
-            },
-            {
-              id: 'docusign_signer_email',
-              question: 'What email field contains the signer\'s email address?',
-              type: 'text',
-              placeholder: '{{customer_email}}',
-              required: true,
-              category: 'action'
-            }
-          );
-          break;
-
-        case 'notion':
-          missingInputs.push(
-            {
-              id: 'notion_database_id',
-              question: 'What is your Notion database ID?',
-              type: 'text',
-              placeholder: '12345678-1234-1234-1234-123456789012',
-              required: true,
-              category: 'action',
-              helpText: 'Find this in your Notion database URL'
-            },
-            {
-              id: 'notion_page_template',
-              question: 'What properties should be set on the Notion page?',
-              type: 'textarea',
-              placeholder: 'Title: {{customer_name}}\nStatus: Onboarding\nOwner: {{sales_rep}}',
               required: true,
               category: 'action'
             }
@@ -841,6 +971,7 @@ If false: Follow-up questions are needed`;
 
     return heuristicallyDeterminePromptCompleteness(userPrompt);
   }
+
 }
 
 function interpretCompletionResponse(rawResponse: string): boolean | null {

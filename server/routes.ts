@@ -38,6 +38,33 @@ import { connectorRegistry } from "./ConnectorRegistry";
 import { webhookManager } from "./webhooks/WebhookManager";
 import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
+import { normalizeAppId } from "./services/PromptBuilder.js";
+
+const SUPPORTED_CONNECTION_PROVIDERS = [
+  'openai',
+  'gemini',
+  'claude',
+  'gmail',
+  'slack',
+  'airtable',
+  'notion',
+  'shopify',
+  'sheets',
+  'time'
+] as const;
+
+const SUPPORTED_CONNECTION_TYPES: Record<(typeof SUPPORTED_CONNECTION_PROVIDERS)[number], 'llm' | 'saas'> = {
+  openai: 'llm',
+  gemini: 'llm',
+  claude: 'llm',
+  gmail: 'saas',
+  slack: 'saas',
+  airtable: 'saas',
+  notion: 'saas',
+  shopify: 'saas',
+  sheets: 'saas',
+  time: 'saas'
+};
 
 // Middleware
 import { 
@@ -339,15 +366,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     checkQuota(1),
     securityService.validateInput([
       { field: 'name', type: 'string', required: true, maxLength: 255, sanitize: true },
-      { field: 'provider', type: 'string', required: true, allowedValues: ['openai', 'gemini', 'claude', 'slack', 'gmail'] },
+      { field: 'provider', type: 'string', required: true, allowedValues: [...SUPPORTED_CONNECTION_PROVIDERS] },
       { field: 'type', type: 'string', required: true, allowedValues: ['llm', 'saas', 'database'] },
       { field: 'credentials', type: 'json', required: true }
     ]),
     async (req, res) => {
       try {
+        const provider = String(req.body?.provider || '').toLowerCase() as typeof SUPPORTED_CONNECTION_PROVIDERS[number];
+        const inferredType = SUPPORTED_CONNECTION_TYPES[provider];
+        const requestedType = req.body?.type as 'llm' | 'saas' | 'database' | undefined;
+
+        const type = requestedType && requestedType !== 'database'
+          ? requestedType
+          : inferredType;
+
         const connectionId = await connectionService.createConnection({
           userId: req.user!.id,
-          ...req.body
+          name: req.body.name,
+          provider,
+          type,
+          credentials: req.body.credentials,
+          metadata: req.body.metadata
         });
         res.json({ success: true, connectionId });
       } catch (error) {
@@ -365,6 +404,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
+  });
+
+  app.get('/api/connections/providers', authenticateToken, (_req, res) => {
+    res.json({
+      success: true,
+      providers: SUPPORTED_CONNECTION_PROVIDERS.map((provider) => ({
+        id: provider,
+        type: SUPPORTED_CONNECTION_TYPES[provider],
+      }))
+    });
   });
 
   app.post('/api/connections/:id/test', 
@@ -630,7 +679,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/registry/catalog', async (req, res) => {
     try {
       const catalog = connectorRegistry.getNodeCatalog();
-      res.json({ success: true, catalog });
+      const implementedOnly = req.query.implemented !== 'false';
+
+      if (!implementedOnly) {
+        return res.json({ success: true, catalog });
+      }
+
+      const connectors: Record<string, any> = {};
+      Object.entries<any>(catalog.connectors || {}).forEach(([appId, def]) => {
+        if (def?.hasImplementation) {
+          connectors[appId] = def;
+        }
+      });
+
+      const categories: Record<string, any> = {};
+      Object.entries<any>(catalog.categories || {}).forEach(([categoryName, category]) => {
+        const nodes = (category?.nodes || []).filter((node: any) => node?.hasImplementation);
+        if (nodes.length > 0) {
+          categories[categoryName] = { ...category, nodes };
+        }
+      });
+
+      res.json({
+        success: true,
+        catalog: {
+          ...catalog,
+          connectors,
+          categories
+        }
+      });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
@@ -639,8 +716,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all connectors with implementation status
   app.get('/api/registry/connectors', async (req, res) => {
     try {
+      const includeAll = req.query.all === 'true';
       const connectors = connectorRegistry.getAllConnectors();
-      res.json({ success: true, connectors });
+      const list = includeAll ? connectors : connectors.filter(entry => entry.hasImplementation);
+      res.json({ success: true, connectors: list });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
@@ -702,7 +781,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get functions for a specific app
   app.get('/api/registry/functions/:appId', async (req, res) => {
     try {
-      const functions = connectorRegistry.getAppFunctions(req.params.appId);
+      const appId = normalizeAppId(req.params.appId);
+      if (!connectorRegistry.hasImplementation(appId)) {
+        return res.status(404).json({ success: false, error: `Connector not implemented: ${appId}` });
+      }
+      const functions = connectorRegistry.getAppFunctions(appId);
       res.json({ success: true, functions });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });

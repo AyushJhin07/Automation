@@ -6,38 +6,34 @@
  */
 
 import { connectorRegistry } from "../ConnectorRegistry.js";
+import { IMPLEMENTED_CONNECTOR_IDS } from "../integrations/supportedApps";
 
 export type PlannerMode = "gas-only" | "all";
 
 function getGasOnlyApps() {
   return [
-    { id: "gmail",        title: "Gmail",        ops: ["send_email","read_email","search_threads","add_label"] },
-    { id: "sheets",       title: "Google Sheets",ops: ["read_sheet","append_row","update_range","create_sheet"] },
-    { id: "drive",        title: "Google Drive", ops: ["find_files","create_file","move_file","get_file_metadata"] },
-    { id: "calendar",     title: "Google Calendar", ops: ["create_event","update_event","list_events"] },
-    { id: "docs",         title: "Google Docs",  ops: ["create_doc","append_text"] },
-    { id: "forms",        title: "Google Forms", ops: ["create_form","add_item","get_responses"] },
-    { id: "slides",       title: "Google Slides",ops: ["create_presentation","add_slide","replace_text"] },
-    { id: "contacts",     title: "Google Contacts", ops: ["create_contact","update_contact","find_contact"] },
-    { id: "chat",         title: "Google Chat",  ops: ["send_message"] },
-    { id: "time",         title: "Time Triggers", ops: ["schedule","delay","every_hour","every_day"] },
-    { id: "core",         title: "Core (GAS Utilities)", ops: ["http_request","transform","schedule","branch","merge"] },
+    { id: "gmail",  title: "Gmail",          ops: ["send_email","read_email","search_threads","add_label"] },
+    { id: "sheets", title: "Google Sheets",  ops: ["read_sheet","append_row","update_range","create_sheet"] },
+    { id: "time",   title: "Time Triggers",   ops: ["schedule","delay","every_hour","every_day"] },
+    { id: "core",   title: "Core Utilities", ops: ["http_request","transform","branch","merge"] },
   ];
 }
 
 function getAllAppsFromRegistry() {
   // registry already loaded at boot; expose everything the UI has
   const catalog = connectorRegistry.getNodeCatalog();
-  // catalog.connectors is usually: { [id]: { title, operations: {opId: {...}} } }
+  const implementedApps = new Set<string>(IMPLEMENTED_CONNECTOR_IDS.map((id) => normalizeAppId(id)));
   const entries = Object.entries(catalog.connectors || {});
-  return entries.map(([id, c]: any) => ({
-    id,
-    title: c?.name || id,
-    ops: [
-      ...(c?.actions || []).map((action: any) => action.id),
-      ...(c?.triggers || []).map((trigger: any) => trigger.id)
-    ]
-  }));
+  return entries
+    .filter(([entryId, c]: any) => c?.hasImplementation && implementedApps.has(normalizeAppId(entryId)))
+    .map(([id, c]: any) => ({
+      id: normalizeAppId(id),
+      title: c?.name || id,
+      ops: [
+        ...(c?.actions || []).map((action: any) => action.id),
+        ...(c?.triggers || []).map((trigger: any) => trigger.id)
+      ]
+    }));
 }
 
 function stringifyApps(apps: Array<{id:string; title:string; ops:string[];}>) {
@@ -135,14 +131,14 @@ Return ONLY valid JSON that matches the schema.
  */
 export function getAllowlistForMode(mode: PlannerMode): Set<string> {
   if (mode === "gas-only") {
-    return new Set(["gmail","sheets","drive","calendar","docs","forms","slides","contacts","chat","time","core"]);
+    return new Set(["gmail","sheets","time","core"]);
   }
-  // Build from live registry
-  const catalog = connectorRegistry.getNodeCatalog();
-  const all = new Set(Object.keys(catalog.connectors || {}));
-  // Always allow "core" nodes
-  all.add("core");
-  return all;
+  const allowlist = new Set<string>();
+  IMPLEMENTED_CONNECTOR_IDS.forEach((id) => allowlist.add(normalizeAppId(id)));
+  allowlist.add("core");
+  allowlist.add("built_in");
+  allowlist.add("time");
+  return allowlist;
 }
 
 /**
