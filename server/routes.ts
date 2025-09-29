@@ -5301,24 +5301,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { llmEvaluationManager } = await import('./core/LLMEvaluationManager');
       const goldenSets = llmEvaluationManager.listGoldenSets();
-      
-      res.json({ 
-        success: true, 
-        goldenSets 
+
+      res.json({
+        success: true,
+        goldenSets
       });
     } catch (error) {
       console.error('Error listing golden sets:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to list golden sets' 
+      res.status(500).json({
+        success: false,
+        error: 'Failed to list golden sets'
       });
     }
   });
 
-  const httpServer = createServer(app);
-
-  return httpServer;
-}
   // ===== EXECUTION QUEUE ENDPOINTS =====
   app.post('/api/workflows/:id/queue', optionalAuth, async (req, res) => {
     try {
@@ -5345,3 +5341,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
+
+  const httpServer = createServer(app);
+
+  return httpServer;
+}
