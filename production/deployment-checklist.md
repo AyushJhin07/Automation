@@ -95,7 +95,7 @@ PORT=5000
 HOST=0.0.0.0
 
 # Database (PostgreSQL recommended)
-DATABASE_URL="postgresql://user:pass@host:5432/automation_platform"
+DATABASE_URL="postgresql://automation_user:supersecurepassword@managed-postgres.example.com:5432/automation_platform"
 
 # LLM Provider (Gemini recommended)
 LLM_PROVIDER=gemini
