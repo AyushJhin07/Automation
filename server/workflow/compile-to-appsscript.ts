@@ -10308,9 +10308,8 @@ function main(ctx) {
   ctx = ctx || {};
   __resetNodeOutputs();
   __bootstrapExecution();
-  console.log('🚀 Starting workflow with ${allNodes.length} steps (${supportedNodes.length} native, ${unsupportedNodes.length} fallback)...');
-${executionLines ? executionLines + '
-' : ''}  return ctx;
+  console.log('🚀 Starting workflow with \${allNodes.length} steps (\${supportedNodes.length} native, \${unsupportedNodes.length} fallback)...');
+${executionLines ? executionLines + '\n' : ''}  return ctx;
 }
 `;
 
