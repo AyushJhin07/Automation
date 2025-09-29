@@ -8,6 +8,13 @@
       "when": 1759121970491,
       "tag": "0000_lyrical_malice",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1893456000000,
+      "tag": "0001_trigger_tables",
+      "breakpoints": false
     }
   ]
 }

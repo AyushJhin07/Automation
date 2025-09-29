@@ -457,6 +457,7 @@ export const webhookLogs = pgTable(
     processed: boolean('processed').default(false).notNull(),
     source: text('source').default('webhook').notNull(),
     dedupeToken: text('dedupe_token'),
+    executionId: text('execution_id'),
     error: text('error'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

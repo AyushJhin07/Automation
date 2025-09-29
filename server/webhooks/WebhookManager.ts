@@ -8,10 +8,15 @@ import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
 import type { ConnectionService } from '../services/ConnectionService';
-import { workflowRuntimeService } from '../workflow/WorkflowRuntimeService';
+
+type QueueService = {
+  enqueue: (request: { workflowId: string; userId?: string; triggerType?: string; triggerData?: Record<string, any> | null }) => Promise<{ executionId: string }>;
+};
 
 export class WebhookManager {
-  private static instance: WebhookManager;
+  private static instance: WebhookManager | null = null;
+  private static queueOverride: QueueService | null = null;
+  private static configuredQueue: QueueService | null = null;
   private activeWebhooks: Map<string, WebhookTrigger> = new Map();
   private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
   private pollingStartTimeouts: Map<string, NodeJS.Timeout> = new Map();
@@ -29,6 +34,31 @@ export class WebhookManager {
       WebhookManager.instance = new WebhookManager();
     }
     return WebhookManager.instance;
+  }
+
+  public static configureQueueService(queue: QueueService): void {
+    WebhookManager.configuredQueue = queue;
+  }
+
+  public static setQueueServiceForTests(queue: QueueService): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('WebhookManager.setQueueServiceForTests is only available in test environments');
+    }
+
+    WebhookManager.queueOverride = queue;
+  }
+
+  public static resetForTests(): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('WebhookManager.resetForTests is only available in test environments');
+    }
+
+    if (WebhookManager.instance) {
+      WebhookManager.instance.dispose();
+      WebhookManager.instance = null;
+    }
+    WebhookManager.queueOverride = null;
+    WebhookManager.configuredQueue = null;
   }
 
   private constructor() {
@@ -66,6 +96,44 @@ export class WebhookManager {
       console.error('❌ Failed to initialize WebhookManager from persistence:', this.initializationError);
     }
   }
+
+  private dispose(): void {
+    for (const interval of this.pollingIntervals.values()) {
+      clearInterval(interval);
+    }
+    this.pollingIntervals.clear();
+
+    for (const timeout of this.pollingStartTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    this.pollingStartTimeouts.clear();
+
+    this.activeWebhooks.clear();
+    this.pollingTriggers.clear();
+    this.dedupeCache.clear();
+  }
+
+  public getWebhook(id: string): WebhookTrigger | undefined {
+    return this.activeWebhooks.get(id);
+  }
+
+  public getInitializationError(): string | undefined {
+    return this.initializationError;
+  }
+
+
+  private async getQueueService(): Promise<QueueService> {
+    if (WebhookManager.queueOverride) {
+      return WebhookManager.queueOverride;
+    }
+
+    if (WebhookManager.configuredQueue) {
+      return WebhookManager.configuredQueue;
+    }
+
+    throw new Error('Execution queue service has not been configured.');
+  }
+
 
   /**
    * Register a webhook trigger
@@ -153,7 +221,7 @@ export class WebhookManager {
       // Process the trigger (this would integrate with workflow engine)
       await this.processTriggerEvent(event);
 
-      console.log(`✅ Processed webhook: ${webhookId} for ${webhook.appId}.${webhook.triggerId}`);
+      console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`);
       return true;
 
     } catch (error) {
@@ -520,7 +588,7 @@ export class WebhookManager {
   /**
    * Process a trigger event (integrate with workflow engine)
    */
-  private async processTriggerEvent(event: TriggerEvent): Promise<void> {
+  private async processTriggerEvent(event: TriggerEvent): Promise<boolean> {
     let logId: string | null = null;
     try {
       logId = await this.persistence.logWebhookEvent(event);
@@ -528,27 +596,34 @@ export class WebhookManager {
         event.id = logId;
       }
 
-      const executionResult = await workflowRuntimeService.triggerWorkflowExecution({
+      const queueService = await this.getQueueService();
+      const queueResult = await queueService.enqueue({
         workflowId: event.workflowId,
-        triggerId: event.triggerId,
-        appId: event.appId,
-        source: event.source,
-        payload: event.payload,
-        headers: event.headers,
-        timestamp: event.timestamp,
-        dedupeToken: event.dedupeToken,
+        triggerType: event.source,
+        triggerData: {
+          appId: event.appId,
+          triggerId: event.triggerId,
+          payload: event.payload,
+          headers: event.headers,
+          dedupeToken: event.dedupeToken,
+          timestamp: event.timestamp.toISOString(),
+          source: event.source,
+        },
       });
 
-      event.processed = executionResult.success;
-      await this.persistence.markWebhookEventProcessed(logId, executionResult);
+      event.processed = true;
+      await this.persistence.markWebhookEventProcessed(logId, {
+        success: true,
+        executionId: queueResult.executionId,
+      });
 
-      if (!executionResult.success && executionResult.error) {
-        console.error('❌ Error processing trigger event:', executionResult.error);
-      }
+      console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`);
+      return true;
     } catch (error) {
       const message = getErrorMessage(error);
       console.error('❌ Error processing trigger event:', message);
       await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
+      return false;
     }
   }
 
