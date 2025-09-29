@@ -865,16 +865,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/oauth/providers', async (req, res) => {
     try {
       const providers = oauthManager.listProviders();
-      
+      const disabledProviders = oauthManager.listDisabledProviders();
+
       res.json({
         success: true,
         data: {
-          providers: providers.map(p => ({
-            name: p.name,
-            displayName: p.displayName,
-            scopes: p.config.scopes,
-            configured: !!(p.config.clientId && p.config.clientSecret)
-          }))
+          providers: [
+            ...providers.map(p => ({
+              name: p.name,
+              displayName: p.displayName,
+              scopes: p.config.scopes,
+              configured: true
+            })),
+            ...disabledProviders.map(({ provider, reason }) => ({
+              name: provider.name,
+              displayName: provider.displayName,
+              scopes: provider.config.scopes,
+              configured: false,
+              disabledReason: reason
+            }))
+          ]
         }
       });
     } catch (error) {
