@@ -118,7 +118,13 @@ class InMemoryTriggerPersistenceDb {
 const dbStub = new InMemoryTriggerPersistenceDb();
 
 const { setDatabaseClientForTests } = await import('../../database/schema.js');
+const {
+  setDatabaseAvailabilityForTests,
+  resetDatabaseAvailabilityOverrideForTests,
+} = await import('../../database/status.js');
+
 setDatabaseClientForTests(dbStub);
+setDatabaseAvailabilityForTests(true);
 
 const { WebhookManager } = await import('../WebhookManager.js');
 
@@ -169,5 +175,6 @@ const dedupeTokens = dbStub.dedupeTokens.get(webhookId) ?? [];
 assert.ok(dedupeTokens.length > 0, 'dedupe tokens should be persisted after handling event');
 
 WebhookManager.resetForTests();
+resetDatabaseAvailabilityOverrideForTests();
 
 console.log('WebhookManager persistence integration test passed.');
