@@ -559,6 +559,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== DEPLOYMENT ROUTES =====
 
+  app.options('/api/workflow/deploy', (req, res) => {
+    res.set('Allow', 'POST');
+    res.sendStatus(204);
+  });
+
   app.post('/api/workflow/deploy',
     process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken,
     process.env.NODE_ENV === 'development' ? (req: any, res: any, next: any) => next() : proOrHigher, // Skip plan check in dev
