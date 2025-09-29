@@ -820,7 +820,13 @@ const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<str
 };
 
 // Sidebar Component (REPLACEMENT)
-const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: any) => void }) => {
+interface NodeSidebarProps {
+  onAddNode: (nodeType: string, nodeData: any) => void;
+  catalog: any | null;
+  loading?: boolean;
+}
+
+const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSidebarProps) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
@@ -848,7 +854,7 @@ const NodeSidebar = ({ onAddNode }: { onAddNode: (nodeType: string, nodeData: an
 
   const [apps, setApps] = useState<Record<string, AppGroup>>({});
   const [categories, setCategories] = useState<string[]>([]);
-  const isLoading = loading;
+  const isLoading = Boolean(catalogLoading);
 
   // Persist user preferences
   useEffect(() => {
