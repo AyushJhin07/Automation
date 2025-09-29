@@ -539,7 +539,8 @@ try {
     } as any;
   }) as any;
 
-  const tabs = await fetchSheetTabs("spreadsheet-123");
+  const { tabs, error } = await fetchSheetTabs("spreadsheet-123");
+  assert.equal(error, undefined, "successful metadata fetch should not report an error");
   assert.ok(Array.isArray(tabs) && tabs.length === 3, "should return tab names from stubbed metadata fetch");
   assert.ok(
     typeof capturedUrl === "string" && capturedUrl.includes("/api/google/sheets/spreadsheet-123/metadata"),

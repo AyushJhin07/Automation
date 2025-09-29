@@ -138,7 +138,11 @@ export const AIParameterEditor: React.FC<AIParameterEditorProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const fallback = response.statusText || 'Request failed';
+        const errorText = await response.text().catch(() => '');
+        const message = errorText?.trim()?.length ? errorText : `HTTP ${response.status}: ${fallback}`;
+        setAiSuggestion(`Error: ${message}`);
+        return;
       }
 
       const result = await response.json();
