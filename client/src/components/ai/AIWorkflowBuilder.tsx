@@ -154,13 +154,26 @@ export const AIWorkflowBuilder: React.FC = () => {
       const response = await fetch('/api/ai-planner/plan-workflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           prompt: prompt.trim(),
           userId: 'demo-user'
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to plan automation');
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        const message = errorText?.trim()?.length
+          ? errorText
+          : `Failed to plan automation (${response.status})`;
+        setError(message);
+        toast({
+          variant: 'destructive',
+          title: 'Automation planning failed',
+          description: message,
+        });
+        setGeneratedWorkflow(createDemoWorkflow(prompt));
+        return;
+      }
 
       const data = await response.json();
       
@@ -201,7 +214,7 @@ export const AIWorkflowBuilder: React.FC = () => {
     } catch (err) {
       console.error('Error generating workflow:', err);
       setError('Failed to generate workflow. Please try again.');
-      
+
       // Fallback to demo workflow for now
       setGeneratedWorkflow(createDemoWorkflow(prompt));
     } finally {
@@ -217,13 +230,25 @@ export const AIWorkflowBuilder: React.FC = () => {
         const refineResponse = await fetch('/api/ai-planner/refine-plan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            plan: currentPlan, 
-            answers: providedAnswers 
+          body: JSON.stringify({
+            plan: currentPlan,
+            answers: providedAnswers
           })
         });
 
-        if (!refineResponse.ok) throw new Error('Plan refinement failed');
+        if (!refineResponse.ok) {
+          const errorText = await refineResponse.text().catch(() => '');
+          const message = errorText?.trim()?.length
+            ? errorText
+            : `Plan refinement failed (${refineResponse.status})`;
+          setError(message);
+          toast({
+            variant: 'destructive',
+            title: 'Plan refinement failed',
+            description: message,
+          });
+          return;
+        }
         
         const refinementResult = await refineResponse.json();
         
@@ -256,7 +281,19 @@ export const AIWorkflowBuilder: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: prompt.trim(), answers: providedAnswers })
       });
-      if (!res.ok) throw new Error('Build failed');
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => '');
+        const message = errorText?.trim()?.length
+          ? errorText
+          : `Build failed (${res.status})`;
+        setError(message);
+        toast({
+          variant: 'destructive',
+          title: 'Workflow build failed',
+          description: message,
+        });
+        return;
+      }
       const compiled = await res.json();
       // Persist for Graph Editor to load
       localStorage.setItem('lastCompile', JSON.stringify(compiled));

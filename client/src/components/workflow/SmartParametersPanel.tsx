@@ -297,38 +297,59 @@ const SHEET_NAME_FIELD_CANDIDATES = [
   "sheet_title"
 ];
 
+export type FetchSheetTabsResult = {
+  tabs: string[];
+  error?: string;
+};
+
 export const fetchSheetTabs = async (
   spreadsheetId: string,
   options: { signal?: AbortSignal } = {}
-): Promise<string[]> => {
+): Promise<FetchSheetTabsResult> => {
   const trimmed = spreadsheetId?.trim?.() ?? "";
-  if (!trimmed) return [];
-
-  const url = `/api/google/sheets/${encodeURIComponent(trimmed)}/metadata`;
-  const response = await fetch(url, {
-    method: "GET",
-    signal: options.signal
-  });
-
-  if (!response.ok) {
-    const error = await response.text().catch(() => "");
-    throw new Error(error || `Failed to load sheet metadata (${response.status})`);
+  if (!trimmed) {
+    return { tabs: [] };
   }
 
-  const json = await response.json().catch(() => ({}));
-  const candidate = json?.sheets ?? json?.tabs ?? json?.sheetNames ?? [];
+  const url = `/api/google/sheets/${encodeURIComponent(trimmed)}/metadata`;
 
-  if (!Array.isArray(candidate)) return [];
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      signal: options.signal
+    });
 
-  return candidate
-    .map((value) =>
-      typeof value === "string"
-        ? value.trim()
-        : typeof value === "number"
-        ? String(value)
-        : ""
-    )
-    .filter((value) => value.length > 0);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      const message = errorText || `Failed to load sheet metadata (${response.status})`;
+      return { tabs: [], error: message };
+    }
+
+    const json = await response.json().catch(() => ({}));
+    const candidate = json?.sheets ?? json?.tabs ?? json?.sheetNames ?? [];
+
+    if (!Array.isArray(candidate)) {
+      return { tabs: [] };
+    }
+
+    const tabs = candidate
+      .map((value) =>
+        typeof value === "string"
+          ? value.trim()
+          : typeof value === "number"
+          ? String(value)
+          : ""
+      )
+      .filter((value) => value.length > 0);
+
+    return { tabs };
+  } catch (error: any) {
+    const message =
+      typeof error?.message === "string" && error.message.trim()
+        ? error.message.trim()
+        : "Unable to load sheet metadata";
+    return { tabs: [], error: message };
+  }
 };
 
 export const augmentSchemaWithSheetTabs = (
@@ -813,9 +834,19 @@ export function SmartParametersPanel() {
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => "");
-          throw new Error(
-            errorText || `Metadata refresh failed (${response.status})`
-          );
+          const message =
+            errorText?.trim()?.length
+              ? errorText
+              : `Metadata refresh failed (${response.status})`;
+          if (metadataRefreshAbortRef.current === controller) {
+            metadataRefreshAbortRef.current = null;
+          }
+          setMetadataRefreshState({
+            status: "error",
+            error: message,
+            reason: reason ?? null,
+          });
+          return;
         }
 
         const result = await response.json().catch(() => ({}));
@@ -1097,24 +1128,43 @@ export function SmartParametersPanel() {
     }));
 
     fetchSheetTabs(spreadsheetId, { signal: controller.signal })
-      .then((tabs) => {
+      .then(({ tabs, error: tabsError }) => {
         if (cancelled) return;
-        setSheetMetadata({ spreadsheetId, tabs, status: "success" });
+        if (tabsError) {
+          setSheetMetadata({
+            spreadsheetId,
+            tabs: tabs ?? [],
+            status: "error",
+            error: tabsError || "Failed to load sheet metadata",
+          });
+          if (originalSchemaRef.current) {
+            const restored =
+              augmentSchemaWithSheetTabs(originalSchemaRef.current, []) || originalSchemaRef.current;
+            setSchema(restored);
+          }
+          return;
+        }
+
+        const safeTabs = Array.isArray(tabs) ? tabs : [];
+        setSheetMetadata({ spreadsheetId, tabs: safeTabs, status: "success" });
         if (originalSchemaRef.current) {
-          const augmented = augmentSchemaWithSheetTabs(originalSchemaRef.current, tabs) || originalSchemaRef.current;
+          const augmented =
+            augmentSchemaWithSheetTabs(originalSchemaRef.current, safeTabs) || originalSchemaRef.current;
           setSchema(augmented);
         }
       })
       .catch((err: any) => {
         if (cancelled) return;
+        const message = err?.message || "Failed to load sheet metadata";
         setSheetMetadata({
           spreadsheetId,
           tabs: [],
           status: "error",
-          error: err?.message || "Failed to load sheet metadata"
+          error: message,
         });
         if (originalSchemaRef.current) {
-          const restored = augmentSchemaWithSheetTabs(originalSchemaRef.current, []) || originalSchemaRef.current;
+          const restored =
+            augmentSchemaWithSheetTabs(originalSchemaRef.current, []) || originalSchemaRef.current;
           setSchema(restored);
         }
       });
@@ -1696,6 +1746,12 @@ export function SmartParametersPanel() {
       {metadataRefreshState.status === 'error' && metadataRefreshState.error && (
         <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
           Metadata refresh failed: {metadataRefreshState.error}
+        </div>
+      )}
+
+      {sheetMetadata?.status === 'error' && sheetMetadata.error && (
+        <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          Sheet tabs unavailable: {sheetMetadata.error}
         </div>
       )}
 

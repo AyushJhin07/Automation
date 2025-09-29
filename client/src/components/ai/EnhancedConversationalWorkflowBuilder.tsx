@@ -461,7 +461,7 @@ You can try:
     return filtered;
   };
 
-  const resolveModelCredentials = () => {
+  const resolveModelCredentials = (): { provider: string; apiKey?: string; error?: string } => {
     const provider = providerOf(selectedModel);
     const currentApiKey =
       provider === 'gemini' ? (apiKeys.gemini || '') :
@@ -471,7 +471,10 @@ You can try:
     const serverHasIt = serverModels.length === 0 ? true : serverHasProvider(provider);
 
     if (!currentApiKey && !serverHasIt) {
-      throw new Error(`Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`);
+      return {
+        provider,
+        error: `Please configure your ${selectedModel} API key in Admin Settings (/admin/settings)`,
+      };
     }
 
     return { provider, apiKey: currentApiKey || undefined };
@@ -483,7 +486,12 @@ You can try:
     requested: number = 1
   ): Promise<Question[] | null> => {
     const userId = localStorage.getItem('userId') || 'demo-user';
-    const { apiKey } = resolveModelCredentials();
+    const credentials = resolveModelCredentials();
+    if (credentials.error) {
+      informPlannerOutage(credentials.error);
+      return null;
+    }
+    const { apiKey } = credentials;
 
     try {
       const response = await fetch('/api/ai/generate-workflow', {
