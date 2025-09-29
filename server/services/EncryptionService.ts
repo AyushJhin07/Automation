@@ -183,12 +183,19 @@ export class EncryptionService {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
     let result = '';
     const randomBytes = crypto.randomBytes(length);
-    
+
     for (let i = 0; i < length; i++) {
       result += chars[randomBytes[i] % chars.length];
     }
-    
+
     return result;
+  }
+
+  /**
+   * Generate a secure identifier suitable for OAuth state/nonce values
+   */
+  public static generateSecureId(length: number = 48): string {
+    return this.generateRandomString(length);
   }
 
   // Self-test for encryption roundtrip
