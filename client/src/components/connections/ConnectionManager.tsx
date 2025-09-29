@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,15 +65,23 @@ export const ConnectionManager = () => {
         if (response.status === 401) {
           await logout(true);
         }
-        throw new Error('Failed to load providers');
+        setError('Unable to load connection providers. Please try again later.');
+        setProviders([]);
+        return;
       }
       const result = await response.json();
       if (result.success) {
         setProviders(result.providers || []);
+      } else {
+        setError(result.error || 'Unable to load connection providers.');
+        setProviders([]);
       }
     } catch (err) {
       console.error('Failed to load providers', err);
       setProviders([]);
+      if (!error) {
+        setError('Unable to load connection providers.');
+      }
     }
   };
 
@@ -85,11 +93,16 @@ export const ConnectionManager = () => {
         if (response.status === 401) {
           await logout(true);
         }
-        throw new Error('Failed to load connections');
+        setError('Unable to load connections. Please try again later.');
+        setConnections([]);
+        return;
       }
       const result = await response.json();
       if (result.success) {
         setConnections(result.connections || []);
+        if (!result.connections?.length) {
+          setError(undefined);
+        }
       } else {
         setError(result.error || 'Unable to load connections');
       }
@@ -123,7 +136,10 @@ export const ConnectionManager = () => {
 
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create connection');
+        const message = result.error || 'Failed to create connection';
+        setError(message);
+        toast.error(message);
+        return;
       }
 
       toast.success('Connection created');
@@ -146,7 +162,10 @@ export const ConnectionManager = () => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Connection test failed');
+        const message = result.error || 'Connection test failed';
+        toast.error(message);
+        setError(message);
+        return;
       }
       toast.success('Connection test passed');
       await loadConnections();
@@ -162,7 +181,10 @@ export const ConnectionManager = () => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to delete connection');
+        const message = result.error || 'Failed to delete connection';
+        toast.error(message);
+        setError(message);
+        return;
       }
       toast.success('Connection deleted');
       await loadConnections();
@@ -264,9 +286,15 @@ export const ConnectionManager = () => {
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </div>
           {connections.length === 0 && !isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              No connections yet. Create one above to start using it inside your workflows.
-            </p>
+            error ? (
+              <Alert variant="destructive" data-testid="connections-empty-error">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No connections yet. Create one above to start using it inside your workflows.
+              </p>
+            )
           ) : (
             <div className="space-y-3">
               {connections.map((connection) => (

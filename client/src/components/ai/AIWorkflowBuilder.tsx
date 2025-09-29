@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PaywallModal } from '@/components/auth/PaywallModal';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from '@/components/ui/use-toast';
 import { 
   Brain, 
   Sparkles, 
@@ -31,6 +33,10 @@ interface GeneratedWorkflow {
   estimatedValue: string;
 }
 
+interface AIWorkflowBuilderProps {
+  initialWorkflow?: GeneratedWorkflow | null;
+}
+
 interface WorkflowNode {
   id: string;
   type: string;
@@ -50,10 +56,10 @@ interface WorkflowConnection {
   targetHandle?: string;
 }
 
-export const AIWorkflowBuilder: React.FC = () => {
+export const AIWorkflowBuilder: React.FC<AIWorkflowBuilderProps> = ({ initialWorkflow = null }) => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedWorkflow, setGeneratedWorkflow] = useState<GeneratedWorkflow | null>(null);
+  const [generatedWorkflow, setGeneratedWorkflow] = useState<GeneratedWorkflow | null>(initialWorkflow);
   const [error, setError] = useState<string | null>(null);
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('auto');
@@ -64,6 +70,10 @@ export const AIWorkflowBuilder: React.FC = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [step, setStep] = useState<'input' | 'questions' | 'ready'>('input');
   const [currentPlan, setCurrentPlan] = useState<any>(null); // Store automation plan
+  const [isCheckingDeploySupport, setIsCheckingDeploySupport] = useState(true);
+  const [deploySupported, setDeploySupported] = useState(false);
+  const [deployFeedback, setDeployFeedback] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null);
+  const [isDeploying, setIsDeploying] = useState(false);
 
   // Load available AI models on component mount
   useEffect(() => {
@@ -80,6 +90,71 @@ export const AIWorkflowBuilder: React.FC = () => {
     };
     
     loadModels();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkDeploymentSupport = async () => {
+      setIsCheckingDeploySupport(true);
+      try {
+        const response = await fetch('/api/deployment/prerequisites');
+        if (!isMounted) return;
+
+        if (!response.ok) {
+          setDeploySupported(false);
+          setDeployFeedback({
+            variant: 'destructive',
+            message: 'Google deployment is unavailable right now. Please try again later.'
+          });
+          return;
+        }
+
+        const payload = await response.json().catch(() => ({ success: false }));
+        const prerequisites = payload?.data ?? {};
+        const canDeploy = Boolean(
+          (payload?.success ?? false) &&
+          (typeof prerequisites.valid === 'boolean'
+            ? prerequisites.valid
+            : typeof prerequisites.canDeploy === 'boolean'
+              ? prerequisites.canDeploy
+              : true)
+        );
+
+        setDeploySupported(canDeploy);
+        if (!canDeploy) {
+          const issues: string[] = Array.isArray(prerequisites?.issues)
+            ? prerequisites.issues
+            : [];
+          setDeployFeedback({
+            variant: 'destructive',
+            message: issues.length
+              ? `Deployment prerequisites missing: ${issues.join(', ')}`
+              : 'Please finish configuring deployment prerequisites before deploying to Google.'
+          });
+        } else {
+          setDeployFeedback(null);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.warn('Deployment support check failed', error);
+        setDeploySupported(false);
+        setDeployFeedback({
+          variant: 'destructive',
+          message: 'We could not verify deployment support. Manual deployment is recommended for now.'
+        });
+      } finally {
+        if (isMounted) {
+          setIsCheckingDeploySupport(false);
+        }
+      }
+    };
+
+    checkDeploymentSupport();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleGenerateWorkflow = async () => {
@@ -351,16 +426,16 @@ function processCustomerEmails() {
   };
 
   const handleDeployToGoogle = async () => {
-    if (!generatedWorkflow) return;
-    
+    if (!generatedWorkflow || !deploySupported || isDeploying) return;
+
+    setIsDeploying(true);
+    setDeployFeedback(null);
+
     try {
-      // TODO: Deploy to user's Google Apps Script
       const response = await fetch('/api/workflow/deploy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // TODO: Add JWT auth when available
-          // ...(jwt && { Authorization: `Bearer ${jwt}` })
         },
         body: JSON.stringify({
           files: generatedWorkflow.appsScriptCode ? [
@@ -373,12 +448,44 @@ function processCustomerEmails() {
           options: { projectName: generatedWorkflow.title }
         })
       });
-      
-      if (response.ok) {
-        alert('Automation deployed to your Google account!');
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.success === false) {
+        const errorMessage = result?.error || `Deployment failed with status ${response.status}.`;
+        toast({
+          title: 'Deployment failed',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+        setDeployFeedback({
+          variant: 'destructive',
+          message: 'Automatic deployment is unavailable. Please follow the manual deployment instructions below.'
+        });
+        return;
       }
-    } catch (err) {
-      alert('Deployment feature coming soon!');
+
+      toast({
+        title: 'Deployment started',
+        description: 'Your workflow is being pushed to Google Apps Script.'
+      });
+      setDeployFeedback({
+        variant: 'default',
+        message: 'Deployment request sent successfully. Check Google Apps Script for status updates.'
+      });
+    } catch (err: any) {
+      console.error('Deployment failed', err);
+      toast({
+        title: 'Deployment unavailable',
+        description: err?.message || 'We were unable to reach the deployment service.',
+        variant: 'destructive'
+      });
+      setDeploySupported(false);
+      setDeployFeedback({
+        variant: 'destructive',
+        message: 'Automatic deployment is currently unavailable. Please deploy manually using the provided code.'
+      });
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -730,22 +837,49 @@ function processCustomerEmails() {
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 justify-center">
-            <Button 
-              onClick={handleBuildWorkflow}
-              className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3"
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              Open in Drag & Drop Builder
-            </Button>
-            
-            <Button 
-              onClick={handleDeployToGoogle}
+          <div className="flex flex-col items-center gap-4">
+            {deployFeedback && (
+              <Alert
+                className="max-w-xl"
+                variant={deployFeedback.variant}
+                data-testid="deploy-feedback"
+              >
+                <AlertDescription>{deployFeedback.message}</AlertDescription>
+              </Alert>
+            )}
+            {!deployFeedback && !deploySupported && !isCheckingDeploySupport && (
+              <Alert className="max-w-xl" variant="destructive" data-testid="deploy-unavailable">
+                <AlertDescription>
+                  Automatic deployment is currently unavailable. You can still copy the generated code and deploy manually.
+                </AlertDescription>
+              </Alert>
+            )}
+            {isCheckingDeploySupport && (
+              <Alert className="max-w-xl" data-testid="deploy-checking">
+                <AlertDescription>
+                  Checking deployment prerequisites…
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={handleBuildWorkflow}
+                className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Open in Drag & Drop Builder
+              </Button>
+
+              <Button
+                onClick={handleDeployToGoogle}
               className="bg-green-600 hover:bg-green-700 text-lg px-8 py-3"
-            >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              Deploy to Google Account
-            </Button>
+              disabled={!deploySupported || isCheckingDeploySupport || isDeploying}
+              data-testid="deploy-button"
+              >
+                <ArrowRight className="w-4 h-4 mr-2" />
+                Deploy to Google Account
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -27,7 +27,9 @@
     "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@shared/*": ["./shared/*"],
+      "@testing-library/react": ["./client/test-utils/rtl.ts"],
+      "@testing-library/react/*": ["./client/test-utils/rtl.ts"]
     }
   }
 }

@@ -260,9 +260,13 @@ const WorkflowVisualPreview = ({ workflowData }: { workflowData: any }) => {
   );
 };
 
-export default function EnhancedConversationalWorkflowBuilder() {
+type EnhancedConversationalWorkflowBuilderProps = {
+  initialInput?: string;
+};
+
+export default function EnhancedConversationalWorkflowBuilder({ initialInput = '' }: EnhancedConversationalWorkflowBuilderProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [currentInput, setCurrentInput] = useState('');
+  const [currentInput, setCurrentInput] = useState(initialInput);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
@@ -385,6 +389,26 @@ I'm your AI automation assistant. I can help you create powerful Google Apps Scr
     setMessages(prev => [...prev, newMessage]);
   };
 
+  const sendGuidanceMessage = (
+    title: string,
+    details: string,
+    suggestions: string[] = [
+      'Wait a moment and try again.',
+      'Check your internet connection.',
+      'Review Admin Settings to confirm API keys are configured.'
+    ]
+  ) => {
+    const suggestionBlock = suggestions.length
+      ? `\n\nYou can try:\n${suggestions.map((suggestion) => `• ${suggestion}`).join('\n')}`
+      : '';
+
+    addMessage({
+      role: 'assistant',
+      content: `⚠️ **${title}**\n\n${details}${suggestionBlock}`,
+      type: 'validation'
+    });
+  };
+
   const handleSendMessage = async () => {
     if (!currentInput.trim() || isProcessing) return;
 
@@ -473,159 +497,193 @@ You can try:
     currentPrompt: string,
     historyTurns: Array<{ question: Question; answer: string }>,
     requested: number = 1
-  ) => {
+  ): Promise<{ questions: Question[]; aborted: boolean }> => {
     const userId = localStorage.getItem('userId') || 'demo-user';
-    const { apiKey } = resolveModelCredentials();
+    let apiKey: string | undefined;
 
-    const response = await fetch('/api/ai/generate-workflow', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        prompt: currentPrompt,
-        userId,
-        model: selectedModel,
-        apiKey,
-        history: mapHistoryForLLM(historyTurns),
-        count: requested
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    try {
+      ({ apiKey } = resolveModelCredentials());
+    } catch (error: any) {
+      sendGuidanceMessage(
+        'API credentials required',
+        error?.message || 'Please configure the selected AI provider before continuing.',
+        ['Open Admin Settings in a new tab.', 'Provide the missing API key, then try again.']
+      );
+      return { questions: [], aborted: true };
     }
 
-    const payload = await response.json();
-    const questions = Array.isArray(payload.questions) ? payload.questions : [];
-    return questions as Question[];
+    try {
+      const response = await fetch('/api/ai/generate-workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: currentPrompt,
+          userId,
+          model: selectedModel,
+          apiKey,
+          history: mapHistoryForLLM(historyTurns),
+          count: requested
+        })
+      });
+
+      if (!response.ok) {
+        sendGuidanceMessage(
+          'Workflow planner is unavailable',
+          `The planner responded with HTTP ${response.status}. Please wait a moment before trying again.`
+        );
+        return { questions: [], aborted: true };
+      }
+
+      const payload = await response.json();
+      const questions = Array.isArray(payload.questions) ? payload.questions : [];
+      return { questions: questions as Question[], aborted: false };
+    } catch (error: any) {
+      sendGuidanceMessage(
+        'Unable to reach the workflow planner',
+        error?.message || 'The network request failed before the planner could respond.'
+      );
+      return { questions: [], aborted: true };
+    }
   };
 
   const buildAutomation = async (promptValue: string, answers: Record<string, string>) => {
     setProcessingStep('⚡ Building your intelligent workflow...');
 
-    const response = await fetch('/api/workflow/build', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        prompt: promptValue,
-        answers,
-        mode
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result = await response.json() as (CompileResult & { success: boolean; workflowId?: string });
-
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to build workflow');
-    }
-
-    setLatestWorkflowId(result.workflowId);
-    if (result.workflowId) {
-      localStorage.setItem('lastWorkflowId', result.workflowId);
-    } else {
-      localStorage.removeItem('lastWorkflowId');
-    }
-
-    useWorkflowState.getState().set(result);
-
-    setProcessingStep('📋 Planning your workflow...');
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    setProcessingStep('✅ Validating workflow structure...');
-    await new Promise(resolve => setTimeout(resolve, 400));
-
-    setProcessingStep('🔨 Generating Google Apps Script code...');
-    await new Promise(resolve => setTimeout(resolve, 600));
-
-    setProcessingStep('🚀 Finalizing deployment package...');
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const workflowData = {
-      workflow: {
-        graph: {
-          id: result.graph.id,
-          name: `Workflow: ${promptValue.substring(0, 50)}...`,
-          description: promptValue,
-          nodes: result.graph.nodes || [],
-          connections: result.graph.edges || []
-        },
-        validation: { valid: true, errors: [], warnings: [] }
-      },
-      code: (result.files ?? []).find(f => f.path === 'Code.gs')?.content || 'No code generated',
-      files: result.files ?? [],
-      rationale: promptValue,
-      deploymentInstructions: 'Ready for deployment to Google Apps Script'
-    };
-
     try {
-      const graph = result.graph;
-      const specCandidate = {
-        version: '1.0',
-        name: `Automation: ${promptValue.substring(0, 60)}`,
-        description: promptValue,
-        triggers: [],
-        nodes: (graph.nodes || []).map((n: any) => {
-          const parameters = {
-            ...(typeof n.data?.parameters === 'object' ? n.data.parameters : {}),
-            ...(typeof n.parameters === 'object' ? n.parameters : {})
-          };
+      const response = await fetch('/api/workflow/build', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: promptValue,
+          answers,
+          mode
+        })
+      });
 
-          const authSource = (n.auth || n.data?.auth) ?? undefined;
-          const connectionId =
-            n.connectionId ||
-            n.data?.connectionId ||
-            authSource?.connectionId ||
-            parameters.connectionId ||
-            n.parameters?.connectionId ||
-            n.data?.parameters?.connectionId;
-
-          let auth = authSource ? { ...authSource } : undefined;
-
-          if (connectionId) {
-            if (parameters.connectionId === undefined) {
-              parameters.connectionId = connectionId;
-            }
-
-            if (!auth) {
-              auth = { connectionId };
-            } else if (!auth.connectionId) {
-              auth = { ...auth, connectionId };
-            }
-          }
-
-          return {
-            id: n.id,
-            type: n.type || n.data?.function || 'core.noop',
-            app: n.app || n.data?.app || 'built_in',
-            label: n.label || n.data?.label || n.id,
-            inputs: parameters,
-            outputs: n.outputs || [],
-            auth
-          };
-        }),
-        edges: (graph.edges || graph.connections || []).map((e: any) => ({
-          from: { nodeId: e.source || e.from, port: e.sourceHandle || e.dataType || 'out' },
-          to: { nodeId: e.target || e.to, port: e.targetHandle || 'in' }
-        }))
-      };
-      const parsed = AutomationSpecZ.safeParse(specCandidate);
-      if (parsed.success) {
-        setSpec(parsed.data);
+      if (!response.ok) {
+        sendGuidanceMessage(
+          'Workflow builder is unavailable',
+          `The build service responded with HTTP ${response.status}.`
+        );
+        setProcessingStep('');
+        return { success: false };
       }
-    } catch {}
 
-    setWorkflowResult(workflowData);
+      const result = await response.json() as (CompileResult & { success: boolean; workflowId?: string });
 
-    addMessage({
-      role: 'assistant',
-      content: `✅ **Workflow Generated Successfully!**
+      if (!result.success) {
+        sendGuidanceMessage(
+          'Workflow build failed',
+          result.error || 'The build service returned an error.'
+        );
+        setProcessingStep('');
+        return { success: false };
+      }
+
+      setLatestWorkflowId(result.workflowId);
+      if (result.workflowId) {
+        localStorage.setItem('lastWorkflowId', result.workflowId);
+      } else {
+        localStorage.removeItem('lastWorkflowId');
+      }
+
+      useWorkflowState.getState().set(result);
+
+      setProcessingStep('📋 Planning your workflow...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setProcessingStep('✅ Validating workflow structure...');
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      setProcessingStep('🔨 Generating Google Apps Script code...');
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      setProcessingStep('🚀 Finalizing deployment package...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const workflowData = {
+        workflow: {
+          graph: {
+            id: result.graph.id,
+            name: `Workflow: ${promptValue.substring(0, 50)}...`,
+            description: promptValue,
+            nodes: result.graph.nodes || [],
+            connections: result.graph.edges || []
+          },
+          validation: { valid: true, errors: [], warnings: [] }
+        },
+        code: (result.files ?? []).find(f => f.path === 'Code.gs')?.content || 'No code generated',
+        files: result.files ?? [],
+        rationale: promptValue,
+        deploymentInstructions: 'Ready for deployment to Google Apps Script'
+      };
+
+      try {
+        const graph = result.graph;
+        const specCandidate = {
+          version: '1.0',
+          name: `Automation: ${promptValue.substring(0, 60)}`,
+          description: promptValue,
+          triggers: [],
+          nodes: (graph.nodes || []).map((n: any) => {
+            const parameters = {
+              ...(typeof n.data?.parameters === 'object' ? n.data.parameters : {}),
+              ...(typeof n.parameters === 'object' ? n.parameters : {})
+            };
+
+            const authSource = (n.auth || n.data?.auth) ?? undefined;
+            const connectionId =
+              n.connectionId ||
+              n.data?.connectionId ||
+              authSource?.connectionId ||
+              parameters.connectionId ||
+              n.parameters?.connectionId ||
+              n.data?.parameters?.connectionId;
+
+            let auth = authSource ? { ...authSource } : undefined;
+
+            if (connectionId) {
+              if (parameters.connectionId === undefined) {
+                parameters.connectionId = connectionId;
+              }
+
+              if (!auth) {
+                auth = { connectionId };
+              } else if (!auth.connectionId) {
+                auth = { ...auth, connectionId };
+              }
+            }
+
+            return {
+              id: n.id,
+              type: n.type || n.data?.function || 'core.noop',
+              app: n.app || n.data?.app || 'built_in',
+              label: n.label || n.data?.label || n.id,
+              inputs: parameters,
+              outputs: n.outputs || [],
+              auth
+            };
+          }),
+          edges: (graph.edges || graph.connections || []).map((e: any) => ({
+            from: { nodeId: e.source || e.from, port: e.sourceHandle || e.dataType || 'out' },
+            to: { nodeId: e.target || e.to, port: e.targetHandle || 'in' }
+          }))
+        };
+        const parsed = AutomationSpecZ.safeParse(specCandidate);
+        if (parsed.success) {
+          setSpec(parsed.data);
+        }
+      } catch {}
+
+      setWorkflowResult(workflowData);
+
+      addMessage({
+        role: 'assistant',
+        content: `✅ **Workflow Generated Successfully!**
 
 **"${promptValue.substring(0, 60)}..."**
 Built from your answers with ${result.graph.nodes.length} connected steps.
@@ -645,19 +703,29 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
 • **Ready for Google Apps Script**
 
 🚀 **Ready for Deployment!**`,
-      type: 'workflow',
-      data: result
-    });
+        type: 'workflow',
+        data: result
+      });
 
-    addMessage({
-      role: 'assistant',
-      content: `📊 **Visual Workflow Structure:**`,
-      type: 'workflow-visual',
-      data: result
-    });
+      addMessage({
+        role: 'assistant',
+        content: `📊 **Visual Workflow Structure:**`,
+        type: 'workflow-visual',
+        data: result
+      });
 
-    resetQuestionFlow();
-    redirectToGraphEditor(result.workflowId);
+      resetQuestionFlow();
+      redirectToGraphEditor(result.workflowId);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Workflow build failed', error);
+      sendGuidanceMessage(
+        'Unable to build your workflow',
+        error?.message || 'An unexpected error prevented us from compiling the workflow.'
+      );
+      setProcessingStep('');
+      return { success: false };
+    }
   };
 
   const startWorkflowConversation = async (userPrompt: string) => {
@@ -666,7 +734,11 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
     resetQuestionFlow();
 
     setProcessingStep('🤔 Understanding your request...');
-    const questions = await requestClarifyingQuestions(trimmedPrompt, [], 6);
+    const { questions, aborted } = await requestClarifyingQuestions(trimmedPrompt, [], 6);
+    if (aborted) {
+      setProcessingStep('');
+      return;
+    }
     const initialQuestions = filterNewQuestions(questions, []);
 
     if (initialQuestions.length > 0) {
@@ -726,7 +798,10 @@ Built from your answers with ${result.graph.nodes.length} connected steps.
     setIsProcessing(true);
     try {
       setProcessingStep('🤔 Reviewing your answers...');
-      const followUps = await requestClarifyingQuestions(activePrompt, updatedHistory, 4);
+      const { questions: followUps, aborted } = await requestClarifyingQuestions(activePrompt, updatedHistory, 4);
+      if (aborted) {
+        return;
+      }
       const newQuestions = filterNewQuestions(followUps, updatedHistory);
 
       if (newQuestions.length > 0) {
@@ -965,6 +1040,7 @@ Need help? I can guide you through each step!`
           <div
             key={message.id}
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            data-testid={message.type === 'validation' ? 'planner-guidance' : undefined}
           >
             <div
               className={`max-w-4xl rounded-2xl p-6 ${
@@ -1210,6 +1286,7 @@ Need help? I can guide you through each step!`
             onClick={handleSendMessage}
             disabled={!currentInput.trim() || isProcessing}
             className="bg-gradient-to-br from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 px-6 rounded-2xl shadow-[inset_0_2px_6px_rgba(255,255,255,0.4),0_8px_24px_rgba(14,165,233,0.5),0_4px_12px_rgba(14,165,233,0.4)] ring-2 ring-sky-300/50 transition-all duration-200 hover:scale-105 hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.5),0_12px_32px_rgba(14,165,233,0.6),0_6px_16px_rgba(14,165,233,0.5)]"
+            data-testid="workflow-send"
           >
             {isProcessing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
