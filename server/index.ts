@@ -56,6 +56,12 @@ app.use((req, res, next) => {
   }
 
   const server = await registerRoutes(app);
+  try {
+    const { executionQueueService } = await import('./services/ExecutionQueueService.js');
+    executionQueueService.start();
+  } catch (e) {
+    console.warn('⚠️ Failed to start execution queue:', (e as any)?.message || e);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

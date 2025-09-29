@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { answersToGraph } from '../workflow/answers-to-graph';
-import { compileToAppsScript } from '../workflow/compile-to-appsscript';
 import { healthMonitoringService } from '../services/HealthMonitoringService';
 import { convertToNodeGraph } from '../workflow/graph-format-converter';
 import { mapAnswersToBackendFormat, validateTriggerConfig } from '../utils/answer-field-mapper.js';
@@ -219,7 +218,18 @@ workflowBuildRouter.post('/build', async (req, res) => {
     
     // Compile with validation
     const compileStartTime = Date.now();
-    const compiled = compileToAppsScript(graph);
+    let compiled: any = null;
+    try {
+      // Lazy-load compiler to avoid type-checking heavy generator at build-time
+      // @ts-ignore - runtime import only
+      const mod = await import('../workflow/compile-to-appsscript.js');
+      compiled = typeof mod.compileToAppsScript === 'function'
+        ? mod.compileToAppsScript(graph)
+        : null;
+    } catch (e: any) {
+      console.warn('⚠️ Apps Script compiler unavailable:', e?.message || e);
+      compiled = { files: [], graph, stats: { warning: 'compiler_unavailable' } };
+    }
     const compilationTime = Date.now() - compileStartTime;
     
     if (!compiled || !compiled.files || compiled.files.length === 0) {

@@ -1,5 +1,4 @@
 import type { Express, Request, Response } from "express";
-import { compileToAppsScript } from './workflow/compile-to-appsscript';
 
 // COMPREHENSIVE GOOGLE APPS SCRIPT FUNCTION IMPLEMENTATIONS
 // Covers ALL Google Workspace services: Gmail, Sheets, Docs, Slides, Calendar, Drive, Contacts, Chat, Meet, Forms
