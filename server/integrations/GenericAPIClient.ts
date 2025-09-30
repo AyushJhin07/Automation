@@ -10,17 +10,9 @@ export class GenericAPIClient extends BaseAPIClient {
   }
 
   protected getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {};
-    
-    if (this.credentials.apiKey) {
-      headers['Authorization'] = `Bearer ${this.credentials.apiKey}`;
-    }
-    
-    if (this.credentials.accessToken) {
-      headers['Authorization'] = `Bearer ${this.credentials.accessToken}`;
-    }
-    
-    return headers;
+    throw new Error(
+      `${this.constructor.name} is a placeholder and should not be used for real API traffic.`
+    );
   }
 
   protected async executeRequest(
@@ -29,19 +21,16 @@ export class GenericAPIClient extends BaseAPIClient {
     data?: any,
     headers?: Record<string, string>
   ): Promise<APIResponse> {
-    // For apps with real Apps Script implementations, we just mark them as having implementation
-    // The actual API calls happen in the generated Apps Script code
-    return {
-      success: true,
-      data: { message: 'Apps Script implementation available' }
-    };
+    throw new Error(
+      `${this.constructor.name} cannot execute ${method.toUpperCase()} ${endpoint} because the connector is not implemented.`
+    );
   }
 
   // Basic test connection method
   async testConnection(): Promise<APIResponse> {
-    return {
-      success: true,
-      data: { status: 'connected', message: 'Apps Script implementation available' }
-    };
+    throw new Error(
+      `${this.constructor.name} cannot test connections because the connector is not implemented.`
+    );
   }
 }
+
