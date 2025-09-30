@@ -8,6 +8,8 @@ import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
 import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { genericExecutor } from './GenericExecutor';
+import { env } from '../env';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
 
@@ -53,6 +55,13 @@ export class IntegrationManager {
       const clientKey = this.buildClientKey(appKey, config.connectionId);
 
       if (!this.supportedApps.has(appKey)) {
+        if (env.GENERIC_EXECUTOR_ENABLED) {
+          // Try a generic test connection; if passes, mark as connected in memory-less mode
+          const result = await genericExecutor.testConnection(appKey, config.credentials);
+          return result.success
+            ? { success: true, data: { appName: config.appName, status: 'connected', testResult: result.data } }
+            : { success: false, error: `Connection test failed for ${config.appName}: ${result.error}` };
+        }
         return {
           success: false,
           error: `Application ${config.appName} is not yet supported`
@@ -104,8 +113,24 @@ export class IntegrationManager {
     const clientKey = this.buildClientKey(appKey, params.connectionId);
 
     try {
-      // Check if app is supported
+      // Check if app is supported; if not, try generic executor when enabled
       if (!this.supportedApps.has(appKey)) {
+        if (env.GENERIC_EXECUTOR_ENABLED) {
+          const genericResult = await genericExecutor.execute({
+            appId: appKey,
+            functionId: params.functionId,
+            parameters: params.parameters,
+            credentials: params.credentials,
+          });
+          return {
+            success: genericResult.success,
+            data: genericResult.data,
+            error: genericResult.error,
+            appName: params.appName,
+            functionId: params.functionId,
+            executionTime: Date.now() - startTime
+          };
+        }
         return {
           success: false,
           error: `Application ${params.appName} is not supported`,
@@ -140,6 +165,23 @@ export class IntegrationManager {
       }
 
       if (!client) {
+        // Fallback to generic executor if enabled
+        if (env.GENERIC_EXECUTOR_ENABLED) {
+          const genericResult = await genericExecutor.execute({
+            appId: appKey,
+            functionId: params.functionId,
+            parameters: params.parameters,
+            credentials: params.credentials,
+          });
+          return {
+            success: genericResult.success,
+            data: genericResult.data,
+            error: genericResult.error,
+            appName: params.appName,
+            functionId: params.functionId,
+            executionTime: Date.now() - startTime
+          };
+        }
         return {
           success: false,
           error: `Application ${params.appName} is not yet implemented`,
@@ -189,14 +231,13 @@ export class IntegrationManager {
 
     try {
       const client = this.createAPIClient(appKey, credentials);
-      if (!client) {
-        return {
-          success: false,
-          error: `Unsupported application: ${appName}`
-        };
+      if (client) {
+        return await client.testConnection();
       }
-
-      return await client.testConnection();
+      if (env.GENERIC_EXECUTOR_ENABLED) {
+        return await genericExecutor.testConnection(appKey, credentials);
+      }
+      return { success: false, error: `Unsupported application: ${appName}` };
 
     } catch (error) {
       return {

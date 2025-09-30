@@ -6,6 +6,9 @@ import { connections, db } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
 import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
+import { integrationManager } from '../integrations/IntegrationManager';
+import { env } from '../env';
+import { genericExecutor } from '../integrations/GenericExecutor';
 
 class ConnectionServiceError extends Error {
   constructor(message: string, public statusCode: number = 500) {
@@ -352,6 +355,27 @@ export class ConnectionService {
     };
   }
 
+  /**
+   * Export user's active connections (masked credentials)
+   */
+  public async exportConnections(userId: string): Promise<any[]> {
+    const conns = await this.getUserConnections(userId);
+    return conns.map(c => ConnectionService.maskCredentials(c));
+  }
+
+  /**
+   * Import connections from masked/plain JSON (dev/local only). Re-encrypts credentials.
+   */
+  public async importConnections(userId: string, list: Array<{ provider: string; name?: string; credentials: any; metadata?: any }>): Promise<{ imported: number }> {
+    let imported = 0;
+    for (const item of list || []) {
+      if (!item?.provider || !item?.credentials) continue;
+      await this.storeConnection(userId, item.provider, item.credentials as any, undefined, { name: item.name, metadata: item.metadata, type: 'saas' });
+      imported++;
+    }
+    return { imported };
+  }
+
   public async storeConnection(
     userId: string,
     provider: string,
@@ -488,6 +512,33 @@ export class ConnectionService {
         case 'slack':
           result = await this.testSlack(connection.credentials);
           break;
+        case 'hubspot':
+        case 'stripe':
+        case 'trello':
+        case 'typeform':
+        case 'zendesk':
+        case 'dropbox':
+        case 'google-drive':
+        case 'google-calendar': {
+          // Use IntegrationManager where possible; otherwise generic executor if enabled
+          const appName = connection.provider;
+          const test = await integrationManager.testConnection(appName, connection.credentials as any);
+          if (!test.success && env.GENERIC_EXECUTOR_ENABLED) {
+            const generic = await genericExecutor.testConnection(appName, connection.credentials as any);
+            result = {
+              success: generic.success,
+              message: generic.success ? 'Connection test passed' : generic.error || 'Connection test failed',
+              provider: appName
+            };
+            break;
+          }
+          result = {
+            success: test.success,
+            message: test.success ? 'Connection test passed' : (test.error || 'Connection test failed'),
+            provider: appName
+          };
+          break;
+        }
         default:
           result = {
             success: false,

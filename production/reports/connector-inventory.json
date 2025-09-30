@@ -1,0 +1,2384 @@
+{
+  "summary": {
+    "total": 149,
+    "categories": {
+      "DevOps": 14,
+      "Project Management": 12,
+      "Productivity": 10,
+      "Communication": 10,
+      "CRM": 8,
+      "Finance": 7,
+      "Marketing": 7,
+      "HR": 6,
+      "Monitoring": 6,
+      "Customer Support": 5,
+      "Analytics": 5,
+      "File Storage": 4,
+      "Email": 4,
+      "E-commerce": 4,
+      "Payments": 4,
+      "Accounting": 4,
+      "Database": 3,
+      "Development": 3,
+      "Developer Tools": 3,
+      "Storage": 2,
+      "Scheduling": 2,
+      "IT Service Management": 2,
+      "ERP": 2,
+      "Customer Feedback": 2,
+      "E-Signature": 1,
+      "E-Commerce": 1,
+      "Documentation": 1,
+      "Data Analytics": 1,
+      "Document Management": 1,
+      "Admin": 1,
+      "Cloud Storage": 1,
+      "Knowledge Management": 1,
+      "Documents": 1,
+      "Forms": 1,
+      "AI/ML": 1,
+      "Events": 1,
+      "Collaboration": 1,
+      "Security": 1,
+      "Surveys": 1,
+      "ecommerce": 1,
+      "Knowledge Base": 1,
+      "Data & Analytics": 1,
+      "Time Tracking": 1,
+      "Website Builders": 1
+    },
+    "availabilityCounts": {
+      "stable": 149
+    },
+    "authTypes": {
+      "oauth2": 66,
+      "api_key": 65,
+      "bearer_token": 3,
+      "aws_credentials": 2,
+      "personal_access_token": 1,
+      "basic": 7,
+      "vault_token": 1,
+      "kubeconfig": 1,
+      "basic_auth": 3
+    },
+    "implementedCount": 5
+  },
+  "pairs": [
+    {
+      "base": "adobesign",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "adp",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "adyen",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "airtable",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "ansible",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "argocd",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "asana",
+      "hasStandard": false,
+      "hasEnhanced": true
+    },
+    {
+      "base": "aws-cloudformation",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "aws-codepipeline",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "azure-devops",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "bamboohr",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "basecamp",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "bigcommerce",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "bigquery",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "bitbucket",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "box",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "braze",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "brex",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "caldotcom",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "calendly",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "circleci",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "clickup",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "coda",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "concur",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "confluence",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "coupa",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "databricks",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "datadog",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "docker-hub",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "docusign",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "dropbox",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "dynamics365",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "egnyte",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "excel-online",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "expensify",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "freshdesk",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "github",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "gitlab",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "gmail",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "google-admin",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-calendar",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-chat",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-contacts",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-docs",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-drive",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-forms",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-meet",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "google-sheets",
+      "hasStandard": false,
+      "hasEnhanced": true
+    },
+    {
+      "base": "google-slides",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "grafana",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "greenhouse",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "guru",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "hashicorp-vault",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "hellosign",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "helm",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "hubspot",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "intercom",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "iterable",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "jenkins",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "jira-service-management",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "jira",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "jotform",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "klaviyo",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "kubernetes",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "kustomer",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "lever",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "linear",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "llm",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "looker",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "luma",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "magento",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "mailchimp",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "mailgun",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "marketo",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "microsoft-teams",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "microsoft-todo",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "miro",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "mixpanel",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "monday",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "navan",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "netsuite",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "newrelic",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "nexus",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "notion",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "okta",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "onedrive",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "opsgenie",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "outlook",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "pagerduty",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "pardot",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "paypal",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "pipedrive",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "powerbi",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "prometheus",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "qualtrics",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "quickbooks",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "ramp",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "razorpay",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "ringcentral",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "sageintacct",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "salesforce",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "sap-ariba",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "sendgrid",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "sentry",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "servicenow",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "sharepoint",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "shopify",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "slab",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "slack",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "smartsheet",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "snowflake",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "sonarqube",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "square",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "stripe",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "successfactors",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "surveymonkey",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "tableau",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "talkdesk",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "teamwork",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "terraform-cloud",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "toggl",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "trello",
+      "hasStandard": true,
+      "hasEnhanced": true
+    },
+    {
+      "base": "twilio",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "typeform",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "victorops",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "webex",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "webflow",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "woocommerce",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "workday",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "workfront",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "xero",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "zendesk",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "zoho-books",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "zoho-crm",
+      "hasStandard": true,
+      "hasEnhanced": false
+    },
+    {
+      "base": "zoom",
+      "hasStandard": false,
+      "hasEnhanced": true
+    }
+  ],
+  "connectors": [
+    {
+      "file": "adobesign.json",
+      "id": "adobesign",
+      "name": "Adobe Acrobat Sign",
+      "category": "E-Signature",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "adp.json",
+      "id": "adp",
+      "name": "ADP Workforce Now",
+      "category": "HR",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 4,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "adyen.json",
+      "id": "adyen",
+      "name": "Adyen",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 4,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "airtable.json",
+      "id": "airtable",
+      "name": "Airtable",
+      "category": "Database",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": true
+    },
+    {
+      "file": "airtable-enhanced.json",
+      "id": "airtable-enhanced",
+      "name": "Airtable Enhanced",
+      "category": "Database",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "ansible.json",
+      "id": "ansible",
+      "name": "Ansible",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "argocd.json",
+      "id": "argocd",
+      "name": "Argo CD",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "bearer_token",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "asana-enhanced.json",
+      "id": "asana-enhanced",
+      "name": "Asana Enhanced",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "aws-cloudformation.json",
+      "id": "aws-cloudformation",
+      "name": "AWS CloudFormation",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "aws_credentials",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "aws-codepipeline.json",
+      "id": "aws-codepipeline",
+      "name": "AWS CodePipeline",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "aws_credentials",
+      "actions": 5,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "azure-devops.json",
+      "id": "azure-devops",
+      "name": "Azure DevOps",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "personal_access_token",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "bamboohr.json",
+      "id": "bamboohr",
+      "name": "BambooHR",
+      "category": "HR",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "basecamp.json",
+      "id": "basecamp",
+      "name": "Basecamp",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "bigcommerce.json",
+      "id": "bigcommerce",
+      "name": "BigCommerce",
+      "category": "E-Commerce",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "bigquery.json",
+      "id": "bigquery",
+      "name": "Google BigQuery",
+      "category": "Database",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 7,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "bitbucket.json",
+      "id": "bitbucket",
+      "name": "Bitbucket",
+      "category": "Development",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "box.json",
+      "id": "box",
+      "name": "Box",
+      "category": "Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "braze.json",
+      "id": "braze",
+      "name": "Braze",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "brex.json",
+      "id": "brex",
+      "name": "Brex",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "caldotcom.json",
+      "id": "caldotcom",
+      "name": "Cal.com",
+      "category": "Scheduling",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "calendly.json",
+      "id": "calendly",
+      "name": "Calendly",
+      "category": "Scheduling",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "circleci.json",
+      "id": "circleci",
+      "name": "CircleCI",
+      "category": "Development",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "clickup.json",
+      "id": "clickup",
+      "name": "ClickUp",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 9,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "coda.json",
+      "id": "coda",
+      "name": "Coda",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 9,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "concur.json",
+      "id": "concur",
+      "name": "SAP Concur",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 7,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "confluence.json",
+      "id": "confluence",
+      "name": "Atlassian Confluence",
+      "category": "Documentation",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "coupa.json",
+      "id": "coupa",
+      "name": "Coupa",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "databricks.json",
+      "id": "databricks",
+      "name": "Databricks",
+      "category": "Data Analytics",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "datadog.json",
+      "id": "datadog",
+      "name": "Datadog",
+      "category": "Monitoring",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 7,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "docker-hub.json",
+      "id": "docker-hub",
+      "name": "Docker Hub",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "docusign.json",
+      "id": "docusign",
+      "name": "DocuSign",
+      "category": "Document Management",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "dropbox.json",
+      "id": "dropbox",
+      "name": "Dropbox",
+      "category": "File Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "dropbox-enhanced.json",
+      "id": "dropbox-enhanced",
+      "name": "Dropbox Enhanced",
+      "category": "File Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "dynamics365.json",
+      "id": "dynamics365",
+      "name": "Microsoft Dynamics 365",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "egnyte.json",
+      "id": "egnyte",
+      "name": "Egnyte",
+      "category": "File Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "excel-online.json",
+      "id": "excel-online",
+      "name": "Microsoft Excel Online",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 11,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "expensify.json",
+      "id": "expensify",
+      "name": "Expensify",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "freshdesk.json",
+      "id": "freshdesk",
+      "name": "Freshdesk",
+      "category": "Customer Support",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "github.json",
+      "id": "github",
+      "name": "GitHub",
+      "category": "Development",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 13,
+      "triggers": 5,
+      "implemented": false
+    },
+    {
+      "file": "github-enhanced.json",
+      "id": "github-enhanced",
+      "name": "GitHub Enhanced",
+      "category": "Developer Tools",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "gitlab.json",
+      "id": "gitlab",
+      "name": "GitLab",
+      "category": "Developer Tools",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "gmail.json",
+      "id": "gmail",
+      "name": "Gmail",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 7,
+      "triggers": 3,
+      "implemented": true
+    },
+    {
+      "file": "gmail-enhanced.json",
+      "id": "gmail-enhanced",
+      "name": "Gmail Enhanced",
+      "category": "Email",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "google-admin.json",
+      "id": "google-admin",
+      "name": "Google Admin",
+      "category": "Admin",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 9,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "google-calendar.json",
+      "id": "google-calendar",
+      "name": "Google Calendar",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "google-chat.json",
+      "id": "google-chat",
+      "name": "Google Chat",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "google-contacts.json",
+      "id": "google-contacts",
+      "name": "Google Contacts",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 9,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "google-docs.json",
+      "id": "google-docs",
+      "name": "Google Docs",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "google-drive.json",
+      "id": "google-drive",
+      "name": "Google Drive",
+      "category": "Cloud Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 13,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "google-forms.json",
+      "id": "google-forms",
+      "name": "Google Forms",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "google-meet.json",
+      "id": "google-meet",
+      "name": "Google Meet",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "google-sheets-enhanced.json",
+      "id": "google-sheets-enhanced",
+      "name": "Google Sheets Enhanced",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 12,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "google-slides.json",
+      "id": "google-slides",
+      "name": "Google Slides",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "grafana.json",
+      "id": "grafana",
+      "name": "Grafana",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "greenhouse.json",
+      "id": "greenhouse",
+      "name": "Greenhouse",
+      "category": "HR",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "guru.json",
+      "id": "guru",
+      "name": "Guru",
+      "category": "Knowledge Management",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "hashicorp-vault.json",
+      "id": "hashicorp-vault",
+      "name": "HashiCorp Vault",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "vault_token",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "hellosign.json",
+      "id": "hellosign",
+      "name": "HelloSign",
+      "category": "Documents",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 13,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "helm.json",
+      "id": "helm",
+      "name": "Helm",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "kubeconfig",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "hubspot.json",
+      "id": "hubspot",
+      "name": "HubSpot",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 11,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "hubspot-enhanced.json",
+      "id": "hubspot-enhanced",
+      "name": "HubSpot Enhanced",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 12,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "intercom.json",
+      "id": "intercom",
+      "name": "Intercom",
+      "category": "Customer Support",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 13,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "iterable.json",
+      "id": "iterable",
+      "name": "Iterable",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "jenkins.json",
+      "id": "jenkins",
+      "name": "Jenkins",
+      "category": "Developer Tools",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 16,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "jira.json",
+      "id": "jira",
+      "name": "Jira",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 12,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "jira-service-management.json",
+      "id": "jira-service-management",
+      "name": "Jira Service Management",
+      "category": "IT Service Management",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 15,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "jotform.json",
+      "id": "jotform",
+      "name": "JotForm",
+      "category": "Forms",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 16,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "klaviyo.json",
+      "id": "klaviyo",
+      "name": "Klaviyo",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "kubernetes.json",
+      "id": "kubernetes",
+      "name": "Kubernetes",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "bearer_token",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "kustomer.json",
+      "id": "kustomer",
+      "name": "Kustomer",
+      "category": "Customer Support",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "lever.json",
+      "id": "lever",
+      "name": "Lever",
+      "category": "HR",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "linear.json",
+      "id": "linear",
+      "name": "Linear",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "llm.json",
+      "id": "llm",
+      "name": "LLM (Large Language Model)",
+      "category": "AI/ML",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 2,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "looker.json",
+      "id": "looker",
+      "name": "Looker",
+      "category": "Analytics",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 14,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "luma.json",
+      "id": "luma",
+      "name": "Luma",
+      "category": "Events",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 13,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "magento.json",
+      "id": "magento",
+      "name": "Magento",
+      "category": "E-commerce",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 9,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "mailchimp.json",
+      "id": "mailchimp",
+      "name": "Mailchimp",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "mailchimp-enhanced.json",
+      "id": "mailchimp-enhanced",
+      "name": "Mailchimp Enhanced",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "mailgun.json",
+      "id": "mailgun",
+      "name": "Mailgun",
+      "category": "Email",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 13,
+      "triggers": 6,
+      "implemented": false
+    },
+    {
+      "file": "marketo.json",
+      "id": "marketo",
+      "name": "Marketo",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 16,
+      "triggers": 5,
+      "implemented": false
+    },
+    {
+      "file": "microsoft-teams.json",
+      "id": "microsoft-teams",
+      "name": "Microsoft Teams",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 9,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "microsoft-todo.json",
+      "id": "microsoft-todo",
+      "name": "Microsoft To Do",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "miro.json",
+      "id": "miro",
+      "name": "Miro",
+      "category": "Collaboration",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 15,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "mixpanel.json",
+      "id": "mixpanel",
+      "name": "Mixpanel",
+      "category": "Analytics",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 16,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "monday.json",
+      "id": "monday",
+      "name": "Monday.com",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "monday-enhanced.json",
+      "id": "monday-enhanced",
+      "name": "Monday.com Enhanced",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "navan.json",
+      "id": "navan",
+      "name": "Navan",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 6,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "netsuite.json",
+      "id": "netsuite",
+      "name": "NetSuite",
+      "category": "ERP",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 6,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "newrelic.json",
+      "id": "newrelic",
+      "name": "New Relic",
+      "category": "Monitoring",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 7,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "nexus.json",
+      "id": "nexus",
+      "name": "Sonatype Nexus",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "basic_auth",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "notion.json",
+      "id": "notion",
+      "name": "Notion",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 3,
+      "implemented": true
+    },
+    {
+      "file": "notion-enhanced.json",
+      "id": "notion-enhanced",
+      "name": "Notion Enhanced",
+      "category": "Productivity",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 17,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "okta.json",
+      "id": "okta",
+      "name": "Okta",
+      "category": "Security",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 15,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "onedrive.json",
+      "id": "onedrive",
+      "name": "OneDrive",
+      "category": "Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 7,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "opsgenie.json",
+      "id": "opsgenie",
+      "name": "Opsgenie",
+      "category": "Monitoring",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "outlook.json",
+      "id": "outlook",
+      "name": "Microsoft Outlook",
+      "category": "Email",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 9,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "pagerduty.json",
+      "id": "pagerduty",
+      "name": "PagerDuty",
+      "category": "Monitoring",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "pardot.json",
+      "id": "pardot",
+      "name": "Pardot",
+      "category": "Marketing",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 7,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "paypal.json",
+      "id": "paypal",
+      "name": "PayPal",
+      "category": "Payments",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "pipedrive.json",
+      "id": "pipedrive",
+      "name": "Pipedrive",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 10,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "powerbi.json",
+      "id": "powerbi",
+      "name": "Power BI",
+      "category": "Analytics",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 5,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "powerbi-enhanced.json",
+      "id": "powerbi-enhanced",
+      "name": "Power BI Enhanced",
+      "category": "Analytics",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 19,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "prometheus.json",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "basic_auth",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "qualtrics.json",
+      "id": "qualtrics",
+      "name": "Qualtrics",
+      "category": "Surveys",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 9,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "quickbooks.json",
+      "id": "quickbooks",
+      "name": "QuickBooks",
+      "category": "Accounting",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 14,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "ramp.json",
+      "id": "ramp",
+      "name": "Ramp",
+      "category": "Finance",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 5,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "razorpay.json",
+      "id": "razorpay",
+      "name": "Razorpay",
+      "category": "Payments",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "ringcentral.json",
+      "id": "ringcentral",
+      "name": "RingCentral",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "sageintacct.json",
+      "id": "sageintacct",
+      "name": "Sage Intacct",
+      "category": "Accounting",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 8,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "salesforce.json",
+      "id": "salesforce",
+      "name": "Salesforce",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 5,
+      "triggers": 1,
+      "implemented": false
+    },
+    {
+      "file": "salesforce-enhanced.json",
+      "id": "salesforce-enhanced",
+      "name": "Salesforce Enhanced",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "sap-ariba.json",
+      "id": "sap-ariba",
+      "name": "SAP Ariba",
+      "category": "ERP",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 14,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "sendgrid.json",
+      "id": "sendgrid",
+      "name": "SendGrid",
+      "category": "Email",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 7,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "sentry.json",
+      "id": "sentry",
+      "name": "Sentry",
+      "category": "Monitoring",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 17,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "servicenow.json",
+      "id": "servicenow",
+      "name": "ServiceNow",
+      "category": "IT Service Management",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "sharepoint.json",
+      "id": "sharepoint",
+      "name": "SharePoint",
+      "category": "File Storage",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "shopify.json",
+      "id": "shopify",
+      "name": "Shopify",
+      "category": "ecommerce",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 13,
+      "triggers": 5,
+      "implemented": true
+    },
+    {
+      "file": "shopify-enhanced.json",
+      "id": "shopify-enhanced",
+      "name": "Shopify Enhanced",
+      "category": "E-commerce",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "slab.json",
+      "id": "slab",
+      "name": "Slab",
+      "category": "Knowledge Base",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "slack.json",
+      "id": "slack",
+      "name": "Slack",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": true
+    },
+    {
+      "file": "slack-enhanced.json",
+      "id": "slack-enhanced",
+      "name": "Slack Enhanced",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "smartsheet.json",
+      "id": "smartsheet",
+      "name": "Smartsheet",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "snowflake.json",
+      "id": "snowflake",
+      "name": "Snowflake",
+      "category": "Data & Analytics",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "sonarqube.json",
+      "id": "sonarqube",
+      "name": "SonarQube",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "basic_auth",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "square.json",
+      "id": "square",
+      "name": "Square",
+      "category": "E-commerce",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "stripe.json",
+      "id": "stripe",
+      "name": "Stripe",
+      "category": "Payments",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "stripe-enhanced.json",
+      "id": "stripe-enhanced",
+      "name": "Stripe Enhanced",
+      "category": "Payments",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "successfactors.json",
+      "id": "successfactors",
+      "name": "SAP SuccessFactors",
+      "category": "HR",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "surveymonkey.json",
+      "id": "surveymonkey",
+      "name": "SurveyMonkey",
+      "category": "Customer Feedback",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 14,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "tableau.json",
+      "id": "tableau",
+      "name": "Tableau",
+      "category": "Analytics",
+      "availability": "stable",
+      "authType": "basic",
+      "actions": 15,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "talkdesk.json",
+      "id": "talkdesk",
+      "name": "Talkdesk",
+      "category": "Customer Support",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "teamwork.json",
+      "id": "teamwork",
+      "name": "Teamwork",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "terraform-cloud.json",
+      "id": "terraform-cloud",
+      "name": "Terraform Cloud",
+      "category": "DevOps",
+      "availability": "stable",
+      "authType": "bearer_token",
+      "actions": 5,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "toggl.json",
+      "id": "toggl",
+      "name": "Toggl Track",
+      "category": "Time Tracking",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 17,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "trello.json",
+      "id": "trello",
+      "name": "Trello",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 13,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "trello-enhanced.json",
+      "id": "trello-enhanced",
+      "name": "Trello Enhanced",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 9,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "twilio.json",
+      "id": "twilio",
+      "name": "Twilio",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 11,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "typeform.json",
+      "id": "typeform",
+      "name": "Typeform",
+      "category": "Customer Feedback",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 6,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "victorops.json",
+      "id": "victorops",
+      "name": "VictorOps",
+      "category": "Monitoring",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 12,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "webex.json",
+      "id": "webex",
+      "name": "Cisco Webex",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "webflow.json",
+      "id": "webflow",
+      "name": "Webflow",
+      "category": "Website Builders",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 14,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "woocommerce.json",
+      "id": "woocommerce",
+      "name": "WooCommerce",
+      "category": "E-commerce",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 8,
+      "triggers": 2,
+      "implemented": false
+    },
+    {
+      "file": "workday.json",
+      "id": "workday",
+      "name": "Workday",
+      "category": "HR",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 13,
+      "triggers": 4,
+      "implemented": false
+    },
+    {
+      "file": "workfront.json",
+      "id": "workfront",
+      "name": "Adobe Workfront",
+      "category": "Project Management",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 13,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "xero.json",
+      "id": "xero",
+      "name": "Xero",
+      "category": "Accounting",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 13,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "zendesk.json",
+      "id": "zendesk",
+      "name": "Zendesk",
+      "category": "Customer Support",
+      "availability": "stable",
+      "authType": "api_key",
+      "actions": 11,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "zoho-books.json",
+      "id": "zoho-books",
+      "name": "Zoho Books",
+      "category": "Accounting",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 13,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "zoho-crm.json",
+      "id": "zoho-crm",
+      "name": "Zoho CRM",
+      "category": "CRM",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 10,
+      "triggers": 3,
+      "implemented": false
+    },
+    {
+      "file": "zoom-enhanced.json",
+      "id": "zoom-enhanced",
+      "name": "Zoom Enhanced",
+      "category": "Communication",
+      "availability": "stable",
+      "authType": "oauth2",
+      "actions": 9,
+      "triggers": 3,
+      "implemented": false
+    }
+  ]
+}

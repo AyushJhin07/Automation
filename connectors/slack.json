@@ -31,6 +31,8 @@
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Slack and verify authentication",
+      "endpoint": "/auth.test",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {},

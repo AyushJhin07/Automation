@@ -1,0 +1,359 @@
+# Connector Inventory Report
+
+Total connectors: 149
+Implemented now (server): 5
+
+## Availability
+- stable: 149
+
+## Auth Types
+- oauth2: 66
+- api_key: 65
+- bearer_token: 3
+- aws_credentials: 2
+- personal_access_token: 1
+- basic: 7
+- vault_token: 1
+- kubeconfig: 1
+- basic_auth: 3
+
+## Categories (count)
+- DevOps: 14
+- Project Management: 12
+- Productivity: 10
+- Communication: 10
+- CRM: 8
+- Finance: 7
+- Marketing: 7
+- HR: 6
+- Monitoring: 6
+- Customer Support: 5
+- Analytics: 5
+- File Storage: 4
+- Email: 4
+- E-commerce: 4
+- Payments: 4
+- Accounting: 4
+- Database: 3
+- Development: 3
+- Developer Tools: 3
+- Storage: 2
+- Scheduling: 2
+- IT Service Management: 2
+- ERP: 2
+- Customer Feedback: 2
+- E-Signature: 1
+- E-Commerce: 1
+- Documentation: 1
+- Data Analytics: 1
+- Document Management: 1
+- Admin: 1
+- Cloud Storage: 1
+- Knowledge Management: 1
+- Documents: 1
+- Forms: 1
+- AI/ML: 1
+- Events: 1
+- Collaboration: 1
+- Security: 1
+- Surveys: 1
+- ecommerce: 1
+- Knowledge Base: 1
+- Data & Analytics: 1
+- Time Tracking: 1
+- Website Builders: 1
+
+## Enhanced/Standard Pairs
+- adobesign: standard=yes, enhanced=no
+- adp: standard=yes, enhanced=no
+- adyen: standard=yes, enhanced=no
+- airtable: standard=yes, enhanced=yes
+- ansible: standard=yes, enhanced=no
+- argocd: standard=yes, enhanced=no
+- asana: standard=no, enhanced=yes
+- aws-cloudformation: standard=yes, enhanced=no
+- aws-codepipeline: standard=yes, enhanced=no
+- azure-devops: standard=yes, enhanced=no
+- bamboohr: standard=yes, enhanced=no
+- basecamp: standard=yes, enhanced=no
+- bigcommerce: standard=yes, enhanced=no
+- bigquery: standard=yes, enhanced=no
+- bitbucket: standard=yes, enhanced=no
+- box: standard=yes, enhanced=no
+- braze: standard=yes, enhanced=no
+- brex: standard=yes, enhanced=no
+- caldotcom: standard=yes, enhanced=no
+- calendly: standard=yes, enhanced=no
+- circleci: standard=yes, enhanced=no
+- clickup: standard=yes, enhanced=no
+- coda: standard=yes, enhanced=no
+- concur: standard=yes, enhanced=no
+- confluence: standard=yes, enhanced=no
+- coupa: standard=yes, enhanced=no
+- databricks: standard=yes, enhanced=no
+- datadog: standard=yes, enhanced=no
+- docker-hub: standard=yes, enhanced=no
+- docusign: standard=yes, enhanced=no
+- dropbox: standard=yes, enhanced=yes
+- dynamics365: standard=yes, enhanced=no
+- egnyte: standard=yes, enhanced=no
+- excel-online: standard=yes, enhanced=no
+- expensify: standard=yes, enhanced=no
+- freshdesk: standard=yes, enhanced=no
+- github: standard=yes, enhanced=yes
+- gitlab: standard=yes, enhanced=no
+- gmail: standard=yes, enhanced=yes
+- google-admin: standard=yes, enhanced=no
+- google-calendar: standard=yes, enhanced=no
+- google-chat: standard=yes, enhanced=no
+- google-contacts: standard=yes, enhanced=no
+- google-docs: standard=yes, enhanced=no
+- google-drive: standard=yes, enhanced=no
+- google-forms: standard=yes, enhanced=no
+- google-meet: standard=yes, enhanced=no
+- google-sheets: standard=no, enhanced=yes
+- google-slides: standard=yes, enhanced=no
+- grafana: standard=yes, enhanced=no
+- greenhouse: standard=yes, enhanced=no
+- guru: standard=yes, enhanced=no
+- hashicorp-vault: standard=yes, enhanced=no
+- hellosign: standard=yes, enhanced=no
+- helm: standard=yes, enhanced=no
+- hubspot: standard=yes, enhanced=yes
+- intercom: standard=yes, enhanced=no
+- iterable: standard=yes, enhanced=no
+- jenkins: standard=yes, enhanced=no
+- jira: standard=yes, enhanced=no
+- jira-service-management: standard=yes, enhanced=no
+- jotform: standard=yes, enhanced=no
+- klaviyo: standard=yes, enhanced=no
+- kubernetes: standard=yes, enhanced=no
+- kustomer: standard=yes, enhanced=no
+- lever: standard=yes, enhanced=no
+- linear: standard=yes, enhanced=no
+- llm: standard=yes, enhanced=no
+- looker: standard=yes, enhanced=no
+- luma: standard=yes, enhanced=no
+- magento: standard=yes, enhanced=no
+- mailchimp: standard=yes, enhanced=yes
+- mailgun: standard=yes, enhanced=no
+- marketo: standard=yes, enhanced=no
+- microsoft-teams: standard=yes, enhanced=no
+- microsoft-todo: standard=yes, enhanced=no
+- miro: standard=yes, enhanced=no
+- mixpanel: standard=yes, enhanced=no
+- monday: standard=yes, enhanced=yes
+- navan: standard=yes, enhanced=no
+- netsuite: standard=yes, enhanced=no
+- newrelic: standard=yes, enhanced=no
+- nexus: standard=yes, enhanced=no
+- notion: standard=yes, enhanced=yes
+- okta: standard=yes, enhanced=no
+- onedrive: standard=yes, enhanced=no
+- opsgenie: standard=yes, enhanced=no
+- outlook: standard=yes, enhanced=no
+- pagerduty: standard=yes, enhanced=no
+- pardot: standard=yes, enhanced=no
+- paypal: standard=yes, enhanced=no
+- pipedrive: standard=yes, enhanced=no
+- powerbi: standard=yes, enhanced=yes
+- prometheus: standard=yes, enhanced=no
+- qualtrics: standard=yes, enhanced=no
+- quickbooks: standard=yes, enhanced=no
+- ramp: standard=yes, enhanced=no
+- razorpay: standard=yes, enhanced=no
+- ringcentral: standard=yes, enhanced=no
+- sageintacct: standard=yes, enhanced=no
+- salesforce: standard=yes, enhanced=yes
+- sap-ariba: standard=yes, enhanced=no
+- sendgrid: standard=yes, enhanced=no
+- sentry: standard=yes, enhanced=no
+- servicenow: standard=yes, enhanced=no
+- sharepoint: standard=yes, enhanced=no
+- shopify: standard=yes, enhanced=yes
+- slab: standard=yes, enhanced=no
+- slack: standard=yes, enhanced=yes
+- smartsheet: standard=yes, enhanced=no
+- snowflake: standard=yes, enhanced=no
+- sonarqube: standard=yes, enhanced=no
+- square: standard=yes, enhanced=no
+- stripe: standard=yes, enhanced=yes
+- successfactors: standard=yes, enhanced=no
+- surveymonkey: standard=yes, enhanced=no
+- tableau: standard=yes, enhanced=no
+- talkdesk: standard=yes, enhanced=no
+- teamwork: standard=yes, enhanced=no
+- terraform-cloud: standard=yes, enhanced=no
+- toggl: standard=yes, enhanced=no
+- trello: standard=yes, enhanced=yes
+- twilio: standard=yes, enhanced=no
+- typeform: standard=yes, enhanced=no
+- victorops: standard=yes, enhanced=no
+- webex: standard=yes, enhanced=no
+- webflow: standard=yes, enhanced=no
+- woocommerce: standard=yes, enhanced=no
+- workday: standard=yes, enhanced=no
+- workfront: standard=yes, enhanced=no
+- xero: standard=yes, enhanced=no
+- zendesk: standard=yes, enhanced=no
+- zoho-books: standard=yes, enhanced=no
+- zoho-crm: standard=yes, enhanced=no
+- zoom: standard=no, enhanced=yes
+
+## Implemented Connectors (server)
+- airtable (Airtable)
+- gmail (Gmail)
+- notion (Notion)
+- shopify (Shopify)
+- slack (Slack)
+
+## All Connectors
+- adobesign | stable | oauth2 | actions=5 | triggers=2
+- adp | stable | oauth2 | actions=4 | triggers=1
+- adyen | stable | api_key | actions=4 | triggers=1
+- airtable | stable | api_key | actions=6 | triggers=2
+- airtable-enhanced | stable | api_key | actions=8 | triggers=2
+- ansible | stable | api_key | actions=5 | triggers=2
+- argocd | stable | bearer_token | actions=5 | triggers=2
+- asana-enhanced | stable | oauth2 | actions=12 | triggers=3
+- aws-cloudformation | stable | aws_credentials | actions=5 | triggers=2
+- aws-codepipeline | stable | aws_credentials | actions=5 | triggers=3
+- azure-devops | stable | personal_access_token | actions=5 | triggers=2
+- bamboohr | stable | api_key | actions=5 | triggers=2
+- basecamp | stable | oauth2 | actions=6 | triggers=2
+- bigcommerce | stable | api_key | actions=6 | triggers=2
+- bigquery | stable | oauth2 | actions=7 | triggers=1
+- bitbucket | stable | oauth2 | actions=6 | triggers=2
+- box | stable | oauth2 | actions=8 | triggers=2
+- braze | stable | api_key | actions=6 | triggers=2
+- brex | stable | oauth2 | actions=8 | triggers=2
+- caldotcom | stable | api_key | actions=8 | triggers=2
+- calendly | stable | oauth2 | actions=6 | triggers=2
+- circleci | stable | api_key | actions=8 | triggers=2
+- clickup | stable | api_key | actions=9 | triggers=2
+- coda | stable | api_key | actions=9 | triggers=2
+- concur | stable | oauth2 | actions=7 | triggers=2
+- confluence | stable | oauth2 | actions=8 | triggers=2
+- coupa | stable | api_key | actions=8 | triggers=2
+- databricks | stable | api_key | actions=10 | triggers=2
+- datadog | stable | api_key | actions=7 | triggers=2
+- docker-hub | stable | api_key | actions=5 | triggers=2
+- docusign | stable | oauth2 | actions=8 | triggers=3
+- dropbox | stable | oauth2 | actions=10 | triggers=2
+- dropbox-enhanced | stable | oauth2 | actions=11 | triggers=3
+- dynamics365 | stable | oauth2 | actions=8 | triggers=3
+- egnyte | stable | oauth2 | actions=10 | triggers=2
+- excel-online | stable | oauth2 | actions=11 | triggers=2
+- expensify | stable | api_key | actions=8 | triggers=3
+- freshdesk | stable | api_key | actions=8 | triggers=2
+- github | stable | oauth2 | actions=13 | triggers=5
+- github-enhanced | stable | oauth2 | actions=8 | triggers=3
+- gitlab | stable | oauth2 | actions=5 | triggers=2
+- gmail | stable | oauth2 | actions=7 | triggers=3
+- gmail-enhanced | stable | oauth2 | actions=10 | triggers=2
+- google-admin | stable | oauth2 | actions=9 | triggers=2
+- google-calendar | stable | oauth2 | actions=11 | triggers=3
+- google-chat | stable | oauth2 | actions=11 | triggers=3
+- google-contacts | stable | oauth2 | actions=9 | triggers=2
+- google-docs | stable | oauth2 | actions=10 | triggers=2
+- google-drive | stable | oauth2 | actions=13 | triggers=3
+- google-forms | stable | oauth2 | actions=10 | triggers=2
+- google-meet | stable | oauth2 | actions=10 | triggers=3
+- google-sheets-enhanced | stable | oauth2 | actions=12 | triggers=2
+- google-slides | stable | oauth2 | actions=10 | triggers=2
+- grafana | stable | api_key | actions=5 | triggers=2
+- greenhouse | stable | api_key | actions=12 | triggers=3
+- guru | stable | basic | actions=12 | triggers=3
+- hashicorp-vault | stable | vault_token | actions=5 | triggers=2
+- hellosign | stable | api_key | actions=13 | triggers=3
+- helm | stable | kubeconfig | actions=5 | triggers=2
+- hubspot | stable | oauth2 | actions=11 | triggers=4
+- hubspot-enhanced | stable | oauth2 | actions=12 | triggers=4
+- intercom | stable | api_key | actions=13 | triggers=3
+- iterable | stable | api_key | actions=14 | triggers=4
+- jenkins | stable | basic | actions=16 | triggers=3
+- jira | stable | oauth2 | actions=12 | triggers=4
+- jira-service-management | stable | basic | actions=15 | triggers=4
+- jotform | stable | api_key | actions=16 | triggers=2
+- klaviyo | stable | api_key | actions=12 | triggers=3
+- kubernetes | stable | bearer_token | actions=5 | triggers=2
+- kustomer | stable | api_key | actions=14 | triggers=4
+- lever | stable | api_key | actions=12 | triggers=3
+- linear | stable | api_key | actions=12 | triggers=3
+- llm | stable | api_key | actions=2 | triggers=1
+- looker | stable | oauth2 | actions=14 | triggers=2
+- luma | stable | api_key | actions=13 | triggers=4
+- magento | stable | api_key | actions=9 | triggers=2
+- mailchimp | stable | api_key | actions=14 | triggers=4
+- mailchimp-enhanced | stable | api_key | actions=11 | triggers=3
+- mailgun | stable | api_key | actions=13 | triggers=6
+- marketo | stable | oauth2 | actions=16 | triggers=5
+- microsoft-teams | stable | oauth2 | actions=9 | triggers=3
+- microsoft-todo | stable | oauth2 | actions=8 | triggers=2
+- miro | stable | oauth2 | actions=15 | triggers=4
+- mixpanel | stable | api_key | actions=16 | triggers=4
+- monday | stable | api_key | actions=14 | triggers=4
+- monday-enhanced | stable | api_key | actions=12 | triggers=2
+- navan | stable | api_key | actions=6 | triggers=1
+- netsuite | stable | oauth2 | actions=6 | triggers=1
+- newrelic | stable | api_key | actions=7 | triggers=1
+- nexus | stable | basic_auth | actions=5 | triggers=2
+- notion | stable | oauth2 | actions=10 | triggers=3
+- notion-enhanced | stable | oauth2 | actions=17 | triggers=4
+- okta | stable | api_key | actions=15 | triggers=3
+- onedrive | stable | oauth2 | actions=7 | triggers=1
+- opsgenie | stable | api_key | actions=11 | triggers=3
+- outlook | stable | oauth2 | actions=9 | triggers=2
+- pagerduty | stable | api_key | actions=12 | triggers=3
+- pardot | stable | oauth2 | actions=7 | triggers=1
+- paypal | stable | oauth2 | actions=8 | triggers=4
+- pipedrive | stable | api_key | actions=10 | triggers=2
+- powerbi | stable | oauth2 | actions=5 | triggers=1
+- powerbi-enhanced | stable | oauth2 | actions=19 | triggers=3
+- prometheus | stable | basic_auth | actions=5 | triggers=2
+- qualtrics | stable | api_key | actions=9 | triggers=1
+- quickbooks | stable | oauth2 | actions=14 | triggers=3
+- ramp | stable | api_key | actions=5 | triggers=1
+- razorpay | stable | basic | actions=6 | triggers=2
+- ringcentral | stable | oauth2 | actions=8 | triggers=2
+- sageintacct | stable | basic | actions=8 | triggers=1
+- salesforce | stable | oauth2 | actions=5 | triggers=1
+- salesforce-enhanced | stable | oauth2 | actions=8 | triggers=2
+- sap-ariba | stable | oauth2 | actions=14 | triggers=3
+- sendgrid | stable | api_key | actions=7 | triggers=3
+- sentry | stable | api_key | actions=17 | triggers=4
+- servicenow | stable | basic | actions=6 | triggers=2
+- sharepoint | stable | oauth2 | actions=14 | triggers=4
+- shopify | stable | oauth2 | actions=13 | triggers=5
+- shopify-enhanced | stable | api_key | actions=11 | triggers=3
+- slab | stable | api_key | actions=8 | triggers=2
+- slack | stable | oauth2 | actions=11 | triggers=3
+- slack-enhanced | stable | oauth2 | actions=14 | triggers=4
+- smartsheet | stable | api_key | actions=14 | triggers=3
+- snowflake | stable | api_key | actions=14 | triggers=2
+- sonarqube | stable | basic_auth | actions=5 | triggers=2
+- square | stable | api_key | actions=8 | triggers=2
+- stripe | stable | api_key | actions=8 | triggers=4
+- stripe-enhanced | stable | api_key | actions=5 | triggers=2
+- successfactors | stable | oauth2 | actions=5 | triggers=2
+- surveymonkey | stable | oauth2 | actions=14 | triggers=3
+- tableau | stable | basic | actions=15 | triggers=2
+- talkdesk | stable | api_key | actions=14 | triggers=3
+- teamwork | stable | api_key | actions=14 | triggers=4
+- terraform-cloud | stable | bearer_token | actions=5 | triggers=2
+- toggl | stable | api_key | actions=17 | triggers=4
+- trello | stable | api_key | actions=13 | triggers=4
+- trello-enhanced | stable | api_key | actions=9 | triggers=3
+- twilio | stable | api_key | actions=11 | triggers=4
+- typeform | stable | api_key | actions=6 | triggers=2
+- victorops | stable | api_key | actions=12 | triggers=3
+- webex | stable | oauth2 | actions=10 | triggers=3
+- webflow | stable | api_key | actions=14 | triggers=4
+- woocommerce | stable | api_key | actions=8 | triggers=2
+- workday | stable | oauth2 | actions=13 | triggers=4
+- workfront | stable | api_key | actions=13 | triggers=3
+- xero | stable | oauth2 | actions=13 | triggers=3
+- zendesk | stable | api_key | actions=11 | triggers=3
+- zoho-books | stable | oauth2 | actions=13 | triggers=3
+- zoho-crm | stable | oauth2 | actions=10 | triggers=3
+- zoom-enhanced | stable | oauth2 | actions=9 | triggers=3

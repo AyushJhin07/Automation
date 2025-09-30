@@ -1,0 +1,164 @@
+[
+  {
+    "id": "hubspot-enhanced",
+    "name": "HubSpot Enhanced",
+    "category": "CRM",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 12,
+    "triggers": 4
+  },
+  {
+    "id": "trello",
+    "name": "Trello",
+    "category": "Project Management",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 13,
+    "triggers": 4
+  },
+  {
+    "id": "twilio",
+    "name": "Twilio",
+    "category": "Communication",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 11,
+    "triggers": 4
+  },
+  {
+    "id": "jira",
+    "name": "Jira",
+    "category": "Project Management",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 12,
+    "triggers": 4
+  },
+  {
+    "id": "kustomer",
+    "name": "Kustomer",
+    "category": "Customer Support",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 14,
+    "triggers": 4
+  },
+  {
+    "id": "mailgun",
+    "name": "Mailgun",
+    "category": "Email",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 13,
+    "triggers": 6
+  },
+  {
+    "id": "stripe",
+    "name": "Stripe",
+    "category": "Payments",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 8,
+    "triggers": 4
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "category": "Communication",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 11,
+    "triggers": 3
+  },
+  {
+    "id": "asana-enhanced",
+    "name": "Asana Enhanced",
+    "category": "Project Management",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 12,
+    "triggers": 3
+  },
+  {
+    "id": "zendesk",
+    "name": "Zendesk",
+    "category": "Customer Support",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 11,
+    "triggers": 3
+  },
+  {
+    "id": "github-enhanced",
+    "name": "GitHub Enhanced",
+    "category": "Developer Tools",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 8,
+    "triggers": 3
+  },
+  {
+    "id": "pipedrive",
+    "name": "Pipedrive",
+    "category": "CRM",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 10,
+    "triggers": 2
+  },
+  {
+    "id": "dropbox",
+    "name": "Dropbox",
+    "category": "File Storage",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 10,
+    "triggers": 2
+  },
+  {
+    "id": "salesforce",
+    "name": "Salesforce",
+    "category": "CRM",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 5,
+    "triggers": 1
+  },
+  {
+    "id": "mailchimp",
+    "name": "Mailchimp",
+    "category": "Marketing",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 14,
+    "triggers": 4
+  },
+  {
+    "id": "google-drive",
+    "name": "Google Drive",
+    "category": "Cloud Storage",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 13,
+    "triggers": 3
+  },
+  {
+    "id": "google-calendar",
+    "name": "Google Calendar",
+    "category": "Productivity",
+    "availability": "stable",
+    "authType": "oauth2",
+    "actions": 11,
+    "triggers": 3
+  },
+  {
+    "id": "typeform",
+    "name": "Typeform",
+    "category": "Customer Feedback",
+    "availability": "stable",
+    "authType": "api_key",
+    "actions": 6,
+    "triggers": 2
+  }
+]

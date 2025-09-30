@@ -409,6 +409,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export user's connections (masked)
+  app.get('/api/connections/export', authenticateToken, async (req, res) => {
+    try {
+      const data = await connectionService.exportConnections(req.user!.id);
+      res.json({ success: true, connections: data });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Import connections (dev/local)
+  app.post('/api/connections/import', authenticateToken, async (req, res) => {
+    try {
+      const list = Array.isArray(req.body?.connections) ? req.body.connections : [];
+      const result = await connectionService.importConnections(req.user!.id, list);
+      res.json({ success: true, result });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   app.get('/api/connections/providers', authenticateToken, (_req, res) => {
     res.json({
       success: true,
@@ -709,6 +730,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
           categories
         }
       });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Roadmap tasks (for tracking progress)
+  app.get('/api/roadmap', async (_req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
+      if (!fs.existsSync(file)) {
+        return res.json({ success: true, tasks: [], generatedAt: null, counts: { total: 0, done: 0, in_progress: 0, todo: 0 } });
+      }
+      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const tasks = json.tasks || [];
+      const counts = {
+        total: tasks.length,
+        done: tasks.filter((t: any) => t.status === 'done').length,
+        in_progress: tasks.filter((t: any) => t.status === 'in_progress').length,
+        todo: tasks.filter((t: any) => t.status === 'todo').length,
+      };
+      res.json({ success: true, generatedAt: json.generatedAt, tasks, counts });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Update roadmap tasks (admin-only; currently gated by auth)
+  app.post('/api/roadmap/update', authenticateToken, async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
+      const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { tasks: [] };
+      const updates = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
+      const map: Record<string, any> = {};
+      for (const t of current.tasks || []) map[t.id] = t;
+      for (const u of updates) {
+        if (!u.id) continue;
+        if (!map[u.id]) map[u.id] = u; else map[u.id] = { ...map[u.id], ...u };
+      }
+      const tasks = Object.values(map);
+      const out = { generatedAt: new Date().toISOString(), tasks };
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(out, null, 2));
+      res.json({ success: true, tasks });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // OAuth providers status
+  app.get('/api/status/providers', async (_req, res) => {
+    try {
+      const providers = oauthManager.listProviders().map(p => ({ id: p.name, configured: true }));
+      const disabled = oauthManager.listDisabledProviders().map(({ provider }) => ({ id: provider.name, configured: false }));
+      res.json({ success: true, providers: [...providers, ...disabled] });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Error catalog (static for now)
+  app.get('/api/errors/vendors', (_req, res) => {
+    const catalog = {
+      slack: { not_in_channel: 'Bot not in channel. Invite the app to the channel.', channel_not_found: 'Check channel ID.' },
+      stripe: { rate_limit: 'Reduce request rate or enable retries.', invalid_request_error: 'Verify parameters.' },
+      hubspot: { INVALID_AUTH: 'Re-authenticate the connection.', RATE_LIMIT: 'Use backoff and paging.' },
+      zendesk: { unauthorized: 'Verify subdomain and credentials.' },
+      github: { bad_credentials: 'Re-authenticate token with proper scopes.' }
+    };
+    res.json({ success: true, catalog });
+  });
+
+  // Connector inventory stats (compact summary)
+  app.get('/api/status/connectors', async (_req, res) => {
+    try {
+      const stats = connectorRegistry.getRegistryStats();
+      res.json({ success: true, stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Rate limit profiles derived from connector JSON
+  app.get('/api/status/rate-limits', async (_req, res) => {
+    try {
+      const entries = connectorRegistry.getAllConnectors({ includeExperimental: true, includeDisabled: true });
+      const limits = entries.map(e => ({ id: e.definition.id, rateLimits: e.definition.rateLimits || null }));
+      res.json({ success: true, limits });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
@@ -1208,22 +1320,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Initialize integration
+  // Initialize integration (supports connectionId/provider fallback)
   app.post('/api/integrations/initialize', authenticateToken, async (req, res) => {
     try {
-      const { appName, credentials, additionalConfig } = req.body;
+      let { appName, credentials, additionalConfig, connectionId, provider } = req.body;
       
+      // Resolve credentials from stored connection if not provided
+      if (!credentials && (connectionId || provider)) {
+        const userId = req.user!.id;
+        let conn = null as any;
+        if (connectionId) {
+          conn = await connectionService.getConnection(String(connectionId), userId);
+        } else if (provider) {
+          conn = await connectionService.getConnectionByProvider(userId, String(provider));
+        }
+        if (!conn) {
+          return res.status(404).json({ success: false, error: 'Connection not found' });
+        }
+        credentials = conn.credentials;
+        additionalConfig = { ...(conn.metadata || {}), ...(additionalConfig || {}) };
+        appName = appName || conn.provider;
+        connectionId = conn.id;
+      }
+
       if (!appName || !credentials) {
-        return res.status(400).json({
-          success: false,
-          error: 'Missing required fields: appName, credentials'
-        });
+        return res.status(400).json({ success: false, error: 'Missing required fields: appName, credentials (or connectionId/provider)' });
       }
 
       const result = await integrationManager.initializeIntegration({
         appName,
         credentials,
-        additionalConfig
+        additionalConfig,
+        connectionId
       });
       
       res.json({
@@ -1239,16 +1367,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Execute function on integrated application
+  // Execute function on integrated application (supports connectionId/provider fallback)
   app.post('/api/integrations/execute', authenticateToken, checkQuota, async (req, res) => {
     try {
-      const { appName, functionId, parameters, credentials, additionalConfig, connectionId } = req.body;
+      let { appName, functionId, parameters, credentials, additionalConfig, connectionId, provider } = req.body;
+
+      if ((!credentials) && (connectionId || provider)) {
+        const userId = req.user!.id;
+        let conn = null as any;
+        if (connectionId) {
+          conn = await connectionService.getConnection(String(connectionId), userId);
+        } else if (provider) {
+          conn = await connectionService.getConnectionByProvider(userId, String(provider));
+        }
+        if (!conn) {
+          return res.status(404).json({ success: false, error: 'Connection not found' });
+        }
+        credentials = conn.credentials;
+        additionalConfig = { ...(conn.metadata || {}), ...(additionalConfig || {}) };
+        appName = appName || conn.provider;
+        connectionId = conn.id;
+      }
 
       if (!appName || !functionId || !parameters || !credentials) {
-        return res.status(400).json({
-          success: false,
-          error: 'Missing required fields: appName, functionId, parameters, credentials'
-        });
+        return res.status(400).json({ success: false, error: 'Missing required fields: appName, functionId, parameters, credentials (or connectionId/provider)' });
       }
 
       const result = await integrationManager.executeFunction({
@@ -1279,6 +1421,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         functionId: req.body.functionId,
         executionTime: 0
       });
+    }
+  });
+
+  // Execute function with automatic pagination (GenericExecutor only; supports connectionId/provider)
+  app.post('/api/integrations/execute-paginated', authenticateToken, checkQuota, async (req, res) => {
+    try {
+      let { appName, functionId, parameters, credentials, additionalConfig, connectionId, provider, maxPages } = req.body;
+
+      if ((!credentials) && (connectionId || provider)) {
+        const userId = req.user!.id;
+        let conn = null as any;
+        if (connectionId) {
+          conn = await connectionService.getConnection(String(connectionId), userId);
+        } else if (provider) {
+          conn = await connectionService.getConnectionByProvider(userId, String(provider));
+        }
+        if (!conn) {
+          return res.status(404).json({ success: false, error: 'Connection not found' });
+        }
+        credentials = conn.credentials;
+        additionalConfig = { ...(conn.metadata || {}), ...(additionalConfig || {}) };
+        appName = appName || conn.provider;
+        connectionId = conn.id;
+      }
+
+      if (!appName || !functionId || !parameters || !credentials) {
+        return res.status(400).json({ success: false, error: 'Missing required fields: appName, functionId, parameters, credentials (or connectionId/provider)' });
+      }
+
+      const { env } = await import('./env.js');
+      if (!env.GENERIC_EXECUTOR_ENABLED) {
+        return res.status(400).json({ success: false, error: 'Generic executor is disabled' });
+      }
+      const { genericExecutor } = await import('./integrations/GenericExecutor.js');
+      const result = await genericExecutor.executePaginated({
+        appId: String(appName).toLowerCase(),
+        functionId,
+        parameters,
+        credentials,
+        maxPages
+      });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Execute and normalize list items (returns { items, meta }) using GenericExecutor
+  app.post('/api/integrations/execute-list', authenticateToken, checkQuota, async (req, res) => {
+    try {
+      let { appName, functionId, parameters, credentials, connectionId, provider, maxPages } = req.body;
+      const { env } = await import('./env.js');
+      if (!env.GENERIC_EXECUTOR_ENABLED) {
+        return res.status(400).json({ success: false, error: 'Generic executor is disabled' });
+      }
+      if ((!credentials) && (connectionId || provider)) {
+        const userId = req.user!.id;
+        let conn = null as any;
+        if (connectionId) conn = await connectionService.getConnection(String(connectionId), userId);
+        else if (provider) conn = await connectionService.getConnectionByProvider(userId, String(provider));
+        if (!conn) return res.status(404).json({ success: false, error: 'Connection not found' });
+        credentials = conn.credentials;
+        appName = appName || conn.provider;
+      }
+      const { genericExecutor } = await import('./integrations/GenericExecutor.js');
+      const resp = await genericExecutor.executePaginated({
+        appId: String(appName).toLowerCase(),
+        functionId,
+        parameters: parameters || {},
+        credentials,
+        maxPages: maxPages || 5
+      });
+      if (!resp.success) return res.json(resp);
+      const items = Array.isArray(resp.data?.items) ? resp.data.items : [];
+      return res.json({ success: true, data: { items, meta: resp.data?.meta } });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -2069,6 +2288,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register a recommended default polling trigger per provider
+  app.post('/api/triggers/polling/register-default/:provider', authenticateToken, async (req, res) => {
+    try {
+      const { provider } = req.params;
+      const { workflowId, interval, parameters, connectionId } = req.body || {};
+      if (!workflowId) {
+        return res.status(400).json({ success: false, error: 'Missing workflowId' });
+      }
+
+      const now = new Date();
+      const intervalSec = Number(interval) > 0 ? Number(interval) : 300; // default 5 minutes
+
+      let triggerId: string;
+      let requiredKeys: string[] = [];
+      let appId = String(provider).toLowerCase();
+      const metadata: Record<string, any> = { parameters: parameters || {} };
+
+      switch (appId) {
+        case 'typeform':
+          triggerId = 'get_responses';
+          requiredKeys = ['uid'];
+          break;
+        case 'trello':
+          triggerId = 'get_board';
+          requiredKeys = ['id'];
+          break;
+        case 'hubspot':
+          triggerId = 'search_contacts';
+          requiredKeys = [];
+          // Default since filter can be applied via metadata.parameters.filters if desired
+          break;
+        case 'zendesk':
+          triggerId = 'list_tickets';
+          requiredKeys = [];
+          break;
+        default:
+          return res.status(400).json({ success: false, error: `No default polling trigger defined for ${appId}` });
+      }
+
+      for (const k of requiredKeys) {
+        if (metadata.parameters?.[k] === undefined) {
+          return res.status(400).json({ success: false, error: `Missing required parameter: ${k}` });
+        }
+      }
+
+      if (connectionId) {
+        metadata.connectionId = connectionId;
+        metadata.userId = req.user!.id;
+      }
+
+      const id = `${appId}:${triggerId}:${workflowId}`;
+      await webhookManager.registerPollingTrigger({
+        id,
+        appId,
+        triggerId,
+        workflowId,
+        interval: intervalSec,
+        lastPoll: now,
+        nextPoll: new Date(now.getTime() + intervalSec * 1000),
+        isActive: true,
+        metadata
+      });
+
+      res.json({ success: true, data: { id, appId, triggerId, interval: intervalSec } });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // Get webhook statistics
   app.get('/api/webhooks/stats', authenticateToken, async (req, res) => {
     const startTime = Date.now();
@@ -2221,6 +2509,248 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).send('OK');
   });
 
+  // Health/features endpoint
+  app.get('/api/health/features', (_req, res) => {
+    try {
+      const features = {
+        GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true'
+      };
+      res.json({ success: true, features });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Register webhook subscription guidance and local trigger
+  app.post('/api/webhooks/register/:provider', authenticateToken, async (req, res) => {
+    try {
+      const { provider } = req.params;
+      const { workflowId, triggerId, secret, metadata } = req.body || {};
+      if (!workflowId || !triggerId) {
+        return res.status(400).json({ success: false, error: 'Missing required fields: workflowId, triggerId' });
+      }
+
+      const endpoint = await webhookManager.registerWebhook({
+        appId: provider,
+        triggerId,
+        workflowId,
+        secret,
+        isActive: true,
+        metadata: metadata || {}
+      } as any);
+
+      // Recommend vendor-specific path where available
+      const vendorPaths: Record<string, string> = {
+        slack: `/api/webhooks/slack/${endpoint.split('/').pop()}`,
+        stripe: `/api/webhooks/stripe/${endpoint.split('/').pop()}`,
+        shopify: `/api/webhooks/shopify/${endpoint.split('/').pop()}`,
+        github: `/api/webhooks/github/${endpoint.split('/').pop()}`,
+      };
+
+      const guidance: Record<string, any> = {
+        slack: {
+          steps: [
+            'Create a Slack app → Event Subscriptions → Enable and set Request URL to the vendor-specific path',
+            'Add bot scopes (e.g., chat:write, channels:read) and install the app',
+          ],
+          requestUrl: vendorPaths.slack || endpoint,
+          signatureHeader: 'X-Slack-Signature',
+        },
+        stripe: {
+          steps: [
+            'Create a webhook endpoint in Stripe Dashboard with the provided URL',
+            'Select events (e.g., payment_intent.succeeded)',
+            'Copy the signing secret into this trigger (secret field)'
+          ],
+          requestUrl: vendorPaths.stripe || endpoint,
+          signatureHeader: 'Stripe-Signature',
+        },
+        typeform: {
+          steps: [
+            'In Typeform, add a webhook to your form with the provided URL',
+            'Set secret and enable webhook',
+          ],
+          requestUrl: endpoint,
+          signatureHeader: 'Typeform-Signature',
+        },
+        zendesk: {
+          steps: [
+            'Create a Zendesk HTTP Target or Event Subscription pointing to the provided URL',
+            'Add authentication/secret as needed',
+          ],
+          requestUrl: endpoint,
+        },
+        github: {
+          steps: [
+            'In the repository → Settings → Webhooks → Add webhook',
+            'Set payload URL to the provided vendor-specific path and secret',
+            'Choose events to subscribe to',
+          ],
+          requestUrl: vendorPaths.github || endpoint,
+          signatureHeader: 'X-Hub-Signature-256',
+        }
+      };
+
+      const info = guidance[provider] || { steps: ['Use this URL as webhook callback in the provider.'], requestUrl: endpoint };
+
+      res.json({
+        success: true,
+        data: {
+          webhookId: endpoint.split('/').pop(),
+          genericUrl: endpoint,
+          providerUrl: info.requestUrl,
+          guidance: info.steps,
+          signatureHeader: info.signatureHeader
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Create remote webhook subscription via provider API when supported (e.g., Typeform)
+  app.post('/api/webhooks/subscribe', authenticateToken, async (req, res) => {
+    try {
+      const { provider, workflowId, triggerId, secret, parameters } = req.body || {};
+      if (!provider || !workflowId || !triggerId) {
+        return res.status(400).json({ success: false, error: 'Missing provider, workflowId, or triggerId' });
+      }
+
+      // First register local webhook to get callback URL
+      const endpoint = await webhookManager.registerWebhook({
+        appId: provider,
+        triggerId,
+        workflowId,
+        secret,
+        isActive: true,
+        metadata: { parameters: parameters || {} }
+      } as any);
+
+      // For Typeform, call create_webhook action via GenericExecutor
+      if (provider === 'typeform') {
+        const { env } = await import('./env.js');
+        if (!env.GENERIC_EXECUTOR_ENABLED) {
+          return res.status(400).json({ success: false, error: 'Generic executor is disabled' });
+        }
+        const { genericExecutor } = await import('./integrations/GenericExecutor.js');
+        // Expect credentials via connection or direct in body
+        const creds = req.body.credentials || (req.body.connectionId
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          : undefined);
+        if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
+
+        const resp = await genericExecutor.execute({
+          appId: 'typeform',
+          functionId: 'create_webhook',
+          credentials: creds,
+          parameters: {
+            uid: parameters?.uid,
+            url: `${process.env.BASE_URL || 'http://localhost:5000'}${endpoint}`,
+            enabled: true
+          }
+        });
+
+        return res.json({ success: resp.success, data: { localEndpoint: endpoint, remote: resp.data }, error: resp.error });
+      }
+
+      // For GitHub, create repo webhook via GenericExecutor using connectors/github.json
+      if (provider === 'github') {
+        const { env } = await import('./env.js');
+        if (!env.GENERIC_EXECUTOR_ENABLED) {
+          return res.status(400).json({ success: false, error: 'Generic executor is disabled' });
+        }
+        const { genericExecutor } = await import('./integrations/GenericExecutor.js');
+        const creds = req.body.credentials || (req.body.connectionId
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          : undefined);
+        if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
+
+        const { owner, repo, events } = parameters || {};
+        if (!owner || !repo) return res.status(400).json({ success: false, error: 'Missing owner/repo in parameters' });
+
+        const hookUrl = `${process.env.BASE_URL || 'http://localhost:5000'}${endpoint}`;
+        const resp = await genericExecutor.execute({
+          appId: 'github',
+          functionId: 'create_webhook',
+          credentials: creds,
+          parameters: {
+            owner,
+            repo,
+            url: hookUrl,
+            events: events && Array.isArray(events) ? events : ['issues'],
+            content_type: 'json',
+            secret: secret || undefined,
+            active: true
+          }
+        });
+
+        return res.json({ success: resp.success, data: { localEndpoint: endpoint, remote: resp.data }, error: resp.error });
+      }
+
+      // For Trello, create webhook via GenericExecutor
+      if (provider === 'trello') {
+        const { env } = await import('./env.js');
+        if (!env.GENERIC_EXECUTOR_ENABLED) {
+          return res.status(400).json({ success: false, error: 'Generic executor is disabled' });
+        }
+        const { genericExecutor } = await import('./integrations/GenericExecutor.js');
+        const creds = req.body.credentials || (req.body.connectionId
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          : undefined);
+        if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
+
+        const { idModel, description } = parameters || {};
+        if (!idModel) return res.status(400).json({ success: false, error: 'Missing idModel (board or card id)' });
+
+        const hookUrl = `${process.env.BASE_URL || 'http://localhost:5000'}${endpoint}`;
+        const resp = await genericExecutor.execute({
+          appId: 'trello',
+          functionId: 'create_webhook',
+          credentials: creds,
+          parameters: {
+            callbackURL: hookUrl,
+            idModel,
+            description: description || 'Apps Script Studio Webhook'
+          }
+        });
+
+        return res.json({ success: resp.success, data: { localEndpoint: endpoint, remote: resp.data }, error: resp.error });
+      }
+
+      // Zendesk programmatic subscribe via GenericExecutor
+      if (provider === 'zendesk') {
+        const { env } = await import('./env.js');
+        if (!env.GENERIC_EXECUTOR_ENABLED) {
+          return res.status(400).json({ success: false, error: 'Generic executor is disabled' });
+        }
+        const { genericExecutor } = await import('./integrations/GenericExecutor.js');
+        const creds = req.body.credentials || (req.body.connectionId
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          : undefined);
+        if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
+
+        const subs = parameters?.subscriptions || ['conditional_ticket_events'];
+        const resp = await genericExecutor.execute({
+          appId: 'zendesk',
+          functionId: 'create_webhook',
+          credentials: creds,
+          parameters: {
+            name: parameters?.name || 'Apps Script Studio Webhook',
+            endpoint: `${process.env.BASE_URL || 'http://localhost:5000'}${endpoint}`,
+            http_method: 'POST',
+            request_format: 'json',
+            subscriptions: subs
+          }
+        });
+        return res.json({ success: resp.success, data: { localEndpoint: endpoint, remote: resp.data }, error: resp.error });
+      }
+
+      res.json({ success: true, data: { localEndpoint: endpoint, message: 'Registered local webhook; configure provider manually.' } });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // ===== CONNECTOR ENDPOINTS =====
   
   // List all available connectors
@@ -2229,6 +2759,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const connectors = await connectorRegistry.listConnectors();
+      // Heuristic set of vendors with first-class webhook ecosystems
+      const WEBHOOK_CAPABLE = new Set<string>([
+        'slack','stripe','github','gitlab','shopify','zendesk','typeform','mailchimp','intercom','dropbox','pipedrive','hubspot','salesforce','jira','jira-service-management','trello','asana','twilio','zoom','webex','google-drive','google-calendar'
+      ]);
       
       res.json({
         success: true,
@@ -2242,9 +2776,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actionsCount: connector.actions?.length || 0,
           triggersCount: connector.triggers?.length || 0,
           hasOAuth: connector.authentication?.type === 'oauth2',
-          hasWebhooks: connector.triggers?.some(t => t.webhookSupport) || false,
+          // Prefer explicit flag if present; otherwise infer from known vendors
+          hasWebhooks: (connector as any).triggers?.some((t: any) => t.webhookSupport) || WEBHOOK_CAPABLE.has(connector.id),
           availability: connector.availability,
-          hasImplementation: connector.hasImplementation
+          hasImplementation: connector.hasImplementation,
+          // UI status label derived from availability + implementation
+          statusLabel: connector.availability === 'stable'
+            ? (connector.hasImplementation ? 'Stable' : 'Coming Soon')
+            : (connector.availability === 'experimental' ? 'Experimental' : connector.availability)
         })),
         total: connectors.length,
         responseTime: Date.now() - startTime

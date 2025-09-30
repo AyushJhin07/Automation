@@ -106,6 +106,8 @@
       "id": "get_file",
       "name": "Get File",
       "description": "Get file metadata and content",
+      "endpoint": "/files/{fileId}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -126,6 +128,8 @@
       "id": "download_file",
       "name": "Download File",
       "description": "Download file content",
+      "endpoint": "/files/{fileId}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -147,6 +151,8 @@
       "id": "list_files",
       "name": "List Files",
       "description": "List files in Google Drive",
+      "endpoint": "/files",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -182,6 +188,8 @@
       "id": "create_folder",
       "name": "Create Folder",
       "description": "Create a new folder in Google Drive",
+      "endpoint": "/files",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -250,6 +258,8 @@
       "id": "delete_file",
       "name": "Delete File",
       "description": "Delete a file permanently",
+      "endpoint": "/files/{fileId}",
+      "method": "DELETE",
       "parameters": {
         "type": "object",
         "properties": {
@@ -266,6 +276,8 @@
       "id": "share_file",
       "name": "Share File",
       "description": "Share a file with users or make it public",
+      "endpoint": "/files/{fileId}/permissions",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -320,6 +332,8 @@
       "id": "update_file_metadata",
       "name": "Update File Metadata",
       "description": "Update file metadata like name, description",
+      "endpoint": "/files/{fileId}",
+      "method": "PATCH",
       "parameters": {
         "type": "object",
         "properties": {

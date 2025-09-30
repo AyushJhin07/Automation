@@ -1,0 +1,31 @@
+# Docs Index
+
+- Phase 0
+  - docs/phases/phase-0.md
+  - docs/phases/coverage-levels.md
+  - docs/phases/phase-0-risks.md
+- Phase 1
+  - docs/phases/phase-1.md
+  - docs/phases/phase-1-usage.md
+  - docs/phases/oauth-setup.md
+  - docs/roadmap-todo.md
+- Webhooks & Triggers
+  - docs/phases/webhooks-registration.md
+  - API: POST /api/webhooks/register/:provider
+  - API: POST /api/webhooks/subscribe (typeform/github)
+  - API: POST /api/triggers/polling/register-default/:provider
+- Execution APIs
+  - POST /api/integrations/test
+  - POST /api/integrations/initialize
+  - POST /api/integrations/execute
+  - POST /api/integrations/execute-paginated
+  - POST /api/integrations/execute-list
+- Telemetry
+  - GET /api/roadmap
+  - GET /api/status/connectors
+- Recipes
+  - docs/recipes/slack-on-stripe-payment.md
+  - docs/recipes/hubspot-contact-from-typeform.md
+  - docs/recipes/trello-board-to-slack.md
+  - docs/recipes/github-issue-to-slack.md
+  - docs/recipes/zendesk-ticket-to-slack.md

@@ -31,6 +31,8 @@
       "id": "create_form",
       "name": "Create Form",
       "description": "Create a new form",
+      "endpoint": "/forms",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -53,6 +55,8 @@
       "id": "get_form",
       "name": "Get Form",
       "description": "Get form details",
+      "endpoint": "/forms/{uid}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -69,6 +73,8 @@
       "id": "list_forms",
       "name": "List Forms",
       "description": "List all forms",
+      "endpoint": "/forms",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -98,6 +104,8 @@
       "id": "get_responses",
       "name": "Get Responses",
       "description": "Get responses for a form",
+      "endpoint": "/forms/{uid}/responses",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -135,6 +143,8 @@
       "id": "create_webhook",
       "name": "Create Webhook",
       "description": "Create a webhook for a form",
+      "endpoint": "/forms/{uid}/webhooks/default",
+      "method": "PUT",
       "parameters": {
         "type": "object",
         "properties": {

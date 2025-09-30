@@ -1,0 +1,747 @@
+[
+  {
+    "id": "adobesign",
+    "name": "Adobe Acrobat Sign",
+    "webhookCapable": false
+  },
+  {
+    "id": "adp",
+    "name": "ADP Workforce Now",
+    "webhookCapable": false
+  },
+  {
+    "id": "adyen",
+    "name": "Adyen",
+    "webhookCapable": false
+  },
+  {
+    "id": "airtable-enhanced",
+    "name": "Airtable Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "airtable",
+    "name": "Airtable",
+    "webhookCapable": false
+  },
+  {
+    "id": "ansible",
+    "name": "Ansible",
+    "webhookCapable": false
+  },
+  {
+    "id": "argocd",
+    "name": "Argo CD",
+    "webhookCapable": false
+  },
+  {
+    "id": "asana-enhanced",
+    "name": "Asana Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "aws-cloudformation",
+    "name": "AWS CloudFormation",
+    "webhookCapable": false
+  },
+  {
+    "id": "aws-codepipeline",
+    "name": "AWS CodePipeline",
+    "webhookCapable": false
+  },
+  {
+    "id": "azure-devops",
+    "name": "Azure DevOps",
+    "webhookCapable": false
+  },
+  {
+    "id": "bamboohr",
+    "name": "BambooHR",
+    "webhookCapable": false
+  },
+  {
+    "id": "basecamp",
+    "name": "Basecamp",
+    "webhookCapable": false
+  },
+  {
+    "id": "bigcommerce",
+    "name": "BigCommerce",
+    "webhookCapable": false
+  },
+  {
+    "id": "bigquery",
+    "name": "Google BigQuery",
+    "webhookCapable": false
+  },
+  {
+    "id": "bitbucket",
+    "name": "Bitbucket",
+    "webhookCapable": false
+  },
+  {
+    "id": "box",
+    "name": "Box",
+    "webhookCapable": false
+  },
+  {
+    "id": "braze",
+    "name": "Braze",
+    "webhookCapable": false
+  },
+  {
+    "id": "brex",
+    "name": "Brex",
+    "webhookCapable": false
+  },
+  {
+    "id": "caldotcom",
+    "name": "Cal.com",
+    "webhookCapable": false
+  },
+  {
+    "id": "calendly",
+    "name": "Calendly",
+    "webhookCapable": false
+  },
+  {
+    "id": "circleci",
+    "name": "CircleCI",
+    "webhookCapable": false
+  },
+  {
+    "id": "clickup",
+    "name": "ClickUp",
+    "webhookCapable": false
+  },
+  {
+    "id": "coda",
+    "name": "Coda",
+    "webhookCapable": false
+  },
+  {
+    "id": "concur",
+    "name": "SAP Concur",
+    "webhookCapable": false
+  },
+  {
+    "id": "confluence",
+    "name": "Atlassian Confluence",
+    "webhookCapable": false
+  },
+  {
+    "id": "coupa",
+    "name": "Coupa",
+    "webhookCapable": false
+  },
+  {
+    "id": "databricks",
+    "name": "Databricks",
+    "webhookCapable": false
+  },
+  {
+    "id": "datadog",
+    "name": "Datadog",
+    "webhookCapable": false
+  },
+  {
+    "id": "docker-hub",
+    "name": "Docker Hub",
+    "webhookCapable": false
+  },
+  {
+    "id": "docusign",
+    "name": "DocuSign",
+    "webhookCapable": false
+  },
+  {
+    "id": "dropbox-enhanced",
+    "name": "Dropbox Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "dropbox",
+    "name": "Dropbox",
+    "webhookCapable": true
+  },
+  {
+    "id": "dynamics365",
+    "name": "Microsoft Dynamics 365",
+    "webhookCapable": false
+  },
+  {
+    "id": "egnyte",
+    "name": "Egnyte",
+    "webhookCapable": false
+  },
+  {
+    "id": "excel-online",
+    "name": "Microsoft Excel Online",
+    "webhookCapable": false
+  },
+  {
+    "id": "expensify",
+    "name": "Expensify",
+    "webhookCapable": false
+  },
+  {
+    "id": "freshdesk",
+    "name": "Freshdesk",
+    "webhookCapable": false
+  },
+  {
+    "id": "github-enhanced",
+    "name": "GitHub Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "webhookCapable": true
+  },
+  {
+    "id": "gitlab",
+    "name": "GitLab",
+    "webhookCapable": true
+  },
+  {
+    "id": "gmail-enhanced",
+    "name": "Gmail Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "gmail",
+    "name": "Gmail",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-admin",
+    "name": "Google Admin",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-calendar",
+    "name": "Google Calendar",
+    "webhookCapable": true
+  },
+  {
+    "id": "google-chat",
+    "name": "Google Chat",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-contacts",
+    "name": "Google Contacts",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-docs",
+    "name": "Google Docs",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-drive",
+    "name": "Google Drive",
+    "webhookCapable": true
+  },
+  {
+    "id": "google-forms",
+    "name": "Google Forms",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-meet",
+    "name": "Google Meet",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-sheets-enhanced",
+    "name": "Google Sheets Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "google-slides",
+    "name": "Google Slides",
+    "webhookCapable": false
+  },
+  {
+    "id": "grafana",
+    "name": "Grafana",
+    "webhookCapable": false
+  },
+  {
+    "id": "greenhouse",
+    "name": "Greenhouse",
+    "webhookCapable": false
+  },
+  {
+    "id": "guru",
+    "name": "Guru",
+    "webhookCapable": false
+  },
+  {
+    "id": "hashicorp-vault",
+    "name": "HashiCorp Vault",
+    "webhookCapable": false
+  },
+  {
+    "id": "hellosign",
+    "name": "HelloSign",
+    "webhookCapable": false
+  },
+  {
+    "id": "helm",
+    "name": "Helm",
+    "webhookCapable": false
+  },
+  {
+    "id": "hubspot-enhanced",
+    "name": "HubSpot Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "hubspot",
+    "name": "HubSpot",
+    "webhookCapable": true
+  },
+  {
+    "id": "intercom",
+    "name": "Intercom",
+    "webhookCapable": true
+  },
+  {
+    "id": "iterable",
+    "name": "Iterable",
+    "webhookCapable": false
+  },
+  {
+    "id": "jenkins",
+    "name": "Jenkins",
+    "webhookCapable": false
+  },
+  {
+    "id": "jira-service-management",
+    "name": "Jira Service Management",
+    "webhookCapable": true
+  },
+  {
+    "id": "jira",
+    "name": "Jira",
+    "webhookCapable": true
+  },
+  {
+    "id": "jotform",
+    "name": "JotForm",
+    "webhookCapable": false
+  },
+  {
+    "id": "klaviyo",
+    "name": "Klaviyo",
+    "webhookCapable": false
+  },
+  {
+    "id": "kubernetes",
+    "name": "Kubernetes",
+    "webhookCapable": false
+  },
+  {
+    "id": "kustomer",
+    "name": "Kustomer",
+    "webhookCapable": false
+  },
+  {
+    "id": "lever",
+    "name": "Lever",
+    "webhookCapable": false
+  },
+  {
+    "id": "linear",
+    "name": "Linear",
+    "webhookCapable": false
+  },
+  {
+    "id": "llm",
+    "name": "LLM (Large Language Model)",
+    "webhookCapable": false
+  },
+  {
+    "id": "looker",
+    "name": "Looker",
+    "webhookCapable": false
+  },
+  {
+    "id": "luma",
+    "name": "Luma",
+    "webhookCapable": false
+  },
+  {
+    "id": "magento",
+    "name": "Magento",
+    "webhookCapable": false
+  },
+  {
+    "id": "mailchimp-enhanced",
+    "name": "Mailchimp Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "mailchimp",
+    "name": "Mailchimp",
+    "webhookCapable": true
+  },
+  {
+    "id": "mailgun",
+    "name": "Mailgun",
+    "webhookCapable": false
+  },
+  {
+    "id": "marketo",
+    "name": "Marketo",
+    "webhookCapable": false
+  },
+  {
+    "id": "microsoft-teams",
+    "name": "Microsoft Teams",
+    "webhookCapable": false
+  },
+  {
+    "id": "microsoft-todo",
+    "name": "Microsoft To Do",
+    "webhookCapable": false
+  },
+  {
+    "id": "miro",
+    "name": "Miro",
+    "webhookCapable": false
+  },
+  {
+    "id": "mixpanel",
+    "name": "Mixpanel",
+    "webhookCapable": false
+  },
+  {
+    "id": "monday-enhanced",
+    "name": "Monday.com Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "monday",
+    "name": "Monday.com",
+    "webhookCapable": false
+  },
+  {
+    "id": "navan",
+    "name": "Navan",
+    "webhookCapable": false
+  },
+  {
+    "id": "netsuite",
+    "name": "NetSuite",
+    "webhookCapable": false
+  },
+  {
+    "id": "newrelic",
+    "name": "New Relic",
+    "webhookCapable": false
+  },
+  {
+    "id": "nexus",
+    "name": "Sonatype Nexus",
+    "webhookCapable": false
+  },
+  {
+    "id": "notion-enhanced",
+    "name": "Notion Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "webhookCapable": false
+  },
+  {
+    "id": "okta",
+    "name": "Okta",
+    "webhookCapable": false
+  },
+  {
+    "id": "onedrive",
+    "name": "OneDrive",
+    "webhookCapable": false
+  },
+  {
+    "id": "opsgenie",
+    "name": "Opsgenie",
+    "webhookCapable": false
+  },
+  {
+    "id": "outlook",
+    "name": "Microsoft Outlook",
+    "webhookCapable": false
+  },
+  {
+    "id": "pagerduty",
+    "name": "PagerDuty",
+    "webhookCapable": false
+  },
+  {
+    "id": "pardot",
+    "name": "Pardot",
+    "webhookCapable": false
+  },
+  {
+    "id": "paypal",
+    "name": "PayPal",
+    "webhookCapable": false
+  },
+  {
+    "id": "pipedrive",
+    "name": "Pipedrive",
+    "webhookCapable": true
+  },
+  {
+    "id": "powerbi-enhanced",
+    "name": "Power BI Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "powerbi",
+    "name": "Power BI",
+    "webhookCapable": false
+  },
+  {
+    "id": "prometheus",
+    "name": "Prometheus",
+    "webhookCapable": false
+  },
+  {
+    "id": "qualtrics",
+    "name": "Qualtrics",
+    "webhookCapable": false
+  },
+  {
+    "id": "quickbooks",
+    "name": "QuickBooks",
+    "webhookCapable": false
+  },
+  {
+    "id": "ramp",
+    "name": "Ramp",
+    "webhookCapable": false
+  },
+  {
+    "id": "razorpay",
+    "name": "Razorpay",
+    "webhookCapable": false
+  },
+  {
+    "id": "ringcentral",
+    "name": "RingCentral",
+    "webhookCapable": false
+  },
+  {
+    "id": "sageintacct",
+    "name": "Sage Intacct",
+    "webhookCapable": false
+  },
+  {
+    "id": "salesforce-enhanced",
+    "name": "Salesforce Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "salesforce",
+    "name": "Salesforce",
+    "webhookCapable": true
+  },
+  {
+    "id": "sap-ariba",
+    "name": "SAP Ariba",
+    "webhookCapable": false
+  },
+  {
+    "id": "sendgrid",
+    "name": "SendGrid",
+    "webhookCapable": false
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "webhookCapable": false
+  },
+  {
+    "id": "servicenow",
+    "name": "ServiceNow",
+    "webhookCapable": false
+  },
+  {
+    "id": "sharepoint",
+    "name": "SharePoint",
+    "webhookCapable": false
+  },
+  {
+    "id": "shopify-enhanced",
+    "name": "Shopify Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "shopify",
+    "name": "Shopify",
+    "webhookCapable": true
+  },
+  {
+    "id": "slab",
+    "name": "Slab",
+    "webhookCapable": false
+  },
+  {
+    "id": "slack-enhanced",
+    "name": "Slack Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "webhookCapable": true
+  },
+  {
+    "id": "smartsheet",
+    "name": "Smartsheet",
+    "webhookCapable": false
+  },
+  {
+    "id": "snowflake",
+    "name": "Snowflake",
+    "webhookCapable": false
+  },
+  {
+    "id": "sonarqube",
+    "name": "SonarQube",
+    "webhookCapable": false
+  },
+  {
+    "id": "square",
+    "name": "Square",
+    "webhookCapable": false
+  },
+  {
+    "id": "stripe-enhanced",
+    "name": "Stripe Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "stripe",
+    "name": "Stripe",
+    "webhookCapable": true
+  },
+  {
+    "id": "successfactors",
+    "name": "SAP SuccessFactors",
+    "webhookCapable": false
+  },
+  {
+    "id": "surveymonkey",
+    "name": "SurveyMonkey",
+    "webhookCapable": false
+  },
+  {
+    "id": "tableau",
+    "name": "Tableau",
+    "webhookCapable": false
+  },
+  {
+    "id": "talkdesk",
+    "name": "Talkdesk",
+    "webhookCapable": false
+  },
+  {
+    "id": "teamwork",
+    "name": "Teamwork",
+    "webhookCapable": false
+  },
+  {
+    "id": "terraform-cloud",
+    "name": "Terraform Cloud",
+    "webhookCapable": false
+  },
+  {
+    "id": "toggl",
+    "name": "Toggl Track",
+    "webhookCapable": false
+  },
+  {
+    "id": "trello-enhanced",
+    "name": "Trello Enhanced",
+    "webhookCapable": false
+  },
+  {
+    "id": "trello",
+    "name": "Trello",
+    "webhookCapable": true
+  },
+  {
+    "id": "twilio",
+    "name": "Twilio",
+    "webhookCapable": true
+  },
+  {
+    "id": "typeform",
+    "name": "Typeform",
+    "webhookCapable": true
+  },
+  {
+    "id": "victorops",
+    "name": "VictorOps",
+    "webhookCapable": false
+  },
+  {
+    "id": "webex",
+    "name": "Cisco Webex",
+    "webhookCapable": true
+  },
+  {
+    "id": "webflow",
+    "name": "Webflow",
+    "webhookCapable": false
+  },
+  {
+    "id": "woocommerce",
+    "name": "WooCommerce",
+    "webhookCapable": false
+  },
+  {
+    "id": "workday",
+    "name": "Workday",
+    "webhookCapable": false
+  },
+  {
+    "id": "workfront",
+    "name": "Adobe Workfront",
+    "webhookCapable": false
+  },
+  {
+    "id": "xero",
+    "name": "Xero",
+    "webhookCapable": false
+  },
+  {
+    "id": "zendesk",
+    "name": "Zendesk",
+    "webhookCapable": true
+  },
+  {
+    "id": "zoho-books",
+    "name": "Zoho Books",
+    "webhookCapable": false
+  },
+  {
+    "id": "zoho-crm",
+    "name": "Zoho CRM",
+    "webhookCapable": false
+  },
+  {
+    "id": "zoom-enhanced",
+    "name": "Zoom Enhanced",
+    "webhookCapable": false
+  }
+]

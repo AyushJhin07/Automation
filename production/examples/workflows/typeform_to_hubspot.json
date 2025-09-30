@@ -1,0 +1,17 @@
+{
+  "name": "Typeform → HubSpot Contact",
+  "trigger": { "type": "webhook", "provider": "typeform", "event": "form_response" },
+  "steps": [
+    {
+      "type": "action",
+      "app": "hubspot",
+      "functionId": "create_contact",
+      "parameters": {
+        "email": "{{form_response.answers.email}}",
+        "firstname": "{{form_response.answers.first_name}}",
+        "lastname": "{{form_response.answers.last_name}}"
+      },
+      "provider": "hubspot"
+    }
+  ]
+}

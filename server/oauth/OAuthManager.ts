@@ -351,6 +351,42 @@ export class OAuthManager {
       customAuthParams: {"optional_scope":"content"},
     });
 
+    // Google Drive
+    this.providers.set('google-drive', {
+      name: 'google-drive',
+      displayName: 'Google Drive',
+      config: {
+        clientId: process.env.GOOGLE_DRIVE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-drive`,
+        scopes: [
+          'https://www.googleapis.com/auth/drive.file'
+        ],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo'
+      },
+      pkceRequired: true,
+    });
+
+    // Google Calendar
+    this.providers.set('google-calendar', {
+      name: 'google-calendar',
+      displayName: 'Google Calendar',
+      config: {
+        clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-calendar`,
+        scopes: [
+          'https://www.googleapis.com/auth/calendar'
+        ],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo'
+      },
+      pkceRequired: true,
+    });
+
     // Intercom
     this.providers.set('intercom', {
       name: 'intercom',

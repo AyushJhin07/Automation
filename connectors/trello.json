@@ -113,6 +113,8 @@
       "id": "get_board",
       "name": "Get Board",
       "description": "Get board details",
+      "endpoint": "/boards/{id}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -400,6 +402,8 @@
       "id": "create_list",
       "name": "Create List",
       "description": "Create a new list on a board",
+      "endpoint": "/lists",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -424,6 +428,102 @@
         "additionalProperties": false
       }
     },
+    {
+      "id": "get_list",
+      "name": "Get List",
+      "description": "Get list details",
+      "endpoint": "/lists/{id}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": { "id": { "type": "string" } },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_list",
+      "name": "Update List",
+      "description": "Update list details",
+      "endpoint": "/lists/{id}",
+      "method": "PUT",
+      "parameters": {
+        "type": "object",
+        "properties": { "id": { "type": "string" }, "name": { "type": "string" } },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_card",
+      "name": "Create Card",
+      "description": "Create a new card",
+      "endpoint": "/cards",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": { "name": {"type":"string"}, "idList": {"type":"string"}, "desc": {"type":"string"} },
+        "required": ["name","idList"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_card",
+      "name": "Get Card",
+      "description": "Get card details",
+      "endpoint": "/cards/{id}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": { "id": { "type": "string" } },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_card",
+      "name": "Update Card",
+      "description": "Update card",
+      "endpoint": "/cards/{id}",
+      "method": "PUT",
+      "parameters": {
+        "type": "object",
+        "properties": { "id": {"type":"string"}, "name": {"type":"string"}, "desc": {"type":"string"} },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    }
+    ,
+    {
+      "id": "add_comment_to_card",
+      "name": "Add Comment To Card",
+      "description": "Add a comment to a card",
+      "endpoint": "/cards/{id}/actions/comments",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": { "id": {"type":"string"}, "text": {"type":"string"} },
+        "required": ["id","text"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_webhook",
+      "name": "Create Webhook",
+      "description": "Create a Trello webhook",
+      "endpoint": "/webhooks",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callbackURL": {"type":"string"},
+          "idModel": {"type":"string"},
+          "description": {"type":"string"}
+        },
+        "required": ["callbackURL","idModel"],
+        "additionalProperties": false
+      }
+    }
     {
       "id": "get_list",
       "name": "Get List",

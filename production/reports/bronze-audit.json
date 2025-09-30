@@ -1,0 +1,297 @@
+{
+  "generatedAt": "2025-09-30T05:56:59.509Z",
+  "results": [
+    {
+      "id": "slack",
+      "missingCount": 3,
+      "missing": [
+        {
+          "type": "trigger",
+          "id": "message_received",
+          "name": "Message Received"
+        },
+        {
+          "type": "trigger",
+          "id": "reaction_added",
+          "name": "Reaction Added"
+        },
+        {
+          "type": "trigger",
+          "id": "user_joined_channel",
+          "name": "User Joined Channel"
+        }
+      ]
+    },
+    {
+      "id": "hubspot",
+      "missingCount": 4,
+      "missing": [
+        {
+          "type": "trigger",
+          "id": "contact_created",
+          "name": "Contact Created"
+        },
+        {
+          "type": "trigger",
+          "id": "contact_updated",
+          "name": "Contact Updated"
+        },
+        {
+          "type": "trigger",
+          "id": "deal_created",
+          "name": "Deal Created"
+        },
+        {
+          "type": "trigger",
+          "id": "deal_stage_changed",
+          "name": "Deal Stage Changed"
+        }
+      ]
+    },
+    {
+      "id": "stripe",
+      "missingCount": 9,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_subscription",
+          "name": "Create Subscription"
+        },
+        {
+          "type": "action",
+          "id": "create_refund",
+          "name": "Create Refund"
+        },
+        {
+          "type": "action",
+          "id": "retrieve_customer",
+          "name": "Retrieve Customer"
+        },
+        {
+          "type": "action",
+          "id": "list_payment_intents",
+          "name": "List Payment Intents"
+        },
+        {
+          "type": "action",
+          "id": "update_subscription",
+          "name": "Update Subscription"
+        },
+        {
+          "type": "trigger",
+          "id": "payment_succeeded",
+          "name": "Payment Succeeded"
+        },
+        {
+          "type": "trigger",
+          "id": "payment_failed",
+          "name": "Payment Failed"
+        },
+        {
+          "type": "trigger",
+          "id": "subscription_created",
+          "name": "Subscription Created"
+        },
+        {
+          "type": "trigger",
+          "id": "invoice_payment_succeeded",
+          "name": "Invoice Payment Succeeded"
+        }
+      ]
+    },
+    {
+      "id": "typeform",
+      "missingCount": 4,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_form",
+          "name": "Create Form"
+        },
+        {
+          "type": "action",
+          "id": "get_form",
+          "name": "Get Form"
+        },
+        {
+          "type": "trigger",
+          "id": "form_response",
+          "name": "Form Response"
+        },
+        {
+          "type": "trigger",
+          "id": "form_created",
+          "name": "Form Created"
+        }
+      ]
+    },
+    {
+      "id": "trello",
+      "missingCount": 15,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_board",
+          "name": "Create Board"
+        },
+        {
+          "type": "action",
+          "id": "update_board",
+          "name": "Update Board"
+        },
+        {
+          "type": "action",
+          "id": "create_list",
+          "name": "Create List"
+        },
+        {
+          "type": "action",
+          "id": "get_list",
+          "name": "Get List"
+        },
+        {
+          "type": "action",
+          "id": "update_list",
+          "name": "Update List"
+        },
+        {
+          "type": "action",
+          "id": "create_card",
+          "name": "Create Card"
+        },
+        {
+          "type": "action",
+          "id": "get_card",
+          "name": "Get Card"
+        },
+        {
+          "type": "action",
+          "id": "update_card",
+          "name": "Update Card"
+        },
+        {
+          "type": "action",
+          "id": "add_comment_to_card",
+          "name": "Add Comment to Card"
+        },
+        {
+          "type": "action",
+          "id": "create_checklist",
+          "name": "Create Checklist"
+        },
+        {
+          "type": "action",
+          "id": "add_checklist_item",
+          "name": "Add Checklist Item"
+        },
+        {
+          "type": "trigger",
+          "id": "card_created",
+          "name": "Card Created"
+        },
+        {
+          "type": "trigger",
+          "id": "card_updated",
+          "name": "Card Updated"
+        },
+        {
+          "type": "trigger",
+          "id": "card_moved",
+          "name": "Card Moved"
+        },
+        {
+          "type": "trigger",
+          "id": "list_created",
+          "name": "List Created"
+        }
+      ]
+    },
+    {
+      "id": "zendesk",
+      "missingCount": 8,
+      "missing": [
+        {
+          "type": "action",
+          "id": "search_tickets",
+          "name": "Search Tickets"
+        },
+        {
+          "type": "action",
+          "id": "create_user",
+          "name": "Create User"
+        },
+        {
+          "type": "action",
+          "id": "get_user",
+          "name": "Get User"
+        },
+        {
+          "type": "action",
+          "id": "update_user",
+          "name": "Update User"
+        },
+        {
+          "type": "action",
+          "id": "list_users",
+          "name": "List Users"
+        },
+        {
+          "type": "trigger",
+          "id": "ticket_created",
+          "name": "Ticket Created"
+        },
+        {
+          "type": "trigger",
+          "id": "ticket_updated",
+          "name": "Ticket Updated"
+        },
+        {
+          "type": "trigger",
+          "id": "user_created",
+          "name": "User Created"
+        }
+      ]
+    },
+    {
+      "id": "github",
+      "missingCount": 7,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_comment",
+          "name": "Create Comment"
+        },
+        {
+          "type": "action",
+          "id": "get_repository",
+          "name": "Get Repository"
+        },
+        {
+          "type": "trigger",
+          "id": "issue_opened",
+          "name": "Issue Opened"
+        },
+        {
+          "type": "trigger",
+          "id": "pull_request_opened",
+          "name": "Pull Request Opened"
+        },
+        {
+          "type": "trigger",
+          "id": "push",
+          "name": "Push"
+        },
+        {
+          "type": "trigger",
+          "id": "issue_closed",
+          "name": "Issue Closed"
+        },
+        {
+          "type": "trigger",
+          "id": "pull_request_merged",
+          "name": "Pull Request Merged"
+        }
+      ]
+    }
+  ]
+}

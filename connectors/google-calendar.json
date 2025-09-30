@@ -39,6 +39,8 @@
       "id": "create_event",
       "name": "Create Event",
       "description": "Create a new calendar event",
+      "endpoint": "/calendars/{calendarId}/events",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -125,6 +127,8 @@
       "id": "update_event",
       "name": "Update Event",
       "description": "Update an existing calendar event",
+      "endpoint": "/calendars/{calendarId}/events/{eventId}",
+      "method": "PUT",
       "parameters": {
         "type": "object",
         "properties": {
@@ -187,6 +191,8 @@
       "id": "get_event",
       "name": "Get Event",
       "description": "Retrieve details of a specific event",
+      "endpoint": "/calendars/{calendarId}/events/{eventId}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -208,6 +214,8 @@
       "id": "list_events",
       "name": "List Events",
       "description": "List events from a calendar",
+      "endpoint": "/calendars/{calendarId}/events",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -255,6 +263,8 @@
       "id": "delete_event",
       "name": "Delete Event",
       "description": "Delete a calendar event",
+      "endpoint": "/calendars/{calendarId}/events/{eventId}",
+      "method": "DELETE",
       "parameters": {
         "type": "object",
         "properties": {
@@ -282,6 +292,8 @@
       "id": "list_calendars",
       "name": "List Calendars",
       "description": "List available calendars",
+      "endpoint": "/users/me/calendarList",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -304,6 +316,8 @@
       "id": "create_calendar",
       "name": "Create Calendar",
       "description": "Create a new calendar",
+      "endpoint": "/calendars",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -356,6 +370,8 @@
       "id": "get_freebusy",
       "name": "Get Free/Busy",
       "description": "Query free/busy information for calendars",
+      "endpoint": "/freeBusy",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -388,6 +404,8 @@
       "id": "quick_add",
       "name": "Quick Add Event",
       "description": "Create an event from natural language text",
+      "endpoint": "/calendars/{calendarId}/events/quickAdd",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {

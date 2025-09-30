@@ -35,6 +35,8 @@
       "id": "create_customer",
       "name": "Create Customer",
       "description": "Create a new customer in Stripe",
+      "endpoint": "/customers",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -101,6 +103,8 @@
       "id": "create_payment_intent",
       "name": "Create Payment Intent",
       "description": "Create a payment intent for processing payments",
+      "endpoint": "/payment_intents",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -163,6 +167,40 @@
         "additionalProperties": false
       }
     },
+    {
+      "id": "update_subscription",
+      "name": "Update Subscription",
+      "description": "Update a subscription",
+      "endpoint": "/subscriptions/{subscription}",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subscription": { "type": "string", "description": "Subscription ID" },
+          "cancel_at_period_end": { "type": "boolean" },
+          "proration_behavior": { "type": "string", "enum": ["create_prorations","none","always_invoice"] }
+        },
+        "required": ["subscription"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_refund",
+      "name": "Create Refund",
+      "description": "Create a refund for a charge or payment intent",
+      "endpoint": "/refunds",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "charge": { "type": "string" },
+          "payment_intent": { "type": "string" },
+          "amount": { "type": "number" }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
     {
       "id": "create_subscription",
       "name": "Create Subscription",
@@ -477,3 +515,52 @@
     "endpoint": "/account"
   }
 }
+    {
+      "id": "list_payment_intents",
+      "name": "List Payment Intents",
+      "description": "List payment intents",
+      "endpoint": "/payment_intents",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "number", "default": 10, "maximum": 100 },
+          "customer": { "type": "string" },
+          "starting_after": { "type": "string" }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "retrieve_customer",
+      "name": "Retrieve Customer",
+      "description": "Get a customer by ID",
+      "endpoint": "/customers/{customer}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer": { "type": "string", "description": "Customer ID" }
+        },
+        "required": ["customer"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_charges",
+      "name": "List Charges",
+      "description": "List charges",
+      "endpoint": "/charges",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "number", "default": 10, "maximum": 100 },
+          "customer": { "type": "string" },
+          "starting_after": { "type": "string" }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }

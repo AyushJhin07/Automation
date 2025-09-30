@@ -1,0 +1,16 @@
+{
+  "name": "Stripe Refund → Slack",
+  "trigger": { "type": "webhook", "provider": "stripe", "event": "charge.refunded" },
+  "steps": [
+    {
+      "type": "action",
+      "app": "slack",
+      "functionId": "send_message",
+      "parameters": {
+        "channel": "C123",
+        "text": "Refund processed: ${{data.object.amount_refunded/100}} for {{data.object.receipt_email}}"
+      },
+      "provider": "slack"
+    }
+  ]
+}

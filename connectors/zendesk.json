@@ -31,6 +31,8 @@
       "id": "create_ticket",
       "name": "Create Ticket",
       "description": "Create a new support ticket",
+      "endpoint": "/tickets.json",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -91,6 +93,8 @@
       "id": "get_ticket",
       "name": "Get Ticket",
       "description": "Get ticket details",
+      "endpoint": "/tickets/{id}.json",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -111,6 +115,8 @@
       "id": "update_ticket",
       "name": "Update Ticket",
       "description": "Update an existing ticket",
+      "endpoint": "/tickets/{id}.json",
+      "method": "PUT",
       "parameters": {
         "type": "object",
         "properties": {
@@ -158,6 +164,8 @@
       "id": "delete_ticket",
       "name": "Delete Ticket",
       "description": "Delete a ticket",
+      "endpoint": "/tickets/{id}.json",
+      "method": "DELETE",
       "parameters": {
         "type": "object",
         "properties": {
@@ -174,6 +182,8 @@
       "id": "list_tickets",
       "name": "List Tickets",
       "description": "List tickets with optional filters",
+      "endpoint": "/tickets",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -212,6 +222,85 @@
         "additionalProperties": false
       }
     },
+    {
+      "id": "search_tickets",
+      "name": "Search Tickets",
+      "description": "Search tickets by query",
+      "endpoint": "/search.json",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": { "query": {"type":"string"} },
+        "required": ["query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_user",
+      "name": "Create User",
+      "description": "Create a new Zendesk user",
+      "endpoint": "/users.json",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "name": {"type":"string"},
+              "email": {"type":"string","format":"email"}
+            },
+            "required": ["name","email"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_user",
+      "name": "Get User",
+      "description": "Get a Zendesk user",
+      "endpoint": "/users/{id}.json",
+      "method": "GET",
+      "parameters": { "type": "object", "properties": { "id": {"type":"number"} }, "required": ["id"], "additionalProperties": false }
+    },
+    {
+      "id": "update_user",
+      "name": "Update User",
+      "description": "Update a Zendesk user",
+      "endpoint": "/users/{id}.json",
+      "method": "PUT",
+      "parameters": { "type": "object", "properties": { "id": {"type":"number"}, "user": {"type":"object"} }, "required": ["id","user"], "additionalProperties": false }
+    },
+    {
+      "id": "list_users",
+      "name": "List Users",
+      "description": "List Zendesk users",
+      "endpoint": "/users.json",
+      "method": "GET",
+      "parameters": { "type": "object", "properties": {}, "required": [], "additionalProperties": false }
+    },
+    {
+      "id": "create_webhook",
+      "name": "Create Webhook",
+      "description": "Create a Zendesk webhook",
+      "endpoint": "/webhooks.json",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {"type":"string"},
+          "endpoint": {"type":"string"},
+          "http_method": {"type":"string","enum":["POST","PUT"]},
+          "request_format": {"type":"string","enum":["json","form_encoded"]},
+          "subscriptions": {"type":"array","items":{"type":"string"}}
+        },
+        "required": ["name","endpoint"],
+        "additionalProperties": false
+      }
+    }
     {
       "id": "search_tickets",
       "name": "Search Tickets",

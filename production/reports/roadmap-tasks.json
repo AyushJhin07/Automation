@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2025-09-30T05:43:26.636Z",
+  "tasks": [
+    {
+      "id": "generic-executor",
+      "title": "GenericExecutor core features",
+      "status": "done"
+    },
+    {
+      "id": "im-fallback",
+      "title": "IntegrationManager fallback with flag",
+      "status": "done"
+    },
+    {
+      "id": "conn-aware-exec",
+      "title": "Connection-aware initialize/execute",
+      "status": "done"
+    },
+    {
+      "id": "webhook-guidance",
+      "title": "Webhook registration guidance",
+      "status": "done"
+    },
+    {
+      "id": "default-polling",
+      "title": "Default polling triggers (typeform/trello/hubspot/zendesk)",
+      "status": "done"
+    },
+    {
+      "id": "oauth-validate",
+      "title": "Validate OAuth: Slack/HubSpot/Zendesk/Google",
+      "status": "in_progress"
+    },
+    {
+      "id": "bronze-audit",
+      "title": "Bronze coverage audit and endpoints fill",
+      "status": "todo"
+    },
+    {
+      "id": "webhook-subscribe-more",
+      "title": "Webhook subscribe helpers for GitHub/Zendesk",
+      "status": "done"
+    },
+    {
+      "id": "std-list-adapter",
+      "title": "Standardized list response adapter for UI",
+      "status": "todo"
+    },
+    {
+      "id": "ci-smoke",
+      "title": "CI smoke tests for execute/test",
+      "status": "todo"
+    },
+    {
+      "id": "recipes",
+      "title": "Add more recipes (GitHub→Slack, Zendesk→Slack)",
+      "status": "done"
+    }
+  ]
+}

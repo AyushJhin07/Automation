@@ -83,6 +83,8 @@
       "id": "list_folder",
       "name": "List Folder",
       "description": "List contents of a folder",
+      "endpoint": "/files/list_folder",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -122,6 +124,8 @@
       "id": "create_folder",
       "name": "Create Folder",
       "description": "Create a new folder",
+      "endpoint": "/files/create_folder_v2",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -143,6 +147,8 @@
       "id": "delete_file",
       "name": "Delete File",
       "description": "Delete a file or folder",
+      "endpoint": "/files/delete_v2",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -159,6 +165,8 @@
       "id": "move_file",
       "name": "Move File",
       "description": "Move a file or folder",
+      "endpoint": "/files/move_v2",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -184,6 +192,8 @@
       "id": "copy_file",
       "name": "Copy File",
       "description": "Copy a file or folder",
+      "endpoint": "/files/copy_v2",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -209,6 +219,8 @@
       "id": "get_metadata",
       "name": "Get Metadata",
       "description": "Get file or folder metadata",
+      "endpoint": "/files/get_metadata",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -235,6 +247,8 @@
       "id": "search",
       "name": "Search Files",
       "description": "Search for files and folders",
+      "endpoint": "/files/search_v2",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {

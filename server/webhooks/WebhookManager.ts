@@ -440,6 +440,9 @@ export class WebhookManager {
         }
       }
 
+      // Persist last poll time (enables since-based filtering by downstream)
+      await this.persistence.savePollingTrigger(trigger);
+
     } catch (error) {
       console.error(`❌ Error in polling trigger ${trigger.id}:`, getErrorMessage(error));
     }
@@ -459,25 +462,45 @@ export class WebhookManager {
       }
 
       const clientConstructor = this.resolveClientConstructor(trigger.appId);
-      if (!clientConstructor) {
-        console.warn(`⚠️ No API client registered for ${trigger.appId}`);
-        return [];
-      }
-
       const methodName = this.resolvePollingMethodName(trigger);
-      const client: any = new clientConstructor(context.credentials, context.additionalConfig);
 
-      if (typeof client[methodName] !== 'function') {
+      if (clientConstructor) {
+        const client: any = new clientConstructor(context.credentials, context.additionalConfig);
+        if (typeof client[methodName] === 'function') {
+          const response = await client[methodName](context.parameters ?? {});
+          if (!response) return [];
+          return Array.isArray(response) ? response : [response];
+        }
         console.warn(`⚠️ Polling method ${methodName} not implemented for ${trigger.appId}`);
-        return [];
+      } else {
+        console.warn(`⚠️ No API client registered for ${trigger.appId}`);
       }
 
-      const response = await client[methodName](context.parameters ?? {});
-      if (!response) {
-        return [];
+      // Fallback: generic executor for JSON-defined triggers (feature-flag driven)
+      try {
+        const { env } = await import('../env.js');
+        if (env.GENERIC_EXECUTOR_ENABLED) {
+          const { genericExecutor } = await import('../integrations/GenericExecutor.js');
+          const generic = await genericExecutor.execute({
+            appId: trigger.appId,
+            functionId: trigger.triggerId,
+            parameters: context.parameters ?? {},
+            credentials: context.credentials,
+          });
+          if (generic.success) {
+            const data = generic.data;
+            if (Array.isArray(data)) return data;
+            if (data && Array.isArray(data.items)) return data.items;
+            return data ? [data] : [];
+          } else {
+            console.warn(`⚠️ Generic polling failed for ${trigger.appId}.${trigger.triggerId}: ${generic.error}`);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Generic polling path unavailable:', (err as any)?.message || String(err));
       }
 
-      return Array.isArray(response) ? response : [response];
+      return [];
     } catch (error) {
       console.error(
         `❌ Failed to execute polling for ${trigger.appId}.${trigger.triggerId}:`,

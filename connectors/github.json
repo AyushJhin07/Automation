@@ -35,6 +35,8 @@
       "id": "create_issue",
       "name": "Create Issue",
       "description": "Create a new issue in a repository",
+      "endpoint": "/repos/{owner}/{repo}/issues",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -74,9 +76,46 @@
       }
     },
     {
+      "id": "close_issue",
+      "name": "Close Issue",
+      "description": "Close a GitHub issue",
+      "endpoint": "/repos/{owner}/{repo}/issues/{issue_number}",
+      "method": "PATCH",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {"type":"string"},
+          "repo": {"type":"string"},
+          "issue_number": {"type":"number"}
+        },
+        "required": ["owner","repo","issue_number"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_labels_to_issue",
+      "name": "Add Labels To Issue",
+      "description": "Add labels to an issue",
+      "endpoint": "/repos/{owner}/{repo}/issues/{issue_number}/labels",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {"type":"string"},
+          "repo": {"type":"string"},
+          "issue_number": {"type":"number"},
+          "labels": {"type":"array","items":{"type":"string"}}
+        },
+        "required": ["owner","repo","issue_number","labels"],
+        "additionalProperties": false
+      }
+    }
+    {
       "id": "update_issue",
       "name": "Update Issue",
       "description": "Update an existing issue",
+      "endpoint": "/repos/{owner}/{repo}/issues/{issue_number}",
+      "method": "PATCH",
       "parameters": {
         "type": "object",
         "properties": {
@@ -124,6 +163,8 @@
       "id": "get_issue",
       "name": "Get Issue",
       "description": "Get details of a specific issue",
+      "endpoint": "/repos/{owner}/{repo}/issues/{issue_number}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -148,6 +189,8 @@
       "id": "list_issues",
       "name": "List Issues",
       "description": "List repository issues with optional filtering",
+      "endpoint": "/repos/{owner}/{repo}/issues",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -204,6 +247,8 @@
       "id": "create_pull_request",
       "name": "Create Pull Request",
       "description": "Create a new pull request",
+      "endpoint": "/repos/{owner}/{repo}/pulls",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -248,6 +293,8 @@
       "id": "update_pull_request",
       "name": "Update Pull Request",
       "description": "Update an existing pull request",
+      "endpoint": "/repos/{owner}/{repo}/pulls/{pull_number}",
+      "method": "PATCH",
       "parameters": {
         "type": "object",
         "properties": {
@@ -289,6 +336,8 @@
       "id": "merge_pull_request",
       "name": "Merge Pull Request",
       "description": "Merge a pull request",
+      "endpoint": "/repos/{owner}/{repo}/pulls/{pull_number}/merge",
+      "method": "PUT",
       "parameters": {
         "type": "object",
         "properties": {
@@ -327,6 +376,8 @@
       "id": "list_pull_requests",
       "name": "List Pull Requests",
       "description": "List repository pull requests",
+      "endpoint": "/repos/{owner}/{repo}/pulls",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -421,6 +472,8 @@
       "id": "list_repositories",
       "name": "List Repositories",
       "description": "List repositories for the authenticated user",
+      "endpoint": "/user/repos",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -463,6 +516,8 @@
       "id": "create_webhook",
       "name": "Create Webhook",
       "description": "Create a repository webhook",
+      "endpoint": "/repos/{owner}/{repo}/hooks",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -678,3 +733,37 @@
     "endpoint": "/user"
   }
 }
+    {
+      "id": "get_repository",
+      "name": "Get Repository",
+      "description": "Get repository details",
+      "endpoint": "/repos/{owner}/{repo}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": { "type": "string" },
+          "repo": { "type": "string" }
+        },
+        "required": ["owner", "repo"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_comment",
+      "name": "Create Issue Comment",
+      "description": "Create a comment on an issue",
+      "endpoint": "/repos/{owner}/{repo}/issues/{issue_number}/comments",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": { "type": "string" },
+          "repo": { "type": "string" },
+          "issue_number": { "type": "number" },
+          "body": { "type": "string" }
+        },
+        "required": ["owner", "repo", "issue_number", "body"],
+        "additionalProperties": false
+      }
+    }
