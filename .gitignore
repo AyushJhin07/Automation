@@ -13,3 +13,7 @@ logs/
 .temp-deployments/
 .data/
 .env
+
+.env
+.env.*
+
