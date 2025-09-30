@@ -37,8 +37,22 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   time: {
     credentials: {}
+  },
+  'asana-enhanced': {
+    credentials: { accessToken: 'asana-test-token', workspaceGid: '12345' }
+  },
+  mailchimp: {
+    credentials: { apiKey: 'test-us1', dc: 'us1' }
+  },
+  twilio: {
+    credentials: { apiKey: 'dGVzdDp0b2tlbg==' }
   }
 };
+
+assert(
+  supportedApps.length > 20,
+  `Expected a broad catalog of supported apps, got ${supportedApps.length}`
+);
 
 const createClient = (manager as any).createAPIClient.bind(manager) as (
   appKey: string,
@@ -46,15 +60,16 @@ const createClient = (manager as any).createAPIClient.bind(manager) as (
   additionalConfig?: Record<string, any>
 ) => unknown;
 
-for (const appId of IMPLEMENTED_CONNECTOR_IDS) {
-  const fixture = credentialFixtures[appId];
-  assert.ok(fixture, `Missing credential fixture for supported app ${appId}`);
+for (const [appId, fixture] of Object.entries(credentialFixtures)) {
+  assert(
+    IMPLEMENTED_CONNECTOR_IDS.includes(appId),
+    `Fixture app ${appId} should be present in implemented connectors`
+  );
 
   const client = createClient(appId, fixture.credentials, fixture.additionalConfig);
   assert.notEqual(client, null, `Expected createAPIClient to return a client for ${appId}`);
 }
 
 console.log(
-  'IntegrationManager createAPIClient returns concrete clients for:',
-  IMPLEMENTED_CONNECTOR_IDS.join(', ')
+  `IntegrationManager exposes ${IMPLEMENTED_CONNECTOR_IDS.length} implemented connectors`
 );

@@ -1,7 +1,13 @@
 import { connectorRegistry } from '../ConnectorRegistry';
 import { BaseAPIClient, APICredentials } from './BaseAPIClient';
+import { GenericAPIClient } from './GenericAPIClient';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
+import { SlackAPIClient } from './SlackAPIClient';
+import { NotionAPIClient } from './NotionAPIClient';
+import { AirtableAPIClient } from './AirtableAPIClient';
+import { GmailAPIClient } from './GmailAPIClient';
+import { GenericConnectorClient } from './GenericConnectorClient';
 
 export type ConnectorClientFactory = (
   credentials: APICredentials,
@@ -12,22 +18,40 @@ export interface ConnectorImplementationEntry {
   id: string;
   source: 'registry' | 'local';
   createClient: ConnectorClientFactory;
+  runtime: 'sdk' | 'generic';
 }
 
 const LOCAL_IMPLEMENTATIONS: ConnectorImplementationEntry[] = [
   {
     id: 'sheets',
     source: 'local',
-    createClient: (credentials: APICredentials) => new LocalSheetsAPIClient(credentials)
+    createClient: (credentials: APICredentials) => new LocalSheetsAPIClient(credentials),
+    runtime: 'sdk'
   },
   {
     id: 'time',
     source: 'local',
-    createClient: (credentials: APICredentials) => new LocalTimeAPIClient(credentials)
+    createClient: (credentials: APICredentials) => new LocalTimeAPIClient(credentials),
+    runtime: 'sdk'
   }
 ];
 
 const REGISTRY_OVERRIDES: Record<string, ConnectorClientFactory> = {
+  airtable: (credentials: APICredentials) => {
+    if (!credentials.apiKey) {
+      throw new Error('Airtable integration requires an API key');
+    }
+    return new AirtableAPIClient(credentials);
+  },
+  gmail: (credentials: APICredentials) => new GmailAPIClient(credentials),
+  notion: (credentials: APICredentials) => {
+    const accessToken = credentials.accessToken ?? credentials.integrationToken;
+    if (!accessToken) {
+      throw new Error('Notion integration requires an access token');
+    }
+
+    return new NotionAPIClient({ ...credentials, accessToken });
+  },
   shopify: (credentials: APICredentials, additionalConfig?: Record<string, any>) => {
     const shopDomain = additionalConfig?.shopDomain;
     if (!shopDomain) {
@@ -35,6 +59,14 @@ const REGISTRY_OVERRIDES: Record<string, ConnectorClientFactory> = {
     }
 
     return new ShopifyAPIClient({ ...credentials, shopDomain });
+  },
+  slack: (credentials: APICredentials) => {
+    const accessToken = credentials.accessToken ?? credentials.botToken;
+    if (!accessToken) {
+      throw new Error('Slack integration requires an access token');
+    }
+
+    return new SlackAPIClient({ ...credentials, accessToken });
   }
 };
 
@@ -58,7 +90,27 @@ function buildRegistryImplementations(): ConnectorImplementationEntry[] {
       entries.push({
         id: appId,
         source: 'registry',
-        createClient: overrideFactory
+        createClient: overrideFactory,
+        runtime: 'sdk'
+      });
+      continue;
+    }
+
+    if (ClientCtor === GenericAPIClient) {
+      if (!connector.functionCount || connector.functionCount === 0) {
+        continue;
+      }
+      entries.push({
+        id: appId,
+        source: 'registry',
+        createClient: (credentials: APICredentials, additionalConfig?: Record<string, any>) => {
+          const mergedCredentials = {
+            ...credentials,
+            ...(additionalConfig ?? {})
+          };
+          return new GenericConnectorClient(appId, mergedCredentials);
+        },
+        runtime: 'generic'
       });
       continue;
     }
@@ -72,7 +124,8 @@ function buildRegistryImplementations(): ConnectorImplementationEntry[] {
           ...(additionalConfig ?? {})
         };
         return new ClientCtor(config);
-      }
+      },
+      runtime: 'sdk'
     });
   }
 

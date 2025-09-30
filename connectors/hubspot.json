@@ -1,243 +1,74 @@
 {
   "id": "hubspot",
   "name": "HubSpot",
-  "description": "Connect to HubSpot CRM for managing contacts, deals, companies, and marketing automation",
+  "description": "Sync contacts, companies, and deals with HubSpot CRM",
   "category": "CRM",
   "icon": "hubspot",
   "color": "#FF7A59",
   "authentication": {
     "type": "oauth2",
-    "authUrl": "https://app.hubspot.com/oauth/authorize",
-    "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
-    "scopes": [
-      "contacts",
-      "content",
-      "reports",
-      "social",
-      "automation",
-      "timeline",
-      "files"
-    ],
-    "clientIdRequired": true,
-    "clientSecretRequired": true
+    "config": {
+      "authUrl": "https://app.hubspot.com/oauth/authorize",
+      "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+      "scopes": [
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write"
+      ]
+    }
   },
   "baseUrl": "https://api.hubapi.com",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 100,
-    "burstAllowed": 20,
-    "dailyLimit": 40000
+  "testConnection": {
+    "endpoint": "/crm/v3/owners",
+    "method": "GET"
   },
   "actions": [
     {
-      "id": "test_connection",
-      "name": "Test Connection",
-      "description": "Test the connection to HubSpot and verify authentication",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_deal",
-      "name": "Get Deal",
-      "description": "Get a deal by ID",
-      "endpoint": "/crm/v3/objects/deals/{dealId}",
-      "method": "GET",
-      "parameters": { "type":"object", "properties": { "dealId": {"type":"string"}, "properties": {"type":"array", "items": {"type":"string"} } }, "required": ["dealId"], "additionalProperties": false }
-    },
-    {
-      "id": "search_deals",
-      "name": "Search Deals",
-      "description": "Search deals using filters",
-      "endpoint": "/crm/v3/objects/deals/search",
-      "method": "POST",
-      "parameters": { "type":"object", "properties": { "query": {"type":"string"}, "filters": {"type":"object"}, "limit": {"type":"number","default":10} }, "required": [], "additionalProperties": false }
-    }
-    {
-      "id": "list_deals",
-      "name": "List Deals",
-      "description": "List deals with pagination",
-      "endpoint": "/crm/v3/objects/deals",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "limit": { "type": "number", "default": 50, "maximum": 100 },
-          "after": { "type": "string" },
-          "properties": { "type": "array", "items": { "type": "string" } }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "update_deal_stage",
-      "name": "Update Deal Stage",
-      "description": "Update the stage of a deal",
-      "endpoint": "/crm/v3/objects/deals/{dealId}",
-      "method": "PATCH",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "dealId": { "type": "string" },
-          "properties": { "type": "object" }
-        },
-        "required": ["dealId", "properties"],
-        "additionalProperties": false
-      }
-    }
-    {
       "id": "create_contact",
       "name": "Create Contact",
-      "description": "Create a new contact in HubSpot",
+      "description": "Create a new contact",
       "endpoint": "/crm/v3/objects/contacts",
       "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Contact's email address"
-          },
-          "firstname": {
-            "type": "string",
-            "description": "Contact's first name"
-          },
-          "lastname": {
-            "type": "string",
-            "description": "Contact's last name"
-          },
-          "phone": {
-            "type": "string",
-            "description": "Contact's phone number"
-          },
-          "company": {
-            "type": "string",
-            "description": "Contact's company"
-          },
-          "website": {
-            "type": "string",
-            "description": "Contact's website"
-          },
-          "lifecyclestage": {
-            "type": "string",
-            "enum": ["subscriber", "lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer", "evangelist", "other"],
-            "description": "Contact's lifecycle stage"
-          },
-          "hs_lead_status": {
-            "type": "string",
-            "enum": ["NEW", "OPEN", "IN_PROGRESS", "OPEN_DEAL", "UNQUALIFIED", "ATTEMPTED_TO_CONTACT", "CONNECTED", "BAD_TIMING"],
-            "description": "Lead status"
+          "properties": {
+            "type": "object",
+            "description": "Contact properties to set"
           }
         },
-        "required": ["email"],
+        "required": ["properties"],
         "additionalProperties": false
       }
     },
     {
       "id": "update_contact",
       "name": "Update Contact",
-      "description": "Update an existing contact in HubSpot",
+      "description": "Update properties for an existing contact",
       "endpoint": "/crm/v3/objects/contacts/{contactId}",
       "method": "PATCH",
       "parameters": {
         "type": "object",
         "properties": {
-          "contactId": {
-            "type": "string",
-            "description": "HubSpot contact ID"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Contact's email address"
-          },
-          "firstname": {
-            "type": "string",
-            "description": "Contact's first name"
-          },
-          "lastname": {
-            "type": "string",
-            "description": "Contact's last name"
-          },
-          "phone": {
-            "type": "string",
-            "description": "Contact's phone number"
-          },
-          "company": {
-            "type": "string",
-            "description": "Contact's company"
-          },
-          "lifecyclestage": {
-            "type": "string",
-            "enum": ["subscriber", "lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer", "evangelist", "other"],
-            "description": "Contact's lifecycle stage"
-          }
+          "contactId": { "type": "string" },
+          "properties": { "type": "object" }
         },
-        "required": ["contactId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_contact",
-      "name": "Get Contact",
-      "description": "Retrieve a contact by ID or email",
-      "endpoint": "/crm/v3/objects/contacts/{contactId}",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "contactId": {
-            "type": "string",
-            "description": "HubSpot contact ID"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Contact's email address (alternative to contactId)"
-          },
-          "properties": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "List of properties to retrieve"
-          }
-        },
-        "required": [],
+        "required": ["contactId", "properties"],
         "additionalProperties": false
       }
     },
     {
       "id": "search_contacts",
       "name": "Search Contacts",
-      "description": "Search for contacts using filters",
+      "description": "Search for contacts",
       "endpoint": "/crm/v3/objects/contacts/search",
       "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
-          "query": {
-            "type": "string",
-            "description": "Search query string"
-          },
-          "properties": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Properties to return"
-          },
-          "limit": {
-            "type": "number",
-            "default": 10,
-            "maximum": 100,
-            "description": "Number of results to return"
-          },
-          "filters": {
-            "type": "object",
-            "description": "Filter criteria for search"
-          }
+          "query": { "type": "string" },
+          "limit": { "type": "number", "default": 10, "minimum": 1, "maximum": 100 }
         },
         "required": [],
         "additionalProperties": false
@@ -246,44 +77,15 @@
     {
       "id": "create_deal",
       "name": "Create Deal",
-      "description": "Create a new deal in HubSpot",
+      "description": "Create a new deal",
       "endpoint": "/crm/v3/objects/deals",
       "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
-          "dealname": {
-            "type": "string",
-            "description": "Name of the deal"
-          },
-          "amount": {
-            "type": "number",
-            "description": "Deal amount"
-          },
-          "dealstage": {
-            "type": "string",
-            "description": "Deal stage"
-          },
-          "pipeline": {
-            "type": "string",
-            "description": "Deal pipeline"
-          },
-          "closedate": {
-            "type": "string",
-            "format": "date",
-            "description": "Expected close date (YYYY-MM-DD)"
-          },
-          "hubspot_owner_id": {
-            "type": "string",
-            "description": "Owner ID for the deal"
-          },
-          "dealtype": {
-            "type": "string",
-            "enum": ["newbusiness", "existingbusiness", "renewal"],
-            "description": "Type of deal"
-          }
+          "properties": { "type": "object" }
         },
-        "required": ["dealname"],
+        "required": ["properties"],
         "additionalProperties": false
       }
     },
@@ -296,187 +98,10 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "dealId": {
-            "type": "string",
-            "description": "HubSpot deal ID"
-          },
-          "dealname": {
-            "type": "string",
-            "description": "Name of the deal"
-          },
-          "amount": {
-            "type": "number",
-            "description": "Deal amount"
-          },
-          "dealstage": {
-            "type": "string",
-            "description": "Deal stage"
-          },
-          "closedate": {
-            "type": "string",
-            "format": "date",
-            "description": "Expected close date (YYYY-MM-DD)"
-          }
+          "dealId": { "type": "string" },
+          "properties": { "type": "object" }
         },
-        "required": ["dealId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_company",
-      "name": "Create Company",
-      "description": "Create a new company in HubSpot",
-      "endpoint": "/crm/v3/objects/companies",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Company name"
-          },
-          "domain": {
-            "type": "string",
-            "description": "Company domain"
-          },
-          "industry": {
-            "type": "string",
-            "description": "Company industry"
-          },
-          "phone": {
-            "type": "string",
-            "description": "Company phone number"
-          },
-          "city": {
-            "type": "string",
-            "description": "Company city"
-          },
-          "state": {
-            "type": "string",
-            "description": "Company state"
-          },
-          "country": {
-            "type": "string",
-            "description": "Company country"
-          },
-          "numberofemployees": {
-            "type": "number",
-            "description": "Number of employees"
-          },
-          "annualrevenue": {
-            "type": "number",
-            "description": "Annual revenue"
-          }
-        },
-        "required": ["name"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_ticket",
-      "name": "Create Ticket",
-      "description": "Create a new support ticket",
-      "endpoint": "/crm/v3/objects/tickets",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "subject": {
-            "type": "string",
-            "description": "Ticket subject"
-          },
-          "content": {
-            "type": "string",
-            "description": "Ticket content/description"
-          },
-          "hs_pipeline": {
-            "type": "string",
-            "description": "Ticket pipeline"
-          },
-          "hs_pipeline_stage": {
-            "type": "string",
-            "description": "Ticket stage"
-          },
-          "hs_ticket_priority": {
-            "type": "string",
-            "enum": ["LOW", "MEDIUM", "HIGH"],
-            "description": "Ticket priority"
-          },
-          "hubspot_owner_id": {
-            "type": "string",
-            "description": "Owner ID for the ticket"
-          }
-        },
-        "required": ["subject"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_note",
-      "name": "Create Note",
-      "description": "Create a note and associate it with contacts/deals",
-      "endpoint": "/crm/v3/objects/notes",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "hs_note_body": {
-            "type": "string",
-            "description": "Note content"
-          },
-          "hs_timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Note timestamp"
-          },
-          "hubspot_owner_id": {
-            "type": "string",
-            "description": "Owner ID for the note"
-          },
-          "associations": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
-              }
-            },
-            "description": "Objects to associate the note with"
-          }
-        },
-        "required": ["hs_note_body"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "send_email",
-      "name": "Send Email",
-      "description": "Send an email through HubSpot",
-      "endpoint": "/email/public/v1/singleEmail/send",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "emailId": {
-            "type": "number",
-            "description": "HubSpot email template ID"
-          },
-          "to": {
-            "type": "string",
-            "format": "email",
-            "description": "Recipient email address"
-          },
-          "contactProperties": {
-            "type": "object",
-            "description": "Contact properties for personalization"
-          },
-          "customProperties": {
-            "type": "object",
-            "description": "Custom properties for personalization"
-          }
-        },
-        "required": ["emailId", "to"],
+        "required": ["dealId", "properties"],
         "additionalProperties": false
       }
     }
@@ -489,115 +114,36 @@
       "type": "webhook",
       "parameters": {
         "type": "object",
-        "properties": {
-          "properties": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Contact properties to include in webhook"
-          }
-        },
+        "properties": {},
         "required": [],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "contactId": {"type": "string"},
-          "email": {"type": "string"},
-          "firstname": {"type": "string"},
-          "lastname": {"type": "string"},
-          "createdate": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "contact_updated",
-      "name": "Contact Updated",
-      "description": "Triggered when a contact is updated",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "properties": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Properties to monitor for changes"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "contactId": {"type": "string"},
-          "email": {"type": "string"},
-          "changedProperties": {"type": "array", "items": {"type": "string"}},
-          "modifieddate": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "deal_created",
-      "name": "Deal Created",
-      "description": "Triggered when a new deal is created",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "pipeline": {
-            "type": "string",
-            "description": "Specific pipeline to monitor"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "dealId": {"type": "string"},
-          "dealname": {"type": "string"},
-          "amount": {"type": "number"},
-          "dealstage": {"type": "string"},
-          "createdate": {"type": "string"}
+          "id": { "type": "string" },
+          "properties": { "type": "object" }
         }
       }
     },
     {
       "id": "deal_stage_changed",
       "name": "Deal Stage Changed",
-      "description": "Triggered when a deal moves to a different stage",
+      "description": "Triggered when a deal changes stage",
       "type": "webhook",
       "parameters": {
         "type": "object",
-        "properties": {
-          "targetStage": {
-            "type": "string",
-            "description": "Specific stage to watch for"
-          },
-          "pipeline": {
-            "type": "string",
-            "description": "Specific pipeline to monitor"
-          }
-        },
+        "properties": {},
         "required": [],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "dealId": {"type": "string"},
-          "dealname": {"type": "string"},
-          "oldStage": {"type": "string"},
-          "newStage": {"type": "string"},
-          "modifieddate": {"type": "string"}
+          "id": { "type": "string" },
+          "properties": { "type": "object" }
         }
       }
     }
-  ],
-  "testConnection": {
-    "method": "GET",
-    "endpoint": "/account-info/v3/api-usage"
-  }
+  ]
 }

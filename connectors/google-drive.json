@@ -1,205 +1,82 @@
 {
   "id": "google-drive",
   "name": "Google Drive",
-  "description": "Google Drive cloud storage platform for file management and collaboration",
-  "category": "Cloud Storage",
-  "icon": "drive",
-  "color": "#4285F4",
-  "version": "1.0.0",
+  "description": "Manage files and folders stored in Google Drive",
+  "category": "File Storage",
+  "icon": "google-drive",
+  "color": "#0F9D58",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
       "scopes": [
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive.metadata"
+        "https://www.googleapis.com/auth/drive"
       ]
     }
   },
   "baseUrl": "https://www.googleapis.com/drive/v3",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 1000,
-    "dailyLimit": 1000000
+  "testConnection": {
+    "endpoint": "/about",
+    "method": "GET"
   },
   "actions": [
     {
-      "id": "test_connection",
-      "name": "Test Connection",
-      "description": "Test the connection to Google Drive and verify authentication",
+      "id": "list_files",
+      "name": "List Files",
+      "description": "List files in Drive",
+      "endpoint": "/files",
+      "method": "GET",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "q": { "type": "string" },
+          "pageSize": {
+            "type": "number",
+            "default": 50,
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "pageToken": { "type": "string" },
+          "orderBy": { "type": "string" },
+          "fields": {
+            "type": "string",
+            "default": "files(id,name,mimeType,modifiedTime),nextPageToken"
+          }
+        },
         "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_file",
-      "name": "Create File",
-      "description": "Create a new file in Google Drive",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the file to create"
-          },
-          "mimeType": {
-            "type": "string",
-            "enum": [
-              "application/vnd.google-apps.document",
-              "application/vnd.google-apps.spreadsheet",
-              "application/vnd.google-apps.presentation",
-              "text/plain",
-              "application/pdf",
-              "image/jpeg",
-              "image/png",
-              "application/json"
-            ],
-            "description": "MIME type of the file"
-          },
-          "folderId": {
-            "type": "string",
-            "description": "ID of the parent folder"
-          },
-          "contentBase64": {
-            "type": "string",
-            "description": "Base64-encoded file content"
-          }
-        },
-        "required": ["name", "mimeType"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "upload_file",
-      "name": "Upload File",
-      "description": "Upload a file to Google Drive",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the file"
-          },
-          "folderId": {
-            "type": "string",
-            "description": "ID of the parent folder"
-          },
-          "content": {
-            "type": "string",
-            "description": "File content (base64 encoded)"
-          },
-          "mimeType": {
-            "type": "string",
-            "description": "MIME type of the file"
-          }
-        },
-        "required": ["name", "content"],
         "additionalProperties": false
       }
     },
     {
       "id": "get_file",
       "name": "Get File",
-      "description": "Get file metadata and content",
+      "description": "Get file metadata",
       "endpoint": "/files/{fileId}",
       "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to retrieve"
-          },
-          "fields": {
-            "type": "string",
-            "description": "Comma-separated list of fields to return"
-          }
+          "fileId": { "type": "string" },
+          "fields": { "type": "string" }
         },
         "required": ["fileId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "download_file",
-      "name": "Download File",
-      "description": "Download file content",
-      "endpoint": "/files/{fileId}",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to download"
-          },
-          "format": {
-            "type": "string",
-            "enum": ["pdf", "docx", "xlsx", "pptx", "txt", "html", "odt"],
-            "description": "Export format for Google Workspace files"
-          }
-        },
-        "required": ["fileId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "list_files",
-      "name": "List Files",
-      "description": "List files in Google Drive",
-      "endpoint": "/files",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "folderId": {
-            "type": "string",
-            "description": "ID of the folder to list (optional)"
-          },
-          "query": {
-            "type": "string",
-            "description": "Search query (e.g., 'name contains \"report\"')"
-          },
-          "maxResults": {
-            "type": "number",
-            "default": 100,
-            "maximum": 1000,
-            "description": "Maximum number of files to return"
-          },
-          "orderBy": {
-            "type": "string",
-            "enum": ["createdTime", "folder", "modifiedByMeTime", "modifiedTime", "name", "quotaBytesUsed", "recency", "sharedWithMeTime", "starred", "viewedByMeTime"],
-            "description": "Sort order"
-          },
-          "fields": {
-            "type": "string",
-            "description": "Comma-separated list of fields to return"
-          }
-        },
-        "required": [],
         "additionalProperties": false
       }
     },
     {
       "id": "create_folder",
       "name": "Create Folder",
-      "description": "Create a new folder in Google Drive",
+      "description": "Create a new folder",
       "endpoint": "/files",
       "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the folder"
-          },
-          "parentFolderId": {
-            "type": "string",
-            "description": "ID of the parent folder"
+          "name": { "type": "string" },
+          "parents": {
+            "type": "array",
+            "items": { "type": "string" }
           }
         },
         "required": ["name"],
@@ -207,47 +84,19 @@
       }
     },
     {
-      "id": "move_file",
-      "name": "Move File",
-      "description": "Move a file to a different folder",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to move"
-          },
-          "newParentId": {
-            "type": "string",
-            "description": "ID of the new parent folder"
-          },
-          "removeParents": {
-            "type": "string",
-            "description": "Comma-separated list of parent IDs to remove"
-          }
-        },
-        "required": ["fileId", "newParentId"],
-        "additionalProperties": false
-      }
-    },
-    {
       "id": "copy_file",
       "name": "Copy File",
-      "description": "Create a copy of a file",
+      "description": "Copy an existing file",
+      "endpoint": "/files/{fileId}/copy",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to copy"
-          },
-          "name": {
-            "type": "string",
-            "description": "Name for the copied file"
-          },
-          "parentFolderId": {
-            "type": "string",
-            "description": "ID of the parent folder for the copy"
+          "fileId": { "type": "string" },
+          "name": { "type": "string" },
+          "parents": {
+            "type": "array",
+            "items": { "type": "string" }
           }
         },
         "required": ["fileId"],
@@ -257,98 +106,13 @@
     {
       "id": "delete_file",
       "name": "Delete File",
-      "description": "Delete a file permanently",
+      "description": "Delete a file",
       "endpoint": "/files/{fileId}",
       "method": "DELETE",
       "parameters": {
         "type": "object",
         "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to delete"
-          }
-        },
-        "required": ["fileId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "share_file",
-      "name": "Share File",
-      "description": "Share a file with users or make it public",
-      "endpoint": "/files/{fileId}/permissions",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to share"
-          },
-          "emailAddress": {
-            "type": "string",
-            "format": "email",
-            "description": "Email address of the user to share with"
-          },
-          "role": {
-            "type": "string",
-            "enum": ["reader", "writer", "commenter", "owner"],
-            "default": "reader",
-            "description": "Permission role for the user"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["user", "group", "domain", "anyone"],
-            "default": "user",
-            "description": "Type of permission"
-          },
-          "sendNotificationEmail": {
-            "type": "boolean",
-            "default": true,
-            "description": "Whether to send notification email"
-          }
-        },
-        "required": ["fileId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_file_permissions",
-      "name": "Get File Permissions",
-      "description": "Get sharing permissions for a file",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file"
-          }
-        },
-        "required": ["fileId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "update_file_metadata",
-      "name": "Update File Metadata",
-      "description": "Update file metadata like name, description",
-      "endpoint": "/files/{fileId}",
-      "method": "PATCH",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "fileId": {
-            "type": "string",
-            "description": "ID of the file to update"
-          },
-          "name": {
-            "type": "string",
-            "description": "New name for the file"
-          },
-          "description": {
-            "type": "string",
-            "description": "New description for the file"
-          }
+          "fileId": { "type": "string" }
         },
         "required": ["fileId"],
         "additionalProperties": false
@@ -364,14 +128,7 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "folderId": {
-            "type": "string",
-            "description": "Monitor specific folder (optional)"
-          },
-          "mimeType": {
-            "type": "string",
-            "description": "Filter by file type"
-          }
+          "folderId": { "type": "string" }
         },
         "required": [],
         "additionalProperties": false
@@ -379,91 +136,11 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "fileId": {"type": "string"},
-          "name": {"type": "string"},
-          "mimeType": {"type": "string"},
-          "size": {"type": "number"},
-          "createdTime": {"type": "string"},
-          "modifiedTime": {"type": "string"},
-          "webViewLink": {"type": "string"}
-        }
-      }
-    },
-    {
-      "id": "file_updated",
-      "name": "File Updated",
-      "description": "Triggered when a file is modified",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "folderId": {
-            "type": "string",
-            "description": "Monitor specific folder (optional)"
-          },
-          "fileId": {
-            "type": "string",
-            "description": "Monitor specific file (optional)"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "fileId": {"type": "string"},
-          "name": {"type": "string"},
-          "modifiedTime": {"type": "string"},
-          "lastModifyingUser": {"type": "object"}
-        }
-      }
-    },
-    {
-      "id": "file_shared",
-      "name": "File Shared",
-      "description": "Triggered when a file is shared",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "folderId": {
-            "type": "string",
-            "description": "Monitor specific folder (optional)"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "fileId": {"type": "string"},
-          "name": {"type": "string"},
-          "sharedWithUser": {"type": "string"},
-          "permissionId": {"type": "string"}
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "mimeType": { "type": "string" }
         }
       }
     }
-  ],
-  "testConnection": {
-    "method": "GET",
-    "endpoint": "/about"
-  }
+  ]
 }
-    {
-      "id": "delete_permission",
-      "name": "Delete Permission",
-      "description": "Remove a permission from a file",
-      "endpoint": "/files/{fileId}/permissions/{permissionId}",
-      "method": "DELETE",
-      "parameters": { "type":"object", "properties": { "fileId": {"type":"string"}, "permissionId": {"type":"string"} }, "required": ["fileId","permissionId"], "additionalProperties": false }
-    },
-    {
-      "id": "update_permission",
-      "name": "Update Permission",
-      "description": "Update a permission on a file",
-      "endpoint": "/files/{fileId}/permissions/{permissionId}",
-      "method": "PATCH",
-      "parameters": { "type":"object", "properties": { "fileId": {"type":"string"}, "permissionId": {"type":"string"}, "role": {"type":"string","enum":["reader","writer","commenter","owner"]} }, "required": ["fileId","permissionId","role"], "additionalProperties": false }
-    }

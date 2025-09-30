@@ -4,17 +4,9 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { GmailAPIClient } from './integrations/GmailAPIClient';
-import { ShopifyAPIClient } from './integrations/ShopifyAPIClient';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
-import { AirtableAPIClient } from './integrations/AirtableAPIClient';
-import { NotionAPIClient } from './integrations/NotionAPIClient';
-import { SlackAPIClient } from './integrations/SlackAPIClient';
-import { HubspotAPIClient } from './integrations/HubspotAPIClient';
-import { StripeAPIClient } from './integrations/StripeAPIClient';
-import { GithubAPIClient } from './integrations/GithubAPIClient';
-import { DropboxAPIClient } from './integrations/DropboxAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
+import { IMPLEMENTED_CONNECTOR_CLIENTS } from './integrations/implementedClients';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {
@@ -61,7 +53,7 @@ interface APIClientConstructor {
   new (config?: any): BaseAPIClient;
 }
 
-interface ConnectorRegistryEntry {
+export interface ConnectorRegistryEntry {
   definition: ConnectorDefinition;
   apiClient?: APIClientConstructor;
   hasImplementation: boolean;
@@ -80,6 +72,7 @@ export class ConnectorRegistry {
   private registry: Map<string, ConnectorRegistryEntry> = new Map();
   private connectorsPath: string;
   private apiClients: Map<string, APIClientConstructor> = new Map();
+  private failedConnectorFiles: string[] = [];
 
   private constructor() {
     // Get current file directory in ES module
@@ -139,15 +132,18 @@ export class ConnectorRegistry {
     totalOps: number;
     realOps: number;
     byApp: Record<string, number>;
+    totalByApp: Record<string, number>;
   } {
     const opMap = getCompilerOpMap(); // e.g. { 'gmail.search_emails': fn, 'sheets.append_row': fn, ... }
     const byApp: Record<string, number> = {};
+    const totalByApp: Record<string, number> = {};
     let realOps = 0;
     let totalOps = 0;
 
     for (const c of connectors) {
       let appReal = 0;
       const allOps = [...(c.actions || []), ...(c.triggers || [])];
+      totalByApp[c.id] = allOps.length;
       for (const op of allOps) {
         totalOps++;
         // Try multiple key formats to match compiler
@@ -173,7 +169,8 @@ export class ConnectorRegistry {
       appsWithRealOps,
       totalOps,
       realOps,
-      byApp
+      byApp,
+      totalByApp
     };
   }
 
@@ -181,18 +178,9 @@ export class ConnectorRegistry {
    * Initialize available API clients
    */
   private initializeAPIClients(): void {
-    // Register the concrete API clients that are actually wired today.
-    this.registerAPIClient('gmail', GmailAPIClient);
-    this.registerAPIClient('shopify', ShopifyAPIClient);
-    this.registerAPIClient('slack', SlackAPIClient);
-    this.registerAPIClient('notion', NotionAPIClient);
-    this.registerAPIClient('airtable', AirtableAPIClient);
-
-    // Promote commonly used connectors to Stable by registering API clients
-    this.registerAPIClient('hubspot', HubspotAPIClient);
-    this.registerAPIClient('stripe', StripeAPIClient);
-    this.registerAPIClient('github', GithubAPIClient);
-    this.registerAPIClient('dropbox', DropboxAPIClient);
+    Object.entries(IMPLEMENTED_CONNECTOR_CLIENTS).forEach(([appId, client]) => {
+      this.registerAPIClient(appId, client);
+    });
 
     // Use GenericAPIClient as a marker for Stable/implemented when a bespoke client isn't needed
     this.registerAPIClient('trello', GenericAPIClient);
@@ -207,6 +195,7 @@ export class ConnectorRegistry {
    */
   private loadAllConnectors(): void {
     this.registry.clear();
+    this.failedConnectorFiles = [];
     let files: string[] = [];
     try {
       files = readdirSync(this.connectorsPath).filter(f => f.endsWith(".json"));
@@ -220,9 +209,14 @@ export class ConnectorRegistry {
       try {
         const def = this.loadConnectorDefinition(file); // already joins connectorsPath
         const appId = def.id;
-        const hasRegisteredClient = this.apiClients.has(appId);
+        let hasRegisteredClient = this.apiClients.has(appId);
+
+        if (!hasRegisteredClient && this.shouldAutoRegisterGeneric(def)) {
+          this.apiClients.set(appId, GenericAPIClient);
+          hasRegisteredClient = true;
+        }
         const availability = this.resolveAvailability(appId, def, hasRegisteredClient);
-        const hasImplementation = availability === 'stable' && hasRegisteredClient;
+        const hasImplementation = hasRegisteredClient && availability !== 'disabled';
         const normalizedDefinition: ConnectorDefinition = { ...def, availability };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
@@ -235,6 +229,7 @@ export class ConnectorRegistry {
         this.registry.set(appId, entry);
         loaded++;
       } catch (err) {
+        this.failedConnectorFiles.push(file);
         console.warn(`[ConnectorRegistry] Failed to load ${file}:`, err);
       }
     }
@@ -242,9 +237,7 @@ export class ConnectorRegistry {
     
     // ChatGPT Fix: Accurate implementation counting after loading
     try {
-      const allConnectors = this.getAllConnectors({ includeExperimental: true, includeDisabled: true })
-        .map(entry => entry.definition);
-      const stats = this.computeImplementedOps(allConnectors);
+      const stats = this.getCompilerImplementationStats({ includeExperimental: true, includeDisabled: true });
       const msg = `Connector health: ${stats.appsWithRealOps}/${stats.totalApps} apps have real compiler-backed ops (${stats.realOps}/${stats.totalOps} ops).`;
       console.log(msg); // INFO, not P0 CRITICAL
 
@@ -273,6 +266,26 @@ export class ConnectorRegistry {
     return this.filterEntries(options);
   }
 
+  public getCompilerImplementationStats(options: ConnectorFilterOptions = {}): {
+    totalApps: number;
+    appsWithRealOps: number;
+    totalOps: number;
+    realOps: number;
+    implementedOpsByApp: Record<string, number>;
+    totalOpsByApp: Record<string, number>;
+  } {
+    const connectors = this.getAllConnectors(options).map(entry => entry.definition);
+    const stats = this.computeImplementedOps(connectors);
+    return {
+      totalApps: stats.totalApps,
+      appsWithRealOps: stats.appsWithRealOps,
+      totalOps: stats.totalOps,
+      realOps: stats.realOps,
+      implementedOpsByApp: stats.byApp,
+      totalOpsByApp: stats.totalByApp,
+    };
+  }
+
   /**
    * List connector definitions for API responses
    */
@@ -299,6 +312,10 @@ export class ConnectorRegistry {
    */
   public getConnectorDefinition(appId: string): ConnectorDefinition | undefined {
     return this.registry.get(appId)?.definition;
+  }
+
+  public getFailedConnectorFiles(): string[] {
+    return [...this.failedConnectorFiles];
   }
 
   /**
@@ -574,12 +591,24 @@ export class ConnectorRegistry {
       return hasRegisteredClient ? 'stable' : 'experimental';
     }
     if (declared === 'experimental') {
-      return 'experimental';
+      return hasRegisteredClient ? 'stable' : 'experimental';
     }
     if (hasRegisteredClient) {
       return 'stable';
     }
     return 'experimental';
+  }
+
+  private shouldAutoRegisterGeneric(def: ConnectorDefinition): boolean {
+    if (def.availability === 'disabled') {
+      return false;
+    }
+    const actionCount = def.actions?.length ?? 0;
+    const triggerCount = def.triggers?.length ?? 0;
+    if (actionCount + triggerCount === 0) {
+      return false;
+    }
+    return typeof def.baseUrl === 'string' && def.baseUrl.length > 0;
   }
 
   private filterEntries(options: ConnectorFilterOptions = {}): ConnectorRegistryEntry[] {

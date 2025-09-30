@@ -7,11 +7,12 @@ import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
-import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { IMPLEMENTED_CONNECTOR_IDS, getImplementedConnector } from './supportedApps';
 import { genericExecutor } from './GenericExecutor';
 import { env } from '../env';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
+import { GenericConnectorClient } from './GenericConnectorClient';
 
 export interface IntegrationConfig {
   appName: string;
@@ -296,66 +297,36 @@ export class IntegrationManager {
    * Create API client for specific application
    */
   private createAPIClient(
-    appKey: string, 
-    credentials: APICredentials, 
+    appKey: string,
+    credentials: APICredentials,
     additionalConfig?: Record<string, any>
   ): BaseAPIClient | null {
-    switch (appKey) {
-      case 'gmail':
-        return new GmailAPIClient(credentials);
-
-      case 'shopify':
-        if (!additionalConfig?.shopDomain) {
-          throw new Error('Shopify integration requires shopDomain in additionalConfig');
-        }
-        return new ShopifyAPIClient({ ...credentials, shopDomain: additionalConfig.shopDomain });
-
-      case 'slack': {
-        const accessToken = credentials.accessToken ?? credentials.botToken;
-        if (!accessToken) {
-          throw new Error('Slack integration requires an access token');
-        }
-        return new SlackAPIClient({ ...credentials, accessToken });
+    if (appKey === 'shopify') {
+      if (!additionalConfig?.shopDomain) {
+        throw new Error('Shopify integration requires shopDomain in additionalConfig');
       }
+      return new ShopifyAPIClient({ ...credentials, shopDomain: additionalConfig.shopDomain });
+    }
 
-      case 'notion': {
-        const accessToken = credentials.accessToken ?? credentials.integrationToken;
-        if (!accessToken) {
-          throw new Error('Notion integration requires an access token');
-        }
-        return new NotionAPIClient({ ...credentials, accessToken });
-      }
+    if (appKey === 'sheets') {
+      return new LocalSheetsAPIClient(credentials);
+    }
 
-      case 'airtable': {
-        if (!credentials.apiKey) {
-          throw new Error('Airtable integration requires an API key');
-        }
-        return new AirtableAPIClient(credentials);
-      }
+    if (appKey === 'time') {
+      return new LocalTimeAPIClient(credentials);
+    }
 
-      case 'sheets':
-        return new LocalSheetsAPIClient(credentials);
+    const manifestEntry = getImplementedConnector(appKey);
+    if (!manifestEntry) {
+      return null;
+    }
 
-      case 'time':
-        return new LocalTimeAPIClient(credentials);
-
-        // TODO: Add other API clients as they are implemented
-        case 'stripe':
-        case 'mailchimp':
-        case 'twilio':
-        case 'dropbox':
-        case 'github':
-        case 'trello':
-        case 'asana':
-        case 'hubspot':
-        case 'salesforce':
-        case 'zoom':
-        // For now, return null for unimplemented clients
-        // These will be implemented in subsequent iterations
-        return null;
-      
-      default:
-        return null;
+    try {
+      return manifestEntry.createClient(credentials, additionalConfig);
+    } catch (error) {
+      throw new Error(
+        `Failed to create API client for ${appKey}: ${getErrorMessage(error)}`
+      );
     }
   }
 
@@ -404,11 +375,70 @@ export class IntegrationManager {
       return this.executeTimeFunction(client, functionId, parameters);
     }
 
-    // TODO: Add other application function executions
+    if (client instanceof GenericConnectorClient) {
+      return client.execute(functionId, parameters);
+    }
+
+    const fallbackResponse = await this.invokeDynamicClientMethod(client, functionId, parameters);
+    if (fallbackResponse) {
+      return fallbackResponse;
+    }
 
     return {
       success: false,
       error: `Function ${functionId} not implemented for ${appKey}`
+    };
+  }
+
+  private async invokeDynamicClientMethod(
+    client: BaseAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any> | null> {
+    const candidateMethods = this.buildCandidateMethodNames(functionId);
+
+    for (const methodName of candidateMethods) {
+      const method = (client as any)[methodName];
+      if (typeof method !== 'function') {
+        continue;
+      }
+
+      const invocationResult = await method.call(client, parameters);
+      return this.normalizeExecutionResult(invocationResult);
+    }
+
+    return null;
+  }
+
+  private buildCandidateMethodNames(functionId: string): string[] {
+    const camelCase = functionId.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
+    const pascalCase = camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+
+    const candidates = new Set<string>([
+      functionId,
+      camelCase,
+      pascalCase,
+    ]);
+
+    if (functionId === 'test_connection') {
+      candidates.add('testConnection');
+    }
+
+    return Array.from(candidates);
+  }
+
+  private normalizeExecutionResult(result: any): APIResponse<any> {
+    if (!result || typeof result !== 'object') {
+      return { success: true, data: result };
+    }
+
+    if (typeof result.success === 'boolean') {
+      return result;
+    }
+
+    return {
+      success: true,
+      data: result
     };
   }
 
