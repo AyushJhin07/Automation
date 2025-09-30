@@ -331,3 +331,11 @@
     "endpoint": "/users/get_current_account"
   }
 }
+    {
+      "id": "create_shared_link",
+      "name": "Create Shared Link",
+      "description": "Create a shared link for a file or folder",
+      "endpoint": "/sharing/create_shared_link_with_settings",
+      "method": "POST",
+      "parameters": { "type":"object", "properties": { "path": {"type":"string"} }, "required": ["path"], "additionalProperties": false }
+    }

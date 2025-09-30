@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/AuthService';
+import { setRequestUser } from '../utils/ExecutionContext';
 
 // Extend Express Request to include user
 declare global {
@@ -63,6 +64,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     if (!token || token === 'null' || token === 'undefined') {
       if (shouldUseDevFallback() && devUser) {
         req.user = devUser;
+        setRequestUser(devUser.id);
         return next();
       }
       return res.status(401).json({
@@ -83,6 +85,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     // Add user to request
     req.user = user;
+    setRequestUser(user.id);
     next();
 
   } catch (error) {
@@ -108,15 +111,18 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       const user = await authService.verifyToken(token);
       if (user) {
         req.user = user;
+        setRequestUser(user.id);
       }
     } else if (shouldUseDevFallback() && devUser) {
       req.user = devUser;
+      setRequestUser(devUser.id);
     }
 
     next();
   } catch (error) {
     if (shouldUseDevFallback() && devUser) {
       req.user = devUser;
+      setRequestUser(devUser.id);
       next();
     } else {
       next();

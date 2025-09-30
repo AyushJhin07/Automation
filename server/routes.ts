@@ -36,6 +36,7 @@ import { endToEndTester } from "./testing/EndToEndTester";
 import { connectorSeeder } from "./database/seedConnectors";
 import { connectorRegistry } from "./ConnectorRegistry";
 import { webhookManager } from "./webhooks/WebhookManager";
+import { logAction } from './utils/actionLog';
 import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 import { normalizeAppId } from "./services/PromptBuilder.js";
@@ -409,6 +410,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Connection usage (lastUsed/lastError) – file-store mode only provides these today
+  app.get('/api/connections/usage', authenticateToken, async (req, res) => {
+    try {
+      const conns = await connectionService.getUserConnections(req.user!.id);
+      const usage = conns.map(c => ({ id: c.id, provider: c.provider, name: c.name, lastUsed: (c as any).lastUsed, lastError: (c as any).lastError }));
+      res.json({ success: true, usage });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // Export user's connections (masked)
   app.get('/api/connections/export', authenticateToken, async (req, res) => {
     try {
@@ -758,6 +770,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Roadmap summary
+  app.get('/api/roadmap/summary', async (_req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
+      if (!fs.existsSync(file)) {
+        return res.json({ success: true, counts: { total: 0, done: 0, in_progress: 0, todo: 0 } });
+      }
+      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const tasks = json.tasks || [];
+      const counts = {
+        total: tasks.length,
+        done: tasks.filter((t: any) => t.status === 'done').length,
+        in_progress: tasks.filter((t: any) => t.status === 'in_progress').length,
+        todo: tasks.filter((t: any) => t.status === 'todo').length,
+      };
+      res.json({ success: true, counts });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Roadmap tasks filter
+  app.get('/api/roadmap/tasks', async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
+      const statusFilter = String(req.query.status || '').toLowerCase();
+      if (!fs.existsSync(file)) {
+        return res.json({ success: true, tasks: [] });
+      }
+      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+      let tasks = json.tasks || [];
+      if (statusFilter && ['done','in_progress','todo'].includes(statusFilter)) {
+        tasks = tasks.filter((t: any) => (t.status || '').toLowerCase() === statusFilter);
+      }
+      res.json({ success: true, tasks });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // Update roadmap tasks (admin-only; currently gated by auth)
   app.post('/api/roadmap/update', authenticateToken, async (req, res) => {
     try {
@@ -782,11 +838,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update single task status
+  app.post('/api/roadmap/update/status', authenticateToken, async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
+      const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { tasks: [] };
+      const { id, status } = req.body || {};
+      if (!id || !status) {
+        return res.status(400).json({ success: false, error: 'Missing id or status' });
+      }
+      const tasks = (current.tasks || []).map((t: any) => t.id === id ? { ...t, status } : t);
+      const out = { generatedAt: new Date().toISOString(), tasks };
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(out, null, 2));
+      res.json({ success: true, tasks });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Bulk update tasks statuses
+  app.post('/api/roadmap/update/bulk', authenticateToken, async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
+      const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { tasks: [] };
+      const updates: Array<{ id: string; status: string }> = Array.isArray(req.body?.updates) ? req.body.updates : [];
+      const byId: Record<string, any> = {};
+      for (const t of current.tasks || []) byId[t.id] = t;
+      for (const u of updates) {
+        if (!u.id || !u.status) continue;
+        if (byId[u.id]) byId[u.id] = { ...byId[u.id], status: u.status };
+      }
+      const tasks = Object.values(byId);
+      const out = { generatedAt: new Date().toISOString(), tasks };
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(out, null, 2));
+      logAction({ type: 'roadmap.update', userId: req.user?.id, tasks: updates });
+      res.json({ success: true, tasks });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // OAuth providers status
   app.get('/api/status/providers', async (_req, res) => {
     try {
-      const providers = oauthManager.listProviders().map(p => ({ id: p.name, configured: true }));
-      const disabled = oauthManager.listDisabledProviders().map(({ provider }) => ({ id: provider.name, configured: false }));
+      const providers = oauthManager.listProviders().map(p => ({ id: p.name, configured: true, scopes: p.config.scopes || [] }));
+      const disabled = oauthManager.listDisabledProviders().map(({ provider }) => ({ id: provider.name, configured: false, scopes: provider.config.scopes || [] }));
       res.json({ success: true, providers: [...providers, ...disabled] });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -803,6 +905,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       github: { bad_credentials: 'Re-authenticate token with proper scopes.' }
     };
     res.json({ success: true, catalog });
+  });
+
+  // Readiness
+  app.get('/api/health/ready', async (_req, res) => {
+    try {
+      const dbConfigured = !!process.env.DATABASE_URL;
+      const registryOk = !!connectorRegistry;
+      const oauthOk = !!oauthManager;
+      const connectors = connectorRegistry.getAllConnectors();
+      const totalConnectors = connectors.length;
+      const implemented = connectors.filter(c => c.hasImplementation).length;
+      res.json({ success: true, ready: dbConfigured && registryOk && oauthOk, subsystems: { databaseConfigured: dbConfigured, connectorRegistry: registryOk, oauthManager: oauthOk, totalConnectors, implementedConnectors: implemented } });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Export connector schemas (all or by appId)
+  app.get('/api/schema/export', async (req, res) => {
+    try {
+      const appId = String(req.query.appId || '').toLowerCase();
+      const connectors = connectorRegistry.getAllConnectors();
+      const build = (entry: any) => ({
+        id: entry.definition.id,
+        name: entry.definition.name,
+        actions: (entry.definition.actions || []).map((a: any) => ({ id: a.id, name: a.name, parameters: a.parameters })),
+        triggers: (entry.definition.triggers || []).map((t: any) => ({ id: t.id, name: t.name, parameters: t.parameters }))
+      });
+      if (appId) {
+        const entry = connectors.find(c => c.definition.id.toLowerCase() === appId);
+        if (!entry) return res.status(404).json({ success: false, error: `Connector not found: ${appId}` });
+        return res.json({ success: true, schema: build(entry) });
+      }
+      const schema = connectors.map(build);
+      res.json({ success: true, schema });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Batch execute-list: fan-out across multiple requests
+  app.post('/api/integrations/execute-batch', authenticateToken, checkQuota, async (req, res) => {
+    try {
+      const ops: any[] = Array.isArray(req.body?.operations) ? req.body.operations : [];
+      if (ops.length === 0) return res.status(400).json({ success: false, error: 'operations[] required' });
+      const results: any[] = [];
+      for (const op of ops) {
+        let { appName, functionId, parameters, credentials, connectionId, provider } = op;
+        if ((!credentials) && (connectionId || provider)) {
+          const userId = req.user!.id;
+          let conn = null as any;
+          if (connectionId) {
+            conn = await connectionService.getConnection(String(connectionId), userId);
+          } else if (provider) {
+            conn = await connectionService.getConnectionByProvider(userId, String(provider));
+          }
+          if (!conn) {
+            results.push({ success: false, error: 'Connection not found', appName, functionId });
+            continue;
+          }
+          credentials = conn.credentials;
+          appName = appName || conn.provider;
+          connectionId = conn.id;
+        }
+        if (!appName || !functionId) {
+          results.push({ success: false, error: 'Missing appName/functionId', appName, functionId });
+          continue;
+        }
+        const r = await integrationManager.executeFunction({ appName, functionId, parameters: parameters || {}, credentials: credentials || {}, additionalConfig: {}, connectionId });
+        if (connectionId) await connectionService.markUsed(String(connectionId), req.user!.id, r.success, r.success ? undefined : r.error);
+        logAction({ type: 'integration.executeBatchItem', userId: req.user?.id, appName, functionId, success: r.success });
+        results.push(r);
+      }
+      res.json({ success: true, results });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // Execution audit log
+  app.get('/api/admin/executions', authenticateToken, async (req, res) => {
+    try {
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 1000));
+      const { readExecutions } = await import('./services/ExecutionAuditService.js');
+      const entries = readExecutions(limit);
+      res.json({ success: true, entries });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
   });
 
   // Connector inventory stats (compact summary)
@@ -1401,6 +1592,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         additionalConfig,
         connectionId
       });
+      logAction({ type: 'integration.execute', userId: req.user?.id, appName, functionId, success: result.success });
+
+      if (connectionId) {
+        await connectionService.markUsed(String(connectionId), req.user!.id, result.success, result.success ? undefined : result.error);
+      }
 
       // Track usage
       if (req.user?.id) {
@@ -1462,6 +1658,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         credentials,
         maxPages
       });
+      if (connectionId) {
+        await connectionService.markUsed(String(connectionId), req.user!.id, result.success, result.success ? undefined : result.error);
+      }
+      logAction({ type: 'integration.executePaginated', userId: req.user?.id, appName, functionId, success: result.success });
       res.json(result);
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });

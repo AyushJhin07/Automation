@@ -451,3 +451,19 @@
     "endpoint": "/about"
   }
 }
+    {
+      "id": "delete_permission",
+      "name": "Delete Permission",
+      "description": "Remove a permission from a file",
+      "endpoint": "/files/{fileId}/permissions/{permissionId}",
+      "method": "DELETE",
+      "parameters": { "type":"object", "properties": { "fileId": {"type":"string"}, "permissionId": {"type":"string"} }, "required": ["fileId","permissionId"], "additionalProperties": false }
+    },
+    {
+      "id": "update_permission",
+      "name": "Update Permission",
+      "description": "Update a permission on a file",
+      "endpoint": "/files/{fileId}/permissions/{permissionId}",
+      "method": "PATCH",
+      "parameters": { "type":"object", "properties": { "fileId": {"type":"string"}, "permissionId": {"type":"string"}, "role": {"type":"string","enum":["reader","writer","commenter","owner"]} }, "required": ["fileId","permissionId","role"], "additionalProperties": false }
+    }

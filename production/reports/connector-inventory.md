@@ -1,17 +1,19 @@
 # Connector Inventory Report
 
 Total connectors: 149
-Implemented now (server): 5
+Implemented now (server): 0
 
 ## Availability
-- stable: 149
+- stable: 141
+- unknown: 8
 
 ## Auth Types
-- oauth2: 66
-- api_key: 65
+- oauth2: 61
+- api_key: 62
 - bearer_token: 3
 - aws_credentials: 2
 - personal_access_token: 1
+- unknown: 8
 - basic: 7
 - vault_token: 1
 - kubeconfig: 1
@@ -19,24 +21,25 @@ Implemented now (server): 5
 
 ## Categories (count)
 - DevOps: 14
-- Project Management: 12
-- Productivity: 10
+- Project Management: 11
 - Communication: 10
-- CRM: 8
+- Productivity: 9
+- Unknown: 8
 - Finance: 7
 - Marketing: 7
+- CRM: 7
 - HR: 6
 - Monitoring: 6
-- Customer Support: 5
 - Analytics: 5
-- File Storage: 4
+- Customer Support: 4
 - Email: 4
 - E-commerce: 4
-- Payments: 4
 - Accounting: 4
 - Database: 3
-- Development: 3
+- File Storage: 3
 - Developer Tools: 3
+- Payments: 3
+- Development: 2
 - Storage: 2
 - Scheduling: 2
 - IT Service Management: 2
@@ -48,7 +51,6 @@ Implemented now (server): 5
 - Data Analytics: 1
 - Document Management: 1
 - Admin: 1
-- Cloud Storage: 1
 - Knowledge Management: 1
 - Documents: 1
 - Forms: 1
@@ -201,11 +203,6 @@ Implemented now (server): 5
 - zoom: standard=no, enhanced=yes
 
 ## Implemented Connectors (server)
-- airtable (Airtable)
-- gmail (Gmail)
-- notion (Notion)
-- shopify (Shopify)
-- slack (Slack)
 
 ## All Connectors
 - adobesign | stable | oauth2 | actions=5 | triggers=2
@@ -239,24 +236,24 @@ Implemented now (server): 5
 - datadog | stable | api_key | actions=7 | triggers=2
 - docker-hub | stable | api_key | actions=5 | triggers=2
 - docusign | stable | oauth2 | actions=8 | triggers=3
-- dropbox | stable | oauth2 | actions=10 | triggers=2
+- dropbox | unknown | unknown | actions=0 | triggers=0
 - dropbox-enhanced | stable | oauth2 | actions=11 | triggers=3
 - dynamics365 | stable | oauth2 | actions=8 | triggers=3
 - egnyte | stable | oauth2 | actions=10 | triggers=2
 - excel-online | stable | oauth2 | actions=11 | triggers=2
 - expensify | stable | api_key | actions=8 | triggers=3
 - freshdesk | stable | api_key | actions=8 | triggers=2
-- github | stable | oauth2 | actions=13 | triggers=5
+- github | unknown | unknown | actions=0 | triggers=0
 - github-enhanced | stable | oauth2 | actions=8 | triggers=3
 - gitlab | stable | oauth2 | actions=5 | triggers=2
 - gmail | stable | oauth2 | actions=7 | triggers=3
 - gmail-enhanced | stable | oauth2 | actions=10 | triggers=2
 - google-admin | stable | oauth2 | actions=9 | triggers=2
-- google-calendar | stable | oauth2 | actions=11 | triggers=3
+- google-calendar | unknown | unknown | actions=0 | triggers=0
 - google-chat | stable | oauth2 | actions=11 | triggers=3
 - google-contacts | stable | oauth2 | actions=9 | triggers=2
 - google-docs | stable | oauth2 | actions=10 | triggers=2
-- google-drive | stable | oauth2 | actions=13 | triggers=3
+- google-drive | unknown | unknown | actions=0 | triggers=0
 - google-forms | stable | oauth2 | actions=10 | triggers=2
 - google-meet | stable | oauth2 | actions=10 | triggers=3
 - google-sheets-enhanced | stable | oauth2 | actions=12 | triggers=2
@@ -267,7 +264,7 @@ Implemented now (server): 5
 - hashicorp-vault | stable | vault_token | actions=5 | triggers=2
 - hellosign | stable | api_key | actions=13 | triggers=3
 - helm | stable | kubeconfig | actions=5 | triggers=2
-- hubspot | stable | oauth2 | actions=11 | triggers=4
+- hubspot | unknown | unknown | actions=0 | triggers=0
 - hubspot-enhanced | stable | oauth2 | actions=12 | triggers=4
 - intercom | stable | api_key | actions=13 | triggers=3
 - iterable | stable | api_key | actions=14 | triggers=4
@@ -327,13 +324,13 @@ Implemented now (server): 5
 - shopify | stable | oauth2 | actions=13 | triggers=5
 - shopify-enhanced | stable | api_key | actions=11 | triggers=3
 - slab | stable | api_key | actions=8 | triggers=2
-- slack | stable | oauth2 | actions=11 | triggers=3
+- slack | stable | oauth2 | actions=13 | triggers=3
 - slack-enhanced | stable | oauth2 | actions=14 | triggers=4
 - smartsheet | stable | api_key | actions=14 | triggers=3
 - snowflake | stable | api_key | actions=14 | triggers=2
 - sonarqube | stable | basic_auth | actions=5 | triggers=2
 - square | stable | api_key | actions=8 | triggers=2
-- stripe | stable | api_key | actions=8 | triggers=4
+- stripe | unknown | unknown | actions=0 | triggers=0
 - stripe-enhanced | stable | api_key | actions=5 | triggers=2
 - successfactors | stable | oauth2 | actions=5 | triggers=2
 - surveymonkey | stable | oauth2 | actions=14 | triggers=3
@@ -342,10 +339,10 @@ Implemented now (server): 5
 - teamwork | stable | api_key | actions=14 | triggers=4
 - terraform-cloud | stable | bearer_token | actions=5 | triggers=2
 - toggl | stable | api_key | actions=17 | triggers=4
-- trello | stable | api_key | actions=13 | triggers=4
+- trello | unknown | unknown | actions=0 | triggers=0
 - trello-enhanced | stable | api_key | actions=9 | triggers=3
 - twilio | stable | api_key | actions=11 | triggers=4
-- typeform | stable | api_key | actions=6 | triggers=2
+- typeform | stable | api_key | actions=0 | triggers=2
 - victorops | stable | api_key | actions=12 | triggers=3
 - webex | stable | oauth2 | actions=10 | triggers=3
 - webflow | stable | api_key | actions=14 | triggers=4
@@ -353,7 +350,7 @@ Implemented now (server): 5
 - workday | stable | oauth2 | actions=13 | triggers=4
 - workfront | stable | api_key | actions=13 | triggers=3
 - xero | stable | oauth2 | actions=13 | triggers=3
-- zendesk | stable | api_key | actions=11 | triggers=3
+- zendesk | unknown | unknown | actions=0 | triggers=0
 - zoho-books | stable | oauth2 | actions=13 | triggers=3
 - zoho-crm | stable | oauth2 | actions=10 | triggers=3
 - zoom-enhanced | stable | oauth2 | actions=9 | triggers=3

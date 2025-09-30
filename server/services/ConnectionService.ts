@@ -47,6 +47,8 @@ export interface DecryptedConnection {
   lastTested?: Date;
   testStatus?: string;
   testError?: string;
+  lastUsed?: Date;
+  lastError?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +66,8 @@ interface FileConnectionRecord {
   lastTested?: string;
   testStatus?: string;
   testError?: string;
+  lastUsed?: string;
+  lastError?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -136,6 +140,9 @@ export class ConnectionService {
       lastTested: record.lastTested ? new Date(record.lastTested) : undefined,
       testStatus: record.testStatus,
       testError: record.testError,
+      // usage extras for file store only
+      lastUsed: record.lastUsed ? new Date(record.lastUsed) as any : undefined,
+      lastError: record.lastError,
       createdAt: new Date(record.createdAt),
       updatedAt: new Date(record.updatedAt),
     };
@@ -353,6 +360,20 @@ export class ConnectionService {
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
     };
+  }
+
+  public async markUsed(connectionId: string, userId: string, ok: boolean, errorMsg?: string): Promise<void> {
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const idx = records.findIndex(r => r.id === connectionId && r.userId === userId);
+      if (idx >= 0) {
+        records[idx].lastUsed = new Date().toISOString();
+        if (!ok && errorMsg) records[idx].lastError = errorMsg;
+        await this.writeFileStore(records);
+      }
+      return;
+    }
+    // DB-backed: no-op here to avoid schema changes
   }
 
   /**

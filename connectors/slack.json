@@ -305,6 +305,46 @@
         "additionalProperties": false
       }
     }
+    ,
+    {
+      "id": "list_files",
+      "name": "List Files",
+      "description": "List files in the workspace",
+      "endpoint": "/files.list",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {"type":"string"},
+          "channel": {"type":"string"},
+          "ts_from": {"type":"number"},
+          "ts_to": {"type":"number"},
+          "count": {"type":"number","default":100}
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+    ,
+    {
+      "id": "conversations_history",
+      "name": "Conversations History",
+      "description": "Fetch conversation history",
+      "endpoint": "/conversations.history",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {"type":"string"},
+          "latest": {"type":"string"},
+          "oldest": {"type":"string"},
+          "inclusive": {"type":"boolean"},
+          "limit": {"type":"number","default":100}
+        },
+        "required": ["channel"],
+        "additionalProperties": false
+      }
+    }
   ],
   "triggers": [
     {

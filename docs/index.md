@@ -20,12 +20,23 @@
   - POST /api/integrations/execute
   - POST /api/integrations/execute-paginated
   - POST /api/integrations/execute-list
+  - POST /api/integrations/execute-batch
 - Telemetry
   - GET /api/roadmap
+  - GET /api/roadmap/summary
+  - GET /api/roadmap/tasks?status=
   - GET /api/status/connectors
+  - GET /api/status/providers
+  - GET /api/status/rate-limits
+  - GET /api/health/ready
+  - GET /api/admin/executions
+  - GET /api/connections/usage
+  - GET /api/schema/export
 - Recipes
   - docs/recipes/slack-on-stripe-payment.md
   - docs/recipes/hubspot-contact-from-typeform.md
   - docs/recipes/trello-board-to-slack.md
   - docs/recipes/github-issue-to-slack.md
+  - docs/recipes/github-push-to-slack.md
+  - docs/recipes/stripe-payment-succeeded-to-slack.md
   - docs/recipes/zendesk-ticket-to-slack.md

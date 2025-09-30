@@ -25,3 +25,7 @@ export const env = {
   ENABLE_LLM_FEATURES: process.env.ENABLE_LLM_FEATURES === 'true',
   GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true',
 } as const;
+
+export const FLAGS = {
+  GENERIC_EXECUTOR_ENABLED: (process.env.GENERIC_EXECUTOR_ENABLED === 'true')
+} as const;

@@ -199,6 +199,16 @@ export class WebhookManager {
         source: 'webhook'
       };
 
+      // Apply simple filters if configured in trigger metadata
+      const filters = (webhook.metadata && (webhook.metadata as any).filters) as Record<string, any> | undefined;
+      if (filters && typeof filters === 'object') {
+        const pass = this.applyFilters(filters, payload);
+        if (!pass) {
+          console.log(`🪄 Webhook filtered out for ${webhook.appId}.${webhook.triggerId}`);
+          return true; // treat as success but drop
+        }
+      }
+
       // Check for duplicates
       const eventHash = this.createEventHash(event);
       if (this.hasSeenEvent(webhook.id, eventHash)) {
@@ -227,6 +237,26 @@ export class WebhookManager {
     } catch (error) {
       console.error(`❌ Error handling webhook ${webhookId}:`, getErrorMessage(error));
       return false;
+    }
+  }
+
+  private applyFilters(filters: Record<string, any>, payload: any): boolean {
+    try {
+      // Support simple equals and contains for top-level paths using dot notation
+      const getVal = (path: string) => path.split('.').reduce((acc: any, key: string) => (acc ? acc[key] : undefined), payload);
+      for (const [k, v] of Object.entries(filters)) {
+        const val = getVal(k);
+        if (v && typeof v === 'object' && v.contains !== undefined) {
+          const needle = String(v.contains).toLowerCase();
+          const hay = String(val ?? '').toLowerCase();
+          if (!hay.includes(needle)) return false;
+        } else {
+          if (String(val) !== String(v)) return false;
+        }
+      }
+      return true;
+    } catch {
+      return true; // fail-open to avoid blocking events
     }
   }
 
@@ -464,10 +494,17 @@ export class WebhookManager {
       const clientConstructor = this.resolveClientConstructor(trigger.appId);
       const methodName = this.resolvePollingMethodName(trigger);
 
+      // Enrich parameters with since timestamp when available
+      const baseParams = (context.parameters ?? {}) as Record<string, any>;
+      const since = trigger.lastPoll ? new Date(trigger.lastPoll).toISOString() : undefined;
+      const enrichedParams = since && baseParams.since === undefined
+        ? { ...baseParams, since }
+        : baseParams;
+
       if (clientConstructor) {
         const client: any = new clientConstructor(context.credentials, context.additionalConfig);
         if (typeof client[methodName] === 'function') {
-          const response = await client[methodName](context.parameters ?? {});
+          const response = await client[methodName](enrichedParams);
           if (!response) return [];
           return Array.isArray(response) ? response : [response];
         }
@@ -484,7 +521,7 @@ export class WebhookManager {
           const generic = await genericExecutor.execute({
             appId: trigger.appId,
             functionId: trigger.triggerId,
-            parameters: context.parameters ?? {},
+            parameters: enrichedParams,
             credentials: context.credentials,
           });
           if (generic.success) {

@@ -3,24 +3,25 @@
     "total": 149,
     "categories": {
       "DevOps": 14,
-      "Project Management": 12,
-      "Productivity": 10,
+      "Project Management": 11,
       "Communication": 10,
-      "CRM": 8,
+      "Productivity": 9,
+      "Unknown": 8,
       "Finance": 7,
       "Marketing": 7,
+      "CRM": 7,
       "HR": 6,
       "Monitoring": 6,
-      "Customer Support": 5,
       "Analytics": 5,
-      "File Storage": 4,
+      "Customer Support": 4,
       "Email": 4,
       "E-commerce": 4,
-      "Payments": 4,
       "Accounting": 4,
       "Database": 3,
-      "Development": 3,
+      "File Storage": 3,
       "Developer Tools": 3,
+      "Payments": 3,
+      "Development": 2,
       "Storage": 2,
       "Scheduling": 2,
       "IT Service Management": 2,
@@ -32,7 +33,6 @@
       "Data Analytics": 1,
       "Document Management": 1,
       "Admin": 1,
-      "Cloud Storage": 1,
       "Knowledge Management": 1,
       "Documents": 1,
       "Forms": 1,
@@ -48,20 +48,22 @@
       "Website Builders": 1
     },
     "availabilityCounts": {
-      "stable": 149
+      "stable": 141,
+      "unknown": 8
     },
     "authTypes": {
-      "oauth2": 66,
-      "api_key": 65,
+      "oauth2": 61,
+      "api_key": 62,
       "bearer_token": 3,
       "aws_credentials": 2,
       "personal_access_token": 1,
+      "unknown": 8,
       "basic": 7,
       "vault_token": 1,
       "kubeconfig": 1,
       "basic_auth": 3
     },
-    "implementedCount": 5
+    "implementedCount": 0
   },
   "pairs": [
     {
@@ -783,7 +785,7 @@
       "authType": "api_key",
       "actions": 6,
       "triggers": 2,
-      "implemented": true
+      "implemented": false
     },
     {
       "file": "airtable-enhanced.json",
@@ -1085,12 +1087,13 @@
     {
       "file": "dropbox.json",
       "id": "dropbox",
-      "name": "Dropbox",
-      "category": "File Storage",
-      "availability": "stable",
-      "authType": "oauth2",
-      "actions": 10,
-      "triggers": 2,
+      "name": "dropbox.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Unexpected non-whitespace character after JSON at position 8868 (line 334 column 5)",
       "implemented": false
     },
     {
@@ -1162,12 +1165,13 @@
     {
       "file": "github.json",
       "id": "github",
-      "name": "GitHub",
-      "category": "Development",
-      "availability": "stable",
-      "authType": "oauth2",
-      "actions": 13,
-      "triggers": 5,
+      "name": "github.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Expected ',' or ']' after array element in JSON at position 3332 (line 113 column 5)",
       "implemented": false
     },
     {
@@ -1201,7 +1205,7 @@
       "authType": "oauth2",
       "actions": 7,
       "triggers": 3,
-      "implemented": true
+      "implemented": false
     },
     {
       "file": "gmail-enhanced.json",
@@ -1228,12 +1232,13 @@
     {
       "file": "google-calendar.json",
       "id": "google-calendar",
-      "name": "Google Calendar",
-      "category": "Productivity",
-      "availability": "stable",
-      "authType": "oauth2",
-      "actions": 11,
-      "triggers": 3,
+      "name": "google-calendar.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Unexpected non-whitespace character after JSON at position 15382 (line 529 column 5)",
       "implemented": false
     },
     {
@@ -1272,12 +1277,13 @@
     {
       "file": "google-drive.json",
       "id": "google-drive",
-      "name": "Google Drive",
-      "category": "Cloud Storage",
-      "availability": "stable",
-      "authType": "oauth2",
-      "actions": 13,
-      "triggers": 3,
+      "name": "google-drive.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Unexpected non-whitespace character after JSON at position 12805 (line 454 column 5)",
       "implemented": false
     },
     {
@@ -1393,12 +1399,13 @@
     {
       "file": "hubspot.json",
       "id": "hubspot",
-      "name": "HubSpot",
-      "category": "CRM",
-      "availability": "stable",
-      "authType": "oauth2",
-      "actions": 11,
-      "triggers": 4,
+      "name": "hubspot.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Expected ',' or ']' after array element in JSON at position 1856 (line 59 column 5)",
       "implemented": false
     },
     {
@@ -1740,7 +1747,7 @@
       "authType": "oauth2",
       "actions": 10,
       "triggers": 3,
-      "implemented": true
+      "implemented": false
     },
     {
       "file": "notion-enhanced.json",
@@ -2026,7 +2033,7 @@
       "authType": "oauth2",
       "actions": 13,
       "triggers": 5,
-      "implemented": true
+      "implemented": false
     },
     {
       "file": "shopify-enhanced.json",
@@ -2057,9 +2064,9 @@
       "category": "Communication",
       "availability": "stable",
       "authType": "oauth2",
-      "actions": 11,
+      "actions": 13,
       "triggers": 3,
-      "implemented": true
+      "implemented": false
     },
     {
       "file": "slack-enhanced.json",
@@ -2119,12 +2126,13 @@
     {
       "file": "stripe.json",
       "id": "stripe",
-      "name": "Stripe",
-      "category": "Payments",
-      "availability": "stable",
-      "authType": "api_key",
-      "actions": 8,
-      "triggers": 4,
+      "name": "stripe.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Expected ',' or ']' after array element in JSON at position 6133 (line 204 column 5)",
       "implemented": false
     },
     {
@@ -2218,12 +2226,13 @@
     {
       "file": "trello.json",
       "id": "trello",
-      "name": "Trello",
-      "category": "Project Management",
-      "availability": "stable",
-      "authType": "api_key",
-      "actions": 13,
-      "triggers": 4,
+      "name": "trello.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Expected ',' or ']' after array element in JSON at position 16271 (line 527 column 5)",
       "implemented": false
     },
     {
@@ -2255,7 +2264,7 @@
       "category": "Customer Feedback",
       "availability": "stable",
       "authType": "api_key",
-      "actions": 6,
+      "actions": 0,
       "triggers": 2,
       "implemented": false
     },
@@ -2339,12 +2348,13 @@
     {
       "file": "zendesk.json",
       "id": "zendesk",
-      "name": "Zendesk",
-      "category": "Customer Support",
-      "availability": "stable",
-      "authType": "api_key",
-      "actions": 11,
-      "triggers": 3,
+      "name": "zendesk.json",
+      "category": "Unknown",
+      "availability": "unknown",
+      "authType": "unknown",
+      "actions": 0,
+      "triggers": 0,
+      "error": "Expected ',' or ']' after array element in JSON at position 1092 (line 38 column 5)",
       "implemented": false
     },
     {

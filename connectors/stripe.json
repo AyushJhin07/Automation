@@ -564,3 +564,29 @@
         "additionalProperties": false
       }
     }
+    {
+      "id": "retrieve_charge",
+      "name": "Retrieve Charge",
+      "description": "Get a charge by ID",
+      "endpoint": "/charges/{charge}",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": { "charge": { "type": "string" } },
+        "required": ["charge"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_customers",
+      "name": "List Customers",
+      "description": "List customers",
+      "endpoint": "/customers",
+      "method": "GET",
+      "parameters": {
+        "type": "object",
+        "properties": { "limit": { "type": "number", "default": 10, "maximum": 100 }, "starting_after": { "type": "string" } },
+        "required": [],
+        "additionalProperties": false
+      }
+    }

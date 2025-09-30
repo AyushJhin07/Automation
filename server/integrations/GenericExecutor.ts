@@ -1,5 +1,10 @@
 import type { APICredentials, APIResponse } from './BaseAPIClient';
 import { connectorRegistry } from '../ConnectorRegistry';
+import { validateParams } from './RequestValidator';
+import { normalizeListResponse } from './Normalizers';
+import { rateLimiter } from './RateLimiter';
+import { recordExecution } from '../services/ExecutionAuditService';
+import { getRequestContext } from '../utils/ExecutionContext';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
@@ -140,6 +145,10 @@ export class GenericExecutor {
       return { success: false, error: `Function not found: ${appId}.${functionId}` };
     }
 
+    // Validate parameters if schema is present
+    const validation = validateParams(appId, functionId, (fn as any).parameters, parameters);
+    if (validation) return validation;
+
     let baseUrl: string = (def as any).baseUrl || '';
     const endpoint: string = (fn as any).endpoint || '';
     const method: HttpMethod = (((fn as any).method || 'POST') as string).toUpperCase() as HttpMethod;
@@ -166,6 +175,7 @@ export class GenericExecutor {
     const qs = new URLSearchParams({ ...authQuery, ...query } as any).toString();
     const finalUrl = qs ? `${url}?${qs}` : url;
 
+    const reqStart = Date.now();
     try {
       let reqBody: any = undefined;
       let reqHeaders = { ...headers } as Record<string, string>;
@@ -194,6 +204,7 @@ export class GenericExecutor {
       let lastErr: any = null;
       while (attempt <= maxRetries) {
         try {
+          await rateLimiter.acquire(appId);
           resp = await fetch(finalUrl, {
             method,
             headers: reqHeaders,
@@ -248,8 +259,28 @@ export class GenericExecutor {
         if (data.has_more !== undefined) meta.has_more = data.has_more;
         if (data.next_cursor || data.response_metadata?.next_cursor) meta.next_cursor = data.next_cursor || data.response_metadata?.next_cursor;
       }
-      return { success: true, data: meta && Object.keys(meta).length ? { meta, ...data } : data };
+      const normalized = normalizeListResponse(appId, data);
+      const payload = normalized ? { meta: normalized.meta, items: normalized.items } : (meta && Object.keys(meta).length ? { meta, ...data } : data);
+      const ctx = getRequestContext();
+      recordExecution({
+        requestId: ctx?.requestId || 'unknown',
+        appId,
+        functionId,
+        durationMs: Date.now() - reqStart,
+        success: true,
+        meta: { rateLimited: attempt > 0 }
+      });
+      return { success: true, data: payload };
     } catch (error: any) {
+      const ctx = getRequestContext();
+      recordExecution({
+        requestId: ctx?.requestId || 'unknown',
+        appId,
+        functionId,
+        durationMs: Date.now() - reqStart,
+        success: false,
+        error: error?.message || String(error)
+      });
       return { success: false, error: error?.message || String(error) };
     }
   }

@@ -218,6 +218,23 @@
       }
     }
   ],
+  "actions": [
+  ],
+  "actions_append": [
+    {
+      "id": "delete_webhook",
+      "name": "Delete Webhook",
+      "description": "Delete a webhook for a form",
+      "endpoint": "/forms/{uid}/webhooks/{tag}",
+      "method": "DELETE",
+      "parameters": {
+        "type": "object",
+        "properties": { "uid": {"type":"string"}, "tag": {"type":"string", "default":"default"} },
+        "required": ["uid"],
+        "additionalProperties": false
+      }
+    }
+  ],
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"

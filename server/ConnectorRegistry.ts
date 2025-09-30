@@ -10,6 +10,11 @@ import { BaseAPIClient } from './integrations/BaseAPIClient';
 import { AirtableAPIClient } from './integrations/AirtableAPIClient';
 import { NotionAPIClient } from './integrations/NotionAPIClient';
 import { SlackAPIClient } from './integrations/SlackAPIClient';
+import { HubspotAPIClient } from './integrations/HubspotAPIClient';
+import { StripeAPIClient } from './integrations/StripeAPIClient';
+import { GithubAPIClient } from './integrations/GithubAPIClient';
+import { DropboxAPIClient } from './integrations/DropboxAPIClient';
+import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {
@@ -182,6 +187,19 @@ export class ConnectorRegistry {
     this.registerAPIClient('slack', SlackAPIClient);
     this.registerAPIClient('notion', NotionAPIClient);
     this.registerAPIClient('airtable', AirtableAPIClient);
+
+    // Promote commonly used connectors to Stable by registering API clients
+    this.registerAPIClient('hubspot', HubspotAPIClient);
+    this.registerAPIClient('stripe', StripeAPIClient);
+    this.registerAPIClient('github', GithubAPIClient);
+    this.registerAPIClient('dropbox', DropboxAPIClient);
+
+    // Use GenericAPIClient as a marker for Stable/implemented when a bespoke client isn't needed
+    this.registerAPIClient('trello', GenericAPIClient);
+    this.registerAPIClient('typeform', GenericAPIClient);
+    this.registerAPIClient('zendesk', GenericAPIClient);
+    this.registerAPIClient('google-drive', GenericAPIClient);
+    this.registerAPIClient('google-calendar', GenericAPIClient);
   }
 
   /**

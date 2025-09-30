@@ -8,10 +8,21 @@ console.log('🔑 LLM API Keys:', {
   CLAUDE: !!process.env.CLAUDE_API_KEY 
 });
 import express, { type Request, Response, NextFunction } from "express";
+import { randomUUID } from 'crypto';
+import { redactSecrets } from './utils/redact';
+import { runWithRequestContext, getRequestContext } from './utils/ExecutionContext';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+// Correlation ID + JSON body parsing with audit logging
+app.use((req, res, next) => {
+  const existing = req.headers['x-request-id'] as string | undefined;
+  const reqId = existing && existing.length > 0 ? existing : randomUUID();
+  res.setHeader('x-request-id', reqId);
+  runWithRequestContext({ requestId: reqId }, () => next());
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -29,9 +40,11 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      const ctx = getRequestContext();
+      const reqId = ctx?.requestId || 'unknown';
+      let logLine = `[${reqId}] ${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse && process.env.NODE_ENV === 'development') {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        try { logLine += ` :: ${JSON.stringify(redactSecrets(capturedJsonResponse))}`; } catch {}
       }
 
       if (logLine.length > 80) {

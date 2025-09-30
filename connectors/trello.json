@@ -1120,3 +1120,11 @@
     "endpoint": "/members/me"
   }
 }
+    {
+      "id": "list_board_actions",
+      "name": "List Board Actions",
+      "description": "List recent actions on a board",
+      "endpoint": "/boards/{id}/actions",
+      "method": "GET",
+      "parameters": { "type":"object", "properties": { "id": {"type":"string"}, "limit": {"type":"number","default":50} }, "required": ["id"], "additionalProperties": false }
+    }

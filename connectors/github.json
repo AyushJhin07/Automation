@@ -767,3 +767,19 @@
         "additionalProperties": false
       }
     }
+    {
+      "id": "list_commits",
+      "name": "List Commits",
+      "description": "List commits for a repository",
+      "endpoint": "/repos/{owner}/{repo}/commits",
+      "method": "GET",
+      "parameters": { "type":"object", "properties": { "owner": {"type":"string"}, "repo": {"type":"string"}, "sha": {"type":"string"}, "per_page": {"type":"number", "default":30} }, "required": ["owner","repo"], "additionalProperties": false }
+    },
+    {
+      "id": "list_branches",
+      "name": "List Branches",
+      "description": "List branches for a repository",
+      "endpoint": "/repos/{owner}/{repo}/branches",
+      "method": "GET",
+      "parameters": { "type":"object", "properties": { "owner": {"type":"string"}, "repo": {"type":"string"}, "per_page": {"type":"number", "default":30} }, "required": ["owner","repo"], "additionalProperties": false }
+    }
