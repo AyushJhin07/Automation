@@ -1,88 +1,32 @@
 {
   "id": "dropbox",
   "name": "Dropbox",
-  "description": "Dropbox cloud storage platform",
+  "description": "Automate file workflows with Dropbox cloud storage",
   "category": "File Storage",
   "icon": "dropbox",
   "color": "#0061FF",
-  "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://www.dropbox.com/oauth2/authorize",
       "tokenUrl": "https://api.dropboxapi.com/oauth2/token",
-      "scopes": ["files.content.write", "files.content.read", "files.metadata.read"]
+      "scopes": [
+        "files.content.write",
+        "files.content.read",
+        "files.metadata.read"
+      ]
     }
   },
   "baseUrl": "https://api.dropboxapi.com/2",
+  "testConnection": {
+    "endpoint": "/users/get_current_account",
+    "method": "POST"
+  },
   "actions": [
-    {
-      "id": "test_connection",
-      "name": "Test Connection",
-      "description": "Test the connection to Dropbox",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "upload_file",
-      "name": "Upload File",
-      "description": "Upload a file to Dropbox",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Destination path in Dropbox"
-          },
-          "content": {
-            "type": "string",
-            "description": "File content (base64 encoded)"
-          },
-          "mode": {
-            "type": "string",
-            "enum": ["add", "overwrite", "update"],
-            "default": "add",
-            "description": "Write mode"
-          },
-          "autorename": {
-            "type": "boolean",
-            "default": false,
-            "description": "Auto-rename if file exists"
-          },
-          "mute": {
-            "type": "boolean",
-            "default": false,
-            "description": "Mute notifications"
-          }
-        },
-        "required": ["path", "content"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "download_file",
-      "name": "Download File",
-      "description": "Download a file from Dropbox",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "File path in Dropbox"
-          }
-        },
-        "required": ["path"],
-        "additionalProperties": false
-      }
-    },
     {
       "id": "list_folder",
       "name": "List Folder",
-      "description": "List contents of a folder",
+      "description": "List the contents of a Dropbox folder",
       "endpoint": "/files/list_folder",
       "method": "POST",
       "parameters": {
@@ -90,30 +34,25 @@
         "properties": {
           "path": {
             "type": "string",
-            "default": "",
-            "description": "Folder path to list"
+            "description": "Path of the folder to list",
+            "default": ""
           },
           "recursive": {
             "type": "boolean",
-            "default": false,
-            "description": "List recursively"
-          },
-          "include_media_info": {
-            "type": "boolean",
-            "default": false,
-            "description": "Include media info"
+            "description": "Whether to list folders recursively",
+            "default": false
           },
           "include_deleted": {
             "type": "boolean",
-            "default": false,
-            "description": "Include deleted files"
+            "description": "Include deleted items",
+            "default": false
           },
           "limit": {
             "type": "number",
+            "description": "Maximum number of entries to return",
+            "default": 25,
             "minimum": 1,
-            "maximum": 2000,
-            "default": 10,
-            "description": "Maximum files to return"
+            "maximum": 2000
           }
         },
         "required": [],
@@ -135,8 +74,8 @@
           },
           "autorename": {
             "type": "boolean",
-            "default": false,
-            "description": "Auto-rename if folder exists"
+            "description": "Automatically rename if the folder exists",
+            "default": false
           }
         },
         "required": ["path"],
@@ -144,8 +83,8 @@
       }
     },
     {
-      "id": "delete_file",
-      "name": "Delete File",
+      "id": "delete",
+      "name": "Delete File or Folder",
       "description": "Delete a file or folder",
       "endpoint": "/files/delete_v2",
       "method": "POST",
@@ -154,7 +93,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "description": "Path to delete"
+            "description": "Path of the item to delete"
           }
         },
         "required": ["path"],
@@ -162,9 +101,9 @@
       }
     },
     {
-      "id": "move_file",
-      "name": "Move File",
-      "description": "Move a file or folder",
+      "id": "move",
+      "name": "Move File or Folder",
+      "description": "Move a file or folder to a different location",
       "endpoint": "/files/move_v2",
       "method": "POST",
       "parameters": {
@@ -180,8 +119,8 @@
           },
           "autorename": {
             "type": "boolean",
-            "default": false,
-            "description": "Auto-rename if destination exists"
+            "description": "Automatically rename if destination exists",
+            "default": false
           }
         },
         "required": ["from_path", "to_path"],
@@ -189,8 +128,8 @@
       }
     },
     {
-      "id": "copy_file",
-      "name": "Copy File",
+      "id": "copy",
+      "name": "Copy File or Folder",
       "description": "Copy a file or folder",
       "endpoint": "/files/copy_v2",
       "method": "POST",
@@ -207,8 +146,8 @@
           },
           "autorename": {
             "type": "boolean",
-            "default": false,
-            "description": "Auto-rename if destination exists"
+            "description": "Automatically rename if destination exists",
+            "default": false
           }
         },
         "required": ["from_path", "to_path"],
@@ -218,7 +157,7 @@
     {
       "id": "get_metadata",
       "name": "Get Metadata",
-      "description": "Get file or folder metadata",
+      "description": "Retrieve metadata for a file or folder",
       "endpoint": "/files/get_metadata",
       "method": "POST",
       "parameters": {
@@ -226,17 +165,17 @@
         "properties": {
           "path": {
             "type": "string",
-            "description": "File or folder path"
+            "description": "Path of the item"
           },
           "include_media_info": {
             "type": "boolean",
-            "default": false,
-            "description": "Include media information"
+            "description": "Include media information",
+            "default": false
           },
           "include_deleted": {
             "type": "boolean",
-            "default": false,
-            "description": "Include deleted files"
+            "description": "Include deleted files",
+            "default": false
           }
         },
         "required": ["path"],
@@ -245,7 +184,7 @@
     },
     {
       "id": "search",
-      "name": "Search Files",
+      "name": "Search",
       "description": "Search for files and folders",
       "endpoint": "/files/search_v2",
       "method": "POST",
@@ -256,26 +195,43 @@
             "type": "string",
             "description": "Search query"
           },
-          "start": {
-            "type": "number",
-            "default": 0,
-            "description": "Starting index"
-          },
           "max_results": {
             "type": "number",
+            "description": "Maximum number of results",
+            "default": 25,
             "minimum": 1,
-            "maximum": 1000,
-            "default": 100,
-            "description": "Maximum results"
+            "maximum": 1000
           },
-          "mode": {
-            "type": "string",
-            "enum": ["filename", "filename_and_content", "deleted_filename"],
-            "default": "filename",
-            "description": "Search mode"
+          "start": {
+            "type": "number",
+            "description": "Offset for paginated results",
+            "default": 0
           }
         },
         "required": ["query"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_shared_link",
+      "name": "Create Shared Link",
+      "description": "Generate a shared link for a file or folder",
+      "endpoint": "/sharing/create_shared_link_with_settings",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to share"
+          },
+          "requested_visibility": {
+            "type": "string",
+            "enum": ["public", "team_only", "password"],
+            "description": "Visibility for the shared link"
+          }
+        },
+        "required": ["path"],
         "additionalProperties": false
       }
     }
@@ -284,14 +240,14 @@
     {
       "id": "file_uploaded",
       "name": "File Uploaded",
-      "description": "Triggered when a file is uploaded",
-      "type": "webhook",
+      "description": "Triggered when a file is uploaded to a monitored path",
+      "type": "polling",
       "parameters": {
         "type": "object",
         "properties": {
-          "path_prefix": {
+          "path": {
             "type": "string",
-            "description": "Monitor specific path"
+            "description": "Folder path to watch"
           }
         },
         "required": [],
@@ -300,9 +256,10 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "path_lower": {"type": "string"},
-          "name": {"type": "string"},
-          "size": {"type": "number"}
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "path_lower": { "type": "string" },
+          "size": { "type": "number" }
         }
       }
     },
@@ -310,32 +267,25 @@
       "id": "file_deleted",
       "name": "File Deleted",
       "description": "Triggered when a file is deleted",
-      "type": "webhook",
+      "type": "polling",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Folder path to watch"
+          }
+        },
         "required": [],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "path_lower": {"type": "string"},
-          "name": {"type": "string"}
+          "path_lower": { "type": "string" },
+          "name": { "type": "string" }
         }
       }
     }
-  ],
-  "testConnection": {
-    "method": "POST",
-    "endpoint": "/users/get_current_account"
-  }
+  ]
 }
-    {
-      "id": "create_shared_link",
-      "name": "Create Shared Link",
-      "description": "Create a shared link for a file or folder",
-      "endpoint": "/sharing/create_shared_link_with_settings",
-      "method": "POST",
-      "parameters": { "type":"object", "properties": { "path": {"type":"string"} }, "required": ["path"], "additionalProperties": false }
-    }

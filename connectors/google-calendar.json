@@ -1,219 +1,57 @@
 {
   "id": "google-calendar",
   "name": "Google Calendar",
-  "description": "Google Calendar advanced scheduling and event management",
+  "description": "Create and manage events in Google Calendar",
   "category": "Productivity",
-  "icon": "calendar",
+  "icon": "google-calendar",
   "color": "#4285F4",
-  "version": "1.0.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://accounts.google.com/o/oauth2/auth",
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
       "scopes": [
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/calendar.events"
+        "https://www.googleapis.com/auth/calendar"
       ]
     }
   },
   "baseUrl": "https://www.googleapis.com/calendar/v3",
-  "rateLimits": {
-    "requestsPerSecond": 10,
-    "requestsPerMinute": 600,
-    "dailyLimit": 1000000
+  "testConnection": {
+    "endpoint": "/users/me/calendarList",
+    "method": "GET"
   },
   "actions": [
     {
-      "id": "test_connection",
-      "name": "Test Connection",
-      "description": "Test the connection to Google Calendar and verify authentication",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_event",
-      "name": "Create Event",
-      "description": "Create a new calendar event",
-      "endpoint": "/calendars/{calendarId}/events",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "calendarId": {
-            "type": "string",
-            "default": "primary",
-            "description": "Calendar ID (default: primary)"
-          },
-          "summary": {
-            "type": "string",
-            "description": "Event title/summary"
-          },
-          "description": {
-            "type": "string",
-            "description": "Event description"
-          },
-          "location": {
-            "type": "string",
-            "description": "Event location"
-          },
-          "start": {
-            "type": "object",
-            "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
-            },
-            "description": "Start time (ISO 8601 format)"
-          },
-          "end": {
-            "type": "object",
-            "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
-            },
-            "description": "End time (ISO 8601 format)"
-          },
-          "attendees": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "email": {"type": "string", "format": "email"},
-                "displayName": {"type": "string"},
-                "optional": {"type": "boolean"}
-              }
-            },
-            "description": "Event attendees"
-          },
-          "recurrence": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Recurrence rules (RRULE format)"
-          },
-          "reminders": {
-            "type": "object",
-            "properties": {
-              "useDefault": {"type": "boolean"},
-              "overrides": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "method": {"type": "string", "enum": ["email", "popup"]},
-                    "minutes": {"type": "number"}
-                  }
-                }
-              }
-            },
-            "description": "Event reminders"
-          },
-          "visibility": {
-            "type": "string",
-            "enum": ["default", "public", "private", "confidential"],
-            "description": "Event visibility"
-          }
-        },
-        "required": ["summary", "start", "end"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "update_event",
-      "name": "Update Event",
-      "description": "Update an existing calendar event",
-      "endpoint": "/calendars/{calendarId}/events/{eventId}",
-      "method": "PUT",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "calendarId": {
-            "type": "string",
-            "default": "primary",
-            "description": "Calendar ID"
-          },
-          "eventId": {
-            "type": "string",
-            "description": "Event ID to update"
-          },
-          "summary": {
-            "type": "string",
-            "description": "Event title/summary"
-          },
-          "description": {
-            "type": "string",
-            "description": "Event description"
-          },
-          "location": {
-            "type": "string",
-            "description": "Event location"
-          },
-          "start": {
-            "type": "object",
-            "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
-            },
-            "description": "Start time"
-          },
-          "end": {
-            "type": "object",
-            "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
-            },
-            "description": "End time"
-          },
-          "attendees": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "email": {"type": "string", "format": "email"},
-                "displayName": {"type": "string"}
-              }
-            },
-            "description": "Event attendees"
-          }
-        },
-        "required": ["eventId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_event",
-      "name": "Get Event",
-      "description": "Retrieve details of a specific event",
-      "endpoint": "/calendars/{calendarId}/events/{eventId}",
+      "id": "list_calendars",
+      "name": "List Calendars",
+      "description": "List calendars available for the authenticated user",
+      "endpoint": "/users/me/calendarList",
       "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
-          "calendarId": {
+          "minAccessRole": {
             "type": "string",
-            "default": "primary",
-            "description": "Calendar ID"
+            "enum": ["freeBusyReader", "reader", "writer", "owner"]
           },
-          "eventId": {
-            "type": "string",
-            "description": "Event ID to retrieve"
+          "pageToken": {
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "number",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 250
           }
         },
-        "required": ["eventId"],
+        "required": [],
         "additionalProperties": false
       }
     },
     {
       "id": "list_events",
       "name": "List Events",
-      "description": "List events from a calendar",
+      "description": "List events on a calendar",
       "endpoint": "/calendars/{calendarId}/events",
       "method": "GET",
       "parameters": {
@@ -221,145 +59,24 @@
         "properties": {
           "calendarId": {
             "type": "string",
-            "default": "primary",
-            "description": "Calendar ID"
+            "description": "Calendar ID (use 'primary' for main calendar)",
+            "default": "primary"
           },
-          "timeMin": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Lower bound for event start time"
-          },
-          "timeMax": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Upper bound for event start time"
-          },
-          "maxResults": {
-            "type": "number",
-            "default": 250,
-            "maximum": 2500,
-            "description": "Maximum number of events to return"
+          "timeMin": { "type": "string" },
+          "timeMax": { "type": "string" },
+          "singleEvents": {
+            "type": "boolean",
+            "default": true
           },
           "orderBy": {
             "type": "string",
-            "enum": ["startTime", "updated"],
-            "description": "Sort order"
+            "enum": ["startTime", "updated"]
           },
-          "q": {
-            "type": "string",
-            "description": "Free text search terms"
-          },
-          "singleEvents": {
-            "type": "boolean",
-            "default": false,
-            "description": "Expand recurring events into instances"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "delete_event",
-      "name": "Delete Event",
-      "description": "Delete a calendar event",
-      "endpoint": "/calendars/{calendarId}/events/{eventId}",
-      "method": "DELETE",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "calendarId": {
-            "type": "string",
-            "default": "primary",
-            "description": "Calendar ID"
-          },
-          "eventId": {
-            "type": "string",
-            "description": "Event ID to delete"
-          },
-          "sendUpdates": {
-            "type": "string",
-            "enum": ["all", "externalOnly", "none"],
-            "default": "none",
-            "description": "Send updates to attendees"
-          }
-        },
-        "required": ["eventId"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "list_calendars",
-      "name": "List Calendars",
-      "description": "List available calendars",
-      "endpoint": "/users/me/calendarList",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
           "maxResults": {
             "type": "number",
-            "default": 250,
-            "description": "Maximum number of calendars to return"
-          },
-          "showHidden": {
-            "type": "boolean",
-            "default": false,
-            "description": "Include hidden calendars"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_calendar",
-      "name": "Create Calendar",
-      "description": "Create a new calendar",
-      "endpoint": "/calendars",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "summary": {
-            "type": "string",
-            "description": "Calendar name/title"
-          },
-          "description": {
-            "type": "string",
-            "description": "Calendar description"
-          },
-          "timeZone": {
-            "type": "string",
-            "description": "Calendar time zone"
-          }
-        },
-        "required": ["summary"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "update_calendar",
-      "name": "Update Calendar",
-      "description": "Update calendar properties",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "calendarId": {
-            "type": "string",
-            "description": "Calendar ID to update"
-          },
-          "summary": {
-            "type": "string",
-            "description": "Calendar name/title"
-          },
-          "description": {
-            "type": "string",
-            "description": "Calendar description"
-          },
-          "timeZone": {
-            "type": "string",
-            "description": "Calendar time zone"
+            "default": 100,
+            "minimum": 1,
+            "maximum": 2500
           }
         },
         "required": ["calendarId"],
@@ -367,65 +84,107 @@
       }
     },
     {
-      "id": "get_freebusy",
-      "name": "Get Free/Busy",
-      "description": "Query free/busy information for calendars",
-      "endpoint": "/freeBusy",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "timeMin": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Start of the time period"
-          },
-          "timeMax": {
-            "type": "string",
-            "format": "date-time",
-            "description": "End of the time period"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {"type": "string"}
-              }
-            },
-            "description": "Calendars to query"
-          }
-        },
-        "required": ["timeMin", "timeMax", "items"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "quick_add",
-      "name": "Quick Add Event",
-      "description": "Create an event from natural language text",
-      "endpoint": "/calendars/{calendarId}/events/quickAdd",
+      "id": "create_event",
+      "name": "Create Event",
+      "description": "Create a new event",
+      "endpoint": "/calendars/{calendarId}/events",
       "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
           "calendarId": {
             "type": "string",
-            "default": "primary",
-            "description": "Calendar ID"
+            "default": "primary"
           },
-          "text": {
-            "type": "string",
-            "description": "Natural language event description (e.g., 'Meeting with John tomorrow at 3pm')"
+          "summary": { "type": "string" },
+          "description": { "type": "string" },
+          "start": {
+            "type": "object",
+            "properties": {
+              "dateTime": { "type": "string" },
+              "timeZone": { "type": "string" }
+            },
+            "required": ["dateTime"],
+            "additionalProperties": false
           },
-          "sendUpdates": {
-            "type": "string",
-            "enum": ["all", "externalOnly", "none"],
-            "default": "none",
-            "description": "Send updates to attendees"
+          "end": {
+            "type": "object",
+            "properties": {
+              "dateTime": { "type": "string" },
+              "timeZone": { "type": "string" }
+            },
+            "required": ["dateTime"],
+            "additionalProperties": false
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": { "type": "string" }
+              },
+              "required": ["email"],
+              "additionalProperties": false
+            }
           }
         },
-        "required": ["text"],
+        "required": ["calendarId", "summary", "start", "end"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "update_event",
+      "name": "Update Event",
+      "description": "Update an existing event",
+      "endpoint": "/calendars/{calendarId}/events/{eventId}",
+      "method": "PATCH",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "default": "primary"
+          },
+          "eventId": { "type": "string" },
+          "summary": { "type": "string" },
+          "description": { "type": "string" },
+          "start": {
+            "type": "object",
+            "properties": {
+              "dateTime": { "type": "string" },
+              "timeZone": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "end": {
+            "type": "object",
+            "properties": {
+              "dateTime": { "type": "string" },
+              "timeZone": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["calendarId", "eventId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_event",
+      "name": "Delete Event",
+      "description": "Delete an event",
+      "endpoint": "/calendars/{calendarId}/events/{eventId}",
+      "method": "DELETE",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "default": "primary"
+          },
+          "eventId": { "type": "string" }
+        },
+        "required": ["calendarId", "eventId"],
         "additionalProperties": false
       }
     }
@@ -441,104 +200,21 @@
         "properties": {
           "calendarId": {
             "type": "string",
-            "description": "Monitor specific calendar (optional)"
+            "default": "primary"
           }
         },
-        "required": [],
+        "required": ["calendarId"],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventId": {"type": "string"},
-          "summary": {"type": "string"},
-          "description": {"type": "string"},
-          "location": {"type": "string"},
-          "start": {"type": "object"},
-          "end": {"type": "object"},
-          "attendees": {"type": "array"},
-          "creator": {"type": "object"},
-          "organizer": {"type": "object"}
-        }
-      }
-    },
-    {
-      "id": "event_updated",
-      "name": "Event Updated",
-      "description": "Triggered when an event is modified",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "calendarId": {
-            "type": "string",
-            "description": "Monitor specific calendar (optional)"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "eventId": {"type": "string"},
-          "summary": {"type": "string"},
-          "updated": {"type": "string"},
-          "sequence": {"type": "number"}
-        }
-      }
-    },
-    {
-      "id": "event_starting_soon",
-      "name": "Event Starting Soon",
-      "description": "Triggered when an event is about to start",
-      "type": "webhook",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "calendarId": {
-            "type": "string",
-            "description": "Monitor specific calendar (optional)"
-          },
-          "minutesBefore": {
-            "type": "number",
-            "default": 15,
-            "description": "Minutes before event start to trigger"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "eventId": {"type": "string"},
-          "summary": {"type": "string"},
-          "start": {"type": "object"},
-          "location": {"type": "string"},
-          "attendees": {"type": "array"}
+          "id": { "type": "string" },
+          "summary": { "type": "string" },
+          "start": { "type": "object" },
+          "end": { "type": "object" }
         }
       }
     }
-  ],
-  "testConnection": {
-    "method": "GET",
-    "endpoint": "/users/me/calendarList"
-  }
+  ]
 }
-    {
-      "id": "watch_events",
-      "name": "Watch Events (Channel)",
-      "description": "Start watching events on a calendar",
-      "endpoint": "/calendars/{calendarId}/events/watch",
-      "method": "POST",
-      "parameters": { "type":"object", "properties": { "calendarId": {"type":"string","default":"primary"}, "id": {"type":"string"}, "type": {"type":"string","default":"web_hook"}, "address": {"type":"string"} }, "required": ["address"], "additionalProperties": false }
-    },
-    {
-      "id": "stop_channel",
-      "name": "Stop Channel",
-      "description": "Stop receiving webhook notifications",
-      "endpoint": "/channels/stop",
-      "method": "POST",
-      "parameters": { "type":"object", "properties": { "id": {"type":"string"}, "resourceId": {"type":"string"} }, "required": ["id","resourceId"], "additionalProperties": false }
-    }
