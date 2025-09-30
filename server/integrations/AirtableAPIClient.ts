@@ -44,6 +44,15 @@ export class AirtableAPIClient extends BaseAPIClient {
     }
 
     super('https://api.airtable.com/v0', credentials);
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_record': this.createRecord.bind(this) as any,
+      'update_record': this.updateRecord.bind(this) as any,
+      'get_record': this.getRecord.bind(this) as any,
+      'delete_record': this.deleteRecord.bind(this) as any,
+      'list_records': this.listRecords.bind(this) as any,
+    });
   }
 
   protected getAuthHeaders(): Record<string, string> {

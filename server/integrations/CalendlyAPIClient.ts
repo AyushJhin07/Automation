@@ -1,114 +1,43 @@
-// CALENDLY API CLIENT
-// Auto-generated API client for Calendly integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface CalendlyAPIClientConfig {
-  accessToken: string;
-  baseUrl?: string;
-}
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class CalendlyAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: CalendlyAPIClientConfig;
-
-  constructor(config: CalendlyAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.calendly.com';
+  constructor(credentials: APICredentials) {
+    super('https://api.calendly.com', credentials);
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'list_event_types': this.listEventTypes.bind(this) as any,
+      'get_event_types': this.listEventTypes.bind(this) as any,
+      'list_scheduled_events': this.listScheduledEvents.bind(this) as any,
+      'get_scheduled_events': this.listScheduledEvents.bind(this) as any,
+      'get_event_invitees': this.listInvitees.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
+    const token = this.credentials.accessToken || this.credentials.apiKey || '';
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/users/me');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/users/me', this.getAuthHeaders());
   }
 
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
-    }
+  public async listEventTypes(params: { organization?: string } = {}): Promise<APIResponse<any>> {
+    const query = this.buildQueryString({ organization: params.organization });
+    return this.get(`/event_types${query}`, this.getAuthHeaders());
   }
 
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
-    }
+  public async listScheduledEvents(params: { user?: string; status?: string } = {}): Promise<APIResponse<any>> {
+    const query = this.buildQueryString({ user: params.user, status: params.status });
+    return this.get(`/scheduled_events${query}`, this.getAuthHeaders());
   }
 
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
-    }
+  public async listInvitees(params: { eventUri: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['eventUri']);
+    const query = this.buildQueryString({ event: params.eventUri });
+    return this.get(`/scheduled_events/${encodeURIComponent(params.eventUri)}/invitees${query}`, this.getAuthHeaders());
   }
 }

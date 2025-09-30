@@ -230,6 +230,20 @@ export class ShopifyAPIClient extends BaseAPIClient {
   constructor(credentials: APICredentials & { shopDomain: string }) {
     super(`https://${credentials.shopDomain}.myshopify.com/admin/api/2023-10`, credentials);
     this.shopDomain = credentials.shopDomain;
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_product': this.createProduct.bind(this) as any,
+      'update_product': this.updateProduct.bind(this) as any,
+      'get_products': this.getProducts.bind(this) as any,
+      'delete_product': this.deleteProduct.bind(this) as any,
+      'get_orders': this.getOrders.bind(this) as any,
+      'update_order': this.updateOrder.bind(this) as any,
+      'fulfill_order': this.fulfillOrder.bind(this) as any,
+      'create_customer': this.createCustomer.bind(this) as any,
+      'update_customer': this.updateCustomer.bind(this) as any,
+      'search_customers': this.searchCustomers.bind(this) as any,
+      'update_inventory': this.updateInventory.bind(this) as any,
+    });
   }
 
   protected getAuthHeaders(): Record<string, string> {

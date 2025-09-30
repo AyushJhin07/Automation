@@ -1,137 +1,48 @@
-// SMARTSHEET API CLIENT
-// Auto-generated API client for Smartsheet integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface SmartsheetAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-}
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class SmartsheetAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: SmartsheetAPIClientConfig;
-
-  constructor(config: SmartsheetAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.example.com';
+  constructor(credentials: APICredentials) {
+    const token = credentials.accessToken || credentials.apiKey;
+    if (!token) {
+      throw new Error('Smartsheet integration requires accessToken or apiKey');
+    }
+    super('https://api.smartsheet.com/2.0', credentials);
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'list_sheets': this.listSheets.bind(this) as any,
+      'add_row': this.addRow.bind(this) as any,
+      'update_row': this.updateRow.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
+    const token = this.credentials.accessToken || this.credentials.apiKey || '';
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/user');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/users/me', this.getAuthHeaders());
   }
 
-
-  /**
-   * Create a new record in Smartsheet
-   */
-  async createRecord({ data: Record<string, any> }: { data: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Record failed: ${error}`);
-    }
+  public async listSheets(params: { includeAll?: boolean } = {}): Promise<APIResponse<any>> {
+    const query = this.buildQueryString({ includeAll: params.includeAll ? 'true' : undefined });
+    return this.get(`/sheets${query}`, this.getAuthHeaders());
   }
 
-  /**
-   * Update an existing record in Smartsheet
-   */
-  async updateRecord({ id: string, data: Record<string, any> }: { id: string, data: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Record failed: ${error}`);
-    }
+  public async addRow(params: { sheetId: number | string; row: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['sheetId', 'row']);
+    return this.post(`/sheets/${params.sheetId}/rows`, {
+      toBottom: true,
+      rows: [params.row]
+    }, this.getAuthHeaders());
   }
 
-  /**
-   * Retrieve a record from Smartsheet
-   */
-  async getRecord({ id: string }: { id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/get_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Get Record failed: ${error}`);
-    }
-  }
-
-  /**
-   * List records from Smartsheet
-   */
-  async listRecords({ limit?: number, filter?: Record<string, any> }: { limit?: number, filter?: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_records', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Records failed: ${error}`);
-    }
-  }
-
-  /**
-   * Delete a record from Smartsheet
-   */
-  async deleteRecord({ id: string }: { id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/delete_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Delete Record failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Triggered when a new record is created in Smartsheet
-   */
-  async pollRecordCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a record is updated in Smartsheet
-   */
-  async pollRecordUpdated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_updated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Updated failed:`, error);
-      return [];
-    }
+  public async updateRow(params: { sheetId: number | string; rows: Record<string, any>[] }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['sheetId', 'rows']);
+    return this.put(`/sheets/${params.sheetId}/rows`, params.rows, this.getAuthHeaders());
   }
 }
+

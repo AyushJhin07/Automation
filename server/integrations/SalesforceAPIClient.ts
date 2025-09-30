@@ -1,125 +1,52 @@
-// SALESFORCE API CLIENT
-// Auto-generated API client for Salesforce integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface SalesforceAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-}
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class SalesforceAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: SalesforceAPIClientConfig;
+  private instanceUrl: string;
 
-  constructor(config: SalesforceAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.salesforce.com';
+  constructor(credentials: APICredentials) {
+    const instanceUrl = credentials.instanceUrl || credentials.baseUrl;
+    const accessToken = credentials.accessToken;
+    if (!instanceUrl || !accessToken) {
+      throw new Error('Salesforce integration requires instanceUrl and accessToken');
+    }
+    const base = instanceUrl.replace(/\/$/, '') + '/services/data/v60.0';
+    super(base, credentials);
+    this.instanceUrl = instanceUrl.replace(/\/$/, '');
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_sobject': this.createSObject.bind(this) as any,
+      'update_sobject': this.updateSObject.bind(this) as any,
+      'query': this.query.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
+    const token = this.credentials.accessToken || '';
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/users/me');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/sobjects', this.getAuthHeaders());
   }
 
-
-  /**
-   * Create a new lead in Salesforce
-   */
-  async createLead({ firstName: string, lastName: string, email: string, company: string, phone?: string, status?: string }: { firstName: string, lastName: string, email: string, company: string, phone?: string, status?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_lead', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Lead failed: ${error}`);
-    }
+  public async createSObject(params: { object: string; data: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['object', 'data']);
+    return this.post(`/sobjects/${params.object}`, params.data, this.getAuthHeaders());
   }
 
-  /**
-   * Create a new sales opportunity
-   */
-  async createOpportunity({ name: string, accountId: string, amount?: number, closeDate: string, stageName: string }: { name: string, accountId: string, amount?: number, closeDate: string, stageName: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_opportunity', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Opportunity failed: ${error}`);
-    }
+  public async updateSObject(params: { object: string; id: string; data: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['object', 'id', 'data']);
+    return this.patch(`/sobjects/${params.object}/${params.id}`, params.data, this.getAuthHeaders());
   }
 
-  /**
-   * Update contact information
-   */
-  async updateContact({ contactId: string, firstName?: string, lastName?: string, email?: string, phone?: string }: { contactId: string, firstName?: string, lastName?: string, email?: string, phone?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_contact', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Contact failed: ${error}`);
-    }
-  }
-
-  /**
-   * Create a new task
-   */
-  async createTask({ subject: string, description?: string, whoId?: string, whatId?: string, activityDate?: string, priority?: string }: { subject: string, description?: string, whoId?: string, whatId?: string, activityDate?: string, priority?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_task', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Task failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Trigger when new lead is created
-   */
-  async pollLeadCreated({ source?: string }: { source?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/lead_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Lead Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Trigger when opportunity is closed
-   */
-  async pollOpportunityClosed({ stage?: string }: { stage?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/opportunity_closed', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Opportunity Closed failed:`, error);
-      return [];
-    }
+  public async query(params: { soql: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['soql']);
+    const query = this.buildQueryString({ q: params.soql });
+    return this.get(`/query${query}`, this.getAuthHeaders());
   }
 }
+

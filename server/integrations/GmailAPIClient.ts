@@ -39,6 +39,23 @@ export interface GmailThread {
 export class GmailAPIClient extends BaseAPIClient {
   constructor(credentials: APICredentials) {
     super('https://gmail.googleapis.com/gmail/v1', credentials);
+    // Register generic handlers for IntegrationManager.execute()
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'send_email': this.sendEmail.bind(this) as any,
+      'reply_to_email': this.replyToEmail.bind(this) as any,
+      'forward_email': this.forwardEmail.bind(this) as any,
+      'search_emails': this.searchEmails.bind(this) as any,
+      'get_emails_by_label': this.getEmailsByLabel.bind(this) as any,
+      'get_unread_emails': this.getUnreadEmails.bind(this) as any,
+      'add_label': this.addLabel.bind(this) as any,
+      'remove_label': this.removeLabel.bind(this) as any,
+      'create_label': this.createLabel.bind(this) as any,
+      'mark_as_read': this.markAsRead.bind(this) as any,
+      'mark_as_unread': this.markAsUnread.bind(this) as any,
+      'archive_email': this.archiveEmail.bind(this) as any,
+      'delete_email': this.deleteEmail.bind(this) as any,
+    });
   }
 
   protected getAuthHeaders(): Record<string, string> {

@@ -1,137 +1,76 @@
-// CONFLUENCE API CLIENT
-// Auto-generated API client for Confluence integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface ConfluenceAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-}
+import { Buffer } from 'buffer';
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class ConfluenceAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: ConfluenceAPIClientConfig;
-
-  constructor(config: ConfluenceAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.atlassian.com/ex/confluence';
+  constructor(credentials: APICredentials) {
+    const baseUrl = credentials.baseUrl || credentials.instanceUrl;
+    if (!baseUrl) {
+      throw new Error('Confluence integration requires baseUrl');
+    }
+    super(baseUrl.replace(/\/$/, '') + '/wiki/rest/api', credentials);
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_page': this.createPage.bind(this) as any,
+      'get_page': this.getPage.bind(this) as any,
+      'update_page': this.updatePage.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+    if (this.credentials.accessToken) {
+      return {
+        Authorization: `Bearer ${this.credentials.accessToken}`,
+        'Content-Type': 'application/json'
+      };
+    }
+    if (this.credentials.username && this.credentials.apiToken) {
+      const basic = Buffer.from(`${this.credentials.username}:${this.credentials.apiToken}`).toString('base64');
+      return {
+        Authorization: `Basic ${basic}`,
+        'Content-Type': 'application/json'
+      };
+    }
+    throw new Error('Confluence integration requires accessToken or username/apiToken');
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/space', this.getAuthHeaders());
+  }
+
+  public async createPage(params: { spaceKey: string; title: string; body: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['spaceKey', 'title', 'body']);
+    return this.post('/content', {
+      type: 'page',
+      title: params.title,
+      space: { key: params.spaceKey },
+      body: {
+        storage: {
+          value: params.body,
+          representation: 'storage'
+        }
+      }
+    }, this.getAuthHeaders());
+  }
+
+  public async getPage(params: { pageId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['pageId']);
+    return this.get(`/content/${params.pageId}?expand=body.storage`, this.getAuthHeaders());
+  }
+
+  public async updatePage(params: { pageId: string; version: number; title?: string; body?: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['pageId', 'version']);
+    const body: any = {
+      version: { number: params.version },
     };
-  }
-
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
+    if (params.title) body.title = params.title;
+    if (params.body) {
+      body.body = {
+        storage: {
+          value: params.body,
+          representation: 'storage'
+        }
+      };
     }
-  }
-
-
-  /**
-   * Create a new Confluence page
-   */
-  async createPage({ space_key: string, title: string, content: string, parent_id?: string, labels?: any[] }: { space_key: string, title: string, content: string, parent_id?: string, labels?: any[] }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_page', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Page failed: ${error}`);
-    }
-  }
-
-  /**
-   * Update an existing Confluence page
-   */
-  async updatePage({ page_id: string, title?: string, content?: string, version_number: number }: { page_id: string, title?: string, content?: string, version_number: number }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_page', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Page failed: ${error}`);
-    }
-  }
-
-  /**
-   * Delete a Confluence page
-   */
-  async deletePage({ page_id: string }: { page_id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/delete_page', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Delete Page failed: ${error}`);
-    }
-  }
-
-  /**
-   * Add a comment to a Confluence page
-   */
-  async addComment({ page_id: string, comment: string, parent_comment_id?: string }: { page_id: string, comment: string, parent_comment_id?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/add_comment', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Add Comment failed: ${error}`);
-    }
-  }
-
-  /**
-   * Add an attachment to a Confluence page
-   */
-  async addAttachment({ page_id: string, filename: string, file_data: string, comment?: string }: { page_id: string, filename: string, file_data: string, comment?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/add_attachment', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Add Attachment failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Triggered when a new page is created
-   */
-  async pollPageCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/page_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Page Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a page is updated
-   */
-  async pollPageUpdated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/page_updated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Page Updated failed:`, error);
-      return [];
-    }
+    return this.put(`/content/${params.pageId}`, body, this.getAuthHeaders());
   }
 }

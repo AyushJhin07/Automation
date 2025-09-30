@@ -540,7 +540,35 @@ export class ConnectionService {
         case 'zendesk':
         case 'dropbox':
         case 'google-drive':
-        case 'google-calendar': {
+        case 'google-calendar':
+        case 'google-docs':
+        case 'google-slides':
+        case 'google-forms':
+        case 'mailchimp':
+        case 'mailgun':
+        case 'sendgrid':
+        case 'pipedrive':
+        case 'twilio':
+        case 'jira':
+        case 'asana':
+        case 'github':
+        case 'box':
+        case 'onedrive':
+        case 'sharepoint':
+        case 'smartsheet':
+        case 'microsoft-teams':
+        case 'outlook':
+        case 'google-chat':
+        case 'zoom':
+        case 'calendly':
+        case 'intercom':
+        case 'monday':
+        case 'servicenow':
+        case 'freshdesk':
+        case 'gitlab':
+        case 'bitbucket':
+        case 'confluence':
+        case 'jira-service-management': {
           // Use IntegrationManager where possible; otherwise generic executor if enabled
           const appName = connection.provider;
           const test = await integrationManager.testConnection(appName, connection.credentials as any);

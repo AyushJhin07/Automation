@@ -1,110 +1,69 @@
-// TWILIO API CLIENT
-// Auto-generated API client for Twilio integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface TwilioAPIClientConfig {
-  apiKey: string;
-}
+import { Buffer } from 'buffer';
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class TwilioAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: TwilioAPIClientConfig;
+  private accountSid: string;
+  private authToken: string;
 
-  constructor(config: TwilioAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.twilio.com';
+  constructor(credentials: APICredentials) {
+    const accountSid = credentials.accountSid || credentials.clientId;
+    const authToken = credentials.authToken || credentials.clientSecret;
+    if (!accountSid || !authToken) {
+      throw new Error('Twilio integration requires accountSid and authToken');
+    }
+    super(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}`, credentials);
+    this.accountSid = accountSid;
+    this.authToken = authToken;
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'send_message': this.sendMessage.bind(this) as any,
+      'send_sms': this.sendMessage.bind(this) as any,
+      'list_messages': this.listMessages.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
+    const basic = Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64');
     return {
-      'Authorization': `Bearer ${this.config.apiKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Basic ${basic}`,
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/auth/test');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('.json', this.getAuthHeaders());
   }
 
+  public async sendMessage(params: { to: string; from: string; body: string; mediaUrl?: string[] }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['to', 'from', 'body']);
+    const form = new URLSearchParams({
+      To: params.to,
+      From: params.from,
+      Body: params.body,
+    });
+    params.mediaUrl?.forEach(url => form.append('MediaUrl', url));
 
-  /**
-   * Send SMS message
-   */
-  async sendSms({ to: string, from: string, body: string, mediaUrl?: string }: { to: string, from: string, body: string, mediaUrl?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/send_sms', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Send SMS failed: ${error}`);
-    }
+    const resp = await fetch(`${this.baseURL}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: form.toString()
+    });
+    const data = await resp.json().catch(() => ({}));
+    return resp.ok ? { success: true, data } : { success: false, error: data?.message || `HTTP ${resp.status}` };
   }
 
-  /**
-   * Initiate phone call
-   */
-  async makeCall({ to: string, from: string, url: string }: { to: string, from: string, url: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/make_call', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Make Call failed: ${error}`);
-    }
-  }
-
-  /**
-   * Send WhatsApp message
-   */
-  async sendWhatsapp({ to: string, from: string, body: string }: { to: string, from: string, body: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/send_whatsapp', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Send WhatsApp Message failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Trigger when SMS is received
-   */
-  async pollMessageReceived({ from?: string }: { from?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/message_received', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Message Received failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Trigger when call ends
-   */
-  async pollCallCompleted({ minDuration?: number }: { minDuration?: number }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/call_completed', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Call Completed failed:`, error);
-      return [];
-    }
+  public async listMessages(params: { to?: string; from?: string; pageSize?: number } = {}): Promise<APIResponse<any>> {
+    const query = new URLSearchParams();
+    if (params.to) query.set('To', params.to);
+    if (params.from) query.set('From', params.from);
+    if (params.pageSize) query.set('PageSize', String(params.pageSize));
+    const resp = await fetch(`${this.baseURL}/Messages.json?${query.toString()}`, {
+      headers: this.getAuthHeaders()
+    });
+    const data = await resp.json().catch(() => ({}));
+    return resp.ok ? { success: true, data } : { success: false, error: data?.message || `HTTP ${resp.status}` };
   }
 }

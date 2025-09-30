@@ -3097,8 +3097,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get the API client for this provider
-      const apiClient = integrationManager.getAPIClient(provider);
+      // Get user credentials for this provider and build an API client
+      const userConn = await connectionService.getConnectionByProvider(userId, provider);
+      const apiClient = integrationManager.getAPIClient(provider, userConn?.credentials || {}, req.body?.additionalConfig || undefined);
       if (!apiClient) {
         return res.status(404).json({
           success: false,
@@ -3163,8 +3164,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider, webhookId } = req.params;
       
-      // Get the API client for this provider
-      const apiClient = integrationManager.getAPIClient(provider);
+      const userConn = await connectionService.getConnectionByProvider(req.user!.id, provider);
+      const apiClient = integrationManager.getAPIClient(provider, userConn?.credentials || {}, req.body?.additionalConfig || undefined);
       if (!apiClient) {
         return res.status(404).json({
           success: false,
@@ -3222,7 +3223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const localWebhooks = webhookManager.listWebhooks().filter(w => w.appId === provider);
       
       // Get external webhooks if API client supports it
-      const apiClient = integrationManager.getAPIClient(provider);
+      const userConn = await connectionService.getConnectionByProvider(req.user!.id, provider);
+      const apiClient = integrationManager.getAPIClient(provider, userConn?.credentials || {}, req.query || undefined);
       let externalWebhooks = [];
       
       if (apiClient) {

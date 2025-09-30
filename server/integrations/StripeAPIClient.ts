@@ -1,122 +1,124 @@
-// STRIPE API CLIENT
-// Auto-generated API client for Stripe integration
+// STRIPE API CLIENT (fixed)
+// Implements minimal Stripe operations and webhook management using Stripe API
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface StripeAPIClientConfig {
-  apiKey: string;
-}
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class StripeAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: StripeAPIClientConfig;
-
-  constructor(config: StripeAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.stripe.com';
+  constructor(credentials: APICredentials) {
+    super('https://api.stripe.com/v1', credentials);
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_payment_intent': this.createPaymentIntent.bind(this) as any,
+      'create_customer': this.createCustomer.bind(this) as any,
+      'create_refund': this.createRefund.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.apiKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
-    };
+    const key = this.credentials.apiKey || this.credentials.accessToken || '';
+    return { Authorization: `Bearer ${key}` };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
+  public async testConnection(): Promise<APIResponse<any>> {
     try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
+      const resp = await fetch(`${this.baseURL}/account`, { headers: this.getAuthHeaders() });
+      const data = await resp.json().catch(() => ({}));
+      return resp.ok ? { success: true, data } : { success: false, error: data?.error?.message || `HTTP ${resp.status}` };
     } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
+      return { success: false, error: String(error) };
     }
   }
 
+  public async createPaymentIntent(params: { amount: number; currency: string; customerId?: string; description?: string; metadata?: Record<string, any> }): Promise<APIResponse<any>> {
+    const form = new URLSearchParams();
+    form.set('amount', String(params.amount));
+    form.set('currency', params.currency);
+    if (params.customerId) form.set('customer', params.customerId);
+    if (params.description) form.set('description', params.description);
+    if (params.metadata) {
+      for (const [k, v] of Object.entries(params.metadata)) {
+        form.set(`metadata[${k}]`, String(v));
+      }
+    }
+    return this.formPost('/payment_intents', form);
+  }
 
-  /**
-   * Create a new customer
-   */
-  async createCustomer({ email: string, name?: string, phone?: string, description?: string, metadata?: Record<string, any> }: { email: string, name?: string, phone?: string, description?: string, metadata?: Record<string, any> }): Promise<any> {
+  public async createCustomer(params: { email?: string; name?: string; phone?: string; description?: string; metadata?: Record<string, any> }): Promise<APIResponse<any>> {
+    const form = new URLSearchParams();
+    if (params.email) form.set('email', params.email);
+    if (params.name) form.set('name', params.name);
+    if (params.phone) form.set('phone', params.phone);
+    if (params.description) form.set('description', params.description);
+    if (params.metadata) {
+      for (const [k, v] of Object.entries(params.metadata)) {
+        form.set(`metadata[${k}]`, String(v));
+      }
+    }
+    return this.formPost('/customers', form);
+  }
+
+  public async createRefund(params: { paymentIntentId: string; amount?: number; reason?: string }): Promise<APIResponse<any>> {
+    const form = new URLSearchParams();
+    form.set('payment_intent', params.paymentIntentId);
+    if (params.amount) form.set('amount', String(params.amount));
+    if (params.reason) form.set('reason', params.reason);
+    return this.formPost('/refunds', form);
+  }
+
+  // Webhook management
+  async registerWebhook(webhookUrl: string, events: string[], _secret?: string): Promise<APIResponse<{ webhookId: string; secret?: string }>> {
     try {
-      const response = await this.makeRequest('POST', '/api/create_customer', params);
-      return this.handleResponse(response);
+      const form = new URLSearchParams();
+      form.set('url', webhookUrl);
+      events.forEach(e => form.append('enabled_events[]', e));
+      const resp = await fetch(`${this.baseURL}/webhook_endpoints`, {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString()
+      });
+      const data = await resp.json();
+      if (!resp.ok) return { success: false, error: data?.error?.message || `HTTP ${resp.status}` };
+      return { success: true, data: { webhookId: data.id, secret: data.secret } };
     } catch (error) {
-      throw new Error(`Create Customer failed: ${error}`);
+      return { success: false, error: String(error) };
     }
   }
 
-  /**
-   * Create a payment intent
-   */
-  async createPaymentIntent({ amount: number, currency: string, customerId?: string, description?: string, metadata?: Record<string, any> }: { amount: number, currency: string, customerId?: string, description?: string, metadata?: Record<string, any> }): Promise<any> {
+  async unregisterWebhook(webhookId: string): Promise<APIResponse<void>> {
     try {
-      const response = await this.makeRequest('POST', '/api/create_payment_intent', params);
-      return this.handleResponse(response);
+      const resp = await fetch(`${this.baseURL}/webhook_endpoints/${webhookId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+      if (!resp.ok) return { success: false, error: `HTTP ${resp.status}` };
+      return { success: true };
     } catch (error) {
-      throw new Error(`Create Payment Intent failed: ${error}`);
+      return { success: false, error: String(error) };
     }
   }
 
-  /**
-   * Create a subscription
-   */
-  async createSubscription({ customerId: string, priceId: string, trialPeriodDays?: number, metadata?: Record<string, any> }: { customerId: string, priceId: string, trialPeriodDays?: number, metadata?: Record<string, any> }): Promise<any> {
+  async listWebhooks(): Promise<APIResponse<any[]>> {
     try {
-      const response = await this.makeRequest('POST', '/api/create_subscription', params);
-      return this.handleResponse(response);
+      const resp = await fetch(`${this.baseURL}/webhook_endpoints`, { headers: this.getAuthHeaders() });
+      const data = await resp.json();
+      if (!resp.ok) return { success: false, error: `HTTP ${resp.status}` };
+      return { success: true, data: data?.data || [] };
     } catch (error) {
-      throw new Error(`Create Subscription failed: ${error}`);
+      return { success: false, error: String(error) };
     }
   }
 
-  /**
-   * Create a refund
-   */
-  async createRefund({ paymentIntentId: string, amount?: number, reason?: string }: { paymentIntentId: string, amount?: number, reason?: string }): Promise<any> {
+  private async formPost(path: string, form: URLSearchParams): Promise<APIResponse<any>> {
     try {
-      const response = await this.makeRequest('POST', '/api/create_refund', params);
-      return this.handleResponse(response);
+      const resp = await fetch(`${this.baseURL}${path}`, {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString()
+      });
+      const data = await resp.json().catch(() => ({}));
+      return resp.ok ? { success: true, data } : { success: false, error: data?.error?.message || `HTTP ${resp.status}` };
     } catch (error) {
-      throw new Error(`Create Refund failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Trigger when payment is successful
-   */
-  async pollPaymentSucceeded({ minAmount?: number }: { minAmount?: number }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/payment_succeeded', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Payment Succeeded failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Trigger when new subscription is created
-   */
-  async pollSubscriptionCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/subscription_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Subscription Created failed:`, error);
-      return [];
+      return { success: false, error: String(error) };
     }
   }
 }

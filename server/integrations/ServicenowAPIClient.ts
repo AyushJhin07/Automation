@@ -1,136 +1,59 @@
-// SERVICENOW API CLIENT
-// Auto-generated API client for ServiceNow integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface ServicenowAPIClientConfig {
-  username: string;
-  password: string;
-}
+import { Buffer } from 'buffer';
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class ServicenowAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: ServicenowAPIClientConfig;
+  private instanceUrl: string;
 
-  constructor(config: ServicenowAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://{instance}.service-now.com/api/now';
+  constructor(credentials: APICredentials) {
+    const instanceUrl = credentials.instanceUrl || credentials.baseUrl;
+    const user = credentials.username;
+    const password = credentials.password;
+    const token = credentials.accessToken;
+    if (!instanceUrl) {
+      throw new Error('ServiceNow integration requires instanceUrl');
+    }
+    super(instanceUrl.replace(/\/$/, '') + '/api/now', credentials);
+    this.instanceUrl = instanceUrl.replace(/\/$/, '');
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_incident': this.createIncident.bind(this) as any,
+      'update_incident': this.updateIncident.bind(this) as any,
+      'list_incidents': this.listIncidents.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
-    return {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
-    };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.credentials.accessToken) {
+      headers.Authorization = `Bearer ${this.credentials.accessToken}`;
+    } else if (this.credentials.username && this.credentials.password) {
+      const b64 = Buffer.from(`${this.credentials.username}:${this.credentials.password}`).toString('base64');
+      headers.Authorization = `Basic ${b64}`;
+    }
+    return headers;
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/table/incident?sysparm_limit=1', this.getAuthHeaders());
   }
 
-
-  /**
-   * Create a new incident in ServiceNow
-   */
-  async createIncident({ short_description: string, description?: string, urgency?: string, impact?: string, caller_id?: string, assignment_group?: string }: { short_description: string, description?: string, urgency?: string, impact?: string, caller_id?: string, assignment_group?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_incident', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Incident failed: ${error}`);
-    }
+  public async createIncident(params: { shortDescription: string; description?: string; urgency?: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['shortDescription']);
+    return this.post('/table/incident', {
+      short_description: params.shortDescription,
+      description: params.description,
+      urgency: params.urgency
+    }, this.getAuthHeaders());
   }
 
-  /**
-   * Update an existing incident
-   */
-  async updateIncident({ incident_id: string, state?: string, work_notes?: string, resolution_code?: string, resolution_notes?: string }: { incident_id: string, state?: string, work_notes?: string, resolution_code?: string, resolution_notes?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_incident', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Incident failed: ${error}`);
-    }
+  public async updateIncident(params: { sysId: string; updates: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['sysId', 'updates']);
+    return this.patch(`/table/incident/${params.sysId}`, params.updates, this.getAuthHeaders());
   }
 
-  /**
-   * Resolve an incident
-   */
-  async resolveIncident({ incident_id: string, resolution_code: string, resolution_notes: string, close_notes?: string }: { incident_id: string, resolution_code: string, resolution_notes: string, close_notes?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/resolve_incident', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Resolve Incident failed: ${error}`);
-    }
-  }
-
-  /**
-   * Create a new change request
-   */
-  async createChangeRequest({ short_description: string, description?: string, type?: string, risk?: string, implementation_plan?: string }: { short_description: string, description?: string, type?: string, risk?: string, implementation_plan?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_change_request', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Change Request failed: ${error}`);
-    }
-  }
-
-  /**
-   * Approve a change request or other approval
-   */
-  async approveRequest({ request_id: string, state: string, comments?: string }: { request_id: string, state: string, comments?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/approve_request', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Approve Request failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Triggered when a new incident is created
-   */
-  async pollIncidentCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/incident_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Incident Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a new change request is created
-   */
-  async pollChangeRequestCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/change_request_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Change Request Created failed:`, error);
-      return [];
-    }
+  public async listIncidents(params: { limit?: number } = {}): Promise<APIResponse<any>> {
+    const query = this.buildQueryString({ sysparm_limit: params.limit ?? 25 });
+    return this.get(`/table/incident${query}`, this.getAuthHeaders());
   }
 }

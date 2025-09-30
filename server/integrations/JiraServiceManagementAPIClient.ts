@@ -1,137 +1,62 @@
-// JIRA SERVICE MANAGEMENT API CLIENT
-// Auto-generated API client for Jira Service Management integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface JiraServiceManagementAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-}
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class JiraServiceManagementAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: JiraServiceManagementAPIClientConfig;
+  private baseUrl: string;
 
-  constructor(config: JiraServiceManagementAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.example.com';
+  constructor(credentials: APICredentials) {
+    const site = credentials.baseUrl || credentials.instanceUrl;
+    if (!site) {
+      throw new Error('Jira Service Management integration requires baseUrl');
+    }
+    const restBase = site.replace(/\/$/, '') + '/rest/servicedeskapi';
+    super(restBase, credentials);
+    this.baseUrl = restBase;
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'list_service_desks': this.listServiceDesks.bind(this) as any,
+      'get_service_desks': this.listServiceDesks.bind(this) as any,
+      'create_request': this.createRequest.bind(this) as any,
+      'create_customer_request': this.createRequest.bind(this) as any,
+      'add_comment': this.addComment.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
-    };
+    if (this.credentials.accessToken) {
+      return {
+        Authorization: `Bearer ${this.credentials.accessToken}`,
+        'Content-Type': 'application/json'
+      };
+    }
+    if (this.credentials.username && this.credentials.apiToken) {
+      const basic = Buffer.from(`${this.credentials.username}:${this.credentials.apiToken}`).toString('base64');
+      return {
+        Authorization: `Basic ${basic}`,
+        'Content-Type': 'application/json'
+      };
+    }
+    throw new Error('Jira Service Management integration requires accessToken or username/apiToken');
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/servicedesk', this.getAuthHeaders());
   }
 
-
-  /**
-   * Create a new record in Jira Service Management
-   */
-  async createRecord({ data: Record<string, any> }: { data: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Record failed: ${error}`);
-    }
+  public async listServiceDesks(): Promise<APIResponse<any>> {
+    return this.get('/servicedesk', this.getAuthHeaders());
   }
 
-  /**
-   * Update an existing record in Jira Service Management
-   */
-  async updateRecord({ id: string, data: Record<string, any> }: { id: string, data: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Record failed: ${error}`);
-    }
+  public async createRequest(params: { serviceDeskId: string; requestTypeId: string; requestFieldValues: Record<string, any>; raiseOnBehalfOf?: string; summary?: string; description?: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['serviceDeskId', 'requestTypeId', 'requestFieldValues']);
+    return this.post('/request', params, this.getAuthHeaders());
   }
 
-  /**
-   * Retrieve a record from Jira Service Management
-   */
-  async getRecord({ id: string }: { id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/get_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Get Record failed: ${error}`);
-    }
-  }
-
-  /**
-   * List records from Jira Service Management
-   */
-  async listRecords({ limit?: number, filter?: Record<string, any> }: { limit?: number, filter?: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_records', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Records failed: ${error}`);
-    }
-  }
-
-  /**
-   * Delete a record from Jira Service Management
-   */
-  async deleteRecord({ id: string }: { id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/delete_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Delete Record failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Triggered when a new record is created in Jira Service Management
-   */
-  async pollRecordCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a record is updated in Jira Service Management
-   */
-  async pollRecordUpdated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_updated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Updated failed:`, error);
-      return [];
-    }
+  public async addComment(params: { requestIdOrKey: string; body: string; public?: boolean }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['requestIdOrKey', 'body']);
+    return this.post(`/request/${params.requestIdOrKey}/comment`, {
+      body: params.body,
+      public: params.public ?? true
+    }, this.getAuthHeaders());
   }
 }

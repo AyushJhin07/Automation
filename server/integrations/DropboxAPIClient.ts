@@ -1,137 +1,53 @@
-// DROPBOX API CLIENT
-// Auto-generated API client for Dropbox integration
+// DROPBOX API CLIENT (fixed)
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface DropboxAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-}
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class DropboxAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: DropboxAPIClientConfig;
-
-  constructor(config: DropboxAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.dropbox.com';
+  constructor(credentials: APICredentials) {
+    super('https://api.dropboxapi.com/2', credentials);
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'list_files': this.listFiles.bind(this) as any,
+      'upload_file': this.uploadFile.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+    const token = this.credentials.accessToken || this.credentials.token || '';
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.post('/users/get_current_account', {}, this.getAuthHeaders());
+  }
+
+  public async listFiles(params: { path?: string; recursive?: boolean; limit?: number }): Promise<APIResponse<any>> {
+    const body = {
+      path: params.path ?? '',
+      recursive: params.recursive ?? false,
+      limit: params.limit ?? 1000,
+      include_mounted_folders: true
     };
+    return this.post('/files/list_folder', body, this.getAuthHeaders());
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
+  public async uploadFile(params: { path: string; content: string; mode?: 'add' | 'overwrite' | 'update' }): Promise<APIResponse<any>> {
+    const url = 'https://content.dropboxapi.com/2/files/upload';
+    const arg = { path: params.path, mode: params.mode ?? 'add', mute: false, strict_conflict: false };
     try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.credentials.accessToken || this.credentials.token || ''}`,
+          'Content-Type': 'application/octet-stream',
+          'Dropbox-API-Arg': JSON.stringify(arg)
+        },
+        body: params.content
+      });
+      const data = await resp.json();
+      return resp.ok ? { success: true, data } : { success: false, error: `HTTP ${resp.status}` };
     } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
-  }
-
-
-  /**
-   * Upload file to Dropbox
-   */
-  async uploadFile({ path: string, content: string, mode?: string }: { path: string, content: string, mode?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/upload_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Upload File failed: ${error}`);
-    }
-  }
-
-  /**
-   * Download file from Dropbox
-   */
-  async downloadFile({ path: string }: { path: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/download_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Download File failed: ${error}`);
-    }
-  }
-
-  /**
-   * Create new folder
-   */
-  async createFolder({ path: string, autorename?: boolean }: { path: string, autorename?: boolean }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_folder', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Folder failed: ${error}`);
-    }
-  }
-
-  /**
-   * List files in folder
-   */
-  async listFiles({ path?: string, recursive?: boolean, limit?: number }: { path?: string, recursive?: boolean, limit?: number }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_files', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Files failed: ${error}`);
-    }
-  }
-
-  /**
-   * Create shareable link for file
-   */
-  async shareFile({ path: string, settings?: Record<string, any> }: { path: string, settings?: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/share_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Share File failed: ${error}`);
-    }
-  }
-
-
-  /**
-   * Poll for Trigger when file is uploaded
-   */
-  async pollFileUploaded({ path?: string }: { path?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/file_uploaded', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling File Uploaded failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Trigger when file is modified
-   */
-  async pollFileModified({ path?: string }: { path?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/file_modified', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling File Modified failed:`, error);
-      return [];
+      return { success: false, error: String(error) };
     }
   }
 }

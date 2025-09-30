@@ -1,125 +1,69 @@
-// ONEDRIVE API CLIENT
-// Auto-generated API client for OneDrive integration
-
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface OnedriveAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-}
+import { Buffer } from 'buffer';
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export class OnedriveAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: OnedriveAPIClientConfig;
-
-  constructor(config: OnedriveAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://graph.microsoft.com/v1.0';
+  constructor(credentials: APICredentials) {
+    super('https://graph.microsoft.com/v1.0', credentials);
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'list_driveroot': this.listDriveRoot.bind(this) as any,
+      'get_files': this.listDriveRoot.bind(this) as any,
+      'create_folder': this.createFolder.bind(this) as any,
+      'get_item': this.getItem.bind(this) as any,
+      'download_file': this.downloadFile.bind(this) as any,
+      'share_file': this.shareFile.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
+    const token = this.credentials.accessToken || '';
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/me/drive', this.getAuthHeaders());
   }
 
-
-  /**
-   * Upload a file to OneDrive
-   */
-  async uploadFile({ folderId: string, name: string, base64: string }: { folderId: string, name: string, base64: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/upload_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Upload File failed: ${error}`);
-    }
+  public async listDriveRoot(params: { path?: string } = {}): Promise<APIResponse<any>> {
+    const path = params.path ? `/root:/${params.path}:/children` : '/root/children';
+    return this.get(`/me/drive${path}`, this.getAuthHeaders());
   }
 
-  /**
-   * Download a file from OneDrive
-   */
-  async downloadFile({ itemId: string }: { itemId: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/download_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Download File failed: ${error}`);
-    }
+  public async createFolder(params: { parentItemId?: string; name: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['name']);
+    const body = {
+      name: params.name,
+      folder: {},
+      '@microsoft.graph.conflictBehavior': 'rename'
+    };
+    const target = params.parentItemId
+      ? `/me/drive/items/${params.parentItemId}/children`
+      : '/me/drive/root/children';
+    return this.post(target, body, this.getAuthHeaders());
   }
 
-  /**
-   * Move a file to another folder
-   */
-  async moveFile({ itemId: string, targetFolderId: string }: { itemId: string, targetFolderId: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/move_file', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Move File failed: ${error}`);
-    }
+  public async getItem(params: { itemId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['itemId']);
+    return this.get(`/me/drive/items/${params.itemId}`, this.getAuthHeaders());
   }
 
-  /**
-   * Create a sharing link for a file
-   */
-  async shareLink({ itemId: string, type: string }: { itemId: string, type: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/share_link', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Share Link failed: ${error}`);
-    }
+  public async downloadFile(params: { itemId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['itemId']);
+    const resp = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${params.itemId}/content`, {
+      headers: this.getAuthHeaders()
+    });
+    const data = await resp.text();
+    return resp.ok ? { success: true, data } : { success: false, error: `HTTP ${resp.status}` };
   }
 
-
-  /**
-   * Poll for Triggered when a file is created
-   */
-  async pollFileCreated({ folderId?: string }: { folderId?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/file_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling File Created failed:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Poll for Triggered when a file is updated
-   */
-  async pollFileUpdated({ folderId?: string }: { folderId?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/file_updated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling File Updated failed:`, error);
-      return [];
-    }
+  public async shareFile(params: { itemId: string; type?: string; scope?: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as any, ['itemId']);
+    return this.post(`/me/drive/items/${params.itemId}/createLink`, {
+      type: params.type || 'view',
+      scope: params.scope || 'anonymous'
+    }, this.getAuthHeaders());
   }
 }

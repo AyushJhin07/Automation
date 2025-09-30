@@ -56,6 +56,18 @@ export class NotionAPIClient extends BaseAPIClient {
 
     super('https://api.notion.com/v1', credentials);
     this.notionVersion = credentials.notionVersion ?? '2022-06-28';
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_page': this.createPage.bind(this) as any,
+      'update_page': this.updatePage.bind(this) as any,
+      'get_page': this.getPage.bind(this) as any,
+      'create_database_entry': this.createDatabaseEntry.bind(this) as any,
+      'query_database': this.queryDatabase.bind(this) as any,
+      'append_block_children': this.appendBlockChildren.bind(this) as any,
+      'update_block': this.updateBlock.bind(this) as any,
+      'get_block_children': this.getBlockChildren.bind(this) as any,
+    });
   }
 
   protected getAuthHeaders(): Record<string, string> {

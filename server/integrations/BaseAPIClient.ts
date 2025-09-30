@@ -31,10 +31,12 @@ export abstract class BaseAPIClient {
   protected baseURL: string;
   protected credentials: APICredentials;
   protected rateLimitInfo?: RateLimitInfo;
+  private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
 
   constructor(baseURL: string, credentials: APICredentials) {
     this.baseURL = baseURL;
     this.credentials = credentials;
+    this.__functionHandlers = new Map();
   }
 
   /**
@@ -108,6 +110,41 @@ export abstract class BaseAPIClient {
         error: getErrorMessage(error),
         statusCode: 0
       };
+    }
+  }
+
+  /**
+   * Register a function handler for generic execution
+   */
+  protected registerHandler(functionId: string, handler: (params: Record<string, any>) => Promise<APIResponse<any>>): void {
+    if (!this.__functionHandlers) this.__functionHandlers = new Map();
+    this.__functionHandlers.set(String(functionId).toLowerCase(), handler);
+  }
+
+  /**
+   * Register multiple function handlers at once
+   */
+  protected registerHandlers(handlers: Record<string, (params: Record<string, any>) => Promise<APIResponse<any>>>): void {
+    for (const [id, fn] of Object.entries(handlers)) {
+      this.registerHandler(id, fn);
+    }
+  }
+
+  /**
+   * Generic function execution entry point
+   * Concrete clients can rely on registered handlers to avoid IntegrationManager switches
+   */
+  public async execute(functionId: string, params: Record<string, any> = {}): Promise<APIResponse<any>> {
+    const id = String(functionId || '').toLowerCase();
+    const handlers = this.__functionHandlers || new Map();
+    const handler = handlers.get(id);
+    if (!handler) {
+      return { success: false, error: `Unknown function handler: ${functionId}` };
+    }
+    try {
+      return await handler(params);
+    } catch (error) {
+      return { success: false, error: getErrorMessage(error) };
     }
   }
 

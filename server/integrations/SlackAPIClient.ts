@@ -80,6 +80,22 @@ export class SlackAPIClient extends BaseAPIClient {
     }
 
     super('https://slack.com/api', credentials);
+
+    // Register generic handlers for IntegrationManager.execute()
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'send_message': this.sendMessage.bind(this) as any,
+      'create_channel': this.createChannel.bind(this) as any,
+      'invite_to_channel': this.inviteToChannel.bind(this) as any,
+      'upload_file': this.uploadFile.bind(this) as any,
+      'get_channel_info': this.getChannelInfo.bind(this) as any,
+      'list_channels': this.listChannels.bind(this) as any,
+      'get_user_info': this.getUserInfo.bind(this) as any,
+      'list_users': this.listUsers.bind(this) as any,
+      'add_reaction': this.addReaction.bind(this) as any,
+      'remove_reaction': this.removeReaction.bind(this) as any,
+      'schedule_message': this.scheduleMessage.bind(this) as any,
+    });
   }
 
   protected getAuthHeaders(): Record<string, string> {

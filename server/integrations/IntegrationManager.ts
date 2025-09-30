@@ -8,6 +8,7 @@ import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
 import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { connectorRegistry } from '../ConnectorRegistry';
 import { genericExecutor } from './GenericExecutor';
 import { env } from '../env';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
@@ -46,12 +47,80 @@ export class IntegrationManager {
     return connectionId ? `${appKey}::${connectionId}` : appKey;
   }
 
+  private normalizeAppId(id: string): string {
+    const v = String(id || '').toLowerCase();
+    const map: Record<string, string> = {
+      'google-sheets': 'sheets',
+      'google-sheets-enhanced': 'sheets',
+      'gmail-enhanced': 'gmail',
+      'slack-enhanced': 'slack',
+      'shopify-enhanced': 'shopify',
+      'airtable-enhanced': 'airtable',
+      'github-enhanced': 'github',
+      'stripe-enhanced': 'stripe',
+      'trello-enhanced': 'trello',
+      'asana-enhanced': 'asana',
+      'dropbox-enhanced': 'dropbox',
+      'google-drive-enhanced': 'google-drive',
+      'google-calendar-enhanced': 'google-calendar',
+      'mailchimp-enhanced': 'mailchimp',
+      'mailgun-enhanced': 'mailgun',
+      'sendgrid-enhanced': 'sendgrid',
+      'zendesk-enhanced': 'zendesk',
+      'pipedrive-enhanced': 'pipedrive',
+      'twilio-enhanced': 'twilio',
+      'hubspot-enhanced': 'hubspot',
+      'jira-service-management': 'jira',
+      'jira-cloud': 'jira',
+      'box': 'box',
+      'box-enhanced': 'box',
+      'onedrive': 'onedrive',
+      'onedrive-enhanced': 'onedrive',
+      'sharepoint': 'sharepoint',
+      'sharepoint-enhanced': 'sharepoint',
+      'smartsheet': 'smartsheet',
+      'smartsheet-enhanced': 'smartsheet',
+      'google-docs': 'google-docs',
+      'google-docs-enhanced': 'google-docs',
+      'google-slides': 'google-slides',
+      'google-slides-enhanced': 'google-slides',
+      'google-forms': 'google-forms',
+      'google-forms-enhanced': 'google-forms',
+      'microsoft-teams': 'microsoft-teams',
+      'microsoft-teams-enhanced': 'microsoft-teams',
+      'outlook': 'outlook',
+      'outlook-enhanced': 'outlook',
+      'google-chat': 'google-chat',
+      'google-chat-enhanced': 'google-chat',
+      'zoom': 'zoom',
+      'zoom-enhanced': 'zoom',
+      'calendly': 'calendly',
+      'calendly-enhanced': 'calendly',
+      'intercom': 'intercom',
+      'intercom-enhanced': 'intercom',
+      'monday': 'monday',
+      'monday-enhanced': 'monday',
+      'servicenow': 'servicenow',
+      'servicenow-enhanced': 'servicenow',
+      'freshdesk': 'freshdesk',
+      'freshdesk-enhanced': 'freshdesk',
+      'gitlab': 'gitlab',
+      'gitlab-enhanced': 'gitlab',
+      'bitbucket': 'bitbucket',
+      'bitbucket-enhanced': 'bitbucket',
+      'confluence': 'confluence',
+      'confluence-enhanced': 'confluence',
+      'jira-service-management-enhanced': 'jira-service-management',
+    };
+    return map[v] || v;
+  }
+
   /**
    * Initialize integration for an application
    */
   public async initializeIntegration(config: IntegrationConfig): Promise<APIResponse<any>> {
     try {
-      const appKey = config.appName.toLowerCase();
+      const appKey = this.normalizeAppId(config.appName);
       const clientKey = this.buildClientKey(appKey, config.connectionId);
 
       if (!this.supportedApps.has(appKey)) {
@@ -109,7 +178,7 @@ export class IntegrationManager {
    */
   public async executeFunction(params: FunctionExecutionParams): Promise<FunctionExecutionResult> {
     const startTime = Date.now();
-    const appKey = params.appName.toLowerCase();
+    const appKey = this.normalizeAppId(params.appName);
     const clientKey = this.buildClientKey(appKey, params.connectionId);
 
     try {
@@ -227,7 +296,7 @@ export class IntegrationManager {
    * Test connection for an application
    */
   public async testConnection(appName: string, credentials: APICredentials): Promise<APIResponse<any>> {
-    const appKey = appName.toLowerCase();
+    const appKey = this.normalizeAppId(appName);
 
     try {
       const client = this.createAPIClient(appKey, credentials);
@@ -258,14 +327,14 @@ export class IntegrationManager {
    * Check if an application is supported
    */
   public isApplicationSupported(appName: string): boolean {
-    return this.supportedApps.has(appName.toLowerCase());
+    return this.supportedApps.has(this.normalizeAppId(appName));
   }
 
   /**
    * Remove integration for an application
    */
   public removeIntegration(appName: string): boolean {
-    const appKey = appName.toLowerCase();
+    const appKey = this.normalizeAppId(appName);
     let removed = false;
     for (const key of Array.from(this.clients.keys())) {
       if (key === appKey || key.startsWith(`${appKey}::`)) {
@@ -280,7 +349,7 @@ export class IntegrationManager {
    * Get integration status for an application
    */
   public getIntegrationStatus(appName: string): { connected: boolean; client?: BaseAPIClient } {
-    const appKey = appName.toLowerCase();
+    const appKey = this.normalizeAppId(appName);
     const client = this.clients.get(appKey) || Array.from(this.clients.entries())
       .find(([key]) => key.startsWith(`${appKey}::`))?.[1];
 
@@ -339,24 +408,21 @@ export class IntegrationManager {
       case 'time':
         return new LocalTimeAPIClient(credentials);
 
-        // TODO: Add other API clients as they are implemented
-        case 'stripe':
-        case 'mailchimp':
-        case 'twilio':
-        case 'dropbox':
-        case 'github':
-        case 'trello':
-        case 'asana':
-        case 'hubspot':
-        case 'salesforce':
-        case 'zoom':
-        // For now, return null for unimplemented clients
-        // These will be implemented in subsequent iterations
-        return null;
-      
       default:
-        return null;
+        break;
     }
+
+    // Registry-backed client constructor fallback
+    try {
+      const ctor = connectorRegistry.getAPIClient(appKey);
+      if (ctor) {
+        const config = { ...credentials, ...(additionalConfig ?? {}) };
+        return new ctor(config as any);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
   }
 
   /**
@@ -368,6 +434,21 @@ export class IntegrationManager {
     functionId: string,
     parameters: Record<string, any>
   ): Promise<APIResponse<any>> {
+    // Try generic client-side execution first if available
+    const maybeExec = (client as any).execute as (id: string, params: any) => Promise<APIResponse<any>>;
+    if (typeof maybeExec === 'function') {
+      try {
+        const genericResult = await maybeExec.call(client, functionId, parameters);
+        if (genericResult && genericResult.success !== undefined) {
+          // Fallback only when the handler is unknown; otherwise honor generic result
+          if (!(genericResult.success === false && typeof genericResult.error === 'string' && genericResult.error.startsWith('Unknown function handler:'))) {
+            return genericResult;
+          }
+        }
+      } catch (_err) {
+        // ignore and fall through to specific app handlers
+      }
+    }
     
     // Gmail functions
     if (appKey === 'gmail' && client instanceof GmailAPIClient) {
@@ -643,3 +724,18 @@ export class IntegrationManager {
 
 // Export singleton instance
 export const integrationManager = new IntegrationManager();
+
+// Convenience method for routes needing an API client instance
+export type { BaseAPIClient } from './BaseAPIClient';
+export interface APIClientProvider {
+  getAPIClient: (appName: string, credentials?: APICredentials, additionalConfig?: Record<string, any>) => BaseAPIClient | undefined;
+}
+
+// Backwards-compatible instance method for direct API client access
+(IntegrationManager as any).prototype.getAPIClient = function(this: IntegrationManager, appName: string, credentials?: APICredentials, additionalConfig?: Record<string, any>) {
+  const appKey = (this as any).normalizeAppId(appName);
+  const existing = (this as any).clients.get(appKey) || Array.from((this as any).clients.entries()).find(([k]: any[]) => k.startsWith(`${appKey}::`))?.[1];
+  if (existing) return existing;
+  if (!credentials) return undefined;
+  return (this as any).createAPIClient(appKey, credentials, additionalConfig) ?? undefined;
+};

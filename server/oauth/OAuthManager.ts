@@ -219,6 +219,19 @@ export class OAuthManager {
       },
     });
 
+    this.providers.set('box', {
+      name: 'box',
+      displayName: 'Box',
+      config: {
+        clientId: process.env.BOX_CLIENT_ID || '',
+        clientSecret: process.env.BOX_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/box`,
+        scopes: ['root_readwrite'],
+        authUrl: 'https://account.box.com/api/oauth2/authorize',
+        tokenUrl: 'https://api.box.com/oauth2/token',
+      },
+    });
+
     // Excel Online
     this.providers.set('excel-online', {
       name: 'excel-online',
@@ -361,6 +374,54 @@ export class OAuthManager {
         redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-drive`,
         scopes: [
           'https://www.googleapis.com/auth/drive.file'
+        ],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo'
+      },
+      pkceRequired: true,
+    });
+
+    this.providers.set('google-docs', {
+      name: 'google-docs',
+      displayName: 'Google Docs',
+      config: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-docs`,
+        scopes: ['https://www.googleapis.com/auth/documents'],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo'
+      },
+      pkceRequired: true,
+    });
+
+    this.providers.set('google-slides', {
+      name: 'google-slides',
+      displayName: 'Google Slides',
+      config: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-slides`,
+        scopes: ['https://www.googleapis.com/auth/presentations'],
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo'
+      },
+      pkceRequired: true,
+    });
+
+    this.providers.set('google-forms', {
+      name: 'google-forms',
+      displayName: 'Google Forms',
+      config: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-forms`,
+        scopes: [
+          'https://www.googleapis.com/auth/forms.body',
+          'https://www.googleapis.com/auth/forms.responses.readonly'
         ],
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -814,13 +875,67 @@ export class OAuthManager {
       name: 'sharepoint',
       displayName: 'SharePoint',
       config: {
-        clientId: process.env.SHAREPOINT_CLIENT_ID || '',
-        clientSecret: process.env.SHAREPOINT_CLIENT_SECRET || '',
+        clientId: process.env.MICROSOFT_CLIENT_ID || '',
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
         redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sharepoint`,
-        scopes: ["read","write"],
-        authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-        userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+        scopes: [
+          'https://graph.microsoft.com/.default'
+        ],
+        authUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/authorize`,
+        tokenUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/token`,
+        userInfoUrl: 'https://graph.microsoft.com/v1.0/me'
+      },
+    });
+
+    this.providers.set('onedrive', {
+      name: 'onedrive',
+      displayName: 'OneDrive',
+      config: {
+        clientId: process.env.MICROSOFT_CLIENT_ID || '',
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/onedrive`,
+        scopes: [
+          'Files.ReadWrite.All',
+          'offline_access'
+        ],
+        authUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/authorize`,
+        tokenUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/token`,
+        userInfoUrl: 'https://graph.microsoft.com/v1.0/me'
+      },
+    });
+
+    this.providers.set('microsoft-teams', {
+      name: 'microsoft-teams',
+      displayName: 'Microsoft Teams',
+      config: {
+        clientId: process.env.MICROSOFT_CLIENT_ID || '',
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/microsoft-teams`,
+        scopes: [
+          'https://graph.microsoft.com/.default'
+        ],
+        authUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/authorize`,
+        tokenUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/token`,
+        userInfoUrl: 'https://graph.microsoft.com/v1.0/me'
+      },
+    });
+
+    this.providers.set('outlook', {
+      name: 'outlook',
+      displayName: 'Outlook',
+      config: {
+        clientId: process.env.MICROSOFT_CLIENT_ID || '',
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/outlook`,
+        scopes: [
+          'offline_access',
+          'https://graph.microsoft.com/Mail.Send',
+          'https://graph.microsoft.com/Mail.Read',
+          'https://graph.microsoft.com/Calendars.ReadWrite'
+        ],
+        authUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/authorize`,
+        tokenUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/token`,
+        userInfoUrl: 'https://graph.microsoft.com/v1.0/me'
       },
     });
 
@@ -933,6 +1048,21 @@ export class OAuthManager {
       pkceRequired: true,
     });
 
+    // Stripe (Connect OAuth)
+    this.providers.set('stripe', {
+      name: 'stripe',
+      displayName: 'Stripe',
+      config: {
+        clientId: process.env.STRIPE_CLIENT_ID || '',
+        clientSecret: process.env.STRIPE_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/stripe`,
+        scopes: ["read_write"],
+        authUrl: 'https://connect.stripe.com/oauth/authorize',
+        tokenUrl: 'https://connect.stripe.com/oauth/token',
+      },
+      pkceRequired: true,
+    });
+
     // SuccessFactors
     this.providers.set('successfactors', {
       name: 'successfactors',
@@ -975,6 +1105,20 @@ export class OAuthManager {
       },
     });
 
+    // Trello (OAuth)
+    this.providers.set('trello', {
+      name: 'trello',
+      displayName: 'Trello',
+      config: {
+        clientId: process.env.TRELLO_CLIENT_ID || '',
+        clientSecret: process.env.TRELLO_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/trello`,
+        scopes: ["read","write"],
+        authUrl: 'https://api.trello.com/oauth/authorize',
+        tokenUrl: 'https://api.trello.com/oauth/token',
+      },
+    });
+
     // Typeform
     this.providers.set('typeform', {
       name: 'typeform',
@@ -986,6 +1130,20 @@ export class OAuthManager {
         scopes: ["read","write"],
         authUrl: 'https://api.typeform.com/oauth/authorize',
         tokenUrl: 'https://api.typeform.com/oauth/token',
+      },
+    });
+
+    // Asana (OAuth)
+    this.providers.set('asana', {
+      name: 'asana',
+      displayName: 'Asana',
+      config: {
+        clientId: process.env.ASANA_CLIENT_ID || '',
+        clientSecret: process.env.ASANA_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/asana`,
+        scopes: ["default"],
+        authUrl: 'https://app.asana.com/api/1.0/oauth/authorize',
+        tokenUrl: 'https://app.asana.com/api/1.0/oauth/token',
       },
     });
 
@@ -1070,6 +1228,58 @@ export class OAuthManager {
         scopes: ["read","write"],
         authUrl: 'https://{subdomain}.zendesk.com/api/v2/oauth/authorize',
         tokenUrl: 'https://{subdomain}.zendesk.com/api/v2/oauth/token',
+      },
+    });
+
+    this.providers.set('zoom', {
+      name: 'zoom',
+      displayName: 'Zoom',
+      config: {
+        clientId: process.env.ZOOM_CLIENT_ID || '',
+        clientSecret: process.env.ZOOM_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoom`,
+        scopes: ['meeting:write', 'user:read'],
+        authUrl: 'https://zoom.us/oauth/authorize',
+        tokenUrl: 'https://zoom.us/oauth/token',
+      },
+    });
+
+    this.providers.set('calendly', {
+      name: 'calendly',
+      displayName: 'Calendly',
+      config: {
+        clientId: process.env.CALENDLY_CLIENT_ID || '',
+        clientSecret: process.env.CALENDLY_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/calendly`,
+        scopes: ['default'],
+        authUrl: 'https://auth.calendly.com/oauth/authorize',
+        tokenUrl: 'https://auth.calendly.com/oauth/token',
+      },
+    });
+
+    this.providers.set('intercom', {
+      name: 'intercom',
+      displayName: 'Intercom',
+      config: {
+        clientId: process.env.INTERCOM_CLIENT_ID || '',
+        clientSecret: process.env.INTERCOM_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/intercom`,
+        scopes: ['read_users', 'write_users', 'write_conversations'],
+        authUrl: 'https://api.intercom.io/oauth',
+        tokenUrl: 'https://api.intercom.io/oauth/token',
+      },
+    });
+
+    this.providers.set('monday', {
+      name: 'monday',
+      displayName: 'Monday.com',
+      config: {
+        clientId: process.env.MONDAY_CLIENT_ID || process.env.MONDAY_ACCESS_TOKEN || '',
+        clientSecret: process.env.MONDAY_CLIENT_SECRET || '',
+        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/monday`,
+        scopes: ['boards:read boards:write users:read'],
+        authUrl: 'https://auth.monday.com/oauth2/authorize',
+        tokenUrl: 'https://auth.monday.com/oauth2/token',
       },
     });
 
