@@ -19,6 +19,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   airtable: {
     credentials: { apiKey: 'test-api-key' }
   },
+  mailgun: {
+    credentials: { apiKey: 'key-test-mailgun' }
+  },
   gmail: {
     credentials: { accessToken: 'ya29.test-token' }
   },
@@ -32,11 +35,17 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   slack: {
     credentials: { botToken: 'xoxb-test-token' }
   },
+  sendgrid: {
+    credentials: { apiKey: 'SG.test-key' }
+  },
   sheets: {
     credentials: {}
   },
   time: {
     credentials: {}
+  },
+  twilio: {
+    credentials: { accountSid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', authToken: 'test-auth-token' }
   }
 };
 

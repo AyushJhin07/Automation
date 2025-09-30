@@ -51,12 +51,29 @@ export abstract class BaseAPIClient {
       
       // Add authentication headers
       const authHeaders = this.getAuthHeaders();
-      const requestHeaders = {
+      const requestHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
         'User-Agent': 'ScriptSpark-Automation/1.0',
         ...authHeaders,
         ...headers
       };
+
+      let body: BodyInit | undefined;
+      if (data !== undefined && data !== null) {
+        if (typeof data === 'string') {
+          body = data;
+        } else if (data instanceof URLSearchParams) {
+          body = data.toString();
+          if (!headers['Content-Type']) {
+            requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+          }
+        } else if (typeof (globalThis as any).FormData !== 'undefined' && data instanceof FormData) {
+          body = data as unknown as BodyInit;
+          delete requestHeaders['Content-Type'];
+        } else {
+          body = JSON.stringify(data);
+        }
+      }
 
       // Check rate limits before making request
       if (this.rateLimitInfo && this.isRateLimited()) {
@@ -69,7 +86,7 @@ export abstract class BaseAPIClient {
       const requestOptions: RequestInit = {
         method,
         headers: requestHeaders,
-        body: data ? JSON.stringify(data) : undefined
+        body
       };
 
       const response = await fetch(url, requestOptions);

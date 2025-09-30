@@ -7,7 +7,10 @@ import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
-import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { TwilioAPIClient } from './TwilioAPIClient';
+import { SendGridAPIClient } from './SendGridAPIClient';
+import { MailgunAPIClient } from './MailgunAPIClient';
+import { IMPLEMENTED_CONNECTOR_IDS, getImplementedConnector } from './supportedApps';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
 
@@ -184,11 +187,15 @@ export class IntegrationManager {
   /**
    * Test connection for an application
    */
-  public async testConnection(appName: string, credentials: APICredentials): Promise<APIResponse<any>> {
+  public async testConnection(
+    appName: string,
+    credentials: APICredentials,
+    additionalConfig?: Record<string, any>
+  ): Promise<APIResponse<any>> {
     const appKey = appName.toLowerCase();
 
     try {
-      const client = this.createAPIClient(appKey, credentials);
+      const client = this.createAPIClient(appKey, credentials, additionalConfig);
       if (!client) {
         return {
           success: false,
@@ -259,63 +266,60 @@ export class IntegrationManager {
     credentials: APICredentials, 
     additionalConfig?: Record<string, any>
   ): BaseAPIClient | null {
-    switch (appKey) {
-      case 'gmail':
-        return new GmailAPIClient(credentials);
-
-      case 'shopify':
-        if (!additionalConfig?.shopDomain) {
-          throw new Error('Shopify integration requires shopDomain in additionalConfig');
-        }
-        return new ShopifyAPIClient({ ...credentials, shopDomain: additionalConfig.shopDomain });
-
-      case 'slack': {
-        const accessToken = credentials.accessToken ?? credentials.botToken;
-        if (!accessToken) {
-          throw new Error('Slack integration requires an access token');
-        }
-        return new SlackAPIClient({ ...credentials, accessToken });
-      }
-
-      case 'notion': {
-        const accessToken = credentials.accessToken ?? credentials.integrationToken;
-        if (!accessToken) {
-          throw new Error('Notion integration requires an access token');
-        }
-        return new NotionAPIClient({ ...credentials, accessToken });
-      }
-
-      case 'airtable': {
-        if (!credentials.apiKey) {
-          throw new Error('Airtable integration requires an API key');
-        }
-        return new AirtableAPIClient(credentials);
-      }
-
-      case 'sheets':
-        return new LocalSheetsAPIClient(credentials);
-
-      case 'time':
-        return new LocalTimeAPIClient(credentials);
-
-        // TODO: Add other API clients as they are implemented
-        case 'stripe':
-        case 'mailchimp':
-        case 'twilio':
-        case 'dropbox':
-        case 'github':
-        case 'trello':
-        case 'asana':
-        case 'hubspot':
-        case 'salesforce':
-        case 'zoom':
-        // For now, return null for unimplemented clients
-        // These will be implemented in subsequent iterations
-        return null;
-      
-      default:
-        return null;
+    const implementation = getImplementedConnector(appKey);
+    if (!implementation) {
+      return null;
     }
+
+    if (appKey === 'slack') {
+      const accessToken = credentials.accessToken ?? credentials.botToken;
+      if (!accessToken) {
+        throw new Error('Slack integration requires an access token');
+      }
+      return new SlackAPIClient({ ...credentials, accessToken });
+    }
+
+    if (appKey === 'notion') {
+      const accessToken = credentials.accessToken ?? credentials.integrationToken;
+      if (!accessToken) {
+        throw new Error('Notion integration requires an access token');
+      }
+      return new NotionAPIClient({ ...credentials, accessToken });
+    }
+
+    if (appKey === 'airtable') {
+      if (!credentials.apiKey) {
+        throw new Error('Airtable integration requires an API key');
+      }
+      return new AirtableAPIClient(credentials);
+    }
+
+    if (appKey === 'twilio') {
+      const accountSid = credentials.accountSid ?? credentials.account_id;
+      const authToken = credentials.authToken ?? credentials.apiKey;
+      if (!accountSid || !authToken) {
+        throw new Error('Twilio integration requires accountSid and authToken');
+      }
+      return implementation.createClient({ ...credentials, accountSid, authToken }, additionalConfig);
+    }
+
+    if (appKey === 'sendgrid') {
+      const apiKey = credentials.apiKey ?? credentials.accessToken;
+      if (!apiKey) {
+        throw new Error('SendGrid integration requires an API key');
+      }
+      return implementation.createClient({ ...credentials, apiKey }, additionalConfig);
+    }
+
+    if (appKey === 'mailgun') {
+      const apiKey = credentials.apiKey ?? credentials.accessToken;
+      if (!apiKey) {
+        throw new Error('Mailgun integration requires an API key');
+      }
+      return implementation.createClient({ ...credentials, apiKey }, additionalConfig);
+    }
+
+    return implementation.createClient(credentials, additionalConfig);
   }
 
   /**
@@ -353,6 +357,18 @@ export class IntegrationManager {
       return this.executeAirtableFunction(client, functionId, parameters);
     }
 
+    if (appKey === 'twilio' && client instanceof TwilioAPIClient) {
+      return this.executeTwilioFunction(client, functionId, parameters);
+    }
+
+    if (appKey === 'sendgrid' && client instanceof SendGridAPIClient) {
+      return this.executeSendGridFunction(client, functionId, parameters);
+    }
+
+    if (appKey === 'mailgun' && client instanceof MailgunAPIClient) {
+      return this.executeMailgunFunction(client, functionId, parameters);
+    }
+
     // Sheets functions
     if (appKey === 'sheets' && client instanceof LocalSheetsAPIClient) {
       return this.executeSheetsFunction(client, functionId, parameters);
@@ -369,6 +385,110 @@ export class IntegrationManager {
       success: false,
       error: `Function ${functionId} not implemented for ${appKey}`
     };
+  }
+
+  private async executeTwilioFunction(
+    client: TwilioAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'test_connection':
+        return client.testConnection();
+      case 'send_sms':
+        return client.sendSms(parameters);
+      case 'send_mms':
+        return client.sendMms(parameters);
+      case 'make_call':
+        return client.makeCall(parameters);
+      case 'get_message':
+        return client.getMessage(parameters);
+      case 'list_messages':
+        return client.listMessages(parameters);
+      case 'get_call':
+        return client.getCall(parameters);
+      case 'list_calls':
+        return client.listCalls(parameters);
+      case 'update_call':
+        return client.updateCall(parameters);
+      case 'buy_phone_number':
+        return client.buyPhoneNumber(parameters);
+      case 'list_phone_numbers':
+        return client.listPhoneNumbers(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Twilio function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeSendGridFunction(
+    client: SendGridAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'test_connection':
+        return client.testConnection();
+      case 'send_email':
+        return client.sendEmail(parameters);
+      case 'get_email_stats':
+        return client.getEmailStats(parameters);
+      case 'create_contact':
+        return client.createContact(parameters);
+      case 'get_lists':
+        return client.getLists(parameters);
+      case 'create_list':
+        return client.createList(parameters);
+      case 'send_test_email':
+        return client.sendTestEmail(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown SendGrid function: ${functionId}`
+        };
+    }
+  }
+
+  private async executeMailgunFunction(
+    client: MailgunAPIClient,
+    functionId: string,
+    parameters: Record<string, any>
+  ): Promise<APIResponse<any>> {
+    switch (functionId) {
+      case 'test_connection':
+        return client.testConnection();
+      case 'send_email':
+        return client.sendEmail(parameters);
+      case 'get_domain':
+        return client.getDomain(parameters);
+      case 'list_domains':
+        return client.listDomains(parameters);
+      case 'verify_domain':
+        return client.verifyDomain(parameters);
+      case 'create_mailing_list':
+        return client.createMailingList(parameters);
+      case 'get_mailing_list':
+        return client.getMailingList(parameters);
+      case 'list_mailing_lists':
+        return client.listMailingLists(parameters);
+      case 'add_member':
+        return client.addMember(parameters);
+      case 'get_member':
+        return client.getMember(parameters);
+      case 'validate_email':
+        return client.validateEmail(parameters);
+      case 'get_stats':
+        return client.getStats(parameters);
+      case 'get_events':
+        return client.getEvents(parameters);
+      default:
+        return {
+          success: false,
+          error: `Unknown Mailgun function: ${functionId}`
+        };
+    }
   }
 
   private async executeSheetsFunction(

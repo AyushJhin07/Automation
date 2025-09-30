@@ -1193,7 +1193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await integrationManager.testConnection(appName, credentials);
+      const result = await integrationManager.testConnection(appName, credentials, additionalConfig);
       
       res.json({
         success: result.success,

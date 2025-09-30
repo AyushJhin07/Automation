@@ -7,9 +7,13 @@ import { fileURLToPath } from 'url';
 import { GmailAPIClient } from './integrations/GmailAPIClient';
 import { ShopifyAPIClient } from './integrations/ShopifyAPIClient';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
-import { GenericAPIClient } from './integrations/GenericAPIClient';
+import { AirtableAPIClient } from './integrations/AirtableAPIClient';
+import { NotionAPIClient } from './integrations/NotionAPIClient';
+import { SlackAPIClient } from './integrations/SlackAPIClient';
+import { TwilioAPIClient } from './integrations/TwilioAPIClient';
+import { SendGridAPIClient } from './integrations/SendGridAPIClient';
+import { MailgunAPIClient } from './integrations/MailgunAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
-import { IMPLEMENTED_CONNECTOR_SET } from './integrations/supportedApps';
 
 interface ConnectorFunction {
   id: string;
@@ -175,220 +179,15 @@ export class ConnectorRegistry {
    * Initialize available API clients
    */
   private initializeAPIClients(): void {
-    // Register implemented API clients
+    // Register the concrete API clients that are actually wired today.
     this.registerAPIClient('gmail', GmailAPIClient);
     this.registerAPIClient('shopify', ShopifyAPIClient);
-    
-    // Mark Google Workspace apps as implemented (built-in Apps Script APIs)
-    this.registerAPIClient('google-sheets-enhanced', GenericAPIClient);
-    this.registerAPIClient('google-calendar', GenericAPIClient);
-    this.registerAPIClient('google-drive', GenericAPIClient);
-    this.registerAPIClient('google-forms', GenericAPIClient);
-    this.registerAPIClient('google-contacts', GenericAPIClient);
-    
-    // Mark external apps with real implementations as implemented
-    this.registerAPIClient('slack', GenericAPIClient);
-    this.registerAPIClient('slack-enhanced', GenericAPIClient);
-    this.registerAPIClient('dropbox', GenericAPIClient);
-    this.registerAPIClient('dropbox-enhanced', GenericAPIClient);
-    this.registerAPIClient('salesforce', GenericAPIClient);
-    this.registerAPIClient('salesforce-enhanced', GenericAPIClient);
-    this.registerAPIClient('jira', GenericAPIClient);
-    this.registerAPIClient('mailchimp', GenericAPIClient);
-    this.registerAPIClient('mailchimp-enhanced', GenericAPIClient);
-    this.registerAPIClient('hubspot', GenericAPIClient);
-    this.registerAPIClient('hubspot-enhanced', GenericAPIClient);
-    
-    // Phase 1 implementations
-    this.registerAPIClient('pipedrive', GenericAPIClient);
-    this.registerAPIClient('zoho-crm', GenericAPIClient);
-    this.registerAPIClient('dynamics365', GenericAPIClient);
-    this.registerAPIClient('microsoft-teams', GenericAPIClient);
-    this.registerAPIClient('stripe', GenericAPIClient);
-    this.registerAPIClient('twilio', GenericAPIClient);
-    this.registerAPIClient('paypal', GenericAPIClient);
-    this.registerAPIClient('zoom-enhanced', GenericAPIClient);
-    this.registerAPIClient('google-chat', GenericAPIClient);
-    this.registerAPIClient('google-meet', GenericAPIClient);
-    this.registerAPIClient('ringcentral', GenericAPIClient);
-    this.registerAPIClient('webex', GenericAPIClient);
-    this.registerAPIClient('bigcommerce', GenericAPIClient);
-    this.registerAPIClient('woocommerce', GenericAPIClient);
-    this.registerAPIClient('magento', GenericAPIClient);
-    this.registerAPIClient('square', GenericAPIClient);
-    this.registerAPIClient('stripe-enhanced', GenericAPIClient);
-    
-    // Phase 2 implementations - Project Management
-    this.registerAPIClient('asana-enhanced', GenericAPIClient);
-    this.registerAPIClient('trello-enhanced', GenericAPIClient);
-    this.registerAPIClient('clickup', GenericAPIClient);
-    this.registerAPIClient('notion-enhanced', GenericAPIClient);
-    
-    // Phase 2 implementations - Productivity & Accounting
-    this.registerAPIClient('airtable-enhanced', GenericAPIClient);
-    this.registerAPIClient('quickbooks', GenericAPIClient);
-    this.registerAPIClient('xero', GenericAPIClient);
-    
-    // Phase 2 implementations - Development & Customer Feedback
-    this.registerAPIClient('github-enhanced', GenericAPIClient);
-    this.registerAPIClient('basecamp', GenericAPIClient);
-    this.registerAPIClient('surveymonkey', GenericAPIClient);
-    this.registerAPIClient('typeform', GenericAPIClient);
-    this.registerAPIClient('toggl', GenericAPIClient);
-    this.registerAPIClient('webflow', GenericAPIClient);
-    
-    // Phase 3 implementations - Analytics & Dev Tools
-    this.registerAPIClient('mixpanel', GenericAPIClient);
-    this.registerAPIClient('gitlab', GenericAPIClient);
-    this.registerAPIClient('bitbucket', GenericAPIClient);
-    this.registerAPIClient('circleci', GenericAPIClient);
-    
-    // Phase 3 implementations - HR & Support
-    this.registerAPIClient('bamboohr', GenericAPIClient);
-    this.registerAPIClient('greenhouse', GenericAPIClient);
-    this.registerAPIClient('freshdesk', GenericAPIClient);
-    this.registerAPIClient('zendesk', GenericAPIClient);
-    
-    // Phase 3 implementations - Scheduling & Documents
-    this.registerAPIClient('calendly', GenericAPIClient);
-    this.registerAPIClient('docusign', GenericAPIClient);
-    
-    // Phase 4 implementations - Productivity & Finance
-    this.registerAPIClient('monday-enhanced', GenericAPIClient);
-    this.registerAPIClient('coda', GenericAPIClient);
-    this.registerAPIClient('brex', GenericAPIClient);
-    this.registerAPIClient('expensify', GenericAPIClient);
-    this.registerAPIClient('netsuite', GenericAPIClient);
-    
-    // Phase 4 implementations - Microsoft Office & Monitoring
-    this.registerAPIClient('excel-online', GenericAPIClient);
-    this.registerAPIClient('microsoft-todo', GenericAPIClient);
-    this.registerAPIClient('onedrive', GenericAPIClient);
-    this.registerAPIClient('outlook', GenericAPIClient);
-    this.registerAPIClient('sharepoint', GenericAPIClient);
-    this.registerAPIClient('datadog', GenericAPIClient);
-    this.registerAPIClient('newrelic', GenericAPIClient);
-    this.registerAPIClient('sentry', GenericAPIClient);
-    
-    // Phase 4 implementations - Enterprise & Storage
-    this.registerAPIClient('box', GenericAPIClient);
-    this.registerAPIClient('confluence', GenericAPIClient);
-    this.registerAPIClient('jira-service-management', GenericAPIClient);
-    this.registerAPIClient('servicenow', GenericAPIClient);
-    this.registerAPIClient('workday', GenericAPIClient);
-    
-    // Phase 5 implementations - Database & Analytics
-    this.registerAPIClient('bigquery', GenericAPIClient);
-    this.registerAPIClient('snowflake', GenericAPIClient);
-    this.registerAPIClient('gmail-enhanced', GenericAPIClient);
-    this.registerAPIClient('braze', GenericAPIClient);
-    this.registerAPIClient('okta', GenericAPIClient);
-    this.registerAPIClient('intercom', GenericAPIClient);
-    this.registerAPIClient('adobesign', GenericAPIClient);
-    this.registerAPIClient('egnyte', GenericAPIClient);
-    
-    // Phase 6 implementations - Batch 1 (HR, Finance, Payments)
-    this.registerAPIClient('adp', GenericAPIClient);
-    this.registerAPIClient('adyen', GenericAPIClient);
-    this.registerAPIClient('caldotcom', GenericAPIClient);
-    this.registerAPIClient('concur', GenericAPIClient);
-    this.registerAPIClient('coupa', GenericAPIClient);
-    this.registerAPIClient('databricks', GenericAPIClient);
-    this.registerAPIClient('github', GenericAPIClient);
-    this.registerAPIClient('google-admin', GenericAPIClient);
-    
-    // Phase 6 implementations - Batch 2 (Google Workspace, Knowledge)
-    this.registerAPIClient('google-docs', GenericAPIClient);
-    this.registerAPIClient('google-slides', GenericAPIClient);
-    this.registerAPIClient('guru', GenericAPIClient);
-    this.registerAPIClient('hellosign', GenericAPIClient);
-    this.registerAPIClient('linear', GenericAPIClient);
-    this.registerAPIClient('smartsheet', GenericAPIClient);
-    this.registerAPIClient('successfactors', GenericAPIClient);
-    this.registerAPIClient('tableau', GenericAPIClient);
-    
-    // Phase 6 implementations - Batch 3 (Support, Project Management)
-    this.registerAPIClient('talkdesk', GenericAPIClient);
-    this.registerAPIClient('teamwork', GenericAPIClient);
-    this.registerAPIClient('victorops', GenericAPIClient);
-    this.registerAPIClient('workfront', GenericAPIClient);
-    
-    // Phase 6 implementations - Batch 4 (Standard versions of enhanced apps)
-    this.registerAPIClient('notion', GenericAPIClient);
-    this.registerAPIClient('jira', GenericAPIClient);
-    this.registerAPIClient('slack', GenericAPIClient);
-    this.registerAPIClient('trello', GenericAPIClient);
-    this.registerAPIClient('zoom', GenericAPIClient);
-    
-    // FINAL PHASE - Complete remaining 27 apps for 100% implementation
-    // Final Batch 1: Marketing & Email
-    this.registerAPIClient('iterable', GenericAPIClient);
-    this.registerAPIClient('klaviyo', GenericAPIClient);
-    this.registerAPIClient('mailgun', GenericAPIClient);
-    this.registerAPIClient('marketo', GenericAPIClient);
-    this.registerAPIClient('pardot', GenericAPIClient);
-    this.registerAPIClient('sendgrid', GenericAPIClient);
-    
-    // Final Batch 2: Development & Analytics
-    this.registerAPIClient('jenkins', GenericAPIClient);
-    this.registerAPIClient('looker', GenericAPIClient);
-    this.registerAPIClient('powerbi', GenericAPIClient);
-    this.registerAPIClient('slab', GenericAPIClient);
-    
-    // Final Batch 3: Forms & Surveys
-    this.registerAPIClient('jotform', GenericAPIClient);
-    this.registerAPIClient('qualtrics', GenericAPIClient);
-    
-    // Final Batch 4: Support & CRM
-    this.registerAPIClient('kustomer', GenericAPIClient);
-    this.registerAPIClient('lever', GenericAPIClient);
-    
-    // Final Batch 5: Design & Collaboration
-    this.registerAPIClient('miro', GenericAPIClient);
-    this.registerAPIClient('luma', GenericAPIClient);
-    
-    // Final Batch 6: Monitoring & Operations
-    this.registerAPIClient('newrelic', GenericAPIClient);
-    this.registerAPIClient('opsgenie', GenericAPIClient);
-    this.registerAPIClient('pagerduty', GenericAPIClient);
-    
-    // Final Batch 7: Finance & Payments
-    this.registerAPIClient('ramp', GenericAPIClient);
-    this.registerAPIClient('razorpay', GenericAPIClient);
-    this.registerAPIClient('sageintacct', GenericAPIClient);
-    
-    // Final Batch 8: ERP & E-commerce
-    this.registerAPIClient('sap-ariba', GenericAPIClient);
-    this.registerAPIClient('shopify', GenericAPIClient);
-    this.registerAPIClient('navan', GenericAPIClient);
-    this.registerAPIClient('llm', GenericAPIClient);
-    this.registerAPIClient('zoho-books', GenericAPIClient);
-    
-    // Final missing apps with unimplemented nodes
-    this.registerAPIClient('airtable', GenericAPIClient);
-    this.registerAPIClient('monday', GenericAPIClient);
-    this.registerAPIClient('monday.com', GenericAPIClient);
-    this.registerAPIClient('power-bi-enhanced', GenericAPIClient);
-    this.registerAPIClient('powerbi-enhanced', GenericAPIClient);
-    this.registerAPIClient('shopify-enhanced', GenericAPIClient);
-    
-    // DevOps Applications - Complete ecosystem
-    this.registerAPIClient('docker-hub', GenericAPIClient);
-    this.registerAPIClient('kubernetes', GenericAPIClient);
-    this.registerAPIClient('terraform-cloud', GenericAPIClient);
-    this.registerAPIClient('aws-codepipeline', GenericAPIClient);
-    this.registerAPIClient('azure-devops', GenericAPIClient);
-    this.registerAPIClient('ansible', GenericAPIClient);
-    this.registerAPIClient('prometheus', GenericAPIClient);
-    this.registerAPIClient('grafana', GenericAPIClient);
-    this.registerAPIClient('hashicorp-vault', GenericAPIClient);
-    this.registerAPIClient('helm', GenericAPIClient);
-    this.registerAPIClient('aws-cloudformation', GenericAPIClient);
-    this.registerAPIClient('argocd', GenericAPIClient);
-    this.registerAPIClient('sonarqube', GenericAPIClient);
-    this.registerAPIClient('nexus', GenericAPIClient);
-    
-    console.log('✅ Registered API clients for all implemented apps');
+    this.registerAPIClient('slack', SlackAPIClient);
+    this.registerAPIClient('notion', NotionAPIClient);
+    this.registerAPIClient('airtable', AirtableAPIClient);
+    this.registerAPIClient('twilio', TwilioAPIClient);
+    this.registerAPIClient('sendgrid', SendGridAPIClient);
+    this.registerAPIClient('mailgun', MailgunAPIClient);
   }
 
   /**
@@ -409,8 +208,9 @@ export class ConnectorRegistry {
       try {
         const def = this.loadConnectorDefinition(file); // already joins connectorsPath
         const appId = def.id;
-        const availability = this.resolveAvailability(appId, def);
-        const hasImplementation = availability === 'stable' && IMPLEMENTED_CONNECTOR_SET.has(appId);
+        const hasRegisteredClient = this.apiClients.has(appId);
+        const availability = this.resolveAvailability(appId, def, hasRegisteredClient);
+        const hasImplementation = availability === 'stable' && hasRegisteredClient;
         const normalizedDefinition: ConnectorDefinition = { ...def, availability };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
@@ -753,18 +553,18 @@ export class ConnectorRegistry {
     return { connectors, categories };
   }
 
-  private resolveAvailability(appId: string, def: ConnectorDefinition): ConnectorAvailability {
+  private resolveAvailability(appId: string, def: ConnectorDefinition, hasRegisteredClient: boolean): ConnectorAvailability {
     const declared = def.availability;
     if (declared === 'disabled') {
       return 'disabled';
     }
     if (declared === 'stable') {
-      return IMPLEMENTED_CONNECTOR_SET.has(appId) ? 'stable' : 'experimental';
+      return hasRegisteredClient ? 'stable' : 'experimental';
     }
     if (declared === 'experimental') {
       return 'experimental';
     }
-    if (IMPLEMENTED_CONNECTOR_SET.has(appId)) {
+    if (hasRegisteredClient) {
       return 'stable';
     }
     return 'experimental';
