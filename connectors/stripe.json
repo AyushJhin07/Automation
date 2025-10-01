@@ -200,7 +200,7 @@
         "required": [],
         "additionalProperties": false
       }
-    }
+    },
     {
       "id": "create_subscription",
       "name": "Create Subscription",
@@ -515,78 +515,4 @@
     "endpoint": "/account"
   }
 }
-    {
-      "id": "list_payment_intents",
-      "name": "List Payment Intents",
-      "description": "List payment intents",
-      "endpoint": "/payment_intents",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "limit": { "type": "number", "default": 10, "maximum": 100 },
-          "customer": { "type": "string" },
-          "starting_after": { "type": "string" }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "retrieve_customer",
-      "name": "Retrieve Customer",
-      "description": "Get a customer by ID",
-      "endpoint": "/customers/{customer}",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "customer": { "type": "string", "description": "Customer ID" }
-        },
-        "required": ["customer"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "list_charges",
-      "name": "List Charges",
-      "description": "List charges",
-      "endpoint": "/charges",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "limit": { "type": "number", "default": 10, "maximum": 100 },
-          "customer": { "type": "string" },
-          "starting_after": { "type": "string" }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    }
-    {
-      "id": "retrieve_charge",
-      "name": "Retrieve Charge",
-      "description": "Get a charge by ID",
-      "endpoint": "/charges/{charge}",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": { "charge": { "type": "string" } },
-        "required": ["charge"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "list_customers",
-      "name": "List Customers",
-      "description": "List customers",
-      "endpoint": "/customers",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": { "limit": { "type": "number", "default": 10, "maximum": 100 }, "starting_after": { "type": "string" } },
-        "required": [],
-        "additionalProperties": false
-      }
-    }
+
