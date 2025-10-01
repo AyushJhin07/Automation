@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Connector smoke test configuration",
+  "description": "Per-connector credentials and smoke actions used by scripts/connector-smoke.ts",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "credentials": {
+        "type": "object",
+        "description": "Connector-specific credentials passed to IntegrationManager.initializeIntegration",
+        "additionalProperties": true
+      },
+      "additionalConfig": {
+        "type": "object",
+        "description": "Optional additional configuration passed alongside credentials",
+        "additionalProperties": true
+      },
+      "connectionId": {
+        "type": "string",
+        "description": "Optional connection identifier used to scope cached clients"
+      },
+      "actions": {
+        "type": "array",
+        "items": { "$ref": "#/definitions/smokeAction" },
+        "description": "Workflow actions to execute as part of the smoke run"
+      },
+      "triggers": {
+        "type": "array",
+        "items": { "$ref": "#/definitions/smokeAction" },
+        "description": "Workflow triggers to execute as part of the smoke run"
+      },
+      "skip": {
+        "type": "boolean",
+        "description": "When true, the connector is intentionally skipped by the smoke runner"
+      },
+      "notes": {
+        "type": "string",
+        "description": "Optional context that is echoed in the smoke results"
+      }
+    }
+  },
+  "definitions": {
+    "smokeAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Catalog action or trigger identifier"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters passed to IntegrationManager.executeFunction",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "expectSuccess": {
+          "type": "boolean",
+          "description": "Set to false when a failure response is the expected outcome"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Overrides the top-level connectionId for this action"
+        }
+      }
+    }
+  }
+}

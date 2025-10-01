@@ -428,6 +428,60 @@
         "required": ["text"],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "watch_events",
+      "name": "Watch Events (Channel)",
+      "description": "Start watching events on a calendar",
+      "endpoint": "/calendars/{calendarId}/events/watch",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "calendarId": {
+            "type": "string",
+            "default": "primary",
+            "description": "Calendar ID to watch"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique channel identifier"
+          },
+          "type": {
+            "type": "string",
+            "default": "web_hook",
+            "description": "Notification delivery method"
+          },
+          "address": {
+            "type": "string",
+            "description": "Webhook callback URL"
+          }
+        },
+        "required": ["address"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "stop_channel",
+      "name": "Stop Channel",
+      "description": "Stop receiving webhook notifications",
+      "endpoint": "/channels/stop",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Channel identifier"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "Watched resource identifier"
+          }
+        },
+        "required": ["id", "resourceId"],
+        "additionalProperties": false
+      }
     }
   ],
   "triggers": [
@@ -526,19 +580,4 @@
     "endpoint": "/users/me/calendarList"
   }
 }
-    {
-      "id": "watch_events",
-      "name": "Watch Events (Channel)",
-      "description": "Start watching events on a calendar",
-      "endpoint": "/calendars/{calendarId}/events/watch",
-      "method": "POST",
-      "parameters": { "type":"object", "properties": { "calendarId": {"type":"string","default":"primary"}, "id": {"type":"string"}, "type": {"type":"string","default":"web_hook"}, "address": {"type":"string"} }, "required": ["address"], "additionalProperties": false }
-    },
-    {
-      "id": "stop_channel",
-      "name": "Stop Channel",
-      "description": "Stop receiving webhook notifications",
-      "endpoint": "/channels/stop",
-      "method": "POST",
-      "parameters": { "type":"object", "properties": { "id": {"type":"string"}, "resourceId": {"type":"string"} }, "required": ["id","resourceId"], "additionalProperties": false }
-    }
+

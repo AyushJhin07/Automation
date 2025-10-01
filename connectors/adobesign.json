@@ -5,6 +5,7 @@
   "category": "E-Signature",
   "icon": "adobe-sign",
   "color": "#FF0000",
+  "availability": "stable",
   "version": "1.0.0",
   "authentication": {
     "type": "oauth2",

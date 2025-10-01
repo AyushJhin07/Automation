@@ -16,14 +16,147 @@ assert.deepEqual(
 );
 
 const credentialFixtures: Record<string, { credentials: APICredentials; additionalConfig?: Record<string, any> }> = {
+  adyen: {
+    credentials: { apiKey: 'test_adyen_api_key', merchantAccount: 'TestMerchant' }
+  },
+  adobesign: {
+    credentials: { accessToken: 'adobe-access-token', baseUrl: 'https://api.na1.echosign.com/api/rest/v6' }
+  },
   airtable: {
-    credentials: { apiKey: 'test-api-key' }
+    credentials: { apiKey: 'test-airtable-key' }
+  },
+  bamboohr: {
+    credentials: { apiKey: 'test-bamboohr-key', companyDomain: 'example' }
+  },
+  bitbucket: {
+    credentials: { accessToken: 'bitbucket-access-token' }
+  },
+  box: {
+    credentials: { accessToken: 'box-access-token' }
+  },
+  calendly: {
+    credentials: { accessToken: 'calendly-access-token' }
+  },
+  confluence: {
+    credentials: {
+      baseUrl: 'https://example.atlassian.net',
+      accessToken: 'confluence-access-token'
+    }
+  },
+  dropbox: {
+    credentials: { accessToken: 'dropbox-access-token' }
+  },
+  docusign: {
+    credentials: {
+      accessToken: 'docusign-access-token',
+      baseUrl: 'https://na3.docusign.net/restapi',
+      accountId: '12345678'
+    }
+  },
+  dynamics365: {
+    credentials: {
+      accessToken: 'dynamics-access-token',
+      organizationUrl: 'https://contoso.crm.dynamics.com'
+    }
+  },
+  freshdesk: {
+    credentials: { apiKey: 'freshdesk-api-key', domain: 'example' }
+  },
+  github: {
+    credentials: { accessToken: 'github-personal-token' }
+  },
+  gitlab: {
+    credentials: { accessToken: 'gitlab-personal-token' }
   },
   gmail: {
     credentials: { accessToken: 'ya29.test-token' }
   },
+  hellosign: {
+    credentials: { apiKey: 'hellosign-api-key', baseUrl: 'https://api.hellosign.com/v3' }
+  },
+  'google-calendar': {
+    credentials: { accessToken: 'ya29.google-calendar-token' }
+  },
+  'google-chat': {
+    credentials: { accessToken: 'ya29.google-chat-token' }
+  },
+  'google-docs': {
+    credentials: { accessToken: 'ya29.google-docs-token' }
+  },
+  'google-drive': {
+    credentials: { accessToken: 'ya29.google-drive-token' }
+  },
+  'google-forms': {
+    credentials: { accessToken: 'ya29.google-forms-token' }
+  },
+  'google-slides': {
+    credentials: { accessToken: 'ya29.google-slides-token' }
+  },
+  hubspot: {
+    credentials: { accessToken: 'hubspot-access-token' }
+  },
+  intercom: {
+    credentials: { accessToken: 'intercom-access-token' }
+  },
+  'jira-service-management': {
+    credentials: {
+      baseUrl: 'https://example.atlassian.net',
+      accessToken: 'jira-service-access-token'
+    }
+  },
+  mailchimp: {
+    credentials: { apiKey: 'test-us1', dataCenter: 'us1' }
+  },
+  mailgun: {
+    credentials: { apiKey: 'mailgun-api-key', domain: 'example.com' }
+  },
+  'microsoft-teams': {
+    credentials: { accessToken: 'microsoft-graph-token' }
+  },
+  monday: {
+    credentials: { accessToken: 'monday-access-token' }
+  },
   notion: {
     credentials: { integrationToken: 'secret_notion_token' }
+  },
+  onedrive: {
+    credentials: { accessToken: 'microsoft-onedrive-token' }
+  },
+  outlook: {
+    credentials: { accessToken: 'microsoft-outlook-token' }
+  },
+  pagerduty: {
+    credentials: { apiKey: 'pagerduty-api-key', fromEmail: 'ops@example.com' }
+  },
+  pipedrive: {
+    credentials: { apiToken: 'pipedrive-api-token', companyDomain: 'example' }
+  },
+  quickbooks: {
+    credentials: {
+      accessToken: 'quickbooks-access-token',
+      realmId: '1234567890'
+    }
+  },
+  salesforce: {
+    credentials: {
+      accessToken: '00Dxx0000000000!AQEAQEtTestToken',
+      instanceUrl: 'https://example.my.salesforce.com'
+    }
+  },
+  sendgrid: {
+    credentials: { apiKey: 'sendgrid-api-key' }
+  },
+  servicenow: {
+    credentials: {
+      instanceUrl: 'https://example.service-now.com',
+      accessToken: 'servicenow-access-token'
+    }
+  },
+  sharepoint: {
+    credentials: {
+      accessToken: 'microsoft-sharepoint-token',
+      siteId: 'contoso.sharepoint.com,123,456'
+    }
   },
   shopify: {
     credentials: { accessToken: 'shpat_test_token' },
@@ -31,6 +164,24 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   slack: {
     credentials: { botToken: 'xoxb-test-token' }
+  },
+  smartsheet: {
+    credentials: { accessToken: 'smartsheet-access-token' }
+  },
+  stripe: {
+    credentials: { apiKey: 'sk_test_51ExampleKey' }
+  },
+  trello: {
+    credentials: { apiKey: 'trello-api-key', token: 'trello-access-token' }
+  },
+  twilio: {
+    credentials: { accountSid: 'AC0000000000000000000000000000000', authToken: 'twilio-auth-token' }
+  },
+  typeform: {
+    credentials: { accessToken: 'typeform-access-token' }
+  },
+  zendesk: {
+    credentials: { subdomain: 'example', email: 'agent@example.com', apiToken: 'zendesk-api-token' }
   },
   sheets: {
     credentials: {}

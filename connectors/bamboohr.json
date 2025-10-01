@@ -6,6 +6,7 @@
   "icon": "bamboo-hr",
   "color": "#79A546",
   "version": "1.0.0",
+  "availability": "stable",
   "authentication": {
     "type": "api_key",
     "config": {

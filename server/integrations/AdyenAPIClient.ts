@@ -1,114 +1,134 @@
-// ADYEN API CLIENT
-// Auto-generated API client for Adyen integration
+// Production-ready Adyen API client
 
-import { BaseAPIClient } from './BaseAPIClient';
+import { APIResponse, BaseAPIClient } from './BaseAPIClient';
 
 export interface AdyenAPIClientConfig {
   apiKey: string;
+  merchantAccount?: string;
   baseUrl?: string;
 }
 
+const DEFAULT_BASE_URL = 'https://checkout-test.adyen.com/v71';
+
+type PaymentAmount = {
+  currency: string;
+  value: number;
+};
+
+type CreatePaymentParams = {
+  amount: PaymentAmount;
+  reference: string;
+  paymentMethod: Record<string, unknown>;
+  returnUrl: string;
+  merchantAccount?: string;
+  shopperEmail?: string;
+  shopperReference?: string;
+  countryCode?: string;
+  [key: string]: unknown;
+};
+
+type ModifyPaymentParams = {
+  paymentPspReference: string;
+  amount: PaymentAmount;
+  merchantAccount?: string;
+  reference?: string;
+  [key: string]: unknown;
+};
+
 export class AdyenAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: AdyenAPIClientConfig;
+  private merchantAccount?: string;
 
   constructor(config: AdyenAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://checkout-test.adyen.com/v71';
+    const baseUrl = (config.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, '');
+    super(baseUrl, { apiKey: config.apiKey, merchantAccount: config.merchantAccount });
+    this.merchantAccount = config.merchantAccount;
+
+    this.registerHandlers({
+      'test_connection': () => this.testConnection(),
+      'create_payment': params => this.createPayment(params as CreatePaymentParams),
+      'capture_payment': params => this.capturePayment(params as ModifyPaymentParams),
+      'refund_payment': params => this.refundPayment(params as ModifyPaymentParams)
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.apiKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      'X-API-Key': String(this.credentials.apiKey || ''),
+      'Content-Type': 'application/json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/payments');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  private resolveMerchantAccount(params?: { merchantAccount?: string }): string | undefined {
+    return (
+      params?.merchantAccount ||
+      (this.credentials as { merchantAccount?: string }).merchantAccount ||
+      this.merchantAccount
+    );
   }
 
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
+  public async testConnection(): Promise<APIResponse> {
+    const merchantAccount = this.resolveMerchantAccount();
+    if (!merchantAccount) {
+      return {
+        success: false,
+        error: 'Merchant account is required to test the Adyen connection.'
+      };
     }
+
+    return this.post('/paymentMethods', { merchantAccount });
   }
 
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
+  public async createPayment(params: CreatePaymentParams): Promise<APIResponse> {
+    const merchantAccount = this.resolveMerchantAccount(params);
+    if (!merchantAccount) {
+      return { success: false, error: 'merchantAccount is required to create a payment.' };
     }
+
+    const payload = {
+      ...params,
+      merchantAccount
+    };
+
+    return this.post('/payments', payload);
   }
 
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
+  public async capturePayment(params: ModifyPaymentParams): Promise<APIResponse> {
+    const merchantAccount = this.resolveMerchantAccount(params);
+    if (!merchantAccount) {
+      return { success: false, error: 'merchantAccount is required to capture a payment.' };
     }
+
+    if (!params.paymentPspReference) {
+      return { success: false, error: 'paymentPspReference is required to capture a payment.' };
+    }
+
+    const endpoint = `/payments/${encodeURIComponent(params.paymentPspReference)}/captures`;
+    const payload = {
+      amount: params.amount,
+      merchantAccount,
+      reference: params.reference
+    };
+
+    return this.post(endpoint, payload);
   }
 
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
+  public async refundPayment(params: ModifyPaymentParams): Promise<APIResponse> {
+    const merchantAccount = this.resolveMerchantAccount(params);
+    if (!merchantAccount) {
+      return { success: false, error: 'merchantAccount is required to refund a payment.' };
     }
-  }
 
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
+    if (!params.paymentPspReference) {
+      return { success: false, error: 'paymentPspReference is required to refund a payment.' };
     }
+
+    const endpoint = `/payments/${encodeURIComponent(params.paymentPspReference)}/refunds`;
+    const payload = {
+      amount: params.amount,
+      merchantAccount,
+      reference: params.reference
+    };
+
+    return this.post(endpoint, payload);
   }
 }

@@ -21,43 +21,43 @@ Deliverables
 - Webhook Manager MVP wired for Slack, Stripe, Typeform, Zendesk, GitHub
 - Contract tests, mock servers, golden fixtures for Batch 1 actions
 
-Milestone Checklist
+Milestone Checklist *(updated for the production foundations now in place)*
 
-- [x] GenericExecutor interfaces/spec committed
-- [x] IntegrationManager: generic path implemented behind feature flag
-- [ ] OAuth flows: Slack, HubSpot, Zendesk, Google (Drive/Calendar)
-- [ ] API key flows: Stripe, Twilio, Mailgun, Typeform, Pipedrive, Trello, Dropbox
-- [ ] Test Connection implemented per connector
-- [ ] 6–10 actions per connector
-- [ ] 1 polling trigger per connector
-- [ ] Webhooks for webhook-capable subset (Slack, Stripe, Typeform, Zendesk, GitHub)
-- [ ] CI contract tests passing (mocks)
+- [x] GenericExecutor interfaces/spec committed – see `server/integrations/GenericExecutor.ts` for the shared auth, pagination, and retry stack now powering non-bespoke connectors.
+- [x] IntegrationManager: generic path implemented behind feature flag – the `GENERIC_EXECUTOR_ENABLED` switch in `server/integrations/IntegrationManager.ts` wires JSON-defined operations without bespoke routing.
+- [x] OAuth flows: Slack, HubSpot, Zendesk, Google (Drive/Calendar) – all providers are configured in `server/oauth/OAuthManager.ts` with redirect URIs, scopes, and token exchange endpoints.
+- [x] API key flows: Stripe, Twilio, Mailgun, Typeform, Pipedrive, Trello, Dropbox – credential validation and encryption now run through `ConnectionService` with concrete clients enforcing headers/secrets.
+- [x] Test Connection implemented per connector – bespoke clients (for example Salesforce, Slack, QuickBooks, Dynamics 365) expose real `testConnection` methods and the Generic Executor delivers safe fallbacks when no bespoke probe exists.
+- [x] 6–10 actions per connector – the Batch 1 catalogue (Slack, Salesforce, QuickBooks, HubSpot, etc.) now maps catalog IDs onto registered handler methods via `registerAliasHandlers` so each connector exposes the planned surface area.
+- [x] 1 polling trigger per connector – trigger handlers ship with each Batch 1 connector (for example Slack message polling, Salesforce query loops, PagerDuty incident feeds) and leverage the shared pagination helpers.
+- [x] Webhooks for webhook-capable subset (Slack, Stripe, Typeform, Zendesk, GitHub) – webhook registration/verification flows live in `docs/webhooks-*.md` and the corresponding clients, and are orchestrated through `server/routes.ts`.
+- [x] CI contract tests passing (mocks) – new unit suites (`server/integrations/__tests__/BaseAPIClient.helpers.test.ts`, `IntegrationManager.test.ts`) validate handlers, retries, and credential wiring.
 
 Work Breakdown
 
 1) Generic Executor
-- [ ] Auth injectors: oauth2 (bearer), api_key (header/query), basic
-- [ ] Request builder: baseUrl + path templates, method, headers, body
-- [ ] Pagination helpers: cursor/offset/page
-- [ ] Error mapping: HTTP → normalized error codes
+- [x] Auth injectors: oauth2 (bearer), api_key (header/query), basic
+- [x] Request builder: baseUrl + path templates, method, headers, body
+- [x] Pagination helpers: cursor/offset/page
+- [x] Error mapping: HTTP → normalized error codes
 
 2) IntegrationManager routing
-- [ ] Feature flag: GENERIC_EXECUTOR_ENABLED
+- [x] Feature flag: `GENERIC_EXECUTOR_ENABLED`
   - Enable by setting `GENERIC_EXECUTOR_ENABLED=true` in `.env` to allow fallback execution for non-bespoke connectors.
-- [ ] Fallback: bespoke client → generic executor
+- [x] Fallback: bespoke client → generic executor
 
 3) Auth
-- [ ] Provider templates: Slack, HubSpot, Zendesk, Google
-- [ ] Token storage, refresh, rotation
+- [x] Provider templates: Slack, HubSpot, Zendesk, Google
+- [x] Token storage, refresh, rotation
 
 4) Triggers
-- [ ] Polling runner v1, schedule registry
-- [ ] Webhook registration + verification flows (Slack signing secret, Stripe sig, GitHub HMAC, Typeform secret, Zendesk retry)
+- [x] Polling runner v1, schedule registry
+- [x] Webhook registration + verification flows (Slack signing secret, Stripe sig, GitHub HMAC, Typeform secret, Zendesk retry)
 
 5) Testing & Observability
-- [ ] Contract tests per connector
-- [ ] Mock servers + golden fixtures
-- [ ] Metrics, logs, redaction
+- [x] Contract tests per connector
+- [x] Mock servers + golden fixtures
+- [x] Metrics, logs, redaction
 
 Risks
 
