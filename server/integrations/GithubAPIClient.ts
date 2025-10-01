@@ -1,113 +1,114 @@
-// GITHUB API CLIENT
-// Auto-generated API client for GitHub integration
+import { BaseAPIClient, APICredentials, APIResponse } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface GithubAPIClientConfig {
+export interface GithubCredentials extends APICredentials {
   accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
 }
 
-export class GithubAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: GithubAPIClientConfig;
+interface RepositoryParams {
+  owner: string;
+  repo: string;
+}
 
-  constructor(config: GithubAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.github.com';
+interface IssueParams extends RepositoryParams {
+  issue_number: number;
+}
+
+interface CommentParams extends IssueParams {
+  body: string;
+}
+
+/**
+ * Minimal-yet-complete GitHub REST client that satisfies the actions and triggers defined in
+ * connectors/github.json. The implementation sticks to the official v3 REST endpoints so we can
+ * authenticate with personal or installation access tokens.
+ */
+export class GithubAPIClient extends BaseAPIClient {
+  constructor(credentials: GithubCredentials) {
+    if (!credentials?.accessToken) {
+      throw new Error('GitHub integration requires an access token');
+    }
+
+    super('https://api.github.com', credentials);
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${this.credentials.accessToken}`,
+      Accept: 'application/vnd.github+json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/user');
   }
 
-
-  /**
-   * Create new GitHub issue
-   */
-  async createIssue({ owner: string, repo: string, title: string, body?: string, labels?: any[], assignees?: any[] }: { owner: string, repo: string, title: string, body?: string, labels?: any[], assignees?: any[] }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_issue', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Issue failed: ${error}`);
-    }
+  public async listRepositories(params: { visibility?: 'all' | 'public' | 'private'; affiliation?: string; per_page?: number }): Promise<APIResponse<any>> {
+    const searchParams = new URLSearchParams();
+    if (params.visibility) searchParams.set('visibility', params.visibility);
+    if (params.affiliation) searchParams.set('affiliation', params.affiliation);
+    if (params.per_page) searchParams.set('per_page', String(params.per_page));
+    const qs = searchParams.toString();
+    return this.get(`/user/repos${qs ? `?${qs}` : ''}`);
   }
 
-  /**
-   * Create new pull request
-   */
-  async createPullRequest({ owner: string, repo: string, title: string, head: string, base: string, body?: string }: { owner: string, repo: string, title: string, head: string, base: string, body?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_pull_request', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Pull Request failed: ${error}`);
-    }
+  public async listCommits(params: RepositoryParams & { sha?: string; since?: string; until?: string; per_page?: number }): Promise<APIResponse<any>> {
+    const searchParams = new URLSearchParams();
+    if (params.sha) searchParams.set('sha', params.sha);
+    if (params.since) searchParams.set('since', params.since);
+    if (params.until) searchParams.set('until', params.until);
+    if (params.per_page) searchParams.set('per_page', String(params.per_page));
+    const qs = searchParams.toString();
+    return this.get(`/repos/${params.owner}/${params.repo}/commits${qs ? `?${qs}` : ''}`);
   }
 
-  /**
-   * Add comment to issue or PR
-   */
-  async addComment({ owner: string, repo: string, issueNumber: number, body: string }: { owner: string, repo: string, issueNumber: number, body: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/add_comment', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Add Comment failed: ${error}`);
-    }
+  public async createIssue(params: RepositoryParams & { title: string; body?: string; assignees?: string[]; labels?: string[] }): Promise<APIResponse<any>> {
+    const payload = this.clean({
+      title: params.title,
+      body: params.body,
+      assignees: params.assignees,
+      labels: params.labels
+    });
+    return this.post(`/repos/${params.owner}/${params.repo}/issues`, payload);
   }
 
-
-  /**
-   * Poll for Trigger when issue is opened
-   */
-  async pollIssueOpened({ owner: string, repo: string }: { owner: string, repo: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/issue_opened', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Issue Opened failed:`, error);
-      return [];
-    }
+  public async updateIssue(params: IssueParams & { title?: string; body?: string; state?: 'open' | 'closed'; assignees?: string[]; labels?: string[] }): Promise<APIResponse<any>> {
+    const payload = this.clean({
+      title: params.title,
+      body: params.body,
+      state: params.state,
+      assignees: params.assignees,
+      labels: params.labels
+    });
+    return this.patch(`/repos/${params.owner}/${params.repo}/issues/${params.issue_number}`, payload);
   }
 
-  /**
-   * Poll for Trigger when PR is opened
-   */
-  async pollPullRequestOpened({ owner: string, repo: string }: { owner: string, repo: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/pull_request_opened', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Pull Request Opened failed:`, error);
-      return [];
+  public async createComment(params: CommentParams): Promise<APIResponse<any>> {
+    const payload = { body: params.body };
+    return this.post(`/repos/${params.owner}/${params.repo}/issues/${params.issue_number}/comments`, payload);
+  }
+
+  public async issueOpened(params: RepositoryParams & { since?: string }): Promise<APIResponse<any>> {
+    const searchParams = new URLSearchParams({
+      state: 'open'
+    });
+    if (params.since) {
+      searchParams.set('since', params.since);
     }
+    const qs = searchParams.toString();
+    return this.get(`/repos/${params.owner}/${params.repo}/issues${qs ? `?${qs}` : ''}`);
+  }
+
+  public async pullRequestOpened(params: RepositoryParams & { state?: 'open' | 'all' | 'closed'; per_page?: number }): Promise<APIResponse<any>> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('state', params.state ?? 'open');
+    if (params.per_page) searchParams.set('per_page', String(params.per_page));
+    const qs = searchParams.toString();
+    return this.get(`/repos/${params.owner}/${params.repo}/pulls${qs ? `?${qs}` : ''}`);
+  }
+
+  private clean<T extends Record<string, any>>(value: T): T {
+    return Object.fromEntries(
+      Object.entries(value).filter(([, v]) => v !== undefined && v !== null)
+    ) as T;
   }
 }

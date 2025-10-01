@@ -80,7 +80,7 @@ function deriveStatus(
   if (IMPLEMENTED_CONNECTOR_SET.has(definition.id)) {
     if (usesManifestGeneric) {
       status = 'wired';
-    } else if (hasRealClient && hasCompilerOps) {
+    } else if (hasRealClient) {
       status = 'wired';
     } else {
       if (!hasRealClient) {

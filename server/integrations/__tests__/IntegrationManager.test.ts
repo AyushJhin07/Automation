@@ -38,14 +38,38 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   time: {
     credentials: {}
   },
+  dropbox: {
+    credentials: { accessToken: 'dropbox-test-token' }
+  },
+  github: {
+    credentials: { accessToken: 'ghp_test_token' }
+  },
+  'google-calendar': {
+    credentials: { accessToken: 'ya29.google-calendar-token' }
+  },
+  'google-drive': {
+    credentials: { accessToken: 'ya29.google-drive-token' }
+  },
+  hubspot: {
+    credentials: { accessToken: 'hubspot-test-token' }
+  },
+  stripe: {
+    credentials: { apiKey: 'sk_test_123' }
+  },
+  trello: {
+    credentials: { apiKey: 'trello-key', apiToken: 'trello-token' }
+  },
+  zendesk: {
+    credentials: { subdomain: 'example', email: 'agent@example.com', apiToken: 'secret' }
+  },
   'asana-enhanced': {
     credentials: { accessToken: 'asana-test-token', workspaceGid: '12345' }
   },
   mailchimp: {
-    credentials: { apiKey: 'test-us1', dc: 'us1' }
+    credentials: { apiKey: 'test-us1', dataCenter: 'us1' }
   },
   twilio: {
-    credentials: { apiKey: 'dGVzdDp0b2tlbg==' }
+    credentials: { accountSid: 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', authToken: 'auth-token' }
   }
 };
 

@@ -1,125 +1,166 @@
-// MAILCHIMP API CLIENT
-// Auto-generated API client for Mailchimp integration
+import { BaseAPIClient, APICredentials, APIResponse } from './BaseAPIClient';
+import { createHash } from 'crypto';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface MailchimpAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
+export interface MailchimpCredentials extends APICredentials {
+  apiKey: string;
+  dataCenter?: string;
 }
 
-export class MailchimpAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: MailchimpAPIClientConfig;
+interface ListIdentifier {
+  listId: string;
+}
 
-  constructor(config: MailchimpAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.mailchimp.com';
+interface MemberIdentifier extends ListIdentifier {
+  email: string;
+}
+
+interface CampaignIdentifier {
+  campaignId: string;
+}
+
+/**
+ * Mailchimp marketing API client supporting list, member, and campaign management.
+ */
+export class MailchimpAPIClient extends BaseAPIClient {
+  private readonly authHeader: string;
+
+  constructor(credentials: MailchimpCredentials) {
+    const dataCenter = credentials.dataCenter ?? extractDataCenter(credentials.apiKey);
+    if (!credentials.apiKey || !dataCenter) {
+      throw new Error('Mailchimp integration requires an API key with a data center suffix (e.g. key-us1)');
+    }
+
+    const baseURL = `https://${dataCenter}.api.mailchimp.com/3.0`;
+    super(baseURL, credentials);
+    this.authHeader = `Basic ${Buffer.from(`anystring:${credentials.apiKey}`).toString('base64')}`;
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: this.authHeader
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/');
   }
 
-
-  /**
-   * Add subscriber to mailing list
-   */
-  async addSubscriber({ listId: string, email: string, firstName?: string, lastName?: string, status?: string, tags?: any[] }: { listId: string, email: string, firstName?: string, lastName?: string, status?: string, tags?: any[] }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/add_subscriber', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Add Subscriber failed: ${error}`);
-    }
+  public async getLists(params: { count?: number; offset?: number } = {}): Promise<APIResponse<any>> {
+    return this.get(`/lists${this.toQuery(params)}`);
   }
 
-  /**
-   * Create email campaign
-   */
-  async createCampaign({ type: string, listId: string, subject: string, fromName: string, fromEmail: string, content: string }: { type: string, listId: string, subject: string, fromName: string, fromEmail: string, content: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_campaign', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Campaign failed: ${error}`);
-    }
+  public async getList(params: ListIdentifier): Promise<APIResponse<any>> {
+    return this.get(`/lists/${params.listId}`);
   }
 
-  /**
-   * Send email campaign
-   */
-  async sendCampaign({ campaignId: string }: { campaignId: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/send_campaign', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Send Campaign failed: ${error}`);
-    }
+  public async createList(params: Record<string, any>): Promise<APIResponse<any>> {
+    return this.post('/lists', params);
   }
 
-  /**
-   * Update subscriber information
-   */
-  async updateSubscriber({ listId: string, email: string, firstName?: string, lastName?: string, status?: string }: { listId: string, email: string, firstName?: string, lastName?: string, status?: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_subscriber', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Subscriber failed: ${error}`);
-    }
+  public async addMember(params: MemberIdentifier & { status?: string; merge_fields?: Record<string, any>; tags?: string[] }): Promise<APIResponse<any>> {
+    const payload = {
+      email_address: params.email,
+      status: params.status ?? 'subscribed',
+      merge_fields: params.merge_fields,
+      tags: params.tags
+    };
+    return this.post(`/lists/${params.listId}/members`, payload);
   }
 
-
-  /**
-   * Poll for Trigger when new subscriber is added
-   */
-  async pollSubscriberAdded({ listId?: string }: { listId?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/subscriber_added', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Subscriber Added failed:`, error);
-      return [];
-    }
+  public async getMember(params: MemberIdentifier): Promise<APIResponse<any>> {
+    return this.get(`/lists/${params.listId}/members/${memberHash(params.email)}`);
   }
 
-  /**
-   * Poll for Trigger when campaign is sent
-   */
-  async pollCampaignSent({ campaignType?: string }: { campaignType?: string }): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/campaign_sent', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Campaign Sent failed:`, error);
-      return [];
-    }
+  public async updateMember(params: MemberIdentifier & { status?: string; merge_fields?: Record<string, any>; tags?: string[] }): Promise<APIResponse<any>> {
+    const payload = this.clean({
+      status: params.status,
+      merge_fields: params.merge_fields,
+      tags: params.tags
+    });
+    return this.patch(`/lists/${params.listId}/members/${memberHash(params.email)}`, payload);
   }
+
+  public async deleteMember(params: MemberIdentifier): Promise<APIResponse<any>> {
+    return this.delete(`/lists/${params.listId}/members/${memberHash(params.email)}`);
+  }
+
+  public async getMembers(params: ListIdentifier & { count?: number; offset?: number; status?: string }): Promise<APIResponse<any>> {
+    return this.get(`/lists/${params.listId}/members${this.toQuery({ count: params.count, offset: params.offset, status: params.status })}`);
+  }
+
+  public async createCampaign(params: Record<string, any>): Promise<APIResponse<any>> {
+    return this.post('/campaigns', params);
+  }
+
+  public async getCampaigns(params: { count?: number; offset?: number; status?: string } = {}): Promise<APIResponse<any>> {
+    return this.get(`/campaigns${this.toQuery(params)}`);
+  }
+
+  public async sendCampaign(params: CampaignIdentifier): Promise<APIResponse<any>> {
+    return this.post(`/campaigns/${params.campaignId}/actions/send`, {});
+  }
+
+  public async getCampaignContent(params: CampaignIdentifier): Promise<APIResponse<any>> {
+    return this.get(`/campaigns/${params.campaignId}/content`);
+  }
+
+  public async setCampaignContent(params: CampaignIdentifier & { template?: Record<string, any>; html?: string; plain_text?: string }): Promise<APIResponse<any>> {
+    const payload = this.clean({
+      template: params.template,
+      html: params.html,
+      plain_text: params.plain_text
+    });
+    return this.put(`/campaigns/${params.campaignId}/content`, payload);
+  }
+
+  public async subscriberAdded(params: ListIdentifier & { count?: number; offset?: number }): Promise<APIResponse<any>> {
+    return this.getMembers({ ...params, status: 'subscribed' });
+  }
+
+  public async subscriberUpdated(params: ListIdentifier & { count?: number; offset?: number }): Promise<APIResponse<any>> {
+    return this.getMembers({ ...params });
+  }
+
+  public async subscriberUnsubscribed(params: ListIdentifier & { count?: number; offset?: number }): Promise<APIResponse<any>> {
+    return this.getMembers({ ...params, status: 'unsubscribed' });
+  }
+
+  public async campaignSent(params: { count?: number; offset?: number }): Promise<APIResponse<any>> {
+    return this.getCampaigns({ ...params, status: 'sent' });
+  }
+
+  private async put(endpoint: string, data: any): Promise<APIResponse<any>> {
+    return this.makeRequest('PUT', endpoint, data);
+  }
+
+  private clean<T extends Record<string, any>>(value: T): T {
+    return Object.fromEntries(
+      Object.entries(value).filter(([, v]) => v !== undefined && v !== null)
+    ) as T;
+  }
+
+  private toQuery(params: Record<string, any>): string {
+    const usp = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        usp.set(key, String(value));
+      }
+    });
+    const qs = usp.toString();
+    return qs ? `?${qs}` : '';
+  }
+}
+
+function extractDataCenter(apiKey: string | undefined): string | undefined {
+  if (!apiKey) return undefined;
+  const parts = apiKey.split('-');
+  return parts.length === 2 ? parts[1] : undefined;
+}
+
+function memberHash(email: string): string {
+  return createHashValue(email.trim().toLowerCase());
+}
+
+function createHashValue(value: string): string {
+  return createHash('md5').update(value).digest('hex');
 }
