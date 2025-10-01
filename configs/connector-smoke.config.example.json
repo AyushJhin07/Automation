@@ -1,0 +1,53 @@
+{
+  "$schema": "../schemas/connector-smoke-config.schema.json",
+  "salesforce": {
+    "credentials": {
+      "accessToken": "YOUR_ACCESS_TOKEN",
+      "instanceUrl": "https://example.my.salesforce.com"
+    },
+    "additionalConfig": {
+      "apiVersion": "v60.0"
+    },
+    "actions": [
+      {
+        "id": "query_records",
+        "parameters": {
+          "soql": "SELECT Id FROM Account LIMIT 1"
+        }
+      }
+    ],
+    "notes": "Replace the token and instance URL with staging credentials before running the smoke suite."
+  },
+  "quickbooks": {
+    "credentials": {
+      "accessToken": "YOUR_QBO_TOKEN",
+      "realmId": "1234567890",
+      "refreshToken": "YOUR_REFRESH_TOKEN",
+      "clientId": "YOUR_CLIENT_ID",
+      "clientSecret": "YOUR_CLIENT_SECRET"
+    },
+    "actions": [
+      {
+        "id": "get_company_info",
+        "parameters": {}
+      }
+    ]
+  },
+  "slack": {
+    "credentials": {
+      "botToken": "xoxb-your-token"
+    },
+    "actions": [
+      {
+        "id": "send_message",
+        "parameters": {
+          "channel": "#automation-smoke",
+          "text": "Connector smoke test"
+        },
+        "expectSuccess": false
+      }
+    ],
+    "skip": true,
+    "notes": "Remove skip and supply a test workspace channel to exercise the Slack action."
+  }
+}

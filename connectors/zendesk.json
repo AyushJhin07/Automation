@@ -34,7 +34,7 @@
       "endpoint": "/tickets/{id}/comments.json",
       "method": "GET",
       "parameters": { "type":"object", "properties": { "id": {"type":"number"} }, "required": ["id"], "additionalProperties": false }
-    }
+    },
     {
       "id": "create_ticket",
       "name": "Create Ticket",
@@ -308,7 +308,7 @@
         "required": ["name","endpoint"],
         "additionalProperties": false
       }
-    }
+    },
     {
       "id": "search_tickets",
       "name": "Search Tickets",

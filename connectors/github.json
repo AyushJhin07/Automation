@@ -109,7 +109,7 @@
         "required": ["owner","repo","issue_number","labels"],
         "additionalProperties": false
       }
-    }
+    },
     {
       "id": "update_issue",
       "name": "Update Issue",
@@ -733,53 +733,4 @@
     "endpoint": "/user"
   }
 }
-    {
-      "id": "get_repository",
-      "name": "Get Repository",
-      "description": "Get repository details",
-      "endpoint": "/repos/{owner}/{repo}",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "owner": { "type": "string" },
-          "repo": { "type": "string" }
-        },
-        "required": ["owner", "repo"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_comment",
-      "name": "Create Issue Comment",
-      "description": "Create a comment on an issue",
-      "endpoint": "/repos/{owner}/{repo}/issues/{issue_number}/comments",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "owner": { "type": "string" },
-          "repo": { "type": "string" },
-          "issue_number": { "type": "number" },
-          "body": { "type": "string" }
-        },
-        "required": ["owner", "repo", "issue_number", "body"],
-        "additionalProperties": false
-      }
-    }
-    {
-      "id": "list_commits",
-      "name": "List Commits",
-      "description": "List commits for a repository",
-      "endpoint": "/repos/{owner}/{repo}/commits",
-      "method": "GET",
-      "parameters": { "type":"object", "properties": { "owner": {"type":"string"}, "repo": {"type":"string"}, "sha": {"type":"string"}, "per_page": {"type":"number", "default":30} }, "required": ["owner","repo"], "additionalProperties": false }
-    },
-    {
-      "id": "list_branches",
-      "name": "List Branches",
-      "description": "List branches for a repository",
-      "endpoint": "/repos/{owner}/{repo}/branches",
-      "method": "GET",
-      "parameters": { "type":"object", "properties": { "owner": {"type":"string"}, "repo": {"type":"string"}, "per_page": {"type":"number", "default":30} }, "required": ["owner","repo"], "additionalProperties": false }
-    }
+

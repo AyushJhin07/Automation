@@ -55,7 +55,7 @@
       "endpoint": "/crm/v3/objects/deals/search",
       "method": "POST",
       "parameters": { "type":"object", "properties": { "query": {"type":"string"}, "filters": {"type":"object"}, "limit": {"type":"number","default":10} }, "required": [], "additionalProperties": false }
-    }
+    },
     {
       "id": "list_deals",
       "name": "List Deals",
@@ -88,7 +88,7 @@
         "required": ["dealId", "properties"],
         "additionalProperties": false
       }
-    }
+    },
     {
       "id": "create_contact",
       "name": "Create Contact",

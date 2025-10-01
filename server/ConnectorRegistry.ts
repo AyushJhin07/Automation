@@ -46,6 +46,12 @@ import { BitbucketAPIClient } from './integrations/BitbucketAPIClient';
 import { ConfluenceAPIClient } from './integrations/ConfluenceAPIClient';
 import { JiraServiceManagementAPIClient } from './integrations/JiraServiceManagementAPIClient';
 import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
+import { QuickbooksAPIClient } from './integrations/QuickbooksAPIClient';
+import { AdyenAPIClient } from './integrations/AdyenAPIClient';
+import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
+import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
+import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
+import { Dynamics365APIClient } from './integrations/Dynamics365APIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
@@ -236,6 +242,10 @@ export class ConnectorRegistry {
     this.registerAPIClient('zendesk', ZendeskAPIClient);
     this.registerAPIClient('pipedrive', PipedriveAPIClient);
     this.registerAPIClient('twilio', TwilioAPIClient);
+    this.registerAPIClient('salesforce', SalesforceAPIClient);
+    this.registerAPIClient('dynamics365', Dynamics365APIClient);
+    this.registerAPIClient('quickbooks', QuickbooksAPIClient);
+    this.registerAPIClient('adyen', AdyenAPIClient);
     this.registerAPIClient('box', BoxAPIClient);
     this.registerAPIClient('onedrive', OnedriveAPIClient);
     this.registerAPIClient('sharepoint', SharepointAPIClient);
@@ -252,10 +262,12 @@ export class ConnectorRegistry {
     this.registerAPIClient('monday', MondayAPIClient);
     this.registerAPIClient('servicenow', ServicenowAPIClient);
     this.registerAPIClient('freshdesk', FreshdeskAPIClient);
+    this.registerAPIClient('bamboohr', BamboohrAPIClient);
     this.registerAPIClient('gitlab', GitlabAPIClient);
     this.registerAPIClient('bitbucket', BitbucketAPIClient);
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
+    this.registerAPIClient('pagerduty', PagerdutyAPIClient);
   }
 
   /**
