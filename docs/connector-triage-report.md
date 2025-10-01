@@ -3,11 +3,14 @@
 This report captures the latest `npm run audit:connectors` findings after
 extending the audit script to inspect handler coverage and `testConnection`
 implementations. Use it alongside `docs/connector-expansion-roadmap.md` to track
-phase completion work.
+phase completion work. For a quick refresh, `npm run report:connector-health`
+invokes the same audit without needing to remember the longer command name.
 
 ## Inventory snapshot
 - 47 connectors are currently marked stable, while 102 remain experimental.
 - 47 connectors are fully wired with registered API clients.
+- Latest audit log excerpt: `Connector health: 49/149 apps have real compiler-backed ops (51/1855 ops).` The extra two
+  implementations are the local `sheets` and `time` helpers that ship with the workflow engine.
 - Aggregate issue counts across experimental connectors:
   - Missing API client file: 46
   - Not registered in `ConnectorRegistry.initializeAPIClients`: 56

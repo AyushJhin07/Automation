@@ -20,14 +20,15 @@
     "trigger-admin": "tsx scripts/trigger-admin.ts",
     "inventory:connectors": "node scripts/inventory-connectors.js",
     "audit:connectors": "tsx scripts/connector-audit.ts",
+    "report:connector-phases": "tsx scripts/connector-phase-report.ts",
+    "smoke:connectors": "tsx scripts/connector-smoke.ts",
     "propose:batch1": "node scripts/propose-batch1.js",
     "derive:webhooks": "node scripts/derive-webhooks.js",
     "generate:risks": "node scripts/generate-risk-skeleton.js",
     "init:roadmap": "node scripts/init-roadmap.js",
     "audit:bronze": "node scripts/audit-bronze.js",
     "smoke:e2e": "node scripts/e2e-smoke.js",
-    "smoke:connectors": "tsx scripts/connector-smoke.ts",
-    "report:connector-phases": "tsx scripts/connector-phase-report.ts"
+    "report:connector-health": "tsx scripts/connector-audit.ts"
   },
   "dependencies": {
     "@google/clasp": "^3.0.6-alpha",

@@ -15,12 +15,12 @@ assert.deepEqual(
   'IntegrationManager supported apps should match the implemented connector list'
 );
 
-const credentialFixtures: Record<string, { credentials: APICredentials; additionalConfig?: Record<string, any> }> = {
-  adyen: {
-    credentials: { apiKey: 'test_adyen_api_key', merchantAccount: 'TestMerchant' }
-  },
+const credentialFixtures = {
   adobesign: {
     credentials: { accessToken: 'adobe-access-token', baseUrl: 'https://api.na1.echosign.com/api/rest/v6' }
+  },
+  adyen: {
+    credentials: { apiKey: 'test_adyen_api_key', merchantAccount: 'TestMerchant' }
   },
   airtable: {
     credentials: { apiKey: 'test-airtable-key' }
@@ -43,15 +43,15 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
       accessToken: 'confluence-access-token'
     }
   },
-  dropbox: {
-    credentials: { accessToken: 'dropbox-access-token' }
-  },
   docusign: {
     credentials: {
       accessToken: 'docusign-access-token',
       baseUrl: 'https://na3.docusign.net/restapi',
       accountId: '12345678'
     }
+  },
+  dropbox: {
+    credentials: { accessToken: 'dropbox-access-token' }
   },
   dynamics365: {
     credentials: {
@@ -71,9 +71,6 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   gmail: {
     credentials: { accessToken: 'ya29.test-token' }
   },
-  hellosign: {
-    credentials: { apiKey: 'hellosign-api-key', baseUrl: 'https://api.hellosign.com/v3' }
-  },
   'google-calendar': {
     credentials: { accessToken: 'ya29.google-calendar-token' }
   },
@@ -91,6 +88,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   'google-slides': {
     credentials: { accessToken: 'ya29.google-slides-token' }
+  },
+  hellosign: {
+    credentials: { apiKey: 'hellosign-api-key', baseUrl: 'https://api.hellosign.com/v3' }
   },
   hubspot: {
     credentials: { accessToken: 'hubspot-access-token' }
@@ -189,7 +189,7 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   time: {
     credentials: {}
   }
-};
+} satisfies Record<typeof IMPLEMENTED_CONNECTOR_IDS[number], { credentials: APICredentials; additionalConfig?: Record<string, any> }>;
 
 const createClient = (manager as any).createAPIClient.bind(manager) as (
   appKey: string,

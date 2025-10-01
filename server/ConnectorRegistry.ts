@@ -24,7 +24,6 @@ import { TypeformAPIClient } from './integrations/TypeformAPIClient';
 import { AsanaAPIClient } from './integrations/AsanaAPIClient';
 import { SendgridAPIClient } from './integrations/SendgridAPIClient';
 import { MailgunAPIClient } from './integrations/MailgunAPIClient';
-import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
 import { ZendeskAPIClient } from './integrations/ZendeskAPIClient';
 import { PipedriveAPIClient } from './integrations/PipedriveAPIClient';
 import { TwilioAPIClient } from './integrations/TwilioAPIClient';
@@ -55,7 +54,6 @@ import { AdobesignAPIClient } from './integrations/AdobesignAPIClient';
 import { HellosignAPIClient } from './integrations/HellosignAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
 import { Dynamics365APIClient } from './integrations/Dynamics365APIClient';
-import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {

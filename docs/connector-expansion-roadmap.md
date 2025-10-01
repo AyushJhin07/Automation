@@ -4,6 +4,28 @@ This document converts the multi-wave rollout strategy into actionable work stre
 so the team can begin executing every phase in parallel. Use it as the canonical
 checklist that ties implementation work, QA, and rollout together.
 
+## Current stable connector inventory
+
+The latest `npm run audit:connectors` execution (captured while preparing this
+update) shows **47 third-party connectors** wired end-to-end through the
+`ConnectorRegistry`, plus the two internal helpers (`sheets` and `time`) that the
+workflow engine exposes locally. These production-ready apps are:
+
+```
+adobesign, adyen, airtable, bamboohr, bitbucket, box, calendly, confluence,
+docusign, dropbox, dynamics365, freshdesk, github, gitlab, gmail,
+google-calendar, google-chat, google-docs, google-drive, google-forms,
+google-slides, hellosign, hubspot, intercom, jira-service-management,
+mailchimp, mailgun, microsoft-teams, monday, notion, onedrive, outlook,
+pagerduty, pipedrive, quickbooks, salesforce, sendgrid, servicenow, sharepoint,
+shopify, slack, smartsheet, stripe, trello, twilio, typeform, zendesk
+```
+
+The audit script also reports aggregate compiler coverage (`Connector health:
+49/149 apps have real compiler-backed ops`) which accounts for the two local
+helpers. Track additional connectors against the wave checklists below until
+their availability flips to `stable` in the audit output.
+
 ## Phase 0 – Platform Readiness
 
 ### Objectives
@@ -116,7 +138,8 @@ each wave to the concrete exit criteria we need to hit before calling the phase
 
 ### Weekly coordination cadence
 
-1. **Monday** – Audit run (`npm run audit:connectors`) shared in the team channel
+1. **Monday** – Audit run (`npm run audit:connectors` or the alias
+   `npm run report:connector-health`) shared in the team channel
    with deltas from the previous week. Highlight connectors that crossed the
    finish line and any new blockers.
 2. **Wednesday** – Joint engineering/QA review of the smoke runner output to
