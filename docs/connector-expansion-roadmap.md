@@ -58,6 +58,10 @@ Execution teams can run these waves concurrently. Each wave should track
 progress in the audit report until all connectors in the wave exit the
 “requiring attention” list.
 
+Use `npm run report:connector-phases` for a quick status rollup that matches the
+checklist below and highlights which connectors in each wave still need to be
+promoted from experimental to stable.
+
 ### Wave A – CRM & Revenue (5 connectors)
 - [x] **Salesforce** – Registered as a stable connector with handler aliases mapping catalog IDs to concrete methods; remaining work focuses on smoke validation.
 - [x] **QuickBooks** – Stable connector already registered in production; continue regression coverage.
@@ -74,9 +78,9 @@ progress in the audit report until all connectors in the wave exit the
 - [ ] **Lever** – Implement REST endpoints, add handlers, and register.
 
 ### Wave C – E-signature & Document Automation (3 connectors)
-- [ ] **DocuSign** – Implement OAuth flows and agreement lifecycle endpoints.
-- [ ] **Adobe Acrobat Sign** – Implement OAuth and agreement lifecycle endpoints.
-- [ ] **HelloSign** – Implement authentication, signature requests, and registration.
+- [x] **DocuSign** – OAuth, envelope lifecycle handlers, and downloads are wired; keep smoke coverage current.
+- [x] **Adobe Acrobat Sign** – Agreement lifecycle handlers and downloads are implemented; keep smoke coverage current.
+- [x] **HelloSign** – Signature request handlers, account lookups, and downloads are live; keep smoke coverage current.
 
 ### Wave D – Incident & On-call Operations (2 connectors)
 - [x] **PagerDuty** – Stable connector with incident lifecycle and webhook support; continue regression coverage.
@@ -106,7 +110,7 @@ each wave to the concrete exit criteria we need to hit before calling the phase
 | --- | --- | --- | --- |
 | Wave A – CRM & Revenue | Connector squad A | Dynamics 365, Xero, and NetSuite clients compiled with real REST/SOAP calls, handlers registered, and smoke-tested using staged credentials. | Release notes drafted for each connector, customer setup guides reviewed, and smoke run evidence attached to rollout issue. |
 | Wave B – HR & People Ops | Connector squad B | Workday, ADP, SuccessFactors, Greenhouse, and Lever clients implemented with pagination + retry helpers; `testConnection` succeeds and at least one action executes in staging. | QA records video walkthrough of core HR flows; docs updated with credential scopes and callback URLs. |
-| Wave C – E-signature | Connector squad C | DocuSign, Acrobat Sign, and HelloSign JWT/OAuth flows wired with envelope/agreement handlers registered and covered by unit tests. | QA validates signature lifecycle in smoke env; docs include webhook verification instructions. |
+| Wave C – E-signature | Connector squad C | DocuSign, Acrobat Sign, and HelloSign connectors remain smoke-tested every release; backlogs focus on polish and monitoring. | QA maintains signature lifecycle evidence and keeps webhook instructions current. |
 | Wave D – Incident Response | Connector squad D | Opsgenie client delivers alert lifecycle handlers, rate limit backoff, and passes smoke script. | Runbook updated with escalation webhook mapping; support checklist signed off. |
 | Wave E – Data & Analytics | Connector squad E | Databricks, Snowflake, Tableau, and Power BI clients authenticate, run representative queries/jobs, and stream/paginate results. | Sample dashboards captured for docs; data retention expectations documented. |
 
