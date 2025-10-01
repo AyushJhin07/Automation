@@ -2,6 +2,7 @@
 // Provides common functionality for HTTP requests, authentication, rate limiting, etc.
 
 import { getErrorMessage } from '../types/common';
+import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 
 export interface APICredentials {
   apiKey?: string;
@@ -28,10 +29,22 @@ export interface RateLimitInfo {
 }
 
 export abstract class BaseAPIClient {
+  private static readonly ajv = new Ajv({ allErrors: true, strict: false });
+  private static readonly schemaCache = new WeakMap<object, ValidateFunction>();
+
   protected baseURL: string;
   protected credentials: APICredentials;
   protected rateLimitInfo?: RateLimitInfo;
   private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
+
+  private static getSchemaValidator(schema: object): ValidateFunction {
+    let validator = BaseAPIClient.schemaCache.get(schema);
+    if (!validator) {
+      validator = BaseAPIClient.ajv.compile(schema);
+      BaseAPIClient.schemaCache.set(schema, validator);
+    }
+    return validator;
+  }
 
   constructor(baseURL: string, credentials: APICredentials) {
     this.baseURL = baseURL;
@@ -127,6 +140,24 @@ export abstract class BaseAPIClient {
   protected registerHandlers(handlers: Record<string, (params: Record<string, any>) => Promise<APIResponse<any>>>): void {
     for (const [id, fn] of Object.entries(handlers)) {
       this.registerHandler(id, fn);
+    }
+  }
+
+  /**
+   * Register aliases that map catalog action IDs onto concrete client methods.
+   * The provided map should use catalog IDs as keys and method names on the
+   * concrete client as values.
+   */
+  protected registerAliasHandlers(aliases: Record<string, string>): void {
+    for (const [alias, methodName] of Object.entries(aliases)) {
+      const handler = (this as Record<string, unknown>)[methodName];
+      if (typeof handler !== 'function') {
+        throw new Error(
+          `${this.constructor.name}: Cannot register alias "${alias}" for missing method "${methodName}".`
+        );
+      }
+
+      this.registerHandler(alias, (params: Record<string, any>) => (handler as Function).call(this, params));
     }
   }
 
@@ -301,6 +332,133 @@ export abstract class BaseAPIClient {
     return {
       success: true,
       data: allResults
+    };
+  }
+
+  protected validatePayload<T>(schema: JSONSchemaType<T>, payload: unknown): T {
+    const validator = BaseAPIClient.getSchemaValidator(schema as unknown as object);
+    if (validator(payload)) {
+      return payload as T;
+    }
+
+    const errors = (validator.errors || []).map(error => {
+      const location = error.instancePath || error.schemaPath;
+      return `${location}: ${error.message || 'invalid value'}`;
+    });
+    throw new Error(`Payload validation failed: ${errors.join('; ')}`);
+  }
+
+  protected async withRetries<T>(
+    operation: () => Promise<APIResponse<T>>,
+    options: {
+      retries?: number;
+      initialDelayMs?: number;
+      maxDelayMs?: number;
+      backoffMultiplier?: number;
+      shouldRetry?: (response: APIResponse<T>) => boolean;
+      onRetry?: (attempt: number, response: APIResponse<T>) => void;
+    } = {}
+  ): Promise<APIResponse<T>> {
+    const {
+      retries = 2,
+      initialDelayMs = 500,
+      maxDelayMs = 5000,
+      backoffMultiplier = 2,
+      shouldRetry = (response: APIResponse<T>) => {
+        if (response.success) {
+          return false;
+        }
+        if (response.statusCode === 429) {
+          return true;
+        }
+        if (typeof response.statusCode === 'number' && response.statusCode >= 500) {
+          return true;
+        }
+        return response.statusCode === 0;
+      },
+      onRetry
+    } = options;
+
+    let attempt = 0;
+    let delay = Math.max(0, initialDelayMs);
+    let lastResponse: APIResponse<T> | undefined;
+
+    while (attempt <= retries) {
+      try {
+        const response = await operation();
+        lastResponse = response;
+
+        if (!shouldRetry(response) || attempt === retries) {
+          return response;
+        }
+
+        onRetry?.(attempt + 1, response);
+      } catch (error) {
+        const failure: APIResponse<T> = {
+          success: false,
+          error: getErrorMessage(error),
+          statusCode: 0
+        };
+        lastResponse = failure;
+
+        if (!shouldRetry(failure) || attempt === retries) {
+          return failure;
+        }
+
+        onRetry?.(attempt + 1, failure);
+      }
+
+      if (delay > 0) {
+        await this.sleep(delay);
+      }
+      delay = Math.min(delay * backoffMultiplier, maxDelayMs);
+      attempt++;
+    }
+
+    return lastResponse ?? { success: false, error: 'Operation failed without yielding a response.' };
+  }
+
+  protected async collectCursorPaginated<TItem, TResponse>(
+    options: {
+      fetchPage: (cursor?: string | null) => Promise<APIResponse<TResponse>>;
+      extractItems: (response: TResponse) => TItem[] | undefined;
+      extractCursor?: (response: TResponse) => string | null | undefined;
+      initialCursor?: string | null;
+      maxPages?: number;
+      onPage?: (page: { items: TItem[]; cursor?: string | null; page: number }) => void;
+    }
+  ): Promise<APIResponse<TItem[]>> {
+    const {
+      fetchPage,
+      extractItems,
+      extractCursor = () => null,
+      initialCursor = null,
+      maxPages = 50,
+      onPage
+    } = options;
+
+    const results: TItem[] = [];
+    let cursor: string | null | undefined = initialCursor;
+
+    for (let page = 0; page < maxPages; page++) {
+      const response = await fetchPage(cursor ?? undefined);
+      if (!response.success || !response.data) {
+        return response as APIResponse<TItem[]>;
+      }
+
+      const items = extractItems(response.data) ?? [];
+      results.push(...items);
+      onPage?.({ items, cursor, page: page + 1 });
+
+      cursor = extractCursor(response.data);
+      if (!cursor) {
+        break;
+      }
+    }
+
+    return {
+      success: true,
+      data: results
     };
   }
 

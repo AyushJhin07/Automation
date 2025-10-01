@@ -70,6 +70,7 @@ export class IntegrationManager {
       'pipedrive-enhanced': 'pipedrive',
       'twilio-enhanced': 'twilio',
       'hubspot-enhanced': 'hubspot',
+      'salesforce-enhanced': 'salesforce',
       'jira-service-management': 'jira',
       'jira-cloud': 'jira',
       'box': 'box',

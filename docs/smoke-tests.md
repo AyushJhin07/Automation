@@ -19,3 +19,11 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
 - Webhook register + subscribe
   - POST `/api/webhooks/register/stripe` → returns providerUrl.
   - POST `/api/webhooks/subscribe` for `typeform` and `github`.
+
+## Connector-specific smoke runner
+
+- Copy `configs/connector-smoke.config.example.json` to
+  `configs/connector-smoke.config.json` and fill in staging credentials.
+- Run `npm run smoke:connectors` to execute `testConnection` plus the configured
+  actions/triggers for every registered connector. Results include pass/fail
+  summaries you can attach to release checklists.
