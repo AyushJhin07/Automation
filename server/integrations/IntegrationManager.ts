@@ -118,6 +118,20 @@ export class IntegrationManager {
       'circle_ci': 'circleci',
       'jenkins-ci': 'jenkins',
       'jenkins_ci': 'jenkins',
+      'k8s': 'kubernetes',
+      'kube': 'kubernetes',
+      'kubernetes-cluster': 'kubernetes',
+      'argo': 'argocd',
+      'argo-cd': 'argocd',
+      'argo_cd': 'argocd',
+      'terraform': 'terraform-cloud',
+      'terraformcloud': 'terraform-cloud',
+      'terraform_cloud': 'terraform-cloud',
+      'hashicorp': 'hashicorp-vault',
+      'vault': 'hashicorp-vault',
+      'helmfile': 'helm',
+      'ansible-tower': 'ansible',
+      'awx': 'ansible',
     };
     return map[v] || v;
   }

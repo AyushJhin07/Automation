@@ -10,6 +10,12 @@ import type { APIResponse, BaseAPIClient } from '../../integrations/BaseAPIClien
 import { AzureDevopsAPIClient } from '../../integrations/AzureDevopsAPIClient.js';
 import { CircleCIApiClient } from '../../integrations/CircleCIApiClient.js';
 import { JenkinsAPIClient } from '../../integrations/JenkinsAPIClient.js';
+import { KubernetesAPIClient } from '../../integrations/KubernetesAPIClient.js';
+import { ArgocdAPIClient } from '../../integrations/ArgocdAPIClient.js';
+import { TerraformCloudAPIClient } from '../../integrations/TerraformCloudAPIClient.js';
+import { HashicorpVaultAPIClient } from '../../integrations/HashicorpVaultAPIClient.js';
+import { HelmAPIClient } from '../../integrations/HelmAPIClient.js';
+import { AnsibleAPIClient } from '../../integrations/AnsibleAPIClient.js';
 
 /**
  * Get the compiler operation map
@@ -54,6 +60,72 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
     assertClientInstance(client, CircleCIApiClient).cancelWorkflow(params),
   'action.circleci:rerun_workflow': (client, params = {}) =>
     assertClientInstance(client, CircleCIApiClient).rerunWorkflow(params),
+
+  'action.kubernetes:test_connection': client => assertClientInstance(client, KubernetesAPIClient).testConnection(),
+  'action.kubernetes:create_deployment': (client, params = {}) =>
+    assertClientInstance(client, KubernetesAPIClient).createDeployment(params),
+  'action.kubernetes:create_service': (client, params = {}) =>
+    assertClientInstance(client, KubernetesAPIClient).createService(params),
+  'action.kubernetes:scale_deployment': (client, params = {}) =>
+    assertClientInstance(client, KubernetesAPIClient).scaleDeployment(params),
+  'action.kubernetes:get_pod_logs': (client, params = {}) =>
+    assertClientInstance(client, KubernetesAPIClient).getPodLogs(params),
+
+  'action.argocd:test_connection': client => assertClientInstance(client, ArgocdAPIClient).testConnection(),
+  'action.argocd:create_application': (client, params = {}) =>
+    assertClientInstance(client, ArgocdAPIClient).createApplication(params),
+  'action.argocd:sync_application': (client, params = {}) =>
+    assertClientInstance(client, ArgocdAPIClient).syncApplication(params),
+  'action.argocd:get_application': (client, params = {}) =>
+    assertClientInstance(client, ArgocdAPIClient).getApplication(params),
+  'action.argocd:delete_application': (client, params = {}) =>
+    assertClientInstance(client, ArgocdAPIClient).deleteApplication(params),
+
+  'action.terraform-cloud:test_connection': client =>
+    assertClientInstance(client, TerraformCloudAPIClient).testConnection(),
+  'action.terraform-cloud:create_workspace': (client, params = {}) =>
+    assertClientInstance(client, TerraformCloudAPIClient).createWorkspace(params),
+  'action.terraform-cloud:trigger_run': (client, params = {}) =>
+    assertClientInstance(client, TerraformCloudAPIClient).triggerRun(params),
+  'action.terraform-cloud:get_run_status': (client, params = {}) =>
+    assertClientInstance(client, TerraformCloudAPIClient).getRunStatus(params),
+  'action.terraform-cloud:set_variables': (client, params = {}) =>
+    assertClientInstance(client, TerraformCloudAPIClient).setVariables(params),
+
+  'action.hashicorp-vault:test_connection': client =>
+    assertClientInstance(client, HashicorpVaultAPIClient).testConnection(),
+  'action.hashicorp-vault:read_secret': (client, params = {}) =>
+    assertClientInstance(client, HashicorpVaultAPIClient).readSecret(params),
+  'action.hashicorp-vault:write_secret': (client, params = {}) =>
+    assertClientInstance(client, HashicorpVaultAPIClient).writeSecret(params),
+  'action.hashicorp-vault:delete_secret': (client, params = {}) =>
+    assertClientInstance(client, HashicorpVaultAPIClient).deleteSecret(params),
+  'action.hashicorp-vault:create_policy': (client, params = {}) =>
+    assertClientInstance(client, HashicorpVaultAPIClient).createPolicy(params),
+
+  'action.helm:test_connection': client => assertClientInstance(client, HelmAPIClient).testConnection(),
+  'action.helm:install_chart': (client, params = {}) =>
+    assertClientInstance(client, HelmAPIClient).installChart(params),
+  'action.helm:upgrade_release': (client, params = {}) =>
+    assertClientInstance(client, HelmAPIClient).upgradeRelease(params),
+  'action.helm:uninstall_release': (client, params = {}) =>
+    assertClientInstance(client, HelmAPIClient).uninstallRelease(params),
+  'action.helm:list_releases': (client, params = {}) =>
+    assertClientInstance(client, HelmAPIClient).listReleases(params),
+
+  'action.ansible:test_connection': client => assertClientInstance(client, AnsibleAPIClient).testConnection(),
+  'action.ansible:launch_job_template': (client, params = {}) =>
+    assertClientInstance(client, AnsibleAPIClient).launchJobTemplate(params),
+  'action.ansible:get_job_status': (client, params = {}) =>
+    assertClientInstance(client, AnsibleAPIClient).getJobStatus(params),
+  'action.ansible:create_inventory': (client, params = {}) =>
+    assertClientInstance(client, AnsibleAPIClient).createInventory(params),
+  'action.ansible:add_host': (client, params = {}) =>
+    assertClientInstance(client, AnsibleAPIClient).addHost(params),
+  'action.ansible:list_job_templates': client =>
+    assertClientInstance(client, AnsibleAPIClient).listJobTemplates(),
+  'action.ansible:delete_job_template': (client, params = {}) =>
+    assertClientInstance(client, AnsibleAPIClient).deleteJobTemplate(params),
 
   'action.jenkins:test_connection': client => assertClientInstance(client, JenkinsAPIClient).testConnection(),
   'action.jenkins:trigger_build': (client, params = {}) =>
