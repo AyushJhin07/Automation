@@ -10,7 +10,13 @@ import type { APICredentials } from '../integrations/BaseAPIClient';
 import type { ConnectionService } from '../services/ConnectionService';
 
 type QueueService = {
-  enqueue: (request: { workflowId: string; userId?: string; triggerType?: string; triggerData?: Record<string, any> | null }) => Promise<{ executionId: string }>;
+  enqueue: (request: {
+    workflowId: string;
+    userId?: string;
+    triggerType?: string;
+    triggerData?: Record<string, any> | null;
+    organizationId: string;
+  }) => Promise<{ executionId: string }>;
 };
 
 export class WebhookManager {
@@ -145,8 +151,17 @@ export class WebhookManager {
       const webhookId = this.generateWebhookId(trigger.appId, trigger.triggerId, trigger.workflowId);
       const endpoint = `/api/webhooks/${webhookId}`;
 
+      const normalizedMetadata = { ...(trigger.metadata ?? {}) };
+      if (trigger.organizationId && !normalizedMetadata.organizationId) {
+        normalizedMetadata.organizationId = trigger.organizationId;
+      }
+      if (trigger.userId && !normalizedMetadata.userId) {
+        normalizedMetadata.userId = trigger.userId;
+      }
+
       const webhookTrigger: WebhookTrigger = {
         ...trigger,
+        metadata: normalizedMetadata,
         id: webhookId,
         endpoint,
         isActive: true
@@ -185,6 +200,19 @@ export class WebhookManager {
         return false;
       }
 
+      const organizationId =
+        (webhook.metadata && (webhook.metadata as any).organizationId) ||
+        webhook.organizationId;
+
+      if (!organizationId) {
+        console.warn(`⚠️ Missing organization context for webhook ${webhookId}`);
+        return false;
+      }
+
+      const userId =
+        (webhook.metadata && (webhook.metadata as any).userId) ||
+        webhook.userId;
+
       // Create trigger event
       const event: TriggerEvent = {
         webhookId,
@@ -196,7 +224,9 @@ export class WebhookManager {
         timestamp: new Date(),
         signature: headers['x-signature'] || headers['x-hub-signature-256'],
         processed: false,
-        source: 'webhook'
+        source: 'webhook',
+        organizationId,
+        userId,
       };
 
       // Apply simple filters if configured in trigger metadata
@@ -434,6 +464,18 @@ export class WebhookManager {
 
         // Process each result as a trigger event
         for (const result of results) {
+          const organizationId =
+            (trigger.metadata && (trigger.metadata as any).organizationId) ||
+            trigger.organizationId;
+          if (!organizationId) {
+            console.warn(`⚠️ Missing organization context for polling trigger ${trigger.id}`);
+            continue;
+          }
+
+          const userId =
+            (trigger.metadata && (trigger.metadata as any).userId) ||
+            trigger.userId;
+
           const event: TriggerEvent = {
             webhookId: `poll-${trigger.id}`,
             appId: trigger.appId,
@@ -443,7 +485,9 @@ export class WebhookManager {
             headers: { 'x-trigger-type': 'polling' },
             timestamp: new Date(),
             processed: false,
-            source: 'polling'
+            source: 'polling',
+            organizationId,
+            userId,
           };
 
           // Check for duplicates using dedupe key
@@ -665,9 +709,15 @@ export class WebhookManager {
         event.id = logId;
       }
 
+      if (!event.organizationId) {
+        console.warn('⚠️ Trigger event missing organization context; skipping');
+        return false;
+      }
+
       const queueService = await this.getQueueService();
       const queueResult = await queueService.enqueue({
         workflowId: event.workflowId,
+        userId: event.userId,
         triggerType: event.source,
         triggerData: {
           appId: event.appId,
@@ -678,6 +728,7 @@ export class WebhookManager {
           timestamp: event.timestamp.toISOString(),
           source: event.source,
         },
+        organizationId: event.organizationId,
       });
 
       event.processed = true;

@@ -52,6 +52,7 @@ interface TriggerWorkflowOptions {
   headers: Record<string, string>;
   timestamp: Date;
   dedupeToken?: string;
+  organizationId: string;
 }
 
 export class WorkflowNodeExecutionError extends Error {
@@ -926,7 +927,7 @@ export class WorkflowRuntimeService {
 
   public async triggerWorkflowExecution(options: TriggerWorkflowOptions): Promise<{ success: boolean; error?: string }> {
     try {
-      const workflow = await WorkflowRepository.getWorkflowById(options.workflowId);
+      const workflow = await WorkflowRepository.getWorkflowById(options.workflowId, options.organizationId);
       if (!workflow) {
         return { success: false, error: `Workflow not found: ${options.workflowId}` };
       }

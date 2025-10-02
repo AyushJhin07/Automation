@@ -2616,17 +2616,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new webhook
   app.post('/api/webhooks/register', authenticateToken, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const { appId, triggerId, workflowId, secret, metadata } = req.body;
-      
+      const organizationId = (req as any)?.organizationId;
+      const organizationStatus = (req as any)?.organizationStatus;
+
+      if (!organizationId || (organizationStatus && organizationStatus !== 'active')) {
+        return res.status(403).json({ success: false, error: 'Organization context is required' });
+      }
+
       if (!appId || !triggerId || !workflowId) {
         return res.status(400).json({
           success: false,
           error: 'Missing required fields: appId, triggerId, workflowId'
         });
       }
-      
+
       const endpoint = await webhookManager.registerWebhook({
         id: '', // Will be generated
         appId,
@@ -2634,7 +2640,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflowId,
         secret,
         isActive: true,
-        metadata: metadata || {}
+        metadata: {
+          ...(metadata || {}),
+          organizationId,
+          userId: (req as any)?.user?.id,
+        },
+        organizationId,
+        userId: (req as any)?.user?.id,
       });
       
       res.json({
@@ -2660,14 +2672,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { id, appId, triggerId, workflowId, interval, dedupeKey, metadata } = req.body;
-      
+      const organizationId = (req as any)?.organizationId;
+      const organizationStatus = (req as any)?.organizationStatus;
+
       if (!id || !appId || !triggerId || !workflowId || !interval) {
         return res.status(400).json({
           success: false,
           error: 'Missing required fields: id, appId, triggerId, workflowId, interval'
         });
       }
-      
+
+      if (!organizationId || (organizationStatus && organizationStatus !== 'active')) {
+        return res.status(403).json({ success: false, error: 'Organization context is required' });
+      }
+
       const pollingTrigger = {
         id,
         appId,
@@ -2677,7 +2695,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nextPoll: new Date(Date.now() + interval * 1000),
         isActive: true,
         dedupeKey,
-        metadata: metadata || {}
+        metadata: {
+          ...(metadata || {}),
+          organizationId,
+          userId: (req as any)?.user?.id,
+        },
+        organizationId,
+        userId: (req as any)?.user?.id,
       };
       
       await webhookManager.registerPollingTrigger(pollingTrigger);
@@ -2957,8 +2981,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider } = req.params;
       const { workflowId, triggerId, secret, metadata } = req.body || {};
+      const organizationId = (req as any)?.organizationId;
+      const organizationStatus = (req as any)?.organizationStatus;
       if (!workflowId || !triggerId) {
         return res.status(400).json({ success: false, error: 'Missing required fields: workflowId, triggerId' });
+      }
+
+      if (!organizationId || (organizationStatus && organizationStatus !== 'active')) {
+        return res.status(403).json({ success: false, error: 'Organization context is required' });
       }
 
       const endpoint = await webhookManager.registerWebhook({
@@ -2967,7 +2997,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflowId,
         secret,
         isActive: true,
-        metadata: metadata || {}
+        metadata: {
+          ...(metadata || {}),
+          organizationId,
+          userId: (req as any)?.user?.id,
+        },
+        organizationId,
+        userId: (req as any)?.user?.id,
       } as any);
 
       // Recommend vendor-specific path where available
@@ -3057,7 +3093,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflowId,
         secret,
         isActive: true,
-        metadata: { parameters: parameters || {} }
+        metadata: {
+          parameters: parameters || {},
+          organizationId: req.organizationId,
+          userId: req.user!.id,
+        },
+        organizationId: req.organizationId,
+        userId: req.user!.id,
       } as any);
 
       // For Typeform, call create_webhook action via GenericExecutor
@@ -3365,8 +3407,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             events,
             externalWebhookId: result.data.webhookId,
             userId,
+            organizationId: req.organizationId,
             registeredAt: new Date()
-          }
+          },
+          organizationId: req.organizationId,
+          userId,
         });
         
         res.json({
@@ -6312,11 +6357,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { triggerType, triggerData } = req.body || {};
+      const organizationId = (req as any)?.organizationId;
+      const organizationStatus = (req as any)?.organizationStatus;
+
+      if (!organizationId || (organizationStatus && organizationStatus !== 'active')) {
+        return res.status(403).json({ success: false, error: 'Organization context is required' });
+      }
+
       const { executionId } = await executionQueueService.enqueue({
         workflowId: id,
         userId: (req as any)?.user?.id,
         triggerType,
         triggerData,
+        organizationId,
       });
       res.json({ success: true, executionId });
     } catch (error) {
@@ -6326,7 +6379,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/executions/:id', optionalAuth, async (req, res) => {
     try {
-      const exec = await WorkflowRepository.getExecutionById(req.params.id);
+      const organizationId = (req as any)?.organizationId;
+      const organizationStatus = (req as any)?.organizationStatus;
+
+      if (!organizationId || (organizationStatus && organizationStatus !== 'active')) {
+        return res.status(403).json({ success: false, error: 'Organization context is required' });
+      }
+
+      const exec = await WorkflowRepository.getExecutionById(req.params.id, organizationId);
       if (!exec) return res.status(404).json({ success: false, error: 'Execution not found' });
       res.json({ success: true, execution: exec });
     } catch (error) {

@@ -22,6 +22,7 @@ type WorkflowExecutionInsert = typeof workflowExecutionsTable.$inferInsert;
 export interface SaveWorkflowGraphInput {
   id?: string;
   userId?: string;
+  organizationId: string;
   name?: string;
   description?: string | null;
   graph: Record<string, any>;
@@ -35,12 +36,14 @@ export interface ListWorkflowOptions {
   search?: string;
   limit?: number;
   offset?: number;
+  organizationId: string;
 }
 
 export interface CreateWorkflowExecutionInput {
   id?: string;
   workflowId: string;
   userId?: string;
+  organizationId: string;
   status?: string;
   triggerType?: string;
   triggerData?: Record<string, any> | null;
@@ -173,6 +176,7 @@ export class WorkflowRepository {
     return {
       id: input.id,
       userId,
+      organizationId: input.organizationId,
       name,
       description,
       graph: input.graph,
@@ -192,6 +196,7 @@ export class WorkflowRepository {
     const base: MemoryWorkflowRecord = existing ?? {
       id: input.id ?? randomUUID(),
       userId,
+      organizationId: input.organizationId,
       name: input.name ?? input.graph?.name ?? 'Untitled Workflow',
       description: input.description ?? input.graph?.description ?? null,
       graph: input.graph,
@@ -220,6 +225,7 @@ export class WorkflowRepository {
       ...base,
       id: input.id ?? base.id,
       graph: input.graph,
+      organizationId: input.organizationId,
       name: input.name ?? input.graph?.name ?? base.name,
       description: input.description ?? input.graph?.description ?? base.description,
       metadata: input.metadata ?? (input.graph?.metadata as Record<string, any> | null) ?? base.metadata,
@@ -240,6 +246,7 @@ export class WorkflowRepository {
       id,
       workflowId: input.workflowId,
       userId,
+      organizationId: input.organizationId,
       status: input.status ?? 'started',
       startedAt: now,
       completedAt: null,
@@ -291,36 +298,41 @@ export class WorkflowRepository {
     return stored;
   }
 
-  public static async getWorkflowById(id: string): Promise<WorkflowRow | null> {
+  public static async getWorkflowById(id: string, organizationId: string): Promise<WorkflowRow | null> {
     if (!id) {
       return null;
     }
 
     if (!this.isDatabaseEnabled()) {
-      return this.memoryWorkflows.get(id) ?? null;
+      const record = this.memoryWorkflows.get(id);
+      if (!record || record.organizationId !== organizationId) {
+        return null;
+      }
+      return record;
     }
 
     const result = await db
       .select()
       .from(workflows)
-      .where(eq(workflows.id, id))
+      .where(and(eq(workflows.id, id), eq(workflows.organizationId, organizationId)))
       .limit(1);
 
     return result.length > 0 ? result[0] : null;
   }
 
-  public static async listWorkflows(options: ListWorkflowOptions = {}) {
+  public static async listWorkflows(options: ListWorkflowOptions) {
     const limit = this.sanitizeLimit(options.limit);
     const offset = this.sanitizeOffset(options.offset);
 
     if (!this.isDatabaseEnabled()) {
       const all = Array.from(this.memoryWorkflows.values());
+      const filteredByOrg = all.filter((workflow) => workflow.organizationId === options.organizationId);
       const filtered = options.search
-        ? all.filter((workflow) =>
+        ? filteredByOrg.filter((workflow) =>
             workflow.name.toLowerCase().includes(options.search!.toLowerCase()) ||
             (workflow.description ?? '').toLowerCase().includes(options.search!.toLowerCase()),
           )
-        : all;
+        : filteredByOrg;
       const paginated = filtered.slice(offset, offset + limit);
 
       return {
@@ -331,7 +343,7 @@ export class WorkflowRepository {
       };
     }
 
-    const conditions: any[] = [];
+    const conditions: any[] = [eq(workflows.organizationId, options.organizationId)];
 
     if (options.userId) {
       conditions.push(eq(workflows.userId, options.userId));
@@ -373,16 +385,23 @@ export class WorkflowRepository {
     };
   }
 
-  public static async deleteWorkflow(id: string): Promise<boolean> {
+  public static async deleteWorkflow(id: string, organizationId: string): Promise<boolean> {
     if (!id) {
       return false;
     }
 
     if (!this.isDatabaseEnabled()) {
+      const record = this.memoryWorkflows.get(id);
+      if (!record || record.organizationId !== organizationId) {
+        return false;
+      }
       return this.memoryWorkflows.delete(id);
     }
 
-    const result = await db.delete(workflows).where(eq(workflows.id, id)).returning({ id: workflows.id });
+    const result = await db
+      .delete(workflows)
+      .where(and(eq(workflows.id, id), eq(workflows.organizationId, organizationId)))
+      .returning({ id: workflows.id });
     return result.length > 0;
   }
 
@@ -410,6 +429,7 @@ export class WorkflowRepository {
       id: input.id,
       workflowId: input.workflowId,
       userId,
+      organizationId: input.organizationId,
       status: input.status ?? 'started',
       triggerType: input.triggerType ?? 'manual',
       triggerData: input.triggerData ?? null,
@@ -422,7 +442,9 @@ export class WorkflowRepository {
     return stored;
   }
 
-  public static async claimNextQueuedExecution(): Promise<WorkflowExecutionRow | null> {
+  public static async claimNextQueuedExecution(
+    organizationId: string,
+  ): Promise<WorkflowExecutionRow | null> {
     if (!this.isDatabaseEnabled()) {
       return null;
     }
@@ -434,6 +456,7 @@ export class WorkflowRepository {
         SELECT id
         FROM ${workflowExecutions}
         WHERE status = 'queued'
+          AND ${workflowExecutions.organizationId} = ${organizationId}
           AND (
             ${workflowExecutions.metadata} ->> 'nextRetryAt' IS NULL
             OR (${workflowExecutions.metadata} ->> 'nextRetryAt')::timestamptz <= ${now.toISOString()}
@@ -447,6 +470,7 @@ export class WorkflowRepository {
           started_at = ${now}
       FROM next_execution
       WHERE executions.id = next_execution.id
+        AND executions.organization_id = ${organizationId}
       RETURNING executions.*;
     `);
 
@@ -457,6 +481,7 @@ export class WorkflowRepository {
   public static async updateWorkflowExecution(
     id: string,
     updates: UpdateWorkflowExecutionInput,
+    organizationId: string,
   ): Promise<WorkflowExecutionRow | null> {
     if (!id) {
       return null;
@@ -464,7 +489,7 @@ export class WorkflowRepository {
 
     if (!this.isDatabaseEnabled()) {
       const existing = this.memoryExecutions.get(id);
-      if (!existing) {
+      if (!existing || existing.organizationId !== organizationId) {
         return null;
       }
 
@@ -499,7 +524,7 @@ export class WorkflowRepository {
       const [existing] = await db
         .select()
         .from(workflowExecutions)
-        .where(eq(workflowExecutions.id, id))
+        .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
         .limit(1);
       return existing ?? null;
     }
@@ -507,25 +532,32 @@ export class WorkflowRepository {
     const [result] = await db
       .update(workflowExecutions)
       .set(updateSet)
-      .where(eq(workflowExecutions.id, id))
+      .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
       .returning();
 
     return result ?? null;
   }
 
-  public static async getExecutionById(id: string): Promise<WorkflowExecutionRow | null> {
+  public static async getExecutionById(
+    id: string,
+    organizationId: string,
+  ): Promise<WorkflowExecutionRow | null> {
     if (!id) {
       return null;
     }
 
     if (!this.isDatabaseEnabled()) {
-      return this.memoryExecutions.get(id) ?? null;
+      const record = this.memoryExecutions.get(id);
+      if (!record || record.organizationId !== organizationId) {
+        return null;
+      }
+      return record;
     }
 
     const result = await db
       .select()
       .from(workflowExecutions)
-      .where(eq(workflowExecutions.id, id))
+      .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
       .limit(1);
 
     return result.length > 0 ? result[0] : null;

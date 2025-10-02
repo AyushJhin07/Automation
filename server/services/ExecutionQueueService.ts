@@ -1,13 +1,16 @@
+import { sql } from 'drizzle-orm';
+
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db } from '../database/schema.js';
+import { db, workflowExecutions } from '../database/schema.js';
 
 type QueueRunRequest = {
   workflowId: string;
   userId?: string;
   triggerType?: string;
   triggerData?: Record<string, any> | null;
+  organizationId: string;
 };
 
 type ClaimedJob = {
@@ -15,6 +18,7 @@ type ClaimedJob = {
   workflowId: string;
   userId?: string;
   metadata?: Record<string, any>;
+  organizationId: string;
 };
 
 class ExecutionQueueService {
@@ -30,6 +34,7 @@ class ExecutionQueueService {
   private workerPromises: Promise<void>[] = [];
   private waiters: Set<() => void> = new Set();
   private shutdownPromise: Promise<void> | null = null;
+  private pendingOrganizations: Set<string> = new Set();
 
   private constructor(concurrency = 2, pollingMs = 1000) {
     this.concurrency = Math.max(1, concurrency);
@@ -63,11 +68,13 @@ class ExecutionQueueService {
     const execution = await WorkflowRepository.createWorkflowExecution({
       workflowId: req.workflowId,
       userId: req.userId,
+      organizationId: req.organizationId,
       status: 'queued',
       triggerType: req.triggerType ?? 'manual',
       triggerData: req.triggerData ?? null,
       metadata: { queuedAt: new Date().toISOString(), retryCount: 0 },
     });
+    this.pendingOrganizations.add(req.organizationId);
     this.signalNewWork();
     return { executionId: execution.id };
   }
@@ -212,31 +219,60 @@ class ExecutionQueueService {
       return null;
     }
 
-    const claimed = await WorkflowRepository.claimNextQueuedExecution();
-    if (!claimed) {
-      return null;
+    await this.ensurePendingOrganizations();
+    const organizations = Array.from(this.pendingOrganizations);
+
+    for (const organizationId of organizations) {
+      const claimed = await WorkflowRepository.claimNextQueuedExecution(organizationId);
+      if (!claimed) {
+        this.pendingOrganizations.delete(organizationId);
+        continue;
+      }
+
+      const metadata = (claimed.metadata ?? undefined) as Record<string, any> | undefined;
+      if (metadata && 'nextRetryAt' in metadata) {
+        delete metadata.nextRetryAt;
+      }
+
+      return {
+        id: claimed.id,
+        workflowId: claimed.workflowId,
+        userId: claimed.userId ?? undefined,
+        metadata,
+        organizationId,
+      };
     }
 
-    const metadata = (claimed.metadata ?? undefined) as Record<string, any> | undefined;
-    if (metadata && 'nextRetryAt' in metadata) {
-      delete metadata.nextRetryAt;
+    return null;
+  }
+
+  private async ensurePendingOrganizations(): Promise<void> {
+    if (this.pendingOrganizations.size > 0 || !this.isDbEnabled()) {
+      return;
     }
 
-    return {
-      id: claimed.id,
-      workflowId: claimed.workflowId,
-      userId: claimed.userId ?? undefined,
-      metadata,
-    };
+    try {
+      const result = await db.execute(
+        sql`SELECT DISTINCT ${workflowExecutions.organizationId} AS organization_id FROM ${workflowExecutions}
+            WHERE ${workflowExecutions.status} = 'queued'`
+      );
+      for (const row of result.rows as Array<{ organization_id: string | null }>) {
+        if (row.organization_id) {
+          this.pendingOrganizations.add(row.organization_id);
+        }
+      }
+    } catch (error) {
+      console.error('ExecutionQueueService organization discovery failed:', getErrorMessage(error));
+    }
   }
 
   private async process(job: ClaimedJob): Promise<void> {
     const startedAt = Date.now();
-    const executionRecord = await WorkflowRepository.getExecutionById(job.id);
+    const executionRecord = await WorkflowRepository.getExecutionById(job.id, job.organizationId);
     const baseMetadata = { ...(executionRecord?.metadata ?? job.metadata ?? {}) } as Record<string, any>;
 
     try {
-      const wf = await WorkflowRepository.getWorkflowById(job.workflowId);
+      const wf = await WorkflowRepository.getWorkflowById(job.workflowId, job.organizationId);
       if (!wf || !wf.graph) {
         throw new Error(`Workflow not found or missing graph: ${job.workflowId}`);
       }
@@ -259,7 +295,7 @@ class ExecutionQueueService {
         nodeResults: result.nodeOutputs,
         errorDetails: null,
         metadata,
-      });
+      }, job.organizationId);
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
       const currentRetries = typeof baseMetadata.retryCount === 'number' ? baseMetadata.retryCount : 0;
@@ -282,9 +318,10 @@ class ExecutionQueueService {
           errorDetails: { error: errorMessage },
           metadata: retryMetadata,
           startedAt: new Date(),
-        });
+        }, job.organizationId);
 
         console.warn(`⚠️ Execution ${job.id} failed (attempt ${nextRetryCount}). Retrying in ${delay}ms: ${errorMessage}`);
+        this.pendingOrganizations.add(job.organizationId);
         this.signalNewWork();
         return;
       }
@@ -304,7 +341,7 @@ class ExecutionQueueService {
         duration: Date.now() - startedAt,
         errorDetails: { error: errorMessage },
         metadata: failedMetadata,
-      });
+      }, job.organizationId);
 
       console.error(`❌ Execution ${job.id} failed after ${nextRetryCount} attempts:`, errorMessage);
     }

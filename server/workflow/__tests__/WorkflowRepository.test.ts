@@ -51,9 +51,23 @@ class FakeDb {
 
   public resolveColumnName(column: any): string {
     if (column && typeof column === 'object' && 'name' in column) {
-      return column.name as string;
+      return this.normalizeColumnKey(column.name as string);
     }
     throw new Error('Unable to resolve column name for fake database');
+  }
+
+  private normalizeColumnKey(name: string): string {
+    const raw = name.includes('.') ? name.split('.').pop()! : name;
+    if (!raw.includes('_')) {
+      return raw;
+    }
+
+    return raw
+      .split('_')
+      .map((segment, index) =>
+        index === 0 ? segment : segment.charAt(0).toUpperCase() + segment.slice(1)
+      )
+      .join('');
   }
 
   public logOperation(operation: string): void {
@@ -112,20 +126,30 @@ class FakeDb {
       return [];
     }
 
-    const chunks: any[] = Array.isArray(condition.queryChunks) ? condition.queryChunks : [];
-    const columnChunk = chunks.find((chunk) => chunk && typeof chunk === 'object' && 'name' in chunk);
-    const paramChunk = chunks.find((chunk) => chunk && typeof chunk === 'object' && 'brand' in chunk && 'value' in chunk);
+    if (Array.isArray(condition.conditions)) {
+      return condition.conditions.flatMap((cond) => this.parseWhere(cond));
+    }
 
-    if (!columnChunk || !paramChunk) {
+    const chunks: any[] = Array.isArray(condition.queryChunks) ? condition.queryChunks : [];
+    const nestedFilters = chunks
+      .filter((chunk) => chunk && typeof chunk === 'object' && Array.isArray(chunk.queryChunks))
+      .flatMap((chunk) => this.parseWhere(chunk));
+    const columnChunks = chunks.filter((chunk) => chunk && typeof chunk === 'object' && 'name' in chunk);
+    const paramChunks = chunks.filter((chunk) => chunk && typeof chunk === 'object' && 'brand' in chunk && 'value' in chunk);
+
+    if (columnChunks.length !== paramChunks.length) {
+      if (nestedFilters.length > 0 && columnChunks.length === 0 && paramChunks.length === 0) {
+        return nestedFilters;
+      }
       throw new Error('Unsupported where clause for fake database');
     }
 
-    return [
-      {
-        column: this.resolveColumnName(columnChunk),
-        value: paramChunk.value,
-      },
-    ];
+    const currentFilters = columnChunks.map((columnChunk, index) => ({
+      column: this.resolveColumnName(columnChunk),
+      value: paramChunks[index]?.value,
+    }));
+
+    return [...nestedFilters, ...currentFilters];
   }
 
   public projectRow(row: Record<string, any>, columns?: Record<string, any>): Record<string, any> {
@@ -204,6 +228,7 @@ class SelectBuilder {
   private tableName: string | null = null;
   private whereClause: any = null;
   private limitValue: number | null = null;
+  private offsetValue: number | null = null;
 
   constructor(private readonly db: FakeDb, private readonly columns?: Record<string, any>) {}
 
@@ -219,7 +244,23 @@ class SelectBuilder {
 
   public limit(value: number) {
     this.limitValue = value;
-    return this.execute();
+    return this;
+  }
+
+  public orderBy(): this {
+    return this;
+  }
+
+  public offset(value: number): this {
+    this.offsetValue = value;
+    return this;
+  }
+
+  public then<TResult1 = Record<string, any>[], TResult2 = never>(
+    onfulfilled?: ((value: Record<string, any>[]) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
   }
 
   private async execute() {
@@ -234,6 +275,10 @@ class SelectBuilder {
 
     for (const filter of filters) {
       rows = rows.filter((row) => row[filter.column] === filter.value);
+    }
+
+    if (this.offsetValue !== null) {
+      rows = rows.slice(this.offsetValue);
     }
 
     if (this.limitValue !== null) {
@@ -254,8 +299,11 @@ const { WorkflowRepository } = await import('../WorkflowRepository.js');
 async function runWorkflowPersistenceIntegration(): Promise<void> {
   const initialGraph = { nodes: [], edges: [] };
   const initialMetadata = { version: '1.0.0', createdBy: 'integration-test' };
+  const organizationId = 'org-db-primary';
+  const otherOrganizationId = 'org-db-secondary';
 
   const created = await WorkflowRepository.saveWorkflowGraph({
+    organizationId,
     name: 'Integration Workflow',
     description: 'Ensures database branch works',
     graph: initialGraph,
@@ -271,6 +319,7 @@ async function runWorkflowPersistenceIntegration(): Promise<void> {
   const updatedGraph = { nodes: [{ id: 'node-1', type: 'trigger' }], edges: [] };
   const updated = await WorkflowRepository.saveWorkflowGraph({
     id: created.id,
+    organizationId,
     name: 'Integration Workflow Updated',
     description: 'Updated description',
     graph: updatedGraph,
@@ -282,11 +331,31 @@ async function runWorkflowPersistenceIntegration(): Promise<void> {
   assert.deepEqual(updated.graph, updatedGraph, 'Updated workflow graph should be stored');
   assert.ok(fakeDb.operationLog.includes('update:workflows'), 'Updating a workflow should use the database conflict branch');
 
-  const retrieved = await WorkflowRepository.getWorkflowById(created.id);
+  const retrieved = await WorkflowRepository.getWorkflowById(created.id, organizationId);
   assert.ok(retrieved, 'Saved workflow should be retrievable by id');
   assert.equal(retrieved?.name, 'Integration Workflow Updated', 'Retrieved workflow should include updated fields');
   assert.deepEqual(retrieved?.graph, updatedGraph, 'Retrieved workflow graph should match the most recent update');
   assert.ok(fakeDb.operationLog.filter((entry) => entry === 'select:workflows').length >= 1, 'Selecting a workflow should execute a database query');
+
+  const crossOrgFetch = await WorkflowRepository.getWorkflowById(created.id, otherOrganizationId);
+  assert.equal(crossOrgFetch, null, 'Workflows should not be visible to other organizations');
+
+  const otherWorkflow = await WorkflowRepository.saveWorkflowGraph({
+    organizationId: otherOrganizationId,
+    name: 'Secondary DB Workflow',
+    description: 'Belongs to another organization',
+    graph: { nodes: [{ id: 'secondary', type: 'trigger' }], edges: [] },
+    metadata: { ...initialMetadata, version: '2.0.0' },
+    tags: ['integration', 'secondary'],
+  });
+
+  const primaryList = await WorkflowRepository.listWorkflows({ organizationId, limit: 10, offset: 0 });
+  assert.equal(primaryList.workflows.length, 1, 'Primary organization should only see its workflows');
+  assert.equal(primaryList.workflows[0].id, created.id, 'Primary organization should see the expected workflow');
+
+  const secondaryList = await WorkflowRepository.listWorkflows({ organizationId: otherOrganizationId, limit: 10, offset: 0 });
+  assert.equal(secondaryList.workflows.length, 1, 'Secondary organization should only see its workflows');
+  assert.equal(secondaryList.workflows[0].id, otherWorkflow.id, 'Secondary organization should see its workflow');
 
   const systemUser = fakeDb.getTableRows(fakeDb.resolveTableName(users)).find((row) => row.email === 'system@automation.local');
   assert.ok(systemUser, 'System user should be created in the database when none is provided');
