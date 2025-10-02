@@ -29,6 +29,14 @@ interface ProviderOption {
   type: 'llm' | 'saas';
 }
 
+interface OAuthProviderOption {
+  name: string;
+  displayName: string;
+  scopes: string[];
+  configured: boolean;
+  disabledReason?: string;
+}
+
 const prettifyProvider = (provider: string) => provider.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const ConnectionManager = () => {
@@ -41,13 +49,27 @@ export const ConnectionManager = () => {
   const [connections, setConnections] = useState<ConnectionSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [connectionName, setConnectionName] = useState('');
   const [credentialsText, setCredentialsText] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [loadError, setLoadError] = useState<string | undefined>();
+  const [oauthProviders, setOAuthProviders] = useState<OAuthProviderOption[]>([]);
+  const [refreshingConnectionId, setRefreshingConnectionId] = useState<string | null>(null);
 
   const llmProviders = useMemo(() => providers.filter((provider) => provider.type === 'llm'), [providers]);
+  const selectedOAuthProvider = useMemo(
+    () => oauthProviders.find((provider) => provider.name.toLowerCase() === selectedProvider.toLowerCase()),
+    [oauthProviders, selectedProvider]
+  );
+
+  useEffect(() => {
+    if (selectedOAuthProvider?.configured) {
+      setCredentialsText('');
+    }
+    setError(undefined);
+  }, [selectedOAuthProvider]);
 
   useEffect(() => {
     if (!token) {
@@ -56,8 +78,41 @@ export const ConnectionManager = () => {
     }
     loadProviders();
     loadConnections();
+    loadOAuthProviders();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const data = event.data as { type?: string; success?: boolean; provider?: string; error?: string } | undefined;
+      if (!data || data.type !== 'oauth:connection') {
+        return;
+      }
+
+      if (data.success) {
+        toast.success(`Connected ${prettifyProvider(data.provider || 'integration')}`);
+        loadConnections();
+      } else {
+        const message = data.error || 'OAuth authorization failed. Please try again.';
+        setError(message);
+        toast.error(message);
+      }
+    };
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => {
+      window.removeEventListener('message', handleOAuthMessage);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadProviders = async () => {
     try {
@@ -90,6 +145,21 @@ export const ConnectionManager = () => {
       setProviders([]);
       setError(message);
       setLoadError(message);
+    }
+  };
+
+  const loadOAuthProviders = async () => {
+    try {
+      const response = await fetch('/api/oauth/providers');
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setOAuthProviders(result.data?.providers || []);
+      } else {
+        setOAuthProviders([]);
+      }
+    } catch (err) {
+      console.error('Failed to load OAuth providers', err);
+      setOAuthProviders([]);
     }
   };
 
@@ -139,7 +209,14 @@ export const ConnectionManager = () => {
     try {
       let credentials: Record<string, any> = {};
       if (credentialsText.trim()) {
-        credentials = JSON.parse(credentialsText);
+        try {
+          credentials = JSON.parse(credentialsText);
+        } catch {
+          const message = 'Credentials must be valid JSON.';
+          setError(message);
+          toast.error(message);
+          return;
+        }
       }
 
       const response = await authFetch('/api/connections', {
@@ -174,6 +251,70 @@ export const ConnectionManager = () => {
     }
   };
 
+  const handleOAuthConnect = async () => {
+    if (!selectedProvider || !selectedOAuthProvider) {
+      return;
+    }
+
+    if (!selectedOAuthProvider.configured) {
+      const message = selectedOAuthProvider.disabledReason || 'OAuth is not configured for this provider.';
+      toast.error(message);
+      setError(message);
+      return;
+    }
+
+    setIsAuthorizing(true);
+    setError(undefined);
+
+    try {
+      const response = await authFetch('/api/oauth/authorize', {
+        method: 'POST',
+        body: JSON.stringify({ provider: selectedProvider })
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        const message = result.error || 'Failed to initiate OAuth authorization.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      const authUrl = result.data?.authUrl;
+      if (!authUrl) {
+        const message = 'Authorization URL was not provided by the server.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + Math.max((window.outerWidth - width) / 2, 0);
+      const top = window.screenY + Math.max((window.outerHeight - height) / 2, 0);
+      const popup = window.open(
+        authUrl,
+        'oauth',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
+
+      if (!popup) {
+        const message = 'Unable to open the authorization window. Please disable your popup blocker and try again.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      popup.focus();
+    } catch (err: any) {
+      const message = err?.message || 'Failed to initiate OAuth authorization.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsAuthorizing(false);
+    }
+  };
+
   const handleTest = async (connectionId: string) => {
     try {
       const response = await authFetch(`/api/connections/${connectionId}/test`, {
@@ -192,6 +333,32 @@ export const ConnectionManager = () => {
       const message = err?.message || 'Connection test failed';
       setError(message);
       toast.error(message);
+    }
+  };
+
+  const handleRefresh = async (connection: ConnectionSummary) => {
+    setRefreshingConnectionId(connection.id);
+    try {
+      const response = await authFetch('/api/oauth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ provider: connection.provider })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        const message = result.error || 'Failed to refresh OAuth tokens.';
+        toast.error(message);
+        setError(message);
+        return;
+      }
+
+      toast.success(`Refreshed ${prettifyProvider(connection.provider)} tokens`);
+      await loadConnections();
+    } catch (err: any) {
+      const message = err?.message || 'Failed to refresh OAuth tokens.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setRefreshingConnectionId(null);
     }
   };
 
@@ -270,6 +437,30 @@ export const ConnectionManager = () => {
               />
             </div>
           </div>
+          {selectedOAuthProvider && (
+            <Alert variant={selectedOAuthProvider.configured ? 'default' : 'destructive'}>
+              <AlertTitle>
+                {selectedOAuthProvider.configured ? 'OAuth available' : 'OAuth unavailable'} for {prettifyProvider(selectedOAuthProvider.name)}
+              </AlertTitle>
+              <AlertDescription>
+                {selectedOAuthProvider.configured
+                  ? 'Connect securely without sharing API keys. Use the button below to authorize access.'
+                  : selectedOAuthProvider.disabledReason || 'OAuth is not configured for this provider. Contact your administrator to enable it.'}
+              </AlertDescription>
+            </Alert>
+          )}
+          {selectedOAuthProvider?.configured && (
+            <Button type="button" onClick={handleOAuthConnect} disabled={isAuthorizing}>
+              {isAuthorizing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Opening authorization…
+                </>
+              ) : (
+                'Connect with OAuth'
+              )}
+            </Button>
+          )}
           <div className="space-y-2">
             <Label htmlFor="connection-credentials">
               Credentials JSON
@@ -283,7 +474,8 @@ export const ConnectionManager = () => {
               value={credentialsText}
               onChange={(event) => setCredentialsText(event.target.value)}
               rows={4}
-              required
+              required={!selectedOAuthProvider?.configured}
+              disabled={selectedOAuthProvider?.configured}
             />
           </div>
           {error && (
@@ -292,7 +484,10 @@ export const ConnectionManager = () => {
             </Alert>
           )}
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={isSubmitting || !selectedProvider}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !selectedProvider || Boolean(selectedOAuthProvider?.configured)}
+            >
               {isSubmitting ? 'Saving…' : 'Save connection'}
             </Button>
             <Button type="button" variant="outline" disabled={isLoading} onClick={loadConnections}>
@@ -340,8 +535,33 @@ export const ConnectionManager = () => {
                       {connection.testError && (
                         <p className="text-xs text-destructive">{connection.testError}</p>
                       )}
+                      {connection.metadata?.userInfo?.email && (
+                        <p className="text-xs text-muted-foreground">
+                          Signed in as {connection.metadata.userInfo.email}
+                        </p>
+                      )}
+                      {connection.metadata?.expiresAt && (
+                        <p className="text-xs text-muted-foreground">
+                          Access token expires {new Date(connection.metadata.expiresAt).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {connection.metadata?.refreshToken && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRefresh(connection)}
+                          disabled={refreshingConnectionId === connection.id}
+                        >
+                          {refreshingConnectionId === connection.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCcw className="mr-2 h-4 w-4" />
+                          )}
+                          Refresh tokens
+                        </Button>
+                      )}
                       <Button variant="outline" size="sm" onClick={() => handleTest(connection.id)}>
                         <Link2 className="mr-2 h-4 w-4" /> Test
                       </Button>
