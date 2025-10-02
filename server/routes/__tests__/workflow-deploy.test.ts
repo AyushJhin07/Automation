@@ -5,6 +5,8 @@ import type { AddressInfo } from 'node:net';
 
 const originalNodeEnv = process.env.NODE_ENV;
 process.env.NODE_ENV = 'development';
+const originalAllowFileStore = process.env.ALLOW_FILE_CONNECTION_STORE;
+process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
 
 const stubApp = {
   post: () => stubApp,
@@ -105,6 +107,12 @@ try {
     process.env.NODE_ENV = originalNodeEnv;
   } else {
     delete process.env.NODE_ENV;
+  }
+
+  if (originalAllowFileStore) {
+    process.env.ALLOW_FILE_CONNECTION_STORE = originalAllowFileStore;
+  } else {
+    delete process.env.ALLOW_FILE_CONNECTION_STORE;
   }
 
   process.exit(exitCode);

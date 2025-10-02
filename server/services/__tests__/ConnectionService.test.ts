@@ -58,6 +58,60 @@ assert.equal(fetched?.type, request.type, 'fetched connection preserves type');
 assert.equal(fetched?.testStatus, 'failed', 'fetched connection includes test status');
 assert.equal(fetched?.testError, testResult.message, 'fetched connection includes test error');
 
+// Verify expiring OAuth tokens are refreshed transparently
+const oauthModule = await import('../../oauth/OAuthManager.js');
+const originalRefresh = oauthModule.oauthManager.refreshToken;
+let refreshCalled = 0;
+
+try {
+  oauthModule.oauthManager.refreshToken = async (userId, organizationId, providerId) => {
+    refreshCalled++;
+    assert.equal(providerId, 'gmail', 'refreshToken should be called with the connection provider');
+    const newTokens = {
+      accessToken: 'new-access-token',
+      refreshToken: 'updated-refresh-token',
+      expiresAt: Date.now() + 60_000
+    };
+    await service.storeConnection(userId, organizationId, providerId, newTokens, undefined, {
+      name: 'Gmail Account',
+      type: 'saas'
+    });
+    return newTokens;
+  };
+
+  const gmailConnectionId = await service.storeConnection(
+    request.userId,
+    request.organizationId,
+    'gmail',
+    {
+      accessToken: 'stale-access-token',
+      refreshToken: 'updated-refresh-token',
+      expiresAt: Date.now() - 1000
+    },
+    undefined,
+    { name: 'Gmail Account', type: 'saas' }
+  );
+
+  const refreshedConnection = await service.getConnectionWithFreshTokens(
+    gmailConnectionId,
+    request.userId,
+    request.organizationId
+  );
+
+  assert.equal(refreshCalled, 1, 'expired OAuth credentials should trigger a refresh');
+  assert.equal(
+    refreshedConnection?.credentials.accessToken,
+    'new-access-token',
+    'refreshed connection should include the new access token'
+  );
+  assert.ok(
+    refreshedConnection?.metadata?.expiresAt && Date.parse(refreshedConnection.metadata.expiresAt) > Date.now(),
+    'refreshed metadata should expose a future expiry'
+  );
+} finally {
+  oauthModule.oauthManager.refreshToken = originalRefresh;
+}
+
 await fs.rm(tempDir, { recursive: true, force: true });
 
 delete process.env.ALLOW_FILE_CONNECTION_STORE;

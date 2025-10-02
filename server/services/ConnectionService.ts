@@ -10,6 +10,10 @@ import { integrationManager } from '../integrations/IntegrationManager';
 import { env } from '../env';
 import { genericExecutor } from '../integrations/GenericExecutor';
 
+type OAuthTokenRefresher = {
+  refreshToken(userId: string, organizationId: string, providerId: string): Promise<OAuthTokens>;
+};
+
 class ConnectionServiceError extends Error {
   constructor(message: string, public statusCode: number = 500) {
     super(message);
@@ -80,6 +84,9 @@ export class ConnectionService {
   private readonly useFileStore: boolean;
   private readonly allowFileStore: boolean;
   private readonly fileStorePath: string;
+  private oauthManagerOverride?: OAuthTokenRefresher;
+  private cachedOAuthManager?: OAuthTokenRefresher;
+  private readonly refreshThresholdMs: number;
 
   constructor() {
     this.db = db;
@@ -87,6 +94,10 @@ export class ConnectionService {
     this.fileStorePath = path.resolve(
       process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections.json')
     );
+
+    const threshold = Number(process.env.OAUTH_REFRESH_THRESHOLD_MS);
+    const defaultThreshold = 5 * 60 * 1000; // 5 minutes
+    this.refreshThresholdMs = Number.isFinite(threshold) && threshold >= 0 ? threshold : defaultThreshold;
 
     if (!this.db) {
       if (this.allowFileStore) {
@@ -163,6 +174,108 @@ export class ConnectionService {
 
   private encryptCredentials(credentials: Record<string, any>): { encryptedData: string; iv: string } {
     return EncryptionService.encryptCredentials(credentials);
+  }
+
+  /**
+   * Only used in tests to replace the OAuth manager implementation
+   */
+  public __setOAuthManagerForTests(manager?: OAuthTokenRefresher): void {
+    this.oauthManagerOverride = manager;
+  }
+
+  private async resolveOAuthManager(): Promise<OAuthTokenRefresher> {
+    if (this.oauthManagerOverride) {
+      return this.oauthManagerOverride;
+    }
+
+    if (this.cachedOAuthManager) {
+      return this.cachedOAuthManager;
+    }
+
+    try {
+      const module = await import('../oauth/OAuthManager.js');
+      this.cachedOAuthManager = module.oauthManager;
+      return this.cachedOAuthManager;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      throw new ConnectionServiceError(`OAuth manager unavailable: ${message}`, 503);
+    }
+  }
+
+  private parseExpiryTimestamp(value: unknown): number | null {
+    if (!value) return null;
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const timestamp = Date.parse(value);
+      return Number.isNaN(timestamp) ? null : timestamp;
+    }
+
+    return null;
+  }
+
+  private needsTokenRefresh(connection: DecryptedConnection): boolean {
+    const refreshToken = connection.credentials?.refreshToken;
+    if (!refreshToken) {
+      return false;
+    }
+
+    const expiryTimestamp =
+      this.parseExpiryTimestamp(connection.metadata?.expiresAt) ??
+      this.parseExpiryTimestamp(connection.credentials?.expiresAt);
+
+    if (!expiryTimestamp) {
+      return false;
+    }
+
+    return expiryTimestamp - Date.now() <= this.refreshThresholdMs;
+  }
+
+  private buildRefreshedMetadata(
+    previous: Record<string, any> | undefined,
+    tokens: OAuthTokens
+  ): Record<string, any> {
+    const expiresAtIso = tokens.expiresAt ? new Date(tokens.expiresAt).toISOString() : previous?.expiresAt;
+
+    return {
+      ...(previous || {}),
+      refreshToken: Boolean(tokens.refreshToken ?? previous?.refreshToken),
+      expiresAt: expiresAtIso,
+      refreshedAt: new Date().toISOString(),
+    };
+  }
+
+  private async refreshConnectionTokens(
+    connection: DecryptedConnection,
+    userId: string,
+    organizationId: string
+  ): Promise<DecryptedConnection> {
+    const oauthManager = await this.resolveOAuthManager();
+
+    try {
+      const tokens = await oauthManager.refreshToken(userId, organizationId, connection.provider);
+      const latest = await this.getConnection(connection.id, userId, organizationId);
+
+      if (latest) {
+        return {
+          ...latest,
+          credentials: { ...latest.credentials, ...tokens },
+          metadata: this.buildRefreshedMetadata(latest.metadata, tokens),
+        };
+      }
+
+      return {
+        ...connection,
+        credentials: { ...connection.credentials, ...tokens },
+        metadata: this.buildRefreshedMetadata(connection.metadata, tokens),
+      };
+    } catch (error) {
+      const message = getErrorMessage(error);
+      throw new ConnectionServiceError(`Failed to refresh OAuth tokens: ${message}`, 401);
+    }
   }
 
   /**
@@ -287,6 +400,23 @@ export class ConnectionService {
     };
   }
 
+  public async getConnectionWithFreshTokens(
+    connectionId: string,
+    userId: string,
+    organizationId: string
+  ): Promise<DecryptedConnection | null> {
+    const connection = await this.getConnection(connectionId, userId, organizationId);
+    if (!connection) {
+      return null;
+    }
+
+    if (!this.needsTokenRefresh(connection)) {
+      return connection;
+    }
+
+    return this.refreshConnectionTokens(connection, userId, organizationId);
+  }
+
   /**
    * Get user's connections by provider
    */
@@ -408,6 +538,23 @@ export class ConnectionService {
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
     };
+  }
+
+  public async getConnectionByProviderWithFreshTokens(
+    userId: string,
+    organizationId: string,
+    provider: string
+  ): Promise<DecryptedConnection | null> {
+    const connection = await this.getConnectionByProvider(userId, organizationId, provider);
+    if (!connection) {
+      return null;
+    }
+
+    if (!this.needsTokenRefresh(connection)) {
+      return connection;
+    }
+
+    return this.refreshConnectionTokens(connection, userId, organizationId);
   }
 
   public async markUsed(

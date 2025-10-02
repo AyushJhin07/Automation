@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { WorkflowRuntimeService } from '../WorkflowRuntimeService.js';
+import { integrationManager } from '../../integrations/IntegrationManager.js';
 
 type ExecutionContext = Parameters<WorkflowRuntimeService['executeNode']>[1];
 
@@ -86,8 +87,10 @@ async function runConnectionIdAuthRegression(): Promise<void> {
     organizationId: 'org-auth'
   };
 
+  let getFreshCalled = 0;
   const mockConnectionService = {
-    async getConnection(connectionId: string, userId: string, organizationId: string) {
+    async getConnectionWithFreshTokens(connectionId: string, userId: string, organizationId: string) {
+      getFreshCalled++;
       assert.equal(connectionId, 'conn-auth-1', 'Runtime should request the configured connection id');
       assert.equal(userId, 'user-auth', 'Runtime should request connection for current user');
       assert.equal(organizationId, 'org-auth', 'Runtime should include organization when resolving connection');
@@ -98,8 +101,8 @@ async function runConnectionIdAuthRegression(): Promise<void> {
         name: 'Auth Connection',
         provider: 'sheets',
         type: 'saas',
-        credentials: { local: true },
-        metadata: { additionalConfig: { sandbox: true } },
+        credentials: { local: true, accessToken: 'refreshed-access-token' },
+        metadata: { additionalConfig: { sandbox: true }, expiresAt: new Date(Date.now() + 3600000).toISOString() },
         iv: 'iv',
         isActive: true,
         createdAt: new Date(),
@@ -109,6 +112,23 @@ async function runConnectionIdAuthRegression(): Promise<void> {
   };
 
   (runtime as any).getConnectionService = async () => mockConnectionService;
+
+  const originalExecuteFunction = integrationManager.executeFunction;
+  let receivedCredentials: any = null;
+
+  integrationManager.executeFunction = async (params) => {
+    receivedCredentials = params.credentials;
+    return {
+      success: true,
+      data: {
+        spreadsheetId: 'spreadsheet-auth',
+        sheetName: 'Logs',
+        rowIndex: 0,
+        values: ['delta', 'epsilon']
+      },
+      executionTime: 42
+    } as any;
+  };
 
   const actionNode = {
     id: 'sheets-connection-node',
@@ -134,16 +154,27 @@ async function runConnectionIdAuthRegression(): Promise<void> {
   const result = await runtime.executeNode(actionNode, context);
 
   assert.equal(result.summary, 'Executed sheets.append_row', 'Action node should execute successfully');
-  assert.deepEqual(
-    result.output,
-    {
-      spreadsheetId: 'spreadsheet-auth',
-      sheetName: 'Logs',
-      rowIndex: 0,
-      values: ['delta', 'epsilon']
-    },
-    'Action node should return append_row metadata when using stored connection'
-  );
+  try {
+    assert.deepEqual(
+      result.output,
+      {
+        spreadsheetId: 'spreadsheet-auth',
+        sheetName: 'Logs',
+        rowIndex: 0,
+        values: ['delta', 'epsilon']
+      },
+      'Action node should return append_row metadata when using stored connection'
+    );
+
+    assert.equal(getFreshCalled, 1, 'Runtime should request refreshed connection credentials once');
+    assert.equal(
+      receivedCredentials?.accessToken,
+      'refreshed-access-token',
+      'Integration manager should receive updated OAuth tokens'
+    );
+  } finally {
+    integrationManager.executeFunction = originalExecuteFunction;
+  }
 
   assert.ok(
     context.nodeOutputs['sheets-connection-node'],
