@@ -1489,55 +1489,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ? req.originalUrl.slice(req.originalUrl.indexOf('?'))
       : '';
 
+    const normalizeQueryValue = (value: unknown) => {
+      if (Array.isArray(value)) {
+        return value[0];
+      }
+      return typeof value === 'string' ? value : undefined;
+    };
+
+    const queryState = normalizeQueryValue(state);
+    const queryCode = normalizeQueryValue(code);
+    const queryError = normalizeQueryValue(req.query.error);
+
     const resolveReturnUrl = () => {
-      if (typeof state === 'string') {
-        return oauthManager.resolveReturnUrl(provider, state);
+      if (queryState) {
+        return oauthManager.resolveReturnUrl(provider, queryState);
       }
 
       const baseUrl = env.SERVER_PUBLIC_URL || process.env.BASE_URL || '';
       return baseUrl ? `${baseUrl}/oauth/callback/${provider}` : undefined;
     };
 
-    const initialRedirectTarget = resolveReturnUrl();
+    const sendPopupResponse = (
+      status: number,
+      payload: {
+        success: boolean;
+        provider: string;
+        state?: string;
+        returnUrl?: string;
+        connectionId?: string;
+        label?: string;
+        error?: string;
+      }
+    ) => {
+      const messagePayload = {
+        type: 'oauth:connection',
+        ...payload,
+      };
+
+      const serializedPayload = JSON.stringify(messagePayload).replace(/</g, '\\u003c');
+      const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>OAuth Complete</title>
+  </head>
+  <body>
+    <script>
+      const payload = ${serializedPayload};
+      try {
+        window.opener?.postMessage(payload, window.location.origin);
+      } catch (err) {
+        console.warn('Failed to notify opener about OAuth result', err);
+      }
+      window.close();
+    </script>
+    <p>OAuth flow complete. You may close this window.</p>
+  </body>
+</html>`;
+
+      res
+        .status(status)
+        .set('Content-Type', 'text/html; charset=utf-8')
+        .send(html);
+    };
 
     try {
-      if (req.query.error) {
-        const redirectTarget = initialRedirectTarget;
-        if (redirectTarget) {
-          const params = new URLSearchParams();
-          for (const [key, value] of Object.entries(req.query)) {
-            if (Array.isArray(value)) {
-              value.forEach((v) => params.append(key, String(v)));
-            } else if (value !== undefined) {
-              params.set(key, String(value));
-            }
-          }
-          return res.redirect(`${redirectTarget}?${params.toString()}`);
-        }
-
-        return res.status(400).json({
+      if (queryError) {
+        return sendPopupResponse(400, {
           success: false,
-          error: String(req.query.error)
+          provider,
+          state: queryState,
+          returnUrl: resolveReturnUrl(),
+          error: queryError
         });
       }
 
-      if (!code || !state) {
-        const redirectTarget = initialRedirectTarget;
-        if (redirectTarget) {
-          const params = new URLSearchParams();
-          params.set('error', 'Missing authorization code or state');
-          return res.redirect(`${redirectTarget}?${params.toString()}`);
-        }
-
-        return res.status(400).json({
+      if (!queryCode || !queryState) {
+        return sendPopupResponse(400, {
           success: false,
+          provider,
+          state: queryState,
+          returnUrl: resolveReturnUrl(),
           error: 'Missing authorization code or state'
         });
       }
 
       const { returnUrl, connectionId: storedConnectionId, label: connectionLabel } = await oauthManager.handleCallback(
-        code as string,
-        state as string,
+        queryCode,
+        queryState,
         provider
       );
       const params = new URLSearchParams(search ? search.slice(1) : '');
@@ -1548,23 +1587,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.set('label', connectionLabel);
       }
       const query = params.toString();
-      const separator = returnUrl.includes('?') ? (query.length > 0 ? '&' : '') : (query.length > 0 ? '?' : '');
-      return res.redirect(`${returnUrl}${separator}${query}`);
+      const finalReturnUrl = returnUrl
+        ? (query.length > 0 ? `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}${query}` : returnUrl)
+        : undefined;
+
+      return sendPopupResponse(200, {
+        success: true,
+        provider,
+        state: queryState,
+        returnUrl: finalReturnUrl,
+        connectionId: storedConnectionId || undefined,
+        label: connectionLabel || undefined
+      });
     } catch (error) {
-      const redirectTarget = initialRedirectTarget || resolveReturnUrl();
       const errorMessage = getErrorMessage(error);
-
-      if (redirectTarget) {
-        const params = new URLSearchParams();
-        if (typeof state === 'string') {
-          params.set('state', state);
-        }
-        params.set('error', errorMessage);
-        return res.redirect(`${redirectTarget}?${params.toString()}`);
-      }
-
-      res.status(400).json({
+      return sendPopupResponse(400, {
         success: false,
+        provider,
+        state: queryState,
+        returnUrl: resolveReturnUrl(),
         error: errorMessage
       });
     }
