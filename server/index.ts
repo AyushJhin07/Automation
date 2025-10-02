@@ -75,9 +75,8 @@ app.use((req, res, next) => {
     const { executionQueueService } = await import('./services/ExecutionQueueService.js');
     const { WebhookManager } = await import('./webhooks/WebhookManager.js');
     WebhookManager.configureQueueService(executionQueueService);
-    executionQueueService.start();
   } catch (e) {
-    console.warn('⚠️ Failed to start execution queue:', (e as any)?.message || e);
+    console.warn('⚠️ Failed to configure execution queue:', (e as any)?.message || e);
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

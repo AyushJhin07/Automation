@@ -1,8 +1,7 @@
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db, workflowExecutions } from '../database/schema.js';
-import { and, eq, asc } from 'drizzle-orm';
+import { db } from '../database/schema.js';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -11,24 +10,26 @@ type QueueRunRequest = {
   triggerData?: Record<string, any> | null;
 };
 
-type QueueJob = {
+type ClaimedJob = {
   id: string;
   workflowId: string;
   userId?: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
-  createdAt: Date;
+  metadata?: Record<string, any>;
 };
 
 class ExecutionQueueService {
   private static instance: ExecutionQueueService;
   private running = 0;
-  private concurrency: number;
-  private pollingMs: number;
-  private timer: NodeJS.Timeout | null = null;
-  private pendingWake: NodeJS.Timeout | null = null;
+  private readonly concurrency: number;
+  private readonly pollingMs: number;
   private readonly maxRetries: number;
   private readonly baseRetryDelayMs: number;
   private readonly maxRetryDelayMs: number;
+  private started = false;
+  private shouldStop = false;
+  private workerPromises: Promise<void>[] = [];
+  private waiters: Set<() => void> = new Set();
+  private shutdownPromise: Promise<void> | null = null;
 
   private constructor(concurrency = 2, pollingMs = 1000) {
     this.concurrency = Math.max(1, concurrency);
@@ -39,27 +40,6 @@ class ExecutionQueueService {
       this.baseRetryDelayMs,
       Number.parseInt(process.env.EXECUTION_MAX_RETRY_DELAY_MS ?? `${5 * 60 * 1000}`, 10)
     );
-  }
-
-  private computeBackoff(attempt: number): number {
-    const exponent = Math.pow(2, Math.max(0, attempt - 1));
-    const jitter = Math.floor(Math.random() * this.baseRetryDelayMs * 0.2);
-    return Math.min(exponent * this.baseRetryDelayMs + jitter, this.maxRetryDelayMs);
-  }
-
-  private scheduleWake(delayMs: number): void {
-    if (this.pendingWake) {
-      clearTimeout(this.pendingWake);
-      this.pendingWake = null;
-    }
-
-    const clamped = Math.min(Math.max(delayMs, 100), this.maxRetryDelayMs);
-    this.pendingWake = setTimeout(() => {
-      this.pendingWake = null;
-      this.tick().catch((error) => {
-        console.error('ExecutionQueue wake error:', getErrorMessage(error));
-      });
-    }, clamped);
   }
 
   public static getInstance(): ExecutionQueueService {
@@ -73,6 +53,12 @@ class ExecutionQueueService {
     return Boolean(db);
   }
 
+  private computeBackoff(attempt: number): number {
+    const exponent = Math.pow(2, Math.max(0, attempt - 1));
+    const jitter = Math.floor(Math.random() * this.baseRetryDelayMs * 0.2);
+    return Math.min(exponent * this.baseRetryDelayMs + jitter, this.maxRetryDelayMs);
+  }
+
   public async enqueue(req: QueueRunRequest): Promise<{ executionId: string }> {
     const execution = await WorkflowRepository.createWorkflowExecution({
       workflowId: req.workflowId,
@@ -82,101 +68,173 @@ class ExecutionQueueService {
       triggerData: req.triggerData ?? null,
       metadata: { queuedAt: new Date().toISOString(), retryCount: 0 },
     });
+    this.signalNewWork();
     return { executionId: execution.id };
   }
 
   public start(): void {
-    if (this.timer) return;
-    this.timer = setInterval(() => this.tick().catch(() => {}), this.pollingMs);
+    if (this.started) {
+      return;
+    }
+
+    if (!this.isDbEnabled()) {
+      console.warn('⚠️ ExecutionQueueService requires a configured database to run.');
+      return;
+    }
+
+    this.started = true;
+    this.shouldStop = false;
+
+    this.workerPromises = Array.from({ length: this.concurrency }, (_, workerIndex) =>
+      this.workerLoop(workerIndex).catch((error) => {
+        console.error(`ExecutionQueue worker ${workerIndex} failed:`, getErrorMessage(error));
+      })
+    );
+
     console.log(`🧵 ExecutionQueueService started (concurrency=${this.concurrency})`);
-    this.tick().catch((error) => {
-      console.error('ExecutionQueue initial tick error:', getErrorMessage(error));
+  }
+
+  public stop(): Promise<void> {
+    return this.shutdown();
+  }
+
+  public async shutdown(options: { timeoutMs?: number } = {}): Promise<void> {
+    if (!this.started) {
+      return;
+    }
+
+    if (this.shutdownPromise) {
+      return this.shutdownPromise;
+    }
+
+    this.shouldStop = true;
+    this.signalNewWork();
+
+    const timeoutMs = Math.max(0, options.timeoutMs ?? 30000);
+
+    const awaitWorkers = async (): Promise<void> => {
+      const settled = await Promise.allSettled(this.workerPromises);
+      const rejected = settled.find((result) => result.status === 'rejected');
+      if (rejected && rejected.status === 'rejected') {
+        throw rejected.reason;
+      }
+    };
+
+    this.shutdownPromise = (async () => {
+      if (timeoutMs === 0) {
+        await awaitWorkers();
+      } else {
+        await Promise.race([
+          awaitWorkers(),
+          new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+        ]);
+      }
+
+      this.workerPromises = [];
+      this.started = false;
+      this.shutdownPromise = null;
+    })();
+
+    return this.shutdownPromise;
+  }
+
+  private async workerLoop(workerIndex: number): Promise<void> {
+    while (!this.shouldStop) {
+      let job: ClaimedJob | null = null;
+      try {
+        job = await this.claimNextQueued();
+      } catch (error) {
+        console.error(`ExecutionQueue worker ${workerIndex} claim error:`, getErrorMessage(error));
+      }
+
+      if (!job) {
+        await this.waitForWork();
+        continue;
+      }
+
+      this.running++;
+      try {
+        await this.process(job);
+      } finally {
+        this.running = Math.max(0, this.running - 1);
+      }
+    }
+  }
+
+  private async waitForWork(): Promise<void> {
+    if (this.shouldStop) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      if (this.shouldStop) {
+        resolve();
+        return;
+      }
+
+      let settled = false;
+      let timeoutHandle: NodeJS.Timeout;
+
+      const release = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutHandle);
+        this.waiters.delete(release);
+        resolve();
+      };
+
+      timeoutHandle = setTimeout(release, this.pollingMs);
+      this.waiters.add(release);
     });
   }
 
-  public stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
+  private signalNewWork(): void {
+    if (this.waiters.size === 0) {
+      return;
     }
-    if (this.pendingWake) {
-      clearTimeout(this.pendingWake);
-      this.pendingWake = null;
-    }
-  }
 
-  private async tick(): Promise<void> {
-    try {
-      while (this.running < this.concurrency) {
-        const next = await this.claimNextQueued();
-        if (!next) break;
-        this.running++;
-        this.process(next).finally(() => {
-          this.running = Math.max(0, this.running - 1);
-        });
+    const releases = Array.from(this.waiters);
+    this.waiters.clear();
+
+    for (const release of releases) {
+      try {
+        release();
+      } catch (error) {
+        console.error('ExecutionQueue wait release error:', getErrorMessage(error));
       }
-    } catch (error) {
-      console.error('ExecutionQueue tick error:', getErrorMessage(error));
     }
   }
 
-  private async claimNextQueued(): Promise<{ id: string; workflowId: string; userId?: string; metadata?: Record<string, any> } | null> {
+  private async claimNextQueued(): Promise<ClaimedJob | null> {
     if (!this.isDbEnabled()) {
-      // Memory mode: rely on WorkflowRepository to store an in-memory record; we cannot list queued ones.
-      // For dev, skip DB claim and return null so queue is driven via direct enqueue->immediate run fallback.
       return null;
     }
 
-    try {
-      const candidates = await db
-        .select({
-          id: workflowExecutions.id,
-          workflowId: workflowExecutions.workflowId,
-          userId: workflowExecutions.userId,
-          metadata: workflowExecutions.metadata,
-        })
-        .from(workflowExecutions)
-        .where(eq(workflowExecutions.status, 'queued'))
-        .orderBy(asc(workflowExecutions.startedAt))
-        .limit(this.concurrency * 2);
-
-      for (const candidate of candidates) {
-        const metadata = (candidate.metadata ?? {}) as Record<string, any>;
-        const nextRetryAt = typeof metadata.nextRetryAt === 'string' ? Date.parse(metadata.nextRetryAt) : NaN;
-        if (!Number.isNaN(nextRetryAt) && nextRetryAt > Date.now()) {
-          this.scheduleWake(nextRetryAt - Date.now());
-          continue;
-        }
-
-        const sanitizedMetadata = { ...metadata };
-        if ('nextRetryAt' in sanitizedMetadata) {
-          delete sanitizedMetadata.nextRetryAt;
-        }
-
-        await db
-          .update(workflowExecutions)
-          .set({ status: 'running', startedAt: new Date(), metadata: sanitizedMetadata })
-          .where(and(eq(workflowExecutions.id, candidate.id), eq(workflowExecutions.status, 'queued')));
-
-        return {
-          id: candidate.id,
-          workflowId: candidate.workflowId,
-          userId: candidate.userId,
-          metadata: sanitizedMetadata,
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Failed to claim queued execution:', getErrorMessage(error));
+    const claimed = await WorkflowRepository.claimNextQueuedExecution();
+    if (!claimed) {
       return null;
     }
+
+    const metadata = (claimed.metadata ?? undefined) as Record<string, any> | undefined;
+    if (metadata && 'nextRetryAt' in metadata) {
+      delete metadata.nextRetryAt;
+    }
+
+    return {
+      id: claimed.id,
+      workflowId: claimed.workflowId,
+      userId: claimed.userId ?? undefined,
+      metadata,
+    };
   }
 
-  private async process(job: { id: string; workflowId: string; userId?: string; metadata?: Record<string, any> }): Promise<void> {
+  private async process(job: ClaimedJob): Promise<void> {
     const startedAt = Date.now();
     const executionRecord = await WorkflowRepository.getExecutionById(job.id);
     const baseMetadata = { ...(executionRecord?.metadata ?? job.metadata ?? {}) } as Record<string, any>;
+
     try {
       const wf = await WorkflowRepository.getWorkflowById(job.workflowId);
       if (!wf || !wf.graph) {
@@ -226,10 +284,8 @@ class ExecutionQueueService {
           startedAt: new Date(),
         });
 
-        console.warn(
-          `⚠️ Execution ${job.id} failed (attempt ${nextRetryCount}). Retrying in ${delay}ms: ${errorMessage}`
-        );
-        this.scheduleWake(delay);
+        console.warn(`⚠️ Execution ${job.id} failed (attempt ${nextRetryCount}). Retrying in ${delay}ms: ${errorMessage}`);
+        this.signalNewWork();
         return;
       }
 
@@ -256,4 +312,3 @@ class ExecutionQueueService {
 }
 
 export const executionQueueService = ExecutionQueueService.getInstance();
-
