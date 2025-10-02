@@ -23,6 +23,10 @@ import { GrafanaAPIClient } from '../../integrations/GrafanaAPIClient.js';
 import { PrometheusAPIClient } from '../../integrations/PrometheusAPIClient.js';
 import { NewrelicAPIClient } from '../../integrations/NewrelicAPIClient.js';
 import { SentryAPIClient } from '../../integrations/SentryAPIClient.js';
+import { BigCommerceAPIClient } from '../../integrations/BigCommerceAPIClient.js';
+import { MagentoAPIClient } from '../../integrations/MagentoAPIClient.js';
+import { WooCommerceAPIClient } from '../../integrations/WooCommerceAPIClient.js';
+import { SquareAPIClient } from '../../integrations/SquareAPIClient.js';
 
 /**
  * Get the compiler operation map
@@ -217,6 +221,72 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
     assertClientInstance(client, SentryAPIClient).finalizeRelease(params),
   'action.sentry:get_teams': (client, params = {}) =>
     assertClientInstance(client, SentryAPIClient).getTeams(params),
+
+  'action.bigcommerce:test_connection': client =>
+    assertClientInstance(client, BigCommerceAPIClient).testConnection(),
+  'action.bigcommerce:create_product': (client, params = {}) =>
+    assertClientInstance(client, BigCommerceAPIClient).createProduct(params),
+  'action.bigcommerce:update_product': (client, params = {}) =>
+    assertClientInstance(client, BigCommerceAPIClient).updateProduct(params),
+  'action.bigcommerce:get_product': (client, params = {}) =>
+    assertClientInstance(client, BigCommerceAPIClient).getProduct(params),
+  'action.bigcommerce:list_products': (client, params = {}) =>
+    assertClientInstance(client, BigCommerceAPIClient).listProducts(params),
+  'action.bigcommerce:create_order': (client, params = {}) =>
+    assertClientInstance(client, BigCommerceAPIClient).createOrder(params),
+
+  'action.magento:test_connection': client =>
+    assertClientInstance(client, MagentoAPIClient).testConnection(),
+  'action.magento:create_product': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).createProduct(params),
+  'action.magento:get_product': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).getProduct(params),
+  'action.magento:update_product': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).updateProduct(params),
+  'action.magento:delete_product': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).deleteProduct(params),
+  'action.magento:search_products': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).searchProducts(params),
+  'action.magento:create_order': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).createOrder(params),
+  'action.magento:get_order': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).getOrder(params),
+  'action.magento:create_customer': (client, params = {}) =>
+    assertClientInstance(client, MagentoAPIClient).createCustomer(params),
+
+  'action.woocommerce:test_connection': client =>
+    assertClientInstance(client, WooCommerceAPIClient).testConnection(),
+  'action.woocommerce:create_product': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).createProduct(params),
+  'action.woocommerce:get_product': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).getProduct(params),
+  'action.woocommerce:update_product': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).updateProduct(params),
+  'action.woocommerce:list_products': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).listProducts(params),
+  'action.woocommerce:create_order': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).createOrder(params),
+  'action.woocommerce:get_order': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).getOrder(params),
+  'action.woocommerce:update_order': (client, params = {}) =>
+    assertClientInstance(client, WooCommerceAPIClient).updateOrder(params),
+
+  'action.square:test_connection': client =>
+    assertClientInstance(client, SquareAPIClient).testConnection(),
+  'action.square:create_payment': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).createPayment(params),
+  'action.square:get_payment': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).getPayment(params),
+  'action.square:list_payments': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).listPayments(params),
+  'action.square:create_refund': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).createRefund(params),
+  'action.square:create_customer': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).createCustomer(params),
+  'action.square:get_customer': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).getCustomer(params),
+  'action.square:create_order': (client, params = {}) =>
+    assertClientInstance(client, SquareAPIClient).createOrder(params),
 
   'action.kubernetes:test_connection': client => assertClientInstance(client, KubernetesAPIClient).testConnection(),
   'action.kubernetes:create_deployment': (client, params = {}) =>
