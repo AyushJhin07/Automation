@@ -1,114 +1,145 @@
-// MAGENTO (ADOBE COMMERCE) API CLIENT
-// Auto-generated API client for Magento (Adobe Commerce) integration
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface MagentoAPIClientConfig {
-  accessToken: string;
+interface MagentoCredentials extends APICredentials {
+  domain?: string;
   baseUrl?: string;
 }
 
-export class MagentoAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: MagentoAPIClientConfig;
+interface MagentoSearchCriteria {
+  filterGroups?: Array<{ filters?: Array<{ field?: string; value?: string | number; conditionType?: string }> }>;
+  sortOrders?: Array<{ field?: string; direction?: string }>;
+  pageSize?: number;
+  currentPage?: number;
+}
 
-  constructor(config: MagentoAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://{{store}}/rest/V1';
+export class MagentoAPIClient extends BaseAPIClient {
+  constructor(credentials: MagentoCredentials) {
+    const baseURL = credentials.baseUrl ??
+      (credentials.domain ? `https://${credentials.domain}/rest/V1` : undefined);
+
+    if (!baseURL) {
+      throw new Error('Magento integration requires baseUrl or domain');
+    }
+
+    super(baseURL, credentials);
+
+    this.registerHandlers({
+      'test_connection': this.testConnection.bind(this) as any,
+      'create_product': this.createProduct.bind(this) as any,
+      'get_product': this.getProduct.bind(this) as any,
+      'update_product': this.updateProduct.bind(this) as any,
+      'delete_product': this.deleteProduct.bind(this) as any,
+      'search_products': this.searchProducts.bind(this) as any,
+      'create_order': this.createOrder.bind(this) as any,
+      'get_order': this.getOrder.bind(this) as any,
+      'create_customer': this.createCustomer.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
+    const token = this.credentials.apiKey || this.credentials.accessToken || this.credentials.token;
+    if (!token) {
+      throw new Error('Magento integration requires apiKey or accessToken');
+    }
+
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/store/websites');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/store/websites');
   }
 
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
+  public async createProduct(params: { product: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['product']);
+    return this.post('/products', params);
+  }
+
+  public async getProduct(params: { sku: string; editMode?: boolean; storeId?: number; forceReload?: boolean }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['sku']);
+    const { sku, ...rest } = params;
+    const query = this.buildQueryString(this.cleanParams(rest));
+    return this.get(`/products/${encodeURIComponent(sku)}${query}`);
+  }
+
+  public async updateProduct(params: { sku: string; product: Record<string, any>; saveOptions?: boolean }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['sku', 'product']);
+    const { sku, product, saveOptions } = params;
+    const query = this.buildQueryString(this.cleanParams({ saveOptions }));
+    return this.put(`/products/${encodeURIComponent(sku)}${query}`, { product });
+  }
+
+  public async deleteProduct(params: { sku: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['sku']);
+    return this.delete(`/products/${encodeURIComponent(params.sku)}`);
+  }
+
+  public async searchProducts(params: { searchCriteria?: MagentoSearchCriteria } = {}): Promise<APIResponse<any>> {
+    const qs = this.buildSearchCriteriaQuery(params.searchCriteria);
+    return this.get(`/products${qs}`);
+  }
+
+  public async createOrder(params: { entity: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['entity']);
+    return this.post('/orders', params);
+  }
+
+  public async getOrder(params: { id: number }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['id']);
+    return this.get(`/orders/${params.id}`);
+  }
+
+  public async createCustomer(params: { customer: Record<string, any>; password?: string; redirectUrl?: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['customer']);
+    return this.post('/customers', params);
+  }
+
+  private cleanParams(params: Record<string, any>): Record<string, any> {
+    const clean: Record<string, any> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null) continue;
+      clean[key] = value;
+    }
+    return clean;
+  }
+
+  private buildSearchCriteriaQuery(criteria?: MagentoSearchCriteria): string {
+    if (!criteria) return '';
+    const params = new URLSearchParams();
+
+    if (criteria.pageSize !== undefined) {
+      params.set('searchCriteria[pageSize]', String(criteria.pageSize));
+    }
+    if (criteria.currentPage !== undefined) {
+      params.set('searchCriteria[currentPage]', String(criteria.currentPage));
+    }
+
+    criteria.filterGroups?.forEach((group, groupIndex) => {
+      group.filters?.forEach((filter, filterIndex) => {
+        if (filter.field !== undefined) {
+          params.set(`searchCriteria[filterGroups][${groupIndex}][filters][${filterIndex}][field]`, String(filter.field));
+        }
+        if (filter.value !== undefined) {
+          params.set(`searchCriteria[filterGroups][${groupIndex}][filters][${filterIndex}][value]`, String(filter.value));
+        }
+        if (filter.conditionType !== undefined) {
+          params.set(`searchCriteria[filterGroups][${groupIndex}][filters][${filterIndex}][conditionType]`, String(filter.conditionType));
+        }
       });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
-    }
-  }
+    });
 
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
-    }
-  }
+    criteria.sortOrders?.forEach((order, orderIndex) => {
+      if (order.field !== undefined) {
+        params.set(`searchCriteria[sortOrders][${orderIndex}][field]`, String(order.field));
+      }
+      if (order.direction !== undefined) {
+        params.set(`searchCriteria[sortOrders][${orderIndex}][direction]`, String(order.direction));
+      }
+    });
 
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
-    }
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : '';
   }
 }
