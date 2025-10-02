@@ -5,6 +5,7 @@ import path from 'node:path';
 
 process.env.NODE_ENV = 'development';
 process.env.ENCRYPTION_MASTER_KEY = 'a'.repeat(32);
+process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
 
 const tempDir = await mkdtemp(path.join(os.tmpdir(), 'connection-service-'));
 process.env.CONNECTION_STORE_PATH = path.join(tempDir, 'connections.json');
@@ -52,5 +53,6 @@ assert.deepEqual(allConnections[0].credentials, originalCredentials, 'list entri
 
 await rm(tempDir, { recursive: true, force: true });
 delete process.env.CONNECTION_STORE_PATH;
+delete process.env.ALLOW_FILE_CONNECTION_STORE;
 
 console.log('ConnectionService encrypt/decrypt round trip verified via file store.');

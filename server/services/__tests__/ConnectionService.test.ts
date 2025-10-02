@@ -5,6 +5,7 @@ import path from 'node:path';
 
 process.env.NODE_ENV = 'development';
 process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
+process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
 
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'connection-service-'));
 const storePath = path.join(tempDir, 'connections.json');
@@ -57,5 +58,7 @@ assert.equal(fetched?.testStatus, 'failed', 'fetched connection includes test st
 assert.equal(fetched?.testError, testResult.message, 'fetched connection includes test error');
 
 await fs.rm(tempDir, { recursive: true, force: true });
+
+delete process.env.ALLOW_FILE_CONNECTION_STORE;
 
 console.log('ConnectionService stores type/test status metadata in sync with schema.');

@@ -17,15 +17,7 @@ export class EncryptionService {
   static async init(): Promise<void> {
     const masterKey = process.env.ENCRYPTION_MASTER_KEY;
     if (!masterKey) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ ENCRYPTION_MASTER_KEY not set - using development fallback (NOT SECURE)');
-        // Use a development-only fallback key
-        this.encryptionKey = Buffer.from('dev-fallback-key-not-secure-32b');
-        console.log('🔐 Development encryption service initialized (NOT SECURE)');
-        return;
-      } else {
-        throw new Error('ENCRYPTION_MASTER_KEY environment variable is required');
-      }
+      throw new Error('ENCRYPTION_MASTER_KEY environment variable is required');
     }
     
     if (masterKey.length < 32) {
@@ -213,10 +205,12 @@ export class EncryptionService {
 }
 
 // Initialize encryption service on import
-try {
-  EncryptionService.init();
-  console.log('🔐 Encryption service initialized successfully');
-} catch (error) {
-  console.error('❌ Failed to initialize encryption service:', getErrorMessage(error));
-  console.error('Please set ENCRYPTION_MASTER_KEY and JWT_SECRET environment variables');
-}
+void (async () => {
+  try {
+    await EncryptionService.init();
+    console.log('🔐 Encryption service initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize encryption service:', getErrorMessage(error));
+    console.error('Please set ENCRYPTION_MASTER_KEY and JWT_SECRET environment variables');
+  }
+})();

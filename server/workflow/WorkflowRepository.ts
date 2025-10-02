@@ -52,6 +52,7 @@ export interface CreateWorkflowExecutionInput {
 export interface UpdateWorkflowExecutionInput {
   status?: string;
   completedAt?: Date | null;
+  startedAt?: Date | null;
   duration?: number | null;
   nodeResults?: Record<string, any> | null;
   errorDetails?: Record<string, any> | null;
@@ -439,6 +440,7 @@ export class WorkflowRepository {
         ...existing,
         status: updates.status ?? existing.status,
         completedAt: updates.completedAt ?? existing.completedAt,
+        startedAt: updates.startedAt ?? existing.startedAt,
         duration: updates.duration ?? existing.duration,
         nodeResults: updates.nodeResults ?? existing.nodeResults,
         errorDetails: updates.errorDetails ?? existing.errorDetails,
@@ -454,6 +456,7 @@ export class WorkflowRepository {
 
     if (updates.status !== undefined) updateSet.status = updates.status;
     if (updates.completedAt !== undefined) updateSet.completedAt = updates.completedAt;
+    if (updates.startedAt !== undefined) updateSet.startedAt = updates.startedAt;
     if (updates.duration !== undefined) updateSet.duration = updates.duration;
     if (updates.nodeResults !== undefined) updateSet.nodeResults = updates.nodeResults;
     if (updates.errorDetails !== undefined) updateSet.errorDetails = updates.errorDetails;
