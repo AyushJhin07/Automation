@@ -59,6 +59,87 @@
       }
     },
     {
+      "id": "create_job_template",
+      "name": "Create Job Template",
+      "description": "Create a new job template",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Job template name"
+          },
+          "job_type": {
+            "type": "string",
+            "enum": ["run", "check"],
+            "default": "run",
+            "description": "Job type"
+          },
+          "inventory": {
+            "type": "string",
+            "description": "Inventory ID"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "playbook": {
+            "type": "string",
+            "description": "Playbook name"
+          },
+          "credential": {
+            "type": "string",
+            "description": "Credential ID"
+          }
+        },
+        "required": ["name", "inventory", "project", "playbook"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "list_job_templates",
+      "name": "List Job Templates",
+      "description": "List available job templates",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Filter by name"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_job_template",
+      "name": "Delete Job Template",
+      "description": "Delete an existing job template",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_template_id": {
+            "type": "string",
+            "description": "Job template ID"
+          }
+        },
+        "required": ["job_template_id"],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "get_job_status",
       "name": "Get Job Status",
       "description": "Get the status of a running job",

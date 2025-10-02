@@ -52,6 +52,12 @@ import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
 import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
+import { KubernetesAPIClient } from './integrations/KubernetesAPIClient';
+import { ArgoCDAPIClient } from './integrations/ArgoCDAPIClient';
+import { TerraformCloudAPIClient } from './integrations/TerraformCloudAPIClient';
+import { HashicorpVaultAPIClient } from './integrations/HashicorpVaultAPIClient';
+import { HelmAPIClient } from './integrations/HelmAPIClient';
+import { AnsibleAPIClient } from './integrations/AnsibleAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {
@@ -266,6 +272,12 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('kubernetes', KubernetesAPIClient);
+    this.registerAPIClient('argocd', ArgoCDAPIClient);
+    this.registerAPIClient('terraform-cloud', TerraformCloudAPIClient);
+    this.registerAPIClient('hashicorp-vault', HashicorpVaultAPIClient);
+    this.registerAPIClient('helm', HelmAPIClient);
+    this.registerAPIClient('ansible', AnsibleAPIClient);
   }
 
   /**

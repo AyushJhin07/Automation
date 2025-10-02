@@ -73,6 +73,55 @@
       }
     },
     {
+      "id": "list_deployments",
+      "name": "List Deployments",
+      "description": "List deployments in a namespace",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "label_selector": {
+            "type": "string",
+            "description": "Label selector to filter deployments"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_deployment",
+      "name": "Delete Deployment",
+      "description": "Delete a deployment",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Deployment name"
+          },
+          "namespace": {
+            "type": "string",
+            "default": "default",
+            "description": "Kubernetes namespace"
+          },
+          "propagationPolicy": {
+            "type": "string",
+            "enum": ["Foreground", "Background", "Orphan"],
+            "description": "Deletion propagation policy"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "create_service",
       "name": "Create Service",
       "description": "Create a Kubernetes service",
