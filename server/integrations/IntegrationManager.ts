@@ -112,6 +112,12 @@ export class IntegrationManager {
       'confluence': 'confluence',
       'confluence-enhanced': 'confluence',
       'jira-service-management-enhanced': 'jira-service-management',
+      'azure_devops': 'azure-devops',
+      'azuredevops': 'azure-devops',
+      'circle-ci': 'circleci',
+      'circle_ci': 'circleci',
+      'jenkins-ci': 'jenkins',
+      'jenkins_ci': 'jenkins',
     };
     return map[v] || v;
   }
