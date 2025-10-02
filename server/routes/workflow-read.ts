@@ -446,6 +446,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       workflowId: id,
       executionId,
       userId: (req as any)?.user?.id,
+      organizationId: (req as any)?.organizationId,
       timezone: req.body?.timezone || 'UTC',
       nodeOutputs,
       edges

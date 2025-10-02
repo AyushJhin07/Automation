@@ -607,13 +607,22 @@ export class WebhookManager {
       const service = await this.getConnectionService();
       if (service) {
         try {
-          const connection = await service.getConnection(metadata.connectionId, metadata.userId);
-          if (connection) {
-            return {
-              credentials: (connection.credentials as APICredentials),
-              additionalConfig: { ...(connection.metadata ?? {}), ...(metadata.additionalConfig ?? {}) },
-              parameters,
-            };
+          const organizationId = (metadata as any).organizationId;
+          if (!organizationId) {
+            console.warn('⚠️ Missing organizationId for polling trigger connection resolution');
+          } else {
+            const connection = await service.getConnection(
+              metadata.connectionId,
+              metadata.userId,
+              organizationId
+            );
+            if (connection) {
+              return {
+                credentials: (connection.credentials as APICredentials),
+                additionalConfig: { ...(connection.metadata ?? {}), ...(metadata.additionalConfig ?? {}) },
+                parameters,
+              };
+            }
           }
         } catch (error) {
           console.warn('⚠️ Failed to load connection for polling trigger:', getErrorMessage(error));

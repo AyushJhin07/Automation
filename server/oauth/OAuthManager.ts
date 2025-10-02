@@ -43,6 +43,7 @@ export interface OAuthUserInfo {
 export interface OAuthState {
   userId: string;
   provider: string;
+  organizationId: string;
   returnUrl?: string;
   codeVerifier?: string; // For PKCE
   nonce: string;
@@ -1646,8 +1647,9 @@ export class OAuthManager {
    * Generate authorization URL with state and PKCE
    */
   async generateAuthUrl(
-    providerId: string, 
-    userId: string, 
+    providerId: string,
+    userId: string,
+    organizationId: string,
     returnUrl?: string,
     additionalScopes?: string[]
   ): Promise<{ authUrl: string; state: string }> {
@@ -1673,6 +1675,7 @@ export class OAuthManager {
     this.pendingStates.set(state, {
       userId,
       provider: providerId,
+      organizationId,
       returnUrl,
       codeVerifier,
       nonce,
@@ -1719,6 +1722,10 @@ export class OAuthManager {
       throw new Error('Invalid OAuth state');
     }
 
+    if (!storedState.organizationId) {
+      throw new Error('OAuth state missing organization context');
+    }
+
     // Clean up state
     this.pendingStates.delete(state);
 
@@ -1752,6 +1759,7 @@ export class OAuthManager {
     // Store connection
     await connectionService.storeConnection(
       storedState.userId,
+      storedState.organizationId,
       providerId,
       tokens,
       userInfo
@@ -1763,14 +1771,14 @@ export class OAuthManager {
   /**
    * Refresh access token
    */
-  async refreshToken(userId: string, providerId: string): Promise<OAuthTokens> {
+  async refreshToken(userId: string, organizationId: string, providerId: string): Promise<OAuthTokens> {
     const provider = this.providers.get(providerId);
     if (!provider) {
       throw new Error(`OAuth provider not found: ${providerId}`);
     }
 
     // Get stored connection
-    const connection = await connectionService.getConnectionByProvider(userId, providerId);
+    const connection = await connectionService.getConnectionByProvider(userId, organizationId, providerId);
     const refreshToken = connection?.credentials?.refreshToken;
     if (!connection || !refreshToken) {
       throw new Error('No refresh token available');
@@ -1812,6 +1820,7 @@ export class OAuthManager {
       // Update stored connection
       await connectionService.storeConnection(
         userId,
+        organizationId,
         providerId,
         newTokens,
         connection.metadata?.userInfo,

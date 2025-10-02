@@ -112,7 +112,7 @@ export class ProductionLLMOrchestrator {
       console.log(`🤔 Clarifying intent for user: ${request.userId}`);
 
       // Get user's LLM connection
-      const connection = await this.getLLMConnection(request.userId);
+      const connection = await this.getLLMConnection(request.userId, request.organizationId);
       if (!connection) {
         return {
           success: false,
@@ -188,7 +188,7 @@ export class ProductionLLMOrchestrator {
     try {
       console.log(`📋 Planning workflow for user: ${request.userId}`);
 
-      const connection = await this.getLLMConnection(request.userId);
+      const connection = await this.getLLMConnection(request.userId, request.organizationId);
       if (!connection) {
         return {
           success: false,
@@ -279,7 +279,7 @@ export class ProductionLLMOrchestrator {
     try {
       console.log(`🔧 Fixing workflow for user: ${request.userId}`);
 
-      const connection = await this.getLLMConnection(request.userId);
+      const connection = await this.getLLMConnection(request.userId, request.organizationId);
       if (!connection) {
         return {
           success: false,
@@ -350,12 +350,16 @@ export class ProductionLLMOrchestrator {
   /**
    * Get user's LLM connection (tries multiple providers)
    */
-  private async getLLMConnection(userId: string): Promise<any> {
+  private async getLLMConnection(userId: string, organizationId?: string): Promise<any> {
+    if (!organizationId) {
+      console.warn('⚠️ ProductionLLMOrchestrator: Missing organizationId when resolving LLM connection');
+      return null;
+    }
     // Try providers in order of preference
     const providers = ['gemini', 'openai', 'claude'];
-    
+
     for (const provider of providers) {
-      const connection = await connectionService.getLLMConnection(userId, provider);
+      const connection = await connectionService.getLLMConnection(userId, organizationId, provider);
       if (connection) {
         return connection;
       }

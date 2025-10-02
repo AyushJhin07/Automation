@@ -353,7 +353,7 @@ export class HealthMonitoringService {
     
     try {
       // Test if we can create connections (this would test the service)
-      const testResult = await connectionService.getUserConnections('health-check-user');
+      const testResult = await connectionService.getUserConnections('health-check-user', 'health-check-org');
       
       const responseTime = Date.now() - startTime;
       

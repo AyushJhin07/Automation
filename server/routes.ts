@@ -522,6 +522,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ]),
     async (req, res) => {
       try {
+        if (!req.organizationId) {
+          return res.status(400).json({ success: false, error: 'Organization context required' });
+        }
         const provider = String(req.body?.provider || '').toLowerCase() as typeof SUPPORTED_CONNECTION_PROVIDERS[number];
         const inferredType = SUPPORTED_CONNECTION_TYPES[provider];
         const requestedType = req.body?.type as 'llm' | 'saas' | 'database' | undefined;
@@ -532,6 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const connectionId = await connectionService.createConnection({
           userId: req.user!.id,
+          organizationId: req.organizationId,
           name: req.body.name,
           provider,
           type,
@@ -547,7 +551,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/connections', authenticateToken, async (req, res) => {
     try {
-      const connections = await connectionService.getUserConnections(req.user!.id);
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+      const connections = await connectionService.getUserConnections(req.user!.id, req.organizationId);
       // Mask credentials for security
       const maskedConnections = connections.map(conn => ConnectionService.maskCredentials(conn));
       res.json({ success: true, connections: maskedConnections });
@@ -559,7 +566,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Connection usage (lastUsed/lastError) – file-store mode only provides these today
   app.get('/api/connections/usage', authenticateToken, async (req, res) => {
     try {
-      const conns = await connectionService.getUserConnections(req.user!.id);
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+      const conns = await connectionService.getUserConnections(req.user!.id, req.organizationId);
       const usage = conns.map(c => ({ id: c.id, provider: c.provider, name: c.name, lastUsed: (c as any).lastUsed, lastError: (c as any).lastError }));
       res.json({ success: true, usage });
     } catch (error) {
@@ -570,7 +580,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Export user's connections (masked)
   app.get('/api/connections/export', authenticateToken, async (req, res) => {
     try {
-      const data = await connectionService.exportConnections(req.user!.id);
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+      const data = await connectionService.exportConnections(req.user!.id, req.organizationId);
       res.json({ success: true, connections: data });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -580,8 +593,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import connections (dev/local)
   app.post('/api/connections/import', authenticateToken, async (req, res) => {
     try {
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       const list = Array.isArray(req.body?.connections) ? req.body.connections : [];
-      const result = await connectionService.importConnections(req.user!.id, list);
+      const result = await connectionService.importConnections(req.user!.id, req.organizationId, list);
       res.json({ success: true, result });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -603,7 +619,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     checkQuota(1),
     async (req, res) => {
       try {
-        const result = await connectionService.testConnection(req.params.id, req.user!.id);
+        if (!req.organizationId) {
+          return res.status(400).json({ success: false, error: 'Organization context required' });
+        }
+        const result = await connectionService.testConnection(req.params.id, req.user!.id, req.organizationId);
         res.json({ success: true, data: result });
       } catch (error) {
         res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -613,7 +632,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/connections/:id', authenticateToken, async (req, res) => {
     try {
-      await connectionService.deleteConnection(req.params.id, req.user!.id);
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+      await connectionService.deleteConnection(req.params.id, req.user!.id, req.organizationId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -1100,6 +1122,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch execute-list: fan-out across multiple requests
   app.post('/api/integrations/execute-batch', authenticateToken, checkQuota, async (req, res) => {
     try {
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       const ops: any[] = Array.isArray(req.body?.operations) ? req.body.operations : [];
       if (ops.length === 0) return res.status(400).json({ success: false, error: 'operations[] required' });
       const results: any[] = [];
@@ -1109,9 +1134,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userId = req.user!.id;
           let conn = null as any;
           if (connectionId) {
-            conn = await connectionService.getConnection(String(connectionId), userId);
+            conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
           } else if (provider) {
-            conn = await connectionService.getConnectionByProvider(userId, String(provider));
+            conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
           }
           if (!conn) {
             results.push({ success: false, error: 'Connection not found', appName, functionId });
@@ -1126,7 +1151,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
         const r = await integrationManager.executeFunction({ appName, functionId, parameters: parameters || {}, credentials: credentials || {}, additionalConfig: {}, connectionId });
-        if (connectionId) await connectionService.markUsed(String(connectionId), req.user!.id, r.success, r.success ? undefined : r.error);
+        if (connectionId) {
+          await connectionService.markUsed(
+            String(connectionId),
+            req.user!.id,
+            req.organizationId,
+            r.success,
+            r.success ? undefined : r.error
+          );
+        }
         logAction({ type: 'integration.executeBatchItem', userId: req.user?.id, appName, functionId, success: r.success });
         results.push(r);
       }
@@ -1355,7 +1388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider, additionalParams } = req.body;
       const userId = req.user!.id;
-      
+
       if (!provider) {
         return res.status(400).json({
           success: false,
@@ -1370,9 +1403,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
       const { authUrl, state } = await oauthManager.generateAuthUrl(
         provider,
         userId,
+        req.organizationId,
         undefined, // returnUrl
         additionalParams?.scopes // additionalScopes
       );
@@ -1437,7 +1475,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider, tokens, userInfo, additionalConfig } = req.body;
       const userId = req.user!.id;
-      
+
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
       if (!provider || !tokens) {
         return res.status(400).json({
           success: false,
@@ -1448,6 +1490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store connection through connection service (OAuth manager handles this in callback)
       await connectionService.storeConnection(
         userId,
+        req.organizationId,
         provider,
         tokens,
         userInfo
@@ -1473,7 +1516,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider } = req.body;
       const userId = req.user!.id;
-      
+
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
       if (!provider) {
         return res.status(400).json({
           success: false,
@@ -1481,7 +1528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const newTokens = await oauthManager.refreshToken(userId, provider);
+      const newTokens = await oauthManager.refreshToken(userId, req.organizationId, provider);
       
       res.json({
         success: true,
@@ -1666,16 +1713,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize integration (supports connectionId/provider fallback)
   app.post('/api/integrations/initialize', authenticateToken, async (req, res) => {
     try {
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       let { appName, credentials, additionalConfig, connectionId, provider } = req.body;
-      
+
       // Resolve credentials from stored connection if not provided
       if (!credentials && (connectionId || provider)) {
         const userId = req.user!.id;
         let conn = null as any;
         if (connectionId) {
-          conn = await connectionService.getConnection(String(connectionId), userId);
+          conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
         } else if (provider) {
-          conn = await connectionService.getConnectionByProvider(userId, String(provider));
+          conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
         }
         if (!conn) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
@@ -1713,15 +1763,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Execute function on integrated application (supports connectionId/provider fallback)
   app.post('/api/integrations/execute', authenticateToken, checkQuota, async (req, res) => {
     try {
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       let { appName, functionId, parameters, credentials, additionalConfig, connectionId, provider } = req.body;
 
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
         let conn = null as any;
         if (connectionId) {
-          conn = await connectionService.getConnection(String(connectionId), userId);
+          conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
         } else if (provider) {
-          conn = await connectionService.getConnectionByProvider(userId, String(provider));
+          conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
         }
         if (!conn) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
@@ -1747,7 +1800,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       logAction({ type: 'integration.execute', userId: req.user?.id, appName, functionId, success: result.success });
 
       if (connectionId) {
-        await connectionService.markUsed(String(connectionId), req.user!.id, result.success, result.success ? undefined : result.error);
+        await connectionService.markUsed(
+          String(connectionId),
+          req.user!.id,
+          req.organizationId,
+          result.success,
+          result.success ? undefined : result.error
+        );
       }
 
       // Track usage
@@ -1775,15 +1834,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Execute function with automatic pagination (GenericExecutor only; supports connectionId/provider)
   app.post('/api/integrations/execute-paginated', authenticateToken, checkQuota, async (req, res) => {
     try {
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       let { appName, functionId, parameters, credentials, additionalConfig, connectionId, provider, maxPages } = req.body;
 
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
         let conn = null as any;
         if (connectionId) {
-          conn = await connectionService.getConnection(String(connectionId), userId);
+          conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
         } else if (provider) {
-          conn = await connectionService.getConnectionByProvider(userId, String(provider));
+          conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
         }
         if (!conn) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
@@ -1811,7 +1873,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxPages
       });
       if (connectionId) {
-        await connectionService.markUsed(String(connectionId), req.user!.id, result.success, result.success ? undefined : result.error);
+        await connectionService.markUsed(
+          String(connectionId),
+          req.user!.id,
+          req.organizationId,
+          result.success,
+          result.success ? undefined : result.error
+        );
       }
       logAction({ type: 'integration.executePaginated', userId: req.user?.id, appName, functionId, success: result.success });
       res.json(result);
@@ -1823,6 +1891,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Execute and normalize list items (returns { items, meta }) using GenericExecutor
   app.post('/api/integrations/execute-list', authenticateToken, checkQuota, async (req, res) => {
     try {
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       let { appName, functionId, parameters, credentials, connectionId, provider, maxPages } = req.body;
       const { env } = await import('./env.js');
       if (!env.GENERIC_EXECUTOR_ENABLED) {
@@ -1831,8 +1902,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
         let conn = null as any;
-        if (connectionId) conn = await connectionService.getConnection(String(connectionId), userId);
-        else if (provider) conn = await connectionService.getConnectionByProvider(userId, String(provider));
+        if (connectionId) conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
+        else if (provider) conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
         if (!conn) return res.status(404).json({ success: false, error: 'Connection not found' });
         credentials = conn.credentials;
         appName = appName || conn.provider;
@@ -2233,9 +2304,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/llm/health', authenticateToken, async (req, res) => {
     try {
       const userId = req.user!.id;
-      
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
       // Get all LLM connections for this user
-      const connections = await connectionService.getUserConnections(userId);
+      const connections = await connectionService.getUserConnections(userId, req.organizationId);
       const llmConnections = connections.filter(conn => 
         ['gemini', 'openai', 'claude', 'anthropic'].includes(conn.provider.toLowerCase())
       );
@@ -2265,7 +2339,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🔍 Testing ${provider} connection for user ${userId}...`);
           
           let testResult;
-          const decryptedCredentials = await connectionService.getConnection(connection.id, userId);
+          const decryptedCredentials = await connectionService.getConnection(
+            connection.id,
+            userId,
+            req.organizationId
+          );
           if (!decryptedCredentials) {
             throw new Error('Failed to decrypt credentials');
           }
@@ -2968,6 +3046,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!provider || !workflowId || !triggerId) {
         return res.status(400).json({ success: false, error: 'Missing provider, workflowId, or triggerId' });
       }
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
 
       // First register local webhook to get callback URL
       const endpoint = await webhookManager.registerWebhook({
@@ -2988,7 +3069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { genericExecutor } = await import('./integrations/GenericExecutor.js');
         // Expect credentials via connection or direct in body
         const creds = req.body.credentials || (req.body.connectionId
-          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id, req.organizationId))?.credentials
           : undefined);
         if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
 
@@ -3014,7 +3095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const { genericExecutor } = await import('./integrations/GenericExecutor.js');
         const creds = req.body.credentials || (req.body.connectionId
-          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id, req.organizationId))?.credentials
           : undefined);
         if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
 
@@ -3048,7 +3129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const { genericExecutor } = await import('./integrations/GenericExecutor.js');
         const creds = req.body.credentials || (req.body.connectionId
-          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id, req.organizationId))?.credentials
           : undefined);
         if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
 
@@ -3078,7 +3159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const { genericExecutor } = await import('./integrations/GenericExecutor.js');
         const creds = req.body.credentials || (req.body.connectionId
-          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id))?.credentials
+          ? (await connectionService.getConnection(String(req.body.connectionId), req.user!.id, req.organizationId))?.credentials
           : undefined);
         if (!creds) return res.status(400).json({ success: false, error: 'Missing credentials or connectionId' });
 
@@ -3240,6 +3321,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const { provider } = req.params;
       const { events, callbackUrl, secret } = req.body;
+
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       
       // Validate required fields
       if (!events || !Array.isArray(events) || events.length === 0) {
@@ -3251,7 +3336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get user credentials for this provider and build an API client
-      const userConn = await connectionService.getConnectionByProvider(userId, provider);
+      const userConn = await connectionService.getConnectionByProvider(userId, req.organizationId, provider);
       const apiClient = integrationManager.getAPIClient(provider, userConn?.credentials || {}, req.body?.additionalConfig || undefined);
       if (!apiClient) {
         return res.status(404).json({
@@ -3313,11 +3398,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Unregister a webhook
   app.delete('/api/webhooks/register/:provider/:webhookId', authenticateToken, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const { provider, webhookId } = req.params;
-      
-      const userConn = await connectionService.getConnectionByProvider(req.user!.id, provider);
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
+      const userConn = await connectionService.getConnectionByProvider(req.user!.id, req.organizationId, provider);
       const apiClient = integrationManager.getAPIClient(provider, userConn?.credentials || {}, req.body?.additionalConfig || undefined);
       if (!apiClient) {
         return res.status(404).json({
@@ -3368,15 +3456,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // List registered webhooks for a provider
   app.get('/api/webhooks/register/:provider', authenticateToken, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const { provider } = req.params;
+
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
       
       // Get local webhooks for this provider
       const localWebhooks = webhookManager.listWebhooks().filter(w => w.appId === provider);
       
       // Get external webhooks if API client supports it
-      const userConn = await connectionService.getConnectionByProvider(req.user!.id, provider);
+      const userConn = await connectionService.getConnectionByProvider(req.user!.id, req.organizationId, provider);
       const apiClient = integrationManager.getAPIClient(provider, userConn?.credentials || {}, req.query || undefined);
       let externalWebhooks = [];
       
@@ -3498,12 +3590,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check for all integrations
   app.get('/api/health/integrations', authenticateToken, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const userId = req.user!.id;
-      
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
       // Get all user connections
-      const connections = await connectionService.getUserConnections(userId);
+      const connections = await connectionService.getUserConnections(userId, req.organizationId);
       
       const healthChecks: Record<string, any> = {};
       let totalConnections = 0;
@@ -3579,13 +3674,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check for specific integration
   app.get('/api/health/integrations/:provider', authenticateToken, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const userId = req.user!.id;
       const { provider } = req.params;
-      
+      if (!req.organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization context required' });
+      }
+
       // Check if user has this connection
-      const connections = await connectionService.getUserConnections(userId);
+      const connections = await connectionService.getUserConnections(userId, req.organizationId);
       const connection = connections.find(conn => conn.provider === provider);
       
       if (!connection) {

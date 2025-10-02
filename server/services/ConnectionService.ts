@@ -19,6 +19,7 @@ class ConnectionServiceError extends Error {
 
 export interface CreateConnectionRequest {
   userId: string;
+  organizationId: string;
   name: string;
   provider: string;
   type: 'llm' | 'saas' | 'database';
@@ -37,6 +38,7 @@ export interface ConnectionTestResult {
 export interface DecryptedConnection {
   id: string;
   userId: string;
+  organizationId: string;
   name: string;
   provider: string;
   type: string;
@@ -56,6 +58,7 @@ export interface DecryptedConnection {
 interface FileConnectionRecord {
   id: string;
   userId: string;
+  organizationId: string;
   name: string;
   provider: string;
   type: string;
@@ -139,6 +142,7 @@ export class ConnectionService {
     return {
       id: record.id,
       userId: record.userId,
+      organizationId: record.organizationId,
       name: record.name,
       provider: record.provider,
       type: record.type,
@@ -190,6 +194,7 @@ export class ConnectionService {
       const record: FileConnectionRecord = {
         id: randomUUID(),
         userId: request.userId,
+        organizationId: request.organizationId,
         name: request.name,
         provider: normalizedProvider,
         type: request.type,
@@ -209,6 +214,7 @@ export class ConnectionService {
     this.ensureDb();
     const [connection] = await this.db.insert(connections).values({
       userId: request.userId,
+      organizationId: request.organizationId,
       name: request.name,
       provider: normalizedProvider,
       type: request.type,
@@ -225,10 +231,20 @@ export class ConnectionService {
   /**
    * Get decrypted connection by ID
    */
-  public async getConnection(connectionId: string, userId: string): Promise<DecryptedConnection | null> {
+  public async getConnection(
+    connectionId: string,
+    userId: string,
+    organizationId: string
+  ): Promise<DecryptedConnection | null> {
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const record = records.find((conn) => conn.id === connectionId && conn.userId === userId && conn.isActive);
+      const record = records.find(
+        (conn) =>
+          conn.id === connectionId &&
+          conn.userId === userId &&
+          conn.organizationId === organizationId &&
+          conn.isActive
+      );
       return record ? this.toDecryptedConnection(record) : null;
     }
 
@@ -239,6 +255,7 @@ export class ConnectionService {
       .where(and(
         eq(connections.id, connectionId),
         eq(connections.userId, userId),
+        eq(connections.organizationId, organizationId),
         eq(connections.isActive, true)
       ));
 
@@ -254,6 +271,7 @@ export class ConnectionService {
     return {
       id: connection.id,
       userId: connection.userId,
+      organizationId: connection.organizationId,
       name: connection.name,
       provider: connection.provider,
       type: connection.type,
@@ -272,18 +290,28 @@ export class ConnectionService {
   /**
    * Get user's connections by provider
    */
-  public async getUserConnections(userId: string, provider?: string): Promise<DecryptedConnection[]> {
+  public async getUserConnections(
+    userId: string,
+    organizationId: string,
+    provider?: string
+  ): Promise<DecryptedConnection[]> {
     const normalizedProvider = provider?.toLowerCase();
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
       return records
-        .filter((conn) => conn.userId === userId && conn.isActive && (!normalizedProvider || conn.provider === normalizedProvider))
+        .filter((conn) =>
+          conn.userId === userId &&
+          conn.organizationId === organizationId &&
+          conn.isActive &&
+          (!normalizedProvider || conn.provider === normalizedProvider)
+        )
         .map((record) => this.toDecryptedConnection(record));
     }
 
     const whereConditions = [
       eq(connections.userId, userId),
+      eq(connections.organizationId, organizationId),
       eq(connections.isActive, true)
     ];
 
@@ -307,6 +335,7 @@ export class ConnectionService {
       return {
         id: connection.id,
         userId: connection.userId,
+        organizationId: connection.organizationId,
         name: connection.name,
         provider: connection.provider,
         type: connection.type,
@@ -323,13 +352,21 @@ export class ConnectionService {
     });
   }
 
-  public async getConnectionByProvider(userId: string, provider: string): Promise<DecryptedConnection | null> {
+  public async getConnectionByProvider(
+    userId: string,
+    organizationId: string,
+    provider: string
+  ): Promise<DecryptedConnection | null> {
     const normalizedProvider = provider.toLowerCase();
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
       const record = records.find(
-        (conn) => conn.userId === userId && conn.provider === normalizedProvider && conn.isActive
+        (conn) =>
+          conn.userId === userId &&
+          conn.organizationId === organizationId &&
+          conn.provider === normalizedProvider &&
+          conn.isActive
       );
       return record ? this.toDecryptedConnection(record) : null;
     }
@@ -339,6 +376,7 @@ export class ConnectionService {
       .from(connections)
       .where(and(
         eq(connections.userId, userId),
+        eq(connections.organizationId, organizationId),
         eq(connections.provider, normalizedProvider),
         eq(connections.isActive, true)
       ))
@@ -356,6 +394,7 @@ export class ConnectionService {
     return {
       id: connection.id,
       userId: connection.userId,
+      organizationId: connection.organizationId,
       name: connection.name,
       provider: connection.provider,
       type: connection.type,
@@ -371,10 +410,18 @@ export class ConnectionService {
     };
   }
 
-  public async markUsed(connectionId: string, userId: string, ok: boolean, errorMsg?: string): Promise<void> {
+  public async markUsed(
+    connectionId: string,
+    userId: string,
+    organizationId: string,
+    ok: boolean,
+    errorMsg?: string
+  ): Promise<void> {
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const idx = records.findIndex(r => r.id === connectionId && r.userId === userId);
+      const idx = records.findIndex(
+        r => r.id === connectionId && r.userId === userId && r.organizationId === organizationId
+      );
       if (idx >= 0) {
         records[idx].lastUsed = new Date().toISOString();
         if (!ok && errorMsg) records[idx].lastError = errorMsg;
@@ -388,19 +435,30 @@ export class ConnectionService {
   /**
    * Export user's active connections (masked credentials)
    */
-  public async exportConnections(userId: string): Promise<any[]> {
-    const conns = await this.getUserConnections(userId);
+  public async exportConnections(userId: string, organizationId: string): Promise<any[]> {
+    const conns = await this.getUserConnections(userId, organizationId);
     return conns.map(c => ConnectionService.maskCredentials(c));
   }
 
   /**
    * Import connections from masked/plain JSON (dev/local only). Re-encrypts credentials.
    */
-  public async importConnections(userId: string, list: Array<{ provider: string; name?: string; credentials: any; metadata?: any }>): Promise<{ imported: number }> {
+  public async importConnections(
+    userId: string,
+    organizationId: string,
+    list: Array<{ provider: string; name?: string; credentials: any; metadata?: any }>
+  ): Promise<{ imported: number }> {
     let imported = 0;
     for (const item of list || []) {
       if (!item?.provider || !item?.credentials) continue;
-      await this.storeConnection(userId, item.provider, item.credentials as any, undefined, { name: item.name, metadata: item.metadata, type: 'saas' });
+      await this.storeConnection(
+        userId,
+        organizationId,
+        item.provider,
+        item.credentials as any,
+        undefined,
+        { name: item.name, metadata: item.metadata, type: 'saas' }
+      );
       imported++;
     }
     return { imported };
@@ -408,6 +466,7 @@ export class ConnectionService {
 
   public async storeConnection(
     userId: string,
+    organizationId: string,
     provider: string,
     tokens: OAuthTokens,
     userInfo?: OAuthUserInfo,
@@ -431,7 +490,10 @@ export class ConnectionService {
     if (this.useFileStore) {
       const records = await this.readFileStore();
       const existingIndex = records.findIndex(
-        (conn) => conn.userId === userId && conn.provider === normalizedProvider
+        (conn) =>
+          conn.userId === userId &&
+          conn.organizationId === organizationId &&
+          conn.provider === normalizedProvider
       );
 
       if (existingIndex >= 0) {
@@ -454,6 +516,7 @@ export class ConnectionService {
       const record: FileConnectionRecord = {
         id: randomUUID(),
         userId,
+        organizationId,
         name: connectionName,
         provider: normalizedProvider,
         type: options.type || 'saas',
@@ -475,6 +538,7 @@ export class ConnectionService {
       .from(connections)
       .where(and(
         eq(connections.userId, userId),
+        eq(connections.organizationId, organizationId),
         eq(connections.provider, normalizedProvider)
       ))
       .limit(1);
@@ -490,7 +554,10 @@ export class ConnectionService {
           updatedAt: new Date(),
           isActive: true,
         })
-        .where(eq(connections.id, existing.id));
+        .where(and(
+          eq(connections.id, existing.id),
+          eq(connections.organizationId, organizationId)
+        ));
       console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
       return existing.id;
     }
@@ -499,6 +566,7 @@ export class ConnectionService {
       .insert(connections)
       .values({
         userId,
+        organizationId,
         name: connectionName,
         provider: normalizedProvider,
         type: options.type || 'saas',
@@ -516,8 +584,12 @@ export class ConnectionService {
   /**
    * Test a connection to verify it works
    */
-  public async testConnection(connectionId: string, userId: string): Promise<ConnectionTestResult> {
-    const connection = await this.getConnection(connectionId, userId);
+  public async testConnection(
+    connectionId: string,
+    userId: string,
+    organizationId: string
+  ): Promise<ConnectionTestResult> {
+    const connection = await this.getConnection(connectionId, userId, organizationId);
     
     if (!connection) {
       throw new Error('Connection not found');
@@ -608,7 +680,12 @@ export class ConnectionService {
       result.responseTime = Date.now() - startTime;
 
       // Update test status in database
-      await this.updateTestStatus(connectionId, result.success, result.message);
+      await this.updateTestStatus(
+        connectionId,
+        connection.organizationId,
+        result.success,
+        result.message
+      );
 
       return result;
 
@@ -621,7 +698,12 @@ export class ConnectionService {
         responseTime: Date.now() - startTime
       };
 
-      await this.updateTestStatus(connectionId, false, getErrorMessage(error));
+      await this.updateTestStatus(
+        connectionId,
+        connection.organizationId,
+        false,
+        getErrorMessage(error)
+      );
       return result;
     }
   }
@@ -723,10 +805,17 @@ export class ConnectionService {
   /**
    * Update connection test status
    */
-  private async updateTestStatus(connectionId: string, success: boolean, message: string): Promise<void> {
+  private async updateTestStatus(
+    connectionId: string,
+    organizationId: string,
+    success: boolean,
+    message: string
+  ): Promise<void> {
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const index = records.findIndex((conn) => conn.id === connectionId);
+      const index = records.findIndex(
+        (conn) => conn.id === connectionId && conn.organizationId === organizationId
+      );
       if (index >= 0) {
         records[index] = {
           ...records[index],
@@ -749,15 +838,19 @@ export class ConnectionService {
         testError: success ? null : message,
         updatedAt: new Date()
       })
-      .where(eq(connections.id, connectionId));
+      .where(and(
+        eq(connections.id, connectionId),
+        eq(connections.organizationId, organizationId)
+      ));
   }
 
   /**
    * Update connection
    */
   public async updateConnection(
-    connectionId: string, 
-    userId: string, 
+    connectionId: string,
+    userId: string,
+    organizationId: string,
     updates: Partial<CreateConnectionRequest>
   ): Promise<void> {
     const updateData: any = {
@@ -775,7 +868,12 @@ export class ConnectionService {
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const index = records.findIndex((conn) => conn.id === connectionId && conn.userId === userId);
+      const index = records.findIndex(
+        (conn) =>
+          conn.id === connectionId &&
+          conn.userId === userId &&
+          conn.organizationId === organizationId
+      );
       if (index >= 0) {
         const existing = records[index];
         records[index] = {
@@ -797,17 +895,27 @@ export class ConnectionService {
       .set(updateData)
       .where(and(
         eq(connections.id, connectionId),
-        eq(connections.userId, userId)
+        eq(connections.userId, userId),
+        eq(connections.organizationId, organizationId)
       ));
   }
 
   /**
    * Delete connection (soft delete)
    */
-  public async deleteConnection(connectionId: string, userId: string): Promise<void> {
+  public async deleteConnection(
+    connectionId: string,
+    userId: string,
+    organizationId: string
+  ): Promise<void> {
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const index = records.findIndex((conn) => conn.id === connectionId && conn.userId === userId);
+      const index = records.findIndex(
+        (conn) =>
+          conn.id === connectionId &&
+          conn.userId === userId &&
+          conn.organizationId === organizationId
+      );
       if (index >= 0) {
         records[index] = {
           ...records[index],
@@ -828,15 +936,20 @@ export class ConnectionService {
       })
       .where(and(
         eq(connections.id, connectionId),
-        eq(connections.userId, userId)
+        eq(connections.userId, userId),
+        eq(connections.organizationId, organizationId)
       ));
   }
 
   /**
    * Get connection for LLM usage (internal method)
    */
-  public async getLLMConnection(userId: string, provider: string): Promise<DecryptedConnection | null> {
-    const userConnections = await this.getUserConnections(userId, provider);
+  public async getLLMConnection(
+    userId: string,
+    organizationId: string,
+    provider: string
+  ): Promise<DecryptedConnection | null> {
+    const userConnections = await this.getUserConnections(userId, organizationId, provider);
     
     // Return the first active LLM connection for the provider
     return userConnections.find(conn => conn.type === 'llm') || null;

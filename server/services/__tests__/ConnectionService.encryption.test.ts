@@ -23,6 +23,7 @@ const originalCredentials = {
 
 const connectionId = await service.createConnection({
   userId: 'user-123',
+  organizationId: 'org-123',
   name: 'Test Connection',
   provider: 'OpenAI',
   type: 'llm',
@@ -36,17 +37,17 @@ assert.equal(storedRecords.length, 1, 'a single connection record should be stor
 assert.ok(storedRecords[0].iv, 'stored connection should include an iv field');
 assert.equal('credentialsIv' in storedRecords[0], false, 'legacy credentialsIv field should not be present');
 
-const fetched = await service.getConnection(connectionId, 'user-123');
+const fetched = await service.getConnection(connectionId, 'user-123', 'org-123');
 assert.ok(fetched, 'connection should be retrievable');
 assert.equal(fetched?.iv, storedRecords[0].iv, 'fetched connection exposes iv');
 assert.deepEqual(fetched?.credentials, originalCredentials, 'credentials should decrypt to original payload');
 
-const byProvider = await service.getConnectionByProvider('user-123', 'openai');
+const byProvider = await service.getConnectionByProvider('user-123', 'org-123', 'openai');
 assert.ok(byProvider, 'connection should be retrievable by provider');
 assert.equal(byProvider?.iv, storedRecords[0].iv, 'provider lookup exposes iv');
 assert.deepEqual(byProvider?.credentials, originalCredentials, 'provider lookup decrypts credentials');
 
-const allConnections = await service.getUserConnections('user-123', 'openai');
+const allConnections = await service.getUserConnections('user-123', 'org-123', 'openai');
 assert.equal(allConnections.length, 1, 'user should have one connection after creation');
 assert.equal(allConnections[0].iv, storedRecords[0].iv, 'list entries expose iv');
 assert.deepEqual(allConnections[0].credentials, originalCredentials, 'list entries decrypt credentials');
