@@ -112,6 +112,13 @@ export class IntegrationManager {
       'confluence': 'confluence',
       'confluence-enhanced': 'confluence',
       'jira-service-management-enhanced': 'jira-service-management',
+      'bigcommerce-enhanced': 'bigcommerce',
+      'magento-enhanced': 'magento',
+      'adobe-commerce': 'magento',
+      'adobe-commerce-enhanced': 'magento',
+      'woocommerce-enhanced': 'woocommerce',
+      'square-enhanced': 'square',
+      'square-pos': 'square',
     };
     return map[v] || v;
   }

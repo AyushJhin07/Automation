@@ -45,13 +45,16 @@ import { GitlabAPIClient } from './integrations/GitlabAPIClient';
 import { BitbucketAPIClient } from './integrations/BitbucketAPIClient';
 import { ConfluenceAPIClient } from './integrations/ConfluenceAPIClient';
 import { JiraServiceManagementAPIClient } from './integrations/JiraServiceManagementAPIClient';
-import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
 import { QuickbooksAPIClient } from './integrations/QuickbooksAPIClient';
 import { AdyenAPIClient } from './integrations/AdyenAPIClient';
 import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
 import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
+import { BigcommerceAPIClient } from './integrations/BigcommerceAPIClient';
+import { MagentoAPIClient } from './integrations/MagentoAPIClient';
+import { WoocommerceAPIClient } from './integrations/WoocommerceAPIClient';
+import { SquareAPIClient } from './integrations/SquareAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {
@@ -266,6 +269,10 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('bigcommerce', BigcommerceAPIClient);
+    this.registerAPIClient('magento', MagentoAPIClient);
+    this.registerAPIClient('woocommerce', WoocommerceAPIClient);
+    this.registerAPIClient('square', SquareAPIClient);
   }
 
   /**

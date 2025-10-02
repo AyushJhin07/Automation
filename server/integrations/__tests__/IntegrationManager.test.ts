@@ -25,6 +25,10 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   bamboohr: {
     credentials: { apiKey: 'test-bamboohr-key', companyDomain: 'example' }
   },
+  bigcommerce: {
+    credentials: { accessToken: 'bigcommerce-access-token' },
+    additionalConfig: { storeHash: 'testhash' }
+  },
   bitbucket: {
     credentials: { accessToken: 'bitbucket-access-token' }
   },
@@ -91,6 +95,10 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   mailgun: {
     credentials: { apiKey: 'mailgun-api-key', domain: 'example.com' }
   },
+  magento: {
+    credentials: { accessToken: 'magento-access-token' },
+    additionalConfig: { baseUrl: 'https://magento.example.com/rest/V1' }
+  },
   'microsoft-teams': {
     credentials: { accessToken: 'microsoft-graph-token' }
   },
@@ -143,6 +151,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
     credentials: { accessToken: 'shpat_test_token' },
     additionalConfig: { shopDomain: 'demo-store' }
   },
+  square: {
+    credentials: { accessToken: 'sq0atp-test-token' }
+  },
   slack: {
     credentials: { botToken: 'xoxb-test-token' }
   },
@@ -160,6 +171,10 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   typeform: {
     credentials: { accessToken: 'typeform-access-token' }
+  },
+  woocommerce: {
+    credentials: { consumerKey: 'ck_test', consumerSecret: 'cs_test' },
+    additionalConfig: { baseUrl: 'https://woocommerce.example.com/wp-json/wc/v3' }
   },
   zendesk: {
     credentials: { subdomain: 'example', email: 'agent@example.com', apiToken: 'zendesk-api-token' }
