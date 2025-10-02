@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { N8NStyleWorkflowBuilder } from "@/components/ai/N8NStyleWorkflowBuilder";
+import WorkspaceGate from "@/components/workspaces/WorkspaceGate";
 
 export default function WorkflowBuilder() {
   return (
@@ -10,7 +11,9 @@ export default function WorkflowBuilder() {
       </Helmet>
       
       <div className="h-screen overflow-hidden">
-        <N8NStyleWorkflowBuilder />
+        <WorkspaceGate>
+          <N8NStyleWorkflowBuilder />
+        </WorkspaceGate>
       </div>
     </>
   );

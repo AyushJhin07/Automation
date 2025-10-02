@@ -92,7 +92,7 @@ test('usage metering updates the usage_tracking.updated_at column when recording
   const service = new UsageMeteringService();
   (service as any).db = mockDb;
 
-  await service.recordApiUsage(userId, 3, 150, 1.23);
+  await service.recordApiUsage(userId, 3, 150, 1.23, 'org-1');
   await service.recordWorkflowExecution(userId, 'workflow-1', true, 10, 4);
 
   const usageUpdates = mockDb.getUpdatesForTable(usageTracking);

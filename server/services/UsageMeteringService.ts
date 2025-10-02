@@ -1,5 +1,6 @@
 import { eq, and, gte, lte, sum, count } from 'drizzle-orm';
 import { users, usageTracking, workflowExecutions, workflows, db } from '../database/schema';
+import { organizationService } from './OrganizationService';
 
 export interface UsageMetrics {
   userId: string;
@@ -132,7 +133,8 @@ export class UsageMeteringService {
     userId: string,
     apiCalls: number = 1,
     tokensUsed: number = 0,
-    cost: number = 0
+    cost: number = 0,
+    organizationId?: string
   ): Promise<void> {
     const period = this.getCurrentBillingPeriod();
     
@@ -189,6 +191,10 @@ export class UsageMeteringService {
 
       // Clear cache for this user
       this.clearUserCache(userId);
+
+      if (organizationId) {
+        await organizationService.recordUsage(organizationId, { apiCalls });
+      }
 
       // Check for quota alerts
       await this.checkQuotaAlerts(userId);

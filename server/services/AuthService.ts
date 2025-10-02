@@ -1,7 +1,18 @@
 import { eq, and } from 'drizzle-orm';
-import { users, sessions, db } from '../database/schema';
+import {
+  users,
+  sessions,
+  db,
+  OrganizationPlan,
+  OrganizationStatus,
+  OrganizationLimits,
+  OrganizationUsageMetrics,
+} from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { JWTPayload } from '../types/common';
+import { organizationService, OrganizationContext } from './OrganizationService';
+
+type UserRecord = typeof users.$inferSelect;
 
 export interface RegisterRequest {
   email: string;
@@ -12,24 +23,18 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+  organizationId?: string;
 }
 
 export interface AuthResponse {
   success: boolean;
-  user?: {
-    id: string;
-    email: string;
-    name?: string;
-    role: string;
-    planType: string;
-    emailVerified: boolean;
-    quotaApiCalls: number;
-    quotaTokens: number;
-  };
+  user?: AuthUser;
   token?: string;
   refreshToken?: string;
   expiresAt?: Date;
   error?: string;
+  activeOrganization?: AuthOrganization;
+  organizations?: AuthOrganization[];
 }
 
 export interface AuthUser {
@@ -45,6 +50,26 @@ export interface AuthUser {
   quotaApiCalls: number;
   quotaTokens: number;
   createdAt: Date;
+  organizationId?: string;
+  organizationRole?: string;
+  organizationPlan?: OrganizationPlan;
+  organizationStatus?: OrganizationStatus;
+  organizationLimits?: OrganizationLimits;
+  organizationUsage?: OrganizationUsageMetrics;
+  activeOrganization?: AuthOrganization;
+  organizations?: AuthOrganization[];
+}
+
+export interface AuthOrganization {
+  id: string;
+  name: string;
+  domain: string | null;
+  plan: OrganizationPlan;
+  status: OrganizationStatus;
+  role: string;
+  isDefault: boolean;
+  limits: OrganizationLimits;
+  usage: OrganizationUsageMetrics;
 }
 
 export class AuthService {
@@ -104,30 +129,35 @@ export class AuthService {
         emailVerified: false,
         monthlyApiCalls: 0,
         monthlyTokensUsed: 0,
-        quotaApiCalls: 1000, // Free tier
-        quotaTokens: 100000, // Free tier
-      }).returning({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        role: users.role,
-        planType: users.planType,
-        emailVerified: users.emailVerified,
-        quotaApiCalls: users.quotaApiCalls,
-        quotaTokens: users.quotaTokens,
+        quotaApiCalls: 1000, // Free tier fallback
+        quotaTokens: 100000, // Free tier fallback
+      }).returning();
+
+      // Create a default organization for the new user
+      const organization = await organizationService.createOrganizationForUser({
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
       });
 
+      const authState = await this.buildAuthState(newUser.id, organization.id);
+
       // Generate tokens
-      const { token, refreshToken, expiresAt } = await this.generateTokens(newUser.id);
+      const { token, refreshToken, expiresAt } = await this.generateTokens(
+        newUser.id,
+        authState.activeOrganizationId
+      );
 
       console.log(`✅ User registered successfully: ${newUser.id}`);
 
       return {
         success: true,
-        user: newUser,
+        user: authState.user,
         token,
         refreshToken,
-        expiresAt
+        expiresAt,
+        activeOrganization: authState.activeOrganization,
+        organizations: authState.organizations,
       };
 
     } catch (error) {
@@ -176,29 +206,27 @@ export class AuthService {
         };
       }
 
+      const authState = await this.buildAuthState(user.id, request.organizationId);
+
       // Update last login
       await this.updateLastLogin(user.id);
 
       // Generate tokens
-      const { token, refreshToken, expiresAt } = await this.generateTokens(user.id);
+      const { token, refreshToken, expiresAt } = await this.generateTokens(
+        user.id,
+        authState.activeOrganizationId
+      );
 
       console.log(`✅ Login successful: ${user.id}`);
 
       return {
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          planType: user.planType,
-          emailVerified: user.emailVerified,
-          quotaApiCalls: user.quotaApiCalls,
-          quotaTokens: user.quotaTokens,
-        },
+        user: authState.user,
         token,
         refreshToken,
-        expiresAt
+        expiresAt,
+        activeOrganization: authState.activeOrganization,
+        organizations: authState.organizations,
       };
 
     } catch (error) {
@@ -221,6 +249,7 @@ export class AuthService {
           userId: sessions.userId,
           expiresAt: sessions.expiresAt,
           isActive: sessions.isActive,
+          organizationId: sessions.organizationId,
         })
         .from(sessions)
         .where(and(
@@ -245,32 +274,27 @@ export class AuthService {
       }
 
       // Get user
-      const user = await this.getUserById(session.userId);
-      if (!user || !user.isActive) {
+      const userRecord = await this.getUserRecordById(session.userId);
+      if (!userRecord || !userRecord.isActive) {
         return {
           success: false,
           error: 'User not found or inactive'
         };
       }
 
+      const authState = await this.buildAuthState(userRecord.id, session.organizationId ?? undefined);
+
       // Generate new tokens
-      const tokens = await this.generateTokens(user.id);
+      const tokens = await this.generateTokens(userRecord.id, authState.activeOrganizationId);
 
       return {
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          planType: user.planType,
-          emailVerified: user.emailVerified,
-          quotaApiCalls: user.quotaApiCalls,
-          quotaTokens: user.quotaTokens,
-        },
+        user: authState.user,
         token: tokens.token,
         refreshToken: tokens.refreshToken,
-        expiresAt: tokens.expiresAt
+        expiresAt: tokens.expiresAt,
+        activeOrganization: authState.activeOrganization,
+        organizations: authState.organizations,
       };
 
     } catch (error) {
@@ -298,14 +322,20 @@ export class AuthService {
   /**
    * Verify JWT token and get user
    */
-  public async verifyToken(token: string): Promise<AuthUser | null> {
+  public async verifyToken(token: string, organizationId?: string): Promise<AuthUser | null> {
     try {
       // Verify JWT
       const payload = EncryptionService.verifyJWT(token);
-      
+
       // Check if session is active
       const [session] = await this.db
-        .select()
+        .select({
+          id: sessions.id,
+          userId: sessions.userId,
+          expiresAt: sessions.expiresAt,
+          isActive: sessions.isActive,
+          organizationId: sessions.organizationId,
+        })
         .from(sessions)
         .where(and(
           eq(sessions.token, token),
@@ -322,16 +352,27 @@ export class AuthService {
         return null;
       }
 
-      // Get user
-      const user = await this.getUserById(payload.userId);
-      if (!user || !user.isActive) {
+      const authState = await this.buildAuthState(
+        payload.userId,
+        organizationId ?? session.organizationId ?? undefined
+      );
+
+      if (!authState.user.isActive) {
         return null;
       }
 
-      // Update last used
-      await this.updateSessionLastUsed(token);
+      const activeOrganizationId = authState.activeOrganizationId ?? null;
 
-      return user;
+      if (session.organizationId !== activeOrganizationId) {
+        await this.db
+          .update(sessions)
+          .set({ organizationId: activeOrganizationId, lastUsed: new Date() })
+          .where(eq(sessions.id, session.id));
+      } else {
+        await this.updateSessionLastUsed(token);
+      }
+
+      return authState.user;
 
     } catch (error) {
       console.error('❌ Token verification error:', error);
@@ -342,31 +383,33 @@ export class AuthService {
   /**
    * Get user by email
    */
-  private async getUserByEmail(email: string): Promise<any> {
+  private async getUserByEmail(email: string): Promise<UserRecord | null> {
     const [user] = await this.db
       .select()
       .from(users)
-      .where(eq(users.email, email.toLowerCase()));
+      .where(eq(users.email, email.toLowerCase()))
+      .limit(1);
 
-    return user;
+    return user ?? null;
   }
 
   /**
    * Get user by ID
    */
-  private async getUserById(userId: string): Promise<AuthUser | null> {
+  private async getUserRecordById(userId: string): Promise<UserRecord | null> {
     const [user] = await this.db
       .select()
       .from(users)
-      .where(eq(users.id, userId));
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    return user;
+    return user ?? null;
   }
 
   /**
    * Generate JWT and refresh tokens
    */
-  private async generateTokens(userId: string): Promise<{
+  private async generateTokens(userId: string, organizationId?: string | null): Promise<{
     token: string;
     refreshToken: string;
     expiresAt: Date;
@@ -380,7 +423,7 @@ export class AuthService {
       })
       .from(users)
       .where(eq(users.id, userId));
-      
+
     if (!user) {
       throw new Error('User not found');
     }
@@ -389,7 +432,8 @@ export class AuthService {
       userId,
       email: user.email,
       role: user.role,
-      plan: user.plan
+      plan: user.plan,
+      organizationId: organizationId ?? null,
     }, '24h');
     const refreshToken = EncryptionService.generateRefreshToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
@@ -397,6 +441,7 @@ export class AuthService {
     // Store session
     await this.db.insert(sessions).values({
       userId,
+      organizationId: organizationId ?? null,
       token,
       refreshToken,
       expiresAt,
@@ -413,7 +458,7 @@ export class AuthService {
     await this.db
       .update(users)
       .set({
-        lastLoginAt: new Date(),
+        lastLogin: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
@@ -438,9 +483,116 @@ export class AuthService {
     await this.db
       .update(sessions)
       .set({
-        lastUsedAt: new Date(),
+        lastUsed: new Date(),
       })
       .where(eq(sessions.token, token));
+  }
+
+  private async getOrganizationsForUser(user: UserRecord): Promise<OrganizationContext[]> {
+    if (!db) {
+      return [];
+    }
+
+    const organizations = await organizationService.listUserOrganizations(user.id);
+    if (organizations.length === 0) {
+      const created = await organizationService.createOrganizationForUser({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      });
+      return [created];
+    }
+
+    return organizations;
+  }
+
+  private mapOrganizationForResponse(context: OrganizationContext): AuthOrganization {
+    return {
+      id: context.id,
+      name: context.name,
+      domain: context.domain,
+      plan: context.plan,
+      status: context.status,
+      role: context.role,
+      isDefault: context.isDefault,
+      limits: context.limits,
+      usage: context.usage,
+    };
+  }
+
+  private async buildAuthState(
+    userId: string,
+    organizationId?: string
+  ): Promise<{
+    user: AuthUser;
+    organizations: AuthOrganization[];
+    activeOrganization?: AuthOrganization;
+    activeOrganizationId?: string;
+  }> {
+    const userRecord = await this.getUserRecordById(userId);
+    if (!userRecord) {
+      throw new Error('User not found');
+    }
+
+    const organizations = await this.getOrganizationsForUser(userRecord);
+
+    let activeContext: OrganizationContext | undefined;
+    if (organizationId) {
+      activeContext = organizations.find((org) => org.id === organizationId);
+    }
+
+    if (!activeContext && organizations.length > 0) {
+      activeContext = organizations.find((org) => org.isDefault) ?? organizations[0];
+    }
+
+    const organizationSummaries = organizations.map((org) => this.mapOrganizationForResponse(org));
+    const activeOrganization = activeContext ? this.mapOrganizationForResponse(activeContext) : undefined;
+
+    const legacyPlanType = this.mapPlanToLegacy(activeContext?.plan ?? userRecord.planType);
+
+    const authUser: AuthUser = {
+      id: userRecord.id,
+      email: userRecord.email,
+      name: userRecord.name ?? undefined,
+      role: userRecord.role,
+      planType: legacyPlanType,
+      isActive: userRecord.isActive,
+      emailVerified: userRecord.emailVerified,
+      monthlyApiCalls: userRecord.monthlyApiCalls,
+      monthlyTokensUsed: userRecord.monthlyTokensUsed,
+      quotaApiCalls: activeOrganization?.limits.maxExecutions ?? userRecord.quotaApiCalls,
+      quotaTokens: userRecord.quotaTokens,
+      createdAt: userRecord.createdAt,
+      organizationId: activeOrganization?.id,
+      organizationRole: activeOrganization?.role,
+      organizationPlan: activeOrganization?.plan,
+      organizationStatus: activeOrganization?.status,
+      organizationLimits: activeOrganization?.limits,
+      organizationUsage: activeOrganization?.usage,
+      activeOrganization,
+      organizations: organizationSummaries,
+    };
+
+    return {
+      user: authUser,
+      organizations: organizationSummaries,
+      activeOrganization,
+      activeOrganizationId: activeOrganization?.id,
+    };
+  }
+
+  private mapPlanToLegacy(plan: string): string {
+    switch (plan) {
+      case 'professional':
+        return 'pro';
+      case 'enterprise':
+      case 'enterprise_plus':
+        return 'enterprise';
+      case 'starter':
+        return 'free';
+      default:
+        return plan;
+    }
   }
 
   /**
@@ -477,30 +629,93 @@ export class AuthService {
   /**
    * Check if user has quota remaining
    */
-  public async checkQuota(userId: string, apiCalls: number = 1, tokens: number = 0): Promise<{
+  public async checkQuota(
+    userId: string,
+    apiCalls: number = 1,
+    tokens: number = 0,
+    organizationId?: string
+  ): Promise<{
     hasQuota: boolean;
-    quotaExceeded: 'api_calls' | 'tokens' | null;
+    quotaExceeded: 'api_calls' | 'tokens' | 'workflows' | 'storage' | 'users' | null;
+    limit?: number;
+    remaining?: number;
   }> {
-    const user = await this.getUserById(userId);
-    if (!user) {
+    try {
+      const authState = await this.buildAuthState(userId, organizationId);
+      const user = authState.user;
+      const activeOrg = authState.activeOrganization;
+
+      if (activeOrg) {
+        const remainingApi = activeOrg.limits.maxExecutions - activeOrg.usage.apiCalls;
+        if (remainingApi < apiCalls) {
+          return {
+            hasQuota: false,
+            quotaExceeded: 'api_calls',
+            limit: activeOrg.limits.maxExecutions,
+            remaining: Math.max(0, remainingApi),
+          };
+        }
+
+        const remainingWorkflows = activeOrg.limits.maxWorkflows - activeOrg.usage.workflowExecutions;
+        if (remainingWorkflows <= 0) {
+          return {
+            hasQuota: false,
+            quotaExceeded: 'workflows',
+            limit: activeOrg.limits.maxWorkflows,
+            remaining: Math.max(0, remainingWorkflows),
+          };
+        }
+
+        const remainingUsers = activeOrg.limits.maxUsers - activeOrg.usage.usersActive;
+        if (remainingUsers <= 0) {
+          return {
+            hasQuota: false,
+            quotaExceeded: 'users',
+            limit: activeOrg.limits.maxUsers,
+            remaining: Math.max(0, remainingUsers),
+          };
+        }
+      }
+
+      if (user.monthlyApiCalls + apiCalls > user.quotaApiCalls) {
+        return {
+          hasQuota: false,
+          quotaExceeded: 'api_calls',
+          limit: user.quotaApiCalls,
+          remaining: Math.max(0, user.quotaApiCalls - user.monthlyApiCalls),
+        };
+      }
+
+      if (user.monthlyTokensUsed + tokens > user.quotaTokens) {
+        return {
+          hasQuota: false,
+          quotaExceeded: 'tokens',
+          limit: user.quotaTokens,
+          remaining: Math.max(0, user.quotaTokens - user.monthlyTokensUsed),
+        };
+      }
+
+      const limit = activeOrg?.limits.maxExecutions ?? user.quotaApiCalls;
+      const remaining = activeOrg
+        ? Math.max(0, limit - (activeOrg.usage.apiCalls + apiCalls))
+        : Math.max(0, user.quotaApiCalls - (user.monthlyApiCalls + apiCalls));
+
+      return { hasQuota: true, quotaExceeded: null, limit, remaining };
+    } catch (error) {
+      console.error('❌ Failed to check quota:', error);
       return { hasQuota: false, quotaExceeded: null };
     }
-
-    if (user.monthlyApiCalls + apiCalls > user.quotaApiCalls) {
-      return { hasQuota: false, quotaExceeded: 'api_calls' };
-    }
-
-    if (user.monthlyTokensUsed + tokens > user.quotaTokens) {
-      return { hasQuota: false, quotaExceeded: 'tokens' };
-    }
-
-    return { hasQuota: true, quotaExceeded: null };
   }
 
   /**
    * Update usage metrics
    */
-  public async updateUsage(userId: string, apiCalls: number = 0, tokens: number = 0): Promise<void> {
+  public async updateUsage(
+    userId: string,
+    apiCalls: number = 0,
+    tokens: number = 0,
+    organizationId?: string
+  ): Promise<void> {
     await this.db
       .update(users)
       .set({
@@ -509,6 +724,18 @@ export class AuthService {
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
+
+    try {
+      const targetOrganizationId = organizationId
+        ? organizationId
+        : (await this.buildAuthState(userId)).activeOrganizationId;
+
+      if (targetOrganizationId) {
+        await organizationService.recordUsage(targetOrganizationId, { apiCalls });
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to update organization usage', error);
+    }
   }
 }
 
