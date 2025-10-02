@@ -29,6 +29,8 @@
     "smoke:connectors": "tsx scripts/connector-smoke.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.637.0",
+    "@aws-sdk/client-codepipeline": "^3.637.0",
     "@google/clasp": "^3.0.6-alpha",
     "@google/generative-ai": "0.24.1",
     "@hookform/resolvers": "^3.10.0",

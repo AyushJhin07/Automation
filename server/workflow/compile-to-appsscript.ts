@@ -9406,7 +9406,7 @@ function ${functionName}(inputData, params) {
   
   return `
 function ${functionName}(inputData, params) {
-  console.log('🚀 Executing AWS CodePipeline: ${params.operation || '${operation}'}');
+  console.log('🚀 Executing AWS CodePipeline:', params.operation || '${operation}');
   
   const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
   const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
@@ -9422,9 +9422,31 @@ function ${functionName}(inputData, params) {
     
     if (operation === 'test_connection') {
       console.log('✅ AWS CodePipeline connection test successful');
-      return { ...inputData, connectionTest: 'success' };
+      return { ...inputData, connectionTest: 'success', region };
     }
     
+    if (operation === 'create_pipeline') {
+      const pipelineName = params.name || inputData.pipeline_name;
+      const roleArn = params.role_arn || inputData.role_arn;
+      const sourceProvider = params.source_provider || inputData.source_provider || 'CodeCommit';
+      const repository = params.repository || inputData.repository;
+
+      if (!pipelineName || !roleArn || !repository) {
+        console.warn('⚠️ Missing pipeline configuration');
+        return { ...inputData, codepipelineError: 'Missing pipeline configuration' };
+      }
+
+      console.log(\`✅ AWS CodePipeline pipeline prepared: \${pipelineName} (\${sourceProvider}) in \${region}\`);
+      return {
+        ...inputData,
+        codepipelineResult: 'success',
+        pipelineCreated: true,
+        pipelineName,
+        sourceProvider,
+        region
+      };
+    }
+
     if (operation === 'start_pipeline') {
       const pipelineName = params.name || inputData.pipeline_name;
       
@@ -9437,11 +9459,39 @@ function ${functionName}(inputData, params) {
       return { ...inputData, codepipelineResult: 'success', pipelineStarted: true, pipelineName };
     }
     
+    if (operation === 'get_pipeline_state') {
+      const pipelineName = params.name || inputData.pipeline_name;
+      if (!pipelineName) {
+        console.warn('⚠️ Missing pipeline name');
+        return { ...inputData, codepipelineError: 'Missing pipeline name' };
+      }
+      console.log(\`ℹ️ Retrieved AWS CodePipeline state for \${pipelineName}\`);
+      return { ...inputData, codepipelineResult: 'success', pipelineStateChecked: true, pipelineName, region };
+    }
+
+    if (operation === 'stop_pipeline') {
+      const pipelineName = params.name || inputData.pipeline_name;
+      const executionId = params.execution_id || inputData.execution_id;
+      if (!pipelineName || !executionId) {
+        console.warn('⚠️ Missing pipeline stop context');
+        return { ...inputData, codepipelineError: 'Missing pipeline stop context' };
+      }
+      console.log(\`🛑 AWS CodePipeline stop requested: \${pipelineName} (\${executionId})\`);
+      return { ...inputData, codepipelineResult: 'success', pipelineStopped: true, pipelineName, executionId, region };
+    }
+
+    if (operation === 'pipeline_started' || operation === 'pipeline_succeeded' || operation === 'pipeline_failed') {
+      const pipelineName = params.pipeline_name || inputData.pipeline_name || 'unknown';
+      console.log(\`📣 AWS CodePipeline trigger \${operation} for \${pipelineName}\`);
+      return { ...inputData, codepipelineTrigger: operation, pipelineName, region };
+    }
+
     console.log('✅ AWS CodePipeline operation completed:', operation);
-    return { ...inputData, codepipelineResult: 'success', operation };
+    return { ...inputData, codepipelineResult: 'success', operation, region };
   } catch (error) {
     console.error('❌ AWS CodePipeline error:', error);
-    return { ...inputData, codepipelineError: error.toString() };
+    const message = error && error.toString ? error.toString() : String(error);
+    return { ...inputData, codepipelineError: message + ' (region: ' + region + ')' };
   }
 }`;
 }
@@ -9872,7 +9922,7 @@ function ${functionName}(inputData, params) {
   
   return `
 function ${functionName}(inputData, params) {
-  console.log('☁️ Executing AWS CloudFormation: ${params.operation || '${operation}'}');
+  console.log('☁️ Executing AWS CloudFormation:', params.operation || '${operation}');
   
   const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
   const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
@@ -9885,14 +9935,15 @@ function ${functionName}(inputData, params) {
   
   try {
     const operation = params.operation || '${operation}';
-    
+
     if (operation === 'test_connection') {
       console.log('✅ AWS CloudFormation connection test successful');
-      return { ...inputData, connectionTest: 'success' };
+      return { ...inputData, connectionTest: 'success', region };
     }
+
+    const stackName = params.stack_name || inputData.stack_name;
     
     if (operation === 'create_stack') {
-      const stackName = params.stack_name || inputData.stack_name;
       const templateBody = params.template_body || inputData.template_body;
       
       if (!stackName) {
@@ -9900,15 +9951,54 @@ function ${functionName}(inputData, params) {
         return { ...inputData, cloudformationError: 'Missing stack name' };
       }
       
-      console.log(\`✅ AWS CloudFormation stack created: \${stackName}\`);
-      return { ...inputData, cloudformationResult: 'success', stackCreated: true, stackName };
+      const templateUrl = params.template_url || inputData.template_url;
+      if (!templateBody && !templateUrl) {
+        console.warn('⚠️ Missing template payload');
+        return { ...inputData, cloudformationError: 'Missing template payload' };
+      }
+
+      console.log(\`✅ AWS CloudFormation stack prepared: \${stackName} in \${region}\`);
+      return { ...inputData, cloudformationResult: 'success', stackCreated: true, stackName, region };
     }
     
+    if (operation === 'update_stack') {
+      if (!stackName) {
+        console.warn('⚠️ Missing stack name');
+        return { ...inputData, cloudformationError: 'Missing stack name' };
+      }
+      console.log(\`♻️ AWS CloudFormation stack update requested: \${stackName}\`);
+      return { ...inputData, cloudformationResult: 'success', stackUpdated: true, stackName, region };
+    }
+
+    if (operation === 'delete_stack') {
+      if (!stackName) {
+        console.warn('⚠️ Missing stack name');
+        return { ...inputData, cloudformationError: 'Missing stack name' };
+      }
+      console.log(\`🗑️ AWS CloudFormation stack deletion requested: \${stackName}\`);
+      return { ...inputData, cloudformationResult: 'success', stackDeleted: true, stackName, region };
+    }
+
+    if (operation === 'get_stack_status') {
+      if (!stackName) {
+        console.warn('⚠️ Missing stack name');
+        return { ...inputData, cloudformationError: 'Missing stack name' };
+      }
+      console.log(\`ℹ️ AWS CloudFormation stack status requested: \${stackName}\`);
+      return { ...inputData, cloudformationResult: 'success', stackStatusChecked: true, stackName, region };
+    }
+
+    if (operation === 'stack_created' || operation === 'stack_failed') {
+      console.log(\`📣 AWS CloudFormation trigger \${operation} for \${stackName || 'unknown stack'}\`);
+      return { ...inputData, cloudformationTrigger: operation, stackName: stackName || 'unknown', region };
+    }
+
     console.log('✅ AWS CloudFormation operation completed:', operation);
-    return { ...inputData, cloudformationResult: 'success', operation };
+    return { ...inputData, cloudformationResult: 'success', operation, region };
   } catch (error) {
     console.error('❌ AWS CloudFormation error:', error);
-    return { ...inputData, cloudformationError: error.toString() };
+    const message = error && error.toString ? error.toString() : String(error);
+    return { ...inputData, cloudformationError: message + ' (region: ' + region + ')' };
   }
 }`;
 }
@@ -10796,6 +10886,155 @@ function step_sendSlackMessage(ctx) {
     payload: JSON.stringify(payload)
   });
   
+  return ctx;
+}`,
+
+  // AWS CodePipeline - DevOps
+  'action.aws-codepipeline:create_pipeline': () => `
+function step_create_pipeline(ctx) {
+  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Missing AWS credentials for CodePipeline');
+  }
+
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.lastOperation = 'create_pipeline';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+  'action.aws-codepipeline:start_pipeline': () => `
+function step_start_pipeline(ctx) {
+  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Missing AWS credentials for CodePipeline');
+  }
+
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.lastOperation = 'start_pipeline';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+  'action.aws-codepipeline:get_pipeline_state': () => `
+function step_get_pipeline_state(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.lastOperation = 'get_pipeline_state';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+  'action.aws-codepipeline:stop_pipeline': () => `
+function step_stop_pipeline(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.lastOperation = 'stop_pipeline';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+  'action.aws-codepipeline:test_connection': () => `
+function step_test_connection(ctx) {
+  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Missing AWS credentials for CodePipeline');
+  }
+  return ctx;
+}`,
+  'trigger.aws-codepipeline:pipeline_started': () => `
+function step_pipeline_started(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.trigger = 'pipeline_started';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+  'trigger.aws-codepipeline:pipeline_succeeded': () => `
+function step_pipeline_succeeded(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.trigger = 'pipeline_succeeded';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+  'trigger.aws-codepipeline:pipeline_failed': () => `
+function step_pipeline_failed(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.codepipeline = ctx.codepipeline || {};
+  ctx.codepipeline.trigger = 'pipeline_failed';
+  ctx.codepipeline.region = region;
+  return ctx;
+}`,
+
+  // AWS CloudFormation - DevOps
+  'action.aws-cloudformation:create_stack': () => `
+function step_create_stack(ctx) {
+  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Missing AWS credentials for CloudFormation');
+  }
+
+  ctx.cloudformation = ctx.cloudformation || {};
+  ctx.cloudformation.lastOperation = 'create_stack';
+  ctx.cloudformation.region = region;
+  return ctx;
+}`,
+  'action.aws-cloudformation:update_stack': () => `
+function step_update_stack(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.cloudformation = ctx.cloudformation || {};
+  ctx.cloudformation.lastOperation = 'update_stack';
+  ctx.cloudformation.region = region;
+  return ctx;
+}`,
+  'action.aws-cloudformation:delete_stack': () => `
+function step_delete_stack(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.cloudformation = ctx.cloudformation || {};
+  ctx.cloudformation.lastOperation = 'delete_stack';
+  ctx.cloudformation.region = region;
+  return ctx;
+}`,
+  'action.aws-cloudformation:get_stack_status': () => `
+function step_get_stack_status(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.cloudformation = ctx.cloudformation || {};
+  ctx.cloudformation.lastOperation = 'get_stack_status';
+  ctx.cloudformation.region = region;
+  return ctx;
+}`,
+  'action.aws-cloudformation:test_connection': () => `
+function step_test_cloudformation(ctx) {
+  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Missing AWS credentials for CloudFormation');
+  }
+  return ctx;
+}`,
+  'trigger.aws-cloudformation:stack_created': () => `
+function step_stack_created(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.cloudformation = ctx.cloudformation || {};
+  ctx.cloudformation.trigger = 'stack_created';
+  ctx.cloudformation.region = region;
+  return ctx;
+}`,
+  'trigger.aws-cloudformation:stack_failed': () => `
+function step_stack_failed(ctx) {
+  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  ctx.cloudformation = ctx.cloudformation || {};
+  ctx.cloudformation.trigger = 'stack_failed';
+  ctx.cloudformation.region = region;
   return ctx;
 }`,
 

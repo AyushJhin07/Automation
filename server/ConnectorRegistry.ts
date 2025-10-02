@@ -53,6 +53,8 @@ import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
+import { AwsCloudFormationAPIClient } from './integrations/AwsCloudFormationAPIClient';
+import { AwsCodePipelineAPIClient } from './integrations/AwsCodePipelineAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -266,6 +268,8 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('aws-cloudformation', AwsCloudFormationAPIClient);
+    this.registerAPIClient('aws-codepipeline', AwsCodePipelineAPIClient);
   }
 
   /**

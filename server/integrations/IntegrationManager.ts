@@ -417,13 +417,70 @@ export class IntegrationManager {
     try {
       const ctor = connectorRegistry.getAPIClient(appKey);
       if (ctor) {
-        const config = { ...credentials, ...(additionalConfig ?? {}) };
+        const config = this.mergeClientConfig(appKey, credentials, additionalConfig);
         return new ctor(config as any);
       }
     } catch {
       // ignore
     }
     return null;
+  }
+
+  private mergeClientConfig(
+    appKey: string,
+    credentials: APICredentials,
+    additionalConfig?: Record<string, any>
+  ): Record<string, any> {
+    const merged = { ...credentials, ...(additionalConfig ?? {}) };
+
+    if (appKey === 'aws-cloudformation' || appKey === 'aws-codepipeline') {
+      return this.normalizeAwsCredentials(merged);
+    }
+
+    return merged;
+  }
+
+  private normalizeAwsCredentials(config: Record<string, any>): Record<string, any> {
+    const normalized = { ...config };
+
+    const accessKeyId =
+      config.accessKeyId ??
+      config.access_key_id ??
+      config.awsAccessKeyId ??
+      config.aws_access_key_id ??
+      config.AWS_ACCESS_KEY_ID ??
+      config.apiKey;
+    if (accessKeyId) {
+      normalized.accessKeyId = accessKeyId;
+    }
+
+    const secretAccessKey =
+      config.secretAccessKey ??
+      config.secret_access_key ??
+      config.awsSecretAccessKey ??
+      config.aws_secret_access_key ??
+      config.AWS_SECRET_ACCESS_KEY ??
+      config.apiSecret;
+    if (secretAccessKey) {
+      normalized.secretAccessKey = secretAccessKey;
+    }
+
+    const sessionToken =
+      config.sessionToken ??
+      config.session_token ??
+      config.awsSessionToken ??
+      config.aws_session_token ??
+      config.AWS_SESSION_TOKEN;
+    if (sessionToken) {
+      normalized.sessionToken = sessionToken;
+    }
+
+    const region = config.region ?? config.awsRegion ?? config.AWS_REGION;
+    if (region) {
+      normalized.region = region;
+    }
+
+    return normalized;
   }
 
   /**

@@ -19,6 +19,20 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   adyen: {
     credentials: { apiKey: 'test_adyen_api_key', merchantAccount: 'TestMerchant' }
   },
+  'aws-cloudformation': {
+    credentials: {
+      access_key_id: 'AKIATESTKEY',
+      secret_access_key: 'test-secret-access-key',
+      region: 'us-east-1'
+    }
+  },
+  'aws-codepipeline': {
+    credentials: {
+      access_key_id: 'AKIATESTKEY',
+      secret_access_key: 'test-secret-access-key',
+      region: 'us-east-1'
+    }
+  },
   airtable: {
     credentials: { apiKey: 'test-airtable-key' }
   },
