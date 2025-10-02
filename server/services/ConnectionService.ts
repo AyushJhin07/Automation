@@ -7,6 +7,7 @@ import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
 import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
 import { integrationManager } from '../integrations/IntegrationManager';
+import { connectorRegistry } from '../ConnectorRegistry';
 import { env } from '../env';
 import { genericExecutor } from '../integrations/GenericExecutor';
 
@@ -140,6 +141,37 @@ export class ConnectionService {
       }
       console.error('❌ Failed to read connection file store:', error);
       throw error;
+    }
+  }
+
+  private buildConnectorMetadata(provider: string): Record<string, any> | undefined {
+    try {
+      const definition = connectorRegistry.getConnectorDefinition(provider);
+      if (!definition) {
+        return undefined;
+      }
+
+      const metadata: Record<string, any> = {
+        connectorId: definition.id,
+        connectorName: definition.name,
+        authType: definition.authentication?.type,
+      };
+
+      if (definition.authentication?.type === 'oauth2') {
+        const config = definition.authentication.config || {};
+        const scopes = Array.isArray(config.scopes) ? config.scopes : [];
+        metadata.oauthScopes = scopes;
+        metadata.oauth = {
+          scopes,
+          authUrl: config.authUrl,
+          tokenUrl: config.tokenUrl,
+        };
+      }
+
+      return metadata;
+    } catch (error) {
+      console.warn('Failed to derive connector metadata:', getErrorMessage(error));
+      return undefined;
     }
   }
 
@@ -300,6 +332,8 @@ export class ConnectionService {
     const encrypted = this.encryptCredentials(request.credentials);
 
     const normalizedProvider = request.provider.toLowerCase();
+    const derivedMetadata = this.buildConnectorMetadata(normalizedProvider);
+    const metadata = { ...(derivedMetadata || {}), ...(request.metadata || {}) };
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
@@ -313,7 +347,7 @@ export class ConnectionService {
         type: request.type,
         encryptedCredentials: encrypted.encryptedData,
         iv: encrypted.iv,
-        metadata: request.metadata || {},
+        metadata,
         isActive: true,
         createdAt: nowIso,
         updatedAt: nowIso,
@@ -333,7 +367,7 @@ export class ConnectionService {
       type: request.type,
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
-      metadata: request.metadata || {},
+      metadata,
       isActive: true,
     }).returning({ id: connections.id });
 

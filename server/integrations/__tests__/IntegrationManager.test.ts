@@ -79,10 +79,33 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   intercom: {
     credentials: { accessToken: 'intercom-access-token' }
   },
+  iterable: {
+    credentials: { apiKey: 'iterable-api-key' }
+  },
+  klaviyo: {
+    credentials: { apiKey: 'klaviyo-api-key' }
+  },
+  marketo: {
+    credentials: {
+      clientId: 'marketo-client-id',
+      clientSecret: 'marketo-client-secret',
+      munchkinId: '123-ABC-456',
+      accessToken: 'marketo-access-token'
+    }
+  },
   'jira-service-management': {
     credentials: {
       baseUrl: 'https://example.atlassian.net',
       accessToken: 'jira-service-access-token'
+    }
+  },
+  pardot: {
+    credentials: {
+      businessUnitId: '0Uv',
+      accessToken: 'pardot-access-token',
+      refreshToken: 'pardot-refresh-token',
+      clientId: 'pardot-client-id',
+      clientSecret: 'pardot-client-secret'
     }
   },
   mailchimp: {

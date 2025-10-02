@@ -53,6 +53,10 @@ import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
+import { MarketoAPIClient } from './integrations/MarketoAPIClient';
+import { PardotAPIClient } from './integrations/PardotAPIClient';
+import { IterableAPIClient } from './integrations/IterableAPIClient';
+import { KlaviyoAPIClient } from './integrations/KlaviyoAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -266,6 +270,10 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('marketo', MarketoAPIClient);
+    this.registerAPIClient('pardot', PardotAPIClient);
+    this.registerAPIClient('iterable', IterableAPIClient);
+    this.registerAPIClient('klaviyo', KlaviyoAPIClient);
   }
 
   /**

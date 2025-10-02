@@ -81,10 +81,25 @@ export abstract class BaseAPIClient {
         }
       }
 
+      let body: BodyInit | undefined;
+      if (data !== undefined && data !== null) {
+        if (typeof data === 'string') {
+          body = data;
+        } else if (data instanceof URLSearchParams) {
+          body = data.toString();
+        } else if (typeof FormData !== 'undefined' && data instanceof FormData) {
+          body = data;
+        } else if (Array.isArray(data) || typeof data === 'object') {
+          body = JSON.stringify(data);
+        } else {
+          body = String(data);
+        }
+      }
+
       const requestOptions: RequestInit = {
         method,
         headers: requestHeaders,
-        body: data ? JSON.stringify(data) : undefined
+        body
       };
 
       const response = await fetch(url, requestOptions);
