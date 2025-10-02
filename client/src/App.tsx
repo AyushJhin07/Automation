@@ -20,6 +20,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import PreBuiltApps from "./pages/PreBuiltApps";
 import AIBuilder from "./pages/AIBuilder";
+import AIPlatform from "./pages/AIPlatform";
 import AdminSettings from "./pages/AdminSettings";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
 import GraphEditor from "./pages/GraphEditor";
@@ -39,6 +40,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/ai-builder" element={<AIBuilder />} />
+            <Route path="/ai-platform" element={<AIPlatform />} />
             <Route path="/workflow-builder" element={<WorkflowBuilder />} />
             <Route path="/graph-editor" element={<GraphEditor />} />
             <Route path="/workspaces" element={<WorkspaceSelector />} />
