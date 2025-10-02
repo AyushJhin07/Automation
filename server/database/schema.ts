@@ -249,6 +249,9 @@ export const connections = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
     name: text('name').notNull(),
     provider: text('provider').notNull(), // gemini, openai, claude, slack, hubspot, jira, etc.
     type: text('type').default('saas').notNull(),
@@ -284,7 +287,11 @@ export const connections = pgTable(
   },
   (table) => ({
     // Performance indexes for ALL applications
-    userProviderIdx: index('connections_user_provider_idx').on(table.userId, table.provider),
+    userProviderIdx: index('connections_user_provider_idx').on(
+      table.organizationId,
+      table.userId,
+      table.provider,
+    ),
     providerIdx: index('connections_provider_idx').on(table.provider),
     activeIdx: index('connections_active_idx').on(table.isActive),
     lastUsedIdx: index('connections_last_used_idx').on(table.lastUsed),
@@ -294,8 +301,12 @@ export const connections = pgTable(
     securityLevelIdx: index('connections_security_level_idx').on(table.securityLevel),
     
     // Unique constraint to prevent duplicate connections
-    userProviderNameIdx: uniqueIndex('connections_user_provider_name_idx')
-      .on(table.userId, table.provider, table.name),
+    userProviderNameIdx: uniqueIndex('connections_user_provider_name_idx').on(
+      table.organizationId,
+      table.userId,
+      table.provider,
+      table.name,
+    ),
   })
 );
 
@@ -632,6 +643,10 @@ export const tenantIsolationsRelations = relations(tenantIsolations, ({ one }) =
 
 export const connectionsRelations = relations(connections, ({ one }) => ({
   user: one(users, { fields: [connections.userId], references: [users.id] }),
+  organization: one(organizations, {
+    fields: [connections.organizationId],
+    references: [organizations.id],
+  }),
 }));
 
 export const workflowsRelations = relations(workflows, ({ one, many }) => ({
