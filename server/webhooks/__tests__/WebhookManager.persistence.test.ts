@@ -132,11 +132,16 @@ WebhookManager.resetForTests();
 
 const manager = WebhookManager.getInstance();
 
+const organizationId = 'org-webhook-test';
+const userId = 'user-webhook-test';
+
 const endpoint = await manager.registerWebhook({
   workflowId: 'wf-1',
   appId: 'github',
   triggerId: 'issue.opened',
-  metadata: { foo: 'bar' },
+  metadata: { foo: 'bar', organizationId, userId },
+  organizationId,
+  userId,
 });
 
 assert.ok(endpoint.startsWith('/api/webhooks/'), 'registration should return a webhook endpoint');
@@ -165,6 +170,8 @@ assert.equal(handled, true, 'webhook replay should be handled successfully after
 assert.equal(queueCalls.length, 1, 'event should enqueue a workflow execution');
 assert.deepEqual(queueCalls[0].triggerData?.payload, { hello: 'world' });
 assert.equal(queueCalls[0].triggerType, 'webhook');
+assert.equal(queueCalls[0].organizationId, organizationId, 'queue should receive organization context');
+assert.equal(queueCalls[0].userId, userId, 'queue should receive user context when available');
 
 const logEntry = Array.from(dbStub.webhookLogs.values())[0];
 assert.ok(logEntry, 'webhook log should be stored');

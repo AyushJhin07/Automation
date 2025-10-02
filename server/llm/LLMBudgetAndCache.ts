@@ -71,6 +71,8 @@ class LLMBudgetAndCache {
   private cache = new Map<string, CacheEntry>();
   private maxCacheSize = 1000; // Maximum number of cache entries
   private defaultCacheTTL = 24 * 60 * 60; // 24 hours in seconds
+  private cacheCleanupInterval?: NodeJS.Timeout;
+  private usageCleanupInterval?: NodeJS.Timeout;
   
   private defaultBudgetConfig: BudgetConfig = {
     dailyLimitUSD: 100,
@@ -94,10 +96,23 @@ class LLMBudgetAndCache {
     this.currentBudgetConfig = { ...this.defaultBudgetConfig, ...budgetConfig };
     
     // Start cleanup intervals
-    setInterval(() => this.cleanupExpiredCache(), 60 * 60 * 1000); // Every hour
-    setInterval(() => this.cleanupOldUsageRecords(), 24 * 60 * 60 * 1000); // Every day
-    
+    this.cacheCleanupInterval = setInterval(() => this.cleanupExpiredCache(), 60 * 60 * 1000);
+    this.cacheCleanupInterval.unref?.();
+    this.usageCleanupInterval = setInterval(() => this.cleanupOldUsageRecords(), 24 * 60 * 60 * 1000);
+    this.usageCleanupInterval.unref?.();
+
     console.log('💰 LLM Budget and Cache system initialized');
+  }
+
+  public dispose(): void {
+    if (this.cacheCleanupInterval) {
+      clearInterval(this.cacheCleanupInterval);
+      this.cacheCleanupInterval = undefined;
+    }
+    if (this.usageCleanupInterval) {
+      clearInterval(this.usageCleanupInterval);
+      this.usageCleanupInterval = undefined;
+    }
   }
 
   /**

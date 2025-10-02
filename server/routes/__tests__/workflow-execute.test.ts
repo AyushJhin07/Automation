@@ -2,11 +2,15 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type { ReadableStream, ReadableStreamDefaultReader } from 'node:stream/web';
 
 import workflowReadRouter from '../workflow-read.js';
 import { WorkflowRepository } from '../../workflow/WorkflowRepository.js';
+import { llmBudgetAndCache } from '../../llm/LLMBudgetAndCache.js';
 
 const workflowId = 'wf-integration-test';
+
+const organizationId = 'org-route-test';
 
 const sampleWorkflow = {
   id: workflowId,
@@ -111,6 +115,7 @@ const sampleWorkflow = {
 await WorkflowRepository.saveWorkflowGraph({
   id: workflowId,
   userId: 'integration-test-user',
+  organizationId,
   name: sampleWorkflow.name,
   description: sampleWorkflow.metadata?.description ?? null,
   graph: sampleWorkflow,
@@ -119,31 +124,55 @@ await WorkflowRepository.saveWorkflowGraph({
 
 const app = express();
 app.use(express.json());
+app.use((req, _res, next) => {
+  (req as any).organizationId = organizationId;
+  (req as any).organizationStatus = 'active';
+  (req as any).user = { id: 'integration-test-user' };
+  next();
+});
 app.use('/api', workflowReadRouter);
 
 const server: Server = await new Promise((resolve) => {
   const listener = app.listen(0, () => resolve(listener));
 });
+server.unref();
+
+const controller = new AbortController();
+let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+let responseBody: ReadableStream<Uint8Array> | null = null;
+let errorOccurred = false;
 
 try {
   const address = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
   const response = await fetch(`${baseUrl}/api/workflows/${workflowId}/execute`, {
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      Connection: 'close'
+    },
+    signal: controller.signal
   });
 
   assert.equal(response.status, 200, 'endpoint should respond with 200');
-  assert.ok(response.body, 'response should provide a stream body');
 
-  const reader = response.body!.getReader();
+  if (!response.body) {
+    throw new Error('Response did not include a readable body');
+  }
+
+  responseBody = response.body;
+  reader = responseBody.getReader();
   const decoder = new TextDecoder();
   const events: any[] = [];
   let buffer = '';
+  let summaryReceived = false;
 
-  while (true) {
+  while (!summaryReceived) {
     const { value, done } = await reader.read();
-    if (done) break;
+    if (done) {
+      break;
+    }
+
     buffer += decoder.decode(value, { stream: true });
 
     let newlineIndex = buffer.indexOf('\n');
@@ -151,15 +180,31 @@ try {
       const line = buffer.slice(0, newlineIndex).trim();
       buffer = buffer.slice(newlineIndex + 1);
       if (line) {
-        events.push(JSON.parse(line));
+        const event = JSON.parse(line);
+        events.push(event);
+        if (event.type === 'summary') {
+          summaryReceived = true;
+          controller.abort();
+          break;
+        }
       }
       newlineIndex = buffer.indexOf('\n');
     }
   }
 
-  const remaining = buffer.trim();
-  if (remaining) {
-    events.push(JSON.parse(remaining));
+  if (!summaryReceived) {
+    const remaining = buffer.trim();
+    if (remaining) {
+      const event = JSON.parse(remaining);
+      events.push(event);
+      if (event.type === 'summary') {
+        summaryReceived = true;
+      }
+    }
+  }
+
+  if (summaryReceived) {
+    controller.abort();
   }
 
   assert.ok(events.some((event) => event.type === 'node-start'), 'should emit node-start events');
@@ -187,9 +232,40 @@ try {
   assert.equal(summary.results?.['node-2']?.status, 'error', 'summary should capture per-node error status');
 
   console.log('Workflow execute endpoint emits streaming step results.');
+} catch (error) {
+  errorOccurred = true;
+  console.error(error);
 } finally {
+  if (reader) {
+    try {
+      await reader.cancel();
+    } catch {}
+    try {
+      reader.releaseLock();
+    } catch {}
+    reader = null;
+  }
+
+  if (responseBody) {
+    try {
+      await responseBody.cancel();
+    } catch {}
+    responseBody = null;
+  }
+
+  controller.abort();
+
   await new Promise<void>((resolve, reject) => {
     server.close((err) => (err ? reject(err) : resolve()));
   });
-  await WorkflowRepository.deleteWorkflow(workflowId);
+  await WorkflowRepository.deleteWorkflow(workflowId, organizationId);
+  llmBudgetAndCache.dispose();
+  const activeHandles = (process as any)._getActiveHandles?.() ?? [];
+  for (const handle of activeHandles) {
+    if (handle?.constructor?.name === 'Socket' && typeof handle.unref === 'function') {
+      handle.unref();
+    }
+  }
+  const exitCode = errorOccurred ? 1 : (typeof process.exitCode === 'number' ? process.exitCode : 0);
+  setImmediate(() => process.exit(exitCode)).unref?.();
 }

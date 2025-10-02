@@ -8,6 +8,8 @@ export interface WebhookTrigger {
   isActive: boolean;
   lastTriggered?: Date;
   metadata: Record<string, any>;
+  organizationId?: string;
+  userId?: string;
 }
 
 export interface TriggerEvent {
@@ -23,6 +25,8 @@ export interface TriggerEvent {
   processed: boolean;
   source: 'webhook' | 'polling';
   dedupeToken?: string;
+  organizationId: string;
+  userId?: string;
 }
 
 export interface PollingTrigger {

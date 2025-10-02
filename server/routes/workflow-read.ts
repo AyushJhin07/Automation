@@ -11,6 +11,23 @@ import { getErrorMessage } from '../types/common.js';
 
 export const workflowReadRouter = Router();
 
+const requireOrganizationContext = (req: any, res: any): string | null => {
+  const organizationId = req?.organizationId;
+  const organizationStatus = req?.organizationStatus;
+
+  if (!organizationId) {
+    res.status(403).json({ success: false, error: 'Organization context is required' });
+    return null;
+  }
+
+  if (organizationStatus && organizationStatus !== 'active') {
+    res.status(403).json({ success: false, error: 'Organization is not active' });
+    return null;
+  }
+
+  return organizationId;
+};
+
 const stripExecutionState = (data: any) => {
   if (!data || typeof data !== 'object') {
     return data;
@@ -209,7 +226,12 @@ workflowReadRouter.get('/workflows/:id', async (req, res) => {
       });
     }
 
-    const workflowRecord = await WorkflowRepository.getWorkflowById(id);
+    const organizationId = requireOrganizationContext(req as any, res);
+    if (!organizationId) {
+      return;
+    }
+
+    const workflowRecord = await WorkflowRepository.getWorkflowById(id, organizationId);
 
     if (!workflowRecord) {
       return res.status(404).json({
@@ -246,6 +268,11 @@ workflowReadRouter.get('/workflows/:id', async (req, res) => {
 // List all stored workflows (for debugging)
 workflowReadRouter.get('/workflows', async (req, res) => {
   try {
+    const organizationId = requireOrganizationContext(req as any, res);
+    if (!organizationId) {
+      return;
+    }
+
     const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
     const offset = typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined;
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
@@ -256,6 +283,7 @@ workflowReadRouter.get('/workflows', async (req, res) => {
       offset,
       search,
       userId: userIdQuery ?? (req as any)?.user?.id,
+      organizationId,
     });
 
     res.json({
@@ -280,7 +308,12 @@ workflowReadRouter.get('/workflows', async (req, res) => {
 workflowReadRouter.delete('/workflows/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await WorkflowRepository.deleteWorkflow(id);
+    const organizationId = requireOrganizationContext(req as any, res);
+    if (!organizationId) {
+      return;
+    }
+
+    const deleted = await WorkflowRepository.deleteWorkflow(id, organizationId);
 
     res.json({
       success: true,
@@ -297,6 +330,7 @@ workflowReadRouter.delete('/workflows/:id', async (req, res) => {
 });
 
 workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
+  let organizationId: string | null = null;
   let executionRecordId: string | null = null;
   let executionStart = Date.now();
   let executionMetadata: Record<string, any> | null = null;
@@ -306,6 +340,11 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 
     if (!id) {
       return res.status(400).json({ success: false, error: 'Workflow ID is required' });
+    }
+
+    organizationId = requireOrganizationContext(req as any, res);
+    if (!organizationId) {
+      return;
     }
 
     console.log(`▶️ Received execution request for workflow ${id}`);
@@ -319,6 +358,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       await WorkflowRepository.saveWorkflowGraph({
         id,
         userId: (req as any)?.user?.id,
+        organizationId,
         name: sanitizedProvided?.name ?? sanitizedProvided?.graph?.name,
         description: sanitizedProvided?.description ?? sanitizedProvided?.metadata?.description ?? null,
         graph: sanitizedProvided,
@@ -327,7 +367,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       graphSource = sanitizedProvided;
       console.log(`💾 Stored provided graph for workflow ${id} before execution preview`);
     } else {
-      const stored = await WorkflowRepository.getWorkflowById(id);
+      const stored = await WorkflowRepository.getWorkflowById(id, organizationId);
       if (!stored) {
         return res.status(404).json({ success: false, error: `Workflow not found: ${id}` });
       }
@@ -344,6 +384,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     const executionRecord = await WorkflowRepository.createWorkflowExecution({
       workflowId: id,
       userId: (req as any)?.user?.id,
+      organizationId,
       status: 'started',
       triggerType: typeof requestOptions.triggerType === 'string' ? requestOptions.triggerType : 'manual',
       triggerData: {
@@ -392,7 +433,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
             stage: 'compile'
           },
           nodeResults: {},
-        });
+        }, organizationId);
       }
       return res.status(422).json({
         success: false,
@@ -582,7 +623,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
           preview: true,
           finishedAt: completionTime.toISOString(),
         },
-      });
+      }, organizationId);
     }
 
     sendEvent({
@@ -603,15 +644,17 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     console.error('❌ Error executing workflow preview:', error);
     if (executionRecordId) {
       try {
-        await WorkflowRepository.updateWorkflowExecution(executionRecordId, {
-          status: 'failed',
-          completedAt: new Date(),
-          duration: executionStart ? Date.now() - executionStart : null,
-          errorDetails: {
-            error: error?.message || 'Unknown execution error',
-            stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
-          },
-        });
+        if (organizationId) {
+          await WorkflowRepository.updateWorkflowExecution(executionRecordId, {
+            status: 'failed',
+            completedAt: new Date(),
+            duration: executionStart ? Date.now() - executionStart : null,
+            errorDetails: {
+              error: error?.message || 'Unknown execution error',
+              stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+            },
+          }, organizationId);
+        }
       } catch (updateError) {
         console.error('⚠️ Failed to update execution record after error:', updateError);
       }

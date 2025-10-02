@@ -287,15 +287,21 @@ workflowBuildRouter.post('/build', async (req, res) => {
     });
     
     try {
-      await WorkflowRepository.saveWorkflowGraph({
-        id: workflowId,
-        userId: (req as any)?.user?.id,
-        name: nodeGraph?.name || graph?.name || 'Untitled Workflow',
-        description: graph?.meta?.description ?? null,
-        graph: nodeGraph,
-        metadata: response.metadata,
-        category: graph?.meta?.automationType ?? null,
-      });
+      const organizationId = (req as any)?.organizationId;
+      if (!organizationId) {
+        console.warn('⚠️ Skipping workflow persistence due to missing organization context');
+      } else {
+        await WorkflowRepository.saveWorkflowGraph({
+          id: workflowId,
+          userId: (req as any)?.user?.id,
+          organizationId,
+          name: nodeGraph?.name || graph?.name || 'Untitled Workflow',
+          description: graph?.meta?.description ?? null,
+          graph: nodeGraph,
+          metadata: response.metadata,
+          category: graph?.meta?.automationType ?? null,
+        });
+      }
     } catch (storageError: any) {
       console.error('❌ Failed to persist workflow graph:', storageError);
     }

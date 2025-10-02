@@ -12,15 +12,44 @@ import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 
 const router = Router();
 
+const requireActiveOrganization = (req: Request, res: Response): string | null => {
+  const organizationId = (req as any)?.organizationId;
+  const organizationStatus = (req as any)?.organizationStatus;
+
+  if (!organizationId) {
+    res.status(403).json({
+      success: false,
+      error: 'Organization context is required',
+    });
+    return null;
+  }
+
+  if (organizationStatus && organizationStatus !== 'active') {
+    res.status(403).json({
+      success: false,
+      error: 'Organization is not active',
+    });
+    return null;
+  }
+
+  return organizationId;
+};
+
 const persistFlow = async (req: Request, res: Response) => {
   try {
+    const organizationId = requireActiveOrganization(req, res);
+    if (!organizationId) {
+      return;
+    }
+
     const payload = req.body ?? {};
     const graph = payload.graph ?? payload;
     const providedId = typeof payload.id === 'string' ? payload.id : (typeof payload.workflowId === 'string' ? payload.workflowId : undefined);
 
     const saved = await WorkflowRepository.saveWorkflowGraph({
       id: providedId,
-      userId: payload.userId ?? (req as any)?.user?.id,
+      userId: (req as any)?.user?.id ?? payload.userId,
+      organizationId,
       name: payload.name ?? graph?.name ?? 'Untitled Workflow',
       description: payload.description ?? graph?.description ?? payload?.metadata?.description ?? null,
       graph,
@@ -61,7 +90,12 @@ router.put('/:id', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const workflow = await WorkflowRepository.getWorkflowById(req.params.id);
+    const organizationId = requireActiveOrganization(req, res);
+    if (!organizationId) {
+      return;
+    }
+
+    const workflow = await WorkflowRepository.getWorkflowById(req.params.id, organizationId);
 
     if (!workflow) {
       return res.status(404).json({
@@ -87,6 +121,11 @@ router.get('/:id', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
+    const organizationId = requireActiveOrganization(req, res);
+    if (!organizationId) {
+      return;
+    }
+
     const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
     const offset = typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined;
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
@@ -97,6 +136,7 @@ router.get('/', async (req, res) => {
       offset,
       search,
       userId,
+      organizationId,
     });
 
     const flows = workflows.map((workflow) => ({
@@ -132,7 +172,12 @@ router.get('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = await WorkflowRepository.deleteWorkflow(req.params.id);
+    const organizationId = requireActiveOrganization(req, res);
+    if (!organizationId) {
+      return;
+    }
+
+    const deleted = await WorkflowRepository.deleteWorkflow(req.params.id, organizationId);
 
     if (!deleted) {
       return res.status(404).json({
