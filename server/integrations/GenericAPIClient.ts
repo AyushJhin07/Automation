@@ -3,34 +3,53 @@
 // but no specific client-side API integration needed
 
 import { BaseAPIClient, APICredentials, APIResponse } from './BaseAPIClient';
+import { genericExecutor } from './GenericExecutor';
 
+/**
+ * Lightweight API client that proxies execution through the GenericExecutor.
+ *
+ * Connectors that have high-fidelity JSON definitions but no bespoke client
+ * registered can rely on this class so they participate in the same
+ * IntegrationManager flows (connection testing, execution, etc.).
+ */
 export class GenericAPIClient extends BaseAPIClient {
-  constructor(credentials: APICredentials = {}) {
+  private readonly appId: string;
+
+  constructor(appId: string, credentials: APICredentials = {}) {
     super('', credentials);
+    this.appId = appId;
   }
 
   protected getAuthHeaders(): Record<string, string> {
-    throw new Error(
-      `${this.constructor.name} is a placeholder and should not be used for real API traffic.`
-    );
+    // Generic execution handles auth injection based on connector definition.
+    return {};
   }
 
-  protected async executeRequest(
-    method: string,
-    endpoint: string,
-    data?: any,
-    headers?: Record<string, string>
-  ): Promise<APIResponse> {
-    throw new Error(
-      `${this.constructor.name} cannot execute ${method.toUpperCase()} ${endpoint} because the connector is not implemented.`
-    );
+  public async testConnection(): Promise<APIResponse> {
+    return genericExecutor.testConnection(this.appId, this.credentials);
   }
 
-  // Basic test connection method
-  async testConnection(): Promise<APIResponse> {
-    throw new Error(
-      `${this.constructor.name} cannot test connections because the connector is not implemented.`
-    );
+  public async execute(functionId: string, params: Record<string, any> = {}): Promise<APIResponse<any>> {
+    return genericExecutor.execute({
+      appId: this.appId,
+      functionId,
+      parameters: params,
+      credentials: this.credentials,
+    });
+  }
+
+  public async executePaginated(
+    functionId: string,
+    params: Record<string, any> = {},
+    maxPages?: number
+  ): Promise<APIResponse<any>> {
+    return genericExecutor.executePaginated({
+      appId: this.appId,
+      functionId,
+      parameters: params,
+      credentials: this.credentials,
+      maxPages,
+    });
   }
 }
 

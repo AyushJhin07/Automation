@@ -716,35 +716,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get comprehensive node catalog for UI (single authoritative endpoint)
   app.get('/api/registry/catalog', async (req, res) => {
     try {
-      const catalog = connectorRegistry.getNodeCatalog();
+      const { connectors: allConnectors, categories: allCategories, stats } = connectorRegistry.getNodeCatalog();
       const implementedOnly = req.query.implemented !== 'false';
 
       if (!implementedOnly) {
-        return res.json({ success: true, catalog });
+        return res.json({
+          success: true,
+          catalog: { connectors: allConnectors, categories: allCategories },
+          stats,
+        });
       }
 
       const connectors: Record<string, any> = {};
-      Object.entries<any>(catalog.connectors || {}).forEach(([appId, def]) => {
+      let visibleGeneric = 0;
+      let visibleBespoke = 0;
+
+      Object.entries<any>(allConnectors || {}).forEach(([appId, def]) => {
         if (def?.hasImplementation) {
           connectors[appId] = def;
+          if (def.implementation === 'generic') {
+            visibleGeneric += 1;
+          } else if (def.implementation === 'bespoke') {
+            visibleBespoke += 1;
+          }
         }
       });
 
       const categories: Record<string, any> = {};
-      Object.entries<any>(catalog.categories || {}).forEach(([categoryName, category]) => {
+      Object.entries<any>(allCategories || {}).forEach(([categoryName, category]) => {
         const nodes = (category?.nodes || []).filter((node: any) => node?.hasImplementation);
         if (nodes.length > 0) {
           categories[categoryName] = { ...category, nodes };
         }
       });
 
+      const visibleStats = {
+        ...stats,
+        visibleConnectors: Object.keys(connectors).length,
+        visibleGeneric,
+        visibleBespoke,
+      };
+
       res.json({
         success: true,
         catalog: {
-          ...catalog,
           connectors,
-          categories
-        }
+          categories,
+        },
+        stats: visibleStats,
       });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });

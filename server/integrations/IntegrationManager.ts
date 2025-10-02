@@ -56,6 +56,7 @@ export class IntegrationManager {
       'slack-enhanced': 'slack',
       'shopify-enhanced': 'shopify',
       'airtable-enhanced': 'airtable',
+      'notion-enhanced': 'notion',
       'github-enhanced': 'github',
       'stripe-enhanced': 'stripe',
       'trello-enhanced': 'trello',

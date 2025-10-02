@@ -45,7 +45,7 @@ import { GitlabAPIClient } from './integrations/GitlabAPIClient';
 import { BitbucketAPIClient } from './integrations/BitbucketAPIClient';
 import { ConfluenceAPIClient } from './integrations/ConfluenceAPIClient';
 import { JiraServiceManagementAPIClient } from './integrations/JiraServiceManagementAPIClient';
-import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
+import { JiraAPIClient } from './integrations/JiraAPIClient';
 import { QuickbooksAPIClient } from './integrations/QuickbooksAPIClient';
 import { AdyenAPIClient } from './integrations/AdyenAPIClient';
 import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
@@ -102,6 +102,7 @@ interface ConnectorRegistryEntry {
   definition: ConnectorDefinition;
   apiClient?: APIClientConstructor;
   hasImplementation: boolean;
+  implementationSource: 'generic' | 'bespoke' | 'none';
   functionCount: number;
   categories: string[];
   availability: ConnectorAvailability;
@@ -117,6 +118,8 @@ export class ConnectorRegistry {
   private registry: Map<string, ConnectorRegistryEntry> = new Map();
   private connectorsPath: string;
   private apiClients: Map<string, APIClientConstructor> = new Map();
+  private genericImplementations: Set<string> = new Set();
+  private genericClientConstructors: Map<string, APIClientConstructor> = new Map();
 
   private constructor() {
     // Get current file directory in ES module
@@ -157,6 +160,7 @@ export class ConnectorRegistry {
     console.log("[ConnectorRegistry] Using connectorsPath:", this.connectorsPath);
 
     this.initializeAPIClients();
+    this.registerGenericImplementations();
     this.loadAllConnectors();
   }
 
@@ -219,53 +223,152 @@ export class ConnectorRegistry {
    */
   private initializeAPIClients(): void {
     // Register the concrete API clients that are actually wired today.
-    this.registerAPIClient('gmail', GmailAPIClient);
-    this.registerAPIClient('shopify', ShopifyAPIClient);
-    this.registerAPIClient('slack', SlackAPIClient);
-    this.registerAPIClient('notion', NotionAPIClient);
-    this.registerAPIClient('airtable', AirtableAPIClient);
+    this.registerClientWithVariants('gmail', GmailAPIClient);
+    this.registerClientWithVariants('shopify', ShopifyAPIClient);
+    this.registerClientWithVariants('slack', SlackAPIClient);
+    this.registerClientWithVariants('notion', NotionAPIClient);
+    this.registerClientWithVariants('airtable', AirtableAPIClient);
 
     // Promote commonly used connectors to Stable by registering API clients
-    this.registerAPIClient('hubspot', HubspotAPIClient);
-    this.registerAPIClient('stripe', StripeAPIClient);
-    this.registerAPIClient('github', GithubAPIClient);
-    this.registerAPIClient('dropbox', DropboxAPIClient);
-    this.registerAPIClient('google-drive', GoogleDriveAPIClient);
-    this.registerAPIClient('google-calendar', GoogleCalendarAPIClient);
-    this.registerAPIClient('trello', TrelloAPIClient);
-    this.registerAPIClient('typeform', TypeformAPIClient);
-    this.registerAPIClient('asana', AsanaAPIClient);
-    this.registerAPIClient('sendgrid', SendgridAPIClient);
-    this.registerAPIClient('mailgun', MailgunAPIClient);
-    this.registerAPIClient('mailchimp', MailchimpAPIClient);
-    this.registerAPIClient('zendesk', ZendeskAPIClient);
-    this.registerAPIClient('pipedrive', PipedriveAPIClient);
-    this.registerAPIClient('twilio', TwilioAPIClient);
-    this.registerAPIClient('salesforce', SalesforceAPIClient);
-    this.registerAPIClient('quickbooks', QuickbooksAPIClient);
-    this.registerAPIClient('adyen', AdyenAPIClient);
-    this.registerAPIClient('box', BoxAPIClient);
-    this.registerAPIClient('onedrive', OnedriveAPIClient);
-    this.registerAPIClient('sharepoint', SharepointAPIClient);
-    this.registerAPIClient('smartsheet', SmartsheetAPIClient);
-    this.registerAPIClient('google-docs', GoogleDocsAPIClient);
-    this.registerAPIClient('google-slides', GoogleSlidesAPIClient);
-    this.registerAPIClient('google-forms', GoogleFormsAPIClient);
-    this.registerAPIClient('microsoft-teams', MicrosoftTeamsAPIClient);
-    this.registerAPIClient('outlook', OutlookAPIClient);
-    this.registerAPIClient('google-chat', GoogleChatAPIClient);
-    this.registerAPIClient('zoom', ZoomAPIClient);
-    this.registerAPIClient('calendly', CalendlyAPIClient);
-    this.registerAPIClient('intercom', IntercomAPIClient);
-    this.registerAPIClient('monday', MondayAPIClient);
-    this.registerAPIClient('servicenow', ServicenowAPIClient);
-    this.registerAPIClient('freshdesk', FreshdeskAPIClient);
-    this.registerAPIClient('bamboohr', BamboohrAPIClient);
-    this.registerAPIClient('gitlab', GitlabAPIClient);
-    this.registerAPIClient('bitbucket', BitbucketAPIClient);
-    this.registerAPIClient('confluence', ConfluenceAPIClient);
-    this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
-    this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerClientWithVariants('hubspot', HubspotAPIClient);
+    this.registerClientWithVariants('stripe', StripeAPIClient);
+    this.registerClientWithVariants('github', GithubAPIClient);
+    this.registerClientWithVariants('dropbox', DropboxAPIClient);
+    this.registerClientWithVariants('google-drive', GoogleDriveAPIClient);
+    this.registerClientWithVariants('google-calendar', GoogleCalendarAPIClient);
+    this.registerClientWithVariants('trello', TrelloAPIClient);
+    this.registerClientWithVariants('typeform', TypeformAPIClient);
+    this.registerClientWithVariants('asana', AsanaAPIClient);
+    this.registerClientWithVariants('sendgrid', SendgridAPIClient);
+    this.registerClientWithVariants('mailgun', MailgunAPIClient);
+    this.registerClientWithVariants('mailchimp', MailchimpAPIClient);
+    this.registerClientWithVariants('zendesk', ZendeskAPIClient);
+    this.registerClientWithVariants('pipedrive', PipedriveAPIClient);
+    this.registerClientWithVariants('twilio', TwilioAPIClient);
+    this.registerClientWithVariants('salesforce', SalesforceAPIClient);
+    this.registerClientWithVariants('quickbooks', QuickbooksAPIClient);
+    this.registerClientWithVariants('adyen', AdyenAPIClient);
+    this.registerClientWithVariants('box', BoxAPIClient);
+    this.registerClientWithVariants('onedrive', OnedriveAPIClient);
+    this.registerClientWithVariants('sharepoint', SharepointAPIClient);
+    this.registerClientWithVariants('smartsheet', SmartsheetAPIClient);
+    this.registerClientWithVariants('google-docs', GoogleDocsAPIClient);
+    this.registerClientWithVariants('google-slides', GoogleSlidesAPIClient);
+    this.registerClientWithVariants('google-forms', GoogleFormsAPIClient);
+    this.registerClientWithVariants('microsoft-teams', MicrosoftTeamsAPIClient);
+    this.registerClientWithVariants('outlook', OutlookAPIClient);
+    this.registerClientWithVariants('google-chat', GoogleChatAPIClient);
+    this.registerClientWithVariants('zoom', ZoomAPIClient);
+    this.registerClientWithVariants('calendly', CalendlyAPIClient);
+    this.registerClientWithVariants('intercom', IntercomAPIClient);
+    this.registerClientWithVariants('monday', MondayAPIClient);
+    this.registerClientWithVariants('servicenow', ServicenowAPIClient);
+    this.registerClientWithVariants('freshdesk', FreshdeskAPIClient);
+    this.registerClientWithVariants('bamboohr', BamboohrAPIClient);
+    this.registerClientWithVariants('gitlab', GitlabAPIClient);
+    this.registerClientWithVariants('bitbucket', BitbucketAPIClient);
+    this.registerClientWithVariants('confluence', ConfluenceAPIClient);
+    this.registerClientWithVariants('jira-service-management', JiraServiceManagementAPIClient);
+    this.registerClientWithVariants('jira', JiraAPIClient, { includeEnhanced: false });
+    this.registerClientWithVariants('pagerduty', PagerdutyAPIClient);
+  }
+
+  private registerClientWithVariants(
+    appId: string,
+    clientClass: APIClientConstructor,
+    options: { includeEnhanced?: boolean; aliases?: string[] } = {}
+  ): void {
+    this.registerAPIClient(appId, clientClass);
+
+    const { includeEnhanced = true, aliases = [] } = options;
+
+    if (includeEnhanced) {
+      const enhancedId = `${appId}-enhanced`;
+      if (this.connectorDefinitionExists(enhancedId) && !this.apiClients.has(enhancedId)) {
+        this.registerAPIClient(enhancedId, clientClass);
+      }
+    }
+
+    for (const alias of aliases) {
+      if (this.connectorDefinitionExists(alias) && !this.apiClients.has(alias)) {
+        this.registerAPIClient(alias, clientClass);
+      }
+    }
+  }
+
+  private connectorDefinitionExists(appId: string): boolean {
+    if (!appId) {
+      return false;
+    }
+    try {
+      return existsSync(join(this.connectorsPath, `${appId}.json`));
+    } catch {
+      return false;
+    }
+  }
+
+  private loadGenericImplementationOverrides(): string[] {
+    const configPath = resolve(process.cwd(), 'configs', 'implementation-overrides.json');
+    if (!existsSync(configPath)) {
+      return [];
+    }
+
+    try {
+      const raw = readFileSync(configPath, 'utf8');
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed.generic) ? parsed.generic : [];
+      return list
+        .map((id: any) => String(id || '').trim())
+        .filter((id: string) => id.length > 0);
+    } catch (error) {
+      console.warn('[ConnectorRegistry] Failed to load implementation overrides:', error);
+      return [];
+    }
+  }
+
+  private registerGenericImplementations(): void {
+    const overrides = this.loadGenericImplementationOverrides();
+    if (!overrides.length) {
+      return;
+    }
+
+    for (const appId of overrides) {
+      if (!this.connectorDefinitionExists(appId)) {
+        console.warn(`[ConnectorRegistry] Generic override ${appId} missing connector definition. Skipping.`);
+        continue;
+      }
+
+      if (this.apiClients.has(appId)) {
+        // Already has a bespoke client registered.
+        continue;
+      }
+
+      this.genericImplementations.add(appId);
+      const ctor = this.getGenericClientConstructor(appId);
+      this.registerAPIClient(appId, ctor);
+
+      const enhancedId = `${appId}-enhanced`;
+      if (this.connectorDefinitionExists(enhancedId) && !this.apiClients.has(enhancedId)) {
+        this.genericImplementations.add(enhancedId);
+        this.registerAPIClient(enhancedId, ctor);
+      }
+    }
+  }
+
+  private getGenericClientConstructor(appId: string): APIClientConstructor {
+    const existing = this.genericClientConstructors.get(appId);
+    if (existing) {
+      return existing;
+    }
+
+    const ctor = class extends GenericAPIClient {
+      constructor(config?: any) {
+        super(appId, config || {});
+      }
+    };
+
+    this.genericClientConstructors.set(appId, ctor);
+    return ctor;
   }
 
   /**
@@ -289,11 +392,15 @@ export class ConnectorRegistry {
         const hasRegisteredClient = this.apiClients.has(appId);
         const availability = this.resolveAvailability(appId, def, hasRegisteredClient);
         const hasImplementation = availability === 'stable' && hasRegisteredClient;
+        const implementationSource: 'generic' | 'bespoke' | 'none' = hasImplementation
+          ? (this.genericImplementations.has(appId) ? 'generic' : 'bespoke')
+          : 'none';
         const normalizedDefinition: ConnectorDefinition = { ...def, availability };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
           apiClient: hasImplementation ? this.apiClients.get(appId) : undefined,
           hasImplementation,
+          implementationSource,
           functionCount: (def.actions?.length || 0) + (def.triggers?.length || 0),
           categories: [def.category],
           availability
@@ -497,12 +604,13 @@ export class ConnectorRegistry {
    */
   public registerAPIClient(appId: string, clientClass: APIClientConstructor): void {
     this.apiClients.set(appId, clientClass);
-    
+
     // Update registry entry if it exists
     const entry = this.registry.get(appId);
     if (entry) {
       entry.apiClient = clientClass;
       entry.hasImplementation = true;
+      entry.implementationSource = this.genericImplementations.has(appId) ? 'generic' : 'bespoke';
     }
   }
 
@@ -548,6 +656,40 @@ export class ConnectorRegistry {
     };
   }
 
+  public isGenericImplementation(appId: string): boolean {
+    return this.genericImplementations.has(appId);
+  }
+
+  public getImplementationSummary(): {
+    totalConnectors: number;
+    implementedConnectors: number;
+    genericConnectors: number;
+    bespokeConnectors: number;
+  } {
+    let implemented = 0;
+    let generic = 0;
+    let bespoke = 0;
+
+    for (const entry of this.registry.values()) {
+      if (!entry.hasImplementation) {
+        continue;
+      }
+      implemented += 1;
+      if (entry.implementationSource === 'generic') {
+        generic += 1;
+      } else if (entry.implementationSource === 'bespoke') {
+        bespoke += 1;
+      }
+    }
+
+    return {
+      totalConnectors: this.registry.size,
+      implementedConnectors: implemented,
+      genericConnectors: generic,
+      bespokeConnectors: bespoke,
+    };
+  }
+
   /**
    * Get node catalog with both connectors and categories for UI
    */
@@ -559,6 +701,7 @@ export class ConnectorRegistry {
       triggers: ConnectorFunction[];
       hasImplementation: boolean;
       availability: ConnectorAvailability;
+      implementation: 'generic' | 'bespoke' | 'none';
     }>;
     categories: Record<string, {
       name: string;
@@ -571,26 +714,52 @@ export class ConnectorRegistry {
         category: string;
         appName: string;
         hasImplementation: boolean;
+        implementation: 'generic' | 'bespoke' | 'none';
         nodeType: string; // e.g., action.slack.chat_postMessage
         parameters?: any;
       }>;
     }>;
+    stats: {
+      totalConnectors: number;
+      implementedConnectors: number;
+      genericConnectors: number;
+      bespokeConnectors: number;
+    };
   } {
     const connectors: Record<string, any> = {};
     const categories: Record<string, any> = {};
+    const stats = {
+      totalConnectors: this.registry.size,
+      implementedConnectors: 0,
+      genericConnectors: 0,
+      bespokeConnectors: 0,
+    };
 
     for (const [appId, entry] of this.registry.entries()) {
       if (entry.availability === 'disabled') {
         continue;
       }
       const def = entry.definition;
+      const hasImplementation = entry.hasImplementation === true;
+      const implementation = entry.implementationSource;
+
+      if (hasImplementation) {
+        stats.implementedConnectors += 1;
+        if (implementation === 'generic') {
+          stats.genericConnectors += 1;
+        } else if (implementation === 'bespoke') {
+          stats.bespokeConnectors += 1;
+        }
+      }
+
       connectors[appId] = {
         name: def.name,
         category: def.category,
         actions: def.actions || [],
         triggers: def.triggers || [],
-        hasImplementation: entry.hasImplementation === true,
-        availability: entry.availability
+        hasImplementation,
+        availability: entry.availability,
+        implementation,
       };
 
       const pushNode = (type: 'action' | 'trigger', fn: ConnectorFunction) => {
@@ -600,7 +769,7 @@ export class ConnectorRegistry {
             name: category,
             description: `${category} apps`,
             icon: '',
-            nodes: []
+            nodes: [],
           };
         }
         categories[category].nodes.push({
@@ -609,14 +778,15 @@ export class ConnectorRegistry {
           description: fn.description || '',
           category,
           appName: def.name,
-          hasImplementation: entry.hasImplementation === true,
+          hasImplementation,
+          implementation,
           nodeType: `${type}.${appId}.${fn.id}`,
-          parameters: (fn as any).parameters || {}
+          parameters: (fn as any).parameters || {},
         });
       };
 
       (def.triggers || []).forEach(t => pushNode('trigger', t));
-      (def.actions  || []).forEach(a => pushNode('action', a));
+      (def.actions || []).forEach(a => pushNode('action', a));
     }
 
     // Optional: sort nodes so implemented ones show first
@@ -628,7 +798,7 @@ export class ConnectorRegistry {
       });
     }
 
-    return { connectors, categories };
+    return { connectors, categories, stats };
   }
 
   private resolveAvailability(appId: string, def: ConnectorDefinition, hasRegisteredClient: boolean): ConnectorAvailability {

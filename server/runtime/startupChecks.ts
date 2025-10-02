@@ -5,6 +5,7 @@ import { env } from '../env';
 import { EncryptionService } from '../services/EncryptionService';
 import { getErrorMessage } from '../types/common';
 import { connectorDefinitions, db } from '../database/schema';
+import { connectorRegistry } from '../ConnectorRegistry';
 import { providerConfigService } from '../services/ProviderConfigService';
 import { count } from 'drizzle-orm';
 
@@ -60,6 +61,18 @@ async function ensureConnectorCatalog(): Promise<void> {
   }
 }
 
+function ensureImplementationCoverage(): void {
+  const summary = connectorRegistry.getImplementationSummary();
+  if (summary.implementedConnectors === 0) {
+    throw new Error('No connectors are marked as implemented. Verify registry client registrations.');
+  }
+
+  console.log(
+    `✅ Startup check: ${summary.implementedConnectors}/${summary.totalConnectors} connectors implemented (` +
+    `${summary.bespokeConnectors} bespoke, ${summary.genericConnectors} generic).`
+  );
+}
+
 function ensureServerUrl(): void {
   if (env.NODE_ENV === 'production' && !env.SERVER_PUBLIC_URL) {
     throw new Error('SERVER_PUBLIC_URL must be set in production to guarantee OAuth callback URLs.');
@@ -95,6 +108,7 @@ function ensureEncryptionRotation(): void {
 export async function runStartupChecks(): Promise<void> {
   await ensureEncryptionReady();
   await ensureConnectorCatalog();
+  ensureImplementationCoverage();
   ensureServerUrl();
   ensureEncryptionRotation();
   await providerConfigService.bootstrap();

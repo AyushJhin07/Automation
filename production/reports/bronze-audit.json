@@ -1,62 +1,634 @@
 {
-  "generatedAt": "2025-09-30T11:09:02.618Z",
+  "generatedAt": "2025-10-02T06:02:45.970Z",
   "results": [
     {
-      "id": "slack",
-      "missingCount": 3,
+      "id": "hubspot-enhanced",
+      "missingCount": 11,
       "missing": [
         {
-          "type": "trigger",
-          "id": "message_received",
-          "name": "Message Received"
+          "type": "action",
+          "id": "create_contact",
+          "name": "Create Contact"
         },
         {
-          "type": "trigger",
-          "id": "reaction_added",
-          "name": "Reaction Added"
+          "type": "action",
+          "id": "update_contact",
+          "name": "Update Contact"
         },
         {
-          "type": "trigger",
-          "id": "user_joined_channel",
-          "name": "User Joined Channel"
-        }
-      ]
-    },
-    {
-      "id": "hubspot",
-      "error": "missing connector json"
-    },
-    {
-      "id": "stripe",
-      "error": "missing connector json"
-    },
-    {
-      "id": "typeform",
-      "missingCount": 2,
-      "missing": [
-        {
-          "type": "trigger",
-          "id": "form_response",
-          "name": "Form Response"
+          "type": "action",
+          "id": "get_contact",
+          "name": "Get Contact"
         },
         {
-          "type": "trigger",
-          "id": "form_created",
-          "name": "Form Created"
+          "type": "action",
+          "id": "search_contacts",
+          "name": "Search Contacts"
+        },
+        {
+          "type": "action",
+          "id": "create_company",
+          "name": "Create Company"
+        },
+        {
+          "type": "action",
+          "id": "update_company",
+          "name": "Update Company"
+        },
+        {
+          "type": "action",
+          "id": "create_deal",
+          "name": "Create Deal"
+        },
+        {
+          "type": "action",
+          "id": "update_deal",
+          "name": "Update Deal"
+        },
+        {
+          "type": "action",
+          "id": "create_task",
+          "name": "Create Task"
+        },
+        {
+          "type": "action",
+          "id": "create_note",
+          "name": "Create Note"
+        },
+        {
+          "type": "action",
+          "id": "bulk_create_contacts",
+          "name": "Bulk Create Contacts"
         }
       ]
     },
     {
       "id": "trello",
-      "error": "missing connector json"
+      "missingCount": 10,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_board",
+          "name": "Create Board"
+        },
+        {
+          "type": "action",
+          "id": "update_board",
+          "name": "Update Board"
+        },
+        {
+          "type": "action",
+          "id": "get_list",
+          "name": "Get List"
+        },
+        {
+          "type": "action",
+          "id": "update_list",
+          "name": "Update List"
+        },
+        {
+          "type": "action",
+          "id": "create_card",
+          "name": "Create Card"
+        },
+        {
+          "type": "action",
+          "id": "get_card",
+          "name": "Get Card"
+        },
+        {
+          "type": "action",
+          "id": "update_card",
+          "name": "Update Card"
+        },
+        {
+          "type": "action",
+          "id": "add_comment_to_card",
+          "name": "Add Comment to Card"
+        },
+        {
+          "type": "action",
+          "id": "create_checklist",
+          "name": "Create Checklist"
+        },
+        {
+          "type": "action",
+          "id": "add_checklist_item",
+          "name": "Add Checklist Item"
+        }
+      ]
+    },
+    {
+      "id": "twilio",
+      "missingCount": 10,
+      "missing": [
+        {
+          "type": "action",
+          "id": "send_sms",
+          "name": "Send SMS"
+        },
+        {
+          "type": "action",
+          "id": "send_mms",
+          "name": "Send MMS"
+        },
+        {
+          "type": "action",
+          "id": "make_call",
+          "name": "Make Call"
+        },
+        {
+          "type": "action",
+          "id": "get_message",
+          "name": "Get Message"
+        },
+        {
+          "type": "action",
+          "id": "list_messages",
+          "name": "List Messages"
+        },
+        {
+          "type": "action",
+          "id": "get_call",
+          "name": "Get Call"
+        },
+        {
+          "type": "action",
+          "id": "list_calls",
+          "name": "List Calls"
+        },
+        {
+          "type": "action",
+          "id": "update_call",
+          "name": "Update Call"
+        },
+        {
+          "type": "action",
+          "id": "buy_phone_number",
+          "name": "Buy Phone Number"
+        },
+        {
+          "type": "action",
+          "id": "list_phone_numbers",
+          "name": "List Phone Numbers"
+        }
+      ]
+    },
+    {
+      "id": "jira",
+      "missingCount": 0,
+      "missing": []
+    },
+    {
+      "id": "kustomer",
+      "missingCount": 0,
+      "missing": []
+    },
+    {
+      "id": "mailgun",
+      "missingCount": 12,
+      "missing": [
+        {
+          "type": "action",
+          "id": "send_email",
+          "name": "Send Email"
+        },
+        {
+          "type": "action",
+          "id": "get_domain",
+          "name": "Get Domain"
+        },
+        {
+          "type": "action",
+          "id": "list_domains",
+          "name": "List Domains"
+        },
+        {
+          "type": "action",
+          "id": "verify_domain",
+          "name": "Verify Domain"
+        },
+        {
+          "type": "action",
+          "id": "create_mailing_list",
+          "name": "Create Mailing List"
+        },
+        {
+          "type": "action",
+          "id": "get_mailing_list",
+          "name": "Get Mailing List"
+        },
+        {
+          "type": "action",
+          "id": "list_mailing_lists",
+          "name": "List Mailing Lists"
+        },
+        {
+          "type": "action",
+          "id": "add_member",
+          "name": "Add Member"
+        },
+        {
+          "type": "action",
+          "id": "get_member",
+          "name": "Get Member"
+        },
+        {
+          "type": "action",
+          "id": "validate_email",
+          "name": "Validate Email"
+        },
+        {
+          "type": "action",
+          "id": "get_stats",
+          "name": "Get Stats"
+        },
+        {
+          "type": "action",
+          "id": "get_events",
+          "name": "Get Events"
+        }
+      ]
+    },
+    {
+      "id": "stripe",
+      "missingCount": 5,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_subscription",
+          "name": "Create Subscription"
+        },
+        {
+          "type": "action",
+          "id": "create_refund",
+          "name": "Create Refund"
+        },
+        {
+          "type": "action",
+          "id": "retrieve_customer",
+          "name": "Retrieve Customer"
+        },
+        {
+          "type": "action",
+          "id": "list_payment_intents",
+          "name": "List Payment Intents"
+        },
+        {
+          "type": "action",
+          "id": "update_subscription",
+          "name": "Update Subscription"
+        }
+      ]
+    },
+    {
+      "id": "slack",
+      "missingCount": 0,
+      "missing": []
+    },
+    {
+      "id": "asana-enhanced",
+      "missingCount": 11,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_task",
+          "name": "Create Task"
+        },
+        {
+          "type": "action",
+          "id": "update_task",
+          "name": "Update Task"
+        },
+        {
+          "type": "action",
+          "id": "get_task",
+          "name": "Get Task"
+        },
+        {
+          "type": "action",
+          "id": "list_tasks",
+          "name": "List Tasks"
+        },
+        {
+          "type": "action",
+          "id": "create_project",
+          "name": "Create Project"
+        },
+        {
+          "type": "action",
+          "id": "update_project",
+          "name": "Update Project"
+        },
+        {
+          "type": "action",
+          "id": "list_projects",
+          "name": "List Projects"
+        },
+        {
+          "type": "action",
+          "id": "add_task_to_project",
+          "name": "Add Task to Project"
+        },
+        {
+          "type": "action",
+          "id": "create_subtask",
+          "name": "Create Subtask"
+        },
+        {
+          "type": "action",
+          "id": "add_comment",
+          "name": "Add Comment"
+        },
+        {
+          "type": "action",
+          "id": "list_workspaces",
+          "name": "List Workspaces"
+        }
+      ]
     },
     {
       "id": "zendesk",
-      "error": "missing connector json"
+      "missingCount": 5,
+      "missing": [
+        {
+          "type": "action",
+          "id": "search_tickets",
+          "name": "Search Tickets"
+        },
+        {
+          "type": "action",
+          "id": "create_user",
+          "name": "Create User"
+        },
+        {
+          "type": "action",
+          "id": "get_user",
+          "name": "Get User"
+        },
+        {
+          "type": "action",
+          "id": "update_user",
+          "name": "Update User"
+        },
+        {
+          "type": "action",
+          "id": "list_users",
+          "name": "List Users"
+        }
+      ]
     },
     {
-      "id": "github",
-      "error": "missing connector json"
+      "id": "github-enhanced",
+      "missingCount": 7,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_issue",
+          "name": "Create Issue"
+        },
+        {
+          "type": "action",
+          "id": "update_issue",
+          "name": "Update Issue"
+        },
+        {
+          "type": "action",
+          "id": "create_pull_request",
+          "name": "Create Pull Request"
+        },
+        {
+          "type": "action",
+          "id": "merge_pull_request",
+          "name": "Merge Pull Request"
+        },
+        {
+          "type": "action",
+          "id": "create_repository",
+          "name": "Create Repository"
+        },
+        {
+          "type": "action",
+          "id": "create_webhook",
+          "name": "Create Webhook"
+        },
+        {
+          "type": "action",
+          "id": "search_repositories",
+          "name": "Search Repositories"
+        }
+      ]
+    },
+    {
+      "id": "pipedrive",
+      "missingCount": 9,
+      "missing": [
+        {
+          "type": "action",
+          "id": "get_deals",
+          "name": "Get Deals"
+        },
+        {
+          "type": "action",
+          "id": "create_deal",
+          "name": "Create Deal"
+        },
+        {
+          "type": "action",
+          "id": "update_deal",
+          "name": "Update Deal"
+        },
+        {
+          "type": "action",
+          "id": "get_persons",
+          "name": "Get Persons"
+        },
+        {
+          "type": "action",
+          "id": "create_person",
+          "name": "Create Person"
+        },
+        {
+          "type": "action",
+          "id": "get_organizations",
+          "name": "Get Organizations"
+        },
+        {
+          "type": "action",
+          "id": "create_organization",
+          "name": "Create Organization"
+        },
+        {
+          "type": "action",
+          "id": "get_activities",
+          "name": "Get Activities"
+        },
+        {
+          "type": "action",
+          "id": "create_activity",
+          "name": "Create Activity"
+        }
+      ]
+    },
+    {
+      "id": "dropbox",
+      "missingCount": 2,
+      "missing": [
+        {
+          "type": "action",
+          "id": "upload_file",
+          "name": "Upload File"
+        },
+        {
+          "type": "action",
+          "id": "download_file",
+          "name": "Download File"
+        }
+      ]
+    },
+    {
+      "id": "salesforce",
+      "missingCount": 4,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_record",
+          "name": "Create Record"
+        },
+        {
+          "type": "action",
+          "id": "update_record",
+          "name": "Update Record"
+        },
+        {
+          "type": "action",
+          "id": "get_record",
+          "name": "Get Record"
+        },
+        {
+          "type": "action",
+          "id": "query_records",
+          "name": "Query Records"
+        }
+      ]
+    },
+    {
+      "id": "mailchimp",
+      "missingCount": 13,
+      "missing": [
+        {
+          "type": "action",
+          "id": "get_lists",
+          "name": "Get Lists"
+        },
+        {
+          "type": "action",
+          "id": "get_list",
+          "name": "Get List"
+        },
+        {
+          "type": "action",
+          "id": "create_list",
+          "name": "Create List"
+        },
+        {
+          "type": "action",
+          "id": "add_member",
+          "name": "Add Member"
+        },
+        {
+          "type": "action",
+          "id": "get_member",
+          "name": "Get Member"
+        },
+        {
+          "type": "action",
+          "id": "update_member",
+          "name": "Update Member"
+        },
+        {
+          "type": "action",
+          "id": "delete_member",
+          "name": "Delete Member"
+        },
+        {
+          "type": "action",
+          "id": "get_members",
+          "name": "Get Members"
+        },
+        {
+          "type": "action",
+          "id": "create_campaign",
+          "name": "Create Campaign"
+        },
+        {
+          "type": "action",
+          "id": "get_campaigns",
+          "name": "Get Campaigns"
+        },
+        {
+          "type": "action",
+          "id": "send_campaign",
+          "name": "Send Campaign"
+        },
+        {
+          "type": "action",
+          "id": "get_campaign_content",
+          "name": "Get Campaign Content"
+        },
+        {
+          "type": "action",
+          "id": "set_campaign_content",
+          "name": "Set Campaign Content"
+        }
+      ]
+    },
+    {
+      "id": "google-drive",
+      "missingCount": 5,
+      "missing": [
+        {
+          "type": "action",
+          "id": "create_file",
+          "name": "Create File"
+        },
+        {
+          "type": "action",
+          "id": "upload_file",
+          "name": "Upload File"
+        },
+        {
+          "type": "action",
+          "id": "move_file",
+          "name": "Move File"
+        },
+        {
+          "type": "action",
+          "id": "copy_file",
+          "name": "Copy File"
+        },
+        {
+          "type": "action",
+          "id": "get_file_permissions",
+          "name": "Get File Permissions"
+        }
+      ]
+    },
+    {
+      "id": "google-calendar",
+      "missingCount": 1,
+      "missing": [
+        {
+          "type": "action",
+          "id": "update_calendar",
+          "name": "Update Calendar"
+        }
+      ]
+    },
+    {
+      "id": "typeform",
+      "missingCount": 0,
+      "missing": []
     }
   ]
 }

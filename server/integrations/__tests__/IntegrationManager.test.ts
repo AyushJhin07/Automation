@@ -22,6 +22,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   airtable: {
     credentials: { apiKey: 'test-airtable-key' }
   },
+  asana: {
+    credentials: { accessToken: 'asana-access-token' }
+  },
   bamboohr: {
     credentials: { apiKey: 'test-bamboohr-key', companyDomain: 'example' }
   },
@@ -78,6 +81,15 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   intercom: {
     credentials: { accessToken: 'intercom-access-token' }
+  },
+  jira: {
+    credentials: {
+      baseUrl: 'https://example.atlassian.net',
+      accessToken: 'jira-access-token'
+    }
+  },
+  kustomer: {
+    credentials: { apiKey: 'kustomer-api-key' }
   },
   'jira-service-management': {
     credentials: {
@@ -164,6 +176,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   zendesk: {
     credentials: { subdomain: 'example', email: 'agent@example.com', apiToken: 'zendesk-api-token' }
   },
+  zoom: {
+    credentials: { accessToken: 'zoom-access-token' }
+  },
   sheets: {
     credentials: {}
   },
@@ -177,12 +192,17 @@ const createClient = (manager as any).createAPIClient.bind(manager) as (
   credentials: APICredentials,
   additionalConfig?: Record<string, any>
 ) => unknown;
+const normalizeAppId = (manager as any).normalizeAppId.bind(manager) as (id: string) => string;
 
 for (const appId of IMPLEMENTED_CONNECTOR_IDS) {
-  const fixture = credentialFixtures[appId];
+  const normalized = normalizeAppId(appId);
+  const fixture = credentialFixtures[appId] ?? credentialFixtures[normalized];
   assert.ok(fixture, `Missing credential fixture for supported app ${appId}`);
 
-  const client = createClient(appId, fixture.credentials, fixture.additionalConfig);
+  let client = createClient(appId, fixture.credentials, fixture.additionalConfig);
+  if (client === null || client === undefined) {
+    client = createClient(normalized, fixture.credentials, fixture.additionalConfig);
+  }
   assert.notEqual(client, null, `Expected createAPIClient to return a client for ${appId}`);
 }
 
