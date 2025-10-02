@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Link2, RefreshCcw, Trash2 } from 'lucide-react';
+import { Loader2, Link2, RefreshCcw, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 
@@ -50,6 +50,7 @@ export const ConnectionManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [reauthorizingConnectionId, setReauthorizingConnectionId] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [connectionName, setConnectionName] = useState('');
   const [credentialsText, setCredentialsText] = useState('');
@@ -63,6 +64,13 @@ export const ConnectionManager = () => {
     () => oauthProviders.find((provider) => provider.name.toLowerCase() === selectedProvider.toLowerCase()),
     [oauthProviders, selectedProvider]
   );
+  const providerConnections = useMemo(() => {
+    if (!selectedProvider) {
+      return [];
+    }
+    const normalized = selectedProvider.toLowerCase();
+    return connections.filter((connection) => connection.provider.toLowerCase() === normalized);
+  }, [connections, selectedProvider]);
 
   useEffect(() => {
     if (selectedOAuthProvider?.configured) {
@@ -92,13 +100,22 @@ export const ConnectionManager = () => {
         return;
       }
 
-      const data = event.data as { type?: string; success?: boolean; provider?: string; error?: string } | undefined;
+      const data = event.data as {
+        type?: string;
+        success?: boolean;
+        provider?: string;
+        error?: string;
+        connectionId?: string;
+        label?: string;
+      } | undefined;
       if (!data || data.type !== 'oauth:connection') {
         return;
       }
 
       if (data.success) {
-        toast.success(`Connected ${prettifyProvider(data.provider || 'integration')}`);
+        const providerLabel = prettifyProvider(data.provider || 'integration');
+        const connectionLabel = data.label ? ` (${data.label})` : '';
+        toast.success(`Connected ${providerLabel}${connectionLabel}`);
         loadConnections();
       } else {
         const message = data.error || 'OAuth authorization failed. Please try again.';
@@ -251,25 +268,34 @@ export const ConnectionManager = () => {
     }
   };
 
-  const handleOAuthConnect = async () => {
-    if (!selectedProvider || !selectedOAuthProvider) {
-      return;
+  const initiateOAuthAuthorization = async (
+    providerId: string,
+    opts: { label?: string; connectionId?: string } = {}
+  ) => {
+    const reconnecting = Boolean(opts.connectionId);
+    const trimmedLabel = opts.label?.trim();
+    const payload: Record<string, string> = { provider: providerId };
+
+    if (trimmedLabel) {
+      payload.label = trimmedLabel;
     }
 
-    if (!selectedOAuthProvider.configured) {
-      const message = selectedOAuthProvider.disabledReason || 'OAuth is not configured for this provider.';
-      toast.error(message);
-      setError(message);
-      return;
+    if (opts.connectionId) {
+      payload.connectionId = opts.connectionId;
     }
 
-    setIsAuthorizing(true);
     setError(undefined);
+
+    if (reconnecting) {
+      setReauthorizingConnectionId(opts.connectionId!);
+    } else {
+      setIsAuthorizing(true);
+    }
 
     try {
       const response = await authFetch('/api/oauth/authorize', {
         method: 'POST',
-        body: JSON.stringify({ provider: selectedProvider })
+        body: JSON.stringify(payload)
       });
       const result = await response.json();
 
@@ -280,7 +306,7 @@ export const ConnectionManager = () => {
         return;
       }
 
-      const authUrl = result.data?.authUrl;
+      const authUrl = result.data?.authUrl as string | undefined;
       if (!authUrl) {
         const message = 'Authorization URL was not provided by the server.';
         setError(message);
@@ -311,8 +337,27 @@ export const ConnectionManager = () => {
       setError(message);
       toast.error(message);
     } finally {
-      setIsAuthorizing(false);
+      if (reconnecting) {
+        setReauthorizingConnectionId(null);
+      } else {
+        setIsAuthorizing(false);
+      }
     }
+  };
+
+  const handleOAuthConnect = async () => {
+    if (!selectedProvider || !selectedOAuthProvider) {
+      return;
+    }
+
+    if (!selectedOAuthProvider.configured) {
+      const message = selectedOAuthProvider.disabledReason || 'OAuth is not configured for this provider.';
+      toast.error(message);
+      setError(message);
+      return;
+    }
+
+    await initiateOAuthAuthorization(selectedProvider, { label: connectionName });
   };
 
   const handleTest = async (connectionId: string) => {
@@ -360,6 +405,13 @@ export const ConnectionManager = () => {
     } finally {
       setRefreshingConnectionId(null);
     }
+  };
+
+  const handleOAuthReconnect = async (connection: ConnectionSummary) => {
+    await initiateOAuthAuthorization(connection.provider, {
+      label: connection.name,
+      connectionId: connection.id
+    });
   };
 
   const handleDelete = async (connectionId: string) => {
@@ -435,6 +487,12 @@ export const ConnectionManager = () => {
                 value={connectionName}
                 onChange={(event) => setConnectionName(event.target.value)}
               />
+              {providerConnections.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Existing {prettifyProvider(selectedProvider)} labels:{' '}
+                  {providerConnections.map((connection) => connection.name).join(', ')}
+                </p>
+              )}
             </div>
           </div>
           {selectedOAuthProvider && (
@@ -547,24 +605,37 @@ export const ConnectionManager = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {connection.metadata?.refreshToken && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRefresh(connection)}
-                          disabled={refreshingConnectionId === connection.id}
-                        >
+                  {connection.metadata?.refreshToken && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRefresh(connection)}
+                      disabled={refreshingConnectionId === connection.id}
+                    >
                           {refreshingConnectionId === connection.id ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                             <RefreshCcw className="mr-2 h-4 w-4" />
                           )}
                           Refresh tokens
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => handleTest(connection.id)}>
-                        <Link2 className="mr-2 h-4 w-4" /> Test
-                      </Button>
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOAuthReconnect(connection)}
+                    disabled={reauthorizingConnectionId === connection.id}
+                  >
+                    {reauthorizingConnectionId === connection.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Reconnect
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleTest(connection.id)}>
+                    <Link2 className="mr-2 h-4 w-4" /> Test
+                  </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(connection.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

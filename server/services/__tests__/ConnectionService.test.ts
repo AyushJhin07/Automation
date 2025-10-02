@@ -74,7 +74,8 @@ try {
     };
     await service.storeConnection(userId, organizationId, providerId, newTokens, undefined, {
       name: 'Gmail Account',
-      type: 'saas'
+      type: 'saas',
+      connectionId: gmailConnectionId
     });
     return newTokens;
   };

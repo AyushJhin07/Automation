@@ -20,8 +20,10 @@ const OAuthCallback = () => {
   const [details, setDetails] = useState<string | undefined>();
 
   const formattedProvider = useMemo(() => prettifyProvider(provider || 'integration'), [provider]);
+  const connectionId = searchParams.get('connectionId') || undefined;
+  const label = searchParams.get('label') || undefined;
 
-  const notifyParent = useCallback((success: boolean, errorMessage?: string) => {
+  const notifyParent = useCallback((payload: { success: boolean; error?: string }) => {
     if (!window.opener) {
       return;
     }
@@ -29,16 +31,18 @@ const OAuthCallback = () => {
       window.opener.postMessage(
         {
           type: 'oauth:connection',
-          success,
+          success: payload.success,
           provider,
-          error: errorMessage
+          error: payload.error,
+          connectionId,
+          label
         },
         window.location.origin
       );
     } catch (err) {
       console.warn('Failed to notify parent window about OAuth completion', err);
     }
-  }, [provider]);
+  }, [connectionId, label, provider]);
 
   useEffect(() => {
     if (!provider) {
@@ -46,7 +50,7 @@ const OAuthCallback = () => {
       setStatus('error');
       setMessage(errorMessage);
       setDetails(undefined);
-      notifyParent(false, errorMessage);
+      notifyParent({ success: false, error: errorMessage });
       return;
     }
 
@@ -63,7 +67,7 @@ const OAuthCallback = () => {
       setStatus('error');
       setMessage(decodedError || 'The provider reported an OAuth error.');
       setDetails(undefined);
-      notifyParent(false, decodedError || undefined);
+      notifyParent({ success: false, error: decodedError || undefined });
       return;
     }
 
@@ -75,7 +79,7 @@ const OAuthCallback = () => {
       setStatus('error');
       setMessage(errorMessage);
       setDetails(undefined);
-      notifyParent(false, errorMessage);
+      notifyParent({ success: false, error: errorMessage });
       return;
     }
 
@@ -84,7 +88,7 @@ const OAuthCallback = () => {
       setStatus('error');
       setMessage(errorMessage);
       setDetails(undefined);
-      notifyParent(false, errorMessage);
+      notifyParent({ success: false, error: errorMessage });
       return;
     }
 
@@ -106,9 +110,12 @@ const OAuthCallback = () => {
       }
 
       setStatus('success');
-      setMessage('Connection established successfully. You can close this window.');
+      const successMessage = label
+        ? `Connected ${label}. You can close this window.`
+        : 'Connection established successfully. You can close this window.';
+      setMessage(successMessage);
       setDetails('This window will close automatically once the secure redirect completes.');
-      notifyParent(true);
+      notifyParent({ success: true });
       if (window.opener) {
         setTimeout(() => window.close(), 1500);
       }
@@ -121,9 +128,9 @@ const OAuthCallback = () => {
       setStatus('error');
       setMessage(errorMessage);
       setDetails(undefined);
-      notifyParent(false, errorMessage);
+      notifyParent({ success: false, error: errorMessage });
     }
-  }, [notifyParent, provider, searchParams]);
+  }, [label, notifyParent, provider, searchParams]);
 
   const handleClose = () => {
     if (window.opener) {

@@ -88,6 +88,7 @@ const storedConnections: Array<{
   provider: string;
   tokens: any;
   userInfo?: any;
+  options?: any;
 }> = [];
 let connectionService: any;
 let originalStoreConnection: ((...args: any[]) => any) | undefined;
@@ -107,9 +108,10 @@ try {
     organizationId: string,
     provider: string,
     tokens: any,
-    userInfo?: any
+    userInfo?: any,
+    options?: any
   ) => {
-    storedConnections.push({ userId, organizationId, provider, tokens, userInfo });
+    storedConnections.push({ userId, organizationId, provider, tokens, userInfo, options });
     return 'test-connection-id';
   };
 
@@ -199,10 +201,24 @@ try {
   assert.equal(callbackResponse.status, 302, 'callback should redirect to the front-end handler');
 
   const redirectLocation = callbackResponse.headers.get('location');
+  assert.ok(redirectLocation, 'callback should return a redirect location');
+  const redirectUrl = new URL(redirectLocation!);
   assert.equal(
-    redirectLocation,
-    `${process.env.BASE_URL}/oauth/callback/gmail?code=test-code&state=${state}`,
-    'callback should redirect to the React callback route with the original query string'
+    `${redirectUrl.origin}${redirectUrl.pathname}`,
+    `${process.env.BASE_URL}/oauth/callback/gmail`,
+    'callback should redirect to the React callback route'
+  );
+  assert.equal(redirectUrl.searchParams.get('code'), 'test-code', 'redirect should preserve OAuth code');
+  assert.equal(redirectUrl.searchParams.get('state'), state, 'redirect should preserve OAuth state');
+  assert.equal(
+    redirectUrl.searchParams.get('connectionId'),
+    'test-connection-id',
+    'redirect should include the stored connection identifier'
+  );
+  assert.equal(
+    redirectUrl.searchParams.get('label'),
+    userInfoResponse.email,
+    'redirect should include the resolved connection label'
   );
 
   assert.equal(storedConnections.length, 1, 'ConnectionService.storeConnection should be called once');
@@ -213,6 +229,7 @@ try {
   assert.equal(stored.tokens.accessToken, tokenResponse.access_token, 'stored connection should include access token');
   assert.equal(stored.userInfo.email, userInfoResponse.email, 'stored connection should include user info');
   assert.ok(typeof stored.tokens.expiresAt === 'number', 'stored token should include expiry metadata');
+  assert.equal(stored.options?.name, userInfoResponse.email, 'storeConnection should receive the resolved connection label');
 
   console.log('OAuth authorize + callback endpoints exchange tokens, persist connections, and redirect to the React handler.');
 } catch (error) {

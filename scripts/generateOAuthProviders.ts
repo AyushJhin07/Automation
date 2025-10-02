@@ -372,6 +372,8 @@ export interface OAuthState {
   userId: string;
   provider: string;
   returnUrl?: string;
+  connectionId?: string;
+  label?: string;
   codeVerifier?: string; // For PKCE
   nonce: string;
   createdAt: number;
@@ -396,10 +398,11 @@ ${this.generateProviderInitializations(providers)}
    * Generate authorization URL with state and PKCE
    */
   async generateAuthUrl(
-    providerId: string, 
-    userId: string, 
+    providerId: string,
+    userId: string,
     returnUrl?: string,
-    additionalScopes?: string[]
+    additionalScopes?: string[],
+    options: { connectionId?: string; label?: string } = {}
   ): Promise<{ authUrl: string; state: string }> {
     const provider = this.providers.get(providerId);
     if (!provider) {
@@ -420,10 +423,15 @@ ${this.generateProviderInitializations(providers)}
     }
 
     // Store state
+    const sanitizedLabel = options.label?.trim();
+    const label = sanitizedLabel && sanitizedLabel.length > 0 ? sanitizedLabel : undefined;
+
     this.pendingStates.set(state, {
       userId,
       provider: providerId,
       returnUrl,
+      connectionId: options.connectionId,
+      label,
       codeVerifier,
       nonce,
       createdAt: Date.now()
