@@ -43,8 +43,17 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   dropbox: {
     credentials: { accessToken: 'dropbox-access-token' }
   },
+  docusign: {
+    credentials: { accessToken: 'docusign-access-token', accountId: '123456', baseUrl: 'https://demo.docusign.net/restapi/v2.1' }
+  },
+  egnyte: {
+    credentials: { accessToken: 'egnyte-access-token', domain: 'example.egnyte.com' }
+  },
   freshdesk: {
     credentials: { apiKey: 'freshdesk-api-key', domain: 'example' }
+  },
+  'google-admin': {
+    credentials: { accessToken: 'google-admin-access-token' }
   },
   github: {
     credentials: { accessToken: 'github-personal-token' }
@@ -91,6 +100,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   mailgun: {
     credentials: { apiKey: 'mailgun-api-key', domain: 'example.com' }
   },
+  okta: {
+    credentials: { apiToken: 'okta-api-token', domain: 'example.okta.com' }
+  },
   'microsoft-teams': {
     credentials: { accessToken: 'microsoft-graph-token' }
   },
@@ -108,6 +120,12 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   pagerduty: {
     credentials: { apiKey: 'pagerduty-api-key', fromEmail: 'ops@example.com' }
+  },
+  hellosign: {
+    credentials: { accessToken: 'hellosign-access-token' }
+  },
+  adobesign: {
+    credentials: { accessToken: 'adobesign-access-token' }
   },
   pipedrive: {
     credentials: { apiToken: 'pipedrive-api-token', companyDomain: 'example' }

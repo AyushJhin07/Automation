@@ -1,114 +1,216 @@
-// DROPBOX SIGN (HELLOSIGN) API CLIENT
-// Auto-generated API client for Dropbox Sign (HelloSign) integration
+import { APIResponse, APICredentials, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface HellosignAPIClientConfig {
+export interface HelloSignCredentials extends APICredentials {
   accessToken: string;
-  baseUrl?: string;
 }
 
-export class HellosignAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: HellosignAPIClientConfig;
+export interface HelloSignSigner {
+  emailAddress: string;
+  name: string;
+  order?: number;
+  pin?: string;
+  redirectUrl?: string;
+  role?: string;
+}
 
-  constructor(config: HellosignAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.hellosign.com/v3';
+export interface HelloSignFile {
+  name: string;
+  fileData: string; // base64
+}
+
+export interface SendSignatureRequestParams {
+  title?: string;
+  subject?: string;
+  message?: string;
+  signers: HelloSignSigner[];
+  files: HelloSignFile[];
+  testMode?: boolean;
+  metadata?: Record<string, any>;
+  ccEmailAddresses?: string[];
+}
+
+export interface SignatureRequestIdentifier {
+  signatureRequestId: string;
+}
+
+export interface CreateTemplateParams {
+  title: string;
+  subject?: string;
+  message?: string;
+  signers: Array<{ name: string; role: string; order?: number }>;
+  files: HelloSignFile[];
+  testMode?: boolean;
+}
+
+export interface SendWithTemplateParams {
+  templateId: string;
+  signers: Array<{ role: string; name: string; emailAddress: string }>;
+  customFields?: Record<string, any>;
+  message?: string;
+  subject?: string;
+  testMode?: boolean;
+}
+
+/**
+ * Dropbox Sign (HelloSign) API client implementing signature request flows.
+ */
+export class HellosignAPIClient extends BaseAPIClient {
+  constructor(credentials: HelloSignCredentials) {
+    super('https://api.hellosign.com/v3', credentials);
+
+    this.registerHandlers({
+      test_connection: this.testConnection.bind(this) as any,
+      get_account: this.getAccount.bind(this) as any,
+      send_signature_request: this.sendSignatureRequest.bind(this) as any,
+      get_signature_request: this.getSignatureRequest.bind(this) as any,
+      list_signature_requests: this.listSignatureRequests.bind(this) as any,
+      remind_signature_request: this.remindSignatureRequest.bind(this) as any,
+      cancel_signature_request: this.cancelSignatureRequest.bind(this) as any,
+      download_files: this.downloadFiles.bind(this) as any,
+      create_embedded_signature_request: this.createEmbeddedSignatureRequest.bind(this) as any,
+      get_embedded_sign_url: this.getEmbeddedSignUrl.bind(this) as any,
+      create_template: this.createTemplate.bind(this) as any,
+      get_template: this.getTemplate.bind(this) as any,
+      send_with_template: this.sendWithTemplate.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${this.credentials.accessToken}`
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/account');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/account');
   }
 
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
-    }
+  public async getAccount(): Promise<APIResponse<any>> {
+    return this.get('/account');
   }
 
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
-    }
+  public async sendSignatureRequest(params: SendSignatureRequestParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['signers', 'files']);
+    return this.post('/signature_request/send', this.transformSignatureRequest(params));
   }
 
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
-    }
+  public async createEmbeddedSignatureRequest(params: SendSignatureRequestParams & { clientId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['clientId', 'signers', 'files']);
+    return this.post('/signature_request/create_embedded', this.transformSignatureRequest(params));
   }
 
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
-    }
+  public async getSignatureRequest(params: SignatureRequestIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['signatureRequestId']);
+    return this.get(`/signature_request/${encodeURIComponent(params.signatureRequestId)}`);
   }
 
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
+  public async listSignatureRequests(params: { page?: number; pageSize?: number } = {}): Promise<APIResponse<any>> {
+    const query = this.buildQueryString(params as Record<string, any>);
+    return this.get(`/signature_request/list${query}`);
+  }
+
+  public async remindSignatureRequest(params: SignatureRequestIdentifier & { emailAddress: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['signatureRequestId', 'emailAddress']);
+    return this.post(`/signature_request/remind/${encodeURIComponent(params.signatureRequestId)}`, {
+      email_address: params.emailAddress,
+    });
+  }
+
+  public async cancelSignatureRequest(params: SignatureRequestIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['signatureRequestId']);
+    return this.post(`/signature_request/cancel/${encodeURIComponent(params.signatureRequestId)}`);
+  }
+
+  public async downloadFiles(params: SignatureRequestIdentifier & { fileType?: 'zip' | 'pdf' }): Promise<APIResponse<ArrayBuffer>> {
+    this.validateRequiredParams(params, ['signatureRequestId']);
+    const query = this.buildQueryString({ file_type: params.fileType ?? 'pdf' });
+    return this.makeRequest<ArrayBuffer>(
+      'GET',
+      `/signature_request/files/${encodeURIComponent(params.signatureRequestId)}${query}`,
+      undefined,
+      { Accept: 'application/pdf' }
+    );
+  }
+
+  public async getEmbeddedSignUrl(params: { signatureId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['signatureId']);
+    return this.get(`/embedded/sign_url/${encodeURIComponent(params.signatureId)}`);
+  }
+
+  public async createTemplate(params: CreateTemplateParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['title', 'signers', 'files']);
+    return this.post('/template/create', this.transformTemplatePayload(params));
+  }
+
+  public async getTemplate(params: { templateId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['templateId']);
+    return this.get(`/template/${encodeURIComponent(params.templateId)}`);
+  }
+
+  public async sendWithTemplate(params: SendWithTemplateParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['templateId', 'signers']);
+    const payload: Record<string, any> = {
+      template_id: params.templateId,
+      signers: params.signers.map(s => ({
+        role: s.role,
+        name: s.name,
+        email_address: s.emailAddress,
+      })),
+    };
+    if (params.customFields) {
+      payload.custom_fields = params.customFields;
     }
+    if (params.message) payload.message = params.message;
+    if (params.subject) payload.subject = params.subject;
+    if (params.testMode !== undefined) payload.test_mode = params.testMode ? 1 : 0;
+    return this.post('/signature_request/send_with_template', payload);
+  }
+
+  private transformSignatureRequest(params: SendSignatureRequestParams & { clientId?: string }): Record<string, any> {
+    const payload: Record<string, any> = {
+      signers: params.signers.map((signer, index) => ({
+        email_address: signer.emailAddress,
+        name: signer.name,
+        order: signer.order ?? index + 1,
+        pin: signer.pin,
+        redirect_url: signer.redirectUrl,
+        role: signer.role,
+      })),
+      files: params.files.map(file => ({
+        name: file.name,
+        file_base64: file.fileData,
+      })),
+    };
+
+    if (params.title) payload.title = params.title;
+    if (params.subject) payload.subject = params.subject;
+    if (params.message) payload.message = params.message;
+    if (params.ccEmailAddresses?.length) payload.cc_email_addresses = params.ccEmailAddresses;
+    if (params.metadata) payload.metadata = params.metadata;
+    if (params.testMode !== undefined) payload.test_mode = params.testMode ? 1 : 0;
+    if (params.clientId) payload.client_id = params.clientId;
+
+    return payload;
+  }
+
+  private transformTemplatePayload(params: CreateTemplateParams): Record<string, any> {
+    const payload: Record<string, any> = {
+      title: params.title,
+      signers: params.signers.map((signer, index) => ({
+        name: signer.name,
+        role: signer.role,
+        order: signer.order ?? index + 1,
+      })),
+      files: params.files.map(file => ({
+        name: file.name,
+        file_base64: file.fileData,
+      })),
+    };
+
+    if (params.subject) payload.subject = params.subject;
+    if (params.message) payload.message = params.message;
+    if (params.testMode !== undefined) payload.test_mode = params.testMode ? 1 : 0;
+
+    return payload;
   }
 }

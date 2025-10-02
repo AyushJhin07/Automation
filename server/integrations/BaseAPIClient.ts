@@ -81,24 +81,49 @@ export abstract class BaseAPIClient {
         }
       }
 
+      let body: BodyInit | undefined;
+      if (data !== undefined) {
+        if (typeof data === 'string') {
+          body = data;
+        } else if (data instanceof ArrayBuffer) {
+          body = data;
+        } else if (ArrayBuffer.isView(data)) {
+          body = data as unknown as BodyInit;
+        } else if (data instanceof URLSearchParams || data instanceof FormData || data instanceof Blob) {
+          body = data;
+        } else {
+          body = JSON.stringify(data);
+        }
+      }
+
       const requestOptions: RequestInit = {
         method,
         headers: requestHeaders,
-        body: data ? JSON.stringify(data) : undefined
+        body,
       };
 
       const response = await fetch(url, requestOptions);
-      
+
       // Update rate limit info from response headers
       this.updateRateLimitInfo(response.headers);
 
-      const responseText = await response.text();
+      const contentType = response.headers.get('content-type') || '';
       let responseData: T;
 
-      try {
-        responseData = responseText ? JSON.parse(responseText) : null;
-      } catch (parseError) {
-        responseData = responseText as any;
+      if (contentType.includes('application/json') || contentType.includes('+json')) {
+        responseData = (await response.json()) as T;
+      } else if (contentType.startsWith('text/')) {
+        const text = await response.text();
+        responseData = text as any;
+      } else if (contentType.length > 0) {
+        responseData = (await response.arrayBuffer()) as any;
+      } else {
+        const fallbackText = await response.text();
+        try {
+          responseData = fallbackText ? JSON.parse(fallbackText) : null;
+        } catch {
+          responseData = fallbackText as any;
+        }
       }
 
       if (!response.ok) {

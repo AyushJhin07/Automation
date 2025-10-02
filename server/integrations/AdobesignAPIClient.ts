@@ -1,114 +1,104 @@
-// ADOBE ACROBAT SIGN API CLIENT
-// Auto-generated API client for Adobe Acrobat Sign integration
+import { APIResponse, APICredentials, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface AdobesignAPIClientConfig {
+export interface AdobeSignCredentials extends APICredentials {
   accessToken: string;
-  baseUrl?: string;
+  apiEndpoint?: string;
 }
 
-export class AdobesignAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: AdobesignAPIClientConfig;
+export interface AdobeSignFileInfo {
+  transientDocumentId?: string;
+  libraryDocumentId?: string;
+  label?: string;
+  name?: string;
+}
 
-  constructor(config: AdobesignAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.na1.echosign.com/api/rest/v6';
+export interface AdobeSignRecipient {
+  email: string;
+  role: 'SIGNER' | 'APPROVER' | 'DELEGATE_TO_SIGNER' | 'DELEGATE_TO_APPROVER';
+  name?: string;
+  order?: number;
+}
+
+export interface CreateAgreementParams {
+  name: string;
+  participantSetsInfo: Array<{
+    memberInfos: Array<{ email: string; name?: string }>;
+    order?: number;
+    role: AdobeSignRecipient['role'];
+  }>;
+  fileInfos: AdobeSignFileInfo[];
+  message?: string;
+  signatureType?: 'ESIGN' | 'WRITTEN';
+  state?: 'DRAFT' | 'IN_PROCESS';
+}
+
+export interface AgreementIdentifier {
+  agreementId: string;
+}
+
+/**
+ * Adobe Acrobat Sign API client covering agreement workflows.
+ */
+export class AdobesignAPIClient extends BaseAPIClient {
+  constructor(credentials: AdobeSignCredentials) {
+    super(AdobesignAPIClient.resolveBaseUrl(credentials), credentials);
+
+    this.registerHandlers({
+      test_connection: this.testConnection.bind(this) as any,
+      create_agreement: this.createAgreement.bind(this) as any,
+      send_agreement: this.sendAgreement.bind(this) as any,
+      get_agreement: this.getAgreement.bind(this) as any,
+      cancel_agreement: this.cancelAgreement.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
+  private static resolveBaseUrl(credentials: AdobeSignCredentials): string {
+    const endpoint = credentials.apiEndpoint || 'https://api.na1.adobesign.com/api/rest/v6';
+    return endpoint.replace(/\/$/, '');
+  }
+
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Bearer ${this.credentials.accessToken}`
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/users/me');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/users/me');
   }
 
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
-    }
+  public async createAgreement(params: CreateAgreementParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['name', 'participantSetsInfo', 'fileInfos']);
+    const payload = {
+      name: params.name,
+      participantSetsInfo: params.participantSetsInfo,
+      fileInfos: params.fileInfos,
+      message: params.message,
+      signatureType: params.signatureType ?? 'ESIGN',
+      state: params.state ?? 'IN_PROCESS',
+    };
+    return this.post('/agreements', payload);
   }
 
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
-    }
+  public async sendAgreement(params: AgreementIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['agreementId']);
+    return this.post(`/agreements/${encodeURIComponent(params.agreementId)}/state`, {
+      value: 'IN_PROCESS',
+      notifySigner: true,
+    });
   }
 
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
-    }
+  public async getAgreement(params: AgreementIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['agreementId']);
+    return this.get(`/agreements/${encodeURIComponent(params.agreementId)}`);
   }
 
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
-    }
+  public async cancelAgreement(params: AgreementIdentifier & { comment?: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['agreementId']);
+    return this.put(`/agreements/${encodeURIComponent(params.agreementId)}/state`, {
+      value: 'CANCELLED',
+      comment: params.comment ?? 'Cancelled via automation',
+      notifySigner: true,
+    });
   }
 }
