@@ -1802,7 +1802,13 @@ export class OAuthManager {
       userInfo,
       {
         name: label,
-        connectionId: storedState.connectionId
+        connectionId: storedState.connectionId,
+        metadata: {
+          providerId,
+          scopes: provider.config.scopes ?? [],
+          authUrl: provider.config.authUrl,
+          tokenUrl: provider.config.tokenUrl,
+        }
       }
     );
 
