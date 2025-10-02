@@ -1,0 +1,14 @@
+{
+  "status": "success",
+  "data": {
+    "alerts": [
+      {
+        "labels": {
+          "alertname": "HighLatency",
+          "severity": "warning"
+        },
+        "state": "firing"
+      }
+    ]
+  }
+}

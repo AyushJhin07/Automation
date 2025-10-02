@@ -1,0 +1,10 @@
+{
+  "dashboard": {
+    "uid": "abcd1234",
+    "title": "Service Health",
+    "tags": ["prod", "api"]
+  },
+  "meta": {
+    "url": "/d/abcd1234/service-health"
+  }
+}

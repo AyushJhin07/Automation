@@ -138,6 +138,17 @@ export class IntegrationManager {
       'codepipeline': 'aws-codepipeline',
       'aws_codepipeline': 'aws-codepipeline',
       'aws-code-pipeline': 'aws-codepipeline',
+      'datadoghq': 'datadog',
+      'datadog-us': 'datadog',
+      'datadog_eu': 'datadog',
+      'grafana-cloud': 'grafana',
+      'grafana_enterprise': 'grafana',
+      'prometheus-stack': 'prometheus',
+      'prometheus_server': 'prometheus',
+      'new-relic': 'newrelic',
+      'newrelic-one': 'newrelic',
+      'sentry-onprem': 'sentry',
+      'sentry_self_hosted': 'sentry',
     };
     return map[v] || v;
   }

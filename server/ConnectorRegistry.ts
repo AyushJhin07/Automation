@@ -73,6 +73,11 @@ import { AnsibleAPIClient } from './integrations/AnsibleAPIClient';
 import { AwsCloudFormationAPIClient } from './integrations/AwsCloudFormationAPIClient';
 import { AwsCodePipelineAPIClient } from './integrations/AwsCodePipelineAPIClient';
 import { KlaviyoAPIClient } from './integrations/KlaviyoAPIClient';
+import { DatadogAPIClient } from './integrations/DatadogAPIClient';
+import { GrafanaAPIClient } from './integrations/GrafanaAPIClient';
+import { PrometheusAPIClient } from './integrations/PrometheusAPIClient';
+import { NewrelicAPIClient } from './integrations/NewrelicAPIClient';
+import { SentryAPIClient } from './integrations/SentryAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -297,6 +302,11 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('datadog', DatadogAPIClient);
+    this.registerAPIClient('grafana', GrafanaAPIClient);
+    this.registerAPIClient('prometheus', PrometheusAPIClient);
+    this.registerAPIClient('newrelic', NewrelicAPIClient);
+    this.registerAPIClient('sentry', SentryAPIClient);
     this.registerAPIClient('azure-devops', AzureDevopsAPIClient);
     this.registerAPIClient('circleci', CircleCIApiClient);
     this.registerAPIClient('jenkins', JenkinsAPIClient);

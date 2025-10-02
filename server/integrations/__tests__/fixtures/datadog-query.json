@@ -1,0 +1,14 @@
+{
+  "status": "ok",
+  "res_type": "time_series",
+  "series": [
+    {
+      "metric": "app.requests",
+      "scope": "env:prod",
+      "pointlist": [
+        [1700000000, 5],
+        [1700000300, 9]
+      ]
+    }
+  ]
+}

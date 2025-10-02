@@ -1,0 +1,9 @@
+{
+  "applications": [
+    {
+      "id": 12345,
+      "name": "Checkout",
+      "language": "nodejs"
+    }
+  ]
+}
