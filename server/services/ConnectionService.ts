@@ -617,10 +617,18 @@ export class ConnectionService {
     provider: string,
     tokens: OAuthTokens,
     userInfo?: OAuthUserInfo,
-    options: { name?: string; metadata?: Record<string, any>; type?: 'llm' | 'saas' | 'database' } = {}
+    options: {
+      name?: string;
+      metadata?: Record<string, any>;
+      type?: 'llm' | 'saas' | 'database';
+      connectionId?: string;
+    } = {}
   ): Promise<string> {
     const normalizedProvider = provider.toLowerCase();
-    const connectionName = options.name || userInfo?.email || normalizedProvider;
+    const rawName = options.name || userInfo?.email || normalizedProvider;
+    const trimmedName = typeof rawName === 'string' ? rawName.trim() : undefined;
+    const connectionName = trimmedName && trimmedName.length > 0 ? trimmedName : normalizedProvider;
+    const requestedConnectionId = options.connectionId?.trim();
     const credentialsPayload: Record<string, any> = {
       ...tokens,
       userInfo,
@@ -636,12 +644,22 @@ export class ConnectionService {
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const existingIndex = records.findIndex(
-        (conn) =>
+      const existingIndex = records.findIndex((conn) => {
+        if (requestedConnectionId) {
+          return (
+            conn.id === requestedConnectionId &&
+            conn.organizationId === organizationId &&
+            conn.userId === userId
+          );
+        }
+
+        return (
           conn.userId === userId &&
           conn.organizationId === organizationId &&
-          conn.provider === normalizedProvider
-      );
+          conn.provider === normalizedProvider &&
+          conn.name === connectionName
+        );
+      });
 
       if (existingIndex >= 0) {
         const existing = records[existingIndex];
@@ -656,12 +674,12 @@ export class ConnectionService {
         };
         records[existingIndex] = updated;
         await this.writeFileStore(records);
-        console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
+        console.log(`🔄 Updated connection (${normalizedProvider}:${connectionName}) for ${userId}`);
         return updated.id;
       }
 
       const record: FileConnectionRecord = {
-        id: randomUUID(),
+        id: requestedConnectionId ?? randomUUID(),
         userId,
         organizationId,
         name: connectionName,
@@ -676,21 +694,42 @@ export class ConnectionService {
       };
       records.push(record);
       await this.writeFileStore(records);
-      console.log(`✅ Stored connection (${normalizedProvider}) for ${userId}`);
+      console.log(`✅ Stored connection (${normalizedProvider}:${connectionName}) for ${userId}`);
       return record.id;
     }
 
-    const [existing] = await this.db
-      .select()
-      .from(connections)
-      .where(and(
-        eq(connections.userId, userId),
-        eq(connections.organizationId, organizationId),
-        eq(connections.provider, normalizedProvider)
-      ))
-      .limit(1);
+    this.ensureDb();
 
-    if (existing) {
+    let existingConnectionId: string | undefined;
+
+    if (requestedConnectionId) {
+      const [existingById] = await this.db
+        .select({ id: connections.id })
+        .from(connections)
+        .where(and(
+          eq(connections.id, requestedConnectionId),
+          eq(connections.organizationId, organizationId),
+          eq(connections.userId, userId)
+        ))
+        .limit(1);
+
+      existingConnectionId = existingById?.id;
+    } else {
+      const [existingByKey] = await this.db
+        .select({ id: connections.id })
+        .from(connections)
+        .where(and(
+          eq(connections.userId, userId),
+          eq(connections.organizationId, organizationId),
+          eq(connections.provider, normalizedProvider),
+          eq(connections.name, connectionName)
+        ))
+        .limit(1);
+
+      existingConnectionId = existingByKey?.id;
+    }
+
+    if (existingConnectionId) {
       await this.db
         .update(connections)
         .set({
@@ -700,31 +739,56 @@ export class ConnectionService {
           metadata,
           updatedAt: new Date(),
           isActive: true,
+          type: options.type || 'saas'
         })
         .where(and(
-          eq(connections.id, existing.id),
-          eq(connections.organizationId, organizationId)
+          eq(connections.id, existingConnectionId),
+          eq(connections.organizationId, organizationId),
+          eq(connections.userId, userId)
         ));
-      console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
-      return existing.id;
+      console.log(`🔄 Updated connection (${normalizedProvider}:${connectionName}) for ${userId}`);
+      return existingConnectionId;
     }
+
+    const baseValues: typeof connections.$inferInsert = {
+      userId,
+      organizationId,
+      name: connectionName,
+      provider: normalizedProvider,
+      type: options.type || 'saas',
+      encryptedCredentials: encrypted.encryptedData,
+      iv: encrypted.iv,
+      metadata,
+      isActive: true,
+    };
+
+    const insertValues: typeof connections.$inferInsert = requestedConnectionId
+      ? { ...baseValues, id: requestedConnectionId }
+      : baseValues;
 
     const [created] = await this.db
       .insert(connections)
-      .values({
-        userId,
-        organizationId,
-        name: connectionName,
-        provider: normalizedProvider,
-        type: options.type || 'saas',
-        encryptedCredentials: encrypted.encryptedData,
-        iv: encrypted.iv,
-        metadata,
-        isActive: true,
+      .values(insertValues)
+      .onConflictDoUpdate({
+        target: [
+          connections.organizationId,
+          connections.userId,
+          connections.provider,
+          connections.name,
+        ],
+        set: {
+          name: connectionName,
+          encryptedCredentials: encrypted.encryptedData,
+          iv: encrypted.iv,
+          metadata,
+          updatedAt: new Date(),
+          isActive: true,
+          type: options.type || 'saas',
+        },
       })
       .returning({ id: connections.id });
 
-    console.log(`✅ Stored connection (${normalizedProvider}) for ${userId}`);
+    console.log(`✅ Stored connection (${normalizedProvider}:${connectionName}) for ${userId}`);
     return created.id;
   }
 

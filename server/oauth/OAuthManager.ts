@@ -46,6 +46,8 @@ export interface OAuthState {
   provider: string;
   organizationId: string;
   returnUrl?: string;
+  connectionId?: string;
+  label?: string;
   codeVerifier?: string; // For PKCE
   nonce: string;
   createdAt: number;
@@ -1668,7 +1670,8 @@ export class OAuthManager {
     userId: string,
     organizationId: string,
     returnUrl?: string,
-    additionalScopes?: string[]
+    additionalScopes?: string[],
+    options: { connectionId?: string; label?: string } = {}
   ): Promise<{ authUrl: string; state: string }> {
     const provider = this.providers.get(providerId);
     if (!provider) {
@@ -1689,6 +1692,9 @@ export class OAuthManager {
     }
 
     const resolvedReturnUrl = returnUrl ?? this.getRedirectUri(providerId);
+    const sanitizedConnectionId = options.connectionId?.trim() || undefined;
+    const sanitizedLabel = options.label?.trim();
+    const label = sanitizedLabel && sanitizedLabel.length > 0 ? sanitizedLabel : undefined;
 
     // Store state
     this.pendingStates.set(state, {
@@ -1696,6 +1702,8 @@ export class OAuthManager {
       provider: providerId,
       organizationId,
       returnUrl: resolvedReturnUrl,
+      connectionId: sanitizedConnectionId,
+      label,
       codeVerifier,
       nonce,
       createdAt: Date.now()
@@ -1734,7 +1742,7 @@ export class OAuthManager {
     code: string,
     state: string,
     providerId: string
-  ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string }> {
+  ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string; connectionId: string; label: string }> {
     // Verify state
     const storedState = this.pendingStates.get(state);
     if (!storedState || storedState.provider !== providerId) {
@@ -1777,16 +1785,22 @@ export class OAuthManager {
       }
     }
 
+    const label = storedState.label || userInfo?.email || providerId;
+
     // Store connection
-    await connectionService.storeConnection(
+    const connectionId = await connectionService.storeConnection(
       storedState.userId,
       storedState.organizationId,
       providerId,
       tokens,
-      userInfo
+      userInfo,
+      {
+        name: label,
+        connectionId: storedState.connectionId
+      }
     );
 
-    return { tokens, userInfo, returnUrl: redirectUrl };
+    return { tokens, userInfo, returnUrl: redirectUrl, connectionId, label };
   }
 
   /**
@@ -1848,7 +1862,8 @@ export class OAuthManager {
         {
           name: connection.name,
           metadata: connection.metadata,
-          type: (connection.type as any) ?? 'saas'
+          type: (connection.type as any) ?? 'saas',
+          connectionId: connection.id
         }
       );
 

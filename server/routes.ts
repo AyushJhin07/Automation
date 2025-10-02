@@ -1395,7 +1395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initiate OAuth flow
   app.post('/api/oauth/authorize', authenticateToken, async (req, res) => {
     try {
-      const { provider, additionalParams, returnUrl } = req.body;
+      const { provider, additionalParams, returnUrl, connectionId, label } = req.body;
       const userId = req.user!.id;
 
       if (!provider) {
@@ -1416,6 +1416,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: 'Organization context required' });
       }
 
+      const trimmedConnectionId = typeof connectionId === 'string' && connectionId.trim().length > 0
+        ? connectionId.trim()
+        : undefined;
+      const trimmedLabel = typeof label === 'string' ? label.trim() : undefined;
+
+      let resolvedLabel = trimmedLabel && trimmedLabel.length > 0 ? trimmedLabel : undefined;
+
+      if (trimmedConnectionId) {
+        const existingConnection = await connectionService.getConnection(
+          trimmedConnectionId,
+          userId,
+          req.organizationId
+        );
+
+        if (!existingConnection) {
+          return res.status(404).json({
+            success: false,
+            error: 'Connection not found for re-authorization'
+          });
+        }
+
+        if (existingConnection.provider !== provider.toLowerCase()) {
+          return res.status(400).json({
+            success: false,
+            error: 'Connection does not match requested provider'
+          });
+        }
+
+        resolvedLabel = resolvedLabel ?? existingConnection.name;
+      }
+
       const normalizedReturnUrl = typeof returnUrl === 'string' && returnUrl.trim().length > 0
         ? returnUrl
         : undefined;
@@ -1425,15 +1456,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         req.organizationId,
         normalizedReturnUrl,
-        additionalParams?.scopes // additionalScopes
+        additionalParams?.scopes, // additionalScopes
+        {
+          connectionId: trimmedConnectionId,
+          label: resolvedLabel
+        }
       );
-      
+
       res.json({
         success: true,
         data: {
           authUrl,
           state,
-          provider
+          provider,
+          connectionId: trimmedConnectionId,
+          label: resolvedLabel
         }
       });
     } catch (error) {
@@ -1498,13 +1535,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { returnUrl } = await oauthManager.handleCallback(
+      const { returnUrl, connectionId: storedConnectionId, label: connectionLabel } = await oauthManager.handleCallback(
         code as string,
         state as string,
         provider
       );
-
-      return res.redirect(`${returnUrl}${search}`);
+      const params = new URLSearchParams(search ? search.slice(1) : '');
+      if (storedConnectionId) {
+        params.set('connectionId', storedConnectionId);
+      }
+      if (connectionLabel) {
+        params.set('label', connectionLabel);
+      }
+      const query = params.toString();
+      const separator = returnUrl.includes('?') ? (query.length > 0 ? '&' : '') : (query.length > 0 ? '?' : '');
+      return res.redirect(`${returnUrl}${separator}${query}`);
     } catch (error) {
       const redirectTarget = initialRedirectTarget || resolveReturnUrl();
       const errorMessage = getErrorMessage(error);
