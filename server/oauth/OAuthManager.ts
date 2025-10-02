@@ -1623,23 +1623,93 @@ export class OAuthManager {
   private validateProviderConfiguration(): void {
     const providers = Array.from(this.providers.entries());
     providers.forEach(([id, provider]) => {
-      const missing: string[] = [];
-      if (!provider.config.clientId) {
-        missing.push('CLIENT_ID');
-      }
-      if (!provider.config.clientSecret) {
-        missing.push('CLIENT_SECRET');
-      }
-
-      if (missing.length > 0) {
-        this.providers.delete(id);
-        const envPrefix = provider.name.replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
-        const envVars = missing.map(suffix => `${envPrefix}_${suffix}`);
-        const reason = `Missing environment variables: ${envVars.join(', ')}`;
-        this.disabledProviders.set(id, { provider, reason });
-        console.warn(`⚠️ OAuth provider ${provider.displayName} disabled. ${reason}`);
-      }
+      this.enforceProviderStatus(id, provider);
     });
+  }
+
+  private enforceProviderStatus(id: string, provider: OAuthProvider, reasonOverride?: string): void {
+    const missing: string[] = [];
+    if (!provider.config.clientId) {
+      missing.push('CLIENT_ID');
+    }
+    if (!provider.config.clientSecret) {
+      missing.push('CLIENT_SECRET');
+    }
+
+    if (missing.length > 0 || reasonOverride) {
+      this.providers.delete(id);
+      const envPrefix = provider.name.replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
+      const envVars = missing.map(suffix => `${envPrefix}_${suffix}`);
+      const reason =
+        reasonOverride ||
+        (envVars.length > 0
+          ? `Missing environment variables: ${envVars.join(', ')}`
+          : 'Provider disabled due to incomplete configuration');
+      this.disabledProviders.set(id, { provider, reason });
+      console.warn(`⚠️ OAuth provider ${provider.displayName} disabled. ${reason}`);
+      return;
+    }
+
+    this.disabledProviders.delete(id);
+    this.providers.set(id, provider);
+  }
+
+  applyProviderCredential(
+    providerId: string,
+    config: { clientId: string; clientSecret: string; scopes?: string[] }
+  ): void {
+    const id = providerId.toLowerCase();
+    const existing = this.providers.get(id) ?? this.disabledProviders.get(id)?.provider;
+    if (!existing) {
+      console.warn(`⚠️ Attempted to configure unknown OAuth provider ${providerId}`);
+      return;
+    }
+
+    existing.config = {
+      ...existing.config,
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
+      scopes: config.scopes && config.scopes.length > 0 ? config.scopes : existing.config.scopes,
+    };
+
+    this.enforceProviderStatus(id, existing);
+  }
+
+  hydrateProviderCredentials(
+    entries: Array<{ provider: string; clientId: string; clientSecret: string; scopes?: string[] }>
+  ): void {
+    entries.forEach((entry) => this.applyProviderCredential(entry.provider, entry));
+  }
+
+  disableProvider(providerId: string, reason: string): void {
+    const id = providerId.toLowerCase();
+    const provider = this.providers.get(id) ?? this.disabledProviders.get(id)?.provider;
+    if (!provider) {
+      return;
+    }
+    this.enforceProviderStatus(id, provider, reason);
+  }
+
+  getProviderConfigurationStatus(providerId: string): { configured: boolean; reason?: string } {
+    const id = providerId.toLowerCase();
+    if (this.providers.has(id)) {
+      return { configured: true };
+    }
+    const disabled = this.disabledProviders.get(id);
+    return {
+      configured: false,
+      reason: disabled?.reason ?? 'Provider not registered',
+    };
+  }
+
+  getSupportedProviders(): OAuthProvider[] {
+    const active = Array.from(this.providers.values());
+    const disabled = Array.from(this.disabledProviders.values()).map(({ provider }) => provider);
+    return [...active, ...disabled];
+  }
+
+  isProviderConfigured(providerId: string): boolean {
+    return this.getProviderConfigurationStatus(providerId).configured;
   }
 
   /**

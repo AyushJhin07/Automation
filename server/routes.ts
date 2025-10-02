@@ -41,6 +41,10 @@ import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 import { normalizeAppId } from "./services/PromptBuilder.js";
 import { executionQueueService } from './services/ExecutionQueueService.js';
+import { EncryptionService } from './services/EncryptionService.js';
+import { providerConfigService } from './services/ProviderConfigService.js';
+import { observabilityService } from './services/ObservabilityService.js';
+import { readSecretEvents } from './security/SecretsAuditLog.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 
@@ -1165,30 +1169,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== OAUTH ROUTES =====
   
   // Get supported OAuth providers
-  app.get('/api/oauth/providers', async (req, res) => {
+  app.get('/api/oauth/providers', async (_req, res) => {
     try {
-      const providers = oauthManager.listProviders();
-      const disabledProviders = oauthManager.listDisabledProviders();
+      const providers = oauthManager.getSupportedProviders().map((provider) => {
+        const status = oauthManager.getProviderConfigurationStatus(provider.name);
+        return {
+          name: provider.name,
+          displayName: provider.displayName,
+          scopes: provider.config.scopes,
+          configured: status.configured,
+          disabledReason: status.configured ? undefined : status.reason,
+        };
+      });
 
       res.json({
         success: true,
-        data: {
-          providers: [
-            ...providers.map(p => ({
-              name: p.name,
-              displayName: p.displayName,
-              scopes: p.config.scopes,
-              configured: true
-            })),
-            ...disabledProviders.map(({ provider, reason }) => ({
-              name: provider.name,
-              displayName: provider.displayName,
-              scopes: provider.config.scopes,
-              configured: false,
-              disabledReason: reason
-            }))
-          ]
-        }
+        data: { providers },
       });
     } catch (error) {
       res.status(500).json({
@@ -1806,7 +1802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/clear-connectors', authenticateToken, adminOnly, async (req, res) => {
     try {
       const deletedCount = await connectorSeeder.clearAllConnectors();
-      
+
       res.json({
         success: true,
         data: { deletedCount },
@@ -1817,6 +1813,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: getErrorMessage(error)
       });
+    }
+  });
+
+  // ===== PROVIDER CONFIGURATION ROUTES =====
+
+  app.get('/api/admin/providers/credentials', authenticateToken, adminOnly, async (_req, res) => {
+    try {
+      const records = await providerConfigService.listCredentials();
+      const response = records.map((record) => ({
+        provider: record.provider,
+        clientId: EncryptionService.maskSensitiveData(record.clientId),
+        configured: oauthManager.isProviderConfigured(record.provider),
+        scopes: record.scopes,
+        lastTested: record.lastTested,
+        testStatus: record.testStatus,
+        testError: record.testError,
+        rotationVersion: record.rotationVersion,
+        updatedAt: record.updatedAt,
+      }));
+
+      res.json({ success: true, providers: response });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.post('/api/admin/providers/credentials', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const { provider, clientId, clientSecret, scopes, metadata } = req.body;
+      if (!provider || !clientId || !clientSecret) {
+        return res.status(400).json({
+          success: false,
+          error: 'provider, clientId, and clientSecret are required',
+        });
+      }
+
+      const record = await providerConfigService.upsertCredential({
+        provider,
+        clientId,
+        clientSecret,
+        scopes,
+        metadata,
+      });
+
+      res.json({
+        success: true,
+        provider: record.provider,
+        configured: oauthManager.isProviderConfigured(record.provider),
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.delete('/api/admin/providers/credentials/:provider', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const { provider } = req.params;
+      if (!provider) {
+        return res.status(400).json({ success: false, error: 'provider is required' });
+      }
+
+      await providerConfigService.deleteCredential(provider);
+      res.json({ success: true, provider });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.post('/api/admin/providers/credentials/:provider/test', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const { provider } = req.params;
+      const result = await providerConfigService.testCredential(provider);
+      res.json({ success: result.success, provider, message: result.message });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 
@@ -1883,6 +1954,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/admin/observability/metrics', authenticateToken, adminOnly, (_req, res) => {
+    try {
+      const snapshot = observabilityService.getSnapshot();
+      res.json({ success: true, snapshot });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.get('/api/admin/observability/node-logs', authenticateToken, adminOnly, (req, res) => {
+    try {
+      const limit = Number.parseInt((req.query.limit as string) ?? '100', 10);
+      const logs = observabilityService.getNodeLogSnapshot(Number.isNaN(limit) ? 100 : limit);
+      res.json({ success: true, logs });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // ===== SECURITY ROUTES =====
 
   app.get('/api/security/events', authenticateToken, adminOnly, async (req, res) => {
@@ -1898,6 +1988,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const stats = securityService.getSecurityStats();
       res.json({ success: true, stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.get('/api/security/secret-events', authenticateToken, adminOnly, (req, res) => {
+    try {
+      const limit = Number.parseInt((req.query.limit as string) ?? '50', 10);
+      const events = readSecretEvents(Number.isNaN(limit) ? 50 : limit);
+      res.json({ success: true, events });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }

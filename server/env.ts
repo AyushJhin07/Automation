@@ -9,7 +9,26 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'development';
 }
 
-console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+const environment = process.env.NODE_ENV;
+console.log(`🌍 Environment: ${environment}`);
+
+const requiredInProduction = ['DATABASE_URL', 'ENCRYPTION_MASTER_KEY', 'JWT_SECRET'];
+if (environment === 'production') {
+  const missing = requiredInProduction.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables for production: ${missing.join(', ')}`
+    );
+  }
+} else {
+  const missing = requiredInProduction.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    const missingList = missing.join(', ');
+    console.warn(
+      `⚠️ Missing environment variables (${missingList}). The application will run in degraded mode. Set them before production deploys.`
+    );
+  }
+}
 
 // Export environment variables for easy access
 export const env = {
@@ -22,6 +41,7 @@ export const env = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   JWT_SECRET: process.env.JWT_SECRET,
   PORT: process.env.PORT || '5000',
+  SERVER_PUBLIC_URL: process.env.SERVER_PUBLIC_URL || '',
   ENABLE_LLM_FEATURES: process.env.ENABLE_LLM_FEATURES === 'true',
   GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true',
 } as const;

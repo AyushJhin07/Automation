@@ -9,6 +9,7 @@ import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
 import { integrationManager } from '../integrations/IntegrationManager';
 import { env } from '../env';
 import { genericExecutor } from '../integrations/GenericExecutor';
+import { recordSecretEvent } from '../security/SecretsAuditLog.js';
 
 class ConnectionServiceError extends Error {
   constructor(message: string, public statusCode: number = 500) {
@@ -75,21 +76,45 @@ interface FileConnectionRecord {
 export class ConnectionService {
   private db: any;
   private readonly useFileStore: boolean;
+  private readonly allowFileStore: boolean;
   private readonly fileStorePath: string;
 
   constructor() {
     this.db = db;
-    this.useFileStore = !this.db;
+    this.allowFileStore = process.env.ALLOW_FILE_CONNECTION_STORE === 'true';
     this.fileStorePath = path.resolve(
       process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections.json')
     );
 
     if (!this.db) {
-      if (process.env.NODE_ENV !== 'development') {
-        throw new Error('Database connection not available');
+      if (this.allowFileStore) {
+        const mode = process.env.NODE_ENV ?? 'development';
+        console.warn(
+          `⚠️ ConnectionService: DATABASE_URL not set. Using encrypted file store at ${this.fileStorePath} (mode=${mode}).`
+        );
+      } else {
+        throw new Error(
+          'Database connection not available. Set DATABASE_URL or enable ALLOW_FILE_CONNECTION_STORE for tests.'
+        );
       }
-      console.warn(`⚠️ ConnectionService: DATABASE_URL not set. Using local file store at ${this.fileStorePath}`);
     }
+
+    this.useFileStore = !this.db && this.allowFileStore;
+  }
+
+  private auditSecretAccess(
+    userId: string,
+    provider: string,
+    type: 'read' | 'write' | 'delete',
+    metadata?: Record<string, any>
+  ): void {
+    recordSecretEvent({
+      type,
+      provider,
+      source: 'connection',
+      userId,
+      metadata,
+    });
   }
 
   private ensureDb() {
@@ -194,6 +219,10 @@ export class ConnectionService {
       records.push(record);
       await this.writeFileStore(records);
       console.log(`✅ Connection created (file store): ${record.id}`);
+      this.auditSecretAccess(request.userId, normalizedProvider, 'write', {
+        connectionId: record.id,
+        name: request.name,
+      });
       return record.id;
     }
 
@@ -210,6 +239,10 @@ export class ConnectionService {
     }).returning({ id: connections.id });
 
     console.log(`✅ Connection created: ${connection.id}`);
+    this.auditSecretAccess(request.userId, normalizedProvider, 'write', {
+      connectionId: connection.id,
+      name: request.name,
+    });
     return connection.id;
   }
 
@@ -220,7 +253,12 @@ export class ConnectionService {
     if (this.useFileStore) {
       const records = await this.readFileStore();
       const record = records.find((conn) => conn.id === connectionId && conn.userId === userId && conn.isActive);
-      return record ? this.toDecryptedConnection(record) : null;
+      if (!record) {
+        return null;
+      }
+      const decrypted = this.toDecryptedConnection(record);
+      this.auditSecretAccess(userId, decrypted.provider, 'read', { connectionId });
+      return decrypted;
     }
 
     this.ensureDb();
@@ -241,6 +279,8 @@ export class ConnectionService {
       connection.encryptedCredentials,
       connection.iv
     );
+
+    this.auditSecretAccess(userId, connection.provider, 'read', { connectionId });
 
     return {
       id: connection.id,
@@ -270,7 +310,11 @@ export class ConnectionService {
       const records = await this.readFileStore();
       return records
         .filter((conn) => conn.userId === userId && conn.isActive && (!normalizedProvider || conn.provider === normalizedProvider))
-        .map((record) => this.toDecryptedConnection(record));
+        .map((record) => {
+          const decrypted = this.toDecryptedConnection(record);
+          this.auditSecretAccess(userId, decrypted.provider, 'read', { connectionId: decrypted.id });
+          return decrypted;
+        });
     }
 
     const whereConditions = [
@@ -294,6 +338,8 @@ export class ConnectionService {
         connection.encryptedCredentials,
         connection.iv
       );
+
+      this.auditSecretAccess(userId, connection.provider, 'read', { connectionId: connection.id });
 
       return {
         id: connection.id,
@@ -322,7 +368,12 @@ export class ConnectionService {
       const record = records.find(
         (conn) => conn.userId === userId && conn.provider === normalizedProvider && conn.isActive
       );
-      return record ? this.toDecryptedConnection(record) : null;
+      if (!record) {
+        return null;
+      }
+      const decrypted = this.toDecryptedConnection(record);
+      this.auditSecretAccess(userId, decrypted.provider, 'read', { connectionId: decrypted.id });
+      return decrypted;
     }
 
     const [connection] = await this.db
@@ -343,6 +394,8 @@ export class ConnectionService {
       connection.encryptedCredentials,
       connection.iv
     );
+
+    this.auditSecretAccess(userId, connection.provider, 'read', { connectionId: connection.id });
 
     return {
       id: connection.id,
@@ -439,6 +492,10 @@ export class ConnectionService {
         records[existingIndex] = updated;
         await this.writeFileStore(records);
         console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
+        this.auditSecretAccess(userId, normalizedProvider, 'write', {
+          connectionId: updated.id,
+          method: 'storeConnection',
+        });
         return updated.id;
       }
 
@@ -458,6 +515,10 @@ export class ConnectionService {
       records.push(record);
       await this.writeFileStore(records);
       console.log(`✅ Stored connection (${normalizedProvider}) for ${userId}`);
+      this.auditSecretAccess(userId, normalizedProvider, 'write', {
+        connectionId: record.id,
+        method: 'storeConnection',
+      });
       return record.id;
     }
 
@@ -483,6 +544,10 @@ export class ConnectionService {
         })
         .where(eq(connections.id, existing.id));
       console.log(`🔄 Updated connection (${normalizedProvider}) for ${userId}`);
+      this.auditSecretAccess(userId, normalizedProvider, 'write', {
+        connectionId: existing.id,
+        method: 'storeConnection',
+      });
       return existing.id;
     }
 
@@ -501,6 +566,10 @@ export class ConnectionService {
       .returning({ id: connections.id });
 
     console.log(`✅ Stored connection (${normalizedProvider}) for ${userId}`);
+    this.auditSecretAccess(userId, normalizedProvider, 'write', {
+      connectionId: created.id,
+      method: 'storeConnection',
+    });
     return created.id;
   }
 
@@ -778,11 +847,21 @@ export class ConnectionService {
           updatedAt: new Date().toISOString(),
         };
         await this.writeFileStore(records);
+        this.auditSecretAccess(userId, existing.provider, 'write', {
+          connectionId,
+          action: 'update',
+        });
       }
       return;
     }
 
     this.ensureDb();
+    const [existing] = await this.db
+      .select({ provider: connections.provider })
+      .from(connections)
+      .where(and(eq(connections.id, connectionId), eq(connections.userId, userId)))
+      .limit(1);
+
     await this.db
       .update(connections)
       .set(updateData)
@@ -790,6 +869,10 @@ export class ConnectionService {
         eq(connections.id, connectionId),
         eq(connections.userId, userId)
       ));
+    this.auditSecretAccess(userId, existing?.provider ?? 'unknown', 'write', {
+      connectionId,
+      action: 'update',
+    });
   }
 
   /**
@@ -806,11 +889,21 @@ export class ConnectionService {
           updatedAt: new Date().toISOString(),
         };
         await this.writeFileStore(records);
+        this.auditSecretAccess(userId, records[index].provider, 'delete', {
+          connectionId,
+          action: 'soft-delete',
+        });
       }
       return;
     }
 
     this.ensureDb();
+    const [existing] = await this.db
+      .select({ provider: connections.provider })
+      .from(connections)
+      .where(and(eq(connections.id, connectionId), eq(connections.userId, userId)))
+      .limit(1);
+
     await this.db
       .update(connections)
       .set({
@@ -821,6 +914,10 @@ export class ConnectionService {
         eq(connections.id, connectionId),
         eq(connections.userId, userId)
       ));
+    this.auditSecretAccess(userId, existing?.provider ?? 'unknown', 'delete', {
+      connectionId,
+      action: 'soft-delete',
+    });
   }
 
   /**

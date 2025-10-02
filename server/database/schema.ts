@@ -116,6 +116,27 @@ export const connections = pgTable(
   })
 );
 
+export const providerConfigs = pgTable(
+  'provider_configs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    provider: text('provider').notNull(),
+    encryptedConfig: text('encrypted_config').notNull(),
+    iv: text('iv').notNull(),
+    rotationVersion: integer('rotation_version').default(1).notNull(),
+    lastTested: timestamp('last_tested'),
+    testStatus: text('test_status'),
+    testError: text('test_error'),
+    metadata: json('metadata').$type<Record<string, any>>().default({}).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    providerIdx: uniqueIndex('provider_configs_provider_idx').on(table.provider),
+    testStatusIdx: index('provider_configs_test_status_idx').on(table.testStatus),
+  })
+);
+
 // Workflows table with indexes for ALL application types
 export const workflows = pgTable(
   'workflows',
