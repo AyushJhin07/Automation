@@ -5,6 +5,9 @@ import type { AddressInfo } from 'node:net';
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalBaseUrl = process.env.BASE_URL;
+const originalEncryptionKey = process.env.ENCRYPTION_MASTER_KEY;
+const originalJwtSecret = process.env.JWT_SECRET;
+const originalFileStore = process.env.ALLOW_FILE_CONNECTION_STORE;
 
 const envKeys = [
   'GMAIL_CLIENT_ID',
@@ -22,6 +25,9 @@ for (const key of envKeys) {
 
 process.env.NODE_ENV = 'development';
 process.env.BASE_URL = 'http://localhost:5000';
+process.env.ENCRYPTION_MASTER_KEY = '12345678901234567890123456789012';
+process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
 process.env.GMAIL_CLIENT_ID = 'test-gmail-client-id';
 process.env.GMAIL_CLIENT_SECRET = 'test-gmail-client-secret';
 process.env.SLACK_CLIENT_ID = 'test-slack-client-id';
@@ -76,25 +82,87 @@ app.use(express.json());
 let server: Server | undefined;
 let exitCode = 0;
 
-const storedConnections: Array<{ userId: string; provider: string; tokens: any; userInfo?: any }> = [];
+const storedConnections: Array<{
+  userId: string;
+  organizationId: string;
+  provider: string;
+  tokens: any;
+  userInfo?: any;
+}> = [];
 let connectionService: any;
 let originalStoreConnection: ((...args: any[]) => any) | undefined;
+let authService: any;
+let originalVerifyToken: ((...args: any[]) => any) | undefined;
 
 try {
   const { registerRoutes } = await import('../../routes.ts');
   ({ connectionService } = await import('../../services/ConnectionService'));
+  ({ authService } = await import('../../services/AuthService'));
 
   originalStoreConnection = connectionService.storeConnection;
+  originalVerifyToken = authService.verifyToken;
 
   (connectionService as any).storeConnection = async (
     userId: string,
+    organizationId: string,
     provider: string,
     tokens: any,
     userInfo?: any
   ) => {
-    storedConnections.push({ userId, provider, tokens, userInfo });
+    storedConnections.push({ userId, organizationId, provider, tokens, userInfo });
     return 'test-connection-id';
   };
+
+  authService.verifyToken = async () => ({
+    id: 'dev-user',
+    email: 'developer@local.test',
+    name: 'Local Developer',
+    role: 'developer',
+    planType: 'enterprise',
+    isActive: true,
+    emailVerified: true,
+    monthlyApiCalls: 0,
+    monthlyTokensUsed: 0,
+    quotaApiCalls: 100000,
+    quotaTokens: 1000000,
+    createdAt: new Date(),
+    organizationId: 'dev-org',
+    organizationRole: 'owner',
+    organizationPlan: 'enterprise',
+    organizationStatus: 'active',
+    organizationLimits: {
+      maxWorkflows: 1000,
+      maxExecutions: 1000000,
+      maxUsers: 1000,
+      maxStorage: 512000,
+    },
+    organizationUsage: {
+      apiCalls: 0,
+      workflowExecutions: 0,
+      storageUsed: 0,
+      usersActive: 1,
+    },
+    activeOrganization: {
+      id: 'dev-org',
+      name: 'Developer Workspace',
+      plan: 'enterprise',
+      status: 'active',
+      role: 'owner',
+      isDefault: true,
+      limits: {
+        maxWorkflows: 1000,
+        maxExecutions: 1000000,
+        maxUsers: 1000,
+        maxStorage: 512000,
+      },
+      usage: {
+        apiCalls: 0,
+        workflowExecutions: 0,
+        storageUsed: 0,
+        usersActive: 1,
+      },
+    },
+  });
 
   server = await registerRoutes(app);
 
@@ -107,7 +175,10 @@ try {
 
   const authResponse = await fetch(`${baseUrl}/api/oauth/authorize`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer test-token',
+    },
     body: JSON.stringify({ provider: 'gmail' })
   });
 
@@ -121,30 +192,39 @@ try {
 
   const state = authBody.data.state as string;
 
-  const callbackResponse = await fetch(`${baseUrl}/api/oauth/callback/gmail?code=test-code&state=${state}`);
-  assert.equal(callbackResponse.status, 200, 'callback should respond with success');
+  const callbackResponse = await fetch(
+    `${baseUrl}/api/oauth/callback/gmail?code=test-code&state=${state}`,
+    { redirect: 'manual' }
+  );
+  assert.equal(callbackResponse.status, 302, 'callback should redirect to the front-end handler');
 
-  const callbackBody = await callbackResponse.json();
-  assert.equal(callbackBody.success, true, 'callback response should indicate success');
-  assert.equal(callbackBody.data.provider, 'gmail', 'callback response should include provider');
-  assert.equal(callbackBody.data.tokens.accessToken, 'test-access-token', 'callback should return exchanged access token');
-  assert.equal(callbackBody.data.userInfo.email, userInfoResponse.email, 'callback should return user info');
+  const redirectLocation = callbackResponse.headers.get('location');
+  assert.equal(
+    redirectLocation,
+    `${process.env.BASE_URL}/oauth/callback/gmail?code=test-code&state=${state}`,
+    'callback should redirect to the React callback route with the original query string'
+  );
 
   assert.equal(storedConnections.length, 1, 'ConnectionService.storeConnection should be called once');
   const stored = storedConnections[0];
   assert.equal(stored.provider, 'gmail', 'stored connection should reference the Gmail provider');
   assert.equal(stored.userId, 'dev-user', 'stored connection should use the development fallback user');
+  assert.equal(stored.organizationId, 'dev-org', 'stored connection should persist the organization context');
   assert.equal(stored.tokens.accessToken, tokenResponse.access_token, 'stored connection should include access token');
   assert.equal(stored.userInfo.email, userInfoResponse.email, 'stored connection should include user info');
   assert.ok(typeof stored.tokens.expiresAt === 'number', 'stored token should include expiry metadata');
 
-  console.log('OAuth authorize + callback endpoints exchange tokens and persist connections.');
+  console.log('OAuth authorize + callback endpoints exchange tokens, persist connections, and redirect to the React handler.');
 } catch (error) {
   exitCode = 1;
   console.error(error);
 } finally {
   if (connectionService && originalStoreConnection) {
     (connectionService as any).storeConnection = originalStoreConnection;
+  }
+
+  if (authService && originalVerifyToken) {
+    authService.verifyToken = originalVerifyToken;
   }
 
   delete (globalThis as any).app;
@@ -167,6 +247,24 @@ try {
     process.env.BASE_URL = originalBaseUrl;
   } else {
     delete process.env.BASE_URL;
+  }
+
+  if (originalEncryptionKey !== undefined) {
+    process.env.ENCRYPTION_MASTER_KEY = originalEncryptionKey;
+  } else {
+    delete process.env.ENCRYPTION_MASTER_KEY;
+  }
+
+  if (originalJwtSecret !== undefined) {
+    process.env.JWT_SECRET = originalJwtSecret;
+  } else {
+    delete process.env.JWT_SECRET;
+  }
+
+  if (originalFileStore !== undefined) {
+    process.env.ALLOW_FILE_CONNECTION_STORE = originalFileStore;
+  } else {
+    delete process.env.ALLOW_FILE_CONNECTION_STORE;
   }
 
   for (const key of envKeys) {

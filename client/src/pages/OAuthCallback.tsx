@@ -4,30 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
 
 const prettifyProvider = (provider: string) =>
   provider.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-type CallbackStatus = 'idle' | 'exchanging' | 'storing' | 'success' | 'error';
-
-type CallbackResponse = {
-  success: boolean;
-  data?: {
-    provider?: string;
-    tokens?: Record<string, any>;
-    userInfo?: Record<string, any>;
-    message?: string;
-  };
-  error?: string;
-};
+type CallbackStatus = 'idle' | 'redirecting' | 'success' | 'error';
 
 const OAuthCallback = () => {
   const { provider = '' } = useParams<{ provider: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const authFetch = useAuthStore((state) => state.authFetch);
-  const token = useAuthStore((state) => state.token);
 
   const [status, setStatus] = useState<CallbackStatus>('idle');
   const [message, setMessage] = useState<string>('Finishing OAuth connection…');
@@ -55,9 +41,25 @@ const OAuthCallback = () => {
   }, [provider]);
 
   useEffect(() => {
+    if (!provider) {
+      const errorMessage = 'Missing provider in callback URL.';
+      setStatus('error');
+      setMessage(errorMessage);
+      setDetails(undefined);
+      notifyParent(false, errorMessage);
+      return;
+    }
+
+    const state = searchParams.get('state');
+    const code = searchParams.get('code');
     const providerError = searchParams.get('error');
+    const storageKey = state ? `oauth:processed:${state}` : undefined;
+
     if (providerError) {
       const decodedError = decodeURIComponent(providerError);
+      if (storageKey) {
+        window.sessionStorage.removeItem(storageKey);
+      }
       setStatus('error');
       setMessage(decodedError || 'The provider reported an OAuth error.');
       setDetails(undefined);
@@ -65,93 +67,63 @@ const OAuthCallback = () => {
       return;
     }
 
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    const shop = searchParams.get('shop');
-
-    if (!provider) {
-      const errorMessage = 'Missing provider in callback URL.';
-      setStatus('error');
-      setMessage(errorMessage);
-      notifyParent(false, errorMessage);
-      return;
-    }
-
     if (!code || !state) {
       const errorMessage = 'Missing authorization code or state in callback URL.';
+      if (storageKey) {
+        window.sessionStorage.removeItem(storageKey);
+      }
       setStatus('error');
       setMessage(errorMessage);
+      setDetails(undefined);
       notifyParent(false, errorMessage);
       return;
     }
 
-    const completeOAuth = async () => {
-      setStatus('exchanging');
-      setMessage('Exchanging authorization code for tokens…');
+    if (!storageKey) {
+      const errorMessage = 'Unable to determine OAuth state from callback parameters.';
+      setStatus('error');
+      setMessage(errorMessage);
       setDetails(undefined);
+      notifyParent(false, errorMessage);
+      return;
+    }
 
-      try {
-        const callbackUrl = new URL(`/api/oauth/callback/${provider}`, window.location.origin);
-        callbackUrl.searchParams.set('code', code);
-        callbackUrl.searchParams.set('state', state);
-        if (shop) {
-          callbackUrl.searchParams.set('shop', shop);
-        }
+    try {
+      const session = window.sessionStorage;
+      const progress = session.getItem(storageKey);
 
-        const response = await fetch(callbackUrl.toString());
-        const result: CallbackResponse = await response.json();
-
-        if (!response.ok || !result.success) {
-          const errorMessage = result.error || 'OAuth token exchange failed.';
-          throw new Error(errorMessage);
-        }
-
-        const tokens = result.data?.tokens;
-        const userInfo = result.data?.userInfo;
-
-        if (!tokens) {
-          throw new Error('The OAuth callback did not return any tokens.');
-        }
-
-        if (!token) {
-          const authMessage = 'You must sign in before storing OAuth connections.';
-          setStatus('error');
-          setMessage(authMessage);
-          notifyParent(false, authMessage);
-          return;
-        }
-
-        setStatus('storing');
-        setMessage('Storing secure connection…');
-
-        const storeResponse = await authFetch('/api/oauth/store-connection', {
-          method: 'POST',
-          body: JSON.stringify({ provider, tokens, userInfo })
-        });
-        const storeResult = await storeResponse.json();
-
-        if (!storeResponse.ok || !storeResult.success) {
-          const errorMessage = storeResult.error || 'Failed to store OAuth connection.';
-          throw new Error(errorMessage);
-        }
-
-        setStatus('success');
-        setMessage('Connection established successfully. You can close this window.');
-        setDetails(storeResult.data?.message);
-        notifyParent(true);
-        if (window.opener) {
-          setTimeout(() => window.close(), 1500);
-        }
-      } catch (error: any) {
-        const errorMessage = error?.message || 'An unexpected error occurred while completing OAuth.';
-        setStatus('error');
-        setMessage(errorMessage);
-        notifyParent(false, errorMessage);
+      if (!progress) {
+        session.setItem(storageKey, 'pending');
+        setStatus('redirecting');
+        setMessage('Finalizing secure connection…');
+        setDetails(undefined);
+        window.location.replace(`/api/oauth/callback/${provider}${window.location.search}`);
+        return;
       }
-    };
 
-    void completeOAuth();
-  }, [authFetch, notifyParent, provider, searchParams, token]);
+      if (progress === 'pending') {
+        session.setItem(storageKey, 'complete');
+      }
+
+      setStatus('success');
+      setMessage('Connection established successfully. You can close this window.');
+      setDetails('This window will close automatically once the secure redirect completes.');
+      notifyParent(true);
+      if (window.opener) {
+        setTimeout(() => window.close(), 1500);
+      }
+    } catch (error) {
+      console.warn('Failed to finalize OAuth redirect flow', error);
+      const errorMessage = 'Failed to finalize the OAuth connection. Please try again.';
+      if (storageKey) {
+        window.sessionStorage.removeItem(storageKey);
+      }
+      setStatus('error');
+      setMessage(errorMessage);
+      setDetails(undefined);
+      notifyParent(false, errorMessage);
+    }
+  }, [notifyParent, provider, searchParams]);
 
   const handleClose = () => {
     if (window.opener) {
@@ -180,7 +152,7 @@ const OAuthCallback = () => {
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           )}
-          {(status === 'idle' || status === 'exchanging' || status === 'storing') && (
+          {(status === 'idle' || status === 'redirecting') && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span>{message}</span>

@@ -4,6 +4,7 @@
 import { getErrorMessage } from '../types/common';
 import { connectionService } from '../services/ConnectionService';
 import { EncryptionService } from '../services/EncryptionService';
+import { env } from '../env';
 
 export interface OAuthConfig {
   clientId: string;
@@ -60,6 +61,22 @@ export class OAuthManager {
     this.validateProviderConfiguration();
   }
 
+  private getRedirectUri(providerId: string): string {
+    const baseUrl = env.SERVER_PUBLIC_URL || process.env.BASE_URL || 'http://localhost:5000';
+    return `${baseUrl}/oauth/callback/${providerId}`;
+  }
+
+  public resolveReturnUrl(providerId: string, state?: string): string {
+    if (state) {
+      const storedState = this.pendingStates.get(state);
+      if (storedState && storedState.provider === providerId && storedState.returnUrl) {
+        return storedState.returnUrl;
+      }
+    }
+
+    return this.getRedirectUri(providerId);
+  }
+
   /**
    * Initialize OAuth providers for ALL supported applications
    */
@@ -71,7 +88,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ADP_CLIENT_ID || '',
         clientSecret: process.env.ADP_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/adp`,
+        redirectUri: this.getRedirectUri('adp'),
         scopes: ["read","write"],
         authUrl: 'https://api.adp.com/oauth/authorize',
         tokenUrl: 'https://api.adp.com/oauth/token',
@@ -85,7 +102,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ASANA_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.ASANA_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/asana-enhanced`,
+        redirectUri: this.getRedirectUri('asana-enhanced'),
         scopes: ["read","write","projects"],
         authUrl: 'https://app.asana.com/api/1.0/oauth/authorize',
         tokenUrl: 'https://app.asana.com/api/1.0/oauth/token',
@@ -99,7 +116,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BASECAMP_CLIENT_ID || '',
         clientSecret: process.env.BASECAMP_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/basecamp`,
+        redirectUri: this.getRedirectUri('basecamp'),
         scopes: ["read","write","projects"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -113,7 +130,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BIGQUERY_CLIENT_ID || '',
         clientSecret: process.env.BIGQUERY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/bigquery`,
+        redirectUri: this.getRedirectUri('bigquery'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -127,7 +144,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BITBUCKET_CLIENT_ID || '',
         clientSecret: process.env.BITBUCKET_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/bitbucket`,
+        redirectUri: this.getRedirectUri('bitbucket'),
         scopes: ["read","write"],
         authUrl: 'https://api.bitbucket.org/2.0/oauth/authorize',
         tokenUrl: 'https://api.bitbucket.org/2.0/oauth/token',
@@ -141,7 +158,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BOX_CLIENT_ID || '',
         clientSecret: process.env.BOX_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/box`,
+        redirectUri: this.getRedirectUri('box'),
         scopes: ["read","write","files"],
         authUrl: 'https://api.box.com/2.0/oauth/authorize',
         tokenUrl: 'https://api.box.com/2.0/oauth/token',
@@ -155,7 +172,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.CONFLUENCE_CLIENT_ID || '',
         clientSecret: process.env.CONFLUENCE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/confluence`,
+        redirectUri: this.getRedirectUri('confluence'),
         scopes: ["read","write"],
         authUrl: 'https://api.atlassian.com/ex/confluence/oauth/authorize',
         tokenUrl: 'https://api.atlassian.com/ex/confluence/oauth/token',
@@ -169,7 +186,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.COUPA_CLIENT_ID || '',
         clientSecret: process.env.COUPA_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/coupa`,
+        redirectUri: this.getRedirectUri('coupa'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -183,7 +200,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.DATABRICKS_CLIENT_ID || '',
         clientSecret: process.env.DATABRICKS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/databricks`,
+        redirectUri: this.getRedirectUri('databricks'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -197,7 +214,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.DROPBOX_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.DROPBOX_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/dropbox-enhanced`,
+        redirectUri: this.getRedirectUri('dropbox-enhanced'),
         scopes: ["files.content.write","files.content.read","sharing.write"],
         authUrl: 'https://www.dropbox.com/oauth2/authorize',
         tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
@@ -212,7 +229,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.DROPBOX_CLIENT_ID || '',
         clientSecret: process.env.DROPBOX_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/dropbox`,
+        redirectUri: this.getRedirectUri('dropbox'),
         scopes: ["files.content.write","files.content.read","sharing.write"],
         authUrl: 'https://www.dropbox.com/oauth2/authorize',
         tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
@@ -226,7 +243,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BOX_CLIENT_ID || '',
         clientSecret: process.env.BOX_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/box`,
+        redirectUri: this.getRedirectUri('box'),
         scopes: ['root_readwrite'],
         authUrl: 'https://account.box.com/api/oauth2/authorize',
         tokenUrl: 'https://api.box.com/oauth2/token',
@@ -240,7 +257,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.EXCEL_ONLINE_CLIENT_ID || '',
         clientSecret: process.env.EXCEL_ONLINE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/excel-online`,
+        redirectUri: this.getRedirectUri('excel-online'),
         scopes: ["read","write"],
         authUrl: 'https://graph.microsoft.com/v1.0/oauth/authorize',
         tokenUrl: 'https://graph.microsoft.com/v1.0/oauth/token',
@@ -254,7 +271,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GITHUB_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.GITHUB_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/github-enhanced`,
+        redirectUri: this.getRedirectUri('github-enhanced'),
         scopes: ["repo","user:email","read:org"],
         authUrl: 'https://github.com/login/oauth/authorize',
         tokenUrl: 'https://github.com/login/oauth/access_token',
@@ -269,7 +286,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GITHUB_CLIENT_ID || '',
         clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/github`,
+        redirectUri: this.getRedirectUri('github'),
         scopes: ["repo","user:email","read:org"],
         authUrl: 'https://github.com/login/oauth/authorize',
         tokenUrl: 'https://github.com/login/oauth/access_token',
@@ -284,7 +301,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GITLAB_CLIENT_ID || '',
         clientSecret: process.env.GITLAB_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/gitlab`,
+        redirectUri: this.getRedirectUri('gitlab'),
         scopes: ["read","write"],
         authUrl: 'https://api.gitlab.com/oauth/authorize',
         tokenUrl: 'https://api.gitlab.com/oauth/token',
@@ -298,7 +315,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GMAIL_CLIENT_ID || '',
         clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/gmail`,
+        redirectUri: this.getRedirectUri('gmail'),
         scopes: [
           'https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/gmail.modify',
@@ -318,7 +335,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GMAIL_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.GMAIL_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/gmail-enhanced`,
+        redirectUri: this.getRedirectUri('gmail-enhanced'),
         scopes: [
           'https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/gmail.modify',
@@ -338,7 +355,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.HUBSPOT_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.HUBSPOT_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/hubspot-enhanced`,
+        redirectUri: this.getRedirectUri('hubspot-enhanced'),
         scopes: ["contacts","content","reports","social","timeline"],
         authUrl: 'https://app.hubspot.com/oauth/authorize',
         tokenUrl: 'https://api.hubapi.com/oauth/v1/token',
@@ -355,7 +372,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.HUBSPOT_CLIENT_ID || '',
         clientSecret: process.env.HUBSPOT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/hubspot`,
+        redirectUri: this.getRedirectUri('hubspot'),
         scopes: ["contacts","content","reports","social","timeline"],
         authUrl: 'https://app.hubspot.com/oauth/authorize',
         tokenUrl: 'https://api.hubapi.com/oauth/v1/token',
@@ -372,7 +389,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GOOGLE_DRIVE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-drive`,
+        redirectUri: this.getRedirectUri('google-drive'),
         scopes: [
           'https://www.googleapis.com/auth/drive.file'
         ],
@@ -389,7 +406,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-docs`,
+        redirectUri: this.getRedirectUri('google-docs'),
         scopes: ['https://www.googleapis.com/auth/documents'],
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -404,7 +421,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-slides`,
+        redirectUri: this.getRedirectUri('google-slides'),
         scopes: ['https://www.googleapis.com/auth/presentations'],
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -419,7 +436,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-forms`,
+        redirectUri: this.getRedirectUri('google-forms'),
         scopes: [
           'https://www.googleapis.com/auth/forms.body',
           'https://www.googleapis.com/auth/forms.responses.readonly'
@@ -438,7 +455,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/google-calendar`,
+        redirectUri: this.getRedirectUri('google-calendar'),
         scopes: [
           'https://www.googleapis.com/auth/calendar'
         ],
@@ -456,7 +473,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.INTERCOM_CLIENT_ID || '',
         clientSecret: process.env.INTERCOM_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/intercom`,
+        redirectUri: this.getRedirectUri('intercom'),
         scopes: ["read","write"],
         authUrl: 'https://api.intercom.com/oauth/authorize',
         tokenUrl: 'https://api.intercom.com/oauth/token',
@@ -470,7 +487,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.JENKINS_CLIENT_ID || '',
         clientSecret: process.env.JENKINS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/jenkins`,
+        redirectUri: this.getRedirectUri('jenkins'),
         scopes: ["read","write"],
         authUrl: 'https://api.jenkins.com/oauth/authorize',
         tokenUrl: 'https://api.jenkins.com/oauth/token',
@@ -484,7 +501,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.JIRA_SERVICE_MANAGEMENT_CLIENT_ID || '',
         clientSecret: process.env.JIRA_SERVICE_MANAGEMENT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/jira-service-management`,
+        redirectUri: this.getRedirectUri('jira-service-management'),
         scopes: ["read:jira-work","write:jira-work","read:jira-user"],
         authUrl: 'https://auth.atlassian.com/authorize',
         tokenUrl: 'https://auth.atlassian.com/oauth/token',
@@ -499,7 +516,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.JIRA_CLIENT_ID || '',
         clientSecret: process.env.JIRA_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/jira`,
+        redirectUri: this.getRedirectUri('jira'),
         scopes: ["read:jira-work","write:jira-work","read:jira-user"],
         authUrl: 'https://auth.atlassian.com/authorize',
         tokenUrl: 'https://auth.atlassian.com/oauth/token',
@@ -514,7 +531,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.JOTFORM_CLIENT_ID || '',
         clientSecret: process.env.JOTFORM_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/jotform`,
+        redirectUri: this.getRedirectUri('jotform'),
         scopes: ["read","write"],
         authUrl: 'https://api.jotform.com/oauth/authorize',
         tokenUrl: 'https://api.jotform.com/oauth/token',
@@ -528,7 +545,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.KLAVIYO_CLIENT_ID || '',
         clientSecret: process.env.KLAVIYO_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/klaviyo`,
+        redirectUri: this.getRedirectUri('klaviyo'),
         scopes: ["read","write"],
         authUrl: 'https://api.klaviyo.com/oauth/authorize',
         tokenUrl: 'https://api.klaviyo.com/oauth/token',
@@ -542,7 +559,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.LINEAR_CLIENT_ID || '',
         clientSecret: process.env.LINEAR_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/linear`,
+        redirectUri: this.getRedirectUri('linear'),
         scopes: ["read","write"],
         authUrl: 'https://api.linear.com/oauth/authorize',
         tokenUrl: 'https://api.linear.com/oauth/token',
@@ -556,7 +573,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.LOOKER_CLIENT_ID || '',
         clientSecret: process.env.LOOKER_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/looker`,
+        redirectUri: this.getRedirectUri('looker'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -570,7 +587,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MAILCHIMP_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.MAILCHIMP_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/mailchimp-enhanced`,
+        redirectUri: this.getRedirectUri('mailchimp-enhanced'),
         scopes: ["read","write"],
         authUrl: 'https://login.mailchimp.com/oauth2/authorize',
         tokenUrl: 'https://login.mailchimp.com/oauth2/token',
@@ -584,7 +601,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MAILCHIMP_CLIENT_ID || '',
         clientSecret: process.env.MAILCHIMP_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/mailchimp`,
+        redirectUri: this.getRedirectUri('mailchimp'),
         scopes: ["read","write"],
         authUrl: 'https://login.mailchimp.com/oauth2/authorize',
         tokenUrl: 'https://login.mailchimp.com/oauth2/token',
@@ -598,7 +615,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MICROSOFT_TEAMS_CLIENT_ID || '',
         clientSecret: process.env.MICROSOFT_TEAMS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/microsoft-teams`,
+        redirectUri: this.getRedirectUri('microsoft-teams'),
         scopes: ["read","write"],
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -613,7 +630,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MICROSOFT_TODO_CLIENT_ID || '',
         clientSecret: process.env.MICROSOFT_TODO_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/microsoft-todo`,
+        redirectUri: this.getRedirectUri('microsoft-todo'),
         scopes: ["read","write"],
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -628,7 +645,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MONDAY_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.MONDAY_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/monday-enhanced`,
+        redirectUri: this.getRedirectUri('monday-enhanced'),
         scopes: ["read","write"],
         authUrl: 'https://api.monday.com/oauth/authorize',
         tokenUrl: 'https://api.monday.com/oauth/token',
@@ -642,7 +659,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.NEWRELIC_CLIENT_ID || '',
         clientSecret: process.env.NEWRELIC_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/newrelic`,
+        redirectUri: this.getRedirectUri('newrelic'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -656,7 +673,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.NOTION_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.NOTION_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/notion-enhanced`,
+        redirectUri: this.getRedirectUri('notion-enhanced'),
         scopes: ["read","update","insert"],
         authUrl: 'https://api.notion.com/v1/oauth/authorize',
         tokenUrl: 'https://api.notion.com/v1/oauth/token',
@@ -672,7 +689,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.NOTION_CLIENT_ID || '',
         clientSecret: process.env.NOTION_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/notion`,
+        redirectUri: this.getRedirectUri('notion'),
         scopes: ["read","update","insert"],
         authUrl: 'https://api.notion.com/v1/oauth/authorize',
         tokenUrl: 'https://api.notion.com/v1/oauth/token',
@@ -688,7 +705,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ONEDRIVE_CLIENT_ID || '',
         clientSecret: process.env.ONEDRIVE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/onedrive`,
+        redirectUri: this.getRedirectUri('onedrive'),
         scopes: ["read","write","files"],
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -703,7 +720,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.OPSGENIE_CLIENT_ID || '',
         clientSecret: process.env.OPSGENIE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/opsgenie`,
+        redirectUri: this.getRedirectUri('opsgenie'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -717,7 +734,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.OUTLOOK_CLIENT_ID || '',
         clientSecret: process.env.OUTLOOK_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/outlook`,
+        redirectUri: this.getRedirectUri('outlook'),
         scopes: ["read","write"],
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -732,7 +749,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.PIPEDRIVE_CLIENT_ID || '',
         clientSecret: process.env.PIPEDRIVE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/pipedrive`,
+        redirectUri: this.getRedirectUri('pipedrive'),
         scopes: ["read","write"],
         authUrl: 'https://api.pipedrive.com/oauth/authorize',
         tokenUrl: 'https://api.pipedrive.com/oauth/token',
@@ -746,7 +763,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.POWERBI_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.POWERBI_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/powerbi-enhanced`,
+        redirectUri: this.getRedirectUri('powerbi-enhanced'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -760,7 +777,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.POWERBI_CLIENT_ID || '',
         clientSecret: process.env.POWERBI_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/powerbi`,
+        redirectUri: this.getRedirectUri('powerbi'),
         scopes: ["read","write"],
         authUrl: 'https://api.powerbi.com/v1.0/oauth/authorize',
         tokenUrl: 'https://api.powerbi.com/v1.0/oauth/token',
@@ -774,7 +791,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.QUICKBOOKS_CLIENT_ID || '',
         clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/quickbooks`,
+        redirectUri: this.getRedirectUri('quickbooks'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -788,7 +805,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.RAZORPAY_CLIENT_ID || '',
         clientSecret: process.env.RAZORPAY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/razorpay`,
+        redirectUri: this.getRedirectUri('razorpay'),
         scopes: ["read","write"],
         authUrl: 'https://api.razorpay.com/oauth/authorize',
         tokenUrl: 'https://api.razorpay.com/oauth/token',
@@ -802,7 +819,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SALESFORCE_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.SALESFORCE_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/salesforce-enhanced`,
+        redirectUri: this.getRedirectUri('salesforce-enhanced'),
         scopes: ["api","chatter_api","full","id","refresh_token"],
         authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
         tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
@@ -819,7 +836,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SALESFORCE_CLIENT_ID || '',
         clientSecret: process.env.SALESFORCE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/salesforce`,
+        redirectUri: this.getRedirectUri('salesforce'),
         scopes: ["api","chatter_api","full","id","refresh_token"],
         authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
         tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
@@ -836,7 +853,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SAP_ARIBA_CLIENT_ID || '',
         clientSecret: process.env.SAP_ARIBA_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sap-ariba`,
+        redirectUri: this.getRedirectUri('sap-ariba'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -850,7 +867,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SENDGRID_CLIENT_ID || '',
         clientSecret: process.env.SENDGRID_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sendgrid`,
+        redirectUri: this.getRedirectUri('sendgrid'),
         scopes: ["read","write"],
         authUrl: 'https://api.sendgrid.com/oauth/authorize',
         tokenUrl: 'https://api.sendgrid.com/oauth/token',
@@ -864,7 +881,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SENTRY_CLIENT_ID || '',
         clientSecret: process.env.SENTRY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sentry`,
+        redirectUri: this.getRedirectUri('sentry'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -878,7 +895,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MICROSOFT_CLIENT_ID || '',
         clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sharepoint`,
+        redirectUri: this.getRedirectUri('sharepoint'),
         scopes: [
           'https://graph.microsoft.com/.default'
         ],
@@ -894,7 +911,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MICROSOFT_CLIENT_ID || '',
         clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/onedrive`,
+        redirectUri: this.getRedirectUri('onedrive'),
         scopes: [
           'Files.ReadWrite.All',
           'offline_access'
@@ -911,7 +928,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MICROSOFT_CLIENT_ID || '',
         clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/microsoft-teams`,
+        redirectUri: this.getRedirectUri('microsoft-teams'),
         scopes: [
           'https://graph.microsoft.com/.default'
         ],
@@ -927,7 +944,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MICROSOFT_CLIENT_ID || '',
         clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/outlook`,
+        redirectUri: this.getRedirectUri('outlook'),
         scopes: [
           'offline_access',
           'https://graph.microsoft.com/Mail.Send',
@@ -947,7 +964,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SHOPIFY_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.SHOPIFY_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/shopify-enhanced`,
+        redirectUri: this.getRedirectUri('shopify-enhanced'),
         scopes: ["read_products","write_products","read_orders","write_orders"],
         authUrl: 'https://{shop}.myshopify.com/admin/oauth/authorize',
         tokenUrl: 'https://{shop}.myshopify.com/admin/oauth/access_token',
@@ -962,7 +979,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SHOPIFY_CLIENT_ID || '',
         clientSecret: process.env.SHOPIFY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/shopify`,
+        redirectUri: this.getRedirectUri('shopify'),
         scopes: ["read_products","write_products","read_orders","write_orders"],
         authUrl: 'https://{shop}.myshopify.com/admin/oauth/authorize',
         tokenUrl: 'https://{shop}.myshopify.com/admin/oauth/access_token',
@@ -977,7 +994,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SLACK_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.SLACK_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/slack-enhanced`,
+        redirectUri: this.getRedirectUri('slack-enhanced'),
         scopes: ["channels:read","chat:write","users:read","files:write"],
         authUrl: 'https://slack.com/oauth/v2/authorize',
         tokenUrl: 'https://slack.com/api/oauth.v2.access',
@@ -995,7 +1012,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SLACK_CLIENT_ID || '',
         clientSecret: process.env.SLACK_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/slack`,
+        redirectUri: this.getRedirectUri('slack'),
         scopes: ["channels:read","chat:write","users:read","files:write"],
         authUrl: 'https://slack.com/oauth/v2/authorize',
         tokenUrl: 'https://slack.com/api/oauth.v2.access',
@@ -1013,7 +1030,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SMARTSHEET_CLIENT_ID || '',
         clientSecret: process.env.SMARTSHEET_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/smartsheet`,
+        redirectUri: this.getRedirectUri('smartsheet'),
         scopes: ["read","write","projects"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -1027,7 +1044,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SNOWFLAKE_CLIENT_ID || '',
         clientSecret: process.env.SNOWFLAKE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/snowflake`,
+        redirectUri: this.getRedirectUri('snowflake'),
         scopes: ["read","write"],
         authUrl: 'https://{account}.snowflakecomputing.com/api/v2/oauth/authorize',
         tokenUrl: 'https://{account}.snowflakecomputing.com/api/v2/oauth/token',
@@ -1041,7 +1058,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.STRIPE_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.STRIPE_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/stripe-enhanced`,
+        redirectUri: this.getRedirectUri('stripe-enhanced'),
         scopes: ["read_write"],
         authUrl: 'https://connect.stripe.com/oauth/authorize',
         tokenUrl: 'https://connect.stripe.com/oauth/token',
@@ -1056,7 +1073,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.STRIPE_CLIENT_ID || '',
         clientSecret: process.env.STRIPE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/stripe`,
+        redirectUri: this.getRedirectUri('stripe'),
         scopes: ["read_write"],
         authUrl: 'https://connect.stripe.com/oauth/authorize',
         tokenUrl: 'https://connect.stripe.com/oauth/token',
@@ -1071,7 +1088,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SUCCESSFACTORS_CLIENT_ID || '',
         clientSecret: process.env.SUCCESSFACTORS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/successfactors`,
+        redirectUri: this.getRedirectUri('successfactors'),
         scopes: ["read","write"],
         authUrl: 'https://api4.successfactors.com/odata/v2/oauth/authorize',
         tokenUrl: 'https://api4.successfactors.com/odata/v2/oauth/token',
@@ -1085,7 +1102,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.TABLEAU_CLIENT_ID || '',
         clientSecret: process.env.TABLEAU_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/tableau`,
+        redirectUri: this.getRedirectUri('tableau'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -1099,7 +1116,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.TRELLO_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.TRELLO_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/trello-enhanced`,
+        redirectUri: this.getRedirectUri('trello-enhanced'),
         scopes: ["read","write"],
         authUrl: 'https://api.trello.com/oauth/authorize',
         tokenUrl: 'https://api.trello.com/oauth/token',
@@ -1113,7 +1130,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.TRELLO_CLIENT_ID || '',
         clientSecret: process.env.TRELLO_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/trello`,
+        redirectUri: this.getRedirectUri('trello'),
         scopes: ["read","write"],
         authUrl: 'https://api.trello.com/oauth/authorize',
         tokenUrl: 'https://api.trello.com/oauth/token',
@@ -1127,7 +1144,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.TYPEFORM_CLIENT_ID || '',
         clientSecret: process.env.TYPEFORM_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/typeform`,
+        redirectUri: this.getRedirectUri('typeform'),
         scopes: ["read","write"],
         authUrl: 'https://api.typeform.com/oauth/authorize',
         tokenUrl: 'https://api.typeform.com/oauth/token',
@@ -1141,7 +1158,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ASANA_CLIENT_ID || '',
         clientSecret: process.env.ASANA_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/asana`,
+        redirectUri: this.getRedirectUri('asana'),
         scopes: ["default"],
         authUrl: 'https://app.asana.com/api/1.0/oauth/authorize',
         tokenUrl: 'https://app.asana.com/api/1.0/oauth/token',
@@ -1155,7 +1172,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.VICTOROPS_CLIENT_ID || '',
         clientSecret: process.env.VICTOROPS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/victorops`,
+        redirectUri: this.getRedirectUri('victorops'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -1169,7 +1186,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.WOOCOMMERCE_CLIENT_ID || '',
         clientSecret: process.env.WOOCOMMERCE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/woocommerce`,
+        redirectUri: this.getRedirectUri('woocommerce'),
         scopes: ["read","write"],
         authUrl: 'https://api.woocommerce.com/oauth/authorize',
         tokenUrl: 'https://api.woocommerce.com/oauth/token',
@@ -1183,7 +1200,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.WORKDAY_CLIENT_ID || '',
         clientSecret: process.env.WORKDAY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/workday`,
+        redirectUri: this.getRedirectUri('workday'),
         scopes: ["read","write"],
         authUrl: 'https://wd5-impl-services1.workday.com/ccx/api/v1/oauth/authorize',
         tokenUrl: 'https://wd5-impl-services1.workday.com/ccx/api/v1/oauth/token',
@@ -1197,7 +1214,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.WORKFRONT_CLIENT_ID || '',
         clientSecret: process.env.WORKFRONT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/workfront`,
+        redirectUri: this.getRedirectUri('workfront'),
         scopes: ["read","write","projects"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -1211,7 +1228,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.XERO_CLIENT_ID || '',
         clientSecret: process.env.XERO_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/xero`,
+        redirectUri: this.getRedirectUri('xero'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -1225,7 +1242,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ZENDESK_CLIENT_ID || '',
         clientSecret: process.env.ZENDESK_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zendesk`,
+        redirectUri: this.getRedirectUri('zendesk'),
         scopes: ["read","write"],
         authUrl: 'https://{subdomain}.zendesk.com/api/v2/oauth/authorize',
         tokenUrl: 'https://{subdomain}.zendesk.com/api/v2/oauth/token',
@@ -1238,7 +1255,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ZOOM_CLIENT_ID || '',
         clientSecret: process.env.ZOOM_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoom`,
+        redirectUri: this.getRedirectUri('zoom'),
         scopes: ['meeting:write', 'user:read'],
         authUrl: 'https://zoom.us/oauth/authorize',
         tokenUrl: 'https://zoom.us/oauth/token',
@@ -1251,7 +1268,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.CALENDLY_CLIENT_ID || '',
         clientSecret: process.env.CALENDLY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/calendly`,
+        redirectUri: this.getRedirectUri('calendly'),
         scopes: ['default'],
         authUrl: 'https://auth.calendly.com/oauth/authorize',
         tokenUrl: 'https://auth.calendly.com/oauth/token',
@@ -1264,7 +1281,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.INTERCOM_CLIENT_ID || '',
         clientSecret: process.env.INTERCOM_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/intercom`,
+        redirectUri: this.getRedirectUri('intercom'),
         scopes: ['read_users', 'write_users', 'write_conversations'],
         authUrl: 'https://api.intercom.io/oauth',
         tokenUrl: 'https://api.intercom.io/oauth/token',
@@ -1277,7 +1294,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MONDAY_CLIENT_ID || process.env.MONDAY_ACCESS_TOKEN || '',
         clientSecret: process.env.MONDAY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/monday`,
+        redirectUri: this.getRedirectUri('monday'),
         scopes: ['boards:read boards:write users:read'],
         authUrl: 'https://auth.monday.com/oauth2/authorize',
         tokenUrl: 'https://auth.monday.com/oauth2/token',
@@ -1291,7 +1308,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ZOHO_BOOKS_CLIENT_ID || '',
         clientSecret: process.env.ZOHO_BOOKS_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoho-books`,
+        redirectUri: this.getRedirectUri('zoho-books'),
         scopes: ["read","write"],
         authUrl: 'https://api.example.com/oauth/authorize',
         tokenUrl: 'https://api.example.com/oauth/token',
@@ -1305,7 +1322,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ZOHO_CRM_CLIENT_ID || '',
         clientSecret: process.env.ZOHO_CRM_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoho-crm`,
+        redirectUri: this.getRedirectUri('zoho-crm'),
         scopes: ["read","write"],
         authUrl: 'https://api.zoho-crm.com/oauth/authorize',
         tokenUrl: 'https://api.zoho-crm.com/oauth/token',
@@ -1319,7 +1336,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ZOOM_ENHANCED_CLIENT_ID || '',
         clientSecret: process.env.ZOOM_ENHANCED_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/zoom-enhanced`,
+        redirectUri: this.getRedirectUri('zoom-enhanced'),
         scopes: ["read","write"],
         authUrl: 'https://api.zoom.com/oauth/authorize',
         tokenUrl: 'https://api.zoom.com/oauth/token',
@@ -1333,7 +1350,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.DYNAMICS365_CLIENT_ID || '',
         clientSecret: process.env.DYNAMICS365_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/dynamics365`,
+        redirectUri: this.getRedirectUri('dynamics365'),
         scopes: ["https://{{org}}.crm.dynamics.com/.default"],
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -1347,7 +1364,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MARKETO_CLIENT_ID || '',
         clientSecret: process.env.MARKETO_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/marketo`,
+        redirectUri: this.getRedirectUri('marketo'),
         scopes: [],
         authUrl: 'https://{{munchkin}}.mktorest.com/identity/oauth/authorize',
         tokenUrl: 'https://{{munchkin}}.mktorest.com/identity/oauth/token',
@@ -1361,7 +1378,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.PARDOT_CLIENT_ID || '',
         clientSecret: process.env.PARDOT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/pardot`,
+        redirectUri: this.getRedirectUri('pardot'),
         scopes: ["refresh_token", "api"],
         authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
         tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
@@ -1375,7 +1392,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.DOCUSIGN_CLIENT_ID || '',
         clientSecret: process.env.DOCUSIGN_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/docusign`,
+        redirectUri: this.getRedirectUri('docusign'),
         scopes: ["signature", "impersonation"],
         authUrl: 'https://account.docusign.com/oauth/auth',
         tokenUrl: 'https://account.docusign.com/oauth/token',
@@ -1389,7 +1406,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.ADOBESIGN_CLIENT_ID || '',
         clientSecret: process.env.ADOBESIGN_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/adobesign`,
+        redirectUri: this.getRedirectUri('adobesign'),
         scopes: ["agreement_read", "agreement_write"],
         authUrl: 'https://secure.na1.echosign.com/public/oauth',
         tokenUrl: 'https://api.na1.echosign.com/oauth/token',
@@ -1403,7 +1420,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.HELLOSIGN_CLIENT_ID || '',
         clientSecret: process.env.HELLOSIGN_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/hellosign`,
+        redirectUri: this.getRedirectUri('hellosign'),
         scopes: ["basic_account_info", "request_signature"],
         authUrl: 'https://app.hellosign.com/oauth/authorize',
         tokenUrl: 'https://api.hellosign.com/v3/oauth/token',
@@ -1417,7 +1434,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.CALENDLY_CLIENT_ID || '',
         clientSecret: process.env.CALENDLY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/calendly`,
+        redirectUri: this.getRedirectUri('calendly'),
         scopes: ["read", "write"],
         authUrl: 'https://auth.calendly.com/oauth/authorize',
         tokenUrl: 'https://auth.calendly.com/oauth/token',
@@ -1431,7 +1448,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.WEBEX_CLIENT_ID || '',
         clientSecret: process.env.WEBEX_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/webex`,
+        redirectUri: this.getRedirectUri('webex'),
         scopes: ["spark:all"],
         authUrl: 'https://webexapis.com/v1/authorize',
         tokenUrl: 'https://webexapis.com/v1/access_token',
@@ -1445,7 +1462,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.RINGCENTRAL_CLIENT_ID || '',
         clientSecret: process.env.RINGCENTRAL_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/ringcentral`,
+        redirectUri: this.getRedirectUri('ringcentral'),
         scopes: ["ReadAccounts", "SMS", "ReadCallLog", "Meetings"],
         authUrl: 'https://platform.ringcentral.com/restapi/oauth/authorize',
         tokenUrl: 'https://platform.ringcentral.com/restapi/oauth/token',
@@ -1459,7 +1476,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.PAYPAL_CLIENT_ID || '',
         clientSecret: process.env.PAYPAL_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/paypal`,
+        redirectUri: this.getRedirectUri('paypal'),
         scopes: ["https://uri.paypal.com/services/payments/payment"],
         authUrl: 'https://www.paypal.com/signin/authorize',
         tokenUrl: 'https://api-m.paypal.com/v1/oauth2/token',
@@ -1473,7 +1490,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SQUARE_CLIENT_ID || '',
         clientSecret: process.env.SQUARE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/square`,
+        redirectUri: this.getRedirectUri('square'),
         scopes: ["PAYMENTS_READ", "PAYMENTS_WRITE"],
         authUrl: 'https://connect.squareupsandbox.com/oauth2/authorize',
         tokenUrl: 'https://connect.squareup.com/oauth2/token',
@@ -1487,7 +1504,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BIGCOMMERCE_CLIENT_ID || '',
         clientSecret: process.env.BIGCOMMERCE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/bigcommerce`,
+        redirectUri: this.getRedirectUri('bigcommerce'),
         scopes: ["store_v2_products", "store_v2_orders"],
         authUrl: 'https://login.bigcommerce.com/oauth2/authorize',
         tokenUrl: 'https://login.bigcommerce.com/oauth2/token',
@@ -1501,7 +1518,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.MAGENTO_CLIENT_ID || '',
         clientSecret: process.env.MAGENTO_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/magento`,
+        redirectUri: this.getRedirectUri('magento'),
         scopes: ["read", "write"],
         authUrl: 'https://{{store}}/oauth/authorize',
         tokenUrl: 'https://{{store}}/oauth/token',
@@ -1515,7 +1532,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.EGNYTE_CLIENT_ID || '',
         clientSecret: process.env.EGNYTE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/egnyte`,
+        redirectUri: this.getRedirectUri('egnyte'),
         scopes: ["Egnyte.filesystem"],
         authUrl: 'https://{{domain}}.egnyte.com/puboauth/token',
         tokenUrl: 'https://{{domain}}.egnyte.com/puboauth/token',
@@ -1529,7 +1546,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.GURU_CLIENT_ID || '',
         clientSecret: process.env.GURU_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/guru`,
+        redirectUri: this.getRedirectUri('guru'),
         scopes: ["read", "write"],
         authUrl: 'https://api.getguru.com/oauth/authorize',
         tokenUrl: 'https://api.getguru.com/oauth/token',
@@ -1543,7 +1560,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SURVEYMONKEY_CLIENT_ID || '',
         clientSecret: process.env.SURVEYMONKEY_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/surveymonkey`,
+        redirectUri: this.getRedirectUri('surveymonkey'),
         scopes: ["surveys_read", "surveys_write", "responses_read"],
         authUrl: 'https://api.surveymonkey.com/oauth/authorize',
         tokenUrl: 'https://api.surveymonkey.com/oauth/token',
@@ -1557,7 +1574,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.CONCUR_CLIENT_ID || '',
         clientSecret: process.env.CONCUR_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/concur`,
+        redirectUri: this.getRedirectUri('concur'),
         scopes: ["read", "write"],
         authUrl: 'https://www.concursolutions.com/net2/oauth2/Login.aspx',
         tokenUrl: 'https://www.concursolutions.com/net2/oauth2/GetAccessToken.ashx',
@@ -1571,7 +1588,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.RAMP_CLIENT_ID || '',
         clientSecret: process.env.RAMP_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/ramp`,
+        redirectUri: this.getRedirectUri('ramp'),
         scopes: ["read", "write"],
         authUrl: 'https://app.ramp.com/oauth/authorize',
         tokenUrl: 'https://api.ramp.com/oauth/token',
@@ -1585,7 +1602,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.BREX_CLIENT_ID || '',
         clientSecret: process.env.BREX_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/brex`,
+        redirectUri: this.getRedirectUri('brex'),
         scopes: ["transactions:read", "users:read"],
         authUrl: 'https://accounts.brex.com/oauth/authorize',
         tokenUrl: 'https://accounts.brex.com/oauth/token',
@@ -1599,7 +1616,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.NETSUITE_CLIENT_ID || '',
         clientSecret: process.env.NETSUITE_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/netsuite`,
+        redirectUri: this.getRedirectUri('netsuite'),
         scopes: ["read", "write"],
         authUrl: 'https://{{account}}.app.netsuite.com/app/login/oauth2/authorize.nl',
         tokenUrl: 'https://{{account}}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token',
@@ -1613,7 +1630,7 @@ export class OAuthManager {
       config: {
         clientId: process.env.SAGEINTACCT_CLIENT_ID || '',
         clientSecret: process.env.SAGEINTACCT_CLIENT_SECRET || '',
-        redirectUri: `${process.env.BASE_URL || 'http://localhost:5000'}/api/oauth/callback/sageintacct`,
+        redirectUri: this.getRedirectUri('sageintacct'),
         scopes: ["read", "write"],
         authUrl: 'https://api.intacct.com/oauth/authorize',
         tokenUrl: 'https://api.intacct.com/oauth/token',
@@ -1671,12 +1688,14 @@ export class OAuthManager {
       codeChallenge = await this.generateCodeChallenge(codeVerifier);
     }
 
+    const resolvedReturnUrl = returnUrl ?? this.getRedirectUri(providerId);
+
     // Store state
     this.pendingStates.set(state, {
       userId,
       provider: providerId,
       organizationId,
-      returnUrl,
+      returnUrl: resolvedReturnUrl,
       codeVerifier,
       nonce,
       createdAt: Date.now()
@@ -1712,15 +1731,17 @@ export class OAuthManager {
    * Handle OAuth callback and exchange code for tokens
    */
   async handleCallback(
-    code: string, 
-    state: string, 
+    code: string,
+    state: string,
     providerId: string
-  ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo }> {
+  ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string }> {
     // Verify state
     const storedState = this.pendingStates.get(state);
     if (!storedState || storedState.provider !== providerId) {
       throw new Error('Invalid OAuth state');
     }
+
+    const redirectUrl = storedState.returnUrl ?? this.getRedirectUri(providerId);
 
     if (!storedState.organizationId) {
       throw new Error('OAuth state missing organization context');
@@ -1765,7 +1786,7 @@ export class OAuthManager {
       userInfo
     );
 
-    return { tokens, userInfo };
+    return { tokens, userInfo, returnUrl: redirectUrl };
   }
 
   /**

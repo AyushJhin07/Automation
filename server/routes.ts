@@ -44,6 +44,7 @@ import { executionQueueService } from './services/ExecutionQueueService.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
+import { env } from './env';
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -1386,7 +1387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initiate OAuth flow
   app.post('/api/oauth/authorize', authenticateToken, async (req, res) => {
     try {
-      const { provider, additionalParams } = req.body;
+      const { provider, additionalParams, returnUrl } = req.body;
       const userId = req.user!.id;
 
       if (!provider) {
@@ -1407,11 +1408,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: 'Organization context required' });
       }
 
+      const normalizedReturnUrl = typeof returnUrl === 'string' && returnUrl.trim().length > 0
+        ? returnUrl
+        : undefined;
+
       const { authUrl, state } = await oauthManager.generateAuthUrl(
         provider,
         userId,
         req.organizationId,
-        undefined, // returnUrl
+        normalizedReturnUrl,
         additionalParams?.scopes // additionalScopes
       );
       
@@ -1433,39 +1438,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // OAuth callback handler (generic for all providers)
   app.get('/api/oauth/callback/:provider', async (req, res) => {
+    const { provider } = req.params;
+    const { code, state } = req.query;
+    const search = req.originalUrl.includes('?')
+      ? req.originalUrl.slice(req.originalUrl.indexOf('?'))
+      : '';
+
+    const resolveReturnUrl = () => {
+      if (typeof state === 'string') {
+        return oauthManager.resolveReturnUrl(provider, state);
+      }
+
+      const baseUrl = env.SERVER_PUBLIC_URL || process.env.BASE_URL || '';
+      return baseUrl ? `${baseUrl}/oauth/callback/${provider}` : undefined;
+    };
+
+    const initialRedirectTarget = resolveReturnUrl();
+
     try {
-      const { provider } = req.params;
-      const { code, state, shop } = req.query;
-      
+      if (req.query.error) {
+        const redirectTarget = initialRedirectTarget;
+        if (redirectTarget) {
+          const params = new URLSearchParams();
+          for (const [key, value] of Object.entries(req.query)) {
+            if (Array.isArray(value)) {
+              value.forEach((v) => params.append(key, String(v)));
+            } else if (value !== undefined) {
+              params.set(key, String(value));
+            }
+          }
+          return res.redirect(`${redirectTarget}?${params.toString()}`);
+        }
+
+        return res.status(400).json({
+          success: false,
+          error: String(req.query.error)
+        });
+      }
+
       if (!code || !state) {
+        const redirectTarget = initialRedirectTarget;
+        if (redirectTarget) {
+          const params = new URLSearchParams();
+          params.set('error', 'Missing authorization code or state');
+          return res.redirect(`${redirectTarget}?${params.toString()}`);
+        }
+
         return res.status(400).json({
           success: false,
           error: 'Missing authorization code or state'
         });
       }
 
-      // Handle callback and exchange code for tokens
-      const { tokens, userInfo } = await oauthManager.handleCallback(
+      const { returnUrl } = await oauthManager.handleCallback(
         code as string,
         state as string,
         provider
       );
 
-      // Store the connection (we'll need to get userId from state or session)
-      // For now, we'll return the tokens to be stored by the frontend
-      res.json({
-        success: true,
-        data: {
-          provider,
-          tokens,
-          userInfo,
-          message: 'OAuth flow completed successfully'
-        }
-      });
+      return res.redirect(`${returnUrl}${search}`);
     } catch (error) {
+      const redirectTarget = initialRedirectTarget || resolveReturnUrl();
+      const errorMessage = getErrorMessage(error);
+
+      if (redirectTarget) {
+        const params = new URLSearchParams();
+        if (typeof state === 'string') {
+          params.set('state', state);
+        }
+        params.set('error', errorMessage);
+        return res.redirect(`${redirectTarget}?${params.toString()}`);
+      }
+
       res.status(400).json({
         success: false,
-        error: getErrorMessage(error)
+        error: errorMessage
       });
     }
   });
