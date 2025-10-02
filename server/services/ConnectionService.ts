@@ -75,21 +75,30 @@ interface FileConnectionRecord {
 export class ConnectionService {
   private db: any;
   private readonly useFileStore: boolean;
+  private readonly allowFileStore: boolean;
   private readonly fileStorePath: string;
 
   constructor() {
     this.db = db;
-    this.useFileStore = !this.db;
+    this.allowFileStore = process.env.ALLOW_FILE_CONNECTION_STORE === 'true';
     this.fileStorePath = path.resolve(
       process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections.json')
     );
 
     if (!this.db) {
-      if (process.env.NODE_ENV !== 'development') {
-        throw new Error('Database connection not available');
+      if (this.allowFileStore) {
+        const mode = process.env.NODE_ENV ?? 'development';
+        console.warn(
+          `⚠️ ConnectionService: DATABASE_URL not set. Using encrypted file store at ${this.fileStorePath} (mode=${mode}).`
+        );
+      } else {
+        throw new Error(
+          'Database connection not available. Set DATABASE_URL or enable ALLOW_FILE_CONNECTION_STORE for tests.'
+        );
       }
-      console.warn(`⚠️ ConnectionService: DATABASE_URL not set. Using local file store at ${this.fileStorePath}`);
     }
+
+    this.useFileStore = !this.db && this.allowFileStore;
   }
 
   private ensureDb() {
