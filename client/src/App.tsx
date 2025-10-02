@@ -23,6 +23,7 @@ import AIBuilder from "./pages/AIBuilder";
 import AdminSettings from "./pages/AdminSettings";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
 import GraphEditor from "./pages/GraphEditor";
+import OAuthCallback from "./pages/OAuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/resources" element={<Resources />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/oauth/callback/:provider" element={<OAuthCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
