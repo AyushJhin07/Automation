@@ -672,21 +672,45 @@ export class UsageMeteringService {
 
   private startUsageTracking(): void {
     console.log('📊 Starting usage tracking...');
-    
+
     // Reset monthly usage on the 1st of each month
     const now = new Date();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const msUntilNextMonth = nextMonth.getTime() - now.getTime();
-    
-    setTimeout(() => {
-      this.resetMonthlyUsage();
-      
-      // Then reset every month
-      setInterval(() => {
-        this.resetMonthlyUsage();
-      }, 30 * 24 * 60 * 60 * 1000); // 30 days
-      
-    }, msUntilNextMonth);
+    const MAX_TIMEOUT_MS = 2_147_483_647; // Maximum delay supported by Node.js timers
+
+    const runReset = (targetDate: Date): void => {
+      (async () => {
+        try {
+          await this.resetMonthlyUsage();
+        } catch (error) {
+          console.error('❌ Scheduled monthly usage reset failed:', error);
+        } finally {
+          const nextTarget = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 1);
+          scheduleNextReset(nextTarget);
+        }
+      })();
+    };
+
+    const scheduleNextReset = (targetDate: Date): void => {
+      const schedule = () => {
+        const remaining = targetDate.getTime() - Date.now();
+
+        if (remaining <= 0) {
+          runReset(targetDate);
+          return;
+        }
+
+        if (remaining > MAX_TIMEOUT_MS) {
+          setTimeout(schedule, MAX_TIMEOUT_MS);
+        } else {
+          setTimeout(() => runReset(targetDate), Math.max(0, remaining));
+        }
+      };
+
+      schedule();
+    };
+
+    scheduleNextReset(nextMonth);
   }
 }
 
