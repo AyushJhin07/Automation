@@ -10835,7 +10835,7 @@ function step_createSalesforceLead(ctx) {
   'action.hubspot:create_contact': (c) => `
 function step_createHubSpotContact(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('HUBSPOT_API_KEY');
-  
+
   if (!apiKey) {
     console.warn('⚠️ HubSpot API key not configured');
     return ctx;
@@ -10862,6 +10862,670 @@ function step_createHubSpotContact(ctx) {
   ctx.hubspotContactId = result.id;
   return ctx;
 }`,
+
+  // Datadog - Monitoring
+  'action.datadog:submit_metrics': (c) => `
+function step_submitDatadogMetrics(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  if (!apiKey) {
+    console.warn('⚠️ Datadog API key not configured');
+    return ctx;
+  }
+
+  const series = Array.isArray(ctx.datadogSeries)
+    ? ctx.datadogSeries
+    : ${JSON.stringify(c.series ?? [])};
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'DD-API-KEY': apiKey,
+  };
+
+  const appKey = PropertiesService.getScriptProperties().getProperty('DATADOG_APP_KEY');
+  if (appKey) {
+    headers['DD-APPLICATION-KEY'] = appKey;
+  }
+
+  UrlFetchApp.fetch('${c.endpoint || 'https://api.datadoghq.com/api/v1/series'}', {
+    method: 'POST',
+    headers,
+    payload: JSON.stringify({ series })
+  });
+
+  ctx.datadogLastSeriesCount = series.length;
+  return ctx;
+}`,
+
+  'action.datadog:query_metrics': (c) => `
+function step_queryDatadogMetrics(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  if (!apiKey) {
+    console.warn('⚠️ Datadog API key not configured');
+    return ctx;
+  }
+
+  const params = {
+    query: ctx.datadogQuery ?? '${(c.query ?? 'avg:system.cpu.user{*}').replace(/'/g, "\\'")}',
+    from: ctx.datadogFrom ?? ${typeof c.from === 'number' ? c.from : '(Math.floor(Date.now() / 1000) - 3600)'},
+    to: ctx.datadogTo ?? ${typeof c.to === 'number' ? c.to : 'Math.floor(Date.now() / 1000)'}
+  };
+
+  const queryString = 'query=' + encodeURIComponent(params.query) + '&from=' + params.from + '&to=' + params.to;
+  const response = UrlFetchApp.fetch('${c.endpoint || 'https://api.datadoghq.com/api/v1/query'}?' + queryString, {
+    method: 'GET',
+    headers: { 'DD-API-KEY': apiKey }
+  });
+
+  ctx.datadogQueryResult = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.datadog:get_events': (c) => `
+function step_getDatadogEvents(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  if (!apiKey) {
+    console.warn('⚠️ Datadog API key not configured');
+    return ctx;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const from = ctx.datadogEventsFrom ?? ${typeof c.start === 'number' ? c.start : '(now - 3600)'};
+  const to = ctx.datadogEventsTo ?? ${typeof c.end === 'number' ? c.end : 'now'};
+  const params = 'start=' + from + '&end=' + to;
+  const response = UrlFetchApp.fetch('${c.endpoint || 'https://api.datadoghq.com/api/v1/events'}?' + params, {
+    method: 'GET',
+    headers: { 'DD-API-KEY': apiKey }
+  });
+
+  ctx.datadogEvents = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.datadog:create_event': (c) => `
+function step_createDatadogEvent(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  if (!apiKey) {
+    console.warn('⚠️ Datadog API key not configured');
+    return ctx;
+  }
+
+  const headers = { 'Content-Type': 'application/json', 'DD-API-KEY': apiKey };
+  const appKey = PropertiesService.getScriptProperties().getProperty('DATADOG_APP_KEY');
+  if (appKey) {
+    headers['DD-APPLICATION-KEY'] = appKey;
+  }
+
+  const payload = {
+    title: ctx.datadogEventTitle ?? '${(c.title ?? 'Automation event').replace(/'/g, "\\'")}',
+    text: ctx.datadogEventText ?? '${(c.text ?? 'Triggered from workflow').replace(/'/g, "\\'")}',
+    priority: '${c.priority ?? 'normal'}'
+  };
+
+  UrlFetchApp.fetch('${c.endpoint || 'https://api.datadoghq.com/api/v1/events'}', {
+    method: 'POST',
+    headers,
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.datadog:create_monitor': (c) => `
+function step_createDatadogMonitor(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  const appKey = PropertiesService.getScriptProperties().getProperty('DATADOG_APP_KEY');
+  if (!apiKey || !appKey) {
+    console.warn('⚠️ Datadog API credentials not fully configured');
+    return ctx;
+  }
+
+  const payload = {
+    type: '${(c.type ?? 'metric alert').replace(/'/g, "\\'")}',
+    query: '${(c.query ?? 'avg(last_5m):avg:system.cpu.user{*} > 80').replace(/'/g, "\\'")}',
+    name: '${(c.name ?? 'CPU usage high').replace(/'/g, "\\'")}',
+    message: '${(c.message ?? 'CPU usage high detected').replace(/'/g, "\\'")}'
+  };
+
+  UrlFetchApp.fetch('${c.endpoint || 'https://api.datadoghq.com/api/v1/monitor'}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'DD-API-KEY': apiKey,
+      'DD-APPLICATION-KEY': appKey
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.datadog:get_monitors': (c) => `
+function step_getDatadogMonitors(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  const appKey = PropertiesService.getScriptProperties().getProperty('DATADOG_APP_KEY');
+  if (!apiKey || !appKey) {
+    console.warn('⚠️ Datadog API credentials not fully configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch('${c.endpoint || 'https://api.datadoghq.com/api/v1/monitor'}?group_states=Alert', {
+    method: 'GET',
+    headers: {
+      'DD-API-KEY': apiKey,
+      'DD-APPLICATION-KEY': appKey
+    }
+  });
+
+  ctx.datadogMonitors = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  // Grafana - Observability
+  'action.grafana:create_dashboard': (c) => `
+function step_createGrafanaDashboard(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GRAFANA_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('GRAFANA_BASE_URL') || '${(c.serverUrl || 'https://grafana.example.com').replace(/'/g, "\\'")}';
+  if (!apiKey) {
+    console.warn('⚠️ Grafana API key not configured');
+    return ctx;
+  }
+
+  const dashboard = {
+    dashboard: {
+      title: ctx.grafanaDashboardTitle ?? '${(c.title ?? 'Automation Dashboard').replace(/'/g, "\\'")}',
+      tags: ctx.grafanaDashboardTags || ${JSON.stringify(c.tags ?? [])},
+      panels: []
+    },
+    overwrite: Boolean(${c.overwrite ?? false})
+  };
+
+  UrlFetchApp.fetch(baseUrl + '/api/dashboards/db', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    payload: JSON.stringify(dashboard)
+  });
+
+  ctx.grafanaDashboardUid = ctx.grafanaDashboardUid || '${c.uid ?? 'automation'}';
+  return ctx;
+}`,
+
+  'action.grafana:create_datasource': (c) => `
+function step_createGrafanaDatasource(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GRAFANA_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('GRAFANA_BASE_URL') || '${(c.serverUrl || 'https://grafana.example.com').replace(/'/g, "\\'")}';
+  if (!apiKey) {
+    console.warn('⚠️ Grafana API key not configured');
+    return ctx;
+  }
+
+  const payload = {
+    name: '${(c.name ?? 'Prometheus').replace(/'/g, "\\'")}',
+    type: '${(c.type ?? 'prometheus').replace(/'/g, "\\'")}',
+    url: '${(c.url ?? 'http://prometheus:9090').replace(/'/g, "\\'")}',
+    access: '${(c.access ?? 'proxy').replace(/'/g, "\\'")}'
+  };
+
+  UrlFetchApp.fetch(baseUrl + '/api/datasources', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.grafana:create_alert_rule': (c) => `
+function step_createGrafanaAlertRule(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GRAFANA_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('GRAFANA_BASE_URL') || '${(c.serverUrl || 'https://grafana.example.com').replace(/'/g, "\\'")}';
+  if (!apiKey) {
+    console.warn('⚠️ Grafana API key not configured');
+    return ctx;
+  }
+
+  const payload = {
+    title: '${(c.title ?? 'High error rate').replace(/'/g, "\\'")}',
+    condition: '${(c.condition ?? 'A').replace(/'/g, "\\'")}',
+    folderUID: '${(c.folder_uid ?? 'automation').replace(/'/g, "\\'")}'
+  };
+
+  UrlFetchApp.fetch(baseUrl + '/api/alert-rules', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.grafana:get_dashboard': (c) => `
+function step_getGrafanaDashboard(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GRAFANA_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('GRAFANA_BASE_URL') || '${(c.serverUrl || 'https://grafana.example.com').replace(/'/g, "\\'")}';
+  const uid = ctx.grafanaDashboardUid || '${(c.uid ?? 'automation').replace(/'/g, "\\'")}';
+  if (!apiKey) {
+    console.warn('⚠️ Grafana API key not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/api/dashboards/uid/' + uid, {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + apiKey }
+  });
+
+  ctx.grafanaDashboard = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  // Prometheus - Metrics
+  'action.prometheus:query_metrics': (c) => `
+function step_queryPrometheusInstant(ctx) {
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BASE_URL') || '${(c.serverUrl || 'http://prometheus:9090').replace(/'/g, "\\'")}';
+  const token = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BEARER_TOKEN');
+  const query = ctx.prometheusQuery ?? '${(c.query ?? 'up').replace(/'/g, "\\'")}';
+  const timeParam = ctx.prometheusTime || ${c.time ? `'${String(c.time).replace(/'/g, "\\'")}'` : 'null'};
+  const params = 'query=' + encodeURIComponent(query) + (timeParam ? '&time=' + encodeURIComponent(timeParam) : '');
+  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+  const response = UrlFetchApp.fetch(baseUrl + '/api/v1/query?' + params, {
+    method: 'GET',
+    headers
+  });
+
+  ctx.prometheusResult = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.prometheus:query_range': (c) => `
+function step_queryPrometheusRange(ctx) {
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BASE_URL') || '${(c.serverUrl || 'http://prometheus:9090').replace(/'/g, "\\'")}';
+  const token = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BEARER_TOKEN');
+  const query = ctx.prometheusQuery ?? '${(c.query ?? 'up').replace(/'/g, "\\'")}';
+  const start = ctx.prometheusRangeStart ?? '${(c.start ?? '2024-01-01T00:00:00Z').replace(/'/g, "\\'")}';
+  const end = ctx.prometheusRangeEnd ?? '${(c.end ?? '2024-01-01T01:00:00Z').replace(/'/g, "\\'")}';
+  const step = ctx.prometheusRangeStep ?? '${(c.step ?? '60s').replace(/'/g, "\\'")}';
+  const params = 'query=' + encodeURIComponent(query) + '&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end) + '&step=' + encodeURIComponent(step);
+  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+  const response = UrlFetchApp.fetch(baseUrl + '/api/v1/query_range?' + params, {
+    method: 'GET',
+    headers
+  });
+
+  ctx.prometheusRange = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.prometheus:get_targets': () => `
+function step_getPrometheusTargets(ctx) {
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BASE_URL') || 'http://prometheus:9090';
+  const token = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BEARER_TOKEN');
+  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+  const response = UrlFetchApp.fetch(baseUrl + '/api/v1/targets', {
+    method: 'GET',
+    headers
+  });
+
+  ctx.prometheusTargets = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.prometheus:get_alerts': () => `
+function step_getPrometheusAlerts(ctx) {
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BASE_URL') || 'http://prometheus:9090';
+  const token = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_BEARER_TOKEN');
+  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+  const response = UrlFetchApp.fetch(baseUrl + '/api/v1/alerts', {
+    method: 'GET',
+    headers
+  });
+
+  ctx.prometheusAlerts = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  // New Relic - Observability
+  'action.newrelic:get_applications': (c) => `
+function step_getNewRelicApplications(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_BASE') || 'https://api.newrelic.com';
+  if (!apiKey) {
+    console.warn('⚠️ New Relic API key not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/v2/applications.json', {
+    method: 'GET',
+    headers: { 'X-Api-Key': apiKey }
+  });
+
+  ctx.newRelicApplications = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.newrelic:get_application_metrics': (c) => `
+function step_getNewRelicMetrics(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_BASE') || 'https://api.newrelic.com';
+  const appId = ctx.newRelicApplicationId || ${c.application_id ?? 0};
+  if (!apiKey || !appId) {
+    console.warn('⚠️ New Relic credentials missing');
+    return ctx;
+  }
+
+  const names = ${JSON.stringify(c.names ?? ['HttpDispatcher'])};
+  const values = ${JSON.stringify(c.values ?? ['average_response_time'])};
+  const params = names.map(n => 'names[]=' + encodeURIComponent(n)).concat(values.map(v => 'values[]=' + encodeURIComponent(v))).join('&');
+  const response = UrlFetchApp.fetch(baseUrl + '/v2/applications/' + appId + '/metrics/data.json?' + params, {
+    method: 'GET',
+    headers: { 'X-Api-Key': apiKey }
+  });
+
+  ctx.newRelicMetrics = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.newrelic:get_alerts': () => `
+function step_getNewRelicAlerts(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_BASE') || 'https://api.newrelic.com';
+  if (!apiKey) {
+    console.warn('⚠️ New Relic API key not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/v2/alerts_policies.json', {
+    method: 'GET',
+    headers: { 'X-Api-Key': apiKey }
+  });
+
+  ctx.newRelicPolicies = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.newrelic:create_alert_policy': (c) => `
+function step_createNewRelicPolicy(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_BASE') || 'https://api.newrelic.com';
+  if (!apiKey) {
+    console.warn('⚠️ New Relic API key not configured');
+    return ctx;
+  }
+
+  const payload = {
+    policy: {
+      name: '${(c.policy?.name ?? 'Automation Policy').replace(/'/g, "\\'")}',
+      incident_preference: '${(c.policy?.incident_preference ?? 'PER_POLICY').replace(/'/g, "\\'")}'
+    }
+  };
+
+  UrlFetchApp.fetch(baseUrl + '/v2/alerts_policies.json', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': apiKey
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.newrelic:get_violations': (c) => `
+function step_getNewRelicViolations(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_KEY');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_BASE') || 'https://api.newrelic.com';
+  if (!apiKey) {
+    console.warn('⚠️ New Relic API key not configured');
+    return ctx;
+  }
+
+  const params = ${c.filter?.only_open ? '"filter[only_open]=true"' : '""'};
+  const response = UrlFetchApp.fetch(baseUrl + '/v2/alerts_violations.json' + (params ? '?' + params : ''), {
+    method: 'GET',
+    headers: { 'X-Api-Key': apiKey }
+  });
+
+  ctx.newRelicViolations = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.newrelic:execute_nrql': (c) => `
+function step_executeNrqlQuery(ctx) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('NEW_RELIC_API_KEY');
+  const accountId = Number(ctx.newRelicAccountId || ${c.accountId ?? 'PropertiesService.getScriptProperties().getProperty(\'NEW_RELIC_ACCOUNT_ID\') || 0'});
+  if (!apiKey || !accountId) {
+    console.warn('⚠️ New Relic API key or account ID not configured');
+    return ctx;
+  }
+
+  const query = ctx.newRelicQuery ?? '${(c.nrql ?? 'SELECT count(*) FROM Transaction').replace(/'/g, "\\'")}';
+  const payload = {
+    query: '{\n  actor {\n    account(id: ' + accountId + ') {\n      nrql(query: "' + query.replace(/"/g, '\\"') + '") {\n        results\n      }\n    }\n  }\n}'
+  };
+
+  const response = UrlFetchApp.fetch('https://api.newrelic.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': apiKey
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  ctx.newRelicQueryResult = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  // Sentry - Incident Response
+  'action.sentry:get_issues': (c) => `
+function step_getSentryIssues(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  const project = ctx.sentryProject || '${(c.projectSlug ?? 'example-project').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const params = 'statsPeriod=${c.statsPeriod ?? '14d'}';
+  const response = UrlFetchApp.fetch(baseUrl + '/projects/' + org + '/' + project + '/issues/?' + params, {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  ctx.sentryIssues = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.sentry:get_issue': (c) => `
+function step_getSentryIssue(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const issueId = ctx.sentryIssueId || '${(c.issueId ?? '123').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/issues/' + issueId + '/', {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  ctx.sentryIssue = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.sentry:get_events': (c) => `
+function step_getSentryEvents(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const issueId = ctx.sentryIssueId || '${(c.issueId ?? '123').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/issues/' + issueId + '/events/?full=1', {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  ctx.sentryEvents = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.sentry:get_event': (c) => `
+function step_getSentryEvent(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  const project = ctx.sentryProject || '${(c.projectSlug ?? 'example-project').replace(/'/g, "\\'")}';
+  const eventId = ctx.sentryEventId || '${(c.eventId ?? 'abc123').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/projects/' + org + '/' + project + '/events/' + eventId + '/', {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  ctx.sentryEvent = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.sentry:create_project': (c) => `
+function step_createSentryProject(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const payload = {
+    name: '${(c.name ?? 'Automation Project').replace(/'/g, "\\'")}',
+    slug: '${(c.slug ?? 'automation').replace(/'/g, "\\'")}',
+    platform: '${(c.platform ?? 'javascript').replace(/'/g, "\\'")}'
+  };
+
+  UrlFetchApp.fetch(baseUrl + '/organizations/' + org + '/projects/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.sentry:create_release': (c) => `
+function step_createSentryRelease(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const payload = {
+    version: '${(c.version ?? '1.0.0').replace(/'/g, "\\'")}',
+    projects: ${JSON.stringify(c.projects ?? ['example-project'])},
+    dateReleased: '${(c.dateReleased ?? new Date().toISOString()).replace(/'/g, "\\'")}'
+  };
+
+  UrlFetchApp.fetch(baseUrl + '/organizations/' + org + '/releases/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.sentry:get_releases': (c) => `
+function step_getSentryReleases(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/organizations/' + org + '/releases/', {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  ctx.sentryReleases = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+  'action.sentry:finalize_release': (c) => `
+function step_finalizeSentryRelease(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  const version = ctx.sentryReleaseVersion || '${(c.version ?? '1.0.0').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const payload = { dateReleased: '${(c.dateReleased ?? new Date().toISOString()).replace(/'/g, "\\'")}' };
+  UrlFetchApp.fetch(baseUrl + '/organizations/' + org + '/releases/' + version + '/', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    payload: JSON.stringify(payload)
+  });
+
+  return ctx;
+}`,
+
+  'action.sentry:get_teams': (c) => `
+function step_getSentryTeams(ctx) {
+  const token = PropertiesService.getScriptProperties().getProperty('SENTRY_API_TOKEN');
+  const baseUrl = PropertiesService.getScriptProperties().getProperty('SENTRY_BASE_URL') || 'https://sentry.io/api/0';
+  const org = ctx.sentryOrg || '${(c.organizationSlug ?? 'example-org').replace(/'/g, "\\'")}';
+  if (!token) {
+    console.warn('⚠️ Sentry token not configured');
+    return ctx;
+  }
+
+  const response = UrlFetchApp.fetch(baseUrl + '/organizations/' + org + '/teams/', {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  ctx.sentryTeams = JSON.parse(response.getContentText());
+  return ctx;
+}`,
+
+
 
   // Stripe - Payments
   'action.stripe:create_payment': (c) => `

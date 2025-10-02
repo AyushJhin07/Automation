@@ -45,13 +45,17 @@ import { GitlabAPIClient } from './integrations/GitlabAPIClient';
 import { BitbucketAPIClient } from './integrations/BitbucketAPIClient';
 import { ConfluenceAPIClient } from './integrations/ConfluenceAPIClient';
 import { JiraServiceManagementAPIClient } from './integrations/JiraServiceManagementAPIClient';
-import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
 import { QuickbooksAPIClient } from './integrations/QuickbooksAPIClient';
 import { AdyenAPIClient } from './integrations/AdyenAPIClient';
 import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
 import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
 import { GenericAPIClient } from './integrations/GenericAPIClient';
+import { DatadogAPIClient } from './integrations/DatadogAPIClient';
+import { GrafanaAPIClient } from './integrations/GrafanaAPIClient';
+import { PrometheusAPIClient } from './integrations/PrometheusAPIClient';
+import { NewrelicAPIClient } from './integrations/NewrelicAPIClient';
+import { SentryAPIClient } from './integrations/SentryAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 
 interface ConnectorFunction {
@@ -266,6 +270,11 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('datadog', DatadogAPIClient);
+    this.registerAPIClient('grafana', GrafanaAPIClient);
+    this.registerAPIClient('prometheus', PrometheusAPIClient);
+    this.registerAPIClient('newrelic', NewrelicAPIClient);
+    this.registerAPIClient('sentry', SentryAPIClient);
   }
 
   /**

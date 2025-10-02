@@ -40,6 +40,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
       accessToken: 'confluence-access-token'
     }
   },
+  datadog: {
+    credentials: { apiKey: 'dd-api-key', appKey: 'dd-app-key' }
+  },
   dropbox: {
     credentials: { accessToken: 'dropbox-access-token' }
   },
@@ -85,6 +88,12 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
       accessToken: 'jira-service-access-token'
     }
   },
+  grafana: {
+    credentials: {
+      apiKey: 'grafana-api-key',
+      serverUrl: 'https://grafana.example.com'
+    }
+  },
   mailchimp: {
     credentials: { apiKey: 'test-us1', dataCenter: 'us1' }
   },
@@ -100,6 +109,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   notion: {
     credentials: { integrationToken: 'secret_notion_token' }
   },
+  newrelic: {
+    credentials: { apiKey: 'newrelic-api-key', accountId: 123456 }
+  },
   onedrive: {
     credentials: { accessToken: 'microsoft-onedrive-token' }
   },
@@ -108,6 +120,13 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   pagerduty: {
     credentials: { apiKey: 'pagerduty-api-key', fromEmail: 'ops@example.com' }
+  },
+  prometheus: {
+    credentials: {
+      serverUrl: 'http://prometheus.example.com',
+      username: 'prom-user',
+      password: 'prom-pass'
+    }
   },
   pipedrive: {
     credentials: { apiToken: 'pipedrive-api-token', companyDomain: 'example' }
@@ -137,6 +156,12 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
     credentials: {
       accessToken: 'microsoft-sharepoint-token',
       siteId: 'contoso.sharepoint.com,123,456'
+    }
+  },
+  sentry: {
+    credentials: {
+      accessToken: 'sentry-access-token',
+      baseUrl: 'https://sentry.example.com/api/0'
     }
   },
   shopify: {
