@@ -6,6 +6,7 @@ export interface ClarifyRequest {
   prompt: string;
   userId: string;
   context?: Record<string, any>;
+  organizationId?: string;
 }
 
 export interface ClarifyResponse {
@@ -38,6 +39,7 @@ export interface PlanRequest {
   answers: Record<string, string>;
   userId: string;
   context?: Record<string, any>;
+  organizationId?: string;
 }
 
 export interface PlanResponse {
@@ -61,6 +63,7 @@ export interface FixRequest {
     code: string;
   }>;
   userId: string;
+  organizationId?: string;
 }
 
 export interface FixResponse {
@@ -81,6 +84,7 @@ export interface CodegenRequest {
     includeLogging?: boolean;
     includeErrorHandling?: boolean;
   };
+  organizationId?: string;
 }
 
 export interface CodegenResponse {
@@ -120,7 +124,7 @@ export class ProductionLLMOrchestrator {
       }
 
       // Check quota
-      const quotaCheck = await authService.checkQuota(request.userId, 1, 500);
+      const quotaCheck = await authService.checkQuota(request.userId, 1, 500, request.organizationId);
       if (!quotaCheck.hasQuota) {
         return {
           success: false,
@@ -139,7 +143,8 @@ export class ProductionLLMOrchestrator {
         connection,
         systemPrompt,
         userPrompt,
-        request.userId
+        request.userId,
+        request.organizationId
       );
 
       if (!llmResponse.success) {
@@ -197,7 +202,7 @@ export class ProductionLLMOrchestrator {
       }
 
       // Check quota (planning uses more tokens)
-      const quotaCheck = await authService.checkQuota(request.userId, 1, 1500);
+      const quotaCheck = await authService.checkQuota(request.userId, 1, 1500, request.organizationId);
       if (!quotaCheck.hasQuota) {
         return {
           success: false,
@@ -217,7 +222,8 @@ export class ProductionLLMOrchestrator {
         connection,
         systemPrompt,
         userPrompt,
-        request.userId
+        request.userId,
+        request.organizationId
       );
 
       if (!llmResponse.success) {
@@ -284,7 +290,7 @@ export class ProductionLLMOrchestrator {
         };
       }
 
-      const quotaCheck = await authService.checkQuota(request.userId, 1, 800);
+      const quotaCheck = await authService.checkQuota(request.userId, 1, 800, request.organizationId);
       if (!quotaCheck.hasQuota) {
         return {
           success: false,
@@ -302,7 +308,8 @@ export class ProductionLLMOrchestrator {
         connection,
         systemPrompt,
         userPrompt,
-        request.userId
+        request.userId,
+        request.organizationId
       );
 
       if (!llmResponse.success) {
@@ -389,7 +396,8 @@ export class ProductionLLMOrchestrator {
     connection: any,
     systemPrompt: string,
     userPrompt: string,
-    userId: string
+    userId: string,
+    organizationId?: string
   ): Promise<{
     success: boolean;
     response?: string;
@@ -426,7 +434,7 @@ export class ProductionLLMOrchestrator {
       }
 
       // Update usage metrics
-      await authService.updateUsage(userId, 1, tokensUsed);
+      await authService.updateUsage(userId, 1, tokensUsed, organizationId);
 
       return {
         success: true,

@@ -14,6 +14,63 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
+export type OrganizationPlan = 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
+export type OrganizationStatus = 'active' | 'suspended' | 'trial' | 'churned';
+
+export interface OrganizationLimits {
+  maxWorkflows: number;
+  maxExecutions: number;
+  maxUsers: number;
+  maxStorage: number;
+}
+
+export interface OrganizationUsageMetrics {
+  workflowExecutions: number;
+  apiCalls: number;
+  storageUsed: number;
+  usersActive: number;
+}
+
+export interface OrganizationFeatureFlags {
+  ssoEnabled: boolean;
+  auditLogging: boolean;
+  customBranding: boolean;
+  advancedAnalytics: boolean;
+  prioritySupport: boolean;
+  customIntegrations: boolean;
+  onPremiseDeployment: boolean;
+  dedicatedInfrastructure: boolean;
+}
+
+export interface OrganizationSecuritySettings {
+  ipWhitelist: string[];
+  mfaRequired: boolean;
+  sessionTimeout: number;
+  passwordPolicy: {
+    minLength: number;
+    requireSpecialChars: boolean;
+    requireNumbers: boolean;
+    requireUppercase: boolean;
+  };
+  apiKeyRotationDays: number;
+}
+
+export interface OrganizationBranding {
+  logoUrl?: string;
+  primaryColor?: string;
+  customDomain?: string;
+  companyName: string;
+  supportEmail: string;
+}
+
+export interface OrganizationComplianceSettings {
+  gdprEnabled: boolean;
+  hipaaCompliant: boolean;
+  soc2Type2: boolean;
+  dataResidency: 'us' | 'eu' | 'asia' | 'global';
+  retentionPolicyDays: number;
+}
+
 // Users table with performance indexes
 export const users = pgTable(
   'users',
@@ -57,6 +114,132 @@ export const users = pgTable(
     emailVerifiedIdx: index('users_email_verified_idx').on(table.emailVerified, table.isActive),
     activeUsersIdx: index('users_active_idx').on(table.isActive, table.plan),
     quotaResetIdx: index('users_quota_reset_idx').on(table.quotaResetDate),
+  })
+);
+
+export const organizations = pgTable(
+  'organizations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    domain: text('domain'),
+    subdomain: text('subdomain').notNull(),
+    plan: text('plan').notNull().default('starter'),
+    status: text('status').notNull().default('trial'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    trialEndsAt: timestamp('trial_ends_at'),
+    billing: json('billing').$type<{
+      customerId: string;
+      subscriptionId: string;
+      currentPeriodStart: string;
+      currentPeriodEnd: string;
+      usage: OrganizationUsageMetrics;
+      limits: OrganizationLimits;
+    }>().notNull(),
+    features: json('features').$type<OrganizationFeatureFlags>().notNull(),
+    security: json('security').$type<OrganizationSecuritySettings>().notNull(),
+    branding: json('branding').$type<OrganizationBranding>().notNull(),
+    compliance: json('compliance').$type<OrganizationComplianceSettings>().notNull(),
+  },
+  (table) => ({
+    domainIdx: index('organizations_domain_idx').on(table.domain),
+    subdomainIdx: uniqueIndex('organizations_subdomain_idx').on(table.subdomain),
+    planIdx: index('organizations_plan_idx').on(table.plan),
+    statusIdx: index('organizations_status_idx').on(table.status),
+    createdAtIdx: index('organizations_created_at_idx').on(table.createdAt),
+  })
+);
+
+export const organizationMembers = pgTable(
+  'organization_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    email: text('email').notNull(),
+    role: text('role').notNull().default('member'),
+    status: text('status').notNull().default('invited'),
+    permissions: json('permissions').$type<{
+      canCreateWorkflows: boolean;
+      canEditWorkflows: boolean;
+      canDeleteWorkflows: boolean;
+      canManageUsers: boolean;
+      canViewAnalytics: boolean;
+      canManageBilling: boolean;
+      canAccessApi: boolean;
+    }>().notNull(),
+    isDefault: boolean('is_default').default(false).notNull(),
+    mfaEnabled: boolean('mfa_enabled').default(false).notNull(),
+    invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+    invitedAt: timestamp('invited_at').defaultNow(),
+    joinedAt: timestamp('joined_at'),
+    lastActiveAt: timestamp('last_active_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationUserIdx: uniqueIndex('organization_members_org_user_idx').on(table.organizationId, table.userId),
+    organizationEmailIdx: index('organization_members_org_email_idx').on(table.organizationId, table.email),
+    defaultMemberIdx: index('organization_members_default_idx').on(table.userId, table.isDefault),
+    membershipStatusIdx: index('organization_members_status_idx').on(table.status),
+  })
+);
+
+export const organizationInvites = pgTable(
+  'organization_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    email: text('email').notNull(),
+    role: text('role').notNull().default('member'),
+    status: text('status').notNull().default('pending'),
+    token: text('token').notNull(),
+    invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationEmailIdx: index('organization_invites_email_idx').on(table.organizationId, table.email),
+    tokenIdx: uniqueIndex('organization_invites_token_idx').on(table.token),
+    inviteStatusIdx: index('organization_invites_status_idx').on(table.status),
+  })
+);
+
+export const organizationQuotas = pgTable(
+  'organization_quotas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    billingPeriodStart: timestamp('billing_period_start').defaultNow().notNull(),
+    billingPeriodEnd: timestamp('billing_period_end').notNull(),
+    limits: json('limits').$type<OrganizationLimits>().notNull(),
+    usage: json('usage').$type<OrganizationUsageMetrics>().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationIdx: index('organization_quotas_org_idx').on(table.organizationId),
+    billingPeriodIdx: index('organization_quotas_period_idx').on(table.organizationId, table.billingPeriodEnd),
+  })
+);
+
+export const tenantIsolations = pgTable(
+  'tenant_isolations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    dataNamespace: text('data_namespace').notNull(),
+    storagePrefix: text('storage_prefix').notNull(),
+    cachePrefix: text('cache_prefix').notNull(),
+    logPrefix: text('log_prefix').notNull(),
+    metricsPrefix: text('metrics_prefix').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationIsolationIdx: uniqueIndex('tenant_isolations_org_idx').on(table.organizationId),
   })
 );
 
@@ -387,6 +570,7 @@ export const sessions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
     token: text('token').notNull().unique(), // JWT token
     refreshToken: text('refresh_token').notNull().unique(),
     expiresAt: timestamp('expires_at').notNull(),
@@ -404,6 +588,7 @@ export const sessions = pgTable(
   (table) => ({
     // Performance and security indexes
     userIdx: index('sessions_user_idx').on(table.userId),
+    organizationIdx: index('sessions_org_idx').on(table.organizationId),
     refreshTokenIdx: uniqueIndex('sessions_refresh_token_idx').on(table.refreshToken),
     expiresAtIdx: index('sessions_expires_at_idx').on(table.expiresAt),
     activeSessionsIdx: index('sessions_active_idx').on(table.isRevoked, table.expiresAt),
@@ -417,6 +602,32 @@ export const usersRelations = relations(users, ({ many }) => ({
   workflowExecutions: many(workflowExecutions),
   usageTracking: many(usageTracking),
   sessions: many(sessions),
+  organizationMemberships: many(organizationMembers),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many, one }) => ({
+  members: many(organizationMembers),
+  invites: many(organizationInvites),
+  quotas: many(organizationQuotas),
+  tenantIsolation: one(tenantIsolations),
+}));
+
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationMembers.organizationId], references: [organizations.id] }),
+  user: one(users, { fields: [organizationMembers.userId], references: [users.id] }),
+}));
+
+export const organizationInvitesRelations = relations(organizationInvites, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationInvites.organizationId], references: [organizations.id] }),
+  invitedByUser: one(users, { fields: [organizationInvites.invitedBy], references: [users.id] }),
+}));
+
+export const organizationQuotasRelations = relations(organizationQuotas, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationQuotas.organizationId], references: [organizations.id] }),
+}));
+
+export const tenantIsolationsRelations = relations(tenantIsolations, ({ one }) => ({
+  organization: one(organizations, { fields: [tenantIsolations.organizationId], references: [organizations.id] }),
 }));
 
 export const connectionsRelations = relations(connections, ({ one }) => ({
@@ -439,6 +650,7 @@ export const usageTrackingRelations = relations(usageTracking, ({ one }) => ({
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [sessions.organizationId], references: [organizations.id] }),
 }));
 
 // Webhook logs table for trigger event tracking
@@ -543,6 +755,11 @@ if (!connectionString) {
   db = drizzle(sql, {
     schema: {
       users,
+      organizations,
+      organizationMembers,
+      organizationInvites,
+      organizationQuotas,
+      tenantIsolations,
       connections,
       workflows,
       workflowExecutions,
@@ -550,6 +767,11 @@ if (!connectionString) {
       connectorDefinitions,
       sessions,
       usersRelations,
+      organizationsRelations,
+      organizationMembersRelations,
+      organizationInvitesRelations,
+      organizationQuotasRelations,
+      tenantIsolationsRelations,
       connectionsRelations,
       workflowsRelations,
       workflowExecutionsRelations,

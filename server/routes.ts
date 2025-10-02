@@ -43,6 +43,7 @@ import { normalizeAppId } from "./services/PromptBuilder.js";
 import { executionQueueService } from './services/ExecutionQueueService.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
+import { organizationService } from "./services/OrganizationService";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -84,7 +85,19 @@ import {
 import { getErrorMessage, formatError, APIResponse } from "./types/common";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
+  const mapOrganization = (org: any) => ({
+    id: org.id,
+    name: org.name,
+    domain: org.domain ?? null,
+    plan: org.plan,
+    status: org.status,
+    role: org.role,
+    isDefault: org.isDefault,
+    limits: org.limits,
+    usage: org.usage,
+  });
+
   // Apply global security middleware
   app.use(securityService.securityHeaders());
   app.use(securityService.requestMonitoring());
@@ -363,6 +376,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ORGANIZATION MANAGEMENT ROUTES =====
+
+  app.get('/api/organizations', authenticateToken, async (req, res) => {
+    try {
+      const organizations = await organizationService.listUserOrganizations(req.user!.id);
+      const response = organizations.map(mapOrganization);
+      const active = response.find((org) => org.id === req.organizationId) || response.find((org) => org.isDefault) || null;
+
+      res.json({
+        success: true,
+        organizations: response,
+        activeOrganization: active,
+        activeOrganizationId: active?.id ?? null,
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.post('/api/organizations',
+    authenticateToken,
+    securityService.validateInput([
+      { field: 'name', type: 'string', required: true, maxLength: 255, sanitize: true },
+      { field: 'domain', type: 'string', required: false, maxLength: 255, sanitize: true },
+      { field: 'plan', type: 'string', required: false, allowedValues: ['starter', 'professional', 'enterprise', 'enterprise_plus'] },
+    ]),
+    async (req, res) => {
+      try {
+        const organization = await organizationService.createOrganizationForUser({
+          id: req.user!.id,
+          email: req.user!.email,
+          name: req.body.name,
+        }, {
+          name: req.body.name,
+          domain: req.body.domain,
+          plan: req.body.plan,
+        });
+
+        const activeOrganization = await organizationService.setActiveOrganization(req.user!.id, organization.id);
+        const organizations = await organizationService.listUserOrganizations(req.user!.id);
+
+        req.organizationId = activeOrganization?.id;
+
+        res.status(201).json({
+          success: true,
+          organization: mapOrganization(activeOrganization ?? organization),
+          organizations: organizations.map(mapOrganization),
+          activeOrganization: mapOrganization(activeOrganization ?? organization),
+          activeOrganizationId: (activeOrganization ?? organization).id,
+        });
+      } catch (error) {
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
+      }
+    }
+  );
+
+  app.post('/api/organizations/:id/select', authenticateToken, async (req, res) => {
+    try {
+      const updated = await organizationService.setActiveOrganization(req.user!.id, req.params.id);
+      if (!updated) {
+        return res.status(404).json({ success: false, error: 'Organization not found' });
+      }
+
+      const organizations = await organizationService.listUserOrganizations(req.user!.id);
+      req.organizationId = updated.id;
+
+      res.json({
+        success: true,
+        activeOrganization: mapOrganization(updated),
+        organizations: organizations.map(mapOrganization),
+        activeOrganizationId: updated.id,
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.post('/api/organizations/:id/invite',
+    authenticateToken,
+    securityService.validateInput([
+      { field: 'email', type: 'email', required: true },
+      { field: 'role', type: 'string', required: false, allowedValues: ['owner', 'admin', 'member', 'viewer'] },
+    ]),
+    async (req, res) => {
+      try {
+        if (!req.organizationId || req.organizationId !== req.params.id) {
+          return res.status(400).json({ success: false, error: 'Select organization before inviting members' });
+        }
+
+        if (!['owner', 'admin'].includes(req.organizationRole || '')) {
+          return res.status(403).json({ success: false, error: 'Insufficient permissions to invite members' });
+        }
+
+        const invite = await organizationService.inviteMember({
+          organizationId: req.params.id,
+          email: req.body.email,
+          role: req.body.role || 'member',
+          invitedBy: req.user!.id,
+        });
+
+        res.status(201).json({ success: true, invite });
+      } catch (error) {
+        res.status(500).json({ success: false, error: getErrorMessage(error) });
+      }
+    }
+  );
+
+  app.delete('/api/organizations/:id/members/:memberId', authenticateToken, async (req, res) => {
+    try {
+      if (!req.organizationId || req.organizationId !== req.params.id) {
+        return res.status(400).json({ success: false, error: 'Select organization before managing members' });
+      }
+
+      if (!['owner', 'admin'].includes(req.organizationRole || '')) {
+        return res.status(403).json({ success: false, error: 'Insufficient permissions to remove members' });
+      }
+
+      const removed = await organizationService.removeMember({
+        organizationId: req.params.id,
+        memberId: req.params.memberId,
+        requestedBy: req.user!.id,
+      });
+
+      if (!removed) {
+        return res.status(404).json({ success: false, error: 'Member not found in organization' });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // ===== CONNECTION MANAGEMENT ROUTES =====
 
   app.post('/api/connections', 
@@ -487,7 +633,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await productionLLMOrchestrator.clarifyIntent({
           prompt: req.body.prompt,
           userId: req.user?.id || 'dev-user',
-          context: req.body.context || {}
+          context: req.body.context || {},
+          organizationId: req.organizationId
         });
 
         // Record usage (only for authenticated users)
@@ -496,7 +643,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             req.user.id,
             1,
             result.tokensUsed,
-            result.cost || 0
+            result.cost || 0,
+            req.organizationId
           );
         }
 
@@ -520,7 +668,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           prompt: req.body.prompt,
           answers: req.body.answers,
           userId: req.user?.id || 'dev-user',
-          context: req.body.context || {}
+          context: req.body.context || {},
+          organizationId: req.organizationId
         });
 
         // Record usage (only for authenticated users)
@@ -529,7 +678,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             req.user.id,
             1,
             result.tokensUsed,
-            result.cost || 0
+            result.cost || 0,
+            req.organizationId
           );
         }
 
@@ -552,7 +702,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await productionLLMOrchestrator.fixWorkflow({
           graph: req.body.graph,
           errors: req.body.errors,
-          userId: req.user!.id
+          userId: req.user!.id,
+          organizationId: req.organizationId
         });
 
         // Record usage
@@ -561,7 +712,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             req.user!.id,
             1,
             result.tokensUsed,
-            result.cost || 0
+            result.cost || 0,
+            req.organizationId
           );
         }
 
@@ -2015,7 +2167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user!.id,
           1,
           aiResponse.tokensUsed || 0,
-          aiResponse.cost || 0
+          aiResponse.cost || 0,
+          req.organizationId
         );
 
         console.log(`✅ REAL AI Response: ${aiResponse.model}, ${aiResponse.tokensUsed} tokens, $${aiResponse.cost.toFixed(4)}`);
@@ -2147,7 +2300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           // Record usage for this API test
-          await usageMeteringService.recordApiUsage(userId, 1, 0, 0);
+          await usageMeteringService.recordApiUsage(userId, 1, 0, 0, req.organizationId);
 
         } catch (error) {
           console.error(`❌ LLM health check failed for ${provider}:`, error);

@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import ProfessionalGraphEditor from "@/components/workflow/ProfessionalGraphEditor";
+import WorkspaceGate from "@/components/workspaces/WorkspaceGate";
 
 export default function GraphEditor() {
   return (
@@ -9,7 +10,9 @@ export default function GraphEditor() {
         <meta name="description" content="Design and build automation workflows with our professional n8n-style visual editor. Drag, drop, and connect nodes to create powerful automations." />
       </Helmet>
       
-      <ProfessionalGraphEditor />
+      <WorkspaceGate>
+        <ProfessionalGraphEditor />
+      </WorkspaceGate>
     </>
   );
 }
