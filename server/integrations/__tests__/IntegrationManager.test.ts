@@ -95,6 +95,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   intercom: {
     credentials: { accessToken: 'intercom-access-token' }
   },
+  iterable: {
+    credentials: { apiKey: 'iterable-api-key' }
+  },
   jenkins: {
     credentials: {
       instanceUrl: 'https://jenkins.example.com',
@@ -114,6 +117,15 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   mailgun: {
     credentials: { apiKey: 'mailgun-api-key', domain: 'example.com' }
   },
+  marketo: {
+    credentials: {
+      accessToken: 'marketo-access-token',
+      refreshToken: 'marketo-refresh-token',
+      clientId: 'marketo-client-id',
+      clientSecret: 'marketo-client-secret',
+      instanceUrl: 'https://123-abc-456.mktorest.com'
+    }
+  },
   'microsoft-teams': {
     credentials: { accessToken: 'microsoft-graph-token' }
   },
@@ -125,6 +137,15 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   onedrive: {
     credentials: { accessToken: 'microsoft-onedrive-token' }
+  },
+  pardot: {
+    credentials: {
+      accessToken: 'pardot-access-token',
+      refreshToken: 'pardot-refresh-token',
+      clientId: 'pardot-client-id',
+      clientSecret: 'pardot-client-secret',
+      businessUnitId: '0UvXXXX0000'
+    }
   },
   outlook: {
     credentials: { accessToken: 'microsoft-outlook-token' }
@@ -143,6 +164,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
       accessToken: 'quickbooks-access-token',
       realmId: '1234567890'
     }
+  },
+  klaviyo: {
+    credentials: { apiKey: 'klaviyo-api-key' }
   },
   razorpay: {
     credentials: { keyId: 'rzp_test_key', keySecret: 'rzp_test_secret' }
