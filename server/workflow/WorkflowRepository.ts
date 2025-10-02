@@ -422,6 +422,38 @@ export class WorkflowRepository {
     return stored;
   }
 
+  public static async claimNextQueuedExecution(): Promise<WorkflowExecutionRow | null> {
+    if (!this.isDatabaseEnabled()) {
+      return null;
+    }
+
+    const now = this.now();
+
+    const result = await db.execute(sql<WorkflowExecutionRow>`
+      WITH next_execution AS (
+        SELECT id
+        FROM ${workflowExecutions}
+        WHERE status = 'queued'
+          AND (
+            ${workflowExecutions.metadata} ->> 'nextRetryAt' IS NULL
+            OR (${workflowExecutions.metadata} ->> 'nextRetryAt')::timestamptz <= ${now.toISOString()}
+          )
+        ORDER BY ${workflowExecutions.startedAt} ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      )
+      UPDATE ${workflowExecutions} AS executions
+      SET status = 'running',
+          started_at = ${now}
+      FROM next_execution
+      WHERE executions.id = next_execution.id
+      RETURNING executions.*;
+    `);
+
+    const claimed = result.rows[0] as WorkflowExecutionRow | undefined;
+    return claimed ?? null;
+  }
+
   public static async updateWorkflowExecution(
     id: string,
     updates: UpdateWorkflowExecutionInput,

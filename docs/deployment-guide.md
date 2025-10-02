@@ -14,3 +14,8 @@
   - Secrets redacted server-side; avoid printing credentials in app logs.
 - Rollout
   - Flip connectors to Stable by registering API clients in ConnectorRegistry.
+- Process topology
+  - Run the web API/UI: `NODE_ENV=production node dist/index.js` (or `tsx server/index.ts` during development).
+  - Run at least one execution worker: `NODE_ENV=production tsx server/workers/execution.ts` (scale horizontally for more throughput).
+  - Use a process supervisor (systemd, PM2, etc.) to restart the web and worker processes and to forward `SIGTERM` for graceful shutdowns.
+  - Both processes require the same environment (DATABASE_URL, API keys). Workers will drain in-flight jobs before exiting.
