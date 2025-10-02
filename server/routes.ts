@@ -18,6 +18,7 @@ import workflowReadRoutes from "./routes/workflow-read.js";
 import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
 import { RealAIService, ConversationManager } from "./realAIService";
+import organizationRoutes from "./routes/organizations.js";
 
 // Production services
 import { authService } from "./services/AuthService";
@@ -116,6 +117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P2-3: Advanced analytics routes
   app.use('/api/analytics', analyticsRoutes);
+
+  // Organization management routes
+  app.use('/api/organizations', organizationRoutes);
   
   // CRITICAL FIX: LLM automation planner routes (replaces static Q&A)
   app.use('/api/ai-planner', aiPlannerRoutes);
@@ -487,7 +491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await productionLLMOrchestrator.clarifyIntent({
           prompt: req.body.prompt,
           userId: req.user?.id || 'dev-user',
-          context: req.body.context || {}
+          context: req.body.context || {},
+          organizationId: req.organizationId || req.body.organizationId
         });
 
         // Record usage (only for authenticated users)
@@ -520,7 +525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           prompt: req.body.prompt,
           answers: req.body.answers,
           userId: req.user?.id || 'dev-user',
-          context: req.body.context || {}
+          context: req.body.context || {},
+          organizationId: req.organizationId || req.body.organizationId
         });
 
         // Record usage (only for authenticated users)
@@ -552,7 +558,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await productionLLMOrchestrator.fixWorkflow({
           graph: req.body.graph,
           errors: req.body.errors,
-          userId: req.user!.id
+          userId: req.user!.id,
+          organizationId: req.organizationId || req.body.organizationId
         });
 
         // Record usage

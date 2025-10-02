@@ -6,6 +6,7 @@ export interface ClarifyRequest {
   prompt: string;
   userId: string;
   context?: Record<string, any>;
+  organizationId?: string;
 }
 
 export interface ClarifyResponse {
@@ -38,6 +39,7 @@ export interface PlanRequest {
   answers: Record<string, string>;
   userId: string;
   context?: Record<string, any>;
+  organizationId?: string;
 }
 
 export interface PlanResponse {
@@ -61,6 +63,7 @@ export interface FixRequest {
     code: string;
   }>;
   userId: string;
+  organizationId?: string;
 }
 
 export interface FixResponse {
@@ -81,6 +84,7 @@ export interface CodegenRequest {
     includeLogging?: boolean;
     includeErrorHandling?: boolean;
   };
+  organizationId?: string;
 }
 
 export interface CodegenResponse {
@@ -120,14 +124,15 @@ export class ProductionLLMOrchestrator {
       }
 
       // Check quota
-      const quotaCheck = await authService.checkQuota(request.userId, 1, 500);
+      const quotaCheck = await authService.checkQuota(request.userId, 1, 500, request.organizationId);
       if (!quotaCheck.hasQuota) {
+        const quotaType = quotaCheck.organizationQuotaExceeded || quotaCheck.quotaExceeded || 'unknown';
         return {
           success: false,
           questions: [],
           confidence: 0,
           estimatedComplexity: 0,
-          error: `Quota exceeded: ${quotaCheck.quotaExceeded}`
+          error: `Quota exceeded: ${quotaType}`
         };
       }
 
@@ -139,7 +144,8 @@ export class ProductionLLMOrchestrator {
         connection,
         systemPrompt,
         userPrompt,
-        request.userId
+        request.userId,
+        request.organizationId
       );
 
       if (!llmResponse.success) {
@@ -197,8 +203,9 @@ export class ProductionLLMOrchestrator {
       }
 
       // Check quota (planning uses more tokens)
-      const quotaCheck = await authService.checkQuota(request.userId, 1, 1500);
+      const quotaCheck = await authService.checkQuota(request.userId, 1, 1500, request.organizationId);
       if (!quotaCheck.hasQuota) {
+        const quotaType = quotaCheck.organizationQuotaExceeded || quotaCheck.quotaExceeded || 'unknown';
         return {
           success: false,
           graph: null,
@@ -206,7 +213,7 @@ export class ProductionLLMOrchestrator {
           confidence: 0,
           estimatedComplexity: 0,
           validation: { valid: false, errors: [], warnings: [] },
-          error: `Quota exceeded: ${quotaCheck.quotaExceeded}`
+          error: `Quota exceeded: ${quotaType}`
         };
       }
 
@@ -217,7 +224,8 @@ export class ProductionLLMOrchestrator {
         connection,
         systemPrompt,
         userPrompt,
-        request.userId
+        request.userId,
+        request.organizationId
       );
 
       if (!llmResponse.success) {
@@ -284,14 +292,15 @@ export class ProductionLLMOrchestrator {
         };
       }
 
-      const quotaCheck = await authService.checkQuota(request.userId, 1, 800);
+      const quotaCheck = await authService.checkQuota(request.userId, 1, 800, request.organizationId);
       if (!quotaCheck.hasQuota) {
+        const quotaType = quotaCheck.organizationQuotaExceeded || quotaCheck.quotaExceeded || 'unknown';
         return {
           success: false,
           graph: request.graph,
           fixedErrors: [],
           validation: { valid: false, errors: request.errors, warnings: [] },
-          error: `Quota exceeded: ${quotaCheck.quotaExceeded}`
+          error: `Quota exceeded: ${quotaType}`
         };
       }
 
@@ -302,7 +311,8 @@ export class ProductionLLMOrchestrator {
         connection,
         systemPrompt,
         userPrompt,
-        request.userId
+        request.userId,
+        request.organizationId
       );
 
       if (!llmResponse.success) {
@@ -389,7 +399,8 @@ export class ProductionLLMOrchestrator {
     connection: any,
     systemPrompt: string,
     userPrompt: string,
-    userId: string
+    userId: string,
+    organizationId?: string
   ): Promise<{
     success: boolean;
     response?: string;
@@ -426,7 +437,7 @@ export class ProductionLLMOrchestrator {
       }
 
       // Update usage metrics
-      await authService.updateUsage(userId, 1, tokensUsed);
+      await authService.updateUsage(userId, 1, tokensUsed, organizationId, 1);
 
       return {
         success: true,

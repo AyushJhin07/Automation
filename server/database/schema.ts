@@ -1,12 +1,12 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { 
-  pgTable, 
-  text, 
-  timestamp, 
-  integer, 
-  boolean, 
-  json, 
+import {
+  pgTable,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  json,
   uuid,
   index,
   uniqueIndex,
@@ -57,6 +57,176 @@ export const users = pgTable(
     emailVerifiedIdx: index('users_email_verified_idx').on(table.emailVerified, table.isActive),
     activeUsersIdx: index('users_active_idx').on(table.isActive, table.plan),
     quotaResetIdx: index('users_quota_reset_idx').on(table.quotaResetDate),
+  })
+);
+
+// Organizations table with enterprise-grade metadata
+export const organizations = pgTable(
+  'organizations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'set null' }),
+    name: text('name').notNull(),
+    domain: text('domain'),
+    subdomain: text('subdomain').notNull(),
+    plan: text('plan').notNull().default('starter'),
+    status: text('status').notNull().default('trial'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    trialEndsAt: timestamp('trial_ends_at'),
+
+    // Billing lifecycle tracking
+    billingCustomerId: text('billing_customer_id'),
+    billingSubscriptionId: text('billing_subscription_id'),
+    billingPeriodStart: timestamp('billing_period_start'),
+    billingPeriodEnd: timestamp('billing_period_end'),
+
+    // Usage metering aligned with enterprise blueprint
+    usageWorkflowExecutions: integer('usage_workflow_executions').default(0).notNull(),
+    usageApiCalls: integer('usage_api_calls').default(0).notNull(),
+    usageStorageUsed: integer('usage_storage_used').default(0).notNull(), // MB
+    usageUsersActive: integer('usage_users_active').default(0).notNull(),
+
+    // Plan quotas sourced from multi-tenant architecture
+    limitWorkflows: integer('limit_workflows').default(25).notNull(),
+    limitExecutions: integer('limit_executions').default(1000).notNull(),
+    limitUsers: integer('limit_users').default(5).notNull(),
+    limitStorage: integer('limit_storage').default(1024).notNull(), // MB
+    limitApiCalls: integer('limit_api_calls').default(10000).notNull(),
+
+    // Advanced configuration blocks stored as JSON for flexibility
+    features: json('features').$type<{
+      ssoEnabled: boolean;
+      auditLogging: boolean;
+      customBranding: boolean;
+      advancedAnalytics: boolean;
+      prioritySupport: boolean;
+      customIntegrations: boolean;
+      onPremiseDeployment: boolean;
+      dedicatedInfrastructure: boolean;
+    }>(),
+    security: json('security').$type<{
+      ipWhitelist?: string[];
+      mfaRequired: boolean;
+      sessionTimeout: number;
+      passwordPolicy: {
+        minLength: number;
+        requireSpecialChars: boolean;
+        requireNumbers: boolean;
+        requireUppercase: boolean;
+      };
+      apiKeyRotationDays: number;
+    }>(),
+    branding: json('branding').$type<{
+      logoUrl?: string;
+      primaryColor?: string;
+      customDomain?: string;
+      companyName?: string;
+      supportEmail?: string;
+    }>(),
+    compliance: json('compliance').$type<{
+      gdprEnabled: boolean;
+      hipaaCompliant: boolean;
+      soc2Type2: boolean;
+      dataResidency: 'us' | 'eu' | 'asia' | 'global';
+      retentionPolicyDays: number;
+    }>(),
+    metadata: json('metadata').$type<Record<string, any>>(),
+  },
+  (table) => ({
+    subdomainIdx: uniqueIndex('organizations_subdomain_idx').on(table.subdomain),
+    domainIdx: index('organizations_domain_idx').on(table.domain),
+    planIdx: index('organizations_plan_idx').on(table.plan),
+    statusIdx: index('organizations_status_idx').on(table.status),
+  })
+);
+
+// Organization membership table capturing enterprise roles and permissions
+export const organizationMembers = pgTable(
+  'organization_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    role: text('role').notNull().default('member'),
+    status: text('status').notNull().default('invited'),
+    permissions: json('permissions').$type<{
+      canCreateWorkflows: boolean;
+      canEditWorkflows: boolean;
+      canDeleteWorkflows: boolean;
+      canManageUsers: boolean;
+      canViewAnalytics: boolean;
+      canManageBilling: boolean;
+      canAccessApi: boolean;
+    }>(),
+    invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+    lastLoginAt: timestamp('last_login_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    mfaEnabled: boolean('mfa_enabled').default(false).notNull(),
+    isDefault: boolean('is_default').default(false).notNull(),
+  },
+  (table) => ({
+    organizationIdx: index('organization_members_org_idx').on(table.organizationId),
+    userIdx: index('organization_members_user_idx').on(table.userId),
+    orgEmailIdx: uniqueIndex('organization_members_org_email_idx').on(table.organizationId, table.email),
+    roleIdx: index('organization_members_role_idx').on(table.organizationId, table.role),
+  })
+);
+
+// Organization invitations table for collaboration lifecycle
+export const organizationInvites = pgTable(
+  'organization_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    email: text('email').notNull(),
+    role: text('role').notNull().default('member'),
+    status: text('status').notNull().default('pending'),
+    invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+    token: text('token').notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    acceptedAt: timestamp('accepted_at'),
+    revokedAt: timestamp('revoked_at'),
+    metadata: json('metadata').$type<Record<string, any>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    orgInviteIdx: index('organization_invites_org_idx').on(table.organizationId),
+    tokenIdx: uniqueIndex('organization_invites_token_idx').on(table.token),
+    emailIdx: index('organization_invites_email_idx').on(table.email),
+  })
+);
+
+// Organization usage snapshots for quota enforcement
+export const organizationUsage = pgTable(
+  'organization_usage',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    periodStart: timestamp('period_start').notNull(),
+    periodEnd: timestamp('period_end').notNull(),
+    workflowExecutions: integer('workflow_executions').default(0).notNull(),
+    apiCalls: integer('api_calls').default(0).notNull(),
+    storageUsed: integer('storage_used').default(0).notNull(), // MB
+    usersActive: integer('users_active').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    metadata: json('metadata').$type<Record<string, any>>(),
+  },
+  (table) => ({
+    orgPeriodIdx: uniqueIndex('organization_usage_org_period_idx').on(table.organizationId, table.periodStart),
+    orgIdx: index('organization_usage_org_idx').on(table.organizationId),
   })
 );
 
@@ -387,6 +557,7 @@ export const sessions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
     token: text('token').notNull().unique(), // JWT token
     refreshToken: text('refresh_token').notNull().unique(),
     expiresAt: timestamp('expires_at').notNull(),
@@ -404,6 +575,7 @@ export const sessions = pgTable(
   (table) => ({
     // Performance and security indexes
     userIdx: index('sessions_user_idx').on(table.userId),
+    organizationIdx: index('sessions_organization_idx').on(table.organizationId),
     refreshTokenIdx: uniqueIndex('sessions_refresh_token_idx').on(table.refreshToken),
     expiresAtIdx: index('sessions_expires_at_idx').on(table.expiresAt),
     activeSessionsIdx: index('sessions_active_idx').on(table.isRevoked, table.expiresAt),
@@ -417,6 +589,30 @@ export const usersRelations = relations(users, ({ many }) => ({
   workflowExecutions: many(workflowExecutions),
   usageTracking: many(usageTracking),
   sessions: many(sessions),
+  organizationMemberships: many(organizationMembers),
+  organizationsOwned: many(organizations),
+}));
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  owner: one(users, { fields: [organizations.ownerId], references: [users.id] }),
+  members: many(organizationMembers),
+  invites: many(organizationInvites),
+  usage: many(organizationUsage),
+}));
+
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationMembers.organizationId], references: [organizations.id] }),
+  user: one(users, { fields: [organizationMembers.userId], references: [users.id] }),
+  invitedByUser: one(users, { fields: [organizationMembers.invitedBy], references: [users.id] }),
+}));
+
+export const organizationInvitesRelations = relations(organizationInvites, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationInvites.organizationId], references: [organizations.id] }),
+  invitedByUser: one(users, { fields: [organizationInvites.invitedBy], references: [users.id] }),
+}));
+
+export const organizationUsageRelations = relations(organizationUsage, ({ one }) => ({
+  organization: one(organizations, { fields: [organizationUsage.organizationId], references: [organizations.id] }),
 }));
 
 export const connectionsRelations = relations(connections, ({ one }) => ({
@@ -439,6 +635,7 @@ export const usageTrackingRelations = relations(usageTracking, ({ one }) => ({
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [sessions.organizationId], references: [organizations.id] }),
 }));
 
 // Webhook logs table for trigger event tracking
@@ -543,6 +740,7 @@ if (!connectionString) {
   db = drizzle(sql, {
     schema: {
       users,
+      organizations,
       connections,
       workflows,
       workflowExecutions,
@@ -550,6 +748,13 @@ if (!connectionString) {
       connectorDefinitions,
       sessions,
       usersRelations,
+      organizationsRelations,
+      organizationMembers,
+      organizationMembersRelations,
+      organizationInvites,
+      organizationInvitesRelations,
+      organizationUsage,
+      organizationUsageRelations,
       connectionsRelations,
       workflowsRelations,
       workflowExecutionsRelations,

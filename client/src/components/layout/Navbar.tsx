@@ -10,6 +10,7 @@ const navItems = [
   { to: "/", label: "Home" },
   { to: "/ai-builder", label: "🤖 AI Builder" },
   { to: "/graph-editor", label: "🎨 Graph Editor" },
+  { to: "/workspaces", label: "Workspaces" },
   { to: "/#demos", label: "Demos" },
   { to: "/pre-built-apps", label: "Pre-Built Apps" },
   { to: "/schedule", label: "Schedule" },
@@ -24,8 +25,12 @@ export const Navbar = () => {
   const user = useAuthStore((state) => state.user);
   const status = useAuthStore((state) => state.status);
   const logout = useAuthStore((state) => state.logout);
+  const organizations = useAuthStore((state) => state.organizations);
+  const activeOrganizationId = useAuthStore((state) => state.activeOrganizationId);
   const [authOpen, setAuthOpen] = useState(false);
   const isAuthLoading = status === 'loading';
+
+  const activeOrganization = organizations.find((org) => org.id === activeOrganizationId);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -72,10 +77,24 @@ export const Navbar = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" disabled={isAuthLoading}>
-                  {user.name || user.email}
+                  <span className="flex flex-col items-start">
+                    <span>{user.name || user.email}</span>
+                    {activeOrganization && (
+                      <span className="text-xs text-muted-foreground">{activeOrganization.name}</span>
+                    )}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {activeOrganization && (
+                  <DropdownMenuItem disabled>
+                    Active workspace: {activeOrganization.name}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/workspaces">Switch workspaces</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/admin/settings">Account settings</Link>
                 </DropdownMenuItem>

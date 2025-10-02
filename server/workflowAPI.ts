@@ -56,7 +56,14 @@ export class WorkflowAPI {
       }
 
       console.log('🤔 Clarifying intent for:', request.prompt);
-      
+
+      if (!request.userId && req.user) {
+        request.userId = req.user.id;
+      }
+      if (!request.organizationId && req.organizationId) {
+        request.organizationId = req.organizationId;
+      }
+
       const response = await this.orchestrator.clarifyIntent(request);
       
       res.json({
@@ -91,7 +98,14 @@ export class WorkflowAPI {
       }
 
       console.log('📋 Planning workflow for:', request.prompt);
-      
+
+      if (!request.userId && req.user) {
+        request.userId = req.user.id;
+      }
+      if (!request.organizationId && req.organizationId) {
+        request.organizationId = req.organizationId;
+      }
+
       const response = await this.orchestrator.planWorkflow(request);
       
       // Validate the generated graph
@@ -144,7 +158,14 @@ export class WorkflowAPI {
       }
 
       console.log('🔧 Fixing workflow errors:', request.errors.length);
-      
+
+      if (!request.userId && req.user) {
+        request.userId = req.user.id;
+      }
+      if (!request.organizationId && req.organizationId) {
+        request.organizationId = req.organizationId;
+      }
+
       const response = await this.orchestrator.fixWorkflow(request);
       
       // Re-validate the fixed graph
@@ -174,12 +195,19 @@ export class WorkflowAPI {
   public generateCode = async (req: Request, res: Response) => {
     try {
       const request: CodegenRequest = req.body;
-      
+
       if (!request.graph) {
         return res.status(400).json({
           success: false,
           error: 'Graph is required'
         });
+      }
+
+      if (!request.userId && req.user) {
+        request.userId = req.user.id;
+      }
+      if (!request.organizationId && req.organizationId) {
+        request.organizationId = req.organizationId;
       }
 
       // Validate graph before compilation

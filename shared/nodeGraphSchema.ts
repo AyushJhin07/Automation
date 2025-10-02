@@ -186,6 +186,8 @@ export interface Question {
 export interface ClarifyRequest {
   prompt: string;
   context?: any;
+  userId?: string;
+  organizationId?: string;
 }
 
 export interface ClarifyResponse {
@@ -201,6 +203,8 @@ export interface PlanRequest {
   prompt: string;
   answers?: Record<string, string>;
   capabilities: Capabilities;
+  userId?: string;
+  organizationId?: string;
 }
 
 export interface PlanResponse {
@@ -211,6 +215,8 @@ export interface PlanResponse {
 export interface FixRequest {
   graph: NodeGraph;
   errors: ValidationError[];
+  userId?: string;
+  organizationId?: string;
 }
 
 export interface FixResponse {
@@ -219,6 +225,8 @@ export interface FixResponse {
 
 export interface CodegenRequest {
   graph: NodeGraph;
+  userId?: string;
+  organizationId?: string;
 }
 
 export interface CodegenResponse {

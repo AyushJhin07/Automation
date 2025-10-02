@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '../services/AuthService';
+import { authService, OrganizationPermissions, OrganizationSummary } from '../services/AuthService';
 import { setRequestUser } from '../utils/ExecutionContext';
 
 // Extend Express Request to include user
@@ -19,7 +19,14 @@ declare global {
         quotaApiCalls: number;
         quotaTokens: number;
         createdAt: Date;
+        activeOrganizationId?: string | null;
+        organizationRole?: string;
+        organizationPermissions?: OrganizationPermissions;
       };
+      organizationId?: string | null;
+      organizationRole?: string;
+      organizationPermissions?: OrganizationPermissions;
+      organizations?: OrganizationSummary[];
     }
   }
 }
@@ -30,20 +37,60 @@ const buildDevUser = () => {
   }
 
   const userId = process.env.DEV_AUTO_USER_ID || 'dev-user';
+  const organizationId = 'dev-organization';
+  const permissions: OrganizationPermissions = {
+    canCreateWorkflows: true,
+    canEditWorkflows: true,
+    canDeleteWorkflows: true,
+    canManageUsers: true,
+    canViewAnalytics: true,
+    canManageBilling: true,
+    canAccessApi: true,
+  };
 
   return {
-    id: userId,
-    email: process.env.DEV_AUTO_USER_EMAIL || 'developer@local.test',
-    name: process.env.DEV_AUTO_USER_NAME || 'Local Developer',
-    role: process.env.DEV_AUTO_USER_ROLE || 'developer',
-    planType: process.env.DEV_AUTO_USER_PLAN || 'pro',
-    isActive: true,
-    emailVerified: true,
-    monthlyApiCalls: 0,
-    monthlyTokensUsed: 0,
-    quotaApiCalls: 100000,
-    quotaTokens: 1000000,
-    createdAt: new Date(),
+    user: {
+      id: userId,
+      email: process.env.DEV_AUTO_USER_EMAIL || 'developer@local.test',
+      name: process.env.DEV_AUTO_USER_NAME || 'Local Developer',
+      role: process.env.DEV_AUTO_USER_ROLE || 'developer',
+      planType: process.env.DEV_AUTO_USER_PLAN || 'pro',
+      isActive: true,
+      emailVerified: true,
+      monthlyApiCalls: 0,
+      monthlyTokensUsed: 0,
+      quotaApiCalls: 100000,
+      quotaTokens: 1000000,
+      createdAt: new Date(),
+      activeOrganizationId: organizationId,
+      organizationRole: 'owner',
+      organizationPermissions: permissions,
+    },
+    organizations: [
+      {
+        id: organizationId,
+        name: 'Development Workspace',
+        domain: 'local.dev',
+        plan: 'enterprise_plus',
+        status: 'active',
+        role: 'owner',
+        isDefault: true,
+        limits: {
+          workflows: 1000,
+          executions: 100000,
+          apiCalls: 1000000,
+          users: 100,
+          storage: 999999,
+        },
+        usage: {
+          apiCalls: 0,
+          workflowExecutions: 0,
+          storage: 0,
+          usersActive: 1,
+        },
+        permissions,
+      } satisfies OrganizationSummary,
+    ],
   };
 };
 
@@ -63,8 +110,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     if (!token || token === 'null' || token === 'undefined') {
       if (shouldUseDevFallback() && devUser) {
-        req.user = devUser;
-        setRequestUser(devUser.id);
+        req.user = devUser.user;
+        req.organizationId = devUser.user.activeOrganizationId ?? devUser.organizations?.[0]?.id ?? null;
+        req.organizationRole = devUser.user.organizationRole;
+        req.organizationPermissions = devUser.user.organizationPermissions;
+        req.organizations = devUser.organizations;
+        setRequestUser(devUser.user.id);
         return next();
       }
       return res.status(401).json({
@@ -85,6 +136,10 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     // Add user to request
     req.user = user;
+    req.organizationId = user.activeOrganizationId ?? null;
+    req.organizationRole = user.organizationRole;
+    req.organizationPermissions = user.organizationPermissions;
+    req.organizations = user.organizations;
     setRequestUser(user.id);
     next();
 
@@ -111,18 +166,30 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       const user = await authService.verifyToken(token);
       if (user) {
         req.user = user;
+        req.organizationId = user.activeOrganizationId ?? null;
+        req.organizationRole = user.organizationRole;
+        req.organizationPermissions = user.organizationPermissions;
+        req.organizations = user.organizations;
         setRequestUser(user.id);
       }
     } else if (shouldUseDevFallback() && devUser) {
-      req.user = devUser;
-      setRequestUser(devUser.id);
+      req.user = devUser.user;
+      req.organizationId = devUser.user.activeOrganizationId ?? devUser.organizations?.[0]?.id ?? null;
+      req.organizationRole = devUser.user.organizationRole;
+      req.organizationPermissions = devUser.user.organizationPermissions;
+      req.organizations = devUser.organizations;
+      setRequestUser(devUser.user.id);
     }
 
     next();
   } catch (error) {
     if (shouldUseDevFallback() && devUser) {
-      req.user = devUser;
-      setRequestUser(devUser.id);
+      req.user = devUser.user;
+      req.organizationId = devUser.user.activeOrganizationId ?? devUser.organizations?.[0]?.id ?? null;
+      req.organizationRole = devUser.user.organizationRole;
+      req.organizationPermissions = devUser.user.organizationPermissions;
+      req.organizations = devUser.organizations;
+      setRequestUser(devUser.user.id);
       next();
     } else {
       next();
@@ -196,9 +263,22 @@ export const checkQuota = (apiCalls: number = 1, tokens: number = 0) => {
     }
 
     try {
-      const quotaCheck = await authService.checkQuota(req.user.id, apiCalls, tokens);
-      
+      const quotaCheck = await authService.checkQuota(
+        req.user.id,
+        apiCalls,
+        tokens,
+        req.organizationId
+      );
+
       if (!quotaCheck.hasQuota) {
+        if (quotaCheck.organizationQuotaExceeded) {
+          return res.status(429).json({
+            success: false,
+            error: 'Organization quota exceeded',
+            quotaType: quotaCheck.organizationQuotaExceeded,
+            organizationId: req.organizationId,
+          });
+        }
         return res.status(429).json({
           success: false,
           error: 'Quota exceeded',
