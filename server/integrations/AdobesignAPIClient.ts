@@ -1,114 +1,173 @@
-// ADOBE ACROBAT SIGN API CLIENT
-// Auto-generated API client for Adobe Acrobat Sign integration
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface AdobesignAPIClientConfig {
-  accessToken: string;
+interface AdobesignCredentials extends APICredentials {
+  accessToken?: string;
+  refreshToken?: string;
+  clientId?: string;
+  clientSecret?: string;
+  tokenUrl?: string;
+  expiresAt?: string | number;
   baseUrl?: string;
 }
 
+interface CreateAgreementParams {
+  name: string;
+  fileInfos: Array<Record<string, any>>;
+  participantSetsInfo: Array<Record<string, any>>;
+  signatureType?: string;
+  state?: string;
+  emailOption?: Record<string, any>;
+  externalId?: Record<string, any>;
+  message?: string;
+  [key: string]: any;
+}
+
+interface AgreementIdentifier {
+  agreementId: string;
+}
+
+interface CancelAgreementParams extends AgreementIdentifier {
+  reason?: string;
+  notifySigner?: boolean;
+}
+
+function parseExpiryTimestamp(raw?: string | number): number | undefined {
+  if (typeof raw === 'number') {
+    return raw;
+  }
+  if (typeof raw === 'string' && raw) {
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
 export class AdobesignAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: AdobesignAPIClientConfig;
+  private readonly tokenEndpoint: string;
+  private refreshPromise?: Promise<void>;
+  private readonly refreshSkewMs = 60_000;
 
-  constructor(config: AdobesignAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://api.na1.echosign.com/api/rest/v6';
+  constructor(credentials: AdobesignCredentials) {
+    const baseUrl = (credentials.baseUrl ?? 'https://api.na1.echosign.com/api/rest/v6').replace(/\/$/, '');
+    super(baseUrl, credentials);
+    this.tokenEndpoint = credentials.tokenUrl ?? 'https://api.na1.echosign.com/oauth/token';
+
+    this.registerAliasHandlers({
+      test_connection: 'testConnection',
+      create_agreement: 'createAgreement',
+      send_agreement: 'sendAgreement',
+      get_agreement: 'getAgreement',
+      cancel_agreement: 'cancelAgreement',
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+    const token = this.credentials.accessToken;
+    if (!token) {
+      throw new Error('Adobe Sign integration requires an access token');
+    }
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  private async ensureAccessToken(): Promise<void> {
+    const expiresAt = parseExpiryTimestamp(this.credentials.expiresAt);
+    const now = Date.now();
+    if (this.credentials.accessToken && (!expiresAt || expiresAt - now > this.refreshSkewMs)) {
+      return;
+    }
+
+    if (!this.credentials.refreshToken || !this.credentials.clientId || !this.credentials.clientSecret) {
+      throw new Error('Adobe Sign refresh requires refreshToken, clientId, and clientSecret');
+    }
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = (async () => {
+        const body = new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: this.credentials.refreshToken as string,
+          client_id: this.credentials.clientId as string,
+          client_secret: this.credentials.clientSecret as string,
+        });
+
+        const response = await fetch(this.tokenEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+          },
+          body,
+        });
+
+        if (!response.ok) {
+          this.refreshPromise = undefined;
+          throw new Error(`Adobe Sign token refresh failed: ${response.status} ${response.statusText}`);
+        }
+
+        const payload = await response.json();
+        this.credentials.accessToken = payload.access_token;
+        if (payload.refresh_token) {
+          this.credentials.refreshToken = payload.refresh_token;
+        }
+        if (payload.expires_in) {
+          this.credentials.expiresAt = Date.now() + Number(payload.expires_in) * 1000;
+        }
+
+        if (typeof this.credentials.onTokenRefreshed === 'function') {
+          await this.credentials.onTokenRefreshed({
+            accessToken: this.credentials.accessToken!,
+            refreshToken: this.credentials.refreshToken,
+            expiresAt: parseExpiryTimestamp(this.credentials.expiresAt),
+          });
+        }
+
+        this.refreshPromise = undefined;
+      })().catch(error => {
+        this.refreshPromise = undefined;
+        throw error;
+      });
+    }
+
+    await this.refreshPromise;
+  }
+
+  protected override async makeRequest<T = any>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    endpoint: string,
+    data?: any,
+    headers: Record<string, string> = {}
+  ): Promise<APIResponse<T>> {
+    await this.ensureAccessToken();
+    return super.makeRequest(method, endpoint, data, headers);
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/users/me');
+  }
+
+  public async createAgreement(params: CreateAgreementParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['name', 'fileInfos', 'participantSetsInfo']);
+    return this.post('/agreements', params);
+  }
+
+  public async sendAgreement(params: AgreementIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['agreementId']);
+    const body = { state: 'IN_PROCESS' };
+    return this.post(`/agreements/${encodeURIComponent(params.agreementId)}/state`, body);
+  }
+
+  public async getAgreement(params: AgreementIdentifier & { includeSupportingDocuments?: boolean }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['agreementId']);
+    const query = this.buildQueryString({ includeSupportingDocuments: params.includeSupportingDocuments });
+    return this.get(`/agreements/${encodeURIComponent(params.agreementId)}${query}`);
+  }
+
+  public async cancelAgreement(params: CancelAgreementParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['agreementId']);
+    const body = {
+      state: 'CANCELLED',
+      note: params.reason,
+      notifySigner: params.notifySigner ?? true,
     };
-  }
-
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/users/me');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
-    }
+    return this.post(`/agreements/${encodeURIComponent(params.agreementId)}/state`, body);
   }
 }

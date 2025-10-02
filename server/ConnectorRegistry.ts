@@ -82,6 +82,12 @@ import { GrafanaAPIClient } from './integrations/GrafanaAPIClient';
 import { PrometheusAPIClient } from './integrations/PrometheusAPIClient';
 import { NewrelicAPIClient } from './integrations/NewrelicAPIClient';
 import { SentryAPIClient } from './integrations/SentryAPIClient';
+import { OktaAPIClient } from './integrations/OktaAPIClient';
+import { GoogleAdminAPIClient } from './integrations/GoogleAdminAPIClient';
+import { DocusignAPIClient } from './integrations/DocusignAPIClient';
+import { HellosignAPIClient } from './integrations/HellosignAPIClient';
+import { AdobesignAPIClient } from './integrations/AdobesignAPIClient';
+import { EgnyteAPIClient } from './integrations/EgnyteAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -315,6 +321,12 @@ export class ConnectorRegistry {
     this.registerAPIClient('prometheus', PrometheusAPIClient);
     this.registerAPIClient('newrelic', NewrelicAPIClient);
     this.registerAPIClient('sentry', SentryAPIClient);
+    this.registerAPIClient('okta', OktaAPIClient);
+    this.registerAPIClient('google-admin', GoogleAdminAPIClient);
+    this.registerAPIClient('docusign', DocusignAPIClient);
+    this.registerAPIClient('hellosign', HellosignAPIClient);
+    this.registerAPIClient('adobesign', AdobesignAPIClient);
+    this.registerAPIClient('egnyte', EgnyteAPIClient);
     this.registerAPIClient('azure-devops', AzureDevopsAPIClient);
     this.registerAPIClient('circleci', CircleCIApiClient);
     this.registerAPIClient('jenkins', JenkinsAPIClient);
