@@ -25,6 +25,13 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   bamboohr: {
     credentials: { apiKey: 'test-bamboohr-key', companyDomain: 'example' }
   },
+  'azure-devops': {
+    credentials: {
+      organization: 'example-org',
+      personal_access_token: 'azure-devops-pat',
+      project: 'sample-project'
+    }
+  },
   bitbucket: {
     credentials: { accessToken: 'bitbucket-access-token' }
   },
@@ -45,6 +52,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   freshdesk: {
     credentials: { apiKey: 'freshdesk-api-key', domain: 'example' }
+  },
+  circleci: {
+    credentials: { apiKey: 'circleci-api-token' }
   },
   github: {
     credentials: { accessToken: 'github-personal-token' }
@@ -78,6 +88,13 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   intercom: {
     credentials: { accessToken: 'intercom-access-token' }
+  },
+  jenkins: {
+    credentials: {
+      instanceUrl: 'https://jenkins.example.com',
+      username: 'automation',
+      api_token: 'jenkins-api-token'
+    }
   },
   'jira-service-management': {
     credentials: {

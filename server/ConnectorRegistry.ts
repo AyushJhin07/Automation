@@ -45,14 +45,15 @@ import { GitlabAPIClient } from './integrations/GitlabAPIClient';
 import { BitbucketAPIClient } from './integrations/BitbucketAPIClient';
 import { ConfluenceAPIClient } from './integrations/ConfluenceAPIClient';
 import { JiraServiceManagementAPIClient } from './integrations/JiraServiceManagementAPIClient';
-import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
 import { QuickbooksAPIClient } from './integrations/QuickbooksAPIClient';
 import { AdyenAPIClient } from './integrations/AdyenAPIClient';
 import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
 import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
 import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
-import { GenericAPIClient } from './integrations/GenericAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
+import { AzureDevopsAPIClient } from './integrations/AzureDevopsAPIClient';
+import { CircleCIApiClient } from './integrations/CircleCIApiClient';
+import { JenkinsAPIClient } from './integrations/JenkinsAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -266,6 +267,9 @@ export class ConnectorRegistry {
     this.registerAPIClient('confluence', ConfluenceAPIClient);
     this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
     this.registerAPIClient('pagerduty', PagerdutyAPIClient);
+    this.registerAPIClient('azure-devops', AzureDevopsAPIClient);
+    this.registerAPIClient('circleci', CircleCIApiClient);
+    this.registerAPIClient('jenkins', JenkinsAPIClient);
   }
 
   /**
