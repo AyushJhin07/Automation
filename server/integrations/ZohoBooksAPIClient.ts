@@ -1,137 +1,238 @@
-// ZOHO BOOKS API CLIENT
-// Auto-generated API client for Zoho Books integration
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient.js';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface ZohoBooksAPIClientConfig {
+export interface ZohoBooksCredentials extends APICredentials {
   accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
+  organizationId: string;
 }
 
-export class ZohoBooksAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: ZohoBooksAPIClientConfig;
+type OrganizationScopedParams = {
+  organizationId?: string;
+  [key: string]: any;
+};
 
-  constructor(config: ZohoBooksAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://api.example.com';
+const RETRY_SETTINGS = {
+  retries: 2,
+  initialDelayMs: 500,
+  maxDelayMs: 2000
+};
+
+export class ZohoBooksAPIClient extends BaseAPIClient {
+  private readonly organizationId: string;
+
+  constructor(credentials: ZohoBooksCredentials) {
+    if (!credentials.accessToken) {
+      throw new Error('Zoho Books integration requires an OAuth access token');
+    }
+    if (!credentials.organizationId) {
+      throw new Error('Zoho Books integration requires an organizationId');
+    }
+
+    super('https://books.zoho.com/api/v3', credentials);
+    this.organizationId = credentials.organizationId;
+
+    this.registerHandlers({
+      test_connection: () => this.testConnection(),
+      get_organization: params => this.getOrganization(params as OrganizationScopedParams),
+      create_customer: params => this.createCustomer(params as OrganizationScopedParams),
+      get_customer: params => this.getCustomer(params as OrganizationScopedParams & { customerId: string }),
+      update_customer: params => this.updateCustomer(params as OrganizationScopedParams & { customerId: string }),
+      list_customers: params => this.listCustomers(params as OrganizationScopedParams),
+      create_item: params => this.createItem(params as OrganizationScopedParams),
+      create_invoice: params => this.createInvoice(params as OrganizationScopedParams),
+      get_invoice: params => this.getInvoice(params as OrganizationScopedParams & { invoiceId: string }),
+      send_invoice: params => this.sendInvoice(params as OrganizationScopedParams & { invoiceId: string }),
+      record_payment: params => this.recordPayment(params as OrganizationScopedParams),
+      create_expense: params => this.createExpense(params as OrganizationScopedParams),
+      get_reports: params => this.getReports(params as OrganizationScopedParams & { reportId: string })
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+      Authorization: `Zoho-oauthtoken ${this.credentials.accessToken}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
     };
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.withRetries(() => this.get(`/organizations${this.buildOrgQuery({ page: 1, perPage: 1 })}`), RETRY_SETTINGS);
   }
 
-
-  /**
-   * Create a new record in Zoho Books
-   */
-  async createRecord({ data: Record<string, any> }: { data: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Record failed: ${error}`);
-    }
+  private async getOrganization(params: OrganizationScopedParams = {}): Promise<APIResponse<any>> {
+    const orgId = params.organizationId ?? this.organizationId;
+    return this.withRetries(() => this.get(`/organizations/${orgId}${this.buildOrgQuery({}, orgId)}`), RETRY_SETTINGS);
   }
 
-  /**
-   * Update an existing record in Zoho Books
-   */
-  async updateRecord({ id: string, data: Record<string, any> }: { id: string, data: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Record failed: ${error}`);
+  private async createCustomer(params: OrganizationScopedParams): Promise<APIResponse<any>> {
+    const { organizationId, ...payload } = params;
+    const query = this.buildOrgQuery({}, organizationId);
+    const body = this.sanitizePayload(payload);
+    if (!body.contact_name) {
+      return { success: false, error: 'create_customer requires contactName' };
     }
+    return this.withRetries(() => this.post(`/contacts${query}`, body), RETRY_SETTINGS);
   }
 
-  /**
-   * Retrieve a record from Zoho Books
-   */
-  async getRecord({ id: string }: { id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/get_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Get Record failed: ${error}`);
+  private async getCustomer(params: OrganizationScopedParams & { customerId: string }): Promise<APIResponse<any>> {
+    if (!params.customerId) {
+      return { success: false, error: 'get_customer requires customerId' };
     }
+    const query = this.buildOrgQuery({}, params.organizationId);
+    return this.withRetries(
+      () => this.get(`/contacts/${encodeURIComponent(params.customerId)}${query}`),
+      RETRY_SETTINGS
+    );
   }
 
-  /**
-   * List records from Zoho Books
-   */
-  async listRecords({ limit?: number, filter?: Record<string, any> }: { limit?: number, filter?: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/list_records', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`List Records failed: ${error}`);
+  private async updateCustomer(params: OrganizationScopedParams & { customerId: string }): Promise<APIResponse<any>> {
+    if (!params.customerId) {
+      return { success: false, error: 'update_customer requires customerId' };
     }
+    const { customerId, organizationId, ...rest } = params;
+    const query = this.buildOrgQuery({}, organizationId);
+    const body = this.sanitizePayload(rest);
+    return this.withRetries(
+      () => this.put(`/contacts/${encodeURIComponent(customerId)}${query}`, body),
+      RETRY_SETTINGS
+    );
   }
 
-  /**
-   * Delete a record from Zoho Books
-   */
-  async deleteRecord({ id: string }: { id: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/delete_record', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Delete Record failed: ${error}`);
-    }
+  private async listCustomers(params: OrganizationScopedParams = {}): Promise<APIResponse<any>> {
+    const { organizationId, ...filters } = params;
+    const query = this.buildOrgQuery(filters, organizationId);
+    return this.withRetries(() => this.get(`/contacts${query}`), RETRY_SETTINGS);
   }
 
-
-  /**
-   * Poll for Triggered when a new record is created in Zoho Books
-   */
-  async pollRecordCreated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_created', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Created failed:`, error);
-      return [];
+  private async createItem(params: OrganizationScopedParams): Promise<APIResponse<any>> {
+    const { organizationId, ...payload } = params;
+    if (!payload.name) {
+      return { success: false, error: 'create_item requires name' };
     }
+    const query = this.buildOrgQuery({}, organizationId);
+    return this.withRetries(() => this.post(`/items${query}`, this.sanitizePayload(payload)), RETRY_SETTINGS);
   }
 
-  /**
-   * Poll for Triggered when a record is updated in Zoho Books
-   */
-  async pollRecordUpdated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/record_updated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Record Updated failed:`, error);
-      return [];
+  private async createInvoice(params: OrganizationScopedParams): Promise<APIResponse<any>> {
+    const { organizationId, ...payload } = params;
+    if (!payload.customerId && !payload.customer_id) {
+      return { success: false, error: 'create_invoice requires customerId' };
     }
+    if (!Array.isArray(payload.lineItems) && !Array.isArray((payload as any).line_items)) {
+      return { success: false, error: 'create_invoice requires at least one line item' };
+    }
+    const query = this.buildOrgQuery({}, organizationId);
+    return this.withRetries(() => this.post(`/invoices${query}`, this.sanitizePayload(payload)), RETRY_SETTINGS);
+  }
+
+  private async getInvoice(params: OrganizationScopedParams & { invoiceId: string }): Promise<APIResponse<any>> {
+    if (!params.invoiceId) {
+      return { success: false, error: 'get_invoice requires invoiceId' };
+    }
+    const query = this.buildOrgQuery({}, params.organizationId);
+    return this.withRetries(
+      () => this.get(`/invoices/${encodeURIComponent(params.invoiceId)}${query}`),
+      RETRY_SETTINGS
+    );
+  }
+
+  private async sendInvoice(params: OrganizationScopedParams & { invoiceId: string }): Promise<APIResponse<any>> {
+    if (!params.invoiceId) {
+      return { success: false, error: 'send_invoice requires invoiceId' };
+    }
+    const { invoiceId, organizationId, ...rest } = params;
+    const query = this.buildOrgQuery({}, organizationId);
+    const body = this.sanitizePayload(rest);
+    return this.withRetries(
+      () => this.post(`/invoices/${encodeURIComponent(invoiceId)}/status/sent${query}`, body),
+      RETRY_SETTINGS
+    );
+  }
+
+  private async recordPayment(params: OrganizationScopedParams): Promise<APIResponse<any>> {
+    const { organizationId, ...payload } = params;
+    if (!payload.customerId || !payload.paymentMode || !payload.amount || !payload.date) {
+      return {
+        success: false,
+        error: 'record_payment requires customerId, paymentMode, amount, date, and invoices'
+      };
+    }
+    if (!Array.isArray(payload.invoices) || payload.invoices.length === 0) {
+      return { success: false, error: 'record_payment requires at least one invoice allocation' };
+    }
+    const query = this.buildOrgQuery({}, organizationId);
+    return this.withRetries(
+      () => this.post(`/customerpayments${query}`, this.sanitizePayload(payload)),
+      RETRY_SETTINGS
+    );
+  }
+
+  private async createExpense(params: OrganizationScopedParams): Promise<APIResponse<any>> {
+    const { organizationId, ...payload } = params;
+    if (!payload.accountId || !payload.date || !payload.amount) {
+      return { success: false, error: 'create_expense requires accountId, date, and amount' };
+    }
+    const query = this.buildOrgQuery({}, organizationId);
+    return this.withRetries(() => this.post(`/expenses${query}`, this.sanitizePayload(payload)), RETRY_SETTINGS);
+  }
+
+  private async getReports(params: OrganizationScopedParams & { reportId: string }): Promise<APIResponse<any>> {
+    if (!params.reportId) {
+      return { success: false, error: 'get_reports requires reportId' };
+    }
+    const { reportId, organizationId, ...filters } = params;
+    const query = this.buildOrgQuery(filters, organizationId);
+    return this.withRetries(
+      () => this.get(`/reports/${encodeURIComponent(reportId)}${query}`),
+      RETRY_SETTINGS
+    );
+  }
+
+  private buildOrgQuery(params: Record<string, any> = {}, organizationId?: string): string {
+    const queryParams = this.sanitizePayload({ ...params, organizationId: organizationId ?? this.organizationId });
+    return this.buildQueryString(queryParams);
+  }
+
+  private sanitizePayload<T extends Record<string, any>>(payload: T): Record<string, any> {
+    return this.toSnakeCase(this.removeUndefined(payload));
+  }
+
+  private removeUndefined<T extends Record<string, any>>(payload: T): T {
+    const clone: Record<string, any> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === undefined || value === null) {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        clone[key] = value
+          .filter(item => item !== undefined && item !== null)
+          .map(item => (typeof item === 'object' ? this.removeUndefined(item as Record<string, any>) : item));
+        continue;
+      }
+      if (typeof value === 'object') {
+        clone[key] = this.removeUndefined(value as Record<string, any>);
+        continue;
+      }
+      clone[key] = value;
+    }
+    return clone as T;
+  }
+
+  private toSnakeCase(value: any): any {
+    if (Array.isArray(value)) {
+      return value.map(item => this.toSnakeCase(item));
+    }
+    if (value && typeof value === 'object') {
+      const result: Record<string, any> = {};
+      for (const [key, val] of Object.entries(value)) {
+        const snakeKey = key
+          .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+          .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+          .toLowerCase();
+        result[snakeKey] = this.toSnakeCase(val);
+      }
+      return result;
+    }
+    return value;
   }
 }
