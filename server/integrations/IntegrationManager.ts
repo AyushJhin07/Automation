@@ -132,6 +132,12 @@ export class IntegrationManager {
       'helmfile': 'helm',
       'ansible-tower': 'ansible',
       'awx': 'ansible',
+      'cloudformation': 'aws-cloudformation',
+      'aws_cloudformation': 'aws-cloudformation',
+      'awscloudformation': 'aws-cloudformation',
+      'codepipeline': 'aws-codepipeline',
+      'aws_codepipeline': 'aws-codepipeline',
+      'aws-code-pipeline': 'aws-codepipeline',
     };
     return map[v] || v;
   }
