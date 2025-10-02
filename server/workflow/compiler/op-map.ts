@@ -16,6 +16,8 @@ import { TerraformCloudAPIClient } from '../../integrations/TerraformCloudAPICli
 import { HashicorpVaultAPIClient } from '../../integrations/HashicorpVaultAPIClient.js';
 import { HelmAPIClient } from '../../integrations/HelmAPIClient.js';
 import { AnsibleAPIClient } from '../../integrations/AnsibleAPIClient.js';
+import { AwsCloudFormationAPIClient } from '../../integrations/AwsCloudFormationAPIClient.js';
+import { AwsCodePipelineAPIClient } from '../../integrations/AwsCodePipelineAPIClient.js';
 
 /**
  * Get the compiler operation map
@@ -60,6 +62,28 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
     assertClientInstance(client, CircleCIApiClient).cancelWorkflow(params),
   'action.circleci:rerun_workflow': (client, params = {}) =>
     assertClientInstance(client, CircleCIApiClient).rerunWorkflow(params),
+
+  'action.aws-cloudformation:test_connection': client =>
+    assertClientInstance(client, AwsCloudFormationAPIClient).testConnection(),
+  'action.aws-cloudformation:create_stack': (client, params = {}) =>
+    assertClientInstance(client, AwsCloudFormationAPIClient).createStack(params),
+  'action.aws-cloudformation:update_stack': (client, params = {}) =>
+    assertClientInstance(client, AwsCloudFormationAPIClient).updateStack(params),
+  'action.aws-cloudformation:delete_stack': (client, params = {}) =>
+    assertClientInstance(client, AwsCloudFormationAPIClient).deleteStack(params),
+  'action.aws-cloudformation:get_stack_status': (client, params = {}) =>
+    assertClientInstance(client, AwsCloudFormationAPIClient).getStackStatus(params),
+
+  'action.aws-codepipeline:test_connection': client =>
+    assertClientInstance(client, AwsCodePipelineAPIClient).testConnection(),
+  'action.aws-codepipeline:create_pipeline': (client, params = {}) =>
+    assertClientInstance(client, AwsCodePipelineAPIClient).createPipeline(params),
+  'action.aws-codepipeline:start_pipeline': (client, params = {}) =>
+    assertClientInstance(client, AwsCodePipelineAPIClient).startPipeline(params),
+  'action.aws-codepipeline:get_pipeline_state': (client, params = {}) =>
+    assertClientInstance(client, AwsCodePipelineAPIClient).getPipelineState(params),
+  'action.aws-codepipeline:stop_pipeline': (client, params = {}) =>
+    assertClientInstance(client, AwsCodePipelineAPIClient).stopPipeline(params),
 
   'action.kubernetes:test_connection': client => assertClientInstance(client, KubernetesAPIClient).testConnection(),
   'action.kubernetes:create_deployment': (client, params = {}) =>

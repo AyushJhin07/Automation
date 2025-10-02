@@ -67,6 +67,8 @@ import { TerraformCloudAPIClient } from './integrations/TerraformCloudAPIClient'
 import { HashicorpVaultAPIClient } from './integrations/HashicorpVaultAPIClient';
 import { HelmAPIClient } from './integrations/HelmAPIClient';
 import { AnsibleAPIClient } from './integrations/AnsibleAPIClient';
+import { AwsCloudFormationAPIClient } from './integrations/AwsCloudFormationAPIClient';
+import { AwsCodePipelineAPIClient } from './integrations/AwsCodePipelineAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -293,6 +295,8 @@ export class ConnectorRegistry {
     this.registerAPIClient('kubernetes', KubernetesAPIClient);
     this.registerAPIClient('argocd', ArgocdAPIClient);
     this.registerAPIClient('terraform-cloud', TerraformCloudAPIClient);
+    this.registerAPIClient('aws-cloudformation', AwsCloudFormationAPIClient);
+    this.registerAPIClient('aws-codepipeline', AwsCodePipelineAPIClient);
     this.registerAPIClient('hashicorp-vault', HashicorpVaultAPIClient);
     this.registerAPIClient('helm', HelmAPIClient);
     this.registerAPIClient('ansible', AnsibleAPIClient);
