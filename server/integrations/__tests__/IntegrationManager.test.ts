@@ -35,6 +35,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   bitbucket: {
     credentials: { accessToken: 'bitbucket-access-token' }
   },
+  brex: {
+    credentials: { accessToken: 'brex-access-token' }
+  },
   box: {
     credentials: { accessToken: 'box-access-token' }
   },
@@ -64,6 +67,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   },
   gmail: {
     credentials: { accessToken: 'ya29.test-token' }
+  },
+  netsuite: {
+    credentials: { accessToken: 'netsuite-access-token', accountId: '123456' }
   },
   'google-calendar': {
     credentials: { accessToken: 'ya29.google-calendar-token' }
@@ -126,6 +132,9 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   pagerduty: {
     credentials: { apiKey: 'pagerduty-api-key', fromEmail: 'ops@example.com' }
   },
+  ramp: {
+    credentials: { apiKey: 'ramp-api-key' }
+  },
   pipedrive: {
     credentials: { apiToken: 'pipedrive-api-token', companyDomain: 'example' }
   },
@@ -135,10 +144,22 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
       realmId: '1234567890'
     }
   },
+  razorpay: {
+    credentials: { keyId: 'rzp_test_key', keySecret: 'rzp_test_secret' }
+  },
   salesforce: {
     credentials: {
       accessToken: '00Dxx0000000000!AQEAQEtTestToken',
       instanceUrl: 'https://example.my.salesforce.com'
+    }
+  },
+  sageintacct: {
+    credentials: {
+      userId: 'user',
+      userPassword: 'password',
+      companyId: 'company',
+      senderId: 'sender',
+      senderPassword: 'senderPassword'
     }
   },
   sendgrid: {
@@ -178,8 +199,14 @@ const credentialFixtures: Record<string, { credentials: APICredentials; addition
   typeform: {
     credentials: { accessToken: 'typeform-access-token' }
   },
+  'zoho-books': {
+    credentials: { accessToken: 'zoho-books-token', organizationId: '999999' }
+  },
   zendesk: {
     credentials: { subdomain: 'example', email: 'agent@example.com', apiToken: 'zendesk-api-token' }
+  },
+  xero: {
+    credentials: { accessToken: 'xero-access-token', tenantId: 'tenant-1' }
   },
   sheets: {
     credentials: {}
