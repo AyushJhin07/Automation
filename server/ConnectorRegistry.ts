@@ -61,6 +61,12 @@ import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 import { AzureDevopsAPIClient } from './integrations/AzureDevopsAPIClient';
 import { CircleCIApiClient } from './integrations/CircleCIApiClient';
 import { JenkinsAPIClient } from './integrations/JenkinsAPIClient';
+import { KubernetesAPIClient } from './integrations/KubernetesAPIClient';
+import { ArgocdAPIClient } from './integrations/ArgocdAPIClient';
+import { TerraformCloudAPIClient } from './integrations/TerraformCloudAPIClient';
+import { HashicorpVaultAPIClient } from './integrations/HashicorpVaultAPIClient';
+import { HelmAPIClient } from './integrations/HelmAPIClient';
+import { AnsibleAPIClient } from './integrations/AnsibleAPIClient';
 
 interface ConnectorFunction {
   id: string;
@@ -284,6 +290,12 @@ export class ConnectorRegistry {
     this.registerAPIClient('azure-devops', AzureDevopsAPIClient);
     this.registerAPIClient('circleci', CircleCIApiClient);
     this.registerAPIClient('jenkins', JenkinsAPIClient);
+    this.registerAPIClient('kubernetes', KubernetesAPIClient);
+    this.registerAPIClient('argocd', ArgocdAPIClient);
+    this.registerAPIClient('terraform-cloud', TerraformCloudAPIClient);
+    this.registerAPIClient('hashicorp-vault', HashicorpVaultAPIClient);
+    this.registerAPIClient('helm', HelmAPIClient);
+    this.registerAPIClient('ansible', AnsibleAPIClient);
   }
 
   /**

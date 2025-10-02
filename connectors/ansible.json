@@ -126,6 +126,35 @@
       }
     },
     {
+      "id": "list_job_templates",
+      "name": "List Job Templates",
+      "description": "List available job templates",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "delete_job_template",
+      "name": "Delete Job Template",
+      "description": "Delete a job template",
+      "category": "DevOps",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_template_id": {
+            "type": "string",
+            "description": "Job template ID"
+          }
+        },
+        "required": ["job_template_id"],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Ansible",
