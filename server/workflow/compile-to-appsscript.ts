@@ -7491,35 +7491,793 @@ function ${functionName}(inputData, params) {
 }
 
 function generateDocuSignFunction(functionName: string, node: WorkflowNode): string {
-  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_envelope';
-  
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_envelope';
+
   return `
 function ${functionName}(inputData, params) {
-  console.log('📄 Executing DocuSign: ${params.operation || '${operation}'}');
-  
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DOCUSIGN_ACCESS_TOKEN');
-  const accountId = PropertiesService.getScriptProperties().getProperty('DOCUSIGN_ACCOUNT_ID');
-  
+  const scriptProps = PropertiesService.getScriptProperties();
+  const accessToken = params.accessToken || scriptProps.getProperty('DOCUSIGN_ACCESS_TOKEN');
+  const accountId = params.accountId || scriptProps.getProperty('DOCUSIGN_ACCOUNT_ID');
+  const baseUri = (params.baseUri || scriptProps.getProperty('DOCUSIGN_BASE_URI') || 'https://na3.docusign.net/restapi').replace(/\/$/, '');
+
   if (!accessToken || !accountId) {
     console.warn('⚠️ DocuSign credentials not configured');
-    return { ...inputData, docusignSkipped: true, error: 'Missing credentials' };
+    return { ...inputData, docusignError: 'Missing DocuSign access token or account ID' };
   }
-  
-  try {
-    const operation = params.operation || '${operation}';
-    if (operation === 'test_connection') {
-      console.log('✅ DocuSign connection test successful');
-      return { ...inputData, connectionTest: 'success' };
+
+  const baseUrl = `${baseUri}/v2.1/accounts/${accountId}`;
+  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const defaultHeaders = {
+    'Authorization': 'Bearer ' + accessToken,
+    'Content-Type': 'application/json'
+  };
+
+  function request(method, endpoint, payload, extraHeaders) {
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, {
+      method: method,
+      headers: Object.assign({}, defaultHeaders, extraHeaders || {}),
+      muteHttpExceptions: true,
+      payload: payload ? JSON.stringify(payload) : undefined,
+    });
+    const status = response.getResponseCode();
+    const text = response.getContentText();
+    if (status >= 200 && status < 300) {
+      return text ? JSON.parse(text) : {};
     }
-    
-    console.log('✅ DocuSign operation completed:', operation);
-    return { ...inputData, docusignResult: 'success', operation };
+    throw new Error('DocuSign API ' + status + ': ' + text);
+  }
+
+  try {
+    switch (operation) {
+      case 'test_connection': {
+        request('GET', '/users?count=1');
+        return { ...inputData, docusignConnection: 'ok' };
+      }
+      case 'create_envelope': {
+        const body = {
+          emailSubject: params.emailSubject,
+          documents: params.documents || [],
+          recipients: params.recipients || {},
+          status: params.status || 'created',
+          eventNotification: params.eventNotification || null,
+        };
+        const result = request('POST', '/envelopes', body);
+        return { ...inputData, docusignEnvelope: result };
+      }
+      case 'get_envelope':
+      case 'get_envelope_status': {
+        const envelopeId = params.envelopeId || params.envelope_id;
+        if (!envelopeId) throw new Error('Envelope ID is required');
+        const result = request('GET', '/envelopes/' + encodeURIComponent(envelopeId));
+        return { ...inputData, docusignEnvelope: result };
+      }
+      case 'list_envelopes': {
+        const query: string[] = [];
+        if (params.fromDate) query.push('from_date=' + encodeURIComponent(params.fromDate));
+        if (params.toDate) query.push('to_date=' + encodeURIComponent(params.toDate));
+        if (params.status) query.push('status=' + encodeURIComponent(params.status));
+        const endpoint = '/envelopes' + (query.length ? '?' + query.join('&') : '');
+        const result = request('GET', endpoint);
+        return { ...inputData, docusignEnvelopes: result };
+      }
+      case 'get_recipients': {
+        const envelopeId = params.envelopeId || params.envelope_id;
+        if (!envelopeId) throw new Error('Envelope ID is required');
+        const result = request('GET', '/envelopes/' + encodeURIComponent(envelopeId) + '/recipients');
+        return { ...inputData, docusignRecipients: result };
+      }
+      case 'download_document': {
+        const envelopeId = params.envelopeId || params.envelope_id;
+        const documentId = params.documentId || params.document_id;
+        if (!envelopeId || !documentId) throw new Error('Envelope ID and document ID are required');
+        const response = UrlFetchApp.fetch(baseUrl + '/envelopes/' + encodeURIComponent(envelopeId) + '/documents/' + encodeURIComponent(documentId), {
+          method: 'GET',
+          headers: Object.assign({}, defaultHeaders, { 'Accept': params.accept || 'application/pdf' }),
+          muteHttpExceptions: true,
+        });
+        const status = response.getResponseCode();
+        if (status >= 200 && status < 300) {
+          const bytes = response.getBlob().getBytes();
+          const encoded = Utilities.base64Encode(bytes);
+          const contentType = response.getHeaders()['Content-Type'] || 'application/pdf';
+          return { ...inputData, docusignDocument: encoded, docusignContentType: contentType };
+        }
+        throw new Error('DocuSign document download failed with status ' + status + ': ' + response.getContentText());
+      }
+      case 'void_envelope': {
+        const envelopeId = params.envelopeId || params.envelope_id;
+        if (!envelopeId) throw new Error('Envelope ID is required');
+        const body = { status: 'voided', voidedReason: params.voidedReason || params.reason || 'Voided via automation' };
+        const result = request('PUT', '/envelopes/' + encodeURIComponent(envelopeId), body);
+        return { ...inputData, docusignEnvelope: result };
+      }
+      default:
+        throw new Error('Unsupported DocuSign operation: ' + operation);
+    }
   } catch (error) {
     console.error('❌ DocuSign error:', error);
     return { ...inputData, docusignError: error.toString() };
   }
 }`;
-}// Phase 4 implementations - Productivity & Finance
+}
+}function generateOktaFunction(functionName: string, node: WorkflowNode): string {
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_user';
+
+  return `
+function ${functionName}(inputData, params) {
+  const props = PropertiesService.getScriptProperties();
+  const apiToken = params.apiToken || props.getProperty('OKTA_API_TOKEN');
+  const domainValue = (params.domain || props.getProperty('OKTA_DOMAIN') || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  if (!apiToken || !domainValue) {
+    console.warn('⚠️ Okta credentials not configured');
+    return { ...inputData, oktaError: 'Missing Okta API token or domain' };
+  }
+
+  const baseUrl = 'https://' + domainValue + '/api/v1';
+  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const headers = {
+    'Authorization': 'SSWS ' + apiToken,
+    'Content-Type': 'application/json'
+  };
+
+  function request(method, endpoint, payload) {
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, {
+      method: method,
+      headers: headers,
+      muteHttpExceptions: true,
+      payload: payload ? JSON.stringify(payload) : undefined,
+    });
+    const status = response.getResponseCode();
+    const text = response.getContentText();
+    if (status >= 200 && status < 300) {
+      return text ? JSON.parse(text) : {};
+    }
+    throw new Error('Okta API ' + status + ': ' + text);
+  }
+
+  try {
+    switch (operation) {
+      case 'test_connection': {
+        request('GET', '/users/me');
+        return { ...inputData, oktaConnection: 'ok' };
+      }
+      case 'create_user': {
+        const activate = params.activate !== undefined ? params.activate : true;
+        const query = activate ? '?activate=true' : '?activate=false';
+        const body: any = {
+          profile: params.profile || {},
+          credentials: params.credentials || {},
+        };
+        if (params.groupIds) body.groupIds = params.groupIds;
+        const result = request('POST', '/users' + query, body);
+        return { ...inputData, oktaUser: result };
+      }
+      case 'update_user': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        const body: any = {
+          profile: params.profile || {},
+          credentials: params.credentials || {},
+        };
+        const result = request('POST', '/users/' + encodeURIComponent(userId), body);
+        return { ...inputData, oktaUser: result };
+      }
+      case 'deactivate_user': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        const query = params.sendEmail === false ? '?sendEmail=false' : '';
+        request('POST', '/users/' + encodeURIComponent(userId) + '/lifecycle/deactivate' + query);
+        return { ...inputData, oktaDeactivated: userId };
+      }
+      case 'activate_user': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        const query = params.sendEmail === false ? '?sendEmail=false' : '';
+        const result = request('POST', '/users/' + encodeURIComponent(userId) + '/lifecycle/activate' + query);
+        return { ...inputData, oktaUser: result };
+      }
+      case 'suspend_user': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        request('POST', '/users/' + encodeURIComponent(userId) + '/lifecycle/suspend');
+        return { ...inputData, oktaSuspended: userId };
+      }
+      case 'unsuspend_user': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        request('POST', '/users/' + encodeURIComponent(userId) + '/lifecycle/unsuspend');
+        return { ...inputData, oktaUnsuspended: userId };
+      }
+      case 'list_users': {
+        const query: string[] = [];
+        if (params.limit) query.push('limit=' + encodeURIComponent(params.limit));
+        if (params.q) query.push('q=' + encodeURIComponent(params.q));
+        if (params.filter) query.push('filter=' + encodeURIComponent(params.filter));
+        const endpoint = '/users' + (query.length ? '?' + query.join('&') : '');
+        const result = request('GET', endpoint);
+        return { ...inputData, oktaUsers: result };
+      }
+      case 'add_user_to_group': {
+        const userId = params.userId || params.id;
+        const groupId = params.groupId;
+        if (!userId || !groupId) throw new Error('userId and groupId are required');
+        request('PUT', '/groups/' + encodeURIComponent(groupId) + '/users/' + encodeURIComponent(userId));
+        return { ...inputData, oktaGroupAssignment: { userId, groupId } };
+      }
+      case 'remove_user_from_group': {
+        const userId = params.userId || params.id;
+        const groupId = params.groupId;
+        if (!userId || !groupId) throw new Error('userId and groupId are required');
+        request('DELETE', '/groups/' + encodeURIComponent(groupId) + '/users/' + encodeURIComponent(userId));
+        return { ...inputData, oktaGroupRemoval: { userId, groupId } };
+      }
+      case 'create_group': {
+        const payload = { profile: params.profile || {} };
+        const result = request('POST', '/groups', payload);
+        return { ...inputData, oktaGroup: result };
+      }
+      case 'list_groups': {
+        const query: string[] = [];
+        if (params.q) query.push('q=' + encodeURIComponent(params.q));
+        if (params.limit) query.push('limit=' + encodeURIComponent(params.limit));
+        const endpoint = '/groups' + (query.length ? '?' + query.join('&') : '');
+        const result = request('GET', endpoint);
+        return { ...inputData, oktaGroups: result };
+      }
+      case 'reset_password': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        const query = params.sendEmail === false ? '?sendEmail=false' : '';
+        const result = request('POST', '/users/' + encodeURIComponent(userId) + '/lifecycle/reset_password' + query);
+        return { ...inputData, oktaPasswordReset: result };
+      }
+      case 'expire_password': {
+        const userId = params.userId || params.id;
+        if (!userId) throw new Error('userId is required');
+        const query = params.tempPassword ? '?tempPassword=true' : '';
+        const result = request('POST', '/users/' + encodeURIComponent(userId) + '/lifecycle/expire_password' + query);
+        return { ...inputData, oktaPasswordExpired: result };
+      }
+      default:
+        throw new Error('Unsupported Okta operation: ' + operation);
+    }
+  } catch (error) {
+    console.error('❌ Okta error:', error);
+    return { ...inputData, oktaError: error.toString() };
+  }
+}`;
+}
+
+function generateGoogleAdminFunction(functionName: string, node: WorkflowNode): string {
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_user';
+
+  return `
+function ${functionName}(inputData, params) {
+  const props = PropertiesService.getScriptProperties();
+  const accessToken = params.accessToken || props.getProperty('GOOGLE_ADMIN_ACCESS_TOKEN');
+  const customerId = params.customer || props.getProperty('GOOGLE_ADMIN_CUSTOMER_ID') || 'my_customer';
+
+  if (!accessToken) {
+    console.warn('⚠️ Google Admin access token not configured');
+    return { ...inputData, googleAdminError: 'Missing Google Admin access token' };
+  }
+
+  const baseUrl = 'https://admin.googleapis.com/admin/directory/v1';
+  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const headers = {
+    'Authorization': 'Bearer ' + accessToken,
+    'Content-Type': 'application/json'
+  };
+
+  function request(method, endpoint, payload) {
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, {
+      method: method,
+      headers: headers,
+      muteHttpExceptions: true,
+      payload: payload ? JSON.stringify(payload) : undefined,
+    });
+    const status = response.getResponseCode();
+    const text = response.getContentText();
+    if (status >= 200 && status < 300) {
+      return text ? JSON.parse(text) : {};
+    }
+    throw new Error('Google Admin API ' + status + ': ' + text);
+  }
+
+  try {
+    switch (operation) {
+      case 'test_connection': {
+        request('GET', '/users?customer=' + encodeURIComponent(customerId) + '&maxResults=1');
+        return { ...inputData, googleAdminConnection: 'ok' };
+      }
+      case 'create_user': {
+        const body = {
+          primaryEmail: params.primaryEmail,
+          name: params.name,
+          password: params.password,
+          changePasswordAtNextLogin: params.changePasswordAtNextLogin !== false,
+          orgUnitPath: params.orgUnitPath || '/',
+          suspended: params.suspended || false,
+          recoveryEmail: params.recoveryEmail || null,
+          recoveryPhone: params.recoveryPhone || null,
+        };
+        const result = request('POST', '/users', body);
+        return { ...inputData, googleAdminUser: result };
+      }
+      case 'get_user': {
+        const userKey = params.userKey || params.userId;
+        if (!userKey) throw new Error('userKey is required');
+        const query: string[] = [];
+        if (params.projection) query.push('projection=' + encodeURIComponent(params.projection));
+        if (params.customFieldMask) query.push('customFieldMask=' + encodeURIComponent(params.customFieldMask));
+        if (params.viewType) query.push('viewType=' + encodeURIComponent(params.viewType));
+        const endpoint = '/users/' + encodeURIComponent(userKey) + (query.length ? '?' + query.join('&') : '');
+        const result = request('GET', endpoint);
+        return { ...inputData, googleAdminUser: result };
+      }
+      case 'update_user': {
+        const userKey = params.userKey || params.userId;
+        if (!userKey) throw new Error('userKey is required');
+        const body = params.payload || params.user || {};
+        const result = request('PUT', '/users/' + encodeURIComponent(userKey), body);
+        return { ...inputData, googleAdminUser: result };
+      }
+      case 'delete_user': {
+        const userKey = params.userKey || params.userId;
+        if (!userKey) throw new Error('userKey is required');
+        request('DELETE', '/users/' + encodeURIComponent(userKey));
+        return { ...inputData, googleAdminDeleted: userKey };
+      }
+      case 'list_users': {
+        const query: string[] = ['customer=' + encodeURIComponent(params.customer || customerId)];
+        if (params.domain) query.push('domain=' + encodeURIComponent(params.domain));
+        if (params.query) query.push('query=' + encodeURIComponent(params.query));
+        if (params.maxResults) query.push('maxResults=' + encodeURIComponent(params.maxResults));
+        if (params.orderBy) query.push('orderBy=' + encodeURIComponent(params.orderBy));
+        if (params.sortOrder) query.push('sortOrder=' + encodeURIComponent(params.sortOrder));
+        if (params.pageToken) query.push('pageToken=' + encodeURIComponent(params.pageToken));
+        const endpoint = '/users?' + query.join('&');
+        const result = request('GET', endpoint);
+        return { ...inputData, googleAdminUsers: result };
+      }
+      case 'create_group': {
+        const body = {
+          email: params.email,
+          name: params.name || params.email,
+          description: params.description || '',
+        };
+        const result = request('POST', '/groups', body);
+        return { ...inputData, googleAdminGroup: result };
+      }
+      case 'add_group_member': {
+        const groupKey = params.groupKey || params.groupId;
+        const memberKey = params.memberKey || params.email;
+        if (!groupKey || !memberKey) throw new Error('groupKey and memberKey are required');
+        const payload = {
+          email: memberKey,
+          role: params.role || 'MEMBER',
+          type: params.type || 'USER',
+        };
+        const result = request('POST', '/groups/' + encodeURIComponent(groupKey) + '/members', payload);
+        return { ...inputData, googleAdminGroupMember: result };
+      }
+      case 'remove_group_member': {
+        const groupKey = params.groupKey || params.groupId;
+        const memberKey = params.memberKey || params.email;
+        if (!groupKey || !memberKey) throw new Error('groupKey and memberKey are required');
+        request('DELETE', '/groups/' + encodeURIComponent(groupKey) + '/members/' + encodeURIComponent(memberKey));
+        return { ...inputData, googleAdminGroupMemberRemoved: { groupKey, memberKey } };
+      }
+      default:
+        throw new Error('Unsupported Google Admin operation: ' + operation);
+    }
+  } catch (error) {
+    console.error('❌ Google Admin error:', error);
+    return { ...inputData, googleAdminError: error.toString() };
+  }
+}`;
+}
+
+function generateHelloSignFunction(functionName: string, node: WorkflowNode): string {
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'send_signature_request';
+
+  return `
+function ${functionName}(inputData, params) {
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = params.apiKey || props.getProperty('HELLOSIGN_API_KEY');
+
+  if (!apiKey) {
+    console.warn('⚠️ HelloSign API key not configured');
+    return { ...inputData, helloSignError: 'Missing HelloSign API key' };
+  }
+
+  const authHeader = 'Basic ' + Utilities.base64Encode(apiKey + ':');
+  const baseUrl = 'https://api.hellosign.com/v3';
+  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+
+  function request(method, endpoint, payload, extraHeaders) {
+    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      method: method,
+      headers: Object.assign({ Authorization: authHeader }, extraHeaders || {}),
+      muteHttpExceptions: true,
+    };
+    if (payload) {
+      options.contentType = 'application/json';
+      options.payload = JSON.stringify(payload);
+    }
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
+    const status = response.getResponseCode();
+    const text = response.getContentText();
+    if (status >= 200 && status < 300) {
+      return text ? JSON.parse(text) : {};
+    }
+    throw new Error('HelloSign API ' + status + ': ' + text);
+  }
+
+  try {
+    switch (operation) {
+      case 'test_connection': {
+        request('GET', '/account');
+        return { ...inputData, helloSignConnection: 'ok' };
+      }
+      case 'get_account': {
+        const result = request('GET', '/account');
+        return { ...inputData, helloSignAccount: result };
+      }
+      case 'send_signature_request': {
+        const payload = {
+          title: params.title,
+          subject: params.subject,
+          message: params.message,
+          signers: params.signers || [],
+          cc_email_addresses: params.cc_email_addresses || [],
+          metadata: params.metadata || {},
+          test_mode: params.test_mode ? 1 : 0,
+        };
+        const result = request('POST', '/signature_request/send', payload);
+        return { ...inputData, helloSignSignatureRequest: result };
+      }
+      case 'get_signature_request': {
+        const requestId = params.signature_request_id || params.signatureRequestId;
+        if (!requestId) throw new Error('signature_request_id is required');
+        const result = request('GET', '/signature_request/' + encodeURIComponent(requestId));
+        return { ...inputData, helloSignSignatureRequest: result };
+      }
+      case 'list_signature_requests': {
+        const query: string[] = [];
+        if (params.page) query.push('page=' + encodeURIComponent(params.page));
+        if (params.page_size) query.push('page_size=' + encodeURIComponent(params.page_size));
+        const endpoint = '/signature_request/list' + (query.length ? '?' + query.join('&') : '');
+        const result = request('GET', endpoint);
+        return { ...inputData, helloSignSignatureRequests: result };
+      }
+      case 'remind_signature_request': {
+        const requestId = params.signature_request_id || params.signatureRequestId;
+        const email = params.email_address || params.emailAddress;
+        if (!requestId || !email) throw new Error('signature_request_id and email_address are required');
+        const result = request('POST', '/signature_request/remind/' + encodeURIComponent(requestId), {
+          email_address: email,
+        });
+        return { ...inputData, helloSignReminder: result };
+      }
+      case 'cancel_signature_request': {
+        const requestId = params.signature_request_id || params.signatureRequestId;
+        if (!requestId) throw new Error('signature_request_id is required');
+        request('POST', '/signature_request/cancel/' + encodeURIComponent(requestId));
+        return { ...inputData, helloSignCanceled: requestId };
+      }
+      case 'download_files': {
+        const requestId = params.signature_request_id || params.signatureRequestId;
+        if (!requestId) throw new Error('signature_request_id is required');
+        const fileType = params.file_type || 'pdf';
+        const response = UrlFetchApp.fetch(baseUrl + '/signature_request/files/' + encodeURIComponent(requestId) + '?file_type=' + fileType, {
+          method: 'GET',
+          headers: { Authorization: authHeader },
+          muteHttpExceptions: true,
+        });
+        const status = response.getResponseCode();
+        if (status >= 200 && status < 300) {
+          const bytes = response.getBlob().getBytes();
+          const encoded = Utilities.base64Encode(bytes);
+          const contentType = response.getHeaders()['Content-Type'] || (fileType === 'zip' ? 'application/zip' : 'application/pdf');
+          return { ...inputData, helloSignFile: encoded, helloSignContentType: contentType };
+        }
+        throw new Error('HelloSign file download failed with status ' + status + ': ' + response.getContentText());
+      }
+      case 'create_embedded_signature_request': {
+        const payload = {
+          clientId: params.client_id || params.clientId,
+          signers: params.signers || [],
+          files: params.files || [],
+          title: params.title,
+          subject: params.subject,
+          message: params.message,
+          metadata: params.metadata || {},
+          test_mode: params.test_mode ? 1 : 0,
+        };
+        const result = request('POST', '/signature_request/create_embedded', payload);
+        return { ...inputData, helloSignSignatureRequest: result };
+      }
+      case 'get_embedded_sign_url': {
+        const signatureId = params.signature_id || params.signatureId;
+        if (!signatureId) throw new Error('signature_id is required');
+        const result = request('GET', '/embedded/sign_url/' + encodeURIComponent(signatureId));
+        return { ...inputData, helloSignSignUrl: result };
+      }
+      case 'create_template': {
+        const payload = {
+          title: params.title,
+          subject: params.subject,
+          message: params.message,
+          signers: params.signers || [],
+          cc_roles: params.cc_roles || [],
+          files: params.files || [],
+          test_mode: params.test_mode ? 1 : 0,
+        };
+        const result = request('POST', '/template/create', payload);
+        return { ...inputData, helloSignTemplate: result };
+      }
+      case 'get_template': {
+        const templateId = params.template_id || params.templateId;
+        if (!templateId) throw new Error('template_id is required');
+        const result = request('GET', '/template/' + encodeURIComponent(templateId));
+        return { ...inputData, helloSignTemplate: result };
+      }
+      case 'send_with_template': {
+        const payload = {
+          template_id: params.template_id || params.templateId,
+          title: params.title,
+          subject: params.subject,
+          message: params.message,
+          signers: params.signers || [],
+          custom_fields: params.custom_fields || {},
+          metadata: params.metadata || {},
+          test_mode: params.test_mode ? 1 : 0,
+        };
+        const result = request('POST', '/signature_request/send_with_template', payload);
+        return { ...inputData, helloSignSignatureRequest: result };
+      }
+      default:
+        throw new Error('Unsupported HelloSign operation: ' + operation);
+    }
+  } catch (error) {
+    console.error('❌ HelloSign error:', error);
+    return { ...inputData, helloSignError: error.toString() };
+  }
+}`;
+}
+
+function generateAdobeSignFunction(functionName: string, node: WorkflowNode): string {
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_agreement';
+
+  return `
+function ${functionName}(inputData, params) {
+  const props = PropertiesService.getScriptProperties();
+  const accessToken = params.accessToken || props.getProperty('ADOBESIGN_ACCESS_TOKEN');
+  const baseUrl = (params.baseUrl || props.getProperty('ADOBESIGN_BASE_URL') || 'https://api.na1.echosign.com/api/rest/v6').replace(/\/$/, '');
+
+  if (!accessToken) {
+    console.warn('⚠️ Adobe Sign access token not configured');
+    return { ...inputData, adobeSignError: 'Missing Adobe Sign access token' };
+  }
+
+  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const headers = {
+    'Authorization': 'Bearer ' + accessToken,
+    'Content-Type': 'application/json'
+  };
+
+  function request(method, endpoint, payload) {
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, {
+      method: method,
+      headers: headers,
+      muteHttpExceptions: true,
+      payload: payload ? JSON.stringify(payload) : undefined,
+    });
+    const status = response.getResponseCode();
+    const text = response.getContentText();
+    if (status >= 200 && status < 300) {
+      return text ? JSON.parse(text) : {};
+    }
+    throw new Error('Adobe Sign API ' + status + ': ' + text);
+  }
+
+  try {
+    switch (operation) {
+      case 'test_connection': {
+        request('GET', '/users/me');
+        return { ...inputData, adobeSignConnection: 'ok' };
+      }
+      case 'create_agreement': {
+        const payload = {
+          name: params.name,
+          fileInfos: params.fileInfos || [],
+          participantSetsInfo: params.participantSetsInfo || [],
+          signatureType: params.signatureType || 'ESIGN',
+          state: params.state || 'IN_PROCESS',
+          emailOption: params.emailOption || null,
+          externalId: params.externalId || null,
+          message: params.message || '',
+        };
+        const result = request('POST', '/agreements', payload);
+        return { ...inputData, adobeSignAgreement: result };
+      }
+      case 'send_agreement': {
+        const agreementId = params.agreementId || params.id;
+        if (!agreementId) throw new Error('agreementId is required');
+        const result = request('POST', '/agreements/' + encodeURIComponent(agreementId) + '/state', { state: 'IN_PROCESS' });
+        return { ...inputData, adobeSignAgreement: result };
+      }
+      case 'get_agreement': {
+        const agreementId = params.agreementId || params.id;
+        if (!agreementId) throw new Error('agreementId is required');
+        const query = params.includeSupportingDocuments ? '?includeSupportingDocuments=true' : '';
+        const result = request('GET', '/agreements/' + encodeURIComponent(agreementId) + query);
+        return { ...inputData, adobeSignAgreement: result };
+      }
+      case 'cancel_agreement': {
+        const agreementId = params.agreementId || params.id;
+        if (!agreementId) throw new Error('agreementId is required');
+        const payload = {
+          state: 'CANCELLED',
+          note: params.reason || 'Cancelled via automation',
+          notifySigner: params.notifySigner !== false,
+        };
+        const result = request('POST', '/agreements/' + encodeURIComponent(agreementId) + '/state', payload);
+        return { ...inputData, adobeSignAgreement: result };
+      }
+      default:
+        throw new Error('Unsupported Adobe Sign operation: ' + operation);
+    }
+  } catch (error) {
+    console.error('❌ Adobe Sign error:', error);
+    return { ...inputData, adobeSignError: error.toString() };
+  }
+}`;
+}
+
+function generateEgnyteFunction(functionName: string, node: WorkflowNode): string {
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'list_folder';
+
+  return `
+function ${functionName}(inputData, params) {
+  const props = PropertiesService.getScriptProperties();
+  const accessToken = params.accessToken || props.getProperty('EGNYTE_ACCESS_TOKEN');
+  const domainValue = (params.domain || props.getProperty('EGNYTE_DOMAIN') || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  if (!accessToken || !domainValue) {
+    console.warn('⚠️ Egnyte credentials not configured');
+    return { ...inputData, egnyteError: 'Missing Egnyte access token or domain' };
+  }
+
+  const baseUrl = 'https://' + domainValue + '/pubapi/v1';
+  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const headers = {
+    'Authorization': 'Bearer ' + accessToken,
+    'Content-Type': 'application/json'
+  };
+
+  function jsonRequest(method, endpoint, payload) {
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, {
+      method: method,
+      headers: headers,
+      muteHttpExceptions: true,
+      payload: payload ? JSON.stringify(payload) : undefined,
+    });
+    const status = response.getResponseCode();
+    const text = response.getContentText();
+    if (status >= 200 && status < 300) {
+      return text ? JSON.parse(text) : {};
+    }
+    throw new Error('Egnyte API ' + status + ': ' + text);
+  }
+
+  function binaryRequest(method, endpoint, payload, contentType) {
+    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      method: method,
+      headers: Object.assign({}, headers, { 'Content-Type': contentType }),
+      muteHttpExceptions: true,
+      payload: payload,
+    };
+    const response = UrlFetchApp.fetch(baseUrl + endpoint, options);
+    const status = response.getResponseCode();
+    if (status >= 200 && status < 300) {
+      return response;
+    }
+    throw new Error('Egnyte file request failed with status ' + status + ': ' + response.getContentText());
+  }
+
+  function normalizePath(path) {
+    if (!path) return '/';
+    return path.startsWith('/') ? path : '/' + path;
+  }
+
+  try {
+    switch (operation) {
+      case 'test_connection': {
+        jsonRequest('GET', '/user');
+        return { ...inputData, egnyteConnection: 'ok' };
+      }
+      case 'list_folder': {
+        const pathValue = normalizePath(params.path || '/');
+        const query = params.count ? '?count=' + encodeURIComponent(params.count) : '';
+        const result = jsonRequest('GET', '/fs' + encodeURI(pathValue) + query);
+        return { ...inputData, egnyteFolder: result };
+      }
+      case 'create_folder': {
+        const pathValue = normalizePath(params.path);
+        const result = jsonRequest('POST', '/fs' + encodeURI(pathValue), { action: 'add_folder' });
+        return { ...inputData, egnyteFolder: result };
+      }
+      case 'delete_file': {
+        const pathValue = normalizePath(params.path);
+        jsonRequest('DELETE', '/fs' + encodeURI(pathValue), null);
+        return { ...inputData, egnyteDeleted: pathValue };
+      }
+      case 'upload_file': {
+        const pathValue = normalizePath(params.path);
+        const content = params.content || '';
+        const bytes = Utilities.base64Decode(content);
+        const response = binaryRequest(params.overwrite ? 'PUT' : 'POST', '/fs-content' + encodeURI(pathValue), bytes, 'application/octet-stream');
+        const data = response.getContentText() ? JSON.parse(response.getContentText()) : {};
+        return { ...inputData, egnyteUpload: data };
+      }
+      case 'download_file': {
+        const pathValue = normalizePath(params.path);
+        const response = binaryRequest('GET', '/fs-content' + encodeURI(pathValue), null, 'application/octet-stream');
+        const encoded = Utilities.base64Encode(response.getBlob().getBytes());
+        const contentType = response.getHeaders()['Content-Type'] || 'application/octet-stream';
+        return { ...inputData, egnyteFile: encoded, egnyteContentType: contentType };
+      }
+      case 'move_file': {
+        const result = jsonRequest('POST', '/fs/move', {
+          source: normalizePath(params.source),
+          destination: normalizePath(params.destination),
+        });
+        return { ...inputData, egnyteMove: result };
+      }
+      case 'copy_file': {
+        const result = jsonRequest('POST', '/fs/copy', {
+          source: normalizePath(params.source),
+          destination: normalizePath(params.destination),
+        });
+        return { ...inputData, egnyteCopy: result };
+      }
+      case 'create_link': {
+        const payload = {
+          path: normalizePath(params.path),
+          type: params.type || 'file',
+          accessibility: params.accessibility || 'recipients',
+          send_email: params.send_email || false,
+          notify: params.notify || false,
+          recipients: params.recipients || [],
+          message: params.message || '',
+        };
+        const result = jsonRequest('POST', '/links', payload);
+        return { ...inputData, egnyteLink: result };
+      }
+      case 'search': {
+        const query = params.query;
+        if (!query) throw new Error('query is required');
+        const qs: string[] = ['query=' + encodeURIComponent(query)];
+        if (params.offset) qs.push('offset=' + encodeURIComponent(params.offset));
+        if (params.count) qs.push('count=' + encodeURIComponent(params.count));
+        if (params.types) qs.push('types=' + encodeURIComponent(params.types));
+        const result = jsonRequest('GET', '/search?' + qs.join('&'), null);
+        return { ...inputData, egnyteSearch: result };
+      }
+      default:
+        throw new Error('Unsupported Egnyte operation: ' + operation);
+    }
+  } catch (error) {
+    console.error('❌ Egnyte error:', error);
+    return { ...inputData, egnyteError: error.toString() };
+  }
+}`;
+}
+
+// Phase 4 implementations - Productivity & Finance
 function generateMondayEnhancedFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'get_boards';
   

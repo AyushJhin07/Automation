@@ -1,114 +1,261 @@
-// DOCUSIGN API CLIENT
-// Auto-generated API client for DocuSign integration
+import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 
-import { BaseAPIClient } from './BaseAPIClient';
-
-export interface DocusignAPIClientConfig {
-  accessToken: string;
+interface DocusignCredentials extends APICredentials {
+  accessToken?: string;
+  refreshToken?: string;
+  clientId?: string;
+  clientSecret?: string;
+  tokenUrl?: string;
+  expiresAt?: string | number;
+  accountId?: string;
   baseUrl?: string;
+  baseUri?: string;
+}
+
+interface EnvelopeDocument {
+  documentId: string;
+  name: string;
+  fileBase64?: string;
+  fileExtension?: string;
+  [key: string]: any;
+}
+
+interface RecipientDefinition {
+  signers?: Array<Record<string, any>>;
+  carbonCopies?: Array<Record<string, any>>;
+  [key: string]: any;
+}
+
+interface CreateEnvelopeParams {
+  accountId?: string;
+  emailSubject: string;
+  documents: EnvelopeDocument[];
+  recipients: RecipientDefinition;
+  status?: string;
+  eventNotification?: Record<string, any>;
+}
+
+interface EnvelopeIdentifier {
+  accountId?: string;
+  envelopeId: string;
+}
+
+interface ListEnvelopesParams {
+  accountId?: string;
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+}
+
+interface DownloadDocumentParams extends EnvelopeIdentifier {
+  documentId: string;
+}
+
+interface VoidEnvelopeParams extends EnvelopeIdentifier {
+  voidedReason?: string;
+}
+
+function resolveBaseUrl(credentials: DocusignCredentials): { baseUrl: string; accountId: string } {
+  const accountId = credentials.accountId;
+  if (!accountId) {
+    throw new Error('DocuSign integration requires an accountId in credentials');
+  }
+
+  if (credentials.baseUrl) {
+    const trimmed = credentials.baseUrl.replace(/\/$/, '');
+    return { baseUrl: trimmed.includes('/accounts/') ? trimmed : `${trimmed}/accounts/${accountId}`, accountId };
+  }
+
+  const baseUri = (credentials.baseUri ?? 'https://na3.docusign.net/restapi').replace(/\/$/, '');
+  const withVersion = baseUri.match(/\/v\d\.\d\/accounts\//)
+    ? baseUri
+    : `${baseUri}/v2.1/accounts/${accountId}`;
+
+  return { baseUrl: withVersion, accountId };
+}
+
+function parseExpiryTimestamp(raw?: string | number): number | undefined {
+  if (typeof raw === 'number') {
+    return raw;
+  }
+  if (typeof raw === 'string' && raw) {
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
 }
 
 export class DocusignAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: DocusignAPIClientConfig;
+  private readonly tokenEndpoint: string;
+  private refreshPromise?: Promise<void>;
+  private readonly refreshSkewMs = 60_000;
+  private readonly accountId: string;
 
-  constructor(config: DocusignAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = config.baseUrl || 'https://{{baseURI}}/restapi';
+  constructor(credentials: DocusignCredentials) {
+    const { baseUrl, accountId } = resolveBaseUrl(credentials);
+    super(baseUrl, credentials);
+    this.accountId = accountId;
+    this.tokenEndpoint = credentials.tokenUrl ?? 'https://account.docusign.com/oauth/token';
+
+    this.registerAliasHandlers({
+      test_connection: 'testConnection',
+      create_envelope: 'createEnvelope',
+      get_envelope: 'getEnvelope',
+      list_envelopes: 'listEnvelopes',
+      get_envelope_status: 'getEnvelopeStatus',
+      get_recipients: 'getEnvelopeRecipients',
+      download_document: 'downloadDocument',
+      void_envelope: 'voidEnvelope',
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+    const token = this.credentials.accessToken;
+    if (!token) {
+      throw new Error('DocuSign integration requires an access token');
+    }
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  private async ensureAccessToken(): Promise<void> {
+    const expiresAt = parseExpiryTimestamp(this.credentials.expiresAt);
+    const now = Date.now();
+    if (this.credentials.accessToken && (!expiresAt || expiresAt - now > this.refreshSkewMs)) {
+      return;
+    }
+
+    if (!this.credentials.refreshToken || !this.credentials.clientId || !this.credentials.clientSecret) {
+      throw new Error('DocuSign refresh requires refreshToken, clientId, and clientSecret');
+    }
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = (async () => {
+        const body = new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: this.credentials.refreshToken as string,
+          client_id: this.credentials.clientId as string,
+          client_secret: this.credentials.clientSecret as string,
+        });
+
+        const response = await fetch(this.tokenEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+          },
+          body,
+        });
+
+        if (!response.ok) {
+          this.refreshPromise = undefined;
+          throw new Error(`DocuSign token refresh failed: ${response.status} ${response.statusText}`);
+        }
+
+        const payload = await response.json();
+        this.credentials.accessToken = payload.access_token;
+        if (payload.refresh_token) {
+          this.credentials.refreshToken = payload.refresh_token;
+        }
+        if (payload.expires_in) {
+          this.credentials.expiresAt = Date.now() + Number(payload.expires_in) * 1000;
+        }
+
+        if (typeof this.credentials.onTokenRefreshed === 'function') {
+          await this.credentials.onTokenRefreshed({
+            accessToken: this.credentials.accessToken!,
+            refreshToken: this.credentials.refreshToken,
+            expiresAt: parseExpiryTimestamp(this.credentials.expiresAt),
+          });
+        }
+
+        this.refreshPromise = undefined;
+      })().catch(error => {
+        this.refreshPromise = undefined;
+        throw error;
+      });
+    }
+
+    await this.refreshPromise;
+  }
+
+  protected override async makeRequest<T = any>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    endpoint: string,
+    data?: any,
+    headers: Record<string, string> = {}
+  ): Promise<APIResponse<T>> {
+    await this.ensureAccessToken();
+    return super.makeRequest(method, endpoint, data, headers);
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get('/users?count=1');
+  }
+
+  public async createEnvelope(params: CreateEnvelopeParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['emailSubject', 'documents', 'recipients']);
+    const payload = {
+      emailSubject: params.emailSubject,
+      documents: params.documents,
+      recipients: params.recipients,
+      status: params.status ?? 'created',
+      eventNotification: params.eventNotification,
     };
+    return this.post('/envelopes', payload);
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/v2.1/accounts');
-      return response.status === 200;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
-    }
+  public async getEnvelope(params: EnvelopeIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['envelopeId']);
+    return this.get(`/envelopes/${encodeURIComponent(params.envelopeId)}`);
   }
 
-  /**
-   * Create a new record
-   */
-  async createRecord(data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/records', { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} create record failed:`, error);
-      throw error;
-    }
+  public async getEnvelopeStatus(params: EnvelopeIdentifier): Promise<APIResponse<any>> {
+    return this.getEnvelope(params);
   }
 
-  /**
-   * Update an existing record
-   */
-  async updateRecord(id: string, data: Record<string, any>): Promise<any> {
-    try {
-      const response = await this.makeRequest('PUT', `/records/${id}`, { 
-        body: JSON.stringify(data)
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} update record failed:`, error);
-      throw error;
-    }
+  public async getEnvelopeRecipients(params: EnvelopeIdentifier): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['envelopeId']);
+    return this.get(`/envelopes/${encodeURIComponent(params.envelopeId)}/recipients`);
   }
 
-  /**
-   * Get a record by ID
-   */
-  async getRecord(id: string): Promise<any> {
-    try {
-      const response = await this.makeRequest('GET', `/records/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} get record failed:`, error);
-      throw error;
-    }
+  public async listEnvelopes(params: ListEnvelopesParams = {}): Promise<APIResponse<any>> {
+    const query = this.buildQueryString({
+      from_date: params.fromDate,
+      to_date: params.toDate,
+      status: params.status,
+    });
+    return this.get(`/envelopes${query}`);
   }
 
-  /**
-   * List records with optional filters
-   */
-  async listRecords(filters?: Record<string, any>): Promise<any> {
-    try {
-      const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      const response = await this.makeRequest('GET', `/records${queryParams}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} list records failed:`, error);
-      throw error;
+  public async downloadDocument(params: DownloadDocumentParams): Promise<APIResponse<{ content: string; contentType: string }>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['envelopeId', 'documentId']);
+    await this.ensureAccessToken();
+
+    const response = await fetch(`${this.baseURL}/envelopes/${encodeURIComponent(params.envelopeId)}/documents/${encodeURIComponent(params.documentId)}`, {
+      method: 'GET',
+      headers: {
+        ...this.getAuthHeaders(),
+        Accept: 'application/pdf',
+      },
+    });
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (!response.ok) {
+      const errorText = Buffer.from(arrayBuffer).toString('utf8');
+      return { success: false, error: errorText || `HTTP ${response.status}` };
     }
+
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const contentType = response.headers.get('content-type') || 'application/pdf';
+    return { success: true, data: { content: base64, contentType } };
   }
 
-  /**
-   * Delete a record by ID
-   */
-  async deleteRecord(id: string): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('DELETE', `/records/${id}`);
-      return response.status === 200 || response.status === 204;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} delete record failed:`, error);
-      throw error;
-    }
+  public async voidEnvelope(params: VoidEnvelopeParams): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, unknown>, ['envelopeId']);
+    const body = {
+      status: 'voided',
+      voidedReason: params.voidedReason,
+    };
+    return this.put(`/envelopes/${encodeURIComponent(params.envelopeId)}`, body);
   }
 }

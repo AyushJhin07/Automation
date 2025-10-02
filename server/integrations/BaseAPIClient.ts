@@ -11,6 +11,16 @@ export interface APICredentials {
   clientId?: string;
   clientSecret?: string;
   webhookUrl?: string;
+  /**
+   * Optional callback invoked when an OAuth client refreshes its access token.
+   * Implementations that support saved connections can provide this hook so
+   * updated credentials are persisted back to the connection store.
+   */
+  onTokenRefreshed?: (tokens: {
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
+  }) => void | Promise<void>;
   [key: string]: any;
 }
 
