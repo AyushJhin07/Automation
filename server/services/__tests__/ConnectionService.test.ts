@@ -20,6 +20,7 @@ const service = new ConnectionService();
 
 const request = {
   userId: 'user-123',
+  organizationId: 'org-123',
   name: 'Test Connection',
   provider: 'custom-service',
   type: 'saas' as const,
@@ -34,11 +35,11 @@ const request = {
 const connectionId = await service.createConnection(request);
 assert.ok(connectionId, 'should return a connection id');
 
-const testResult = await service.testConnection(connectionId, request.userId);
+const testResult = await service.testConnection(connectionId, request.userId, request.organizationId);
 assert.equal(testResult.provider, request.provider, 'test returns provider name');
 assert.equal(testResult.success, false, 'unknown providers fall back to not implemented');
 
-const userConnections = await service.getUserConnections(request.userId);
+const userConnections = await service.getUserConnections(request.userId, request.organizationId);
 assert.equal(userConnections.length, 1, 'user should have exactly one connection');
 const [connection] = userConnections;
 
@@ -51,7 +52,7 @@ assert.equal(
   'test error message captured during failed test'
 );
 
-const fetched = await service.getConnection(connectionId, request.userId);
+const fetched = await service.getConnection(connectionId, request.userId, request.organizationId);
 assert.ok(fetched, 'connection can be fetched by id');
 assert.equal(fetched?.type, request.type, 'fetched connection preserves type');
 assert.equal(fetched?.testStatus, 'failed', 'fetched connection includes test status');

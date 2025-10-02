@@ -11,7 +11,8 @@ async function runSheetsAndTimeRegression(): Promise<void> {
     workflowId: 'workflow-sheets-time',
     executionId: 'exec-1',
     nodeOutputs: {},
-    timezone: 'UTC'
+    timezone: 'UTC',
+    organizationId: 'org-inline'
   };
 
   const sheetsNode = {
@@ -81,16 +82,19 @@ async function runConnectionIdAuthRegression(): Promise<void> {
     executionId: 'exec-2',
     nodeOutputs: {},
     timezone: 'UTC',
-    userId: 'user-auth'
+    userId: 'user-auth',
+    organizationId: 'org-auth'
   };
 
   const mockConnectionService = {
-    async getConnection(connectionId: string, userId: string) {
+    async getConnection(connectionId: string, userId: string, organizationId: string) {
       assert.equal(connectionId, 'conn-auth-1', 'Runtime should request the configured connection id');
       assert.equal(userId, 'user-auth', 'Runtime should request connection for current user');
+      assert.equal(organizationId, 'org-auth', 'Runtime should include organization when resolving connection');
       return {
         id: connectionId,
         userId,
+        organizationId,
         name: 'Auth Connection',
         provider: 'sheets',
         type: 'saas',

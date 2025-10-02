@@ -97,7 +97,7 @@ export class EndToEndTester {
     // Test OAuth URL generation
     await this.runTest('OAuth URL Generation', async () => {
       try {
-        const { authUrl, state } = await oauthManager.generateAuthUrl('gmail', this.testUserId);
+        const { authUrl, state } = await oauthManager.generateAuthUrl('gmail', this.testUserId, 'org-test');
         return authUrl.includes('accounts.google.com') && state.length > 0;
       } catch (error) {
         console.log('OAuth URL generation failed (expected in test environment)');

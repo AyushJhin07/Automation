@@ -12,8 +12,13 @@ router.get(
   authenticateToken,
   async (req, res) => {
     const userId = (req as any)?.user?.id;
+    const organizationId = (req as any)?.organizationId;
     if (!userId) {
       return res.status(401).json({ success: false, error: "UNAUTHORIZED" });
+    }
+
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: "ORGANIZATION_REQUIRED" });
     }
 
     const rawParam = String(req.params.spreadsheetId || "").trim();
@@ -26,7 +31,7 @@ router.get(
     }
 
     try {
-      const connections = await connectionService.getUserConnections(userId);
+      const connections = await connectionService.getUserConnections(userId, organizationId);
       const sheetsConnection = connections.find((conn) => {
         const provider = (conn.provider || "").toLowerCase();
         return provider.includes("sheet");

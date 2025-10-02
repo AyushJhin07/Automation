@@ -10,6 +10,7 @@ interface WorkflowExecutionContext {
   workflowId: string;
   executionId: string;
   userId?: string;
+  organizationId?: string;
   nodeOutputs: Record<string, any>;
   timezone?: string;
   edges?: Array<Record<string, any>>;
@@ -181,7 +182,11 @@ export class WorkflowRuntimeService {
       });
     }
 
-    const credentialResolution = await this.resolveCredentials(node, context.userId);
+    const credentialResolution = await this.resolveCredentials(
+      node,
+      context.userId,
+      context.organizationId
+    );
     if (!credentialResolution.success) {
       throw new WorkflowNodeExecutionError(credentialResolution.error, {
         reason: credentialResolution.reason,
@@ -808,7 +813,11 @@ export class WorkflowRuntimeService {
    * - node.parameters.connectionId
    * - node.data.parameters.connectionId
    */
-  private async resolveCredentials(node: any, userId?: string): Promise<CredentialResolution> {
+  private async resolveCredentials(
+    node: any,
+    userId?: string,
+    organizationId?: string
+  ): Promise<CredentialResolution> {
     const inlineCredentials = this.extractInlineCredentials(node);
     const connectionId = this.selectString(
       node?.data?.auth?.connectionId,
@@ -846,6 +855,15 @@ export class WorkflowRuntimeService {
       };
     }
 
+    if (!organizationId) {
+      return {
+        success: false,
+        error: 'Missing organization context for stored connection',
+        reason: 'missing_organization',
+        connectionId
+      };
+    }
+
     try {
       const service = await this.getConnectionService();
       if (!service) {
@@ -857,7 +875,7 @@ export class WorkflowRuntimeService {
         };
       }
 
-      const connection = await service.getConnection(connectionId, userId);
+      const connection = await service.getConnection(connectionId, userId, organizationId);
       if (!connection) {
         return {
           success: false,
