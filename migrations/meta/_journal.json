@@ -15,6 +15,13 @@
       "when": 1759132941664,
       "tag": "0001_connections_add_organization",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759132942664,
+      "tag": "0002_workflows_add_organization",
+      "breakpoints": true
     }
   ]
 }

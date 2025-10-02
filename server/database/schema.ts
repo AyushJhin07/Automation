@@ -316,6 +316,9 @@ export const workflows = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
     name: text('name').notNull(),
     description: text('description'),
     graph: json('graph').$type<Record<string, any>>().notNull(),
@@ -358,7 +361,7 @@ export const workflows = pgTable(
   },
   (table) => ({
     // Performance indexes for ALL applications
-    userIdx: index('workflows_user_idx').on(table.userId),
+    userIdx: index('workflows_user_idx').on(table.organizationId, table.userId),
     categoryIdx: index('workflows_category_idx').on(table.category),
     activeIdx: index('workflows_active_idx').on(table.isActive),
     lastExecutedIdx: index('workflows_last_executed_idx').on(table.lastExecuted),
@@ -374,8 +377,8 @@ export const workflows = pgTable(
     performanceIdx: index('workflows_performance_idx').on(table.avgExecutionTime, table.successRate),
     
     // Composite indexes for common queries
-    userActiveIdx: index('workflows_user_active_idx').on(table.userId, table.isActive),
-    userCategoryIdx: index('workflows_user_category_idx').on(table.userId, table.category),
+    userActiveIdx: index('workflows_user_active_idx').on(table.organizationId, table.userId, table.isActive),
+    userCategoryIdx: index('workflows_user_category_idx').on(table.organizationId, table.userId, table.category),
   })
 );
 
@@ -386,6 +389,9 @@ export const workflowExecutions = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'cascade' }).notNull(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
     status: text('status').notNull(), // started, completed, failed, cancelled
     startedAt: timestamp('started_at').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
@@ -435,8 +441,8 @@ export const workflowExecutions = pgTable(
   },
   (table) => ({
     // Performance indexes for ALL applications
-    workflowIdx: index('executions_workflow_idx').on(table.workflowId),
-    userIdx: index('executions_user_idx').on(table.userId),
+    workflowIdx: index('executions_workflow_idx').on(table.organizationId, table.workflowId),
+    userIdx: index('executions_user_idx').on(table.organizationId, table.userId),
     statusIdx: index('executions_status_idx').on(table.status),
     startedAtIdx: index('executions_started_at_idx').on(table.startedAt),
     durationIdx: index('executions_duration_idx').on(table.duration),
@@ -451,7 +457,7 @@ export const workflowExecutions = pgTable(
     
     // Composite indexes for common analytics queries
     userTimeIdx: index('executions_user_time_idx').on(table.userId, table.startedAt),
-    workflowTimeIdx: index('executions_workflow_time_idx').on(table.workflowId, table.startedAt),
+    workflowTimeIdx: index('executions_workflow_time_idx').on(table.organizationId, table.workflowId, table.startedAt),
     statusTimeIdx: index('executions_status_time_idx').on(table.status, table.startedAt),
   })
 );
@@ -651,12 +657,14 @@ export const connectionsRelations = relations(connections, ({ one }) => ({
 
 export const workflowsRelations = relations(workflows, ({ one, many }) => ({
   user: one(users, { fields: [workflows.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [workflows.organizationId], references: [organizations.id] }),
   executions: many(workflowExecutions),
 }));
 
 export const workflowExecutionsRelations = relations(workflowExecutions, ({ one }) => ({
   workflow: one(workflows, { fields: [workflowExecutions.workflowId], references: [workflows.id] }),
   user: one(users, { fields: [workflowExecutions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [workflowExecutions.organizationId], references: [organizations.id] }),
 }));
 
 export const usageTrackingRelations = relations(usageTracking, ({ one }) => ({
