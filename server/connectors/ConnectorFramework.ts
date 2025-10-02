@@ -689,7 +689,13 @@ export class ConnectorFramework {
           oauth2: {
             authUrl: 'https://accounts.google.com/o/oauth2/auth',
             tokenUrl: 'https://oauth2.googleapis.com/token',
-            scopes: ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/gmail.readonly'],
+            scopes: [
+              'https://www.googleapis.com/auth/gmail.send',
+              'https://www.googleapis.com/auth/gmail.readonly',
+              'openid',
+              'email',
+              'profile'
+            ],
             clientIdRequired: true
           }
         },
