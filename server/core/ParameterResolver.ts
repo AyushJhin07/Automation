@@ -159,7 +159,7 @@ async function resolveLLMValue(
       const availableAdapters = llmRegistry.getAvailableProviders();
       const message = `LLM provider adapter "${provider}" is not registered. Available adapters: ${availableAdapters.join(', ') || 'none'}.`;
       console.warn(message);
-      return message;
+      throw new Error(message);
     }
 
     // Interpolate prompt with context

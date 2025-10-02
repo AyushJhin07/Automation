@@ -1134,9 +1134,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userId = req.user!.id;
           let conn = null as any;
           if (connectionId) {
-            conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
+            conn = await connectionService.getConnectionWithFreshTokens(
+              String(connectionId),
+              userId,
+              req.organizationId
+            );
           } else if (provider) {
-            conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
+            conn = await connectionService.getConnectionByProviderWithFreshTokens(
+              userId,
+              req.organizationId,
+              String(provider)
+            );
           }
           if (!conn) {
             results.push({ success: false, error: 'Connection not found', appName, functionId });
@@ -1772,9 +1780,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userId = req.user!.id;
         let conn = null as any;
         if (connectionId) {
-          conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
+          conn = await connectionService.getConnectionWithFreshTokens(
+            String(connectionId),
+            userId,
+            req.organizationId
+          );
         } else if (provider) {
-          conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
+          conn = await connectionService.getConnectionByProviderWithFreshTokens(
+            userId,
+            req.organizationId,
+            String(provider)
+          );
         }
         if (!conn) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
@@ -1843,9 +1859,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userId = req.user!.id;
         let conn = null as any;
         if (connectionId) {
-          conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
+          conn = await connectionService.getConnectionWithFreshTokens(
+            String(connectionId),
+            userId,
+            req.organizationId
+          );
         } else if (provider) {
-          conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
+          conn = await connectionService.getConnectionByProviderWithFreshTokens(
+            userId,
+            req.organizationId,
+            String(provider)
+          );
         }
         if (!conn) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
@@ -1902,8 +1926,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
         let conn = null as any;
-        if (connectionId) conn = await connectionService.getConnection(String(connectionId), userId, req.organizationId);
-        else if (provider) conn = await connectionService.getConnectionByProvider(userId, req.organizationId, String(provider));
+        if (connectionId) {
+          conn = await connectionService.getConnectionWithFreshTokens(
+            String(connectionId),
+            userId,
+            req.organizationId
+          );
+        } else if (provider) {
+          conn = await connectionService.getConnectionByProviderWithFreshTokens(
+            userId,
+            req.organizationId,
+            String(provider)
+          );
+        }
         if (!conn) return res.status(404).json({ success: false, error: 'Connection not found' });
         credentials = conn.credentials;
         appName = appName || conn.provider;
@@ -3644,33 +3679,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all user connections
       const connections = await connectionService.getUserConnections(userId, req.organizationId);
-      
+
       const healthChecks: Record<string, any> = {};
       let totalConnections = 0;
       let healthyConnections = 0;
       let failedConnections = 0;
-      
+
       // Test each connection
       for (const connection of connections) {
         totalConnections++;
-        
+
         try {
+          const hydrated = await connectionService.getConnectionWithFreshTokens(
+            connection.id,
+            userId,
+            req.organizationId
+          );
+          const activeConnection = hydrated ?? connection;
+
           // Use the integrationManager to test the connection
           const testResult = await integrationManager.executeFunction({
-            appName: connection.provider,
+            appName: activeConnection.provider,
             functionId: 'test_connection',
             parameters: {},
-            credentials: connection.credentials || {},
-            connectionId: connection.id
+            credentials: activeConnection.credentials || {},
+            connectionId: activeConnection.id
           });
-          
-          healthChecks[connection.provider] = {
+
+          healthChecks[activeConnection.provider] = {
             status: testResult.success ? 'healthy' : 'error',
             lastChecked: new Date().toISOString(),
-            connectedAt: connection.createdAt,
+            connectedAt: activeConnection.createdAt,
             error: testResult.success ? null : testResult.error
           };
-          
+
           if (testResult.success) {
             healthyConnections++;
           } else {
@@ -3679,7 +3721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
         } catch (error) {
           failedConnections++;
-          healthChecks[connection.provider] = {
+          const provider = connection.provider;
+          healthChecks[provider] = {
             status: 'error',
             lastChecked: new Date().toISOString(),
             connectedAt: connection.createdAt,
@@ -3730,7 +3773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has this connection
       const connections = await connectionService.getUserConnections(userId, req.organizationId);
       const connection = connections.find(conn => conn.provider === provider);
-      
+
       if (!connection) {
         return res.status(404).json({
           success: false,
@@ -3738,30 +3781,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           responseTime: Date.now() - startTime
         });
       }
-      
+
+      let activeConnection = connection;
+
       try {
+        const hydrated = await connectionService.getConnectionWithFreshTokens(
+          connection.id,
+          userId,
+          req.organizationId
+        );
+        activeConnection = hydrated ?? connection;
+
         // Test the specific connection
         const testResult = await integrationManager.executeFunction({
           appName: provider,
           functionId: 'test_connection',
           parameters: {},
-          credentials: connection.credentials || {},
-          connectionId: connection.id
+          credentials: activeConnection.credentials || {},
+          connectionId: activeConnection.id
         });
-        
+
         res.json({
           success: true,
           health: {
             provider,
             status: testResult.success ? 'healthy' : 'error',
             lastChecked: new Date().toISOString(),
-            connectedAt: connection.createdAt,
+            connectedAt: activeConnection.createdAt,
             error: testResult.success ? null : testResult.error,
             details: testResult
           },
           responseTime: Date.now() - startTime
         });
-        
+
       } catch (error) {
         res.json({
           success: true,
@@ -3769,7 +3821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             provider,
             status: 'error',
             lastChecked: new Date().toISOString(),
-            connectedAt: connection.createdAt,
+            connectedAt: activeConnection.createdAt,
             error: getErrorMessage(error)
           },
           responseTime: Date.now() - startTime

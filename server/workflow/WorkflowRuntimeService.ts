@@ -876,7 +876,11 @@ export class WorkflowRuntimeService {
         };
       }
 
-      const connection = await service.getConnection(connectionId, userId, organizationId);
+      const connection = await service.getConnectionWithFreshTokens(
+        connectionId,
+        userId,
+        organizationId
+      );
       if (!connection) {
         return {
           success: false,
