@@ -1,9 +1,10 @@
 import type { Job, Queue, QueueEvents, Worker } from 'bullmq';
+import { eq, sql } from 'drizzle-orm';
 
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db } from '../database/schema.js';
+import { db, workflowTimers } from '../database/schema.js';
 import {
   createQueue,
   createQueueEvents,
@@ -11,6 +12,7 @@ import {
   type WorkflowExecuteJobPayload,
 } from '../queue/BullMQFactory.js';
 import { registerQueueWorker } from '../workers/queueWorker.js';
+import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -128,6 +130,54 @@ class ExecutionQueueService {
     }
 
     return { executionId: execution.id };
+  }
+
+  public async enqueueResume(params: {
+    timerId: string;
+    executionId: string;
+    workflowId: string;
+    organizationId: string;
+    userId?: string;
+    resumeState: WorkflowResumeState;
+    initialData: any;
+    triggerType?: string;
+  }): Promise<void> {
+    if (!this.isDbEnabled()) {
+      return;
+    }
+
+    const queue = this.ensureQueue();
+    const jobId = `${params.executionId}:${params.timerId ?? Date.now().toString(36)}`;
+
+    try {
+      await queue.add(
+        'workflow.execute',
+        {
+          executionId: params.executionId,
+          workflowId: params.workflowId,
+          organizationId: params.organizationId,
+          userId: params.userId,
+          triggerType: params.triggerType ?? 'timer',
+          resumeState: params.resumeState,
+          initialData: params.initialData,
+          timerId: params.timerId,
+        },
+        {
+          jobId,
+          group: {
+            id: params.organizationId,
+          },
+        }
+      );
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error(
+        `Failed to enqueue resume job for execution ${params.executionId} (timer ${params.timerId}):`,
+        errorMessage
+      );
+      await this.markTimerForRetry(params.timerId, errorMessage);
+      throw error;
+    }
   }
 
   public start(): void {
@@ -257,6 +307,8 @@ class ExecutionQueueService {
   private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
     const startedAt = Date.now();
     const { executionId, workflowId, organizationId, userId } = job.data;
+    const resumeState = (job.data.resumeState ?? null) as WorkflowResumeState | null;
+    const timerId = job.data.timerId ?? null;
     const executionRecord = await WorkflowRepository.getExecutionById(executionId, organizationId);
     const baseMetadata = {
       ...(executionRecord?.metadata ?? {}),
@@ -294,11 +346,51 @@ class ExecutionQueueService {
         throw new Error(`Workflow not found or missing graph: ${workflowId}`);
       }
 
-      const initialData = { trigger: { id: 'queue', source: 'queue', timestamp: new Date().toISOString() } };
-      const result = await workflowRuntime.executeWorkflow(wf.graph as any, initialData, userId);
+      const defaultInitialData = {
+        trigger: { id: 'queue', source: 'queue', timestamp: new Date().toISOString() },
+      };
+      const initialData = job.data.initialData ?? defaultInitialData;
+      const trigger = job.data.triggerType ?? (resumeState ? 'timer' : 'manual');
 
-      if (!result.success) {
+      const result = await workflowRuntime.executeWorkflow(wf.graph as any, initialData, userId, {
+        executionId,
+        organizationId,
+        triggerType: trigger,
+        resumeState,
+      });
+
+      if (timerId) {
+        await this.markTimerCompleted(timerId);
+      }
+
+      if (!result.success && result.status === 'failed') {
         throw new Error(result.error || 'Execution returned unsuccessful result');
+      }
+
+      if (result.status === 'waiting') {
+        const waitingMetadata = {
+          ...runningMetadata,
+          waitUntil: result.waitUntil ?? null,
+          timerId: result.timerId ?? null,
+          retryCount: Math.max(0, attemptNumber - 1),
+        } as Record<string, any>;
+        delete waitingMetadata.lastError;
+        delete waitingMetadata.finishedAt;
+
+        await WorkflowRepository.updateWorkflowExecution(
+          executionId,
+          {
+            status: 'waiting',
+            completedAt: null,
+            duration: Date.now() - startedAt,
+            nodeResults: result.nodeOutputs,
+            errorDetails: null,
+            metadata: waitingMetadata,
+          },
+          organizationId
+        );
+
+        return;
       }
 
       const metadata = {
@@ -307,6 +399,12 @@ class ExecutionQueueService {
         retryCount: Math.max(0, attemptNumber - 1),
       } as Record<string, any>;
       delete metadata.lastError;
+      if ('waitUntil' in metadata) {
+        delete metadata.waitUntil;
+      }
+      if ('timerId' in metadata) {
+        delete metadata.timerId;
+      }
 
       await WorkflowRepository.updateWorkflowExecution(
         executionId,
@@ -351,6 +449,10 @@ class ExecutionQueueService {
           `⚠️ Execution ${executionId} failed (attempt ${attemptNumber}/${maxAttempts}). Retrying via queue: ${errorMessage}`
         );
       } else {
+        if (timerId) {
+          await this.markTimerForRetry(timerId, errorMessage);
+        }
+
         await WorkflowRepository.updateWorkflowExecution(
           executionId,
           {
@@ -367,6 +469,49 @@ class ExecutionQueueService {
       }
 
       throw error;
+    }
+  }
+
+  private async markTimerCompleted(timerId: string | null): Promise<void> {
+    if (!timerId || !this.isDbEnabled()) {
+      return;
+    }
+
+    try {
+      await db
+        .update(workflowTimers)
+        .set({
+          status: 'completed',
+          updatedAt: new Date(),
+          lastError: null,
+        })
+        .where(eq(workflowTimers.id, timerId));
+    } catch (error) {
+      console.error('Failed to mark workflow timer as completed:', getErrorMessage(error));
+    }
+  }
+
+  private async markTimerForRetry(timerId: string | null, errorMessage: string): Promise<void> {
+    if (!timerId || !this.isDbEnabled()) {
+      return;
+    }
+
+    const retryDelayMs = Math.max(this.baseRetryDelayMs, 5000);
+    const nextAttemptAt = new Date(Date.now() + retryDelayMs);
+
+    try {
+      await db
+        .update(workflowTimers)
+        .set({
+          status: 'pending',
+          resumeAt: nextAttemptAt,
+          updatedAt: new Date(),
+          lastError: errorMessage,
+          attempts: sql`${workflowTimers.attempts} + 1`,
+        })
+        .where(eq(workflowTimers.id, timerId));
+    } catch (error) {
+      console.error('Failed to reset workflow timer for retry:', getErrorMessage(error));
     }
   }
 }

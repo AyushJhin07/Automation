@@ -44,7 +44,7 @@ export interface WorkflowExecution {
   workflowId: string;
   workflowName: string;
   userId?: string;
-  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'partial';
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'partial' | 'waiting';
   startTime: Date;
   endTime?: Date;
   duration?: number;
@@ -75,6 +75,8 @@ export interface WorkflowExecution {
       cooldownMs: number;
       failureThreshold: number;
     }>;
+    nextResumeAt?: Date;
+    waitReason?: string;
   };
 }
 
@@ -285,6 +287,28 @@ class RunExecutionManager {
     this.updateWorkflowMetadata(execution);
 
     console.log(`🏁 Completed execution ${executionId}: ${execution.status} in ${execution.duration}ms`);
+  }
+
+  /**
+   * Mark execution as waiting for external signal
+   */
+  markExecutionWaiting(executionId: string, reason?: string, resumeAt?: Date): void {
+    const execution = this.executions.get(executionId);
+    if (!execution) {
+      return;
+    }
+
+    execution.status = 'waiting';
+    if (resumeAt) {
+      execution.metadata.nextResumeAt = resumeAt;
+    }
+    if (reason) {
+      execution.metadata.waitReason = reason;
+    }
+
+    console.log(
+      `⏸️ Execution ${executionId} paused${resumeAt ? ` until ${resumeAt.toISOString()}` : ''}${reason ? ` (${reason})` : ''}`
+    );
   }
 
   /**

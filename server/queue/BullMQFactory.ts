@@ -10,6 +10,7 @@ import {
 } from 'bullmq';
 
 import { env } from '../env';
+import type { WorkflowResumeState } from '../types/workflowTimers';
 
 export type WorkflowExecuteJobPayload = {
   workflowId: string;
@@ -19,6 +20,9 @@ export type WorkflowExecuteJobPayload = {
   triggerType: string;
   triggerData?: Record<string, unknown> | null;
   metadata?: Record<string, unknown>;
+  resumeState?: WorkflowResumeState | null;
+  initialData?: any;
+  timerId?: string | null;
 };
 
 export interface JobPayloads {

@@ -1,18 +1,19 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { 
-  pgTable, 
-  text, 
-  timestamp, 
-  integer, 
-  boolean, 
-  json, 
+import {
+  pgTable,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  json,
   uuid,
   index,
   uniqueIndex,
   serial
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import type { WorkflowTimerPayload } from '../types/workflowTimers';
 
 export type OrganizationPlan = 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
 export type OrganizationStatus = 'active' | 'suspended' | 'trial' | 'churned';
@@ -462,6 +463,29 @@ export const workflowExecutions = pgTable(
   })
 );
 
+export const workflowTimers = pgTable(
+  'workflow_timers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .references(() => workflowExecutions.id, { onDelete: 'cascade' })
+      .notNull(),
+    resumeAt: timestamp('resume_at').notNull(),
+    payload: json('payload').$type<WorkflowTimerPayload>().notNull(),
+    status: text('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    dispatchedAt: timestamp('dispatched_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastError: text('last_error'),
+  },
+  (table) => ({
+    resumeAtIdx: index('workflow_timers_resume_at_idx').on(table.resumeAt),
+    statusIdx: index('workflow_timers_status_idx').on(table.status),
+    executionIdx: index('workflow_timers_execution_idx').on(table.executionId),
+  })
+);
+
 // Usage tracking table with comprehensive metering for ALL applications
 export const usageTracking = pgTable(
   'usage_tracking',
@@ -661,10 +685,15 @@ export const workflowsRelations = relations(workflows, ({ one, many }) => ({
   executions: many(workflowExecutions),
 }));
 
-export const workflowExecutionsRelations = relations(workflowExecutions, ({ one }) => ({
+export const workflowExecutionsRelations = relations(workflowExecutions, ({ one, many }) => ({
   workflow: one(workflows, { fields: [workflowExecutions.workflowId], references: [workflows.id] }),
   user: one(users, { fields: [workflowExecutions.userId], references: [users.id] }),
   organization: one(organizations, { fields: [workflowExecutions.organizationId], references: [organizations.id] }),
+  timers: many(workflowTimers),
+}));
+
+export const workflowTimersRelations = relations(workflowTimers, ({ one }) => ({
+  execution: one(workflowExecutions, { fields: [workflowTimers.executionId], references: [workflowExecutions.id] }),
 }));
 
 export const usageTrackingRelations = relations(usageTracking, ({ one }) => ({
@@ -791,6 +820,7 @@ if (!connectionString) {
       connections,
       workflows,
       workflowExecutions,
+      workflowTimers,
       usageTracking,
       connectorDefinitions,
       sessions,
@@ -803,6 +833,7 @@ if (!connectionString) {
       connectionsRelations,
       workflowsRelations,
       workflowExecutionsRelations,
+      workflowTimersRelations,
       usageTrackingRelations,
       sessionsRelations,
       webhookLogs,
