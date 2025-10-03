@@ -14,7 +14,7 @@ import {
   type Worker,
   type WorkflowExecuteJobPayload,
 } from '../queue/index.js';
-import { registerQueueWorker } from '../workers/queueWorker.js';
+import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 import { updateQueueDepthMetric } from '../observability/index.js';
 import type { Job } from 'bullmq';
@@ -34,12 +34,21 @@ class ExecutionQueueService {
   private readonly maxRetries: number;
   private readonly baseRetryDelayMs: number;
   private readonly maxRetryDelayMs: number;
+  private readonly lockDurationMs: number;
+  private readonly lockRenewTimeMs: number;
+  private readonly heartbeatIntervalMs: number;
+  private readonly heartbeatTimeoutMs: number;
+  private readonly heartbeatPersistIntervalMs: number;
   private started = false;
   private shutdownPromise: Promise<void> | null = null;
   private queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
   private worker: Worker<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
   private queueEvents: QueueEvents | null = null;
   private telemetryCleanup: (() => void) | null = null;
+  private readonly activeLeases = new Map<
+    string,
+    { metadata: Record<string, any>; organizationId: string; lastPersistedAt: number }
+  >();
 
   private constructor() {
     const configuredConcurrency = Number.parseInt(
@@ -64,6 +73,38 @@ class ExecutionQueueService {
     this.maxRetryDelayMs = Math.max(
       this.baseRetryDelayMs,
       Number.parseInt(process.env.EXECUTION_MAX_RETRY_DELAY_MS ?? `${5 * 60 * 1000}`, 10)
+    );
+    this.lockDurationMs = Math.max(
+      1000,
+      Number.parseInt(process.env.EXECUTION_LOCK_DURATION_MS ?? '60000', 10)
+    );
+    this.lockRenewTimeMs = Math.max(
+      500,
+      Number.parseInt(
+        process.env.EXECUTION_LOCK_RENEW_MS ?? `${Math.max(1000, Math.floor(this.lockDurationMs / 4))}`,
+        10
+      )
+    );
+    this.heartbeatIntervalMs = Math.max(
+      250,
+      Number.parseInt(
+        process.env.EXECUTION_HEARTBEAT_INTERVAL_MS ?? `${Math.max(500, Math.floor(this.lockRenewTimeMs / 2))}`,
+        10
+      )
+    );
+    this.heartbeatTimeoutMs = Math.max(
+      this.heartbeatIntervalMs * 2,
+      Number.parseInt(
+        process.env.EXECUTION_HEARTBEAT_TIMEOUT_MS ?? `${Math.max(this.lockDurationMs * 2, this.lockDurationMs + this.lockRenewTimeMs)}`,
+        10
+      )
+    );
+    this.heartbeatPersistIntervalMs = Math.max(
+      this.heartbeatIntervalMs,
+      Number.parseInt(
+        process.env.EXECUTION_HEARTBEAT_PERSIST_MS ?? `${Math.max(this.heartbeatIntervalMs, 1000)}`,
+        10
+      )
     );
   }
 
@@ -236,6 +277,52 @@ class ExecutionQueueService {
         concurrency: this.concurrency,
         tenantConcurrency: this.tenantConcurrency,
         resolveTenantId: (job) => job.data.organizationId,
+        lockDuration: this.lockDurationMs,
+        lockRenewTime: this.lockRenewTimeMs,
+        heartbeatIntervalMs: this.heartbeatIntervalMs,
+        heartbeatTimeoutMs: this.heartbeatTimeoutMs,
+        onHeartbeat: async (
+          _job: Job<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>,
+          context: QueueWorkerHeartbeatContext<'workflow.execute'>
+        ) => {
+          const payload = _job.data;
+          const executionId = payload.executionId;
+          const organizationId = payload.organizationId;
+          if (!executionId || !organizationId) {
+            return;
+          }
+
+          const leaseEntry = this.activeLeases.get(executionId);
+          if (!leaseEntry) {
+            return;
+          }
+
+          const leaseMetadata = (leaseEntry.metadata.lease ?? {}) as Record<string, any>;
+          leaseMetadata.lastHeartbeatAt = context.timestamp.toISOString();
+          leaseMetadata.lockExpiresAt = context.lockExpiresAt.toISOString();
+          leaseMetadata.renewCount = context.renewCount;
+          leaseEntry.metadata.lease = leaseMetadata;
+
+          const now = context.timestamp.getTime();
+          if (now - leaseEntry.lastPersistedAt < this.heartbeatPersistIntervalMs) {
+            return;
+          }
+
+          leaseEntry.lastPersistedAt = now;
+
+          try {
+            await WorkflowRepository.updateWorkflowExecution(
+              executionId,
+              { metadata: { ...leaseEntry.metadata } },
+              organizationId
+            );
+          } catch (error) {
+            console.warn(
+              `Failed to persist heartbeat metadata for execution ${executionId}:`,
+              getErrorMessage(error)
+            );
+          }
+        },
         settings: {
           backoffStrategies: {
             'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
@@ -390,6 +477,24 @@ class ExecutionQueueService {
     if ('finishedAt' in runningMetadata) {
       delete runningMetadata.finishedAt;
     }
+    if ('lease' in runningMetadata) {
+      delete runningMetadata.lease;
+    }
+
+    const now = new Date();
+    const lockExpiresAt = new Date(now.getTime() + this.lockDurationMs);
+    const workerId = this.worker?.id ?? `execution-worker:${process.pid}`;
+    runningMetadata.lease = {
+      workerId,
+      lockedAt: now.toISOString(),
+      lockDurationMs: this.lockDurationMs,
+      lockRenewTimeMs: this.lockRenewTimeMs,
+      heartbeatIntervalMs: this.heartbeatIntervalMs,
+      heartbeatTimeoutMs: this.heartbeatTimeoutMs,
+      lockExpiresAt: lockExpiresAt.toISOString(),
+      lastHeartbeatAt: now.toISOString(),
+      renewCount: 0,
+    } as Record<string, any>;
 
     await WorkflowRepository.updateWorkflowExecution(
       executionId,
@@ -402,6 +507,12 @@ class ExecutionQueueService {
       },
       organizationId
     );
+
+    this.activeLeases.set(executionId, {
+      metadata: runningMetadata,
+      organizationId,
+      lastPersistedAt: Date.now(),
+    });
 
     try {
       const wf = await WorkflowRepository.getWorkflowById(workflowId, organizationId);
@@ -439,6 +550,9 @@ class ExecutionQueueService {
         } as Record<string, any>;
         delete waitingMetadata.lastError;
         delete waitingMetadata.finishedAt;
+        if ('lease' in waitingMetadata) {
+          delete waitingMetadata.lease;
+        }
 
         await WorkflowRepository.updateWorkflowExecution(
           executionId,
@@ -468,6 +582,9 @@ class ExecutionQueueService {
       if ('timerId' in metadata) {
         delete metadata.timerId;
       }
+      if ('lease' in metadata) {
+        delete metadata.lease;
+      }
 
       await WorkflowRepository.updateWorkflowExecution(
         executionId,
@@ -491,6 +608,9 @@ class ExecutionQueueService {
       } as Record<string, any>;
       if ('finishedAt' in failureMetadata) {
         delete failureMetadata.finishedAt;
+      }
+      if ('lease' in failureMetadata) {
+        delete failureMetadata.lease;
       }
 
       const remainingAttempts = Math.max(0, maxAttempts - attemptNumber);
@@ -532,6 +652,8 @@ class ExecutionQueueService {
       }
 
       throw error;
+    } finally {
+      this.activeLeases.delete(executionId);
     }
   }
 
