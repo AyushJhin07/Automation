@@ -7,7 +7,7 @@
 import { NodeGraph, GraphNode, ParameterContext } from '../../shared/nodeGraphSchema';
 import { runLLMGenerate, runLLMExtract, runLLMClassify, runLLMToolCall } from '../nodes/llm/executeLLM';
 import { resolveAllParams } from './ParameterResolver';
-import { retryManager, RetryPolicy } from './RetryManager';
+import { retryManager, RetryPolicy, CircuitBreakerConfig } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
 
 export interface ExecutionContext {
@@ -17,6 +17,7 @@ export interface ExecutionContext {
   workflowId: string;
   startTime: Date;
   executionId: string;
+  abortSignal?: AbortSignal;
 }
 
 export interface ExecutionResult {
@@ -28,6 +29,11 @@ export interface ExecutionResult {
 }
 
 export class WorkflowRuntime {
+  private readonly defaultNodeTimeoutMs = Math.max(
+    0,
+    Number.parseInt(process.env.WORKFLOW_RUNTIME_DEFAULT_TIMEOUT_MS || '60000', 10)
+  );
+
   /**
    * Execute a workflow graph server-side
    * Particularly useful for LLM nodes and testing
@@ -62,20 +68,31 @@ export class WorkflowRuntime {
         }
 
         console.log(`📋 Executing node: ${node.label} (${node.type})`);
-        
+
+        const connectorId = this.getConnectorIdForNode(node);
+        const nodeTimeoutMs = this.getNodeTimeoutMs(node);
+        const circuitBreakerConfig = this.getCircuitBreakerConfigForNode(node);
+
         // Start node execution tracking
-        const nodeExecution = runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput);
-        
+        const nodeExecution = runExecutionManager.startNodeExecution(
+          context.executionId,
+          node,
+          context.prevOutput,
+          { connectorId }
+        );
+
         try {
           // Execute node with retry logic and idempotency
           const nodeResult = await retryManager.executeWithRetry(
             node.id,
             context.executionId,
-            () => this.executeNode(node, context),
+            () => this.executeNodeWithTimeout(node, context, nodeTimeoutMs),
             {
               policy: this.getRetryPolicyForNode(node),
               idempotencyKey: this.generateIdempotencyKey(node, context),
-              nodeType: node.type
+              nodeType: node.type,
+              connectorId,
+              circuitBreaker: circuitBreakerConfig
             }
           );
           
@@ -130,6 +147,110 @@ export class WorkflowRuntime {
   /**
    * Execute a single node
    */
+  private async executeNodeWithTimeout(
+    node: GraphNode,
+    context: ExecutionContext,
+    timeoutMs: number
+  ): Promise<any> {
+    const resolvedTimeout = Math.max(0, Number.isFinite(timeoutMs) ? timeoutMs : this.defaultNodeTimeoutMs);
+
+    if (resolvedTimeout === 0) {
+      return this.executeNode(node, context);
+    }
+
+    const abortController = new AbortController();
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    const nodeContext: ExecutionContext = { ...context, abortSignal: abortController.signal };
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        abortController.abort();
+        reject(new Error(`Node "${node.label || node.id}" timed out after ${resolvedTimeout}ms`));
+      }, resolvedTimeout);
+    });
+
+    try {
+      return await Promise.race([
+        this.executeNode(node, nodeContext),
+        timeoutPromise
+      ]);
+    } catch (error: any) {
+      if (abortController.signal.aborted) {
+        const message = `Node "${node.label || node.id}" timed out after ${resolvedTimeout}ms`;
+        throw new Error(message);
+      }
+      throw error;
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
+  }
+
+  private getNodeTimeoutMs(node: GraphNode): number {
+    const candidates = [
+      node.data?.execution?.timeoutMs,
+      node.data?.runtime?.timeoutMs,
+      node.data?.timeoutMs,
+      node.data?.limits?.timeoutMs,
+      node.metadata?.timeoutMs,
+      node.metadata?.execution?.timeoutMs,
+      node.metadata?.runtime?.timeoutMs
+    ];
+
+    for (const candidate of candidates) {
+      const value = typeof candidate === 'string' ? Number.parseInt(candidate, 10) : candidate;
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return Math.max(0, value);
+      }
+    }
+
+    return this.defaultNodeTimeoutMs;
+  }
+
+  private getCircuitBreakerConfigForNode(node: GraphNode): Partial<CircuitBreakerConfig> | undefined {
+    const rawConfig =
+      node.data?.execution?.circuitBreaker ??
+      node.data?.circuitBreaker ??
+      node.data?.runtime?.circuitBreaker ??
+      node.metadata?.circuitBreaker;
+
+    if (!rawConfig || typeof rawConfig !== 'object') {
+      return undefined;
+    }
+
+    const config: Partial<CircuitBreakerConfig> = {};
+    const thresholdValue = (rawConfig as any).failureThreshold ?? (rawConfig as any).threshold;
+    const cooldownValue = (rawConfig as any).cooldownMs ?? (rawConfig as any).cooldown ?? (rawConfig as any).resetTimeoutMs;
+
+    if (thresholdValue != null) {
+      const parsed = typeof thresholdValue === 'string' ? Number.parseInt(thresholdValue, 10) : thresholdValue;
+      if (typeof parsed === 'number' && Number.isFinite(parsed) && parsed > 0) {
+        config.failureThreshold = parsed;
+      }
+    }
+
+    if (cooldownValue != null) {
+      const parsed = typeof cooldownValue === 'string' ? Number.parseInt(cooldownValue, 10) : cooldownValue;
+      if (typeof parsed === 'number' && Number.isFinite(parsed) && parsed >= 0) {
+        config.cooldownMs = parsed < 1000 ? parsed * 1000 : parsed;
+      }
+    }
+
+    return Object.keys(config).length > 0 ? config : undefined;
+  }
+
+  private getConnectorIdForNode(node: GraphNode): string | undefined {
+    return (
+      node.data?.connectorId ||
+      node.data?.app ||
+      node.data?.application ||
+      node.app ||
+      (typeof node.type === 'string' ? node.type.split('.')?.[1] : undefined)
+    );
+  }
+
   private async executeNode(node: GraphNode, context: ExecutionContext): Promise<any> {
     // Resolve node parameters using AI-as-a-field ParameterResolver
     const paramContext: ParameterContext = {
@@ -159,7 +280,7 @@ export class WorkflowRuntime {
       
       // HTTP Actions (useful for testing and API calls)
       case 'action.http.request':
-        return await this.executeHttpRequest(resolvedParams);
+        return await this.executeHttpRequest(resolvedParams, context.abortSignal);
       
       // Transform nodes
       case 'transform.json.extract':
@@ -184,7 +305,7 @@ export class WorkflowRuntime {
   /**
    * Execute HTTP request node
    */
-  private async executeHttpRequest(params: any): Promise<any> {
+  private async executeHttpRequest(params: any, signal?: AbortSignal): Promise<any> {
     const { url, method = 'GET', headers = {}, body } = params;
     
     if (!url) {
@@ -198,7 +319,8 @@ export class WorkflowRuntime {
           'Content-Type': 'application/json',
           ...headers
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? JSON.stringify(body) : undefined,
+        signal
       });
 
       const data = await response.text();
