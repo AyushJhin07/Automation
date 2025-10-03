@@ -1,6 +1,6 @@
 import IORedis from 'ioredis';
 
-import { getRedisConnectionOptions } from '../queue/BullMQFactory';
+import { getRedisConnectionOptions } from '../queue/index';
 
 export type RateLimitRules = {
   requestsPerSecond?: number;
