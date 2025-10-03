@@ -26,6 +26,7 @@ export type WorkflowExecuteJobPayload = {
 
 export interface JobPayloads {
   'workflow.execute': WorkflowExecuteJobPayload;
+  'encryption.rotate': { jobId: string };
 }
 
 export type QueueName = keyof JobPayloads;

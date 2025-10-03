@@ -271,6 +271,60 @@ export const tenantIsolations = pgTable(
   })
 );
 
+export type EncryptionKeyStatus = 'active' | 'rotating' | 'retired';
+
+export const encryptionKeys = pgTable(
+  'encryption_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    keyId: text('key_id').notNull(),
+    kmsKeyArn: text('kms_key_arn'),
+    alias: text('alias'),
+    derivedKey: text('derived_key').notNull(),
+    status: text('status').notNull().default('active'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    activatedAt: timestamp('activated_at'),
+    rotatedAt: timestamp('rotated_at'),
+    expiresAt: timestamp('expires_at'),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    keyIdIdx: uniqueIndex('encryption_keys_key_id_idx').on(table.keyId),
+    statusIdx: index('encryption_keys_status_idx').on(table.status),
+    aliasIdx: index('encryption_keys_alias_idx').on(table.alias),
+  })
+);
+
+export type EncryptionRotationJobStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'completed_with_errors'
+  | 'failed';
+
+export const encryptionRotationJobs = pgTable(
+  'encryption_rotation_jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    targetKeyId: uuid('target_key_id').references(() => encryptionKeys.id, { onDelete: 'set null' }),
+    status: text('status').notNull().default('pending'),
+    totalConnections: integer('total_connections').default(0).notNull(),
+    processed: integer('processed').default(0).notNull(),
+    failed: integer('failed').default(0).notNull(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    lastError: text('last_error'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    statusIdx: index('encryption_rotation_jobs_status_idx').on(table.status),
+    targetKeyIdx: index('encryption_rotation_jobs_target_key_idx').on(table.targetKeyId),
+  })
+);
+
 // Connections table with security indexes for ALL applications
 export const connections = pgTable(
   'connections',
@@ -285,6 +339,8 @@ export const connections = pgTable(
     type: text('type').default('saas').notNull(),
     encryptedCredentials: text('encrypted_credentials').notNull(),
     iv: text('iv').notNull(), // AES-256-GCM IV
+    encryptionKeyId: uuid('encryption_key_id')
+      .references(() => encryptionKeys.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastUsed: timestamp('last_used'),
@@ -327,6 +383,7 @@ export const connections = pgTable(
     // Security indexes for PII tracking across ALL applications
     piiIdx: index('connections_pii_idx').on(table.containsPii, table.piiType),
     securityLevelIdx: index('connections_security_level_idx').on(table.securityLevel),
+    encryptionKeyIdx: index('connections_encryption_key_idx').on(table.encryptionKeyId),
     
     // Unique constraint to prevent duplicate connections
     userProviderNameIdx: uniqueIndex('connections_user_provider_name_idx').on(
@@ -335,6 +392,34 @@ export const connections = pgTable(
       table.provider,
       table.name,
     ),
+  })
+);
+
+export const connectionScopedTokens = pgTable(
+  'connection_scoped_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    connectionId: uuid('connection_id')
+      .references(() => connections.id, { onDelete: 'cascade' })
+      .notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    tokenHash: text('token_hash').notNull(),
+    scope: jsonb('scope').$type<Record<string, any> | null>(),
+    stepId: text('step_id').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at').notNull(),
+    usedAt: timestamp('used_at'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    tokenHashIdx: uniqueIndex('connection_scoped_tokens_hash_idx').on(table.tokenHash),
+    expiresIdx: index('connection_scoped_tokens_expires_idx').on(table.expiresAt),
+    connectionIdx: index('connection_scoped_tokens_connection_idx').on(table.connectionId),
+    activeTokenIdx: index('connection_scoped_tokens_active_idx').on(table.usedAt),
   })
 );
 
@@ -888,11 +973,43 @@ export const tenantIsolationsRelations = relations(tenantIsolations, ({ one }) =
   organization: one(organizations, { fields: [tenantIsolations.organizationId], references: [organizations.id] }),
 }));
 
-export const connectionsRelations = relations(connections, ({ one }) => ({
+export const encryptionKeysRelations = relations(encryptionKeys, ({ many }) => ({
+  connections: many(connections),
+  rotationJobs: many(encryptionRotationJobs),
+}));
+
+export const encryptionRotationJobsRelations = relations(encryptionRotationJobs, ({ one }) => ({
+  targetKey: one(encryptionKeys, {
+    fields: [encryptionRotationJobs.targetKeyId],
+    references: [encryptionKeys.id],
+  }),
+}));
+
+export const connectionsRelations = relations(connections, ({ one, many }) => ({
   user: one(users, { fields: [connections.userId], references: [users.id] }),
   organization: one(organizations, {
     fields: [connections.organizationId],
     references: [organizations.id],
+  }),
+  encryptionKey: one(encryptionKeys, {
+    fields: [connections.encryptionKeyId],
+    references: [encryptionKeys.id],
+  }),
+  scopedTokens: many(connectionScopedTokens),
+}));
+
+export const connectionScopedTokensRelations = relations(connectionScopedTokens, ({ one }) => ({
+  connection: one(connections, {
+    fields: [connectionScopedTokens.connectionId],
+    references: [connections.id],
+  }),
+  organization: one(organizations, {
+    fields: [connectionScopedTokens.organizationId],
+    references: [organizations.id],
+  }),
+  createdByUser: one(users, {
+    fields: [connectionScopedTokens.createdBy],
+    references: [users.id],
   }),
 }));
 
@@ -1112,6 +1229,9 @@ if (!connectionString) {
       organizationQuotas,
       tenantIsolations,
       connections,
+      encryptionKeys,
+      encryptionRotationJobs,
+      connectionScopedTokens,
       workflows,
       workflowExecutions,
       nodeExecutionResults,
@@ -1129,7 +1249,10 @@ if (!connectionString) {
       organizationInvitesRelations,
       organizationQuotasRelations,
       tenantIsolationsRelations,
+      encryptionKeysRelations,
+      encryptionRotationJobsRelations,
       connectionsRelations,
+      connectionScopedTokensRelations,
       workflowsRelations,
       workflowExecutionsRelations,
       executionLogsRelations,
