@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 
 process.env.NODE_ENV = 'test';
 
+const DEFAULT_TTL_MS = 1000 * 60 * 60;
+
 class InMemoryTriggerPersistenceDb {
   public workflowTriggers = new Map<string, any>();
   public pollingTriggers = new Map<string, any>();
   public webhookLogs = new Map<string, any>();
-  public dedupeTokens = new Map<string, string[]>();
+  public dedupeTokens = new Map<string, { value: string; expiresAt: number }[]>();
 
   async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive);
@@ -36,6 +38,9 @@ class InMemoryTriggerPersistenceDb {
       ...existing,
       ...record,
       metadata: record.metadata ?? existing.metadata ?? {},
+      cursor: record.cursor ?? existing.cursor ?? null,
+      backoffCount: record.backoffCount ?? existing.backoffCount ?? 0,
+      lastStatus: record.lastStatus ?? existing.lastStatus ?? null,
       isActive: record.isActive ?? existing.isActive ?? true,
       updatedAt: new Date(),
       createdAt: existing.createdAt ?? new Date(),
@@ -43,11 +48,34 @@ class InMemoryTriggerPersistenceDb {
     this.pollingTriggers.set(record.id, next);
   }
 
-  async updatePollingRuntimeState({ id, lastPoll, nextPoll }: { id: string; lastPoll?: Date; nextPoll: Date }) {
+  async updatePollingRuntimeState({
+    id,
+    lastPoll,
+    nextPoll,
+    cursor,
+    backoffCount,
+    lastStatus,
+  }: {
+    id: string;
+    lastPoll?: Date;
+    nextPoll: Date;
+    cursor?: Record<string, any> | null;
+    backoffCount?: number;
+    lastStatus?: string | null;
+  }) {
     const existing = this.pollingTriggers.get(id);
     if (existing) {
       existing.lastPoll = lastPoll ?? null;
       existing.nextPoll = nextPoll;
+      if (cursor !== undefined) {
+        existing.cursor = cursor;
+      }
+      if (backoffCount !== undefined) {
+        existing.backoffCount = backoffCount;
+      }
+      if (lastStatus !== undefined) {
+        existing.lastStatus = lastStatus;
+      }
       existing.updatedAt = new Date();
       this.pollingTriggers.set(id, existing);
     }
@@ -98,17 +126,42 @@ class InMemoryTriggerPersistenceDb {
 
   async getDedupeTokens() {
     const result: Record<string, string[]> = {};
+    const now = Date.now();
     for (const [id, tokens] of this.dedupeTokens.entries()) {
-      result[id] = [...tokens];
+      const filtered = tokens.filter((entry) => entry.expiresAt > now);
+      if (filtered.length === 0) {
+        this.dedupeTokens.delete(id);
+        continue;
+      }
+      this.dedupeTokens.set(id, filtered);
+      result[id] = filtered.map((entry) => entry.value);
     }
     return result;
   }
 
-  async persistDedupeTokens(id: string, tokens: string[]) {
-    this.dedupeTokens.set(id, [...tokens]);
+  async persistDedupeTokens(
+    id: string,
+    tokens: string[],
+    options?: { ttlMs?: number; now?: Date },
+  ) {
+    const ttlMs = options?.ttlMs ?? DEFAULT_TTL_MS;
+    const now = options?.now ?? new Date();
+    const expiresAt = now.getTime() + ttlMs;
+    const entries = tokens.map((token) => ({ value: token, expiresAt }));
+
+    if (entries.length === 0) {
+      this.dedupeTokens.delete(id);
+    } else {
+      this.dedupeTokens.set(id, entries);
+    }
+
     const workflow = this.workflowTriggers.get(id);
     if (workflow) {
-      workflow.dedupeState = { tokens: [...tokens], updatedAt: new Date().toISOString() };
+      workflow.dedupeState = {
+        tokens: entries.map((entry) => ({ value: entry.value, expiresAt: new Date(entry.expiresAt).toISOString() })),
+        ttlMs,
+        updatedAt: now.toISOString(),
+      };
       workflow.updatedAt = new Date();
       this.workflowTriggers.set(id, workflow);
     }

@@ -12,11 +12,18 @@ import { getErrorMessage } from '../types/common';
 
 void ensureDatabaseReady();
 
+const DEFAULT_DEDUPE_TOKEN_TTL_MS = 1000 * 60 * 60; // 1 hour
+
+interface DedupeTokenEntry {
+  value: string;
+  expiresAt: number;
+}
+
 class InMemoryTriggerPersistenceStore {
   private workflowTriggers = new Map<string, any>();
   private pollingTriggers = new Map<string, any>();
   private webhookLogs = new Map<string, any>();
-  private dedupeTokens = new Map<string, string[]>();
+  private dedupeTokens = new Map<string, DedupeTokenEntry[]>();
 
   public async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive !== false);
@@ -46,6 +53,9 @@ class InMemoryTriggerPersistenceStore {
       ...existing,
       ...record,
       metadata: record.metadata ?? existing.metadata ?? {},
+      cursor: record.cursor ?? existing.cursor ?? null,
+      backoffCount: record.backoffCount ?? existing.backoffCount ?? 0,
+      lastStatus: record.lastStatus ?? existing.lastStatus ?? null,
       isActive: record.isActive ?? existing.isActive ?? true,
       updatedAt: new Date(),
       createdAt: existing.createdAt ?? new Date(),
@@ -53,11 +63,34 @@ class InMemoryTriggerPersistenceStore {
     this.pollingTriggers.set(record.id, next);
   }
 
-  public async updatePollingRuntimeState({ id, lastPoll, nextPoll }: { id: string; lastPoll?: Date; nextPoll: Date }) {
+  public async updatePollingRuntimeState({
+    id,
+    lastPoll,
+    nextPoll,
+    cursor,
+    backoffCount,
+    lastStatus,
+  }: {
+    id: string;
+    lastPoll?: Date;
+    nextPoll: Date;
+    cursor?: Record<string, any> | null;
+    backoffCount?: number;
+    lastStatus?: string | null;
+  }) {
     const polling = this.pollingTriggers.get(id);
     if (polling) {
       polling.lastPoll = lastPoll ?? null;
       polling.nextPoll = nextPoll;
+      if (cursor !== undefined) {
+        polling.cursor = cursor;
+      }
+      if (backoffCount !== undefined) {
+        polling.backoffCount = backoffCount;
+      }
+      if (lastStatus !== undefined) {
+        polling.lastStatus = lastStatus;
+      }
       polling.updatedAt = new Date();
       this.pollingTriggers.set(id, polling);
     }
@@ -111,17 +144,45 @@ class InMemoryTriggerPersistenceStore {
 
   public async getDedupeTokens(): Promise<Record<string, string[]>> {
     const result: Record<string, string[]> = {};
+    const now = Date.now();
     for (const [id, tokens] of this.dedupeTokens.entries()) {
-      result[id] = [...tokens];
+      const filtered = tokens.filter((entry) => entry.expiresAt > now);
+      if (filtered.length === 0) {
+        this.dedupeTokens.delete(id);
+        continue;
+      }
+      this.dedupeTokens.set(id, filtered);
+      result[id] = filtered.map((entry) => entry.value);
     }
     return result;
   }
 
-  public async persistDedupeTokens(id: string, tokens: string[]) {
-    this.dedupeTokens.set(id, [...tokens]);
+  public async persistDedupeTokens(
+    id: string,
+    tokens: string[],
+    options?: { ttlMs?: number; now?: Date },
+  ) {
+    const ttlMs = options?.ttlMs ?? DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const now = options?.now ?? new Date();
+    const expiresAt = now.getTime() + ttlMs;
+    const entries: DedupeTokenEntry[] = tokens.map((token) => ({ value: token, expiresAt }));
+
+    if (entries.length === 0) {
+      this.dedupeTokens.delete(id);
+    } else {
+      this.dedupeTokens.set(id, entries);
+    }
+
     const workflow = this.workflowTriggers.get(id);
     if (workflow) {
-      workflow.dedupeState = { tokens: [...tokens], updatedAt: new Date().toISOString() };
+      workflow.dedupeState = {
+        tokens: entries.map((entry) => ({
+          value: entry.value,
+          expiresAt: new Date(entry.expiresAt).toISOString(),
+        })),
+        ttlMs,
+        updatedAt: now.toISOString(),
+      };
       workflow.updatedAt = new Date();
       this.workflowTriggers.set(id, workflow);
     }
@@ -140,6 +201,7 @@ export interface TriggerExecutionResult {
 
 export class TriggerPersistenceService {
   private static instance: TriggerPersistenceService;
+  public static readonly DEFAULT_DEDUPE_TOKEN_TTL_MS = DEFAULT_DEDUPE_TOKEN_TTL_MS;
   private readonly memoryStore = new InMemoryTriggerPersistenceStore();
   private hasLoggedFallback = false;
 
@@ -206,6 +268,9 @@ export class TriggerPersistenceService {
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
       metadata: row.metadata ?? {},
+      cursor: row.cursor ?? null,
+      backoffCount: row.backoffCount ?? 0,
+      lastStatus: row.lastStatus ?? null,
     }));
   }
 
@@ -269,6 +334,9 @@ export class TriggerPersistenceService {
       isActive: trigger.isActive,
       dedupeKey: trigger.dedupeKey ?? null,
       metadata: trigger.metadata ?? {},
+      cursor: trigger.cursor ?? null,
+      backoffCount: trigger.backoffCount ?? 0,
+      lastStatus: trigger.lastStatus ?? null,
     };
 
     if (typeof (database as any).upsertPollingTrigger === 'function') {
@@ -306,6 +374,9 @@ export class TriggerPersistenceService {
             isActive: trigger.isActive,
             dedupeKey: trigger.dedupeKey ?? null,
             metadata: trigger.metadata ?? {},
+            cursor: trigger.cursor ?? null,
+            backoffCount: trigger.backoffCount ?? 0,
+            lastStatus: trigger.lastStatus ?? null,
             updatedAt: now,
           },
         });
@@ -340,23 +411,43 @@ export class TriggerPersistenceService {
     }
   }
 
-  public async updatePollingRuntimeState(id: string, lastPoll: Date | undefined, nextPoll: Date): Promise<void> {
+  public async updatePollingRuntimeState(
+    id: string,
+    lastPoll: Date | undefined,
+    nextPoll: Date,
+    options: { cursor?: Record<string, any> | null; backoffCount?: number; lastStatus?: string | null } = {},
+  ): Promise<void> {
     const database = this.requireDatabase('updatePollingRuntimeState');
+    const { cursor, backoffCount, lastStatus } = options;
 
     if (typeof (database as any).updatePollingRuntimeState === 'function') {
-      await (database as any).updatePollingRuntimeState({ id, lastPoll, nextPoll });
+      await (database as any).updatePollingRuntimeState({ id, lastPoll, nextPoll, cursor, backoffCount, lastStatus });
       return;
     }
 
     const now = new Date();
+    const updateData: Record<string, any> = {
+      lastPoll: lastPoll ?? null,
+      nextPoll,
+      updatedAt: now,
+    };
+
+    if (cursor !== undefined) {
+      updateData.cursor = cursor;
+    }
+
+    if (backoffCount !== undefined) {
+      updateData.backoffCount = backoffCount;
+    }
+
+    if (lastStatus !== undefined) {
+      updateData.lastStatus = lastStatus;
+    }
+
     try {
       await database
         .update(pollingTriggers)
-        .set({
-          lastPoll: lastPoll ?? null,
-          nextPoll,
-          updatedAt: now,
-        })
+        .set(updateData)
         .where(eq(pollingTriggers.id, id));
 
       await database
@@ -470,18 +561,31 @@ export class TriggerPersistenceService {
       .from(workflowTriggers);
 
     const result: Record<string, string[]> = {};
+    const now = new Date();
     for (const row of rows) {
-      const tokens = Array.isArray(row.dedupeState?.tokens) ? row.dedupeState.tokens : [];
+      const tokens = this.extractDedupeTokensFromState(row.dedupeState, now);
       result[row.id] = tokens;
     }
     return result;
   }
 
-  public async persistDedupeTokens(id: string, tokens: string[]): Promise<void> {
+  public async persistDedupeTokens(
+    id: string,
+    tokens: string[],
+    options?: { ttlMs?: number; now?: Date },
+  ): Promise<void> {
     const database = this.requireDatabase('persistDedupeTokens');
+    const ttlMs = options?.ttlMs ?? DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const now = options?.now ?? new Date();
+    const expiresAtIso = new Date(now.getTime() + ttlMs).toISOString();
+    const dedupeState = {
+      tokens: tokens.map((token) => ({ value: token, expiresAt: expiresAtIso })),
+      ttlMs,
+      updatedAt: now.toISOString(),
+    };
 
     if (typeof (database as any).persistDedupeTokens === 'function') {
-      await (database as any).persistDedupeTokens(id, tokens);
+      await (database as any).persistDedupeTokens(id, tokens, { ttlMs, now });
       return;
     }
 
@@ -489,11 +593,8 @@ export class TriggerPersistenceService {
       await database
         .update(workflowTriggers)
         .set({
-          dedupeState: {
-            tokens,
-            updatedAt: new Date().toISOString(),
-          },
-          updatedAt: new Date(),
+          dedupeState,
+          updatedAt: now,
         })
         .where(eq(workflowTriggers.id, id));
     } catch (error) {
@@ -562,7 +663,69 @@ export class TriggerPersistenceService {
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
       metadata: row.metadata ?? {},
+      cursor: row.cursor ?? null,
+      backoffCount: row.backoffCount ?? 0,
+      lastStatus: row.lastStatus ?? null,
     };
+  }
+
+  public calculateNextBackoffIntervalSeconds(
+    baseIntervalSeconds: number,
+    backoffCount: number,
+    options: { multiplier?: number; maxIntervalSeconds?: number } = {},
+  ): number {
+    if (!Number.isFinite(baseIntervalSeconds) || baseIntervalSeconds <= 0) {
+      return 0;
+    }
+
+    const multiplier = options.multiplier ?? 2;
+    const maxIntervalSeconds = options.maxIntervalSeconds ?? baseIntervalSeconds * 32;
+    const attempt = Math.max(0, backoffCount);
+    const interval = baseIntervalSeconds * Math.pow(multiplier, attempt);
+    return Math.min(interval, maxIntervalSeconds);
+  }
+
+  public getNextPollDateWithBackoff(
+    baseIntervalSeconds: number,
+    backoffCount: number,
+    options: { multiplier?: number; maxIntervalSeconds?: number; now?: Date } = {},
+  ): Date {
+    const now = options.now ?? new Date();
+    const intervalSeconds = this.calculateNextBackoffIntervalSeconds(baseIntervalSeconds, backoffCount, options);
+    return new Date(now.getTime() + intervalSeconds * 1000);
+  }
+
+  private extractDedupeTokensFromState(state: any, now: Date): string[] {
+    if (!state || !Array.isArray(state.tokens)) {
+      return [];
+    }
+
+    const nowMs = now.getTime();
+    const tokens: string[] = [];
+
+    for (const entry of state.tokens) {
+      if (typeof entry === 'string') {
+        tokens.push(entry);
+        continue;
+      }
+
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+
+      const value = typeof entry.value === 'string' ? entry.value : undefined;
+      const expiresAt = entry.expiresAt ? new Date(entry.expiresAt).getTime() : undefined;
+
+      if (!value) {
+        continue;
+      }
+
+      if (expiresAt === undefined || Number.isNaN(expiresAt) || expiresAt > nowMs) {
+        tokens.push(value);
+      }
+    }
+
+    return tokens;
   }
 
   private logPersistenceError(operation: string, error: unknown, context: Record<string, unknown> = {}): void {

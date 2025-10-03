@@ -71,6 +71,17 @@ export interface OrganizationComplianceSettings {
   retentionPolicyDays: number;
 }
 
+export interface WorkflowTriggerDedupeToken {
+  value: string;
+  expiresAt: string;
+}
+
+export interface WorkflowTriggerDedupeState {
+  tokens?: (string | WorkflowTriggerDedupeToken)[];
+  updatedAt?: string;
+  ttlMs?: number;
+}
+
 // Users table with performance indexes
 export const users = pgTable(
   'users',
@@ -721,6 +732,9 @@ export const pollingTriggers = pgTable(
     nextPoll: timestamp('next_poll').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     dedupeKey: text('dedupe_key'),
+    cursor: json('cursor').$type<Record<string, any>>(),
+    backoffCount: integer('backoff_count').notNull().default(0),
+    lastStatus: text('last_status'),
     metadata: json('metadata').$type<Record<string, any>>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -745,7 +759,7 @@ export const workflowTriggers = pgTable(
     endpoint: text('endpoint'),
     secret: text('secret'),
     metadata: json('metadata').$type<Record<string, any>>(),
-    dedupeState: json('dedupe_state').$type<{ tokens?: string[]; updatedAt?: string }>(),
+    dedupeState: json('dedupe_state').$type<WorkflowTriggerDedupeState>(),
     isActive: boolean('is_active').default(true).notNull(),
     lastSyncedAt: timestamp('last_synced_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
