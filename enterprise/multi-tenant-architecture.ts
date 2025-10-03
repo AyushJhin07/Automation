@@ -50,6 +50,8 @@ export interface Organization {
   // Security settings
   security: {
     ipWhitelist: string[];
+    allowedDomains: string[];
+    allowedIpRanges: string[];
     mfaRequired: boolean;
     sessionTimeout: number; // minutes
     passwordPolicy: {
@@ -146,6 +148,8 @@ export class MultiTenantService {
       
       security: {
         ipWhitelist: [],
+        allowedDomains: [],
+        allowedIpRanges: [],
         mfaRequired: false,
         sessionTimeout: 480, // 8 hours
         passwordPolicy: {

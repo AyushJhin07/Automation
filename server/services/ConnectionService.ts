@@ -2,7 +2,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { connections, db } from '../database/schema';
+import { connections, db, organizations, type OrganizationSecuritySettings } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
 import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
@@ -74,6 +74,23 @@ type DynamicOptionCacheEntry = {
   result: DynamicOptionResult;
 };
 
+export interface OrganizationNetworkAllowlist {
+  domains: string[];
+  ipRanges: string[];
+}
+
+interface NetworkAccessAuditEntry {
+  id: string;
+  organizationId: string;
+  connectionId?: string;
+  userId?: string;
+  attemptedHost: string;
+  attemptedUrl: string;
+  reason: string;
+  allowlist?: OrganizationNetworkAllowlist;
+  timestamp: Date;
+}
+
 export type FetchDynamicOptionsParams = {
   connectionId: string;
   userId: string;
@@ -100,6 +117,7 @@ export interface AutoRefreshContext {
   credentials: Record<string, any> & {
     onTokenRefreshed?: (tokens: TokenRefreshUpdate) => void | Promise<void>;
   };
+  networkAllowlist?: OrganizationNetworkAllowlist;
 }
 
 interface FileConnectionRecord {
@@ -131,6 +149,9 @@ export class ConnectionService {
   private cachedOAuthManager?: OAuthTokenRefresher;
   private readonly refreshThresholdMs: number;
   private readonly dynamicOptionCache: Map<string, Map<string, DynamicOptionCacheEntry>> = new Map();
+  private readonly organizationSecurityCache = new Map<string, { settings: OrganizationSecuritySettings; expiresAt: number }>();
+  private readonly networkAccessAuditLog: NetworkAccessAuditEntry[] = [];
+  private readonly networkAuditLogLimit = 500;
 
   constructor() {
     this.db = db;
@@ -241,6 +262,125 @@ export class ConnectionService {
 
     const { onTokenRefreshed, ...rest } = credentials as Record<string, any>;
     return { ...rest };
+  }
+
+  private sanitizeAllowlist(values: unknown): string[] {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+    const normalized: string[] = [];
+    for (const value of values) {
+      const str = typeof value === 'string' ? value.trim() : value != null ? String(value).trim() : '';
+      if (str.length > 0) {
+        normalized.push(str.toLowerCase());
+      }
+    }
+    return Array.from(new Set(normalized));
+  }
+
+  private async getOrganizationSecuritySettings(
+    organizationId: string
+  ): Promise<OrganizationSecuritySettings | null> {
+    if (!this.db) {
+      return null;
+    }
+
+    const cached = this.organizationSecurityCache.get(organizationId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.settings;
+    }
+
+    const [record] = await this.db
+      .select({ security: organizations.security })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    if (!record) {
+      return null;
+    }
+
+    const rawSettings = (record.security as OrganizationSecuritySettings | null) ?? null;
+
+    if (!rawSettings) {
+      return null;
+    }
+
+    const normalized: OrganizationSecuritySettings = {
+      ...rawSettings,
+      ipWhitelist: Array.isArray(rawSettings.ipWhitelist) ? rawSettings.ipWhitelist : [],
+      allowedDomains: this.sanitizeAllowlist(rawSettings.allowedDomains),
+      allowedIpRanges: this.sanitizeAllowlist(rawSettings.allowedIpRanges),
+    };
+
+    this.organizationSecurityCache.set(organizationId, {
+      settings: normalized,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    return normalized;
+  }
+
+  private async resolveNetworkAllowlist(
+    organizationId: string
+  ): Promise<OrganizationNetworkAllowlist | null> {
+    const settings = await this.getOrganizationSecuritySettings(organizationId);
+    if (!settings) {
+      return null;
+    }
+
+    const domains = this.sanitizeAllowlist(settings.allowedDomains);
+    const ipRanges = this.sanitizeAllowlist(settings.allowedIpRanges);
+
+    return { domains, ipRanges };
+  }
+
+  public invalidateOrganizationSecurityCache(organizationId: string): void {
+    this.organizationSecurityCache.delete(organizationId);
+  }
+
+  public recordDeniedNetworkAccess(entry: {
+    organizationId?: string;
+    connectionId?: string;
+    userId?: string;
+    attemptedHost: string;
+    attemptedUrl: string;
+    reason: string;
+    allowlist?: OrganizationNetworkAllowlist;
+  }): void {
+    if (!entry.organizationId) {
+      return;
+    }
+
+    const record: NetworkAccessAuditEntry = {
+      id: randomUUID(),
+      organizationId: entry.organizationId,
+      connectionId: entry.connectionId,
+      userId: entry.userId,
+      attemptedHost: entry.attemptedHost,
+      attemptedUrl: entry.attemptedUrl,
+      reason: entry.reason,
+      allowlist: entry.allowlist,
+      timestamp: new Date(),
+    };
+
+    this.networkAccessAuditLog.unshift(record);
+    if (this.networkAccessAuditLog.length > this.networkAuditLogLimit) {
+      this.networkAccessAuditLog.length = this.networkAuditLogLimit;
+    }
+  }
+
+  public getDeniedNetworkAccess(
+    organizationId: string,
+    limit: number = 50
+  ): NetworkAccessAuditEntry[] {
+    if (limit <= 0) {
+      return [];
+    }
+
+    return this.networkAccessAuditLog
+      .filter((entry) => entry.organizationId === organizationId)
+      .slice(0, limit);
   }
 
   private buildDynamicOptionCacheKey(params: FetchDynamicOptionsParams): string {
@@ -808,9 +948,12 @@ export class ConnectionService {
 
     credentials.onTokenRefreshed = onTokenRefreshed;
 
+    const networkAllowlist = await this.resolveNetworkAllowlist(organizationId);
+
     return factory({
       connection: currentConnection,
       credentials,
+      networkAllowlist: networkAllowlist ?? undefined,
     });
   }
 

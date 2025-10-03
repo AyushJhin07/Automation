@@ -3,6 +3,9 @@
 
 import { getErrorMessage } from '../types/common';
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
+import { isIP } from 'node:net';
+import type { OrganizationNetworkAllowlist } from '../services/ConnectionService';
+import { connectionService } from '../services/ConnectionService';
 
 export interface APICredentials {
   apiKey?: string;
@@ -21,6 +24,10 @@ export interface APICredentials {
     refreshToken?: string;
     expiresAt?: number;
   }) => void | Promise<void>;
+  __organizationId?: string;
+  __connectionId?: string;
+  __userId?: string;
+  __organizationNetworkAllowlist?: OrganizationNetworkAllowlist;
   [key: string]: any;
 }
 
@@ -156,8 +163,9 @@ export abstract class BaseAPIClient {
     headers: Record<string, string> = {}
   ): Promise<APIResponse<T>> {
     try {
-      const url = `${this.baseURL}${endpoint}`;
-      
+      const url = this.buildRequestUrl(endpoint);
+      this.assertHostAllowed(url);
+
       // Add authentication headers
       const authHeaders = this.getAuthHeaders();
       const requestHeaders = {
@@ -218,6 +226,252 @@ export abstract class BaseAPIClient {
         statusCode: 0
       };
     }
+  }
+
+  private buildRequestUrl(endpoint: string): string {
+    if (/^https?:\/\//i.test(endpoint)) {
+      return endpoint;
+    }
+
+    if (!this.baseURL) {
+      throw new Error('Base URL is not configured for this API client');
+    }
+
+    if (endpoint.startsWith('/') && this.baseURL.endsWith('/')) {
+      return `${this.baseURL}${endpoint.slice(1)}`;
+    }
+
+    if (endpoint.startsWith('/') || this.baseURL.endsWith('/')) {
+      return `${this.baseURL}${endpoint}`;
+    }
+
+    return `${this.baseURL}/${endpoint}`;
+  }
+
+  private getNetworkAllowlist(): OrganizationNetworkAllowlist | null {
+    const allowlist = this.credentials.__organizationNetworkAllowlist;
+    if (!allowlist) {
+      return null;
+    }
+
+    const normalize = (values?: string[]): string[] => {
+      if (!Array.isArray(values)) {
+        return [];
+      }
+      const cleaned = values
+        .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : String(value ?? '').trim().toLowerCase()))
+        .filter((value) => value.length > 0);
+      return Array.from(new Set(cleaned));
+    };
+
+    return {
+      domains: normalize(allowlist.domains),
+      ipRanges: normalize(allowlist.ipRanges),
+    };
+  }
+
+  private assertHostAllowed(url: string): void {
+    const allowlist = this.getNetworkAllowlist();
+    if (!allowlist) {
+      return;
+    }
+
+    const hasDomainRules = allowlist.domains.length > 0;
+    const hasIpRules = allowlist.ipRanges.length > 0;
+    if (!hasDomainRules && !hasIpRules) {
+      return;
+    }
+
+    let hostname: string;
+    let port: string | undefined;
+    try {
+      const parsed = new URL(url);
+      hostname = parsed.hostname.toLowerCase();
+      port = parsed.port || undefined;
+    } catch {
+      return;
+    }
+
+    const hostnameAllowed = hasDomainRules && this.isHostnameAllowed(hostname, allowlist.domains);
+    const ipAllowed = hasIpRules && this.isIpAllowed(hostname, allowlist.ipRanges);
+
+    if (hostnameAllowed || ipAllowed) {
+      return;
+    }
+
+    const attemptedHost = port ? `${hostname}:${port}` : hostname;
+    const organizationId = this.credentials.__organizationId;
+    const connectionId = this.credentials.__connectionId;
+    const userId = this.credentials.__userId;
+
+    connectionService.recordDeniedNetworkAccess({
+      organizationId,
+      connectionId,
+      userId,
+      attemptedHost,
+      attemptedUrl: url,
+      reason: 'host_not_allowlisted',
+      allowlist,
+    });
+
+    throw new Error(`Network request blocked: ${attemptedHost} is not allowlisted for this organization`);
+  }
+
+  private isHostnameAllowed(hostname: string, domains: string[]): boolean {
+    for (const domain of domains) {
+      if (!domain) continue;
+      if (domain === '*') {
+        return true;
+      }
+      if (domain.startsWith('*.')) {
+        const suffix = domain.slice(2);
+        if (!suffix) continue;
+        if (hostname === suffix || hostname.endsWith(`.${suffix}`)) {
+          return true;
+        }
+        continue;
+      }
+      if (hostname === domain) {
+        return true;
+      }
+      if (hostname.endsWith(`.${domain}`)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isIpAllowed(hostname: string, ranges: string[]): boolean {
+    const version = isIP(hostname);
+    if (!version) {
+      return false;
+    }
+
+    for (const range of ranges) {
+      if (!range) continue;
+      if (!range.includes('/')) {
+        if (hostname === range) {
+          return true;
+        }
+        continue;
+      }
+
+      if (version === 4 && this.isIpv4InCidr(hostname, range)) {
+        return true;
+      }
+
+      if (version === 6 && this.isIpv6InCidr(hostname, range)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private isIpv4InCidr(ip: string, cidr: string): boolean {
+    const [range, prefixStr] = cidr.split('/');
+    const prefix = Number(prefixStr);
+    if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) {
+      return false;
+    }
+
+    if (isIP(range) !== 4) {
+      return false;
+    }
+
+    const ipValue = BaseAPIClient.ipv4ToInt(ip);
+    const rangeValue = BaseAPIClient.ipv4ToInt(range);
+    if (ipValue === null || rangeValue === null) {
+      return false;
+    }
+
+    const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+    return (ipValue & mask) === (rangeValue & mask);
+  }
+
+  private isIpv6InCidr(ip: string, cidr: string): boolean {
+    const [range, prefixStr] = cidr.split('/');
+    const prefix = Number(prefixStr);
+    if (!Number.isInteger(prefix) || prefix < 0 || prefix > 128) {
+      return false;
+    }
+
+    if (isIP(range) !== 6) {
+      return false;
+    }
+
+    const ipValue = this.ipv6ToBigInt(ip);
+    const rangeValue = this.ipv6ToBigInt(range);
+    if (ipValue === null || rangeValue === null) {
+      return false;
+    }
+
+    if (prefix === 0) {
+      return true;
+    }
+
+    const shift = 128 - prefix;
+    return (ipValue >> BigInt(shift)) === (rangeValue >> BigInt(shift));
+  }
+
+  private static ipv4ToInt(ip: string): number | null {
+    const parts = ip.split('.');
+    if (parts.length !== 4) {
+      return null;
+    }
+
+    let value = 0;
+    for (const part of parts) {
+      const segment = Number(part);
+      if (!Number.isInteger(segment) || segment < 0 || segment > 255) {
+        return null;
+      }
+      value = (value << 8) + segment;
+    }
+
+    return value >>> 0;
+  }
+
+  private ipv6ToBigInt(ip: string): bigint | null {
+    if (isIP(ip) !== 6) {
+      return null;
+    }
+
+    const partsRaw = ip.split('::');
+    if (partsRaw.length > 2) {
+      return null;
+    }
+
+    const [headRaw, tailRaw] = partsRaw;
+    const headParts = headRaw ? headRaw.split(':').filter(Boolean) : [];
+    const tailParts = tailRaw ? tailRaw.split(':').filter(Boolean) : [];
+
+    let segments: string[];
+    if (tailRaw !== undefined) {
+      const missing = 8 - (headParts.length + tailParts.length);
+      segments = [
+        ...headParts,
+        ...Array(Math.max(missing, 0)).fill('0'),
+        ...tailParts,
+      ];
+    } else {
+      segments = headParts;
+    }
+
+    if (segments.length !== 8) {
+      return null;
+    }
+
+    let value = BigInt(0);
+    for (const segment of segments) {
+      const parsed = parseInt(segment || '0', 16);
+      if (Number.isNaN(parsed) || parsed < 0 || parsed > 0xffff) {
+        return null;
+      }
+      value = (value << BigInt(16)) + BigInt(parsed);
+    }
+
+    return value;
   }
 
   /**

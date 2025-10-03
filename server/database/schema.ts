@@ -47,6 +47,8 @@ export interface OrganizationFeatureFlags {
 
 export interface OrganizationSecuritySettings {
   ipWhitelist: string[];
+  allowedDomains: string[];
+  allowedIpRanges: string[];
   mfaRequired: boolean;
   sessionTimeout: number;
   passwordPolicy: {
