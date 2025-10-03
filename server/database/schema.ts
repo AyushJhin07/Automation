@@ -11,7 +11,8 @@ import {
   uuid,
   index,
   uniqueIndex,
-  serial
+  serial,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import type { WorkflowTimerPayload } from '../types/workflowTimers';
@@ -757,6 +758,20 @@ export const webhookLogs = pgTable(
     workflowIdx: index('webhook_logs_workflow_idx').on(table.workflowId),
     sourceIdx: index('webhook_logs_source_idx').on(table.source),
     dedupeIdx: index('webhook_logs_dedupe_idx').on(table.dedupeToken),
+  })
+);
+
+export const webhookDedupe = pgTable(
+  'webhook_dedupe',
+  {
+    triggerId: text('trigger_id').notNull(),
+    token: text('token').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.triggerId, table.token], name: 'webhook_dedupe_pk' }),
+    triggerIdx: index('webhook_dedupe_trigger_idx').on(table.triggerId),
+    createdIdx: index('webhook_dedupe_created_idx').on(table.createdAt),
   })
 );
 

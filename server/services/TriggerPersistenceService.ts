@@ -1,8 +1,9 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {
   db,
   webhookLogs,
+  webhookDedupe,
   pollingTriggers,
   workflowTriggers,
 } from '../database/schema';
@@ -13,6 +14,13 @@ import { getErrorMessage } from '../types/common';
 void ensureDatabaseReady();
 
 const DEFAULT_DEDUPE_TOKEN_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+const DEFAULT_MAX_DEDUPE_TOKENS = 500;
+
+type DedupeTokenInput = string | { token: string; createdAt?: Date };
+interface DedupeTokenRecord {
+  token: string;
+  createdAt: Date;
+}
 const DEFAULT_MAX_BACKOFF_MULTIPLIER = 32;
 
 interface BackoffOptions {
@@ -81,7 +89,7 @@ class InMemoryTriggerPersistenceStore {
   private workflowTriggers = new Map<string, any>();
   private pollingTriggers = new Map<string, any>();
   private webhookLogs = new Map<string, any>();
-  private dedupeTokens = new Map<string, { tokens: string[]; updatedAt: Date }>();
+  private dedupeTokens = new Map<string, DedupeTokenRecord[]>();
 
   public async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive !== false);
@@ -224,23 +232,81 @@ class InMemoryTriggerPersistenceStore {
 
   public async getDedupeTokens(): Promise<Record<string, string[]>> {
     const result: Record<string, string[]> = {};
-    for (const [id, entry] of this.dedupeTokens.entries()) {
-      const tokens = applyDedupeTokenTTL(entry.tokens, entry.updatedAt);
-      if (tokens.length === 0) {
+    const now = new Date();
+    const cutoff = DEFAULT_DEDUPE_TOKEN_TTL_MS > 0 ? now.getTime() - DEFAULT_DEDUPE_TOKEN_TTL_MS : null;
+
+    for (const [id, entries] of this.dedupeTokens.entries()) {
+      const normalized = entries
+        .filter((entry) => (cutoff === null ? true : entry.createdAt.getTime() >= cutoff))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+      if (normalized.length === 0) {
         this.dedupeTokens.delete(id);
         continue;
       }
-      result[id] = tokens;
+
+      if (normalized.length > DEFAULT_MAX_DEDUPE_TOKENS) {
+        normalized.splice(0, normalized.length - DEFAULT_MAX_DEDUPE_TOKENS);
+      }
+
+      this.dedupeTokens.set(id, normalized);
+      result[id] = normalized.map((entry) => entry.token);
     }
     return result;
   }
 
-  public async persistDedupeTokens(id: string, tokens: string[]) {
-    this.dedupeTokens.set(id, { tokens: [...tokens], updatedAt: new Date() });
+  public async persistDedupeTokens(id: string, tokens: DedupeTokenInput[]) {
+    if (!Array.isArray(tokens) || tokens.length === 0) {
+      return;
+    }
+
+    const now = new Date();
+    const cutoff = DEFAULT_DEDUPE_TOKEN_TTL_MS > 0 ? now.getTime() - DEFAULT_DEDUPE_TOKEN_TTL_MS : null;
+    const existing = this.dedupeTokens.get(id) ?? [];
+    const next = existing.slice();
+
+    for (const token of tokens) {
+      const normalizedToken = typeof token === 'string' ? token : token.token;
+      if (!normalizedToken) {
+        continue;
+      }
+      const createdAt =
+        typeof token === 'string'
+          ? now
+          : token.createdAt instanceof Date
+          ? token.createdAt
+          : token.createdAt
+          ? new Date(token.createdAt)
+          : now;
+
+      const normalizedCreatedAt = Number.isNaN(createdAt.getTime()) ? now : createdAt;
+
+      if (cutoff !== null && normalizedCreatedAt.getTime() < cutoff) {
+        continue;
+      }
+
+      const index = next.findIndex((entry) => entry.token === normalizedToken);
+      if (index >= 0) {
+        next[index] = { token: normalizedToken, createdAt: normalizedCreatedAt };
+      } else {
+        next.push({ token: normalizedToken, createdAt: normalizedCreatedAt });
+      }
+    }
+
+    next.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (next.length > DEFAULT_MAX_DEDUPE_TOKENS) {
+      next.splice(0, next.length - DEFAULT_MAX_DEDUPE_TOKENS);
+    }
+
+    this.dedupeTokens.set(id, next);
+
     const workflow = this.workflowTriggers.get(id);
     if (workflow) {
-      workflow.dedupeState = { tokens: [...tokens], updatedAt: new Date().toISOString() };
-      workflow.updatedAt = new Date();
+      workflow.dedupeState = {
+        tokens: next.map((entry) => entry.token),
+        updatedAt: now.toISOString(),
+      };
+      workflow.updatedAt = now;
       this.workflowTriggers.set(id, workflow);
     }
   }
@@ -264,6 +330,7 @@ export class TriggerPersistenceService {
   private constructor() {}
 
   public static readonly DEFAULT_DEDUPE_TOKEN_TTL_MS = DEFAULT_DEDUPE_TOKEN_TTL_MS;
+  public static readonly DEFAULT_MAX_DEDUPE_TOKENS = DEFAULT_MAX_DEDUPE_TOKENS;
 
   public static getInstance(): TriggerPersistenceService {
     if (!TriggerPersistenceService.instance) {
@@ -713,22 +780,51 @@ export class TriggerPersistenceService {
       return (database as any).getDedupeTokens();
     }
 
+    const now = new Date();
+    const ttlMs = DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const cutoff = ttlMs > 0 ? new Date(now.getTime() - ttlMs) : null;
+
+    if (cutoff) {
+      await database.delete(webhookDedupe).where(lt(webhookDedupe.createdAt, cutoff));
+    }
+
     const rows = await database
-      .select({ id: workflowTriggers.id, dedupeState: workflowTriggers.dedupeState })
-      .from(workflowTriggers);
+      .select({
+        triggerId: webhookDedupe.triggerId,
+        token: webhookDedupe.token,
+        createdAt: webhookDedupe.createdAt,
+      })
+      .from(webhookDedupe)
+      .orderBy(webhookDedupe.triggerId, desc(webhookDedupe.createdAt));
+
+    const grouped = new Map<string, DedupeTokenRecord[]>();
+    for (const row of rows) {
+      const entry: DedupeTokenRecord = {
+        token: row.token,
+        createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
+      };
+
+      const list = grouped.get(row.triggerId) ?? [];
+      list.push(entry);
+      grouped.set(row.triggerId, list);
+    }
 
     const result: Record<string, string[]> = {};
-    for (const row of rows) {
-      const tokens = Array.isArray(row.dedupeState?.tokens) ? row.dedupeState.tokens : [];
-      const validTokens = this.applyDedupeTokenTTL(tokens, row.dedupeState?.updatedAt ?? null);
-      if (validTokens.length > 0) {
-        result[row.id] = validTokens;
+    for (const [triggerId, entries] of grouped.entries()) {
+      const sorted = entries
+        .filter((entry) => (cutoff ? entry.createdAt >= cutoff : true))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .slice(-DEFAULT_MAX_DEDUPE_TOKENS);
+
+      if (sorted.length > 0) {
+        result[triggerId] = sorted.map((entry) => entry.token);
       }
     }
+
     return result;
   }
 
-  public async persistDedupeTokens(id: string, tokens: string[]): Promise<void> {
+  public async persistDedupeTokens(id: string, tokens: DedupeTokenInput[]): Promise<void> {
     const database = this.requireDatabase('persistDedupeTokens');
 
     if (typeof (database as any).persistDedupeTokens === 'function') {
@@ -736,17 +832,69 @@ export class TriggerPersistenceService {
       return;
     }
 
+    const now = new Date();
+    const ttlMs = DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const cutoff = ttlMs > 0 ? new Date(now.getTime() - ttlMs) : null;
+    const normalizedTokens = tokens
+      .map((token) => {
+        if (typeof token === 'string') {
+          return { token, createdAt: now } as DedupeTokenRecord;
+        }
+        const candidate = token.createdAt
+          ? token.createdAt instanceof Date
+            ? token.createdAt
+            : new Date(token.createdAt)
+          : now;
+        const createdAt = Number.isNaN(candidate.getTime()) ? now : candidate;
+        return { token: token.token, createdAt } as DedupeTokenRecord;
+      })
+      .filter((entry) => entry.token);
+
+    if (cutoff) {
+      for (let i = normalizedTokens.length - 1; i >= 0; i -= 1) {
+        if (normalizedTokens[i]?.createdAt && normalizedTokens[i]!.createdAt < cutoff) {
+          normalizedTokens.splice(i, 1);
+        }
+      }
+    }
+
+    if (normalizedTokens.length === 0) {
+      return;
+    }
+
     try {
       await database
-        .update(workflowTriggers)
-        .set({
-          dedupeState: {
-            tokens,
-            updatedAt: new Date().toISOString(),
+        .insert(webhookDedupe)
+        .values(
+          normalizedTokens.map((entry) => ({
+            triggerId: id,
+            token: entry.token,
+            createdAt: entry.createdAt,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [webhookDedupe.triggerId, webhookDedupe.token],
+          set: {
+            createdAt: sql`GREATEST("webhook_dedupe"."created_at", EXCLUDED."created_at")`,
           },
-          updatedAt: new Date(),
-        })
-        .where(eq(workflowTriggers.id, id));
+        });
+
+      if (cutoff) {
+        await database.delete(webhookDedupe).where(lt(webhookDedupe.createdAt, cutoff));
+      }
+
+      const maxTokens = DEFAULT_MAX_DEDUPE_TOKENS;
+      await database.execute(sql`
+        DELETE FROM "webhook_dedupe"
+        WHERE "trigger_id" = ${id}
+          AND ("trigger_id", "token") NOT IN (
+            SELECT "trigger_id", "token"
+            FROM "webhook_dedupe"
+            WHERE "trigger_id" = ${id}
+            ORDER BY "created_at" DESC
+            LIMIT ${maxTokens}
+          )
+      `);
     } catch (error) {
       this.logPersistenceError('persistDedupeTokens', error, { triggerId: id, tokenCount: tokens.length });
     }

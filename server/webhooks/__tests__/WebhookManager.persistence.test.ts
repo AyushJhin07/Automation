@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 
 process.env.NODE_ENV = 'test';
+process.env.WEBHOOK_REPLAY_TOLERANCE_SECONDS = '60';
 
 class InMemoryTriggerPersistenceDb {
   public workflowTriggers = new Map<string, any>();
   public pollingTriggers = new Map<string, any>();
   public webhookLogs = new Map<string, any>();
-  public dedupeTokens = new Map<string, string[]>();
+  public dedupeTokens = new Map<string, { token: string; createdAt: Date }[]>();
 
   async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive);
@@ -114,18 +115,55 @@ class InMemoryTriggerPersistenceDb {
 
   async getDedupeTokens() {
     const result: Record<string, string[]> = {};
-    for (const [id, tokens] of this.dedupeTokens.entries()) {
-      result[id] = [...tokens];
+    for (const [id, entries] of this.dedupeTokens.entries()) {
+      const sorted = entries
+        .slice()
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      result[id] = sorted.map((entry) => entry.token);
     }
     return result;
   }
 
-  async persistDedupeTokens(id: string, tokens: string[]) {
-    this.dedupeTokens.set(id, [...tokens]);
+  async persistDedupeTokens(id: string, tokens: Array<string | { token: string; createdAt?: Date }>) {
+    if (!Array.isArray(tokens) || tokens.length === 0) {
+      return;
+    }
+
+    const now = new Date();
+    const existing = this.dedupeTokens.get(id) ?? [];
+    const next = existing.slice();
+
+    for (const entry of tokens) {
+      const token = typeof entry === 'string' ? entry : entry.token;
+      if (!token) continue;
+      const createdAt =
+        typeof entry === 'string'
+          ? now
+          : entry.createdAt instanceof Date
+          ? entry.createdAt
+          : entry.createdAt
+          ? new Date(entry.createdAt)
+          : now;
+      const resolvedCreatedAt = Number.isNaN(createdAt.getTime()) ? now : createdAt;
+      const index = next.findIndex((item) => item.token === token);
+      if (index >= 0) {
+        next[index] = { token, createdAt: resolvedCreatedAt };
+      } else {
+        next.push({ token, createdAt: resolvedCreatedAt });
+      }
+    }
+
+    next.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (next.length > 500) {
+      next.splice(0, next.length - 500);
+    }
+
+    this.dedupeTokens.set(id, next);
+
     const workflow = this.workflowTriggers.get(id);
     if (workflow) {
-      workflow.dedupeState = { tokens: [...tokens], updatedAt: new Date().toISOString() };
-      workflow.updatedAt = new Date();
+      workflow.dedupeState = { tokens: next.map((item) => item.token), updatedAt: now.toISOString() };
+      workflow.updatedAt = now;
       this.workflowTriggers.set(id, workflow);
     }
   }
@@ -196,6 +234,15 @@ assert.equal(logEntry.executionId, 'exec-123', 'execution id from queue should b
 
 const dedupeTokens = dbStub.dedupeTokens.get(webhookId) ?? [];
 assert.ok(dedupeTokens.length > 0, 'dedupe tokens should be persisted after handling event');
+
+const staleTimestampSeconds = Math.floor((Date.now() - 5 * 60 * 1000) / 1000);
+const staleHandled = await managerAfterRestart.handleWebhook(
+  webhookId,
+  { stale: true },
+  { 'x-webhook-timestamp': String(staleTimestampSeconds) }
+);
+assert.equal(staleHandled, false, 'stale webhook events should be rejected');
+assert.equal(queueCalls.length, 1, 'rejected webhook should not enqueue a new workflow execution');
 
 WebhookManager.resetForTests();
 resetDatabaseAvailabilityOverrideForTests();

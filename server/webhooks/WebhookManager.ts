@@ -3,7 +3,7 @@
 
 import { getErrorMessage } from '../types/common';
 import { createHash } from 'crypto';
-import { triggerPersistenceService } from '../services/TriggerPersistenceService';
+import { TriggerPersistenceService, triggerPersistenceService } from '../services/TriggerPersistenceService';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
@@ -28,10 +28,12 @@ export class WebhookManager {
   private dedupeCache: Map<string, Set<string>> = new Map();
   private readonly persistence = triggerPersistenceService;
   private readonly ready: Promise<void>;
+  private readonly replayToleranceMs: number;
   private connectionServicePromise?: Promise<ConnectionService | null>;
   private initializationError?: string;
 
-  private static readonly MAX_DEDUPE_TOKENS = 500;
+  private static readonly MAX_DEDUPE_TOKENS = TriggerPersistenceService.DEFAULT_MAX_DEDUPE_TOKENS;
+  private static readonly DEFAULT_REPLAY_TOLERANCE_SECONDS = 15 * 60; // 15 minutes
 
   public static getInstance(): WebhookManager {
     if (!WebhookManager.instance) {
@@ -67,6 +69,7 @@ export class WebhookManager {
 
   private constructor() {
     this.ready = this.initializeFromPersistence();
+    this.replayToleranceMs = this.resolveReplayToleranceMs();
   }
 
   private normalizePollingTrigger(trigger: PollingTrigger): PollingTrigger {
@@ -110,6 +113,107 @@ export class WebhookManager {
       this.initializationError = getErrorMessage(error);
       console.error('❌ Failed to initialize WebhookManager from persistence:', this.initializationError);
     }
+  }
+
+  private resolveReplayToleranceMs(): number {
+    const envValue = process.env.WEBHOOK_REPLAY_TOLERANCE_SECONDS;
+    const parsed = envValue !== undefined ? Number(envValue) : Number.NaN;
+    const seconds = Number.isFinite(parsed) && parsed >= 0
+      ? parsed
+      : WebhookManager.DEFAULT_REPLAY_TOLERANCE_SECONDS;
+    return seconds * 1000;
+  }
+
+  private parseTimestampValue(value: unknown): Date | null {
+    if (value === undefined || value === null) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    if (typeof value === 'number') {
+      const millis = value > 1e12 ? value : value * 1000;
+      const date = new Date(millis);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length === 0) {
+        return null;
+      }
+
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric)) {
+        const millis = numeric > 1e12 ? numeric : numeric * 1000;
+        const date = new Date(millis);
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      const parsed = new Date(trimmed);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+  }
+
+  private resolveEventTimestamp(headers: Record<string, string>, payload: any): Date | null {
+    const lowerCaseHeaders: Record<string, string | undefined> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      lowerCaseHeaders[key.toLowerCase()] = value;
+    }
+
+    const headerKeys = [
+      'x-webhook-timestamp',
+      'x-signature-timestamp',
+      'x-request-timestamp',
+      'x-slack-request-timestamp',
+      'x-timestamp',
+    ];
+
+    for (const key of headerKeys) {
+      const candidate = headers[key] ?? lowerCaseHeaders[key];
+      const parsed = this.parseTimestampValue(candidate);
+      if (parsed) {
+        return parsed;
+      }
+    }
+
+    if (payload && typeof payload === 'object') {
+      const payloadCandidates = [
+        (payload as any).timestamp,
+        (payload as any).eventTimestamp,
+        (payload as any).event_timestamp,
+        (payload as any).eventTime,
+        (payload as any).event_time,
+      ];
+
+      for (const candidate of payloadCandidates) {
+        const parsed = this.parseTimestampValue(candidate);
+        if (parsed) {
+          return parsed;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private isTimestampWithinTolerance(timestamp: Date): boolean {
+    if (!(timestamp instanceof Date) || Number.isNaN(timestamp.getTime())) {
+      return true;
+    }
+
+    if (this.replayToleranceMs <= 0) {
+      return true;
+    }
+
+    const delta = Math.abs(Date.now() - timestamp.getTime());
+    return delta <= this.replayToleranceMs;
   }
 
   private dispose(): void {
@@ -213,6 +317,8 @@ export class WebhookManager {
         webhook.userId;
 
       // Create trigger event
+      const timestamp = this.resolveEventTimestamp(headers, payload) ?? new Date();
+
       const event: TriggerEvent = {
         webhookId,
         appId: webhook.appId,
@@ -220,13 +326,20 @@ export class WebhookManager {
         workflowId: webhook.workflowId,
         payload,
         headers,
-        timestamp: new Date(),
+        timestamp,
         signature: headers['x-signature'] || headers['x-hub-signature-256'],
         processed: false,
         source: 'webhook',
         organizationId,
         userId,
       };
+
+      if (!this.isTimestampWithinTolerance(event.timestamp)) {
+        console.warn(
+          `⚠️ Webhook event rejected: timestamp outside tolerance window (webhook=${webhookId})`
+        );
+        return false;
+      }
 
       // Apply simple filters if configured in trigger metadata
       const filters = (webhook.metadata && (webhook.metadata as any).filters) as Record<string, any> | undefined;
@@ -247,7 +360,7 @@ export class WebhookManager {
 
       // Mark as seen for deduplication
       event.dedupeToken = eventHash;
-      await this.recordDedupeToken(webhook.id, eventHash);
+      await this.recordDedupeToken(webhook.id, eventHash, event.timestamp);
 
       // Update last triggered time
       webhook.lastTriggered = new Date();
@@ -374,7 +487,7 @@ export class WebhookManager {
     return set ? set.has(token) : false;
   }
 
-  private async recordDedupeToken(id: string, token: string): Promise<void> {
+  private async recordDedupeToken(id: string, token: string, createdAt?: Date): Promise<void> {
     let set = this.dedupeCache.get(id);
     if (!set) {
       set = await this.ensureDedupeSet(id);
@@ -394,7 +507,12 @@ export class WebhookManager {
       }
     }
 
-    await this.persistence.persistDedupeTokens(id, Array.from(set));
+    await this.persistence.persistDedupeTokens(id, [
+      {
+        token,
+        createdAt: createdAt instanceof Date ? createdAt : undefined,
+      },
+    ]);
   }
 
   /**
@@ -463,14 +581,14 @@ export class WebhookManager {
               continue; // Skip duplicate
             }
             event.dedupeToken = dedupeHash;
-            await this.recordDedupeToken(trigger.id, dedupeHash);
+            await this.recordDedupeToken(trigger.id, dedupeHash, event.timestamp);
           } else {
             const fallbackToken = this.createEventHash(event);
             if (this.hasSeenEvent(trigger.id, fallbackToken)) {
               continue;
             }
             event.dedupeToken = fallbackToken;
-            await this.recordDedupeToken(trigger.id, fallbackToken);
+            await this.recordDedupeToken(trigger.id, fallbackToken, event.timestamp);
           }
 
           await this.processTriggerEvent(event);
@@ -675,6 +793,14 @@ export class WebhookManager {
 
       if (!event.organizationId) {
         console.warn('⚠️ Trigger event missing organization context; skipping');
+        return false;
+      }
+
+      if (!this.isTimestampWithinTolerance(event.timestamp)) {
+        const toleranceSeconds = Math.floor(this.replayToleranceMs / 1000);
+        const message = `timestamp outside replay tolerance (${toleranceSeconds}s)`;
+        console.warn(`⚠️ Trigger event rejected due to ${message}`);
+        await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
         return false;
       }
 
