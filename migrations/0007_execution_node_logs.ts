@@ -5,7 +5,7 @@ type MigrationClient = { execute: (query: any) => Promise<unknown> };
 export async function up(db: MigrationClient): Promise<void> {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "execution_logs" (
-      "execution_id" text PRIMARY KEY,
+      "execution_id" text NOT NULL,
       "workflow_id" text NOT NULL,
       "workflow_name" text,
       "user_id" text,
@@ -25,14 +25,15 @@ export async function up(db: MigrationClient): Promise<void> {
       "metadata" jsonb,
       "timeline" jsonb,
       "created_at" timestamptz NOT NULL DEFAULT now(),
-      "updated_at" timestamptz NOT NULL DEFAULT now()
+      "updated_at" timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT "execution_logs_execution_id_pk" PRIMARY KEY ("execution_id")
     )
   `);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "node_logs" (
       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      "execution_id" text NOT NULL REFERENCES "execution_logs"("execution_id") ON DELETE CASCADE,
+      "execution_id" text NOT NULL,
       "node_id" text NOT NULL,
       "node_type" text,
       "node_label" text,
@@ -50,7 +51,8 @@ export async function up(db: MigrationClient): Promise<void> {
       "metadata" jsonb,
       "timeline" jsonb,
       "created_at" timestamptz NOT NULL DEFAULT now(),
-      "updated_at" timestamptz NOT NULL DEFAULT now()
+      "updated_at" timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT "node_logs_execution_id_execution_logs_execution_id_fk" FOREIGN KEY ("execution_id") REFERENCES "execution_logs"("execution_id") ON DELETE CASCADE
     )
   `);
 
