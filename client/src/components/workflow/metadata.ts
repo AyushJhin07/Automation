@@ -1,51 +1,14 @@
 import {
   createMetadataPlaceholder,
   inferWorkflowValueType,
+  mergeWorkflowMetadata,
   toMetadataLookupKey,
   type WorkflowMetadata,
   type WorkflowMetadataSource,
 } from '@shared/workflow/metadata';
 
-const mergeMetadataValues = (...sources: WorkflowMetadataSource[]): WorkflowMetadata => {
-  const columns = new Set<string>();
-  const derivedFrom = new Set<string>();
-  let sampleObject: Record<string, any> | null = null;
-  let sampleArray: any[] | null = null;
-  let scalarSample: any;
-  let schema: Record<string, any> = {};
-  let hasSchema = false;
-
-  sources.forEach((source) => {
-    if (!source) return;
-    source.columns?.forEach((col) => {
-      if (typeof col === 'string' && col.trim()) columns.add(col);
-    });
-    source.derivedFrom?.forEach((item) => {
-      if (item) derivedFrom.add(item);
-    });
-    const sample = source.sample;
-    if (Array.isArray(sample)) {
-      if (!sampleArray) sampleArray = sample;
-    } else if (sample && typeof sample === 'object') {
-      sampleObject = { ...(sampleObject ?? {}), ...sample };
-    } else if (sample !== undefined && scalarSample === undefined) {
-      scalarSample = sample;
-    }
-    if (source.schema) {
-      schema = { ...schema, ...source.schema };
-      hasSchema = true;
-    }
-  });
-
-  const result: WorkflowMetadata = {};
-  if (columns.size) result.columns = Array.from(columns);
-  if (derivedFrom.size) result.derivedFrom = Array.from(derivedFrom);
-  if (sampleArray) result.sample = sampleArray;
-  else if (sampleObject) result.sample = sampleObject;
-  else if (scalarSample !== undefined) result.sample = scalarSample;
-  if (hasSchema) result.schema = schema;
-  return result;
-};
+const mergeMetadataValues = (...sources: WorkflowMetadataSource[]): WorkflowMetadata =>
+  mergeWorkflowMetadata(...sources);
 
 const collectColumnsFromAny = (source: unknown): string[] => {
   if (!source) return [];

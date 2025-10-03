@@ -579,9 +579,23 @@ export function SmartParametersPanel() {
     return (storeNodes as any[]).filter((n) => upstreamIds.has(n.id));
   }, [node?.id, storeEdges, storeNodes]);
 
+  const upstreamMetadataFingerprint = useMemo(() => {
+    try {
+      return JSON.stringify(
+        (upstreamNodes as UpstreamNodeSummary[]).map((upNode) => ({
+          id: upNode?.id,
+          metadata: upNode?.data?.metadata ?? null,
+          outputMetadata: upNode?.data?.outputMetadata ?? null,
+        }))
+      );
+    } catch {
+      return '';
+    }
+  }, [upstreamNodes]);
+
   const metadataSuggestions = useMemo(
     () => computeMetadataSuggestions(upstreamNodes as UpstreamNodeSummary[]),
-    [upstreamNodes]
+    [upstreamNodes, upstreamMetadataFingerprint]
   );
 
   // More robust app/op retrieval

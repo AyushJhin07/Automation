@@ -6,6 +6,7 @@
 import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 
 import { NodeGraph, GraphNode } from '../../shared/nodeGraphSchema';
+import type { WorkflowNodeMetadataSnapshot } from '../../shared/workflow/metadata';
 import { db, executionLogs, nodeLogs } from '../database/schema.js';
 import { sanitizeLogPayload, appendTimelineEvent } from '../utils/executionLogRedaction';
 import { logAction } from '../utils/actionLog';
@@ -50,6 +51,7 @@ export interface NodeExecution {
     timeoutMs?: number;
     connectorId?: string;
     circuitState?: CircuitBreakerSnapshot;
+    metadataSnapshots?: WorkflowNodeMetadataSnapshot[];
     [key: string]: any;
   };
 }
@@ -180,6 +182,30 @@ interface ExecutionLogStore {
   cleanup(maxAge?: number): Promise<void>;
 }
 
+const mergeNodeMetadata = (
+  existing: NodeExecution['metadata'],
+  updates: Partial<NodeExecution['metadata']> = {}
+): NodeExecution['metadata'] => {
+  const merged: NodeExecution['metadata'] = { ...existing, ...updates };
+  if (updates.metadataSnapshots && updates.metadataSnapshots.length > 0) {
+    merged.metadataSnapshots = [
+      ...(existing.metadataSnapshots ?? []),
+      ...updates.metadataSnapshots,
+    ];
+  }
+  return merged;
+};
+
+const mergeMetadataForStorage = (
+  existing: any,
+  updates: Partial<NodeExecution['metadata']> = {}
+): NodeExecution['metadata'] => {
+  const base: NodeExecution['metadata'] = {
+    ...(existing && typeof existing === 'object' ? (existing as Record<string, any>) : {}),
+  } as NodeExecution['metadata'];
+  return mergeNodeMetadata(base, updates);
+};
+
 const DEFAULT_METADATA_BASE: WorkflowExecution['metadata'] = {
   retryCount: 0,
   totalCostUSD: 0,
@@ -309,7 +335,7 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     nodeExecution.endTime = new Date();
     nodeExecution.duration = nodeExecution.endTime.getTime() - nodeExecution.startTime.getTime();
     nodeExecution.output = output;
-    nodeExecution.metadata = { ...nodeExecution.metadata, ...metadata };
+    nodeExecution.metadata = mergeNodeMetadata(nodeExecution.metadata, metadata);
 
     const execution = this.executions.get(executionId)!;
     execution.completedNodes++;
@@ -329,7 +355,7 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     nodeExecution.endTime = new Date();
     nodeExecution.duration = nodeExecution.endTime.getTime() - nodeExecution.startTime.getTime();
     nodeExecution.error = error;
-    nodeExecution.metadata = { ...nodeExecution.metadata, ...metadata };
+    nodeExecution.metadata = mergeNodeMetadata(nodeExecution.metadata, metadata);
 
     const execution = this.executions.get(executionId)!;
     execution.failedNodes++;
@@ -796,10 +822,9 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
 
       await database.insert(nodeLogs).values(row);
     } else {
-      const mergedMetadata = sanitizeLogPayload({
-        ...(existing.metadata || {}),
-        ...sanitizedMetadata,
-      });
+      const mergedMetadata = sanitizeLogPayload(
+        mergeMetadataForStorage(existing.metadata, sanitizedMetadata as any)
+      );
 
       const mergedTimeline = appendTimelineEvent(existing.timeline, timelineEvent);
 
@@ -848,10 +873,9 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const endTime = new Date();
     const durationMs = existing.startTime ? endTime.getTime() - existing.startTime.getTime() : null;
 
-    const mergedMetadata = sanitizeLogPayload({
-      ...(existing.metadata || {}),
-      ...metadata,
-    });
+    const mergedMetadata = sanitizeLogPayload(
+      mergeMetadataForStorage(existing.metadata, metadata)
+    );
 
     const timeline = appendTimelineEvent(existing.timeline, {
       type: 'node.complete',
@@ -891,10 +915,9 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const endTime = new Date();
     const durationMs = existing.startTime ? endTime.getTime() - existing.startTime.getTime() : null;
 
-    const mergedMetadata = sanitizeLogPayload({
-      ...(existing.metadata || {}),
-      ...metadata,
-    });
+    const mergedMetadata = sanitizeLogPayload(
+      mergeMetadataForStorage(existing.metadata, metadata)
+    );
 
     const timeline = appendTimelineEvent(existing.timeline, {
       type: 'node.fail',

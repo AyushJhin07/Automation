@@ -6,6 +6,7 @@ import {
   canonicalizeMetadataKey,
   createMetadataPlaceholder,
   inferWorkflowValueType,
+  mergeWorkflowMetadata,
   toMetadataLookupKey,
   type WorkflowMetadata,
   type WorkflowMetadataSource,
@@ -197,154 +198,8 @@ const collectColumnsFromSource = (source: unknown): string[] => {
 //
 // The enrichment logic below merges connector-provided metadata with
 // heuristics derived from params, answers and connector schemas.
-const mergeMetadataSources = (...sources: MetadataSource[]): WorkflowMetadata => {
-  const columns = new Set<string>();
-  const headers = new Set<string>();
-  const derivedFrom = new Set<string>();
-  let sampleObject: Record<string, any> | null = null;
-  let sampleArray: any[] | null = null;
-  let scalarSample: any;
-  let sampleRow: Record<string, any> | null = null;
-  let outputSampleObject: Record<string, any> | null = null;
-  let outputSampleArray: any[] | null = null;
-  let outputSampleScalar: any;
-  let schema: Record<string, any> | null = null;
-  let outputSchema: Record<string, any> | null = null;
-
-  const mergeObject = (
-    target: Record<string, any> | null,
-    candidate: Record<string, any> | null | undefined
-  ): Record<string, any> | null => {
-    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return target;
-    return { ...(target ?? {}), ...candidate };
-  };
-
-  const handleSampleCandidate = (
-    value: any,
-    {
-      onObject,
-      onArray,
-      onScalar,
-    }: {
-      onObject?: (next: Record<string, any>) => void;
-      onArray?: (next: any[]) => void;
-      onScalar?: (next: any) => void;
-    }
-  ) => {
-    if (value === undefined || value === null) return;
-    if (Array.isArray(value)) {
-      onArray?.(value);
-      return;
-    }
-    if (typeof value === 'object') {
-      onObject?.(value as Record<string, any>);
-      return;
-    }
-    onScalar?.(value);
-  };
-
-  for (const source of sources) {
-    if (!source) continue;
-    source.columns?.forEach((col) => {
-      if (typeof col === 'string' && col.trim()) {
-        columns.add(col);
-        headers.add(col);
-      }
-    });
-    source.headers?.forEach((header) => {
-      if (typeof header === 'string' && header.trim()) {
-        headers.add(header);
-        columns.add(header);
-      }
-    });
-    source.derivedFrom?.forEach((item) => {
-      if (item) derivedFrom.add(item);
-    });
-
-    handleSampleCandidate(source.sample, {
-      onObject: (next) => {
-        sampleObject = mergeObject(sampleObject, next);
-      },
-      onArray: (next) => {
-        if (!sampleArray) sampleArray = next;
-      },
-      onScalar: (next) => {
-        if (scalarSample === undefined) scalarSample = next;
-      },
-    });
-
-    handleSampleCandidate(source.sampleRow, {
-      onObject: (next) => {
-        sampleRow = mergeObject(sampleRow, next);
-        sampleObject = mergeObject(sampleObject, next);
-      },
-      onArray: (next) => {
-        if (!sampleArray) sampleArray = next;
-      },
-      onScalar: (next) => {
-        if (scalarSample === undefined) scalarSample = next;
-      },
-    });
-
-    handleSampleCandidate(source.outputSample, {
-      onObject: (next) => {
-        outputSampleObject = mergeObject(outputSampleObject, next);
-        sampleObject = mergeObject(sampleObject, next);
-      },
-      onArray: (next) => {
-        if (!outputSampleArray) outputSampleArray = next;
-        if (!sampleArray) sampleArray = next;
-      },
-      onScalar: (next) => {
-        if (outputSampleScalar === undefined) outputSampleScalar = next;
-        if (scalarSample === undefined) scalarSample = next;
-      },
-    });
-
-    if (source.schema) {
-      schema = { ...(schema ?? {}), ...source.schema };
-    }
-    if (source.outputSchema) {
-      outputSchema = { ...(outputSchema ?? {}), ...source.outputSchema };
-    }
-  }
-
-  const result: WorkflowMetadata = {};
-  if (columns.size > 0) result.columns = Array.from(columns);
-  if (headers.size > 0) {
-    const normalizedHeaders = new Set<string>();
-    headers.forEach((header) => {
-      if (header) normalizedHeaders.add(header);
-    });
-    columns.forEach((col) => normalizedHeaders.add(col));
-    if (normalizedHeaders.size > 0) result.headers = Array.from(normalizedHeaders);
-  }
-  if (derivedFrom.size > 0) result.derivedFrom = Array.from(derivedFrom);
-  if (sampleObject && Object.keys(sampleObject).length > 0) {
-    result.sample = sampleObject;
-  } else if (sampleArray) {
-    result.sample = sampleArray;
-  } else if (scalarSample !== undefined) {
-    result.sample = scalarSample;
-  }
-  if (sampleRow && Object.keys(sampleRow).length > 0) {
-    result.sampleRow = sampleRow;
-  }
-  if (outputSampleObject && Object.keys(outputSampleObject).length > 0) {
-    result.outputSample = outputSampleObject;
-  } else if (outputSampleArray) {
-    result.outputSample = outputSampleArray;
-  } else if (outputSampleScalar !== undefined) {
-    result.outputSample = outputSampleScalar;
-  }
-  if (schema && Object.keys(schema).length > 0) {
-    result.schema = schema;
-  }
-  if (outputSchema && Object.keys(outputSchema).length > 0) {
-    result.outputSchema = outputSchema;
-  }
-  return result;
-};
+const mergeMetadataSources = (...sources: MetadataSource[]): WorkflowMetadata =>
+  mergeWorkflowMetadata(...sources);
 
 const lookupValue = (source: unknown, key: string, depth = 0): any => {
   if (!source || depth > 3) return undefined;

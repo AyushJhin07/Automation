@@ -47,6 +47,11 @@ async function runSheetsAndTimeRegression(): Promise<void> {
   );
 
   assert.ok(context.nodeOutputs['sheets-node'], 'Sheets node output should be stored in execution context');
+  assert.ok(sheetsResult.metadataSnapshot, 'Action execution should include metadata snapshot');
+  assert.ok(
+    sheetsResult.metadataSnapshot?.outputs?.columns?.includes('sheetName'),
+    'Metadata snapshot should include sheetName column'
+  );
 
   const timeNode = {
     id: 'time-node',
@@ -73,6 +78,11 @@ async function runSheetsAndTimeRegression(): Promise<void> {
   );
 
   assert.ok(context.nodeOutputs['time-node'], 'Time node output should be stored in execution context');
+  assert.ok(timeResult.metadataSnapshot, 'Delay node should emit metadata snapshot');
+  assert.ok(
+    timeResult.metadataSnapshot?.outputs?.columns?.some((column) => column.toLowerCase().includes('delay')),
+    'Delay metadata should describe delay columns'
+  );
 }
 
 async function runConnectionIdAuthRegression(): Promise<void> {
@@ -193,6 +203,11 @@ async function runConnectionIdAuthRegression(): Promise<void> {
   assert.ok(
     context.nodeOutputs['sheets-connection-node'],
     'Node output should be stored when connection is resolved from data.auth'
+  );
+  assert.ok(result.metadataSnapshot, 'Connection-backed execution should include metadata snapshot');
+  assert.ok(
+    result.metadataSnapshot?.outputs?.columns?.includes('sheetName'),
+    'Snapshot should include spreadsheet columns for connection-based run'
   );
 }
 
