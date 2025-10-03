@@ -776,6 +776,50 @@ export const connectorDefinitions = pgTable(
   })
 );
 
+export const organizationConnectorEntitlements = pgTable(
+  'organization_connector_entitlements',
+  {
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    connectorId: text('connector_id').notNull(),
+    isEnabled: boolean('is_enabled').default(false).notNull(),
+    enabledAt: timestamp('enabled_at'),
+    disabledAt: timestamp('disabled_at'),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.organizationId, table.connectorId] }),
+    organizationIdx: index('org_connector_entitlements_org_idx').on(table.organizationId),
+    connectorIdx: index('org_connector_entitlements_connector_idx').on(table.connectorId),
+    enabledIdx: index('org_connector_entitlements_enabled_idx').on(table.isEnabled),
+  })
+);
+
+export const organizationConnectorEntitlementAudit = pgTable(
+  'organization_connector_entitlement_audit',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    connectorId: text('connector_id').notNull(),
+    action: text('action').notNull(),
+    performedBy: uuid('performed_by').references(() => users.id, { onDelete: 'set null' }),
+    reason: text('reason'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationIdx: index('org_connector_audit_org_idx').on(table.organizationId),
+    connectorIdx: index('org_connector_audit_connector_idx').on(table.connectorId),
+    actionIdx: index('org_connector_audit_action_idx').on(table.action),
+  })
+);
+
 // Sessions table for secure authentication across ALL applications
 export const sessions = pgTable(
   'sessions',
@@ -910,6 +954,34 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
   organization: one(organizations, { fields: [sessions.organizationId], references: [organizations.id] }),
 }));
+
+export const organizationConnectorEntitlementsRelations = relations(
+  organizationConnectorEntitlements,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationConnectorEntitlements.organizationId],
+      references: [organizations.id],
+    }),
+    updatedByUser: one(users, {
+      fields: [organizationConnectorEntitlements.updatedBy],
+      references: [users.id],
+    }),
+  })
+);
+
+export const organizationConnectorEntitlementAuditRelations = relations(
+  organizationConnectorEntitlementAudit,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationConnectorEntitlementAudit.organizationId],
+      references: [organizations.id],
+    }),
+    performedByUser: one(users, {
+      fields: [organizationConnectorEntitlementAudit.performedBy],
+      references: [users.id],
+    }),
+  })
+);
 
 // Webhook logs table for trigger event tracking
 export const webhookLogs = pgTable(
@@ -1046,6 +1118,8 @@ if (!connectionString) {
       workflowTimers,
       usageTracking,
       connectorDefinitions,
+      organizationConnectorEntitlements,
+      organizationConnectorEntitlementAudit,
       sessions,
       usersRelations,
       organizationsRelations,
@@ -1060,6 +1134,8 @@ if (!connectionString) {
       nodeLogsRelations,
       workflowTimersRelations,
       usageTrackingRelations,
+      organizationConnectorEntitlementsRelations,
+      organizationConnectorEntitlementAuditRelations,
       sessionsRelations,
       webhookLogs,
       pollingTriggers,

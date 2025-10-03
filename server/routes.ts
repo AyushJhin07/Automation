@@ -41,6 +41,7 @@ import { endToEndTester } from "./testing/EndToEndTester";
 import { connectorSeeder } from "./database/seedConnectors";
 import { connectorRegistry } from "./ConnectorRegistry";
 import { webhookManager } from "./webhooks/WebhookManager";
+import { connectorEntitlementService } from "./services/ConnectorEntitlementService";
 import { logAction } from './utils/actionLog';
 import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
@@ -51,6 +52,7 @@ import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prereq
 import { organizationService } from "./services/OrganizationService";
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
+import organizationConnectorRoutes from "./routes/organization-connectors";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -163,6 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Organization role management APIs
   app.use('/api/organizations', organizationRoleRoutes);
   app.use('/api/organizations', organizationSecurityRoutes);
+  app.use('/api/organizations', organizationConnectorRoutes);
 
   // (removed duplicate /api/ai/models in favor of aiRouter.get('/models'))
   
@@ -810,57 +813,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerDeploymentPrerequisiteRoutes(app);
 
   // ===== CONNECTOR FRAMEWORK ROUTES =====
-
-  app.get('/api/connectors', optionalAuth, async (req, res) => {
-    try {
-      const { search, category, limit } = req.query;
-      
-      // Use ConnectorRegistry instead of ConnectorFramework for development
-      // (works without database)
-      let connectors = connectorRegistry.getAllConnectors().map(entry => ({
-        id: entry.definition.id,
-        name: entry.definition.name,
-        description: entry.definition.description,
-        category: entry.definition.category,
-        authentication: entry.definition.authentication,
-        isActive: true,
-        actionsCount: entry.definition.actions?.length || 0,
-        triggersCount: entry.definition.triggers?.length || 0,
-        hasOAuth: entry.definition.authentication?.type === 'oauth2',
-        hasWebhooks: entry.definition.triggers?.some(t => t.webhookSupport) || false,
-        hasImplementation: entry.hasImplementation,
-        functionCount: entry.functionCount,
-        availability: entry.availability
-      }));
-      
-      // Apply filters
-      if (search) {
-        const searchLower = search.toLowerCase();
-        connectors = connectors.filter(c => 
-          c.name.toLowerCase().includes(searchLower) ||
-          c.description.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      if (category) {
-        connectors = connectors.filter(c => 
-          c.category.toLowerCase() === category.toLowerCase()
-        );
-      }
-      
-      if (limit) {
-        connectors = connectors.slice(0, parseInt(limit as string));
-      }
-      
-      res.json({ 
-        success: true, 
-        connectors,
-        total: connectors.length 
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
 
   app.get('/api/connectors/categories', async (req, res) => {
     try {
@@ -3322,7 +3274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: resp.success, data: { localEndpoint: endpoint, remote: resp.data }, error: resp.error });
       }
 
-      // For GitHub, create repo webhook via GenericExecutor using connectors/github.json
+      // For GitHub, create repo webhook via GenericExecutor using connectors/github/definition.json
       if (provider === 'github') {
         const { env } = await import('./env.js');
         if (!env.GENERIC_EXECUTOR_ENABLED) {
@@ -3423,41 +3375,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== CONNECTOR ENDPOINTS =====
   
   // List all available connectors
-  app.get('/api/connectors', async (req, res) => {
+  app.get('/api/connectors', optionalAuth, async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
-      const connectors = await connectorRegistry.listConnectors();
-      // Heuristic set of vendors with first-class webhook ecosystems
+      const includeExperimental = req.query.includeExperimental;
+      const includeDisabled = req.query.includeDisabled;
+      const includeHidden = req.query.includeHidden;
+
+      const parseBoolean = (value: unknown): boolean => {
+        if (typeof value === 'string') {
+          return value.toLowerCase() === 'true';
+        }
+        if (typeof value === 'boolean') {
+          return value;
+        }
+        return false;
+      };
+
+      let entitlementOverrides: Map<string, boolean> | undefined;
+      if (req.organizationId) {
+        entitlementOverrides = await connectorEntitlementService.getOrganizationOverrides(req.organizationId);
+      }
+
+      const connectors = await connectorRegistry.listConnectors({
+        organizationId: req.organizationId,
+        organizationPlan: req.organizationPlan,
+        includeExperimental: parseBoolean(includeExperimental),
+        includeDisabled: parseBoolean(includeDisabled),
+        includeHidden: parseBoolean(includeHidden) && req.permissions?.includes('connections:write') === true,
+        entitlementOverrides,
+      });
+
       const WEBHOOK_CAPABLE = new Set<string>([
-        'slack','stripe','github','gitlab','shopify','zendesk','typeform','mailchimp','intercom','dropbox','pipedrive','hubspot','salesforce','jira','jira-service-management','trello','asana','twilio','zoom','webex','google-drive','google-calendar'
+        'slack', 'stripe', 'github', 'gitlab', 'shopify', 'zendesk', 'typeform', 'mailchimp', 'intercom', 'dropbox',
+        'pipedrive', 'hubspot', 'salesforce', 'jira', 'jira-service-management', 'trello', 'asana', 'twilio', 'zoom',
+        'webex', 'google-drive', 'google-calendar',
       ]);
-      
-      res.json({
-        success: true,
-        connectors: connectors.map(connector => ({
+
+      const results = connectors.map(connector => {
+        const overrideState = entitlementOverrides?.get(connector.id);
+        const planAllows = connectorRegistry.canAccessPricingTier(req.organizationPlan, connector.pricingTier);
+        const entitlementSource = overrideState === true
+          ? 'override:enabled'
+          : overrideState === false
+            ? 'override:disabled'
+            : planAllows
+              ? 'plan'
+              : 'public';
+
+        const statusLabel = (() => {
+          if (connector.status.hidden) return 'Hidden';
+          if (connector.status.deprecated || connector.availability === 'disabled') return 'Deprecated';
+          if (connector.status.beta || connector.availability === 'experimental') return 'Experimental';
+          if (connector.availability === 'stable') {
+            return connector.hasImplementation ? 'Stable' : 'Coming Soon';
+          }
+          return connector.availability ?? 'unknown';
+        })();
+
+        const hasWebhooks = connector.triggers?.some((trigger: any) => Boolean(trigger?.webhookSupport))
+          || WEBHOOK_CAPABLE.has(connector.id);
+
+        return {
           id: connector.id,
           name: connector.name,
+          displayName: connector.displayName ?? connector.name,
           description: connector.description,
           category: connector.category,
           authentication: connector.authentication,
-          isActive: connector.isActive,
-          actionsCount: connector.actions?.length || 0,
-          triggersCount: connector.triggers?.length || 0,
-          hasOAuth: connector.authentication?.type === 'oauth2',
-          // Prefer explicit flag if present; otherwise infer from known vendors
-          hasWebhooks: (connector as any).triggers?.some((t: any) => t.webhookSupport) || WEBHOOK_CAPABLE.has(connector.id),
           availability: connector.availability,
           hasImplementation: connector.hasImplementation,
-          // UI status label derived from availability + implementation
-          statusLabel: connector.availability === 'stable'
-            ? (connector.hasImplementation ? 'Stable' : 'Coming Soon')
-            : (connector.availability === 'experimental' ? 'Experimental' : connector.availability)
-        })),
-        total: connectors.length,
-        responseTime: Date.now() - startTime
+          actionsCount: connector.actions?.length ?? 0,
+          triggersCount: connector.triggers?.length ?? 0,
+          hasOAuth: connector.authentication?.type === 'oauth2',
+          hasWebhooks,
+          pricingTier: connector.pricingTier,
+          status: connector.status,
+          labels: connector.labels,
+          entitlementSource,
+          isEnabledForOrganization: overrideState === true || (overrideState !== false && planAllows),
+          statusLabel,
+        };
       });
-      
+
+      res.json({
+        success: true,
+        connectors: results,
+        total: results.length,
+        responseTime: Date.now() - startTime,
+      });
+
     } catch (error) {
       console.error('❌ List connectors error:', getErrorMessage(error));
       res.status(500).json({

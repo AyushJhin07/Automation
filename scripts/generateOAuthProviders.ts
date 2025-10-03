@@ -1,7 +1,7 @@
 // COMPREHENSIVE OAUTH PROVIDER GENERATOR
 // Generates OAuth provider configurations for ALL external applications
 
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
 interface ConnectorData {
@@ -53,14 +53,24 @@ export class OAuthProviderGenerator {
 
     try {
       // Get all connectors
-      const connectorFiles = readdirSync(this.connectorsPath).filter(f => f.endsWith('.json'));
+      const connectorDirectories = readdirSync(this.connectorsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
       const providers: OAuthProviderDefinition[] = [];
 
       // Process each connector
-      for (const file of connectorFiles) {
+      for (const directoryName of connectorDirectories) {
         try {
-          const connector = this.loadConnector(file);
-          
+          const definitionPath = join(this.connectorsPath, directoryName, 'definition.json');
+
+          if (!existsSync(definitionPath)) {
+            console.log(`⚠️ Skipping ${directoryName} - missing definition.json`);
+            continue;
+          }
+
+          const connector = this.loadConnector(directoryName);
+
           // Skip if no functions defined
           const totalFunctions = (connector.actions?.length || 0) + (connector.triggers?.length || 0);
           if (totalFunctions === 0) {
@@ -77,7 +87,7 @@ export class OAuthProviderGenerator {
           }
 
         } catch (error) {
-          const errorMsg = `Failed to process ${file}: ${error}`;
+          const errorMsg = `Failed to process ${directoryName}: ${error}`;
           console.error(`❌ ${errorMsg}`);
           results.errors.push(errorMsg);
         }
@@ -768,8 +778,8 @@ export const oauthManager = new OAuthManager();`;
   /**
    * Load connector data
    */
-  private loadConnector(filename: string): ConnectorData {
-    const filePath = join(this.connectorsPath, filename);
+  private loadConnector(directoryName: string): ConnectorData {
+    const filePath = join(this.connectorsPath, directoryName, 'definition.json');
     const content = readFileSync(filePath, 'utf-8');
     return JSON.parse(content);
   }

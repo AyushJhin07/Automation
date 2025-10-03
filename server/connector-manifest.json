@@ -1,605 +1,725 @@
 {
-  "generatedAt": "2025-10-03T07:06:56.119Z",
+  "generatedAt": "2025-10-03T08:25:23.579Z",
   "connectors": [
     {
       "id": "adobesign",
       "normalizedId": "adobesign",
-      "definitionPath": "connectors/adobesign.json"
+      "definitionPath": "connectors/adobesign/definition.json",
+      "manifestPath": "connectors/adobesign/manifest.json"
     },
     {
       "id": "adp",
       "normalizedId": "adp",
-      "definitionPath": "connectors/adp.json"
+      "definitionPath": "connectors/adp/definition.json",
+      "manifestPath": "connectors/adp/manifest.json"
     },
     {
       "id": "adyen",
       "normalizedId": "adyen",
-      "definitionPath": "connectors/adyen.json"
+      "definitionPath": "connectors/adyen/definition.json",
+      "manifestPath": "connectors/adyen/manifest.json"
     },
     {
       "id": "airtable",
       "normalizedId": "airtable",
-      "definitionPath": "connectors/airtable.json"
+      "definitionPath": "connectors/airtable/definition.json",
+      "manifestPath": "connectors/airtable/manifest.json"
     },
     {
       "id": "airtable-enhanced",
       "normalizedId": "airtable-enhanced",
-      "definitionPath": "connectors/airtable-enhanced.json"
+      "definitionPath": "connectors/airtable-enhanced/definition.json",
+      "manifestPath": "connectors/airtable-enhanced/manifest.json"
     },
     {
       "id": "ansible",
       "normalizedId": "ansible",
-      "definitionPath": "connectors/ansible.json"
+      "definitionPath": "connectors/ansible/definition.json",
+      "manifestPath": "connectors/ansible/manifest.json"
     },
     {
       "id": "argocd",
       "normalizedId": "argocd",
-      "definitionPath": "connectors/argocd.json"
+      "definitionPath": "connectors/argocd/definition.json",
+      "manifestPath": "connectors/argocd/manifest.json"
     },
     {
       "id": "asana-enhanced",
       "normalizedId": "asana-enhanced",
-      "definitionPath": "connectors/asana-enhanced.json"
+      "definitionPath": "connectors/asana-enhanced/definition.json",
+      "manifestPath": "connectors/asana-enhanced/manifest.json"
     },
     {
       "id": "aws-cloudformation",
       "normalizedId": "aws-cloudformation",
-      "definitionPath": "connectors/aws-cloudformation.json"
+      "definitionPath": "connectors/aws-cloudformation/definition.json",
+      "manifestPath": "connectors/aws-cloudformation/manifest.json"
     },
     {
       "id": "aws-codepipeline",
       "normalizedId": "aws-codepipeline",
-      "definitionPath": "connectors/aws-codepipeline.json"
+      "definitionPath": "connectors/aws-codepipeline/definition.json",
+      "manifestPath": "connectors/aws-codepipeline/manifest.json"
     },
     {
       "id": "azure-devops",
       "normalizedId": "azure-devops",
-      "definitionPath": "connectors/azure-devops.json"
+      "definitionPath": "connectors/azure-devops/definition.json",
+      "manifestPath": "connectors/azure-devops/manifest.json"
     },
     {
       "id": "bamboohr",
       "normalizedId": "bamboohr",
-      "definitionPath": "connectors/bamboohr.json"
+      "definitionPath": "connectors/bamboohr/definition.json",
+      "manifestPath": "connectors/bamboohr/manifest.json"
     },
     {
       "id": "basecamp",
       "normalizedId": "basecamp",
-      "definitionPath": "connectors/basecamp.json"
+      "definitionPath": "connectors/basecamp/definition.json",
+      "manifestPath": "connectors/basecamp/manifest.json"
     },
     {
       "id": "bigcommerce",
       "normalizedId": "bigcommerce",
-      "definitionPath": "connectors/bigcommerce.json"
+      "definitionPath": "connectors/bigcommerce/definition.json",
+      "manifestPath": "connectors/bigcommerce/manifest.json"
     },
     {
       "id": "bigquery",
       "normalizedId": "bigquery",
-      "definitionPath": "connectors/bigquery.json"
+      "definitionPath": "connectors/bigquery/definition.json",
+      "manifestPath": "connectors/bigquery/manifest.json"
     },
     {
       "id": "bitbucket",
       "normalizedId": "bitbucket",
-      "definitionPath": "connectors/bitbucket.json"
+      "definitionPath": "connectors/bitbucket/definition.json",
+      "manifestPath": "connectors/bitbucket/manifest.json"
     },
     {
       "id": "box",
       "normalizedId": "box",
-      "definitionPath": "connectors/box.json"
+      "definitionPath": "connectors/box/definition.json",
+      "manifestPath": "connectors/box/manifest.json"
     },
     {
       "id": "braze",
       "normalizedId": "braze",
-      "definitionPath": "connectors/braze.json"
+      "definitionPath": "connectors/braze/definition.json",
+      "manifestPath": "connectors/braze/manifest.json"
     },
     {
       "id": "brex",
       "normalizedId": "brex",
-      "definitionPath": "connectors/brex.json"
+      "definitionPath": "connectors/brex/definition.json",
+      "manifestPath": "connectors/brex/manifest.json"
     },
     {
       "id": "caldotcom",
       "normalizedId": "caldotcom",
-      "definitionPath": "connectors/caldotcom.json"
+      "definitionPath": "connectors/caldotcom/definition.json",
+      "manifestPath": "connectors/caldotcom/manifest.json"
     },
     {
       "id": "calendly",
       "normalizedId": "calendly",
-      "definitionPath": "connectors/calendly.json"
+      "definitionPath": "connectors/calendly/definition.json",
+      "manifestPath": "connectors/calendly/manifest.json"
     },
     {
       "id": "circleci",
       "normalizedId": "circleci",
-      "definitionPath": "connectors/circleci.json"
+      "definitionPath": "connectors/circleci/definition.json",
+      "manifestPath": "connectors/circleci/manifest.json"
     },
     {
       "id": "clickup",
       "normalizedId": "clickup",
-      "definitionPath": "connectors/clickup.json"
+      "definitionPath": "connectors/clickup/definition.json",
+      "manifestPath": "connectors/clickup/manifest.json"
     },
     {
       "id": "coda",
       "normalizedId": "coda",
-      "definitionPath": "connectors/coda.json"
+      "definitionPath": "connectors/coda/definition.json",
+      "manifestPath": "connectors/coda/manifest.json"
     },
     {
       "id": "concur",
       "normalizedId": "concur",
-      "definitionPath": "connectors/concur.json"
+      "definitionPath": "connectors/concur/definition.json",
+      "manifestPath": "connectors/concur/manifest.json"
     },
     {
       "id": "confluence",
       "normalizedId": "confluence",
-      "definitionPath": "connectors/confluence.json"
+      "definitionPath": "connectors/confluence/definition.json",
+      "manifestPath": "connectors/confluence/manifest.json"
     },
     {
       "id": "coupa",
       "normalizedId": "coupa",
-      "definitionPath": "connectors/coupa.json"
+      "definitionPath": "connectors/coupa/definition.json",
+      "manifestPath": "connectors/coupa/manifest.json"
     },
     {
       "id": "databricks",
       "normalizedId": "databricks",
-      "definitionPath": "connectors/databricks.json"
+      "definitionPath": "connectors/databricks/definition.json",
+      "manifestPath": "connectors/databricks/manifest.json"
     },
     {
       "id": "datadog",
       "normalizedId": "datadog",
-      "definitionPath": "connectors/datadog.json"
+      "definitionPath": "connectors/datadog/definition.json",
+      "manifestPath": "connectors/datadog/manifest.json"
     },
     {
       "id": "docker-hub",
       "normalizedId": "docker-hub",
-      "definitionPath": "connectors/docker-hub.json"
+      "definitionPath": "connectors/docker-hub/definition.json",
+      "manifestPath": "connectors/docker-hub/manifest.json"
     },
     {
       "id": "docusign",
       "normalizedId": "docusign",
-      "definitionPath": "connectors/docusign.json"
+      "definitionPath": "connectors/docusign/definition.json",
+      "manifestPath": "connectors/docusign/manifest.json"
     },
     {
       "id": "dropbox",
       "normalizedId": "dropbox",
-      "definitionPath": "connectors/dropbox.json"
+      "definitionPath": "connectors/dropbox/definition.json",
+      "manifestPath": "connectors/dropbox/manifest.json"
     },
     {
       "id": "dropbox-enhanced",
       "normalizedId": "dropbox-enhanced",
-      "definitionPath": "connectors/dropbox-enhanced.json"
+      "definitionPath": "connectors/dropbox-enhanced/definition.json",
+      "manifestPath": "connectors/dropbox-enhanced/manifest.json"
     },
     {
       "id": "dynamics365",
       "normalizedId": "dynamics365",
-      "definitionPath": "connectors/dynamics365.json"
+      "definitionPath": "connectors/dynamics365/definition.json",
+      "manifestPath": "connectors/dynamics365/manifest.json"
     },
     {
       "id": "egnyte",
       "normalizedId": "egnyte",
-      "definitionPath": "connectors/egnyte.json"
+      "definitionPath": "connectors/egnyte/definition.json",
+      "manifestPath": "connectors/egnyte/manifest.json"
     },
     {
       "id": "excel-online",
       "normalizedId": "excel-online",
-      "definitionPath": "connectors/excel-online.json"
+      "definitionPath": "connectors/excel-online/definition.json",
+      "manifestPath": "connectors/excel-online/manifest.json"
     },
     {
       "id": "expensify",
       "normalizedId": "expensify",
-      "definitionPath": "connectors/expensify.json"
+      "definitionPath": "connectors/expensify/definition.json",
+      "manifestPath": "connectors/expensify/manifest.json"
     },
     {
       "id": "freshdesk",
       "normalizedId": "freshdesk",
-      "definitionPath": "connectors/freshdesk.json"
+      "definitionPath": "connectors/freshdesk/definition.json",
+      "manifestPath": "connectors/freshdesk/manifest.json"
     },
     {
       "id": "github",
       "normalizedId": "github",
-      "definitionPath": "connectors/github.json"
+      "definitionPath": "connectors/github/definition.json",
+      "manifestPath": "connectors/github/manifest.json"
     },
     {
       "id": "github-enhanced",
       "normalizedId": "github-enhanced",
-      "definitionPath": "connectors/github-enhanced.json"
+      "definitionPath": "connectors/github-enhanced/definition.json",
+      "manifestPath": "connectors/github-enhanced/manifest.json"
     },
     {
       "id": "gitlab",
       "normalizedId": "gitlab",
-      "definitionPath": "connectors/gitlab.json"
+      "definitionPath": "connectors/gitlab/definition.json",
+      "manifestPath": "connectors/gitlab/manifest.json"
     },
     {
       "id": "gmail",
       "normalizedId": "gmail",
-      "definitionPath": "connectors/gmail.json"
+      "definitionPath": "connectors/gmail/definition.json",
+      "manifestPath": "connectors/gmail/manifest.json"
     },
     {
       "id": "gmail-enhanced",
       "normalizedId": "gmail-enhanced",
-      "definitionPath": "connectors/gmail-enhanced.json"
+      "definitionPath": "connectors/gmail-enhanced/definition.json",
+      "manifestPath": "connectors/gmail-enhanced/manifest.json"
     },
     {
       "id": "google-admin",
       "normalizedId": "google-admin",
-      "definitionPath": "connectors/google-admin.json"
+      "definitionPath": "connectors/google-admin/definition.json",
+      "manifestPath": "connectors/google-admin/manifest.json"
     },
     {
       "id": "google-calendar",
       "normalizedId": "google-calendar",
-      "definitionPath": "connectors/google-calendar.json"
+      "definitionPath": "connectors/google-calendar/definition.json",
+      "manifestPath": "connectors/google-calendar/manifest.json"
     },
     {
       "id": "google-chat",
       "normalizedId": "google-chat",
-      "definitionPath": "connectors/google-chat.json"
+      "definitionPath": "connectors/google-chat/definition.json",
+      "manifestPath": "connectors/google-chat/manifest.json"
     },
     {
       "id": "google-contacts",
       "normalizedId": "google-contacts",
-      "definitionPath": "connectors/google-contacts.json"
+      "definitionPath": "connectors/google-contacts/definition.json",
+      "manifestPath": "connectors/google-contacts/manifest.json"
     },
     {
       "id": "google-docs",
       "normalizedId": "google-docs",
-      "definitionPath": "connectors/google-docs.json"
+      "definitionPath": "connectors/google-docs/definition.json",
+      "manifestPath": "connectors/google-docs/manifest.json"
     },
     {
       "id": "google-drive",
       "normalizedId": "google-drive",
-      "definitionPath": "connectors/google-drive.json"
+      "definitionPath": "connectors/google-drive/definition.json",
+      "manifestPath": "connectors/google-drive/manifest.json"
     },
     {
       "id": "google-forms",
       "normalizedId": "google-forms",
-      "definitionPath": "connectors/google-forms.json"
+      "definitionPath": "connectors/google-forms/definition.json",
+      "manifestPath": "connectors/google-forms/manifest.json"
     },
     {
       "id": "google-meet",
       "normalizedId": "google-meet",
-      "definitionPath": "connectors/google-meet.json"
+      "definitionPath": "connectors/google-meet/definition.json",
+      "manifestPath": "connectors/google-meet/manifest.json"
     },
     {
       "id": "google-sheets-enhanced",
       "normalizedId": "google-sheets-enhanced",
-      "definitionPath": "connectors/google-sheets-enhanced.json"
+      "definitionPath": "connectors/google-sheets-enhanced/definition.json",
+      "manifestPath": "connectors/google-sheets-enhanced/manifest.json"
     },
     {
       "id": "google-slides",
       "normalizedId": "google-slides",
-      "definitionPath": "connectors/google-slides.json"
+      "definitionPath": "connectors/google-slides/definition.json",
+      "manifestPath": "connectors/google-slides/manifest.json"
     },
     {
       "id": "grafana",
       "normalizedId": "grafana",
-      "definitionPath": "connectors/grafana.json"
+      "definitionPath": "connectors/grafana/definition.json",
+      "manifestPath": "connectors/grafana/manifest.json"
     },
     {
       "id": "greenhouse",
       "normalizedId": "greenhouse",
-      "definitionPath": "connectors/greenhouse.json"
+      "definitionPath": "connectors/greenhouse/definition.json",
+      "manifestPath": "connectors/greenhouse/manifest.json"
     },
     {
       "id": "guru",
       "normalizedId": "guru",
-      "definitionPath": "connectors/guru.json"
+      "definitionPath": "connectors/guru/definition.json",
+      "manifestPath": "connectors/guru/manifest.json"
     },
     {
       "id": "hashicorp-vault",
       "normalizedId": "hashicorp-vault",
-      "definitionPath": "connectors/hashicorp-vault.json"
+      "definitionPath": "connectors/hashicorp-vault/definition.json",
+      "manifestPath": "connectors/hashicorp-vault/manifest.json"
     },
     {
       "id": "hellosign",
       "normalizedId": "hellosign",
-      "definitionPath": "connectors/hellosign.json"
+      "definitionPath": "connectors/hellosign/definition.json",
+      "manifestPath": "connectors/hellosign/manifest.json"
     },
     {
       "id": "helm",
       "normalizedId": "helm",
-      "definitionPath": "connectors/helm.json"
+      "definitionPath": "connectors/helm/definition.json",
+      "manifestPath": "connectors/helm/manifest.json"
     },
     {
       "id": "hubspot",
       "normalizedId": "hubspot",
-      "definitionPath": "connectors/hubspot.json"
+      "definitionPath": "connectors/hubspot/definition.json",
+      "manifestPath": "connectors/hubspot/manifest.json"
     },
     {
       "id": "hubspot-enhanced",
       "normalizedId": "hubspot-enhanced",
-      "definitionPath": "connectors/hubspot-enhanced.json"
+      "definitionPath": "connectors/hubspot-enhanced/definition.json",
+      "manifestPath": "connectors/hubspot-enhanced/manifest.json"
     },
     {
       "id": "intercom",
       "normalizedId": "intercom",
-      "definitionPath": "connectors/intercom.json"
+      "definitionPath": "connectors/intercom/definition.json",
+      "manifestPath": "connectors/intercom/manifest.json"
     },
     {
       "id": "iterable",
       "normalizedId": "iterable",
-      "definitionPath": "connectors/iterable.json"
+      "definitionPath": "connectors/iterable/definition.json",
+      "manifestPath": "connectors/iterable/manifest.json"
     },
     {
       "id": "jenkins",
       "normalizedId": "jenkins",
-      "definitionPath": "connectors/jenkins.json"
+      "definitionPath": "connectors/jenkins/definition.json",
+      "manifestPath": "connectors/jenkins/manifest.json"
     },
     {
       "id": "jira",
       "normalizedId": "jira",
-      "definitionPath": "connectors/jira.json"
+      "definitionPath": "connectors/jira/definition.json",
+      "manifestPath": "connectors/jira/manifest.json"
     },
     {
       "id": "jira-service-management",
       "normalizedId": "jira-service-management",
-      "definitionPath": "connectors/jira-service-management.json"
+      "definitionPath": "connectors/jira-service-management/definition.json",
+      "manifestPath": "connectors/jira-service-management/manifest.json"
     },
     {
       "id": "jotform",
       "normalizedId": "jotform",
-      "definitionPath": "connectors/jotform.json"
+      "definitionPath": "connectors/jotform/definition.json",
+      "manifestPath": "connectors/jotform/manifest.json"
     },
     {
       "id": "klaviyo",
       "normalizedId": "klaviyo",
-      "definitionPath": "connectors/klaviyo.json"
+      "definitionPath": "connectors/klaviyo/definition.json",
+      "manifestPath": "connectors/klaviyo/manifest.json"
     },
     {
       "id": "kubernetes",
       "normalizedId": "kubernetes",
-      "definitionPath": "connectors/kubernetes.json"
+      "definitionPath": "connectors/kubernetes/definition.json",
+      "manifestPath": "connectors/kubernetes/manifest.json"
     },
     {
       "id": "kustomer",
       "normalizedId": "kustomer",
-      "definitionPath": "connectors/kustomer.json"
+      "definitionPath": "connectors/kustomer/definition.json",
+      "manifestPath": "connectors/kustomer/manifest.json"
     },
     {
       "id": "lever",
       "normalizedId": "lever",
-      "definitionPath": "connectors/lever.json"
+      "definitionPath": "connectors/lever/definition.json",
+      "manifestPath": "connectors/lever/manifest.json"
     },
     {
       "id": "linear",
       "normalizedId": "linear",
-      "definitionPath": "connectors/linear.json"
+      "definitionPath": "connectors/linear/definition.json",
+      "manifestPath": "connectors/linear/manifest.json"
     },
     {
       "id": "llm",
       "normalizedId": "llm",
-      "definitionPath": "connectors/llm.json"
+      "definitionPath": "connectors/llm/definition.json",
+      "manifestPath": "connectors/llm/manifest.json"
     },
     {
       "id": "looker",
       "normalizedId": "looker",
-      "definitionPath": "connectors/looker.json"
+      "definitionPath": "connectors/looker/definition.json",
+      "manifestPath": "connectors/looker/manifest.json"
     },
     {
       "id": "luma",
       "normalizedId": "luma",
-      "definitionPath": "connectors/luma.json"
+      "definitionPath": "connectors/luma/definition.json",
+      "manifestPath": "connectors/luma/manifest.json"
     },
     {
       "id": "magento",
       "normalizedId": "magento",
-      "definitionPath": "connectors/magento.json"
+      "definitionPath": "connectors/magento/definition.json",
+      "manifestPath": "connectors/magento/manifest.json"
     },
     {
       "id": "mailchimp",
       "normalizedId": "mailchimp",
-      "definitionPath": "connectors/mailchimp.json"
+      "definitionPath": "connectors/mailchimp/definition.json",
+      "manifestPath": "connectors/mailchimp/manifest.json"
     },
     {
       "id": "mailchimp-enhanced",
       "normalizedId": "mailchimp-enhanced",
-      "definitionPath": "connectors/mailchimp-enhanced.json"
+      "definitionPath": "connectors/mailchimp-enhanced/definition.json",
+      "manifestPath": "connectors/mailchimp-enhanced/manifest.json"
     },
     {
       "id": "mailgun",
       "normalizedId": "mailgun",
-      "definitionPath": "connectors/mailgun.json"
+      "definitionPath": "connectors/mailgun/definition.json",
+      "manifestPath": "connectors/mailgun/manifest.json"
     },
     {
       "id": "marketo",
       "normalizedId": "marketo",
-      "definitionPath": "connectors/marketo.json"
+      "definitionPath": "connectors/marketo/definition.json",
+      "manifestPath": "connectors/marketo/manifest.json"
     },
     {
       "id": "microsoft-teams",
       "normalizedId": "microsoft-teams",
-      "definitionPath": "connectors/microsoft-teams.json"
+      "definitionPath": "connectors/microsoft-teams/definition.json",
+      "manifestPath": "connectors/microsoft-teams/manifest.json"
     },
     {
       "id": "microsoft-todo",
       "normalizedId": "microsoft-todo",
-      "definitionPath": "connectors/microsoft-todo.json"
+      "definitionPath": "connectors/microsoft-todo/definition.json",
+      "manifestPath": "connectors/microsoft-todo/manifest.json"
     },
     {
       "id": "miro",
       "normalizedId": "miro",
-      "definitionPath": "connectors/miro.json"
+      "definitionPath": "connectors/miro/definition.json",
+      "manifestPath": "connectors/miro/manifest.json"
     },
     {
       "id": "mixpanel",
       "normalizedId": "mixpanel",
-      "definitionPath": "connectors/mixpanel.json"
+      "definitionPath": "connectors/mixpanel/definition.json",
+      "manifestPath": "connectors/mixpanel/manifest.json"
     },
     {
       "id": "monday",
       "normalizedId": "monday",
-      "definitionPath": "connectors/monday.json"
+      "definitionPath": "connectors/monday/definition.json",
+      "manifestPath": "connectors/monday/manifest.json"
     },
     {
       "id": "monday-enhanced",
       "normalizedId": "monday-enhanced",
-      "definitionPath": "connectors/monday-enhanced.json"
+      "definitionPath": "connectors/monday-enhanced/definition.json",
+      "manifestPath": "connectors/monday-enhanced/manifest.json"
     },
     {
       "id": "navan",
       "normalizedId": "navan",
-      "definitionPath": "connectors/navan.json"
+      "definitionPath": "connectors/navan/definition.json",
+      "manifestPath": "connectors/navan/manifest.json"
     },
     {
       "id": "netsuite",
       "normalizedId": "netsuite",
-      "definitionPath": "connectors/netsuite.json"
+      "definitionPath": "connectors/netsuite/definition.json",
+      "manifestPath": "connectors/netsuite/manifest.json"
     },
     {
       "id": "newrelic",
       "normalizedId": "newrelic",
-      "definitionPath": "connectors/newrelic.json"
+      "definitionPath": "connectors/newrelic/definition.json",
+      "manifestPath": "connectors/newrelic/manifest.json"
     },
     {
       "id": "nexus",
       "normalizedId": "nexus",
-      "definitionPath": "connectors/nexus.json"
+      "definitionPath": "connectors/nexus/definition.json",
+      "manifestPath": "connectors/nexus/manifest.json"
     },
     {
       "id": "notion",
       "normalizedId": "notion",
-      "definitionPath": "connectors/notion.json"
+      "definitionPath": "connectors/notion/definition.json",
+      "manifestPath": "connectors/notion/manifest.json"
     },
     {
       "id": "notion-enhanced",
       "normalizedId": "notion-enhanced",
-      "definitionPath": "connectors/notion-enhanced.json"
+      "definitionPath": "connectors/notion-enhanced/definition.json",
+      "manifestPath": "connectors/notion-enhanced/manifest.json"
     },
     {
       "id": "okta",
       "normalizedId": "okta",
-      "definitionPath": "connectors/okta.json"
+      "definitionPath": "connectors/okta/definition.json",
+      "manifestPath": "connectors/okta/manifest.json"
     },
     {
       "id": "onedrive",
       "normalizedId": "onedrive",
-      "definitionPath": "connectors/onedrive.json"
+      "definitionPath": "connectors/onedrive/definition.json",
+      "manifestPath": "connectors/onedrive/manifest.json"
     },
     {
       "id": "opsgenie",
       "normalizedId": "opsgenie",
-      "definitionPath": "connectors/opsgenie.json"
+      "definitionPath": "connectors/opsgenie/definition.json",
+      "manifestPath": "connectors/opsgenie/manifest.json"
     },
     {
       "id": "outlook",
       "normalizedId": "outlook",
-      "definitionPath": "connectors/outlook.json"
+      "definitionPath": "connectors/outlook/definition.json",
+      "manifestPath": "connectors/outlook/manifest.json"
     },
     {
       "id": "pagerduty",
       "normalizedId": "pagerduty",
-      "definitionPath": "connectors/pagerduty.json"
+      "definitionPath": "connectors/pagerduty/definition.json",
+      "manifestPath": "connectors/pagerduty/manifest.json"
     },
     {
       "id": "pardot",
       "normalizedId": "pardot",
-      "definitionPath": "connectors/pardot.json"
+      "definitionPath": "connectors/pardot/definition.json",
+      "manifestPath": "connectors/pardot/manifest.json"
     },
     {
       "id": "paypal",
       "normalizedId": "paypal",
-      "definitionPath": "connectors/paypal.json"
+      "definitionPath": "connectors/paypal/definition.json",
+      "manifestPath": "connectors/paypal/manifest.json"
     },
     {
       "id": "pipedrive",
       "normalizedId": "pipedrive",
-      "definitionPath": "connectors/pipedrive.json"
+      "definitionPath": "connectors/pipedrive/definition.json",
+      "manifestPath": "connectors/pipedrive/manifest.json"
     },
     {
       "id": "powerbi",
       "normalizedId": "powerbi",
-      "definitionPath": "connectors/powerbi.json"
+      "definitionPath": "connectors/powerbi/definition.json",
+      "manifestPath": "connectors/powerbi/manifest.json"
     },
     {
       "id": "powerbi-enhanced",
       "normalizedId": "powerbi-enhanced",
-      "definitionPath": "connectors/powerbi-enhanced.json"
+      "definitionPath": "connectors/powerbi-enhanced/definition.json",
+      "manifestPath": "connectors/powerbi-enhanced/manifest.json"
     },
     {
       "id": "prometheus",
       "normalizedId": "prometheus",
-      "definitionPath": "connectors/prometheus.json"
+      "definitionPath": "connectors/prometheus/definition.json",
+      "manifestPath": "connectors/prometheus/manifest.json"
     },
     {
       "id": "qualtrics",
       "normalizedId": "qualtrics",
-      "definitionPath": "connectors/qualtrics.json"
+      "definitionPath": "connectors/qualtrics/definition.json",
+      "manifestPath": "connectors/qualtrics/manifest.json"
     },
     {
       "id": "quickbooks",
       "normalizedId": "quickbooks",
-      "definitionPath": "connectors/quickbooks.json"
+      "definitionPath": "connectors/quickbooks/definition.json",
+      "manifestPath": "connectors/quickbooks/manifest.json"
     },
     {
       "id": "ramp",
       "normalizedId": "ramp",
-      "definitionPath": "connectors/ramp.json"
+      "definitionPath": "connectors/ramp/definition.json",
+      "manifestPath": "connectors/ramp/manifest.json"
     },
     {
       "id": "razorpay",
       "normalizedId": "razorpay",
-      "definitionPath": "connectors/razorpay.json"
+      "definitionPath": "connectors/razorpay/definition.json",
+      "manifestPath": "connectors/razorpay/manifest.json"
     },
     {
       "id": "ringcentral",
       "normalizedId": "ringcentral",
-      "definitionPath": "connectors/ringcentral.json"
+      "definitionPath": "connectors/ringcentral/definition.json",
+      "manifestPath": "connectors/ringcentral/manifest.json"
     },
     {
       "id": "sageintacct",
       "normalizedId": "sageintacct",
-      "definitionPath": "connectors/sageintacct.json"
+      "definitionPath": "connectors/sageintacct/definition.json",
+      "manifestPath": "connectors/sageintacct/manifest.json"
     },
     {
       "id": "salesforce",
       "normalizedId": "salesforce",
-      "definitionPath": "connectors/salesforce.json"
+      "definitionPath": "connectors/salesforce/definition.json",
+      "manifestPath": "connectors/salesforce/manifest.json"
     },
     {
       "id": "salesforce-enhanced",
       "normalizedId": "salesforce-enhanced",
-      "definitionPath": "connectors/salesforce-enhanced.json"
+      "definitionPath": "connectors/salesforce-enhanced/definition.json",
+      "manifestPath": "connectors/salesforce-enhanced/manifest.json"
     },
     {
       "id": "sap-ariba",
       "normalizedId": "sap-ariba",
-      "definitionPath": "connectors/sap-ariba.json"
+      "definitionPath": "connectors/sap-ariba/definition.json",
+      "manifestPath": "connectors/sap-ariba/manifest.json"
     },
     {
       "id": "sendgrid",
       "normalizedId": "sendgrid",
-      "definitionPath": "connectors/sendgrid.json"
+      "definitionPath": "connectors/sendgrid/definition.json",
+      "manifestPath": "connectors/sendgrid/manifest.json"
     },
     {
       "id": "sentry",
       "normalizedId": "sentry",
-      "definitionPath": "connectors/sentry.json"
+      "definitionPath": "connectors/sentry/definition.json",
+      "manifestPath": "connectors/sentry/manifest.json"
     },
     {
       "id": "servicenow",
       "normalizedId": "servicenow",
-      "definitionPath": "connectors/servicenow.json"
+      "definitionPath": "connectors/servicenow/definition.json",
+      "manifestPath": "connectors/servicenow/manifest.json"
     },
     {
       "id": "sharepoint",
       "normalizedId": "sharepoint",
-      "definitionPath": "connectors/sharepoint.json"
+      "definitionPath": "connectors/sharepoint/definition.json",
+      "manifestPath": "connectors/sharepoint/manifest.json"
     },
     {
       "id": "shopify",
       "normalizedId": "shopify",
-      "definitionPath": "connectors/shopify.json"
+      "definitionPath": "connectors/shopify/definition.json",
+      "manifestPath": "connectors/shopify/manifest.json"
     },
     {
       "id": "shopify-enhanced",
       "normalizedId": "shopify-enhanced",
-      "definitionPath": "connectors/shopify-enhanced.json"
+      "definitionPath": "connectors/shopify-enhanced/definition.json",
+      "manifestPath": "connectors/shopify-enhanced/manifest.json"
     },
     {
       "id": "slab",
       "normalizedId": "slab",
-      "definitionPath": "connectors/slab.json"
+      "definitionPath": "connectors/slab/definition.json",
+      "manifestPath": "connectors/slab/manifest.json"
     },
     {
       "id": "slack",
       "normalizedId": "slack",
-      "definitionPath": "connectors/slack.json",
+      "definitionPath": "connectors/slack/definition.json",
+      "manifestPath": "connectors/slack/manifest.json",
       "dynamicOptions": [
         {
           "operationType": "action",
@@ -786,7 +906,8 @@
     {
       "id": "slack-enhanced",
       "normalizedId": "slack-enhanced",
-      "definitionPath": "connectors/slack-enhanced.json",
+      "definitionPath": "connectors/slack-enhanced/definition.json",
+      "manifestPath": "connectors/slack-enhanced/manifest.json",
       "dynamicOptions": [
         {
           "operationType": "action",
@@ -1033,142 +1154,170 @@
     {
       "id": "smartsheet",
       "normalizedId": "smartsheet",
-      "definitionPath": "connectors/smartsheet.json"
+      "definitionPath": "connectors/smartsheet/definition.json",
+      "manifestPath": "connectors/smartsheet/manifest.json"
     },
     {
       "id": "snowflake",
       "normalizedId": "snowflake",
-      "definitionPath": "connectors/snowflake.json"
+      "definitionPath": "connectors/snowflake/definition.json",
+      "manifestPath": "connectors/snowflake/manifest.json"
     },
     {
       "id": "sonarqube",
       "normalizedId": "sonarqube",
-      "definitionPath": "connectors/sonarqube.json"
+      "definitionPath": "connectors/sonarqube/definition.json",
+      "manifestPath": "connectors/sonarqube/manifest.json"
     },
     {
       "id": "square",
       "normalizedId": "square",
-      "definitionPath": "connectors/square.json"
+      "definitionPath": "connectors/square/definition.json",
+      "manifestPath": "connectors/square/manifest.json"
     },
     {
       "id": "stripe",
       "normalizedId": "stripe",
-      "definitionPath": "connectors/stripe.json"
+      "definitionPath": "connectors/stripe/definition.json",
+      "manifestPath": "connectors/stripe/manifest.json"
     },
     {
       "id": "stripe-enhanced",
       "normalizedId": "stripe-enhanced",
-      "definitionPath": "connectors/stripe-enhanced.json"
+      "definitionPath": "connectors/stripe-enhanced/definition.json",
+      "manifestPath": "connectors/stripe-enhanced/manifest.json"
     },
     {
       "id": "successfactors",
       "normalizedId": "successfactors",
-      "definitionPath": "connectors/successfactors.json"
+      "definitionPath": "connectors/successfactors/definition.json",
+      "manifestPath": "connectors/successfactors/manifest.json"
     },
     {
       "id": "surveymonkey",
       "normalizedId": "surveymonkey",
-      "definitionPath": "connectors/surveymonkey.json"
+      "definitionPath": "connectors/surveymonkey/definition.json",
+      "manifestPath": "connectors/surveymonkey/manifest.json"
     },
     {
       "id": "tableau",
       "normalizedId": "tableau",
-      "definitionPath": "connectors/tableau.json"
+      "definitionPath": "connectors/tableau/definition.json",
+      "manifestPath": "connectors/tableau/manifest.json"
     },
     {
       "id": "talkdesk",
       "normalizedId": "talkdesk",
-      "definitionPath": "connectors/talkdesk.json"
+      "definitionPath": "connectors/talkdesk/definition.json",
+      "manifestPath": "connectors/talkdesk/manifest.json"
     },
     {
       "id": "teamwork",
       "normalizedId": "teamwork",
-      "definitionPath": "connectors/teamwork.json"
+      "definitionPath": "connectors/teamwork/definition.json",
+      "manifestPath": "connectors/teamwork/manifest.json"
     },
     {
       "id": "terraform-cloud",
       "normalizedId": "terraform-cloud",
-      "definitionPath": "connectors/terraform-cloud.json"
+      "definitionPath": "connectors/terraform-cloud/definition.json",
+      "manifestPath": "connectors/terraform-cloud/manifest.json"
     },
     {
       "id": "toggl",
       "normalizedId": "toggl",
-      "definitionPath": "connectors/toggl.json"
+      "definitionPath": "connectors/toggl/definition.json",
+      "manifestPath": "connectors/toggl/manifest.json"
     },
     {
       "id": "trello",
       "normalizedId": "trello",
-      "definitionPath": "connectors/trello.json"
+      "definitionPath": "connectors/trello/definition.json",
+      "manifestPath": "connectors/trello/manifest.json"
     },
     {
       "id": "trello-enhanced",
       "normalizedId": "trello-enhanced",
-      "definitionPath": "connectors/trello-enhanced.json"
+      "definitionPath": "connectors/trello-enhanced/definition.json",
+      "manifestPath": "connectors/trello-enhanced/manifest.json"
     },
     {
       "id": "twilio",
       "normalizedId": "twilio",
-      "definitionPath": "connectors/twilio.json"
+      "definitionPath": "connectors/twilio/definition.json",
+      "manifestPath": "connectors/twilio/manifest.json"
     },
     {
       "id": "typeform",
       "normalizedId": "typeform",
-      "definitionPath": "connectors/typeform.json"
+      "definitionPath": "connectors/typeform/definition.json",
+      "manifestPath": "connectors/typeform/manifest.json"
     },
     {
       "id": "victorops",
       "normalizedId": "victorops",
-      "definitionPath": "connectors/victorops.json"
+      "definitionPath": "connectors/victorops/definition.json",
+      "manifestPath": "connectors/victorops/manifest.json"
     },
     {
       "id": "webex",
       "normalizedId": "webex",
-      "definitionPath": "connectors/webex.json"
+      "definitionPath": "connectors/webex/definition.json",
+      "manifestPath": "connectors/webex/manifest.json"
     },
     {
       "id": "webflow",
       "normalizedId": "webflow",
-      "definitionPath": "connectors/webflow.json"
+      "definitionPath": "connectors/webflow/definition.json",
+      "manifestPath": "connectors/webflow/manifest.json"
     },
     {
       "id": "woocommerce",
       "normalizedId": "woocommerce",
-      "definitionPath": "connectors/woocommerce.json"
+      "definitionPath": "connectors/woocommerce/definition.json",
+      "manifestPath": "connectors/woocommerce/manifest.json"
     },
     {
       "id": "workday",
       "normalizedId": "workday",
-      "definitionPath": "connectors/workday.json"
+      "definitionPath": "connectors/workday/definition.json",
+      "manifestPath": "connectors/workday/manifest.json"
     },
     {
       "id": "workfront",
       "normalizedId": "workfront",
-      "definitionPath": "connectors/workfront.json"
+      "definitionPath": "connectors/workfront/definition.json",
+      "manifestPath": "connectors/workfront/manifest.json"
     },
     {
       "id": "xero",
       "normalizedId": "xero",
-      "definitionPath": "connectors/xero.json"
+      "definitionPath": "connectors/xero/definition.json",
+      "manifestPath": "connectors/xero/manifest.json"
     },
     {
       "id": "zendesk",
       "normalizedId": "zendesk",
-      "definitionPath": "connectors/zendesk.json"
+      "definitionPath": "connectors/zendesk/definition.json",
+      "manifestPath": "connectors/zendesk/manifest.json"
     },
     {
       "id": "zoho-books",
       "normalizedId": "zoho-books",
-      "definitionPath": "connectors/zoho-books.json"
+      "definitionPath": "connectors/zoho-books/definition.json",
+      "manifestPath": "connectors/zoho-books/manifest.json"
     },
     {
       "id": "zoho-crm",
       "normalizedId": "zoho-crm",
-      "definitionPath": "connectors/zoho-crm.json"
+      "definitionPath": "connectors/zoho-crm/definition.json",
+      "manifestPath": "connectors/zoho-crm/manifest.json"
     },
     {
       "id": "zoom-enhanced",
       "normalizedId": "zoom-enhanced",
-      "definitionPath": "connectors/zoom-enhanced.json"
+      "definitionPath": "connectors/zoom-enhanced/definition.json",
+      "manifestPath": "connectors/zoom-enhanced/manifest.json"
     }
   ]
 }

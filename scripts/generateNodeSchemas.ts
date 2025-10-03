@@ -129,8 +129,10 @@ export class NodeSchemaGenerator {
    */
   private getConnectorFiles(): string[] {
     try {
-      const files = readdirSync(this.connectorsPath);
-      return files.filter(file => file.endsWith('.json'));
+      return readdirSync(this.connectorsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
     } catch (error) {
       console.warn(`⚠️ Could not read connectors directory: ${error}`);
       return [];
@@ -140,12 +142,18 @@ export class NodeSchemaGenerator {
   /**
    * Generate schemas for a single connector
    */
-  private async generateSchemasForConnector(filename: string): Promise<number> {
-    const filePath = join(this.connectorsPath, filename);
+  private async generateSchemasForConnector(directoryName: string): Promise<number> {
+    const filePath = join(this.connectorsPath, directoryName, 'definition.json');
+
+    if (!existsSync(filePath)) {
+      throw new Error('Missing definition.json');
+    }
+
     const fileContent = readFileSync(filePath, 'utf-8');
     const connectorData: ConnectorData = JSON.parse(fileContent);
-    
-    const appName = filename.replace('.json', '').toLowerCase();
+
+    const connectorId = connectorData.id || directoryName;
+    const appName = connectorId.toLowerCase();
     let schemasGenerated = 0;
 
     // Generate schemas for actions
@@ -153,7 +161,7 @@ export class NodeSchemaGenerator {
       const schema = this.createActionSchema(appName, action, connectorData);
       const schemaFilename = `action.${appName}.${action.id}.schema.json`;
       const schemaPath = join(this.nodesSchemasPath, schemaFilename);
-      
+
       writeFileSync(schemaPath, JSON.stringify(schema, null, 2));
       schemasGenerated++;
     }
@@ -163,7 +171,7 @@ export class NodeSchemaGenerator {
       const schema = this.createTriggerSchema(appName, trigger, connectorData);
       const schemaFilename = `trigger.${appName}.${trigger.id}.schema.json`;
       const schemaPath = join(this.nodesSchemasPath, schemaFilename);
-      
+
       writeFileSync(schemaPath, JSON.stringify(schema, null, 2));
       schemasGenerated++;
     }

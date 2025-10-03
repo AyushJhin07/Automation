@@ -1,7 +1,7 @@
 // COMPREHENSIVE COMPILER TEMPLATE GENERATOR
 // Generates Apps Script compiler templates for ALL applications and functions
 
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
 interface ConnectorFunction {
@@ -49,15 +49,25 @@ export class CompilerTemplateGenerator {
 
     try {
       // Get all connectors
-      const connectorFiles = readdirSync(this.connectorsPath).filter(f => f.endsWith('.json'));
+      const connectorDirectories = readdirSync(this.connectorsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
       const templates: string[] = [];
       const templateClasses: string[] = [];
 
       // Process each connector
-      for (const file of connectorFiles) {
+      for (const directoryName of connectorDirectories) {
         try {
-          const connector = this.loadConnector(file);
-          
+          const definitionPath = join(this.connectorsPath, directoryName, 'definition.json');
+
+          if (!existsSync(definitionPath)) {
+            console.log(`⚠️ Skipping ${directoryName} - missing definition.json`);
+            continue;
+          }
+
+          const connector = this.loadConnector(directoryName);
+
           // Skip if no functions defined
           const totalFunctions = (connector.actions?.length || 0) + (connector.triggers?.length || 0);
           if (totalFunctions === 0) {
@@ -88,7 +98,7 @@ export class CompilerTemplateGenerator {
           console.log(`✅ Generated ${(connector.actions?.length || 0) + (connector.triggers?.length || 0)} templates for ${connector.name}`);
 
         } catch (error) {
-          const errorMsg = `Failed to process ${file}: ${error}`;
+          const errorMsg = `Failed to process ${directoryName}: ${error}`;
           console.error(`❌ ${errorMsg}`);
           results.errors.push(errorMsg);
         }
@@ -752,8 +762,8 @@ export const compilerTemplates = new CompilerTemplates();`;
   /**
    * Helper methods
    */
-  private loadConnector(filename: string): ConnectorData {
-    const filePath = join(this.connectorsPath, filename);
+  private loadConnector(directoryName: string): ConnectorData {
+    const filePath = join(this.connectorsPath, directoryName, 'definition.json');
     const content = readFileSync(filePath, 'utf-8');
     return JSON.parse(content);
   }

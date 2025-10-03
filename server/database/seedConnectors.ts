@@ -1,7 +1,7 @@
 // DATABASE SEED SCRIPT - IMPORT CONNECTORS FROM JSON FILES
-// Reads /connectors/*.json and imports into connector_definitions table
+// Reads /connectors/<id>/definition.json and imports into connector_definitions table
 
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { db, connectorDefinitions } from './schema';
 import { eq } from 'drizzle-orm';
@@ -98,8 +98,11 @@ export class ConnectorSeeder {
    */
   private getConnectorFiles(): string[] {
     try {
-      const files = readdirSync(this.connectorsPath);
-      return files.filter(file => file.endsWith('.json'));
+      const entries = readdirSync(this.connectorsPath, { withFileTypes: true });
+      return entries
+        .filter(entry => entry.isDirectory())
+        .map(entry => join(entry.name, 'definition.json'))
+        .filter(relativePath => existsSync(join(this.connectorsPath, relativePath)));
     } catch (error) {
       console.warn(`⚠️ Could not read connectors directory: ${getErrorMessage(error)}`);
       return [];
@@ -120,8 +123,9 @@ export class ConnectorSeeder {
     const fileContent = readFileSync(filePath, 'utf-8');
     const connectorData: ConnectorJSON = JSON.parse(fileContent);
 
-    // Generate slug from filename
-    const slug = filename.replace('.json', '').toLowerCase();
+    const normalizedPath = filename.replace(/\\/g, '/');
+    const directoryName = normalizedPath.split('/')[0] ?? normalizedPath;
+    const slug = directoryName.toLowerCase();
 
     // Prepare connector definition for database
     const connectorDef = {

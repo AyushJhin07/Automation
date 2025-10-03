@@ -28,16 +28,38 @@ function loadImplementedSet() {
 }
 
 function loadConnectors() {
-  const files = readdirSync(CONNECTORS_DIR).filter(f => f.endsWith('.json'));
+  const directories = readdirSync(CONNECTORS_DIR, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
+
   const list = [];
-  for (const f of files) {
+
+  for (const dir of directories) {
+    const definitionPath = join(CONNECTORS_DIR, dir, 'definition.json');
+
+    if (!existsSync(definitionPath)) {
+      list.push({
+        file: join(dir, 'definition.json'),
+        id: dir,
+        name: dir,
+        category: 'Unknown',
+        availability: 'unknown',
+        authType: 'unknown',
+        actions: 0,
+        triggers: 0,
+        error: 'Missing definition.json'
+      });
+      continue;
+    }
+
     try {
-      const json = JSON.parse(readFileSync(join(CONNECTORS_DIR, f), 'utf8'));
-      const id = json.id || f.replace(/\.json$/, '');
+      const json = JSON.parse(readFileSync(definitionPath, 'utf8'));
+      const id = json.id || dir;
       const actions = Array.isArray(json.actions) ? json.actions.length : 0;
       const triggers = Array.isArray(json.triggers) ? json.triggers.length : 0;
       list.push({
-        file: f,
+        file: join(dir, 'definition.json'),
         id,
         name: json.name || id,
         category: json.category || 'Uncategorized',
@@ -47,10 +69,20 @@ function loadConnectors() {
         triggers
       });
     } catch (e) {
-      // skip invalid json files but record minimal info
-      list.push({ file: f, id: f.replace(/\.json$/, ''), name: f, category: 'Unknown', availability: 'unknown', authType: 'unknown', actions: 0, triggers: 0, error: String(e.message || e) });
+      list.push({
+        file: join(dir, 'definition.json'),
+        id: dir,
+        name: dir,
+        category: 'Unknown',
+        availability: 'unknown',
+        authType: 'unknown',
+        actions: 0,
+        triggers: 0,
+        error: String(e.message || e)
+      });
     }
   }
+
   return list;
 }
 

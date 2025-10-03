@@ -75,8 +75,9 @@ function validateConnector(filePath) {
 function main() {
   console.log('🔍 Validating connector parameter schemas...\n');
   
-  const files = fs.readdirSync(connectorsDir)
-    .filter(file => file.endsWith('.json'))
+  const connectorDirs = fs.readdirSync(connectorsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
     .sort();
 
   let totalErrors = 0;
@@ -84,11 +85,20 @@ function main() {
   const fixedConnectors = [];
   const needFixingConnectors = [];
 
-  files.forEach(file => {
-    const filePath = path.join(connectorsDir, file);
-    const connectorId = path.basename(file, '.json');
+  connectorDirs.forEach(connectorId => {
+    const filePath = path.join(connectorsDir, connectorId, 'definition.json');
+
+    if (!fs.existsSync(filePath)) {
+      needFixingConnectors.push({ id: connectorId, errors: 1, warnings: 0 });
+      totalErrors += 1;
+      console.log(`❌ ${connectorId}:`);
+      console.log(`   ERROR: Missing definition.json`);
+      console.log();
+      return;
+    }
+
     const result = validateConnector(filePath);
-    
+
     if (result.errors.length === 0 && result.warnings.length === 0) {
       fixedConnectors.push(connectorId);
       console.log(`✅ ${connectorId}: All parameters correctly formatted`);
@@ -110,7 +120,7 @@ function main() {
   });
 
   console.log('\n📊 SUMMARY:');
-  console.log(`📁 Total connectors: ${files.length}`);
+  console.log(`📁 Total connectors: ${connectorDirs.length}`);
   console.log(`✅ Fixed connectors: ${fixedConnectors.length}`);
   console.log(`❌ Need fixing: ${needFixingConnectors.length}`);
   console.log(`🔥 Total errors: ${totalErrors}`);

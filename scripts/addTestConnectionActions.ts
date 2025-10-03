@@ -37,34 +37,43 @@ export class TestConnectionAdder {
   async addTestConnectionActions(): Promise<{ updated: number; errors: string[] }> {
     console.log('🔧 Adding test_connection actions to OAuth-enabled connectors...\n');
 
-    const files = fs.readdirSync(this.connectorsPath).filter(f => f.endsWith('.json'));
+    const directories = fs.readdirSync(this.connectorsPath, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name)
+      .sort();
     let updated = 0;
     const errors: string[] = [];
 
-    for (const filename of files) {
+    for (const directoryName of directories) {
       try {
-        const filePath = path.join(this.connectorsPath, filename);
+        const filePath = path.join(this.connectorsPath, directoryName, 'definition.json');
+
+        if (!fs.existsSync(filePath)) {
+          console.log(`⚠️ Skipping ${directoryName} - missing definition.json`);
+          continue;
+        }
+
         const connector: ConnectorData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        
+
         // Only add to OAuth-enabled connectors
         if (connector.authentication?.type === 'oauth2') {
           const hasTestConnection = connector.actions.some(action => action.id === 'test_connection');
-          
+
           if (!hasTestConnection) {
             const testConnectionAction = this.generateTestConnectionAction(connector);
             connector.actions.unshift(testConnectionAction); // Add at beginning
-            
+
             fs.writeFileSync(filePath, JSON.stringify(connector, null, 2));
             updated++;
-            console.log(`✅ Added test_connection to ${filename}`);
+            console.log(`✅ Added test_connection to ${directoryName}`);
           } else {
-            console.log(`⏭️ ${filename} already has test_connection`);
+            console.log(`⏭️ ${directoryName} already has test_connection`);
           }
         } else {
-          console.log(`⚠️ Skipping ${filename} - not OAuth-enabled`);
+          console.log(`⚠️ Skipping ${directoryName} - not OAuth-enabled`);
         }
       } catch (error) {
-        const errorMsg = `Failed to update ${filename}: ${error.message}`;
+        const errorMsg = `Failed to update ${directoryName}: ${error.message}`;
         errors.push(errorMsg);
         console.error(`❌ ${errorMsg}`);
       }
