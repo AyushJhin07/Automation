@@ -17,6 +17,7 @@ import aiNormalizerRoutes from "./routes/ai-normalizer.js";
 import workflowReadRoutes from "./routes/workflow-read.js";
 import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
+import oauthRoutes from "./routes/oauth";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -121,6 +122,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P1-7: AI assist functionality routes
   app.use('/api/ai-assist', aiAssistRoutes);
+
+  // OAuth routes for third-party providers
+  app.use('/api/oauth', oauthRoutes);
   
   // P2-1: Workflow templates routes
   app.use('/api/workflow-templates', templateRoutes);

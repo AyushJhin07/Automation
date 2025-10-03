@@ -175,13 +175,13 @@ try {
   const address = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
-  const authResponse = await fetch(`${baseUrl}/api/oauth/authorize`, {
+  const authResponse = await fetch(`${baseUrl}/api/oauth/authorize/gmail`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: 'Bearer test-token',
     },
-    body: JSON.stringify({ provider: 'gmail' })
+    body: JSON.stringify({})
   });
 
   const authBody = await authResponse.json();
@@ -203,13 +203,10 @@ try {
   const redirectLocation = callbackResponse.headers.get('location');
   assert.ok(redirectLocation, 'callback should return a redirect location');
   const redirectUrl = new URL(redirectLocation!);
-  assert.equal(
-    `${redirectUrl.origin}${redirectUrl.pathname}`,
-    `${process.env.BASE_URL}/oauth/callback/gmail`,
-    'callback should redirect to the React callback route'
-  );
+  assert.equal(`${redirectUrl.origin}${redirectUrl.pathname}`, `${process.env.BASE_URL}/oauth/callback/gmail`, 'callback should redirect to the React callback route');
   assert.equal(redirectUrl.searchParams.get('code'), 'test-code', 'redirect should preserve OAuth code');
   assert.equal(redirectUrl.searchParams.get('state'), state, 'redirect should preserve OAuth state');
+  assert.equal(redirectUrl.searchParams.get('provider'), 'gmail', 'redirect should include provider identifier');
   assert.equal(
     redirectUrl.searchParams.get('connectionId'),
     'test-connection-id',
@@ -219,6 +216,11 @@ try {
     redirectUrl.searchParams.get('label'),
     userInfoResponse.email,
     'redirect should include the resolved connection label'
+  );
+  assert.equal(
+    redirectUrl.searchParams.get('email'),
+    userInfoResponse.email,
+    'redirect should include the user email when available'
   );
 
   assert.equal(storedConnections.length, 1, 'ConnectionService.storeConnection should be called once');
