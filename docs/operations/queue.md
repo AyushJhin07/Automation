@@ -1,6 +1,6 @@
 # Queue & Worker Infrastructure
 
-This service uses [BullMQ](https://docs.bullmq.io/) backed by Redis for all background job processing. The utilities in `server/queue/BullMQFactory.ts` centralize queue configuration so that every queue, worker, and queue-events instance shares the same connection parameters, telemetry, and defaults.
+This service uses [BullMQ](https://docs.bullmq.io/) backed by Redis for all background job processing when a Redis instance is available. The queue helpers in `server/queue/index.ts` select the BullMQ driver by default and fall back to an in-memory queue that mimics the BullMQ APIs used by the platform when Redis is unavailable. The utilities centralize queue configuration so that every queue, worker, and queue-events instance shares the same connection parameters, telemetry, and defaults.
 
 ## Environment variables
 
@@ -53,7 +53,7 @@ export QUEUE_REDIS_PORT=6379
 export QUEUE_REDIS_DB=0
 ```
 
-When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS_PASSWORD`, and `QUEUE_REDIS_TLS=true` accordingly.
+When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS_PASSWORD`, and `QUEUE_REDIS_TLS=true` accordingly. Set `QUEUE_DRIVER=inmemory` to force the non-persistent in-memory driver in local development.
 
 ## Telemetry & metrics helpers
 
@@ -62,7 +62,7 @@ Use `registerQueueTelemetry` to attach logging and periodic metrics collection t
 Example:
 
 ```ts
-import { createQueue, createQueueEvents, registerQueueTelemetry } from '../queue/BullMQFactory';
+import { createQueue, createQueueEvents, registerQueueTelemetry } from '../queue';
 
 const executionQueue = createQueue('workflow.execute');
 const executionEvents = createQueueEvents('workflow.execute');

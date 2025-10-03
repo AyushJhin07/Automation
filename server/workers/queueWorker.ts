@@ -1,11 +1,7 @@
 import type { Job, Processor, Worker, WorkerOptions } from 'bullmq';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 
-import {
-  createWorker,
-  type JobPayloads,
-  type QueueName,
-} from '../queue/BullMQFactory.js';
+import { createWorker, type JobPayloads, type QueueName } from '../queue/index.js';
 import { tracer } from '../observability/index.js';
 
 type JobPayload<Name extends QueueName> = JobPayloads[Name];

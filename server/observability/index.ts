@@ -11,7 +11,7 @@ import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 
 import pkg from '../../package.json' assert { type: 'json' };
 import { env } from '../env';
-import type { QueueJobCounts, QueueName } from '../queue/BullMQFactory.js';
+import type { QueueJobCounts, QueueName } from '../queue/index.js';
 
 type MetricAttributes = Record<string, string | number | boolean>;
 

@@ -1,4 +1,3 @@
-import type { Job, Queue, QueueEvents, Worker } from 'bullmq';
 import { eq, sql } from 'drizzle-orm';
 
 import { getErrorMessage } from '../types/common.js';
@@ -8,12 +7,17 @@ import { db, workflowTimers } from '../database/schema.js';
 import {
   createQueue,
   createQueueEvents,
+  handleQueueDriverError,
   registerQueueTelemetry,
+  type Queue,
+  type QueueEvents,
+  type Worker,
   type WorkflowExecuteJobPayload,
-} from '../queue/BullMQFactory.js';
+} from '../queue/index.js';
 import { registerQueueWorker } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 import { updateQueueDepthMetric } from '../observability/index.js';
+import type { Job } from 'bullmq';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -80,6 +84,24 @@ class ExecutionQueueService {
     return Math.min(exponent * this.baseRetryDelayMs + jitter, this.maxRetryDelayMs);
   }
 
+  private async withQueueOperation<T>(
+    operation: (
+      queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>
+    ) => Promise<T>
+  ): Promise<T> {
+    const queue = this.ensureQueue();
+    try {
+      return await operation(queue);
+    } catch (error) {
+      const switched = await this.handleQueueFallback(error);
+      if (!switched) {
+        throw error;
+      }
+      const fallbackQueue = this.ensureQueue();
+      return operation(fallbackQueue);
+    }
+  }
+
   public async enqueue(req: QueueRunRequest): Promise<{ executionId: string }> {
     const execution = await WorkflowRepository.createWorkflowExecution({
       workflowId: req.workflowId,
@@ -95,24 +117,25 @@ class ExecutionQueueService {
       return { executionId: execution.id };
     }
 
-    const queue = this.ensureQueue();
     try {
-      await queue.add(
-        'workflow.execute',
-        {
-          executionId: execution.id,
-          workflowId: req.workflowId,
-          organizationId: req.organizationId,
-          userId: req.userId,
-          triggerType: req.triggerType ?? 'manual',
-          triggerData: req.triggerData ?? null,
-        },
-        {
-          jobId: execution.id,
-          group: {
-            id: req.organizationId,
+      await this.withQueueOperation((queue) =>
+        queue.add(
+          'workflow.execute',
+          {
+            executionId: execution.id,
+            workflowId: req.workflowId,
+            organizationId: req.organizationId,
+            userId: req.userId,
+            triggerType: req.triggerType ?? 'manual',
+            triggerData: req.triggerData ?? null,
           },
-        }
+          {
+            jobId: execution.id,
+            group: {
+              id: req.organizationId,
+            },
+          }
+        )
       );
     } catch (error) {
       const errorMessage = getErrorMessage(error);
@@ -147,28 +170,29 @@ class ExecutionQueueService {
       return;
     }
 
-    const queue = this.ensureQueue();
     const jobId = `${params.executionId}:${params.timerId ?? Date.now().toString(36)}`;
 
     try {
-      await queue.add(
-        'workflow.execute',
-        {
-          executionId: params.executionId,
-          workflowId: params.workflowId,
-          organizationId: params.organizationId,
-          userId: params.userId,
-          triggerType: params.triggerType ?? 'timer',
-          resumeState: params.resumeState,
-          initialData: params.initialData,
-          timerId: params.timerId,
-        },
-        {
-          jobId,
-          group: {
-            id: params.organizationId,
+      await this.withQueueOperation((queue) =>
+        queue.add(
+          'workflow.execute',
+          {
+            executionId: params.executionId,
+            workflowId: params.workflowId,
+            organizationId: params.organizationId,
+            userId: params.userId,
+            triggerType: params.triggerType ?? 'timer',
+            resumeState: params.resumeState,
+            initialData: params.initialData,
+            timerId: params.timerId,
           },
-        }
+          {
+            jobId,
+            group: {
+              id: params.organizationId,
+            },
+          }
+        )
       );
     } catch (error) {
       const errorMessage = getErrorMessage(error);
@@ -221,7 +245,12 @@ class ExecutionQueueService {
     );
 
     this.worker.on('error', (error) => {
-      console.error('ExecutionQueue worker error:', getErrorMessage(error));
+      void (async () => {
+        const handled = await this.handleQueueFallback(error);
+        if (!handled) {
+          console.error('ExecutionQueue worker error:', getErrorMessage(error));
+        }
+      })();
     });
 
     this.started = true;
@@ -283,6 +312,7 @@ class ExecutionQueueService {
 
       this.started = false;
       this.shutdownPromise = null;
+      this.queue = null;
     })();
 
     return this.shutdownPromise;
@@ -306,6 +336,35 @@ class ExecutionQueueService {
     }
 
     return this.queue;
+  }
+
+  private async handleQueueFallback(error: unknown): Promise<boolean> {
+    if (!handleQueueDriverError(error)) {
+      return false;
+    }
+
+    const wasStarted = this.started;
+    const message = getErrorMessage(error);
+    console.warn(
+      `⚠️ Detected Redis connection issue for ExecutionQueueService. Switching to in-memory queue driver: ${message}`
+    );
+
+    try {
+      await this.shutdown({ timeoutMs: 0 });
+    } catch (shutdownError) {
+      console.error(
+        'Failed to shutdown ExecutionQueueService cleanly during queue driver fallback:',
+        getErrorMessage(shutdownError)
+      );
+    }
+
+    this.queue = null;
+
+    if (wasStarted) {
+      this.start();
+    }
+
+    return true;
   }
 
   private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
