@@ -74,6 +74,9 @@ export interface OrganizationComplianceSettings {
   retentionPolicyDays: number;
 }
 
+export type WorkflowVersionState = 'draft' | 'published';
+export type WorkflowEnvironment = 'dev' | 'stage' | 'prod';
+
 // Users table with performance indexes
 export const users = pgTable(
   'users',
@@ -382,6 +385,62 @@ export const workflows = pgTable(
     // Composite indexes for common queries
     userActiveIdx: index('workflows_user_active_idx').on(table.organizationId, table.userId, table.isActive),
     userCategoryIdx: index('workflows_user_category_idx').on(table.organizationId, table.userId, table.category),
+  })
+);
+
+export const workflowVersions = pgTable(
+  'workflow_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workflowId: uuid('workflow_id')
+      .references(() => workflows.id, { onDelete: 'cascade' })
+      .notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    versionNumber: integer('version_number').notNull(),
+    state: text('state').notNull().default('draft'),
+    graph: jsonb('graph').$type<Record<string, any>>().notNull(),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>().default(null),
+    name: text('name'),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    publishedAt: timestamp('published_at'),
+    publishedBy: uuid('published_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => ({
+    workflowVersionIdx: uniqueIndex('workflow_versions_unique_version').on(
+      table.workflowId,
+      table.versionNumber,
+    ),
+    workflowStateIdx: index('workflow_versions_workflow_state_idx').on(table.workflowId, table.state),
+  })
+);
+
+export const workflowDeployments = pgTable(
+  'workflow_deployments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workflowId: uuid('workflow_id')
+      .references(() => workflows.id, { onDelete: 'cascade' })
+      .notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    versionId: uuid('version_id')
+      .references(() => workflowVersions.id, { onDelete: 'cascade' })
+      .notNull(),
+    environment: text('environment').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    deployedAt: timestamp('deployed_at').defaultNow().notNull(),
+    deployedBy: uuid('deployed_by').references(() => users.id, { onDelete: 'set null' }),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>().default(null),
+    rollbackOf: uuid('rollback_of').references(() => workflowDeployments.id, { onDelete: 'set null' }),
+  },
+  (table) => ({
+    workflowIdx: index('workflow_deployments_workflow_idx').on(table.workflowId),
+    environmentIdx: index('workflow_deployments_environment_idx').on(table.workflowId, table.environment),
   })
 );
 
@@ -707,6 +766,33 @@ export const workflowsRelations = relations(workflows, ({ one, many }) => ({
   user: one(users, { fields: [workflows.userId], references: [users.id] }),
   organization: one(organizations, { fields: [workflows.organizationId], references: [organizations.id] }),
   executions: many(workflowExecutions),
+  versions: many(workflowVersions),
+  deployments: many(workflowDeployments),
+}));
+
+export const workflowVersionsRelations = relations(workflowVersions, ({ one, many }) => ({
+  workflow: one(workflows, { fields: [workflowVersions.workflowId], references: [workflows.id] }),
+  organization: one(organizations, {
+    fields: [workflowVersions.organizationId],
+    references: [organizations.id],
+  }),
+  createdByUser: one(users, { fields: [workflowVersions.createdBy], references: [users.id] }),
+  publishedByUser: one(users, { fields: [workflowVersions.publishedBy], references: [users.id] }),
+  deployments: many(workflowDeployments),
+}));
+
+export const workflowDeploymentsRelations = relations(workflowDeployments, ({ one }) => ({
+  workflow: one(workflows, { fields: [workflowDeployments.workflowId], references: [workflows.id] }),
+  organization: one(organizations, {
+    fields: [workflowDeployments.organizationId],
+    references: [organizations.id],
+  }),
+  version: one(workflowVersions, { fields: [workflowDeployments.versionId], references: [workflowVersions.id] }),
+  deployedByUser: one(users, { fields: [workflowDeployments.deployedBy], references: [users.id] }),
+  rollbackOfDeployment: one(workflowDeployments, {
+    fields: [workflowDeployments.rollbackOf],
+    references: [workflowDeployments.id],
+  }),
 }));
 
 export const workflowExecutionsRelations = relations(workflowExecutions, ({ one, many }) => ({

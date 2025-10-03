@@ -44,6 +44,54 @@ export type WorkflowGraph = {
   meta?: Record<string, any>;
 };
 
+export type WorkflowEnvironment = 'dev' | 'stage' | 'prod';
+export type WorkflowVersionState = 'draft' | 'published';
+
+export interface WorkflowVersionSummary {
+  id: string;
+  workflowId: string;
+  organizationId: string;
+  versionNumber: number;
+  state: WorkflowVersionState;
+  graph: WorkflowGraph;
+  metadata?: Record<string, any> | null;
+  name?: string | null;
+  description?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+}
+
+export interface WorkflowDeploymentSummary {
+  id: string;
+  workflowId: string;
+  organizationId: string;
+  versionId: string;
+  environment: WorkflowEnvironment;
+  deployedAt: string;
+  deployedBy?: string | null;
+  metadata?: Record<string, any> | null;
+  rollbackOf?: string | null;
+}
+
+export interface WorkflowDiffSummary {
+  hasChanges: boolean;
+  addedNodes: string[];
+  removedNodes: string[];
+  modifiedNodes: string[];
+  addedEdges: string[];
+  removedEdges: string[];
+  metadataChanged: boolean;
+}
+
+export interface WorkflowDiffResponse {
+  draftVersion?: WorkflowVersionSummary | null;
+  deployedVersion?: WorkflowVersionSummary | null;
+  deployment?: WorkflowDeploymentSummary | null;
+  summary: WorkflowDiffSummary;
+}
+
 export type CompileResult = {
   workflowId?: string;
   graph: WorkflowGraph;

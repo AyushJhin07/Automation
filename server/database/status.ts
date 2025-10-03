@@ -4,6 +4,8 @@ const REQUIRED_TABLES = [
   'users',
   'workflows',
   'workflow_executions',
+  'workflow_versions',
+  'workflow_deployments',
   'workflow_triggers',
   'polling_triggers',
   'webhook_logs',
