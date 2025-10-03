@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { resolveAppSchemaKey, resolveSchemaOperationKey } from '@shared/appSchemaAlias';
 import { APP_PARAMETER_SCHEMAS, getParameterSchema, validateParameters } from '../schemas/app-parameter-schemas.js';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, requirePermission } from '../middleware/auth';
 import { connectionService } from '../services/ConnectionService';
 import { connectorRegistry } from '../ConnectorRegistry';
 import { getErrorMessage } from '../types/common';
@@ -156,6 +156,7 @@ router.get('/supported-apps', (req, res) => {
 router.post(
   '/schemas/:app/:operation/options/:parameter',
   authenticateToken,
+  requirePermission('workflow:edit'),
   async (req, res) => {
     try {
       const userId = (req as any)?.user?.id;

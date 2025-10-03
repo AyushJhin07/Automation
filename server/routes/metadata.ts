@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, requirePermission } from '../middleware/auth';
 import { connectionService } from '../services/ConnectionService';
 import { connectorMetadataService } from '../services/metadata/ConnectorMetadataService';
 import { getErrorMessage } from '../types/common';
 
 const router = Router();
 
-router.post('/resolve', authenticateToken, async (req, res) => {
+router.post('/resolve', authenticateToken, requirePermission('integration:metadata:read'), async (req, res) => {
   const userId = (req as any)?.user?.id;
   const organizationId = (req as any)?.organizationId;
   if (!userId) {

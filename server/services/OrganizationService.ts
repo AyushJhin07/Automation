@@ -4,6 +4,7 @@ import {
   db,
   organizations,
   organizationMembers,
+  organizationRoleAssignments,
   organizationInvites,
   organizationQuotas,
   tenantIsolations,
@@ -15,7 +16,9 @@ import {
   OrganizationSecuritySettings,
   OrganizationBranding,
   OrganizationComplianceSettings,
+  users,
 } from '../database/schema';
+import { OrgRole } from '../../configs/rbac';
 
 export interface OrganizationSummary {
   id: string;
@@ -57,6 +60,33 @@ export interface RemoveMemberInput {
   organizationId: string;
   memberId: string;
   requestedBy: string;
+}
+
+export interface UpdateMemberRoleInput {
+  organizationId: string;
+  memberId: string;
+  role: OrgRole;
+  requestedBy: string;
+}
+
+export interface RemoveRoleAssignmentInput {
+  organizationId: string;
+  memberId: string;
+  requestedBy: string;
+  fallbackRole?: OrgRole;
+}
+
+export interface OrganizationRoleAssignmentSummary {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: OrgRole;
+  grantedBy?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  userEmail: string;
+  userName?: string | null;
+  membershipStatus?: string | null;
 }
 
 export class OrganizationService {
@@ -205,6 +235,23 @@ export class OrganizationService {
         lastActiveAt: now,
       })
       .returning();
+
+    await db
+      .insert(organizationRoleAssignments)
+      .values({
+        organizationId: organization.id,
+        userId: user.id,
+        role: 'owner',
+        grantedBy: user.id,
+      })
+      .onConflictDoUpdate({
+        target: [organizationRoleAssignments.organizationId, organizationRoleAssignments.userId],
+        set: {
+          role: 'owner',
+          grantedBy: user.id,
+          updatedAt: now,
+        },
+      });
 
     await db.insert(tenantIsolations).values({
       organizationId: organization.id,
@@ -378,7 +425,151 @@ export class OrganizationService {
         )
       );
 
+    await db
+      .delete(organizationRoleAssignments)
+      .where(
+        and(
+          eq(organizationRoleAssignments.organizationId, input.organizationId),
+          eq(organizationRoleAssignments.userId, input.memberId)
+        )
+      );
+
     return true;
+  }
+
+  public async listRoleAssignments(organizationId: string): Promise<OrganizationRoleAssignmentSummary[]> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const rows = await db
+      .select({
+        assignment: organizationRoleAssignments,
+        membership: organizationMembers,
+        user: users,
+      })
+      .from(organizationRoleAssignments)
+      .innerJoin(users, eq(organizationRoleAssignments.userId, users.id))
+      .leftJoin(
+        organizationMembers,
+        and(
+          eq(organizationMembers.organizationId, organizationRoleAssignments.organizationId),
+          eq(organizationMembers.userId, organizationRoleAssignments.userId)
+        )
+      )
+      .where(eq(organizationRoleAssignments.organizationId, organizationId));
+
+    return rows.map(({ assignment, membership, user }) => ({
+      id: assignment.id,
+      organizationId: assignment.organizationId,
+      userId: assignment.userId,
+      role: assignment.role as OrgRole,
+      grantedBy: assignment.grantedBy,
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.updatedAt,
+      userEmail: user.email,
+      userName: user.name,
+      membershipStatus: membership?.status ?? null,
+    }));
+  }
+
+  public async updateMemberRole(input: UpdateMemberRoleInput): Promise<OrganizationRoleAssignmentSummary> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const membership = await db
+      .select()
+      .from(organizationMembers)
+      .where(
+        and(
+          eq(organizationMembers.organizationId, input.organizationId),
+          eq(organizationMembers.userId, input.memberId)
+        )
+      );
+
+    if (membership.length === 0) {
+      throw new Error('Member not found in organization');
+    }
+
+    const now = new Date();
+
+    const [assignment] = await db
+      .insert(organizationRoleAssignments)
+      .values({
+        organizationId: input.organizationId,
+        userId: input.memberId,
+        role: input.role,
+        grantedBy: input.requestedBy,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [organizationRoleAssignments.organizationId, organizationRoleAssignments.userId],
+        set: {
+          role: input.role,
+          grantedBy: input.requestedBy,
+          updatedAt: now,
+        },
+      })
+      .returning();
+
+    await db
+      .update(organizationMembers)
+      .set({ role: input.role, updatedAt: now })
+      .where(
+        and(
+          eq(organizationMembers.organizationId, input.organizationId),
+          eq(organizationMembers.userId, input.memberId)
+        )
+      );
+
+    const [userRecord] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, input.memberId));
+
+    return {
+      id: assignment.id,
+      organizationId: assignment.organizationId,
+      userId: assignment.userId,
+      role: assignment.role as OrgRole,
+      grantedBy: assignment.grantedBy,
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.updatedAt,
+      userEmail: userRecord?.email ?? membership[0].email,
+      userName: userRecord?.name,
+      membershipStatus: membership[0]?.status ?? null,
+    };
+  }
+
+  public async removeRoleAssignment(input: RemoveRoleAssignmentInput): Promise<boolean> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const fallbackRole: OrgRole = input.fallbackRole ?? 'member';
+
+    await db
+      .delete(organizationRoleAssignments)
+      .where(
+        and(
+          eq(organizationRoleAssignments.organizationId, input.organizationId),
+          eq(organizationRoleAssignments.userId, input.memberId)
+        )
+      );
+
+    const result = await db
+      .update(organizationMembers)
+      .set({ role: fallbackRole, updatedAt: new Date() })
+      .where(
+        and(
+          eq(organizationMembers.organizationId, input.organizationId),
+          eq(organizationMembers.userId, input.memberId)
+        )
+      )
+      .returning();
+
+    return result.length > 0;
   }
 
   public async recordUsage(

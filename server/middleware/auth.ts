@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { getPermissionsForRole, Permission } from '../../configs/rbac';
 import { authService, AuthOrganization } from '../services/AuthService';
 import {
   OrganizationPlan,
@@ -33,6 +34,7 @@ declare global {
         organizationUsage?: OrganizationUsageMetrics;
         activeOrganization?: AuthOrganization;
         organizations?: AuthOrganization[];
+        permissions?: Permission[];
       };
       organizationId?: string;
       organizationRole?: string;
@@ -40,6 +42,7 @@ declare global {
       organizationStatus?: OrganizationStatus;
       organizationLimits?: OrganizationLimits;
       organizationUsage?: OrganizationUsageMetrics;
+      permissions?: Permission[];
     }
   }
 }
@@ -102,6 +105,7 @@ const buildDevUser = () => {
       },
     },
     organizations: [],
+    permissions: getPermissionsForRole('owner'),
   };
 };
 
@@ -125,7 +129,15 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     if (!token || token === 'null' || token === 'undefined') {
       if (shouldUseDevFallback() && devUser) {
-        req.user = devUser;
+        const permissions = getPermissionsForRole(devUser.organizationRole);
+        req.user = { ...devUser, permissions };
+        req.organizationId = devUser.organizationId;
+        req.organizationRole = devUser.organizationRole;
+        req.organizationPlan = devUser.organizationPlan as OrganizationPlan;
+        req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
+        req.organizationLimits = devUser.organizationLimits;
+        req.organizationUsage = devUser.organizationUsage;
+        req.permissions = permissions;
         setRequestUser(devUser.id);
         return next();
       }
@@ -146,13 +158,15 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     }
 
     // Add user to request
-    req.user = user;
+    const permissions = getPermissionsForRole(user.organizationRole);
+    req.user = { ...user, permissions };
     req.organizationId = user.organizationId;
     req.organizationRole = user.organizationRole;
     req.organizationPlan = user.organizationPlan;
     req.organizationStatus = user.organizationStatus;
     req.organizationLimits = user.organizationLimits;
     req.organizationUsage = user.organizationUsage;
+    req.permissions = permissions;
     setRequestUser(user.id);
     next();
 
@@ -182,36 +196,42 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     if (token && token !== 'null' && token !== 'undefined') {
       const user = await authService.verifyToken(token, requestedOrganizationId);
       if (user) {
-        req.user = user;
+        const permissions = getPermissionsForRole(user.organizationRole);
+        req.user = { ...user, permissions };
         req.organizationId = user.organizationId;
         req.organizationRole = user.organizationRole;
         req.organizationPlan = user.organizationPlan;
         req.organizationStatus = user.organizationStatus;
         req.organizationLimits = user.organizationLimits;
         req.organizationUsage = user.organizationUsage;
+        req.permissions = permissions;
         setRequestUser(user.id);
       }
     } else if (shouldUseDevFallback() && devUser) {
-      req.user = devUser;
+      const permissions = getPermissionsForRole(devUser.organizationRole);
+      req.user = { ...devUser, permissions };
       req.organizationId = devUser.organizationId;
       req.organizationRole = devUser.organizationRole;
       req.organizationPlan = devUser.organizationPlan as OrganizationPlan;
       req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
       req.organizationLimits = devUser.organizationLimits;
       req.organizationUsage = devUser.organizationUsage;
+      req.permissions = permissions;
       setRequestUser(devUser.id);
     }
 
     next();
   } catch (error) {
     if (shouldUseDevFallback() && devUser) {
-      req.user = devUser;
+      const permissions = getPermissionsForRole(devUser.organizationRole);
+      req.user = { ...devUser, permissions };
       req.organizationId = devUser.organizationId;
       req.organizationRole = devUser.organizationRole;
       req.organizationPlan = devUser.organizationPlan as OrganizationPlan;
       req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
       req.organizationLimits = devUser.organizationLimits;
       req.organizationUsage = devUser.organizationUsage;
+      req.permissions = permissions;
       setRequestUser(devUser.id);
       next();
     } else {
@@ -261,6 +281,33 @@ export const requirePlan = (plans: string[]) => {
         error: 'Upgrade required for this feature',
         requiredPlan: plans,
         currentPlan: req.user.planType
+      });
+    }
+
+    next();
+  };
+};
+
+export const requirePermission = (required: Permission | Permission[]) => {
+  const requiredPermissions = Array.isArray(required) ? required : [required];
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const permissions = req.permissions || req.user.permissions || [];
+    const hasAllPermissions = requiredPermissions.every((permission) => permissions.includes(permission));
+
+    if (!hasAllPermissions) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions',
+        required: requiredPermissions,
+        role: req.organizationRole || req.user.organizationRole || null,
       });
     }
 

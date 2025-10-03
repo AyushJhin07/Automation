@@ -11,6 +11,7 @@ import {
 import { EncryptionService } from './EncryptionService';
 import { JWTPayload } from '../types/common';
 import { organizationService, OrganizationContext } from './OrganizationService';
+import { getPermissionsForRole, Permission } from '../../configs/rbac';
 
 type UserRecord = typeof users.$inferSelect;
 
@@ -58,6 +59,7 @@ export interface AuthUser {
   organizationUsage?: OrganizationUsageMetrics;
   activeOrganization?: AuthOrganization;
   organizations?: AuthOrganization[];
+  permissions?: Permission[];
 }
 
 export interface AuthOrganization {
@@ -549,6 +551,7 @@ export class AuthService {
     const activeOrganization = activeContext ? this.mapOrganizationForResponse(activeContext) : undefined;
 
     const legacyPlanType = this.mapPlanToLegacy(activeContext?.plan ?? userRecord.planType);
+    const organizationPermissions = getPermissionsForRole(activeOrganization?.role);
 
     const authUser: AuthUser = {
       id: userRecord.id,
@@ -571,6 +574,7 @@ export class AuthService {
       organizationUsage: activeOrganization?.usage,
       activeOrganization,
       organizations: organizationSummaries,
+      permissions: organizationPermissions,
     };
 
     return {

@@ -192,6 +192,24 @@ export const organizationMembers = pgTable(
   })
 );
 
+export const organizationRoleAssignments = pgTable(
+  'organization_role_assignments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    role: text('role').notNull(),
+    grantedBy: uuid('granted_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationUserIdx: uniqueIndex('organization_role_assignments_org_user_idx').on(table.organizationId, table.userId),
+    organizationIdx: index('organization_role_assignments_org_idx').on(table.organizationId),
+    userIdx: index('organization_role_assignments_user_idx').on(table.userId),
+  })
+);
+
 export const organizationInvites = pgTable(
   'organization_invites',
   {
