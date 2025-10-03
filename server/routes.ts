@@ -3964,7 +3964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           appName: provider,
           functionId: 'test_connection',
           parameters: {},
-          credentials: context?.credentials ?? activeConnection.credentials || {},
+          credentials: context?.credentials ?? activeConnection.credentials ?? {},
           connectionId: activeConnection.id
         });
 
