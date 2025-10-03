@@ -848,7 +848,7 @@ function generateGmailFunction(functionName: string, node: WorkflowNode): string
   const operation = node.params?.operation || node.op?.split('.').pop() || 'email_received';
   
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   console.log('📧 Executing Gmail: ' + (params.operation || '${operation}'));
   
   try {
@@ -942,7 +942,7 @@ function generateGoogleSheetsFunction(functionName: string, node: WorkflowNode):
   const operation = node.params?.operation || node.op?.split('.').pop() || 'append_row';
   
   return `
-function ${functionName}(inputData, params) {
+  function ${esc(functionName)}(inputData, params) {
   console.log('📊 Executing Google Sheets: ${node.name || operation}');
   
   const spreadsheetId = params.spreadsheetId;
@@ -7602,11 +7602,12 @@ function ${esc(functionName)}(inputData, params) {
   }
 }`;
 }
-}function generateOktaFunction(functionName: string, node: WorkflowNode): string {
+
+function generateOktaFunction(functionName: string, node: WorkflowNode): string {
   const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_user';
 
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   const props = PropertiesService.getScriptProperties();
   const apiToken = params.apiToken || props.getProperty('OKTA_API_TOKEN');
   const domainValue = (params.domain || props.getProperty('OKTA_DOMAIN') || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -8939,11 +8940,13 @@ function ${functionName}(inputData, params) {
     return { ...inputData, mailgunError: error.toString() };
   }
 }`;
-}function generateMarketoFunction(functionName: string, node: WorkflowNode): string {
+}
+
+function generateMarketoFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'create_lead';
   
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   console.log('🎯 Executing Marketo: ${params.operation || '${operation}'}');
   
   const clientId = PropertiesService.getScriptProperties().getProperty('MARKETO_CLIENT_ID');
@@ -10161,11 +10164,13 @@ function ${functionName}(inputData, params) {
     return { ...inputData, terraformError: error.toString() };
   }
 }`;
-}function generateAWSCodePipelineFunction(functionName: string, node: WorkflowNode): string {
+}
+
+function generateAWSCodePipelineFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'start_pipeline';
   
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   console.log('🚀 Executing AWS CodePipeline: ${params.operation || '${operation}'}');
   
   const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
@@ -10369,11 +10374,13 @@ function ${functionName}(inputData, params) {
     return { ...inputData, ansibleError: error.toString() };
   }
 }`;
-}function generatePrometheusFunction(functionName: string, node: WorkflowNode): string {
+}
+
+function generatePrometheusFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'query_metrics';
   
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   console.log('🔥 Executing Prometheus: ${params.operation || '${operation}'}');
   
   const serverUrl = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_SERVER_URL');
@@ -10627,11 +10634,13 @@ function ${functionName}(inputData, params) {
     return { ...inputData, helmError: error.toString() };
   }
 }`;
-}function generateAWSCloudFormationFunction(functionName: string, node: WorkflowNode): string {
+}
+
+function generateAWSCloudFormationFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'create_stack';
   
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   console.log('☁️ Executing AWS CloudFormation: ${params.operation || '${operation}'}');
   
   const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
