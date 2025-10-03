@@ -9,6 +9,7 @@ import { runLLMGenerate, runLLMExtract, runLLMClassify, runLLMToolCall } from '.
 import { resolveAllParams } from './ParameterResolver';
 import { retryManager, RetryPolicy } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
+import { nodeSandbox, collectSecretStrings } from '../runtime/NodeSandbox';
 
 export interface ExecutionContext {
   outputs: Record<string, any>;
@@ -66,34 +67,36 @@ export class WorkflowRuntime {
         // Start node execution tracking
         const nodeExecution = runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput);
         
+        const nodeAbortController = new AbortController();
         try {
           // Execute node with retry logic and idempotency
           const nodeResult = await retryManager.executeWithRetry(
             node.id,
             context.executionId,
-            () => this.executeNode(node, context),
+            () => this.executeNode(node, context, nodeAbortController.signal),
             {
               policy: this.getRetryPolicyForNode(node),
               idempotencyKey: this.generateIdempotencyKey(node, context),
               nodeType: node.type
             }
           );
-          
+
           context.outputs[node.id] = nodeResult;
           context.prevOutput = nodeResult;
-          
+
           // Track successful completion
           runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeResult, {
             // Add any metadata from the execution
           });
-          
+
           console.log(`✅ Node ${node.id} completed successfully`);
         } catch (error) {
-          // Track failure
-          runExecutionManager.failNodeExecution(context.executionId, node.id, error.message);
-          
+          const message = (error as Error)?.message ?? 'Unknown error';
+          runExecutionManager.failNodeExecution(context.executionId, node.id, message);
           console.error(`❌ Node ${node.id} failed:`, error);
-          throw new Error(`Node "${node.label}" failed: ${error.message}`);
+          throw new Error(`Node "${node.label}" failed: ${message}`);
+        } finally {
+          nodeAbortController.abort();
         }
       }
 
@@ -130,7 +133,7 @@ export class WorkflowRuntime {
   /**
    * Execute a single node
    */
-  private async executeNode(node: GraphNode, context: ExecutionContext): Promise<any> {
+  private async executeNode(node: GraphNode, context: ExecutionContext, signal?: AbortSignal): Promise<any> {
     // Resolve node parameters using AI-as-a-field ParameterResolver
     const paramContext: ParameterContext = {
       nodeOutputs: context.outputs,
@@ -139,9 +142,82 @@ export class WorkflowRuntime {
       userId: context.userId,
       executionId: context.executionId
     };
-    
+
     const resolvedParams = await resolveAllParams(node.data, paramContext);
-    
+
+    const runtimeConfig = (node.data as any)?.runtime ?? (resolvedParams as any)?.runtime;
+
+    if (runtimeConfig && typeof runtimeConfig.code === 'string') {
+      const sandboxParams = this.extractSandboxParams(resolvedParams);
+      const sandboxContext: Record<string, any> = {
+        workflowId: context.workflowId,
+        executionId: context.executionId,
+        nodeId: node.id,
+        userId: context.userId,
+        prevOutput: context.prevOutput,
+        nodeOutputs: context.outputs
+      };
+
+      if (node.connectionId) {
+        sandboxContext.connectionId = node.connectionId;
+      }
+      if (resolvedParams?.credentials || node.credentials) {
+        sandboxContext.credentials = resolvedParams?.credentials ?? node.credentials;
+      }
+      if (resolvedParams?.auth || node.auth) {
+        sandboxContext.auth = resolvedParams?.auth ?? node.auth;
+      }
+      if (runtimeConfig.environment) {
+        sandboxContext.environment = runtimeConfig.environment;
+      }
+      if (node.data?.metadata) {
+        sandboxContext.metadata = node.data.metadata;
+      }
+
+      const secrets = this.gatherSecrets(
+        runtimeConfig.secrets,
+        runtimeConfig.redact,
+        resolvedParams?.credentials,
+        node.credentials,
+        resolvedParams?.auth,
+        node.auth
+      );
+
+      const sandboxOutcome = await nodeSandbox.execute({
+        code: runtimeConfig.code,
+        entryPoint: runtimeConfig.entryPoint ?? runtimeConfig.entry ?? 'run',
+        params: sandboxParams,
+        context: sandboxContext,
+        timeoutMs: typeof runtimeConfig.timeoutMs === 'number' ? runtimeConfig.timeoutMs : undefined,
+        signal,
+        secrets
+      });
+
+      if (sandboxOutcome.logs.length > 0) {
+        for (const logEntry of sandboxOutcome.logs) {
+          const prefix = `🧪 [Sandbox:${node.id}]`;
+          switch (logEntry.level) {
+            case 'error':
+              console.error(`${prefix} ${logEntry.message}`);
+              break;
+            case 'warn':
+              console.warn(`${prefix} ${logEntry.message}`);
+              break;
+            case 'info':
+            case 'log':
+              console.log(`${prefix} ${logEntry.message}`);
+              break;
+            case 'debug':
+            default:
+              console.debug(`${prefix} ${logEntry.message}`);
+              break;
+          }
+        }
+      }
+
+      return sandboxOutcome.result;
+    }
+
     // Execute based on node type
     switch (node.type) {
       // LLM Actions
@@ -376,7 +452,7 @@ export class WorkflowRuntime {
   private getRelevantInputsForIdempotency(node: GraphNode, context: ExecutionContext): any {
     // For most nodes, we only care about the direct dependencies
     const relevantInputs: any = {};
-    
+
     // If this node has parameter references to other nodes, include those outputs
     const nodeParams = node.data.params || {};
     for (const [key, value] of Object.entries(nodeParams)) {
@@ -384,8 +460,68 @@ export class WorkflowRuntime {
         relevantInputs[key] = context.outputs[value.nodeId];
       }
     }
-    
+
     return relevantInputs;
+  }
+
+  private extractSandboxParams(resolvedParams: Record<string, any>): any {
+    if (resolvedParams == null) {
+      return {};
+    }
+
+    if (Array.isArray(resolvedParams)) {
+      return resolvedParams;
+    }
+
+    if (resolvedParams.parameters && typeof resolvedParams.parameters === 'object' && !Array.isArray(resolvedParams.parameters)) {
+      return resolvedParams.parameters;
+    }
+
+    if (resolvedParams.params && typeof resolvedParams.params === 'object' && !Array.isArray(resolvedParams.params)) {
+      return resolvedParams.params;
+    }
+
+    if (resolvedParams.input && typeof resolvedParams.input === 'object' && !Array.isArray(resolvedParams.input)) {
+      return resolvedParams.input;
+    }
+
+    const clone: Record<string, any> = {};
+    for (const [key, value] of Object.entries(resolvedParams)) {
+      if (key === 'runtime' || key === 'credentials' || key === 'auth') {
+        continue;
+      }
+      clone[key] = value;
+    }
+    return clone;
+  }
+
+  private gatherSecrets(...sources: any[]): string[] {
+    const secrets = new Set<string>();
+
+    const append = (value: any) => {
+      if (!value) {
+        return;
+      }
+      if (typeof value === 'string') {
+        if (value.length > 0 && value !== '[REDACTED]') {
+          secrets.add(value);
+        }
+        return;
+      }
+      if (Array.isArray(value) || typeof value === 'object') {
+        for (const secret of collectSecretStrings(value)) {
+          if (secret && secret.length > 0 && secret !== '[REDACTED]') {
+            secrets.add(secret);
+          }
+        }
+      }
+    };
+
+    for (const source of sources) {
+      append(source);
+    }
+
+    return Array.from(secrets);
   }
 }
 
