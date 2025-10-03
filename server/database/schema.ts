@@ -14,7 +14,7 @@ import {
   serial,
   primaryKey,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import type { WorkflowTimerPayload } from '../types/workflowTimers';
 
 export type OrganizationPlan = 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
@@ -73,6 +73,12 @@ export interface OrganizationComplianceSettings {
   dataResidency: 'us' | 'eu' | 'asia' | 'global';
   retentionPolicyDays: number;
 }
+
+type TimelineEntry = {
+  timestamp: string;
+  type: string;
+  data?: Record<string, any>;
+};
 
 // Users table with performance indexes
 export const users = pgTable(
@@ -465,6 +471,80 @@ export const workflowExecutions = pgTable(
   })
 );
 
+export const executionLogs = pgTable(
+  'execution_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .references(() => workflowExecutions.id, { onDelete: 'cascade' })
+      .notNull(),
+    workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'set null' }),
+    workflowName: text('workflow_name'),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    status: text('status').notNull(),
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    completedAt: timestamp('completed_at'),
+    durationMs: integer('duration_ms'),
+    triggerType: text('trigger_type'),
+    triggerData: jsonb('trigger_data').$type<Record<string, any>>(),
+    inputs: jsonb('inputs').$type<Record<string, any>>(),
+    outputs: jsonb('outputs').$type<Record<string, any>>(),
+    error: text('error'),
+    metadata: jsonb('metadata').$type<Record<string, any>>(),
+    timeline: jsonb('timeline').$type<TimelineEntry[]>().default(sql`'[]'::jsonb`).notNull(),
+    correlationId: text('correlation_id').notNull(),
+    tags: text('tags').array(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    executionIdx: uniqueIndex('execution_logs_execution_idx').on(table.executionId),
+    workflowIdx: index('execution_logs_workflow_idx').on(table.organizationId, table.workflowId, table.startedAt),
+    statusIdx: index('execution_logs_status_idx').on(table.status, table.startedAt),
+    correlationIdx: index('execution_logs_correlation_idx').on(table.correlationId),
+  })
+);
+
+export const nodeLogs = pgTable(
+  'node_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionLogId: uuid('execution_log_id')
+      .references(() => executionLogs.id, { onDelete: 'cascade' })
+      .notNull(),
+    executionId: uuid('execution_id')
+      .references(() => workflowExecutions.id, { onDelete: 'cascade' })
+      .notNull(),
+    nodeId: text('node_id').notNull(),
+    nodeType: text('node_type'),
+    nodeLabel: text('node_label'),
+    status: text('status').notNull(),
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    completedAt: timestamp('completed_at'),
+    durationMs: integer('duration_ms'),
+    attempt: integer('attempt').default(1).notNull(),
+    maxAttempts: integer('max_attempts'),
+    input: jsonb('input').$type<Record<string, any>>(),
+    output: jsonb('output').$type<Record<string, any>>(),
+    error: text('error'),
+    metadata: jsonb('metadata').$type<Record<string, any>>(),
+    timeline: jsonb('timeline').$type<TimelineEntry[]>().default(sql`'[]'::jsonb`).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    executionNodeIdx: index('node_logs_execution_node_idx').on(table.executionId, table.nodeId),
+    statusIdx: index('node_logs_status_idx').on(table.status),
+    startedAtIdx: index('node_logs_started_at_idx').on(table.startedAt),
+    executionAttemptIdx: uniqueIndex('node_logs_execution_attempt_idx').on(
+      table.executionId,
+      table.nodeId,
+      table.attempt,
+    ),
+  })
+);
+
 export const nodeExecutionResults = pgTable(
   'node_execution_results',
   {
@@ -707,6 +787,7 @@ export const workflowsRelations = relations(workflows, ({ one, many }) => ({
   user: one(users, { fields: [workflows.userId], references: [users.id] }),
   organization: one(organizations, { fields: [workflows.organizationId], references: [organizations.id] }),
   executions: many(workflowExecutions),
+  executionLogs: many(executionLogs),
 }));
 
 export const workflowExecutionsRelations = relations(workflowExecutions, ({ one, many }) => ({
@@ -714,6 +795,26 @@ export const workflowExecutionsRelations = relations(workflowExecutions, ({ one,
   user: one(users, { fields: [workflowExecutions.userId], references: [users.id] }),
   organization: one(organizations, { fields: [workflowExecutions.organizationId], references: [organizations.id] }),
   timers: many(workflowTimers),
+  logs: many(executionLogs),
+}));
+
+export const executionLogsRelations = relations(executionLogs, ({ one, many }) => ({
+  workflowExecution: one(workflowExecutions, {
+    fields: [executionLogs.executionId],
+    references: [workflowExecutions.id],
+  }),
+  workflow: one(workflows, { fields: [executionLogs.workflowId], references: [workflows.id] }),
+  organization: one(organizations, { fields: [executionLogs.organizationId], references: [organizations.id] }),
+  user: one(users, { fields: [executionLogs.userId], references: [users.id] }),
+  nodeLogs: many(nodeLogs),
+}));
+
+export const nodeLogsRelations = relations(nodeLogs, ({ one }) => ({
+  executionLog: one(executionLogs, { fields: [nodeLogs.executionLogId], references: [executionLogs.id] }),
+  workflowExecution: one(workflowExecutions, {
+    fields: [nodeLogs.executionId],
+    references: [workflowExecutions.id],
+  }),
 }));
 
 export const workflowTimersRelations = relations(workflowTimers, ({ one }) => ({
@@ -858,6 +959,8 @@ if (!connectionString) {
       connections,
       workflows,
       workflowExecutions,
+      executionLogs,
+      nodeLogs,
       nodeExecutionResults,
       workflowTimers,
       usageTracking,
@@ -872,6 +975,8 @@ if (!connectionString) {
       connectionsRelations,
       workflowsRelations,
       workflowExecutionsRelations,
+      executionLogsRelations,
+      nodeLogsRelations,
       workflowTimersRelations,
       usageTrackingRelations,
       sessionsRelations,
