@@ -62,13 +62,13 @@ async function runWorkflowMemoryFallbackIntegration(): Promise<void> {
   const execution = await WorkflowRepository.createWorkflowExecution({
     workflowId: saved.id,
     organizationId,
-    status: 'started',
+    status: 'queued',
     triggerType: 'manual',
     triggerData: { via: 'memory-fallback' },
   });
 
   assert.equal(execution.workflowId, saved.id);
-  assert.equal(execution.status, 'started');
+  assert.equal(execution.status, 'queued');
 
   const crossOrgExecution = await WorkflowRepository.getExecutionById(execution.id, otherOrganizationId);
   assert.equal(crossOrgExecution, null, 'executions should not be visible across organizations');

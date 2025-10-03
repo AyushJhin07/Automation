@@ -1,9 +1,16 @@
-import { sql } from 'drizzle-orm';
+import type { Job, Queue, QueueEvents, Worker } from 'bullmq';
 
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db, workflowExecutions } from '../database/schema.js';
+import { db } from '../database/schema.js';
+import {
+  createQueue,
+  createQueueEvents,
+  createWorker,
+  registerQueueTelemetry,
+  type WorkflowExecuteJobPayload,
+} from '../queue/BullMQFactory.js';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -13,32 +20,21 @@ type QueueRunRequest = {
   organizationId: string;
 };
 
-type ClaimedJob = {
-  id: string;
-  workflowId: string;
-  userId?: string;
-  metadata?: Record<string, any>;
-  organizationId: string;
-};
-
 class ExecutionQueueService {
   private static instance: ExecutionQueueService;
-  private running = 0;
   private readonly concurrency: number;
-  private readonly pollingMs: number;
   private readonly maxRetries: number;
   private readonly baseRetryDelayMs: number;
   private readonly maxRetryDelayMs: number;
   private started = false;
-  private shouldStop = false;
-  private workerPromises: Promise<void>[] = [];
-  private waiters: Set<() => void> = new Set();
   private shutdownPromise: Promise<void> | null = null;
-  private pendingOrganizations: Set<string> = new Set();
+  private queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
+  private worker: Worker<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
+  private queueEvents: QueueEvents | null = null;
+  private telemetryCleanup: (() => void) | null = null;
 
-  private constructor(concurrency = 2, pollingMs = 1000) {
+  private constructor(concurrency = 2) {
     this.concurrency = Math.max(1, concurrency);
-    this.pollingMs = Math.max(250, pollingMs);
     this.maxRetries = Math.max(0, Number.parseInt(process.env.EXECUTION_MAX_RETRIES ?? '3', 10));
     this.baseRetryDelayMs = Math.max(500, Number.parseInt(process.env.EXECUTION_RETRY_DELAY_MS ?? '1000', 10));
     this.maxRetryDelayMs = Math.max(
@@ -72,10 +68,45 @@ class ExecutionQueueService {
       status: 'queued',
       triggerType: req.triggerType ?? 'manual',
       triggerData: req.triggerData ?? null,
-      metadata: { queuedAt: new Date().toISOString(), retryCount: 0 },
+      metadata: { queuedAt: new Date().toISOString(), attemptsMade: 0, retryCount: 0 },
     });
-    this.pendingOrganizations.add(req.organizationId);
-    this.signalNewWork();
+
+    if (!this.isDbEnabled()) {
+      return { executionId: execution.id };
+    }
+
+    const queue = this.ensureQueue();
+    try {
+      await queue.add(
+        'workflow.execute',
+        {
+          executionId: execution.id,
+          workflowId: req.workflowId,
+          organizationId: req.organizationId,
+          userId: req.userId,
+          triggerType: req.triggerType ?? 'manual',
+          triggerData: req.triggerData ?? null,
+        },
+        {
+          jobId: execution.id,
+        }
+      );
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error('Failed to enqueue workflow execution job:', errorMessage);
+      await WorkflowRepository.updateWorkflowExecution(
+        execution.id,
+        {
+          status: 'failed',
+          completedAt: new Date(),
+          duration: 0,
+          errorDetails: { error: errorMessage },
+        },
+        req.organizationId
+      );
+      throw error;
+    }
+
     return { executionId: execution.id };
   }
 
@@ -89,14 +120,35 @@ class ExecutionQueueService {
       return;
     }
 
-    this.started = true;
-    this.shouldStop = false;
+    const queue = this.ensureQueue();
+    if (!this.queueEvents) {
+      this.queueEvents = createQueueEvents('workflow.execute');
+    }
 
-    this.workerPromises = Array.from({ length: this.concurrency }, (_, workerIndex) =>
-      this.workerLoop(workerIndex).catch((error) => {
-        console.error(`ExecutionQueue worker ${workerIndex} failed:`, getErrorMessage(error));
-      })
+    if (!this.telemetryCleanup) {
+      this.telemetryCleanup = registerQueueTelemetry(queue, this.queueEvents, {
+        logger: console,
+      });
+    }
+
+    this.worker = createWorker(
+      'workflow.execute',
+      async (job) => this.process(job),
+      {
+        concurrency: this.concurrency,
+        settings: {
+          backoffStrategies: {
+            'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+          },
+        },
+      }
     );
+
+    this.worker.on('error', (error) => {
+      console.error('ExecutionQueue worker error:', getErrorMessage(error));
+    });
+
+    this.started = true;
 
     console.log(`🧵 ExecutionQueueService started (concurrency=${this.concurrency})`);
   }
@@ -114,30 +166,43 @@ class ExecutionQueueService {
       return this.shutdownPromise;
     }
 
-    this.shouldStop = true;
-    this.signalNewWork();
-
     const timeoutMs = Math.max(0, options.timeoutMs ?? 30000);
 
-    const awaitWorkers = async (): Promise<void> => {
-      const settled = await Promise.allSettled(this.workerPromises);
-      const rejected = settled.find((result) => result.status === 'rejected');
-      if (rejected && rejected.status === 'rejected') {
-        throw rejected.reason;
-      }
-    };
-
     this.shutdownPromise = (async () => {
+      const closeWorker = async () => {
+        if (!this.worker) {
+          return;
+        }
+        await this.worker.close();
+        this.worker = null;
+      };
+
       if (timeoutMs === 0) {
-        await awaitWorkers();
+        await closeWorker();
       } else {
         await Promise.race([
-          awaitWorkers(),
+          closeWorker(),
           new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
         ]);
+        await closeWorker().catch((error) => {
+          console.error('Failed to close execution worker gracefully:', getErrorMessage(error));
+        });
       }
 
-      this.workerPromises = [];
+      if (this.queueEvents) {
+        await this.queueEvents.close();
+        this.queueEvents = null;
+      }
+
+      if (this.telemetryCleanup) {
+        try {
+          this.telemetryCleanup();
+        } catch (error) {
+          console.error('Failed to cleanup queue telemetry handlers:', getErrorMessage(error));
+        }
+        this.telemetryCleanup = null;
+      }
+
       this.started = false;
       this.shutdownPromise = null;
     })();
@@ -145,205 +210,139 @@ class ExecutionQueueService {
     return this.shutdownPromise;
   }
 
-  private async workerLoop(workerIndex: number): Promise<void> {
-    while (!this.shouldStop) {
-      let job: ClaimedJob | null = null;
-      try {
-        job = await this.claimNextQueued();
-      } catch (error) {
-        console.error(`ExecutionQueue worker ${workerIndex} claim error:`, getErrorMessage(error));
-      }
-
-      if (!job) {
-        await this.waitForWork();
-        continue;
-      }
-
-      this.running++;
-      try {
-        await this.process(job);
-      } finally {
-        this.running = Math.max(0, this.running - 1);
-      }
+  private ensureQueue(): Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> {
+    if (!this.queue) {
+      this.queue = createQueue('workflow.execute', {
+        defaultJobOptions: {
+          attempts: this.maxRetries + 1,
+          backoff: { type: 'execution-backoff' },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+        settings: {
+          backoffStrategies: {
+            'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+          },
+        },
+      });
     }
+
+    return this.queue;
   }
 
-  private async waitForWork(): Promise<void> {
-    if (this.shouldStop) {
-      return;
-    }
-
-    await new Promise<void>((resolve) => {
-      if (this.shouldStop) {
-        resolve();
-        return;
-      }
-
-      let settled = false;
-      let timeoutHandle: NodeJS.Timeout;
-
-      const release = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        clearTimeout(timeoutHandle);
-        this.waiters.delete(release);
-        resolve();
-      };
-
-      timeoutHandle = setTimeout(release, this.pollingMs);
-      this.waiters.add(release);
-    });
-  }
-
-  private signalNewWork(): void {
-    if (this.waiters.size === 0) {
-      return;
-    }
-
-    const releases = Array.from(this.waiters);
-    this.waiters.clear();
-
-    for (const release of releases) {
-      try {
-        release();
-      } catch (error) {
-        console.error('ExecutionQueue wait release error:', getErrorMessage(error));
-      }
-    }
-  }
-
-  private async claimNextQueued(): Promise<ClaimedJob | null> {
-    if (!this.isDbEnabled()) {
-      return null;
-    }
-
-    await this.ensurePendingOrganizations();
-    const organizations = Array.from(this.pendingOrganizations);
-
-    for (const organizationId of organizations) {
-      const claimed = await WorkflowRepository.claimNextQueuedExecution(organizationId);
-      if (!claimed) {
-        this.pendingOrganizations.delete(organizationId);
-        continue;
-      }
-
-      const metadata = (claimed.metadata ?? undefined) as Record<string, any> | undefined;
-      if (metadata && 'nextRetryAt' in metadata) {
-        delete metadata.nextRetryAt;
-      }
-
-      return {
-        id: claimed.id,
-        workflowId: claimed.workflowId,
-        userId: claimed.userId ?? undefined,
-        metadata,
-        organizationId,
-      };
-    }
-
-    return null;
-  }
-
-  private async ensurePendingOrganizations(): Promise<void> {
-    if (this.pendingOrganizations.size > 0 || !this.isDbEnabled()) {
-      return;
-    }
-
-    try {
-      const result = await db.execute(
-        sql`SELECT DISTINCT ${workflowExecutions.organizationId} AS organization_id FROM ${workflowExecutions}
-            WHERE ${workflowExecutions.status} = 'queued'`
-      );
-      for (const row of result.rows as Array<{ organization_id: string | null }>) {
-        if (row.organization_id) {
-          this.pendingOrganizations.add(row.organization_id);
-        }
-      }
-    } catch (error) {
-      console.error('ExecutionQueueService organization discovery failed:', getErrorMessage(error));
-    }
-  }
-
-  private async process(job: ClaimedJob): Promise<void> {
+  private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
     const startedAt = Date.now();
-    const executionRecord = await WorkflowRepository.getExecutionById(job.id, job.organizationId);
-    const baseMetadata = { ...(executionRecord?.metadata ?? job.metadata ?? {}) } as Record<string, any>;
+    const { executionId, workflowId, organizationId, userId } = job.data;
+    const executionRecord = await WorkflowRepository.getExecutionById(executionId, organizationId);
+    const baseMetadata = {
+      ...(executionRecord?.metadata ?? {}),
+    } as Record<string, any>;
+    const attemptNumber = job.attemptsMade + 1;
+    const maxAttempts = job.opts.attempts ?? this.maxRetries + 1;
+
+    const runningMetadata = {
+      ...baseMetadata,
+      attemptsMade: attemptNumber,
+      retryCount: Math.max(0, attemptNumber - 1),
+    } as Record<string, any>;
+    if ('lastError' in runningMetadata) {
+      delete runningMetadata.lastError;
+    }
+    if ('finishedAt' in runningMetadata) {
+      delete runningMetadata.finishedAt;
+    }
+
+    await WorkflowRepository.updateWorkflowExecution(
+      executionId,
+      {
+        status: 'running',
+        startedAt: new Date(),
+        completedAt: null,
+        duration: null,
+        metadata: runningMetadata,
+      },
+      organizationId
+    );
 
     try {
-      const wf = await WorkflowRepository.getWorkflowById(job.workflowId, job.organizationId);
+      const wf = await WorkflowRepository.getWorkflowById(workflowId, organizationId);
       if (!wf || !wf.graph) {
-        throw new Error(`Workflow not found or missing graph: ${job.workflowId}`);
+        throw new Error(`Workflow not found or missing graph: ${workflowId}`);
       }
 
       const initialData = { trigger: { id: 'queue', source: 'queue', timestamp: new Date().toISOString() } };
-      const result = await workflowRuntime.executeWorkflow(wf.graph as any, initialData, job.userId);
+      const result = await workflowRuntime.executeWorkflow(wf.graph as any, initialData, userId);
 
       if (!result.success) {
         throw new Error(result.error || 'Execution returned unsuccessful result');
       }
 
-      const metadata = { ...baseMetadata, retryCount: 0, finishedAt: new Date().toISOString() };
-      delete metadata.nextRetryAt;
+      const metadata = {
+        ...runningMetadata,
+        finishedAt: new Date().toISOString(),
+        retryCount: Math.max(0, attemptNumber - 1),
+      } as Record<string, any>;
       delete metadata.lastError;
 
-      await WorkflowRepository.updateWorkflowExecution(job.id, {
-        status: 'completed',
-        completedAt: new Date(),
-        duration: Date.now() - startedAt,
-        nodeResults: result.nodeOutputs,
-        errorDetails: null,
-        metadata,
-      }, job.organizationId);
+      await WorkflowRepository.updateWorkflowExecution(
+        executionId,
+        {
+          status: 'completed',
+          completedAt: new Date(),
+          duration: Date.now() - startedAt,
+          nodeResults: result.nodeOutputs,
+          errorDetails: null,
+          metadata,
+        },
+        organizationId
+      );
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
-      const currentRetries = typeof baseMetadata.retryCount === 'number' ? baseMetadata.retryCount : 0;
-      const nextRetryCount = currentRetries + 1;
-
-      if (nextRetryCount <= this.maxRetries) {
-        const delay = this.computeBackoff(nextRetryCount);
-        const nextRetryAt = new Date(Date.now() + delay).toISOString();
-        const retryMetadata = {
-          ...baseMetadata,
-          retryCount: nextRetryCount,
-          nextRetryAt,
-          lastError: errorMessage,
-        };
-
-        await WorkflowRepository.updateWorkflowExecution(job.id, {
-          status: 'queued',
-          completedAt: null,
-          duration: null,
-          errorDetails: { error: errorMessage },
-          metadata: retryMetadata,
-          startedAt: new Date(),
-        }, job.organizationId);
-
-        console.warn(`⚠️ Execution ${job.id} failed (attempt ${nextRetryCount}). Retrying in ${delay}ms: ${errorMessage}`);
-        this.pendingOrganizations.add(job.organizationId);
-        this.signalNewWork();
-        return;
-      }
-
-      const failedMetadata = {
+      const failureMetadata = {
         ...baseMetadata,
-        retryCount: nextRetryCount,
+        attemptsMade: attemptNumber,
+        retryCount: attemptNumber,
         lastError: errorMessage,
-      };
-      if ('nextRetryAt' in failedMetadata) {
-        delete failedMetadata.nextRetryAt;
+      } as Record<string, any>;
+      if ('finishedAt' in failureMetadata) {
+        delete failureMetadata.finishedAt;
       }
 
-      await WorkflowRepository.updateWorkflowExecution(job.id, {
-        status: 'failed',
-        completedAt: new Date(),
-        duration: Date.now() - startedAt,
-        errorDetails: { error: errorMessage },
-        metadata: failedMetadata,
-      }, job.organizationId);
+      const remainingAttempts = Math.max(0, maxAttempts - attemptNumber);
 
-      console.error(`❌ Execution ${job.id} failed after ${nextRetryCount} attempts:`, errorMessage);
+      if (remainingAttempts > 0) {
+        await WorkflowRepository.updateWorkflowExecution(
+          executionId,
+          {
+            status: 'queued',
+            completedAt: null,
+            duration: null,
+            errorDetails: { error: errorMessage },
+            metadata: failureMetadata,
+          },
+          organizationId
+        );
+
+        console.warn(
+          `⚠️ Execution ${executionId} failed (attempt ${attemptNumber}/${maxAttempts}). Retrying via queue: ${errorMessage}`
+        );
+      } else {
+        await WorkflowRepository.updateWorkflowExecution(
+          executionId,
+          {
+            status: 'failed',
+            completedAt: new Date(),
+            duration: Date.now() - startedAt,
+            errorDetails: { error: errorMessage },
+            metadata: failureMetadata,
+          },
+          organizationId
+        );
+
+        console.error(`❌ Execution ${executionId} failed after ${attemptNumber} attempts:`, errorMessage);
+      }
+
+      throw error;
     }
   }
 }
