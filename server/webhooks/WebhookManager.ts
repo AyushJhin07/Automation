@@ -13,6 +13,7 @@ import {
   WebhookVerificationFailureReason,
   type WebhookVerificationResult,
 } from './WebhookVerifier';
+import { recordWebhookDedupeHit, recordWebhookDedupeMiss } from '../observability/index.js';
 
 type QueueService = {
   enqueue: (request: {
@@ -29,6 +30,7 @@ type SignatureEnforcementConfig = {
   required: boolean;
   timestampToleranceSeconds?: number;
   signatureHeader?: string;
+  replayWindowSeconds?: number;
 };
 
 export class WebhookManager {
@@ -37,10 +39,9 @@ export class WebhookManager {
   private static configuredQueue: QueueService | null = null;
   private activeWebhooks: Map<string, WebhookTrigger> = new Map();
   private pollingTriggers: Map<string, PollingTrigger> = new Map();
-  private dedupeCache: Map<string, Set<string>> = new Map();
   private readonly persistence = triggerPersistenceService;
   private readonly ready: Promise<void>;
-  private readonly replayToleranceMs: number;
+  private readonly defaultReplayToleranceMs: number;
   private connectionServicePromise?: Promise<ConnectionService | null>;
   private initializationError?: string;
 
@@ -81,7 +82,7 @@ export class WebhookManager {
 
   private constructor() {
     this.ready = this.initializeFromPersistence();
-    this.replayToleranceMs = this.resolveReplayToleranceMs();
+    this.defaultReplayToleranceMs = this.resolveReplayToleranceMs();
   }
 
   private normalizePollingTrigger(trigger: PollingTrigger): PollingTrigger {
@@ -97,15 +98,10 @@ export class WebhookManager {
 
   private async initializeFromPersistence(): Promise<void> {
     try {
-      const [dedupeState, webhooks, polling] = await Promise.all([
-        this.persistence.loadDedupeTokens(),
+      const [webhooks, polling] = await Promise.all([
         this.persistence.loadWebhookTriggers(),
         this.persistence.loadPollingTriggers(),
       ]);
-
-      for (const [id, tokens] of Object.entries(dedupeState)) {
-        this.dedupeCache.set(id, new Set(tokens));
-      }
 
       webhooks.forEach((trigger) => {
         this.activeWebhooks.set(trigger.id, trigger);
@@ -192,6 +188,12 @@ export class WebhookManager {
         return null;
       }
 
+      const replayWindow = Number.isFinite(metadata.replayWindowSeconds)
+        ? Number(metadata.replayWindowSeconds)
+        : Number.isFinite(signatureConfig.replayWindowSeconds)
+        ? Number(signatureConfig.replayWindowSeconds)
+        : undefined;
+
       return {
         providerId: signatureConfig.providerId,
         required: signatureConfig.required !== false,
@@ -201,6 +203,7 @@ export class WebhookManager {
         signatureHeader: typeof signatureConfig.signatureHeader === 'string'
           ? signatureConfig.signatureHeader
           : undefined,
+        replayWindowSeconds: replayWindow,
       };
     } catch (error) {
       console.warn(
@@ -222,6 +225,9 @@ export class WebhookManager {
           ? Number(stored.timestampToleranceSeconds)
           : undefined,
         signatureHeader: typeof stored.signatureHeader === 'string' ? stored.signatureHeader : undefined,
+        replayWindowSeconds: Number.isFinite(stored.replayWindowSeconds)
+          ? Number(stored.replayWindowSeconds)
+          : undefined,
       };
     }
     return null;
@@ -229,6 +235,57 @@ export class WebhookManager {
 
   private resolveSignatureConfig(webhook: WebhookTrigger): SignatureEnforcementConfig | null {
     return this.resolveStoredSignatureConfig(webhook) ?? this.lookupSignatureEnforcement(webhook.appId, webhook.triggerId);
+  }
+
+  private resolveReplayWindowSeconds(
+    webhook: WebhookTrigger,
+    signatureConfig: SignatureEnforcementConfig | null | undefined
+  ): number {
+    const metadata = (webhook.metadata ?? {}) as Record<string, any>;
+    const adminOverride = metadata?.replayWindowSecondsOverride ?? metadata?.adminReplayWindowSeconds;
+    const adminValue = Number(adminOverride);
+    if (Number.isFinite(adminValue) && adminValue >= 0) {
+      return adminValue;
+    }
+
+    const metadataValue = Number(metadata?.replayWindowSeconds);
+    if (Number.isFinite(metadataValue) && metadataValue >= 0) {
+      return metadataValue;
+    }
+
+    if (signatureConfig?.replayWindowSeconds !== undefined && signatureConfig.replayWindowSeconds >= 0) {
+      return signatureConfig.replayWindowSeconds;
+    }
+
+    if (signatureConfig?.timestampToleranceSeconds !== undefined && signatureConfig.timestampToleranceSeconds >= 0) {
+      return signatureConfig.timestampToleranceSeconds;
+    }
+
+    return Math.floor(this.defaultReplayToleranceMs / 1000);
+  }
+
+  private resolvePollingReplayWindowSeconds(trigger: PollingTrigger): number {
+    const metadata = (trigger.metadata ?? {}) as Record<string, any>;
+    const override = metadata?.replayWindowSecondsOverride ?? metadata?.adminReplayWindowSeconds;
+    const overrideValue = Number(override);
+    if (Number.isFinite(overrideValue) && overrideValue >= 0) {
+      return overrideValue;
+    }
+
+    const configured = Number(metadata?.replayWindowSeconds);
+    if (Number.isFinite(configured) && configured >= 0) {
+      return configured;
+    }
+
+    return Math.floor(this.defaultReplayToleranceMs / 1000);
+  }
+
+  private resolveProviderId(webhook: WebhookTrigger, signatureConfig: SignatureEnforcementConfig | null | undefined): string {
+    return signatureConfig?.providerId ?? webhook.appId ?? 'default';
+  }
+
+  private resolvePollingProviderId(trigger: PollingTrigger): string {
+    return trigger.appId ?? 'polling';
   }
 
   private getHeaderValue(headers: Record<string, string>, headerName?: string): string | undefined {
@@ -370,23 +427,22 @@ export class WebhookManager {
     return null;
   }
 
-  private isTimestampWithinTolerance(timestamp: Date): boolean {
+  private isTimestampWithinTolerance(timestamp: Date, toleranceMs: number): boolean {
     if (!(timestamp instanceof Date) || Number.isNaN(timestamp.getTime())) {
       return true;
     }
 
-    if (this.replayToleranceMs <= 0) {
+    if (toleranceMs <= 0) {
       return true;
     }
 
     const delta = Math.abs(Date.now() - timestamp.getTime());
-    return delta <= this.replayToleranceMs;
+    return delta <= toleranceMs;
   }
 
   private dispose(): void {
     this.activeWebhooks.clear();
     this.pollingTriggers.clear();
-    this.dedupeCache.clear();
   }
 
   public getWebhook(id: string): WebhookTrigger | undefined {
@@ -446,7 +502,6 @@ export class WebhookManager {
       this.activeWebhooks.set(webhookId, webhookTrigger);
 
       await this.persistence.saveWebhookTrigger(webhookTrigger);
-      await this.ensureDedupeSet(webhookId);
 
       console.log(`🔗 Registered webhook: ${endpoint} for ${trigger.appId}.${trigger.triggerId}`);
       return endpoint;
@@ -523,7 +578,10 @@ export class WebhookManager {
         return false;
       }
 
-      if (!this.isTimestampWithinTolerance(event.timestamp)) {
+      const replayWindowSeconds = this.resolveReplayWindowSeconds(webhook, signatureConfig);
+      const toleranceMs = replayWindowSeconds * 1000;
+
+      if (!this.isTimestampWithinTolerance(event.timestamp, toleranceMs)) {
         console.warn(
           `⚠️ Webhook event rejected: timestamp outside tolerance window (webhook=${webhookId})`
         );
@@ -540,16 +598,47 @@ export class WebhookManager {
         }
       }
 
-      // Check for duplicates
+      const providerId = this.resolveProviderId(webhook, signatureConfig);
       const eventHash = this.createEventHash(event);
-      if (this.hasSeenEvent(webhook.id, eventHash)) {
-        console.log(`🔄 Duplicate webhook event ignored: ${webhookId}`);
-        return true; // Return success but don't process
+      event.dedupeToken = eventHash;
+
+      const logId = await this.persistence.logWebhookEvent(event);
+      if (logId) {
+        event.id = logId;
       }
 
-      // Mark as seen for deduplication
-      event.dedupeToken = eventHash;
-      await this.recordDedupeToken(webhook.id, eventHash, event.timestamp);
+      const dedupeResult = await this.persistence.recordWebhookDedupeEntry({
+        webhookId: webhook.id,
+        providerId,
+        token: eventHash,
+        ttlMs: toleranceMs,
+        createdAt: event.timestamp,
+      });
+
+      if (dedupeResult === 'duplicate') {
+        const message = `duplicate event within ${replayWindowSeconds}s window`;
+        console.log(`🔄 Duplicate webhook event ignored: ${webhookId}`);
+        await this.persistence.markWebhookEventProcessed(logId, {
+          success: false,
+          error: message,
+          duplicate: true,
+          dropReason: message,
+        });
+        recordWebhookDedupeHit({
+          provider_id: providerId,
+          app_id: webhook.appId,
+          trigger_id: webhook.triggerId,
+          source: 'webhook',
+        });
+        return true;
+      }
+
+      recordWebhookDedupeMiss({
+        provider_id: providerId,
+        app_id: webhook.appId,
+        trigger_id: webhook.triggerId,
+        source: 'webhook',
+      });
 
       // Update last triggered time
       webhook.lastTriggered = new Date();
@@ -560,7 +649,7 @@ export class WebhookManager {
       await this.persistence.saveWebhookTrigger(webhook);
 
       // Process the trigger (this would integrate with workflow engine)
-      await this.processTriggerEvent(event);
+      await this.processTriggerEvent(event, { toleranceMs, logId });
 
       console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`);
       return true;
@@ -609,7 +698,6 @@ export class WebhookManager {
 
       this.pollingTriggers.set(pollId, normalized);
       await this.persistence.savePollingTrigger(normalized);
-      await this.ensureDedupeSet(pollId);
 
       console.log(`⏰ Registered polling trigger: ${trigger.appId}.${trigger.triggerId} (every ${trigger.interval}s)`);
 
@@ -624,7 +712,6 @@ export class WebhookManager {
 
     const normalized = this.normalizePollingTrigger(trigger);
     this.pollingTriggers.set(normalized.id, normalized);
-    await this.ensureDedupeSet(normalized.id);
 
     await this.executePoll(normalized);
   }
@@ -646,12 +733,6 @@ export class WebhookManager {
     const triggers = await this.persistence.loadPollingTriggers();
     this.pollingTriggers.clear();
 
-    const dedupeState = await this.persistence.loadDedupeTokens();
-    this.dedupeCache.clear();
-    for (const [id, tokens] of Object.entries(dedupeState)) {
-      this.dedupeCache.set(id, new Set(tokens));
-    }
-
     triggers.forEach((trigger) => {
       const normalized = this.normalizePollingTrigger(trigger);
       this.pollingTriggers.set(trigger.id, normalized);
@@ -659,49 +740,6 @@ export class WebhookManager {
 
     console.log(`🔁 Rehydrated ${triggers.length} polling triggers from persistent storage.`);
     return { total: triggers.length };
-  }
-
-  private async ensureDedupeSet(id: string): Promise<Set<string>> {
-    let existing = this.dedupeCache.get(id);
-    if (!existing) {
-      existing = new Set<string>();
-      this.dedupeCache.set(id, existing);
-      await this.persistence.persistDedupeTokens(id, []);
-    }
-    return existing;
-  }
-
-  private hasSeenEvent(id: string, token: string): boolean {
-    const set = this.dedupeCache.get(id);
-    return set ? set.has(token) : false;
-  }
-
-  private async recordDedupeToken(id: string, token: string, createdAt?: Date): Promise<void> {
-    let set = this.dedupeCache.get(id);
-    if (!set) {
-      set = await this.ensureDedupeSet(id);
-    }
-
-    if (set.has(token)) {
-      return;
-    }
-
-    set.add(token);
-
-    if (set.size > WebhookManager.MAX_DEDUPE_TOKENS) {
-      const tokens = Array.from(set);
-      const overflow = tokens.length - WebhookManager.MAX_DEDUPE_TOKENS;
-      for (let i = 0; i < overflow; i++) {
-        set.delete(tokens[i]);
-      }
-    }
-
-    await this.persistence.persistDedupeTokens(id, [
-      {
-        token,
-        createdAt: createdAt instanceof Date ? createdAt : undefined,
-      },
-    ]);
   }
 
   /**
@@ -760,27 +798,42 @@ export class WebhookManager {
             userId,
           };
 
-          // Check for duplicates using dedupe key
-          if (trigger.dedupeKey && result[trigger.dedupeKey]) {
-            const dedupeHash = createHash('md5')
-              .update(`${trigger.id}-${result[trigger.dedupeKey]}`)
-              .digest('hex');
+          const replayWindowSeconds = this.resolvePollingReplayWindowSeconds(trigger);
+          const toleranceMs = replayWindowSeconds * 1000;
+          const providerId = this.resolvePollingProviderId(trigger);
 
-            if (this.hasSeenEvent(trigger.id, dedupeHash)) {
-              continue; // Skip duplicate
-            }
-            event.dedupeToken = dedupeHash;
-            await this.recordDedupeToken(trigger.id, dedupeHash, event.timestamp);
-          } else {
-            const fallbackToken = this.createEventHash(event);
-            if (this.hasSeenEvent(trigger.id, fallbackToken)) {
-              continue;
-            }
-            event.dedupeToken = fallbackToken;
-            await this.recordDedupeToken(trigger.id, fallbackToken, event.timestamp);
+          const dedupeToken = trigger.dedupeKey && result[trigger.dedupeKey]
+            ? createHash('md5').update(`${trigger.id}-${result[trigger.dedupeKey]}`).digest('hex')
+            : this.createEventHash(event);
+
+          event.dedupeToken = dedupeToken;
+
+          const dedupeResult = await this.persistence.recordWebhookDedupeEntry({
+            webhookId: trigger.id,
+            providerId,
+            token: dedupeToken,
+            ttlMs: toleranceMs,
+            createdAt: event.timestamp,
+          });
+
+          if (dedupeResult === 'duplicate') {
+            recordWebhookDedupeHit({
+              provider_id: providerId,
+              app_id: trigger.appId,
+              trigger_id: trigger.triggerId,
+              source: 'polling',
+            });
+            continue;
           }
 
-          await this.processTriggerEvent(event);
+          recordWebhookDedupeMiss({
+            provider_id: providerId,
+            app_id: trigger.appId,
+            trigger_id: trigger.triggerId,
+            source: 'polling',
+          });
+
+          await this.processTriggerEvent(event, { toleranceMs });
         }
       }
 
@@ -972,12 +1025,17 @@ export class WebhookManager {
   /**
    * Process a trigger event (integrate with workflow engine)
    */
-  private async processTriggerEvent(event: TriggerEvent): Promise<boolean> {
-    let logId: string | null = null;
+  private async processTriggerEvent(
+    event: TriggerEvent,
+    options: { toleranceMs: number; logId?: string }
+  ): Promise<boolean> {
+    let logId: string | null = options.logId ?? null;
     try {
-      logId = await this.persistence.logWebhookEvent(event);
-      if (logId) {
-        event.id = logId;
+      if (!logId) {
+        logId = await this.persistence.logWebhookEvent(event);
+        if (logId) {
+          event.id = logId;
+        }
       }
 
       if (!event.organizationId) {
@@ -985,8 +1043,8 @@ export class WebhookManager {
         return false;
       }
 
-      if (!this.isTimestampWithinTolerance(event.timestamp)) {
-        const toleranceSeconds = Math.floor(this.replayToleranceMs / 1000);
+      if (!this.isTimestampWithinTolerance(event.timestamp, options.toleranceMs)) {
+        const toleranceSeconds = Math.floor(options.toleranceMs / 1000);
         const message = `timestamp outside replay tolerance (${toleranceSeconds}s)`;
         console.warn(`⚠️ Trigger event rejected due to ${message}`);
         await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
@@ -1073,7 +1131,6 @@ export class WebhookManager {
     }
 
     webhook.isActive = false;
-    this.dedupeCache.delete(webhookId);
 
     try {
       await this.persistence.deactivateTrigger(webhookId);
@@ -1092,7 +1149,6 @@ export class WebhookManager {
     await this.ready;
     const removed = this.activeWebhooks.delete(webhookId);
     if (removed) {
-      this.dedupeCache.delete(webhookId);
       await this.persistence.deactivateTrigger(webhookId);
       console.log(`🗑️ Removed webhook: ${webhookId}`);
     }
@@ -1121,11 +1177,10 @@ export class WebhookManager {
    * Get webhook statistics
    */
   getStats(): any {
-    const dedupeSize = Array.from(this.dedupeCache.values()).reduce((total, set) => total + set.size, 0);
     return {
       activeWebhooks: this.activeWebhooks.size,
       pollingTriggers: this.pollingTriggers.size,
-      dedupeEntries: dedupeSize,
+      dedupeEntries: null,
       webhooks: this.listWebhooks().map(w => ({
         id: w.id,
         app: w.appId,

@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {
   db,
@@ -16,10 +16,11 @@ void ensureDatabaseReady();
 const DEFAULT_DEDUPE_TOKEN_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 const DEFAULT_MAX_DEDUPE_TOKENS = 500;
 
-type DedupeTokenInput = string | { token: string; createdAt?: Date };
+type DedupeTokenInput = string | { token: string; createdAt?: Date; ttlMs?: number };
 interface DedupeTokenRecord {
   token: string;
   createdAt: Date;
+  expiresAt?: Date;
 }
 const DEFAULT_MAX_BACKOFF_MULTIPLIER = 32;
 
@@ -90,6 +91,10 @@ class InMemoryTriggerPersistenceStore {
   private pollingTriggers = new Map<string, any>();
   private webhookLogs = new Map<string, any>();
   private dedupeTokens = new Map<string, DedupeTokenRecord[]>();
+
+  private composeKey(webhookId: string, providerId?: string): string {
+    return providerId ? `${webhookId}::${providerId}` : webhookId;
+  }
 
   public async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive !== false);
@@ -250,7 +255,10 @@ class InMemoryTriggerPersistenceStore {
       }
 
       this.dedupeTokens.set(id, normalized);
-      result[id] = normalized.map((entry) => entry.token);
+      const [webhookId] = id.split('::');
+      const existing = result[webhookId] ?? [];
+      const merged = [...existing, ...normalized.map((entry) => entry.token)];
+      result[webhookId] = Array.from(new Set(merged));
     }
     return result;
   }
@@ -263,7 +271,15 @@ class InMemoryTriggerPersistenceStore {
     const now = new Date();
     const cutoff = DEFAULT_DEDUPE_TOKEN_TTL_MS > 0 ? now.getTime() - DEFAULT_DEDUPE_TOKEN_TTL_MS : null;
     const existing = this.dedupeTokens.get(id) ?? [];
-    const next = existing.slice();
+    const next = existing.filter((entry) => {
+      if (entry.expiresAt) {
+        return entry.expiresAt.getTime() >= now.getTime();
+      }
+      if (cutoff === null) {
+        return true;
+      }
+      return entry.createdAt.getTime() >= cutoff;
+    });
 
     for (const token of tokens) {
       const normalizedToken = typeof token === 'string' ? token : token.token;
@@ -286,10 +302,13 @@ class InMemoryTriggerPersistenceStore {
       }
 
       const index = next.findIndex((entry) => entry.token === normalizedToken);
+      const ttlMs = typeof token === 'string' ? undefined : token.ttlMs;
+      const expiresAt = ttlMs && ttlMs > 0 ? new Date(normalizedCreatedAt.getTime() + ttlMs) : undefined;
+
       if (index >= 0) {
-        next[index] = { token: normalizedToken, createdAt: normalizedCreatedAt };
+        next[index] = { token: normalizedToken, createdAt: normalizedCreatedAt, expiresAt };
       } else {
-        next.push({ token: normalizedToken, createdAt: normalizedCreatedAt });
+        next.push({ token: normalizedToken, createdAt: normalizedCreatedAt, expiresAt });
       }
     }
 
@@ -314,18 +333,98 @@ class InMemoryTriggerPersistenceStore {
   public async getWebhookLog(id: string) {
     return this.webhookLogs.get(id);
   }
+
+  public async recordWebhookDedupeEntry(params: {
+    webhookId: string;
+    providerId?: string;
+    token: string;
+    ttlMs: number;
+    createdAt?: Date;
+  }): Promise<'recorded' | 'duplicate'> {
+    const key = this.composeKey(params.webhookId, params.providerId);
+    const createdAt = params.createdAt instanceof Date && !Number.isNaN(params.createdAt.getTime())
+      ? params.createdAt
+      : new Date();
+    const ttlMs = params.ttlMs > 0 ? params.ttlMs : DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const cutoff = ttlMs > 0 ? createdAt.getTime() - ttlMs : null;
+
+    const entries = this.dedupeTokens.get(key) ?? [];
+    const filtered = entries.filter((entry) => {
+      if (entry.expiresAt) {
+        return entry.expiresAt.getTime() >= createdAt.getTime();
+      }
+      if (cutoff === null) {
+        return true;
+      }
+      return entry.createdAt.getTime() >= cutoff;
+    });
+
+    const hasDuplicate = filtered.some((entry) => entry.token === params.token);
+    if (hasDuplicate) {
+      this.dedupeTokens.set(key, filtered);
+      return 'duplicate';
+    }
+
+    filtered.push({
+      token: params.token,
+      createdAt,
+      expiresAt: ttlMs > 0 ? new Date(createdAt.getTime() + ttlMs) : undefined,
+    });
+
+    filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (filtered.length > DEFAULT_MAX_DEDUPE_TOKENS) {
+      filtered.splice(0, filtered.length - DEFAULT_MAX_DEDUPE_TOKENS);
+    }
+
+    this.dedupeTokens.set(key, filtered);
+    return 'recorded';
+  }
+
+  public async listDuplicateWebhookEvents(
+    workflowId: string,
+    options: { limit?: number; since?: Date } = {}
+  ): Promise<Array<{ id: string; webhookId: string; timestamp: Date; error: string }>> {
+    const limit = Math.max(1, Math.min(100, options.limit ?? 20));
+    const since = options.since;
+
+    const entries = Array.from(this.webhookLogs.values())
+      .filter((log) => log.workflowId === workflowId)
+      .filter((log) => log.processed !== true)
+      .filter((log) => typeof log.error === 'string' && log.error.toLowerCase().startsWith('duplicate'))
+      .filter((log) => (since ? (log.timestamp instanceof Date ? log.timestamp >= since : new Date(log.timestamp) >= since) : true))
+      .sort((a, b) => {
+        const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+        const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, limit)
+      .map((log) => ({
+        id: log.id,
+        webhookId: log.webhookId,
+        timestamp: log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp),
+        error: log.error ?? 'duplicate event',
+      }));
+
+    return entries;
+  }
 }
 
 export interface TriggerExecutionResult {
   success: boolean;
   error?: string;
   executionId?: string;
+  duplicate?: boolean;
+  dropReason?: string;
 }
 
 export class TriggerPersistenceService {
   private static instance: TriggerPersistenceService;
   private readonly memoryStore = new InMemoryTriggerPersistenceStore();
   private hasLoggedFallback = false;
+
+  private composeDedupeKey(webhookId: string, providerId?: string): string {
+    return providerId ? `${webhookId}::${providerId}` : webhookId;
+  }
 
   private constructor() {}
 
@@ -773,6 +872,137 @@ export class TriggerPersistenceService {
     }
   }
 
+  public async recordWebhookDedupeEntry(params: {
+    webhookId: string;
+    providerId?: string;
+    token: string;
+    ttlMs: number;
+    createdAt?: Date;
+  }): Promise<'recorded' | 'duplicate'> {
+    const database = this.requireDatabase('recordWebhookDedupeEntry');
+
+    if (typeof (database as any).recordWebhookDedupeEntry === 'function') {
+      return (database as any).recordWebhookDedupeEntry(params);
+    }
+
+    const now = params.createdAt instanceof Date && !Number.isNaN(params.createdAt.getTime())
+      ? params.createdAt
+      : new Date();
+    const ttlMs = params.ttlMs > 0 ? params.ttlMs : DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const cutoff = ttlMs > 0 ? new Date(now.getTime() - ttlMs) : null;
+    const key = this.composeDedupeKey(params.webhookId, params.providerId);
+
+    try {
+      if (cutoff) {
+        await database
+          .delete(webhookDedupe)
+          .where(and(eq(webhookDedupe.triggerId, key), lt(webhookDedupe.createdAt, cutoff)));
+      }
+
+      const insertResult = await database
+        .insert(webhookDedupe)
+        .values({ triggerId: key, token: params.token, createdAt: now })
+        .onConflictDoNothing()
+        .returning({ createdAt: webhookDedupe.createdAt });
+
+      if (insertResult.length > 0) {
+        if (cutoff) {
+          await database
+            .delete(webhookDedupe)
+            .where(and(eq(webhookDedupe.triggerId, key), lt(webhookDedupe.createdAt, cutoff)));
+        }
+        await database.execute(sql`
+          DELETE FROM "webhook_dedupe"
+          WHERE "trigger_id" = ${key}
+            AND ("trigger_id", "token") NOT IN (
+              SELECT "trigger_id", "token"
+              FROM "webhook_dedupe"
+              WHERE "trigger_id" = ${key}
+              ORDER BY "created_at" DESC
+              LIMIT ${DEFAULT_MAX_DEDUPE_TOKENS}
+            )
+        `);
+        return 'recorded';
+      }
+
+      if (cutoff) {
+        const existing = await database
+          .select({ createdAt: webhookDedupe.createdAt })
+          .from(webhookDedupe)
+          .where(and(eq(webhookDedupe.triggerId, key), eq(webhookDedupe.token, params.token)))
+          .limit(1);
+
+        if (existing.length === 0) {
+          const inserted = await database
+            .insert(webhookDedupe)
+            .values({ triggerId: key, token: params.token, createdAt: now })
+            .onConflictDoNothing();
+          if ('rowCount' in inserted && inserted.rowCount && inserted.rowCount > 0) {
+            return 'recorded';
+          }
+        } else if (existing[0]?.createdAt && existing[0]!.createdAt < cutoff) {
+          await database
+            .update(webhookDedupe)
+            .set({ createdAt: now })
+            .where(and(eq(webhookDedupe.triggerId, key), eq(webhookDedupe.token, params.token)));
+          return 'recorded';
+        }
+      }
+
+      return 'duplicate';
+    } catch (error) {
+      this.logPersistenceError('recordWebhookDedupeEntry', error, {
+        webhookId: params.webhookId,
+        providerId: params.providerId,
+      });
+      return 'recorded';
+    }
+  }
+
+  public async listDuplicateWebhookEvents(options: {
+    workflowId: string;
+    limit?: number;
+    since?: Date;
+  }): Promise<Array<{ id: string; webhookId: string; timestamp: Date; error: string }>> {
+    const database = this.requireDatabase('listDuplicateWebhookEvents');
+
+    if (typeof (database as any).listDuplicateWebhookEvents === 'function') {
+      return (database as any).listDuplicateWebhookEvents(options);
+    }
+
+    const limit = Math.max(1, Math.min(100, options.limit ?? 20));
+    const conditions: any[] = [
+      eq(webhookLogs.workflowId, options.workflowId),
+      eq(webhookLogs.processed, false),
+      sql`LOWER(COALESCE(${webhookLogs.error}, '')) LIKE 'duplicate%'`,
+    ];
+
+    if (options.since) {
+      conditions.push(gte(webhookLogs.timestamp, options.since));
+    }
+
+    const whereClause = conditions.length === 1 ? conditions[0]! : and(...conditions);
+
+    const rows = await database
+      .select({
+        id: webhookLogs.id,
+        webhookId: webhookLogs.webhookId,
+        timestamp: webhookLogs.timestamp,
+        error: webhookLogs.error,
+      })
+      .from(webhookLogs)
+      .where(whereClause)
+      .orderBy(desc(webhookLogs.timestamp))
+      .limit(limit);
+
+    return rows.map((row: any) => ({
+      id: row.id,
+      webhookId: row.webhookId,
+      timestamp: row.timestamp instanceof Date ? row.timestamp : new Date(row.timestamp),
+      error: row.error ?? 'duplicate event',
+    }));
+  }
+
   public async loadDedupeTokens(): Promise<Record<string, string[]>> {
     const database = this.requireDatabase('loadDedupeTokens');
 
@@ -817,7 +1047,10 @@ export class TriggerPersistenceService {
         .slice(-DEFAULT_MAX_DEDUPE_TOKENS);
 
       if (sorted.length > 0) {
-        result[triggerId] = sorted.map((entry) => entry.token);
+        const [webhookId] = triggerId.split('::');
+        const existing = result[webhookId] ?? [];
+        const merged = [...existing, ...sorted.map((entry) => entry.token)];
+        result[webhookId] = Array.from(new Set(merged));
       }
     }
 
