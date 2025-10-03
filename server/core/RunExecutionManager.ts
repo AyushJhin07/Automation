@@ -4,7 +4,7 @@
  */
 
 import { NodeGraph, GraphNode } from '../../shared/nodeGraphSchema';
-import { retryManager } from './RetryManager';
+import { retryManager, CircuitBreakerSnapshot } from './RetryManager';
 
 export interface NodeExecution {
   nodeId: string;
@@ -33,6 +33,9 @@ export interface NodeExecution {
     tokensUsed?: number;
     httpStatusCode?: number;
     headers?: Record<string, string>;
+    timeoutMs?: number;
+    connectorId?: string;
+    circuitState?: CircuitBreakerSnapshot;
   };
 }
 
@@ -61,6 +64,17 @@ export interface WorkflowExecution {
     totalTokensUsed: number;
     cacheHitRate: number;
     averageNodeDuration: number;
+    openCircuitBreakers: Array<{
+      nodeId: string;
+      nodeLabel: string;
+      connectorId?: string;
+      state: CircuitBreakerSnapshot['state'];
+      consecutiveFailures: number;
+      openedAt?: Date;
+      lastFailureAt?: Date;
+      cooldownMs: number;
+      failureThreshold: number;
+    }>;
   };
 }
 
@@ -115,7 +129,8 @@ class RunExecutionManager {
         totalCostUSD: 0,
         totalTokensUsed: 0,
         cacheHitRate: 0,
-        averageNodeDuration: 0
+        averageNodeDuration: 0,
+        openCircuitBreakers: []
       }
     };
 
@@ -138,12 +153,16 @@ class RunExecutionManager {
   startNodeExecution(
     executionId: string,
     node: GraphNode,
-    input?: any
+    input?: any,
+    options: { timeoutMs?: number; connectorId?: string } = {}
   ): NodeExecution {
     const execution = this.executions.get(executionId);
     if (!execution) {
       throw new Error(`Execution ${executionId} not found`);
     }
+
+    const connectorId = options.connectorId ?? this.resolveConnectorId(node);
+    const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
 
     const nodeExecution: NodeExecution = {
       nodeId: node.id,
@@ -156,7 +175,11 @@ class RunExecutionManager {
       input,
       correlationId: execution.correlationId,
       retryHistory: [],
-      metadata: {}
+      metadata: {
+        timeoutMs: options.timeoutMs,
+        connectorId,
+        circuitState
+      }
     };
 
     // Get retry info from retry manager
@@ -460,9 +483,42 @@ class RunExecutionManager {
     return nodeExecutions?.find(ne => ne.nodeId === nodeId);
   }
 
+  private resolveConnectorId(node: GraphNode): string | undefined {
+    const data = node.data || {};
+    const metadata = node.metadata || {};
+    const candidates = [
+      (data as any)?.connectorId,
+      (metadata as any)?.connectorId,
+      (data as any)?.provider,
+      (data as any)?.appKey,
+      (data as any)?.app,
+      node.app,
+      node.connectionId,
+      (data as any)?.connectionId
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+
+    if (typeof node.type === 'string') {
+      const parts = node.type.split('.');
+      if (parts.length >= 2) {
+        const [category, connector] = parts;
+        if (category === 'action' || category === 'trigger') {
+          return connector;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
   private updateWorkflowMetadata(execution: WorkflowExecution): void {
     const nodeExecutions = this.nodeExecutions.get(execution.executionId) || [];
-    
+
     // Calculate retry count
     execution.metadata.retryCount = nodeExecutions.reduce((sum, ne) => sum + ne.retryHistory.length, 0);
     
@@ -477,9 +533,34 @@ class RunExecutionManager {
     
     // Calculate average node duration
     const completedNodes = nodeExecutions.filter(ne => ne.duration);
-    execution.metadata.averageNodeDuration = completedNodes.length > 0 
-      ? completedNodes.reduce((sum, ne) => sum + ne.duration!, 0) / completedNodes.length 
+    execution.metadata.averageNodeDuration = completedNodes.length > 0
+      ? completedNodes.reduce((sum, ne) => sum + ne.duration!, 0) / completedNodes.length
       : 0;
+
+    const breakerDetails = nodeExecutions
+      .map(ne => {
+        const state = ne.metadata.circuitState;
+        if (!state) {
+          return null;
+        }
+        if (state.state === 'open' || state.state === 'half_open') {
+          return {
+            nodeId: ne.nodeId,
+            nodeLabel: ne.nodeLabel,
+            connectorId: ne.metadata.connectorId,
+            state: state.state,
+            consecutiveFailures: state.consecutiveFailures,
+            openedAt: state.openedAt,
+            lastFailureAt: state.lastFailureAt,
+            cooldownMs: state.cooldownMs,
+            failureThreshold: state.failureThreshold
+          };
+        }
+        return null;
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    execution.metadata.openCircuitBreakers = breakerDetails;
   }
 
   private generateCorrelationId(): string {
