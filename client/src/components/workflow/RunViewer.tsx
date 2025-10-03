@@ -97,6 +97,13 @@ interface WorkflowExecution {
   };
 }
 
+interface DuplicateEventSummary {
+  id: string;
+  webhookId: string;
+  timestamp: string;
+  error: string;
+}
+
 interface RunViewerProps {
   executionId?: string;
   workflowId?: string;
@@ -116,11 +123,38 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [showJsonView, setShowJsonView] = useState(false);
+  const [duplicateEvents, setDuplicateEvents] = useState<DuplicateEventSummary[]>([]);
 
   // Load executions
   useEffect(() => {
     loadExecutions();
   }, [initialExecutionId, initialWorkflowId]);
+
+  useEffect(() => {
+    const loadDuplicateEvents = async () => {
+      if (!selectedExecution) {
+        setDuplicateEvents([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/workflows/${selectedExecution.workflowId}/duplicate-events?limit=10`
+        );
+        const data = await response.json();
+        if (data.success) {
+          setDuplicateEvents(Array.isArray(data.events) ? data.events : []);
+        } else {
+          setDuplicateEvents([]);
+        }
+      } catch (error) {
+        console.error('Failed to load duplicate events:', error);
+        setDuplicateEvents([]);
+      }
+    };
+
+    loadDuplicateEvents();
+  }, [selectedExecution]);
 
   const loadExecutions = async () => {
     setLoading(true);
@@ -448,13 +482,30 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                     Node Timeline
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {selectedExecution.nodeExecutions.map((node, index) => (
-                      <div
-                        key={node.nodeId}
-                        className="border border-slate-200 rounded-lg overflow-hidden"
-                      >
+              <CardContent>
+                <div className="space-y-3">
+                  {duplicateEvents.length > 0 && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                      <div className="font-medium">
+                        {duplicateEvents.length === 1
+                          ? '1 webhook event was dropped as a duplicate'
+                          : `${duplicateEvents.length} webhook events were dropped as duplicates`}
+                      </div>
+                      <ul className="mt-2 space-y-1">
+                        {duplicateEvents.map((event) => (
+                          <li key={event.id} className="flex items-center justify-between gap-3 text-xs">
+                            <span className="truncate" title={event.error}>{event.error}</span>
+                            <span>{format(new Date(event.timestamp), 'PPpp')}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {selectedExecution.nodeExecutions.map((node, index) => (
+                    <div
+                      key={node.nodeId}
+                      className="border border-slate-200 rounded-lg overflow-hidden"
+                    >
                         {/* Node Header */}
                         <div
                           onClick={() => toggleNodeExpansion(node.nodeId)}

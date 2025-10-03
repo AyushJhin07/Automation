@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { TriggerPersistenceService } from '../../services/TriggerPersistenceService.js';
 
 process.env.NODE_ENV = 'test';
 
@@ -7,7 +8,7 @@ class InMemoryTriggerPersistenceDb {
   public workflowTriggers = new Map<string, any>();
   public pollingTriggers = new Map<string, any>();
   public webhookLogs = new Map<string, any>();
-  public dedupeTokens = new Map<string, { token: string; createdAt: Date }[]>();
+  public dedupeTokens = new Map<string, { token: string; createdAt: Date; expiresAt?: Date }[]>();
 
   async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive);
@@ -90,6 +91,53 @@ class InMemoryTriggerPersistenceDb {
   }
 
   async persistDedupeTokens() {}
+
+  async recordWebhookDedupeEntry({
+    webhookId,
+    providerId,
+    token,
+    ttlMs,
+    createdAt,
+  }: {
+    webhookId: string;
+    providerId?: string;
+    token: string;
+    ttlMs: number;
+    createdAt?: Date;
+  }): Promise<'recorded' | 'duplicate'> {
+    const key = providerId ? `${webhookId}::${providerId}` : webhookId;
+    const now = createdAt instanceof Date && !Number.isNaN(createdAt.getTime()) ? createdAt : new Date();
+    const ttl = ttlMs > 0 ? ttlMs : TriggerPersistenceService.DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const cutoff = ttl > 0 ? now.getTime() - ttl : null;
+
+    const existing = this.dedupeTokens.get(key) ?? [];
+    const filtered = existing.filter((entry) => {
+      if (entry.expiresAt) {
+        return entry.expiresAt.getTime() >= now.getTime();
+      }
+      if (cutoff === null) {
+        return true;
+      }
+      return entry.createdAt.getTime() >= cutoff;
+    });
+
+    if (filtered.some((entry) => entry.token === token)) {
+      this.dedupeTokens.set(key, filtered);
+      return 'duplicate';
+    }
+
+    filtered.push({ token, createdAt: now, expiresAt: ttl > 0 ? new Date(now.getTime() + ttl) : undefined });
+    filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (filtered.length > 500) {
+      filtered.splice(0, filtered.length - 500);
+    }
+    this.dedupeTokens.set(key, filtered);
+    return 'recorded';
+  }
+
+  async listDuplicateWebhookEvents(): Promise<Array<{ id: string; webhookId: string; timestamp: Date; error: string }>> {
+    return [];
+  }
 }
 
 const dbStub = new InMemoryTriggerPersistenceDb();

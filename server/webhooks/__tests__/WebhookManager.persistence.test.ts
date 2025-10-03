@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { TriggerPersistenceService } from '../../services/TriggerPersistenceService.js';
 
 process.env.NODE_ENV = 'test';
 process.env.WEBHOOK_REPLAY_TOLERANCE_SECONDS = '60';
@@ -7,7 +8,7 @@ class InMemoryTriggerPersistenceDb {
   public workflowTriggers = new Map<string, any>();
   public pollingTriggers = new Map<string, any>();
   public webhookLogs = new Map<string, any>();
-  public dedupeTokens = new Map<string, { token: string; createdAt: Date }[]>();
+  public dedupeTokens = new Map<string, { token: string; createdAt: Date; expiresAt?: Date }[]>();
 
   async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive);
@@ -167,6 +168,86 @@ class InMemoryTriggerPersistenceDb {
       this.workflowTriggers.set(id, workflow);
     }
   }
+
+  async recordWebhookDedupeEntry({
+    webhookId,
+    providerId,
+    token,
+    ttlMs,
+    createdAt,
+  }: {
+    webhookId: string;
+    providerId?: string;
+    token: string;
+    ttlMs: number;
+    createdAt?: Date;
+  }): Promise<'recorded' | 'duplicate'> {
+    const key = providerId ? `${webhookId}::${providerId}` : webhookId;
+    const now = createdAt instanceof Date && !Number.isNaN(createdAt.getTime()) ? createdAt : new Date();
+    const ttl = ttlMs > 0 ? ttlMs : TriggerPersistenceService.DEFAULT_DEDUPE_TOKEN_TTL_MS;
+    const cutoff = ttl > 0 ? now.getTime() - ttl : null;
+
+    const existing = this.dedupeTokens.get(key) ?? [];
+    const filtered = existing.filter((entry) => {
+      if (entry.expiresAt) {
+        return entry.expiresAt.getTime() >= now.getTime();
+      }
+      if (cutoff === null) {
+        return true;
+      }
+      return entry.createdAt.getTime() >= cutoff;
+    });
+
+    const duplicate = filtered.some((entry) => entry.token === token);
+    if (duplicate) {
+      this.dedupeTokens.set(key, filtered);
+      return 'duplicate';
+    }
+
+    filtered.push({ token, createdAt: now, expiresAt: ttl > 0 ? new Date(now.getTime() + ttl) : undefined });
+    filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (filtered.length > 500) {
+      filtered.splice(0, filtered.length - 500);
+    }
+
+    this.dedupeTokens.set(key, filtered);
+    return 'recorded';
+  }
+
+  async listDuplicateWebhookEvents({
+    workflowId,
+    limit = 20,
+    since,
+  }: {
+    workflowId: string;
+    limit?: number;
+    since?: Date;
+  }): Promise<Array<{ id: string; webhookId: string; timestamp: Date; error: string }>> {
+    const sanitizedLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+    const sinceTime = since instanceof Date && !Number.isNaN(since.getTime()) ? since.getTime() : null;
+
+    return Array.from(this.webhookLogs.values())
+      .filter((log) => log.workflowId === workflowId)
+      .filter((log) => log.processed !== true)
+      .filter((log) => typeof log.error === 'string' && log.error.toLowerCase().startsWith('duplicate'))
+      .filter((log) => {
+        if (!sinceTime) return true;
+        const timestamp = log.timestamp instanceof Date ? log.timestamp.getTime() : new Date(log.timestamp).getTime();
+        return timestamp >= sinceTime;
+      })
+      .sort((a, b) => {
+        const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+        const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, sanitizedLimit)
+      .map((log) => ({
+        id: log.id,
+        webhookId: log.webhookId,
+        timestamp: log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp),
+        error: log.error ?? 'duplicate event',
+      }));
+  }
 }
 
 const dbStub = new InMemoryTriggerPersistenceDb();
@@ -232,7 +313,8 @@ assert.ok(logEntry, 'webhook log should be stored');
 assert.equal(logEntry.processed, true, 'webhook log should be marked processed');
 assert.equal(logEntry.executionId, 'exec-123', 'execution id from queue should be persisted');
 
-const dedupeTokens = dbStub.dedupeTokens.get(webhookId) ?? [];
+const dedupeKey = `${webhookId}::github`;
+const dedupeTokens = dbStub.dedupeTokens.get(dedupeKey) ?? [];
 assert.ok(dedupeTokens.length > 0, 'dedupe tokens should be persisted after handling event');
 
 const staleTimestampSeconds = Math.floor((Date.now() - 5 * 60 * 1000) / 1000);

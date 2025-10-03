@@ -47,6 +47,7 @@ import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 import { normalizeAppId } from "./services/PromptBuilder.js";
 import { executionQueueService } from './services/ExecutionQueueService.js';
+import { triggerPersistenceService } from './services/TriggerPersistenceService.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
@@ -154,6 +155,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // CRITICAL FIX: Workflow read routes for Graph Editor handoff
   app.use('/api', workflowReadRoutes);
+  app.get('/api/workflows/:workflowId/duplicate-events', authenticateToken, async (req, res) => {
+    const { workflowId } = req.params;
+    if (!workflowId) {
+      return res.status(400).json({ success: false, error: 'workflowId is required' });
+    }
+
+    const limitValue = req.query.limit !== undefined ? Number(req.query.limit) : undefined;
+    const limit = limitValue !== undefined && Number.isFinite(limitValue) ? Math.trunc(limitValue) : undefined;
+    const sinceValue = req.query.since ? new Date(String(req.query.since)) : undefined;
+    const since = sinceValue && !Number.isNaN(sinceValue.getTime()) ? sinceValue : undefined;
+
+    try {
+      const events = await triggerPersistenceService.listDuplicateWebhookEvents({ workflowId, limit, since });
+      res.json({ success: true, events });
+    } catch (error) {
+      console.error('❌ Failed to fetch duplicate webhook events:', getErrorMessage(error));
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   app.use('/api/workflows', workflowDeploymentRoutes);
   
   // PRODUCTION: Health monitoring and metrics routes

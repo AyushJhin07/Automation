@@ -34,6 +34,10 @@ const nodeLatencyHistogram = meter.createHistogram('workflow_node_latency_ms', {
   unit: 'ms',
 });
 
+const webhookDedupeCounter = meter.createCounter('webhook_dedupe_events_total', {
+  description: 'Counts webhook deduplication hits and misses',
+});
+
 const queueDepthGauge = meter.createObservableGauge('workflow_queue_depth', {
   description: 'Number of jobs in workflow queues by state',
   unit: '{job}',
@@ -77,6 +81,14 @@ export function recordHttpRequestDuration(durationMs: number, attributes: Record
 
 export function recordNodeLatency(durationMs: number, attributes: Record<string, unknown>): void {
   nodeLatencyHistogram.record(durationMs, sanitizeAttributes(attributes));
+}
+
+export function recordWebhookDedupeHit(attributes: Record<string, unknown>): void {
+  webhookDedupeCounter.add(1, sanitizeAttributes({ ...attributes, outcome: 'hit' }));
+}
+
+export function recordWebhookDedupeMiss(attributes: Record<string, unknown>): void {
+  webhookDedupeCounter.add(1, sanitizeAttributes({ ...attributes, outcome: 'miss' }));
 }
 
 export function updateQueueDepthMetric<Name extends QueueName>(
