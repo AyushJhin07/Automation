@@ -1,14 +1,10 @@
-import {
-  CodePipelineClient,
-  CreatePipelineCommand,
-  GetPipelineStateCommand,
-  ListPipelinesCommand,
-  StartPipelineExecutionCommand,
-  StopPipelineExecutionCommand,
-  type CodePipelineClientConfig,
-  type ActionTypeId,
-  type StageDeclaration
-} from '@aws-sdk/client-codepipeline';
+import type {
+  ActionTypeId,
+  CodePipelineClientConfig,
+  StageDeclaration
+} from './aws/stubs/codepipeline';
+
+import { loadCodePipelineSdk } from './aws/sdk-loader';
 
 import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 import { getErrorMessage } from '../types/common';
@@ -74,6 +70,15 @@ function sanitizeSessionToken(credentials: AwsCodePipelineCredentials): string |
     credentials.accessToken
   );
 }
+
+const {
+  CodePipelineClient,
+  CreatePipelineCommand,
+  GetPipelineStateCommand,
+  ListPipelinesCommand,
+  StartPipelineExecutionCommand,
+  StopPipelineExecutionCommand
+} = await loadCodePipelineSdk();
 
 export class AwsCodePipelineAPIClient extends BaseAPIClient {
   private readonly client: CodePipelineClient;

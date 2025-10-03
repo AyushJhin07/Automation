@@ -7505,7 +7505,7 @@ function ${functionName}(inputData, params) {
     return { ...inputData, docusignError: 'Missing DocuSign access token or account ID' };
   }
 
-  const baseUrl = `${baseUri}/v2.1/accounts/${accountId}`;
+  const baseUrl = `\${baseUri}/v2.1/accounts/\${accountId}`;
   const operation = (params.operation || '${defaultOperation}').toLowerCase();
   const defaultHeaders = {
     'Authorization': 'Bearer ' + accessToken,
