@@ -41,4 +41,7 @@ export interface PollingTrigger {
   isActive: boolean;
   dedupeKey?: string;
   metadata: Record<string, any>;
+  cursor?: Record<string, any> | null;
+  backoffCount?: number;
+  lastStatus?: string | null;
 }

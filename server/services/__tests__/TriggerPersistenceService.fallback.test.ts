@@ -45,20 +45,35 @@ async function runTriggerPersistenceFallbackIntegration(): Promise<void> {
     nextPollAt: new Date(Date.now() + 300_000),
     isActive: true,
     metadata: { interval: '5m' },
+    cursor: { page: '1' },
+    backoffCount: 1,
+    lastStatus: 'error',
   } as const;
 
   await service.savePollingTrigger({ ...pollingTrigger });
   const polling = await service.loadPollingTriggers();
   assert.equal(polling.length, 1, 'polling triggers should be stored in memory');
   assert.equal(polling[0]?.id, 'poll-1');
+  assert.deepEqual(polling[0]?.cursor, pollingTrigger.cursor);
+  assert.equal(polling[0]?.backoffCount, pollingTrigger.backoffCount);
+  assert.equal(polling[0]?.lastStatus, pollingTrigger.lastStatus);
 
   const lastPoll = new Date();
   const nextPoll = new Date(Date.now() + 600_000);
-  await service.updatePollingRuntimeState('poll-1', { lastPoll, nextPollAt: nextPoll });
+  await service.updatePollingRuntimeState('poll-1', {
+    lastPoll,
+    nextPollAt: nextPoll,
+    cursor: { page: '2' },
+    backoffCount: 2,
+    lastStatus: 'success',
+  });
   const updatedPolling = (await service.loadPollingTriggers())[0];
   assert.equal(updatedPolling?.lastPoll?.getTime(), lastPoll.getTime());
   assert.equal(updatedPolling?.nextPoll.getTime(), nextPoll.getTime());
   assert.equal(updatedPolling?.nextPollAt.getTime(), nextPoll.getTime());
+  assert.deepEqual(updatedPolling?.cursor, { page: '2' });
+  assert.equal(updatedPolling?.backoffCount, 2);
+  assert.equal(updatedPolling?.lastStatus, 'success');
 
   await service.persistDedupeTokens('poll-1', ['token-1', 'token-2']);
   const dedupe = await service.loadDedupeTokens();
