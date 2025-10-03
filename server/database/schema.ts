@@ -719,6 +719,7 @@ export const pollingTriggers = pgTable(
     interval: integer('interval').notNull(), // seconds
     lastPoll: timestamp('last_poll'),
     nextPoll: timestamp('next_poll').notNull(),
+    nextPollAt: timestamp('next_poll_at').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     dedupeKey: text('dedupe_key'),
     metadata: json('metadata').$type<Record<string, any>>(),
@@ -729,6 +730,7 @@ export const pollingTriggers = pgTable(
     workflowIdIdx: index('polling_triggers_workflow_id_idx').on(table.workflowId),
     appTriggerIdx: index('polling_triggers_app_trigger_idx').on(table.appId, table.triggerId),
     nextPollIdx: index('polling_triggers_next_poll_idx').on(table.nextPoll),
+    nextPollAtIdx: index('polling_triggers_next_poll_at_idx').on(table.nextPollAt),
     activeIdx: index('polling_triggers_active_idx').on(table.isActive),
   })
 );

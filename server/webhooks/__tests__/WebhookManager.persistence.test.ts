@@ -37,17 +37,33 @@ class InMemoryTriggerPersistenceDb {
       ...record,
       metadata: record.metadata ?? existing.metadata ?? {},
       isActive: record.isActive ?? existing.isActive ?? true,
+      nextPollAt:
+        record.nextPollAt ??
+        existing.nextPollAt ??
+        (record.nextPoll ? new Date(record.nextPoll) : new Date(Date.now() + (record.interval ?? existing.interval ?? 60) * 1000)),
       updatedAt: new Date(),
       createdAt: existing.createdAt ?? new Date(),
     };
     this.pollingTriggers.set(record.id, next);
   }
 
-  async updatePollingRuntimeState({ id, lastPoll, nextPoll }: { id: string; lastPoll?: Date; nextPoll: Date }) {
+  async updatePollingRuntimeState({
+    id,
+    lastPoll,
+    nextPoll,
+    nextPollAt,
+  }: {
+    id: string;
+    lastPoll?: Date;
+    nextPoll?: Date;
+    nextPollAt?: Date;
+  }) {
     const existing = this.pollingTriggers.get(id);
     if (existing) {
       existing.lastPoll = lastPoll ?? null;
-      existing.nextPoll = nextPoll;
+      const resolvedNext = nextPollAt ?? nextPoll ?? existing.nextPollAt ?? existing.nextPoll ?? null;
+      existing.nextPoll = resolvedNext;
+      existing.nextPollAt = resolvedNext;
       existing.updatedAt = new Date();
       this.pollingTriggers.set(id, existing);
     }

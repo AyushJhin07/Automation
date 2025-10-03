@@ -24,8 +24,6 @@ export class WebhookManager {
   private static queueOverride: QueueService | null = null;
   private static configuredQueue: QueueService | null = null;
   private activeWebhooks: Map<string, WebhookTrigger> = new Map();
-  private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
-  private pollingStartTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private pollingTriggers: Map<string, PollingTrigger> = new Map();
   private dedupeCache: Map<string, Set<string>> = new Map();
   private readonly persistence = triggerPersistenceService;
@@ -71,6 +69,17 @@ export class WebhookManager {
     this.ready = this.initializeFromPersistence();
   }
 
+  private normalizePollingTrigger(trigger: PollingTrigger): PollingTrigger {
+    const nextPoll = trigger.nextPoll instanceof Date ? trigger.nextPoll : new Date(trigger.nextPoll);
+    const nextPollAtSource = trigger.nextPollAt ?? nextPoll;
+    const nextPollAt = nextPollAtSource instanceof Date ? nextPollAtSource : new Date(nextPollAtSource);
+    return {
+      ...trigger,
+      nextPoll,
+      nextPollAt,
+    };
+  }
+
   private async initializeFromPersistence(): Promise<void> {
     try {
       const [dedupeState, webhooks, polling] = await Promise.all([
@@ -88,8 +97,8 @@ export class WebhookManager {
       });
 
       polling.forEach((trigger) => {
-        this.pollingTriggers.set(trigger.id, trigger);
-        this.schedulePollingTrigger(trigger);
+        const normalized = this.normalizePollingTrigger(trigger);
+        this.pollingTriggers.set(trigger.id, normalized);
       });
 
       if (webhooks.length > 0 || polling.length > 0) {
@@ -104,16 +113,6 @@ export class WebhookManager {
   }
 
   private dispose(): void {
-    for (const interval of this.pollingIntervals.values()) {
-      clearInterval(interval);
-    }
-    this.pollingIntervals.clear();
-
-    for (const timeout of this.pollingStartTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    this.pollingStartTimeouts.clear();
-
     this.activeWebhooks.clear();
     this.pollingTriggers.clear();
     this.dedupeCache.clear();
@@ -298,15 +297,17 @@ export class WebhookManager {
       await this.ready;
       const pollId = trigger.id;
 
-      trigger.nextPoll = trigger.nextPoll instanceof Date ? trigger.nextPoll : new Date(trigger.nextPoll);
-      if (trigger.lastPoll && !(trigger.lastPoll instanceof Date)) {
-        trigger.lastPoll = new Date(trigger.lastPoll);
+      const normalized = this.normalizePollingTrigger(trigger);
+      if (normalized.lastPoll && !(normalized.lastPoll instanceof Date)) {
+        normalized.lastPoll = new Date(normalized.lastPoll);
       }
 
-      this.pollingTriggers.set(pollId, trigger);
-      await this.persistence.savePollingTrigger(trigger);
+      normalized.nextPollAt = normalized.nextPollAt ?? normalized.nextPoll;
+      normalized.nextPoll = normalized.nextPoll ?? normalized.nextPollAt;
+
+      this.pollingTriggers.set(pollId, normalized);
+      await this.persistence.savePollingTrigger(normalized);
       await this.ensureDedupeSet(pollId);
-      this.schedulePollingTrigger(trigger);
 
       console.log(`⏰ Registered polling trigger: ${trigger.appId}.${trigger.triggerId} (every ${trigger.interval}s)`);
 
@@ -316,54 +317,21 @@ export class WebhookManager {
     }
   }
 
-  private schedulePollingTrigger(trigger: PollingTrigger): void {
-    const pollId = trigger.id;
+  public async runPollingTrigger(trigger: PollingTrigger): Promise<void> {
+    await this.ready;
 
-    if (this.pollingIntervals.has(pollId)) {
-      clearInterval(this.pollingIntervals.get(pollId)!);
-      this.pollingIntervals.delete(pollId);
-    }
+    const normalized = this.normalizePollingTrigger(trigger);
+    this.pollingTriggers.set(normalized.id, normalized);
+    await this.ensureDedupeSet(normalized.id);
 
-    if (this.pollingStartTimeouts.has(pollId)) {
-      clearTimeout(this.pollingStartTimeouts.get(pollId)!);
-      this.pollingStartTimeouts.delete(pollId);
-    }
-
-    const delay = trigger.nextPoll ? trigger.nextPoll.getTime() - Date.now() : 0;
-    if (delay > 0) {
-      const timeout = setTimeout(() => {
-        this.pollingStartTimeouts.delete(pollId);
-        this.startPollingInterval(pollId);
-      }, delay);
-      this.pollingStartTimeouts.set(pollId, timeout);
-    } else {
-      this.startPollingInterval(pollId);
-    }
+    await this.executePoll(normalized);
   }
 
-  private startPollingInterval(triggerId: string): void {
+  public async runPollingTriggerById(triggerId: string): Promise<void> {
+    await this.ready;
     const trigger = this.pollingTriggers.get(triggerId);
     if (!trigger) {
-      return;
-    }
-
-    const intervalMs = Math.max(1000, trigger.interval * 1000);
-
-    if (this.pollingIntervals.has(triggerId)) {
-      clearInterval(this.pollingIntervals.get(triggerId)!);
-    }
-
-    const intervalHandle = setInterval(() => {
-      void this.executePollById(triggerId);
-    }, intervalMs);
-    this.pollingIntervals.set(triggerId, intervalHandle);
-
-    void this.executePollById(triggerId);
-  }
-
-  private async executePollById(triggerId: string): Promise<void> {
-    const trigger = this.pollingTriggers.get(triggerId);
-    if (!trigger) {
+      console.warn(`⚠️ Attempted to run unknown polling trigger ${triggerId}`);
       return;
     }
 
@@ -372,16 +340,6 @@ export class WebhookManager {
 
   public async rehydratePollingSchedules(): Promise<{ total: number }> {
     await this.ready;
-
-    for (const interval of this.pollingIntervals.values()) {
-      clearInterval(interval);
-    }
-    this.pollingIntervals.clear();
-
-    for (const timeout of this.pollingStartTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    this.pollingStartTimeouts.clear();
 
     const triggers = await this.persistence.loadPollingTriggers();
     this.pollingTriggers.clear();
@@ -393,11 +351,11 @@ export class WebhookManager {
     }
 
     triggers.forEach((trigger) => {
-      this.pollingTriggers.set(trigger.id, trigger);
-      this.schedulePollingTrigger(trigger);
+      const normalized = this.normalizePollingTrigger(trigger);
+      this.pollingTriggers.set(trigger.id, normalized);
     });
 
-    console.log(`🔁 Rehydrated ${triggers.length} polling schedules from persistent storage.`);
+    console.log(`🔁 Rehydrated ${triggers.length} polling triggers from persistent storage.`);
     return { total: triggers.length };
   }
 
@@ -451,10 +409,15 @@ export class WebhookManager {
       console.log(`🔄 Polling ${trigger.appId}.${trigger.triggerId}...`);
 
       // Update poll times
-      trigger.lastPoll = new Date();
-      trigger.nextPoll = new Date(Date.now() + trigger.interval * 1000);
+      const now = new Date();
+      trigger.lastPoll = now;
+      const scheduledNext = trigger.nextPollAt ?? trigger.nextPoll ?? new Date(now.getTime() + trigger.interval * 1000);
+      const scheduledDate = scheduledNext instanceof Date ? scheduledNext : new Date(scheduledNext);
+      const computedNext = new Date(Math.max(scheduledDate.getTime(), now.getTime() + Math.max(1, trigger.interval) * 1000));
+      trigger.nextPoll = computedNext;
+      trigger.nextPollAt = computedNext;
 
-      await this.persistence.updatePollingRuntimeState(trigger.id, trigger.lastPoll, trigger.nextPoll);
+      await this.persistence.updatePollingRuntimeState(trigger.id, { lastPoll: trigger.lastPoll, nextPollAt: trigger.nextPollAt });
 
       // Execute the specific polling logic based on app and trigger
       const results = await this.executeAppSpecificPoll(trigger);
@@ -515,6 +478,7 @@ export class WebhookManager {
       }
 
       // Persist last poll time (enables since-based filtering by downstream)
+      this.pollingTriggers.set(trigger.id, { ...trigger });
       await this.persistence.savePollingTrigger(trigger);
 
     } catch (error) {
@@ -1320,29 +1284,16 @@ export class WebhookManager {
   async stopPolling(pollId: string): Promise<boolean> {
     await this.ready;
 
-    let stopped = false;
-
-    const interval = this.pollingIntervals.get(pollId);
-    if (interval) {
-      clearInterval(interval);
-      this.pollingIntervals.delete(pollId);
-      stopped = true;
+    const trigger = this.pollingTriggers.get(pollId);
+    if (!trigger) {
+      return false;
     }
 
-    const timeout = this.pollingStartTimeouts.get(pollId);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.pollingStartTimeouts.delete(pollId);
-      stopped = true;
-    }
+    this.pollingTriggers.delete(pollId);
+    await this.persistence.deactivateTrigger(pollId);
+    console.log(`⏹️ Stopped polling: ${pollId}`);
 
-    if (stopped) {
-      this.pollingTriggers.delete(pollId);
-      await this.persistence.deactivateTrigger(pollId);
-      console.log(`⏹️ Stopped polling: ${pollId}`);
-    }
-
-    return stopped;
+    return true;
   }
 
   /**
@@ -1353,7 +1304,6 @@ export class WebhookManager {
     return {
       activeWebhooks: this.activeWebhooks.size,
       pollingTriggers: this.pollingTriggers.size,
-      pollingIntervals: this.pollingIntervals.size,
       dedupeEntries: dedupeSize,
       webhooks: this.listWebhooks().map(w => ({
         id: w.id,

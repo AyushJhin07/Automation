@@ -41,6 +41,7 @@ export const pollingTriggers = pgTable("polling_triggers", {
   interval: integer("interval").notNull(),
   lastPoll: timestamp("last_poll"),
   nextPoll: timestamp("next_poll").notNull(),
+  nextPollAt: timestamp("next_poll_at").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   dedupeKey: text("dedupe_key"),
   metadata: json("metadata"),

@@ -2866,6 +2866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflowId,
         interval,
         nextPoll: new Date(Date.now() + interval * 1000),
+        nextPollAt: new Date(Date.now() + interval * 1000),
         isActive: true,
         dedupeKey,
         metadata: {
@@ -2975,6 +2976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         interval: intervalSec,
         lastPoll: now,
         nextPoll: new Date(now.getTime() + intervalSec * 1000),
+        nextPollAt: new Date(now.getTime() + intervalSec * 1000),
         isActive: true,
         metadata
       });
