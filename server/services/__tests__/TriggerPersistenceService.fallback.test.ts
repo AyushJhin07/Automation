@@ -42,6 +42,7 @@ async function runTriggerPersistenceFallbackIntegration(): Promise<void> {
     triggerId: 'issue.poll',
     interval: 300,
     nextPoll: new Date(Date.now() + 300_000),
+    nextPollAt: new Date(Date.now() + 300_000),
     isActive: true,
     metadata: { interval: '5m' },
   } as const;
@@ -53,10 +54,11 @@ async function runTriggerPersistenceFallbackIntegration(): Promise<void> {
 
   const lastPoll = new Date();
   const nextPoll = new Date(Date.now() + 600_000);
-  await service.updatePollingRuntimeState('poll-1', lastPoll, nextPoll);
+  await service.updatePollingRuntimeState('poll-1', { lastPoll, nextPollAt: nextPoll });
   const updatedPolling = (await service.loadPollingTriggers())[0];
   assert.equal(updatedPolling?.lastPoll?.getTime(), lastPoll.getTime());
   assert.equal(updatedPolling?.nextPoll.getTime(), nextPoll.getTime());
+  assert.equal(updatedPolling?.nextPollAt.getTime(), nextPoll.getTime());
 
   await service.persistDedupeTokens('poll-1', ['token-1', 'token-2']);
   const dedupe = await service.loadDedupeTokens();

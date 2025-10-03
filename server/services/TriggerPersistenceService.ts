@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {
   db,
@@ -47,17 +47,33 @@ class InMemoryTriggerPersistenceStore {
       ...record,
       metadata: record.metadata ?? existing.metadata ?? {},
       isActive: record.isActive ?? existing.isActive ?? true,
+      nextPollAt:
+        record.nextPollAt ??
+        existing.nextPollAt ??
+        (record.nextPoll ? new Date(record.nextPoll) : new Date(Date.now() + (record.interval ?? existing.interval ?? 60) * 1000)),
       updatedAt: new Date(),
       createdAt: existing.createdAt ?? new Date(),
     };
     this.pollingTriggers.set(record.id, next);
   }
 
-  public async updatePollingRuntimeState({ id, lastPoll, nextPoll }: { id: string; lastPoll?: Date; nextPoll: Date }) {
+  public async updatePollingRuntimeState({
+    id,
+    lastPoll,
+    nextPoll,
+    nextPollAt,
+  }: {
+    id: string;
+    lastPoll?: Date;
+    nextPoll?: Date;
+    nextPollAt?: Date;
+  }) {
     const polling = this.pollingTriggers.get(id);
     if (polling) {
       polling.lastPoll = lastPoll ?? null;
-      polling.nextPoll = nextPoll;
+      const resolvedNextPoll = nextPollAt ?? nextPoll ?? polling.nextPollAt ?? polling.nextPoll ?? null;
+      polling.nextPoll = resolvedNextPoll;
+      polling.nextPollAt = resolvedNextPoll;
       polling.updatedAt = new Date();
       this.pollingTriggers.set(id, polling);
     }
@@ -67,6 +83,23 @@ class InMemoryTriggerPersistenceStore {
       workflow.updatedAt = new Date();
       this.workflowTriggers.set(id, workflow);
     }
+  }
+
+  public async claimDuePollingTriggers({ now, limit }: { now: Date; limit: number }) {
+    const due = Array.from(this.pollingTriggers.values())
+      .filter((row) => row.isActive !== false && row.nextPollAt && row.nextPollAt <= now)
+      .sort((a, b) => (a.nextPollAt?.getTime() ?? 0) - (b.nextPollAt?.getTime() ?? 0))
+      .slice(0, limit);
+
+    for (const trigger of due) {
+      const nextRun = new Date(now.getTime() + (trigger.interval ?? 60) * 1000);
+      trigger.nextPollAt = nextRun;
+      trigger.nextPoll = nextRun;
+      trigger.updatedAt = new Date();
+      this.pollingTriggers.set(trigger.id, trigger);
+    }
+
+    return due.map((trigger) => ({ ...trigger }));
   }
 
   public async deactivateTrigger(id: string) {
@@ -203,10 +236,80 @@ export class TriggerPersistenceService {
       interval: row.interval,
       lastPoll: row.lastPoll ? new Date(row.lastPoll) : undefined,
       nextPoll: row.nextPoll ? new Date(row.nextPoll) : new Date(Date.now() + row.interval * 1000),
+      nextPollAt: row.nextPollAt
+        ? new Date(row.nextPollAt)
+        : row.nextPoll
+        ? new Date(row.nextPoll)
+        : new Date(Date.now() + row.interval * 1000),
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
       metadata: row.metadata ?? {},
     }));
+  }
+
+  public async claimDuePollingTriggers(options: { limit?: number; now?: Date } = {}): Promise<PollingTrigger[]> {
+    const database = this.requireDatabase('claimDuePollingTriggers');
+    const now = options.now ?? new Date();
+    const limit = Math.max(1, Math.min(100, options.limit ?? 25));
+
+    if (typeof (database as any).claimDuePollingTriggers === 'function') {
+      const rows = await (database as any).claimDuePollingTriggers({ now, limit });
+      return rows.map((row: any) => this.mapPollingTriggerRow(row));
+    }
+
+    if (!database.transaction) {
+      const rows = await (database as any)
+        .select()
+        .from(pollingTriggers)
+        .where(eq(pollingTriggers.isActive, true));
+      const mapped = rows
+        .map((row: any) => this.mapPollingTriggerRow(row))
+        .filter((row) => row.nextPollAt <= now)
+        .sort((a, b) => a.nextPollAt.getTime() - b.nextPollAt.getTime())
+        .slice(0, limit);
+      for (const trigger of mapped) {
+        const nextRun = new Date(now.getTime() + Math.max(1, trigger.interval) * 1000);
+        await this.updatePollingRuntimeState(trigger.id, { nextPollAt: nextRun });
+        trigger.nextPollAt = nextRun;
+        trigger.nextPoll = nextRun;
+      }
+      return mapped;
+    }
+
+    return await database.transaction(async (tx: any) => {
+      const result = await tx.execute(
+        sql`SELECT * FROM polling_triggers WHERE is_active = true AND COALESCE(next_poll_at, next_poll) <= ${now} ORDER BY COALESCE(next_poll_at, next_poll) ASC LIMIT ${limit} FOR UPDATE SKIP LOCKED`
+      );
+      const rows: any[] = (result?.rows ?? result ?? []) as any[];
+
+      if (!rows || rows.length === 0) {
+        return [];
+      }
+
+      const claimed: PollingTrigger[] = [];
+      for (const row of rows) {
+        const intervalSeconds = Math.max(1, Number(row.interval ?? 60));
+        const nextRun = new Date(now.getTime() + intervalSeconds * 1000);
+        await tx
+          .update(pollingTriggers)
+          .set({
+            nextPoll: nextRun,
+            nextPollAt: nextRun,
+            updatedAt: now,
+          })
+          .where(eq(pollingTriggers.id, row.id));
+
+        claimed.push(
+          this.mapPollingTriggerRow({
+            ...row,
+            nextPoll: nextRun,
+            nextPollAt: nextRun,
+          })
+        );
+      }
+
+      return claimed;
+    });
   }
 
   public async saveWebhookTrigger(trigger: WebhookTrigger): Promise<void> {
@@ -266,6 +369,7 @@ export class TriggerPersistenceService {
       interval: trigger.interval,
       lastPoll: trigger.lastPoll ?? null,
       nextPoll: trigger.nextPoll,
+      nextPollAt: trigger.nextPollAt ?? trigger.nextPoll,
       isActive: trigger.isActive,
       dedupeKey: trigger.dedupeKey ?? null,
       metadata: trigger.metadata ?? {},
@@ -303,6 +407,7 @@ export class TriggerPersistenceService {
             interval: trigger.interval,
             lastPoll: trigger.lastPoll ?? null,
             nextPoll: trigger.nextPoll,
+            nextPollAt: trigger.nextPollAt ?? trigger.nextPoll,
             isActive: trigger.isActive,
             dedupeKey: trigger.dedupeKey ?? null,
             metadata: trigger.metadata ?? {},
@@ -340,21 +445,26 @@ export class TriggerPersistenceService {
     }
   }
 
-  public async updatePollingRuntimeState(id: string, lastPoll: Date | undefined, nextPoll: Date): Promise<void> {
+  public async updatePollingRuntimeState(
+    id: string,
+    updates: { lastPoll?: Date; nextPoll?: Date; nextPollAt?: Date }
+  ): Promise<void> {
     const database = this.requireDatabase('updatePollingRuntimeState');
 
     if (typeof (database as any).updatePollingRuntimeState === 'function') {
-      await (database as any).updatePollingRuntimeState({ id, lastPoll, nextPoll });
+      await (database as any).updatePollingRuntimeState({ id, ...updates });
       return;
     }
 
     const now = new Date();
     try {
+      const nextPollValue = updates.nextPollAt ?? updates.nextPoll ?? null;
       await database
         .update(pollingTriggers)
         .set({
-          lastPoll: lastPoll ?? null,
-          nextPoll,
+          lastPoll: updates.lastPoll ?? null,
+          nextPoll: nextPollValue,
+          nextPollAt: nextPollValue,
           updatedAt: now,
         })
         .where(eq(pollingTriggers.id, id));
@@ -559,6 +669,11 @@ export class TriggerPersistenceService {
       interval: row.interval,
       lastPoll: row.lastPoll ? new Date(row.lastPoll) : undefined,
       nextPoll: row.nextPoll ? new Date(row.nextPoll) : new Date(Date.now() + row.interval * 1000),
+      nextPollAt: row.nextPollAt
+        ? new Date(row.nextPollAt)
+        : row.nextPoll
+        ? new Date(row.nextPoll)
+        : new Date(Date.now() + row.interval * 1000),
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
       metadata: row.metadata ?? {},

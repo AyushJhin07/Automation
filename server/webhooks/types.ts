@@ -37,6 +37,7 @@ export interface PollingTrigger {
   interval: number;
   lastPoll?: Date;
   nextPoll: Date;
+  nextPollAt: Date;
   isActive: boolean;
   dedupeKey?: string;
   metadata: Record<string, any>;
