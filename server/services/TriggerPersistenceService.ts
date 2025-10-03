@@ -12,11 +12,76 @@ import { getErrorMessage } from '../types/common';
 
 void ensureDatabaseReady();
 
+const DEFAULT_DEDUPE_TOKEN_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+const DEFAULT_MAX_BACKOFF_MULTIPLIER = 32;
+
+interface BackoffOptions {
+  maxIntervalSeconds?: number;
+}
+
+interface DedupeTtlOptions {
+  now?: Date;
+  ttlMs?: number;
+}
+
+function computeExponentialBackoffInterval(
+  baseIntervalSeconds: number,
+  backoffCount: number,
+  options: BackoffOptions = {}
+): number {
+  const sanitizedBase = Math.max(1, Math.floor(baseIntervalSeconds));
+  const attempt = Math.max(0, Math.floor(backoffCount));
+  const maxInterval = Math.max(
+    sanitizedBase,
+    options.maxIntervalSeconds ?? sanitizedBase * DEFAULT_MAX_BACKOFF_MULTIPLIER
+  );
+  const exponent = Math.min(30, attempt); // prevent overflow
+  const interval = sanitizedBase * Math.pow(2, exponent);
+  return Math.min(interval, maxInterval);
+}
+
+function applyDedupeTokenTTL(
+  tokens: string[],
+  updatedAt: string | Date | null | undefined,
+  options: DedupeTtlOptions = {}
+): string[] {
+  if (!Array.isArray(tokens) || tokens.length === 0) {
+    return [];
+  }
+
+  const ttlMs = options.ttlMs ?? DEFAULT_DEDUPE_TOKEN_TTL_MS;
+  if (ttlMs <= 0) {
+    return [...tokens];
+  }
+
+  if (!updatedAt) {
+    return [...tokens];
+  }
+
+  const now = options.now ?? new Date();
+  const updatedTime =
+    typeof updatedAt === 'string'
+      ? new Date(updatedAt).getTime()
+      : updatedAt instanceof Date
+      ? updatedAt.getTime()
+      : Number.NaN;
+
+  if (Number.isNaN(updatedTime)) {
+    return [...tokens];
+  }
+
+  if (now.getTime() - updatedTime > ttlMs) {
+    return [];
+  }
+
+  return [...tokens];
+}
+
 class InMemoryTriggerPersistenceStore {
   private workflowTriggers = new Map<string, any>();
   private pollingTriggers = new Map<string, any>();
   private webhookLogs = new Map<string, any>();
-  private dedupeTokens = new Map<string, string[]>();
+  private dedupeTokens = new Map<string, { tokens: string[]; updatedAt: Date }>();
 
   public async getActiveWebhookTriggers() {
     return Array.from(this.workflowTriggers.values()).filter((row) => row.type === 'webhook' && row.isActive !== false);
@@ -47,6 +112,9 @@ class InMemoryTriggerPersistenceStore {
       ...record,
       metadata: record.metadata ?? existing.metadata ?? {},
       isActive: record.isActive ?? existing.isActive ?? true,
+      cursor: record.cursor ?? existing.cursor ?? null,
+      backoffCount: record.backoffCount ?? existing.backoffCount ?? 0,
+      lastStatus: record.lastStatus ?? existing.lastStatus ?? null,
       nextPollAt:
         record.nextPollAt ??
         existing.nextPollAt ??
@@ -62,11 +130,17 @@ class InMemoryTriggerPersistenceStore {
     lastPoll,
     nextPoll,
     nextPollAt,
+    cursor,
+    backoffCount,
+    lastStatus,
   }: {
     id: string;
     lastPoll?: Date;
     nextPoll?: Date;
     nextPollAt?: Date;
+    cursor?: Record<string, any> | null;
+    backoffCount?: number;
+    lastStatus?: string | null;
   }) {
     const polling = this.pollingTriggers.get(id);
     if (polling) {
@@ -74,6 +148,11 @@ class InMemoryTriggerPersistenceStore {
       const resolvedNextPoll = nextPollAt ?? nextPoll ?? polling.nextPollAt ?? polling.nextPoll ?? null;
       polling.nextPoll = resolvedNextPoll;
       polling.nextPollAt = resolvedNextPoll;
+      polling.cursor = cursor ?? polling.cursor ?? null;
+      if (typeof backoffCount === 'number') {
+        polling.backoffCount = backoffCount;
+      }
+      polling.lastStatus = lastStatus ?? polling.lastStatus ?? null;
       polling.updatedAt = new Date();
       this.pollingTriggers.set(id, polling);
     }
@@ -92,7 +171,8 @@ class InMemoryTriggerPersistenceStore {
       .slice(0, limit);
 
     for (const trigger of due) {
-      const nextRun = new Date(now.getTime() + (trigger.interval ?? 60) * 1000);
+      const effectiveInterval = computeExponentialBackoffInterval(trigger.interval ?? 60, trigger.backoffCount ?? 0);
+      const nextRun = new Date(now.getTime() + effectiveInterval * 1000);
       trigger.nextPollAt = nextRun;
       trigger.nextPoll = nextRun;
       trigger.updatedAt = new Date();
@@ -144,14 +224,19 @@ class InMemoryTriggerPersistenceStore {
 
   public async getDedupeTokens(): Promise<Record<string, string[]>> {
     const result: Record<string, string[]> = {};
-    for (const [id, tokens] of this.dedupeTokens.entries()) {
-      result[id] = [...tokens];
+    for (const [id, entry] of this.dedupeTokens.entries()) {
+      const tokens = applyDedupeTokenTTL(entry.tokens, entry.updatedAt);
+      if (tokens.length === 0) {
+        this.dedupeTokens.delete(id);
+        continue;
+      }
+      result[id] = tokens;
     }
     return result;
   }
 
   public async persistDedupeTokens(id: string, tokens: string[]) {
-    this.dedupeTokens.set(id, [...tokens]);
+    this.dedupeTokens.set(id, { tokens: [...tokens], updatedAt: new Date() });
     const workflow = this.workflowTriggers.get(id);
     if (workflow) {
       workflow.dedupeState = { tokens: [...tokens], updatedAt: new Date().toISOString() };
@@ -178,11 +263,29 @@ export class TriggerPersistenceService {
 
   private constructor() {}
 
+  public static readonly DEFAULT_DEDUPE_TOKEN_TTL_MS = DEFAULT_DEDUPE_TOKEN_TTL_MS;
+
   public static getInstance(): TriggerPersistenceService {
     if (!TriggerPersistenceService.instance) {
       TriggerPersistenceService.instance = new TriggerPersistenceService();
     }
     return TriggerPersistenceService.instance;
+  }
+
+  public computePollingIntervalWithBackoff(
+    baseIntervalSeconds: number,
+    backoffCount: number,
+    options: BackoffOptions = {}
+  ): number {
+    return computeExponentialBackoffInterval(baseIntervalSeconds, backoffCount, options);
+  }
+
+  public applyDedupeTokenTTL(
+    tokens: string[],
+    updatedAt?: string | Date | null,
+    options: DedupeTtlOptions = {}
+  ): string[] {
+    return applyDedupeTokenTTL(tokens, updatedAt ?? null, options);
   }
 
   public isDatabaseEnabled(): boolean {
@@ -244,6 +347,9 @@ export class TriggerPersistenceService {
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
       metadata: row.metadata ?? {},
+      cursor: row.cursor ?? null,
+      backoffCount: row.backoffCount ?? 0,
+      lastStatus: row.lastStatus ?? null,
     }));
   }
 
@@ -268,8 +374,9 @@ export class TriggerPersistenceService {
         .sort((a, b) => a.nextPollAt.getTime() - b.nextPollAt.getTime())
         .slice(0, limit);
       for (const trigger of mapped) {
-        const nextRun = new Date(now.getTime() + Math.max(1, trigger.interval) * 1000);
-        await this.updatePollingRuntimeState(trigger.id, { nextPollAt: nextRun });
+        const effectiveInterval = this.computePollingIntervalWithBackoff(trigger.interval, trigger.backoffCount ?? 0);
+        const nextRun = new Date(now.getTime() + effectiveInterval * 1000);
+        await this.updatePollingRuntimeState(trigger.id, { nextPoll: nextRun, nextPollAt: nextRun });
         trigger.nextPollAt = nextRun;
         trigger.nextPoll = nextRun;
       }
@@ -289,7 +396,11 @@ export class TriggerPersistenceService {
       const claimed: PollingTrigger[] = [];
       for (const row of rows) {
         const intervalSeconds = Math.max(1, Number(row.interval ?? 60));
-        const nextRun = new Date(now.getTime() + intervalSeconds * 1000);
+        const effectiveInterval = computeExponentialBackoffInterval(
+          intervalSeconds,
+          Number(row.backoff_count ?? row.backoffCount ?? 0)
+        );
+        const nextRun = new Date(now.getTime() + effectiveInterval * 1000);
         await tx
           .update(pollingTriggers)
           .set({
@@ -373,6 +484,9 @@ export class TriggerPersistenceService {
       isActive: trigger.isActive,
       dedupeKey: trigger.dedupeKey ?? null,
       metadata: trigger.metadata ?? {},
+      cursor: trigger.cursor ?? null,
+      backoffCount: trigger.backoffCount ?? 0,
+      lastStatus: trigger.lastStatus ?? null,
     };
 
     if (typeof (database as any).upsertPollingTrigger === 'function') {
@@ -411,6 +525,9 @@ export class TriggerPersistenceService {
             isActive: trigger.isActive,
             dedupeKey: trigger.dedupeKey ?? null,
             metadata: trigger.metadata ?? {},
+            cursor: trigger.cursor ?? null,
+            backoffCount: trigger.backoffCount ?? 0,
+            lastStatus: trigger.lastStatus ?? null,
             updatedAt: now,
           },
         });
@@ -447,7 +564,14 @@ export class TriggerPersistenceService {
 
   public async updatePollingRuntimeState(
     id: string,
-    updates: { lastPoll?: Date; nextPoll?: Date; nextPollAt?: Date }
+    updates: {
+      lastPoll?: Date;
+      nextPoll?: Date;
+      nextPollAt?: Date;
+      cursor?: Record<string, any> | null;
+      backoffCount?: number;
+      lastStatus?: string | null;
+    }
   ): Promise<void> {
     const database = this.requireDatabase('updatePollingRuntimeState');
 
@@ -459,14 +583,28 @@ export class TriggerPersistenceService {
     const now = new Date();
     try {
       const nextPollValue = updates.nextPollAt ?? updates.nextPoll ?? null;
+      const updateValues: Record<string, any> = {
+        lastPoll: updates.lastPoll ?? null,
+        nextPoll: nextPollValue,
+        nextPollAt: nextPollValue,
+        updatedAt: now,
+      };
+
+      if ('cursor' in updates) {
+        updateValues.cursor = updates.cursor ?? null;
+      }
+
+      if (typeof updates.backoffCount === 'number') {
+        updateValues.backoffCount = updates.backoffCount;
+      }
+
+      if ('lastStatus' in updates) {
+        updateValues.lastStatus = updates.lastStatus ?? null;
+      }
+
       await database
         .update(pollingTriggers)
-        .set({
-          lastPoll: updates.lastPoll ?? null,
-          nextPoll: nextPollValue,
-          nextPollAt: nextPollValue,
-          updatedAt: now,
-        })
+        .set(updateValues)
         .where(eq(pollingTriggers.id, id));
 
       await database
@@ -582,7 +720,10 @@ export class TriggerPersistenceService {
     const result: Record<string, string[]> = {};
     for (const row of rows) {
       const tokens = Array.isArray(row.dedupeState?.tokens) ? row.dedupeState.tokens : [];
-      result[row.id] = tokens;
+      const validTokens = this.applyDedupeTokenTTL(tokens, row.dedupeState?.updatedAt ?? null);
+      if (validTokens.length > 0) {
+        result[row.id] = validTokens;
+      }
     }
     return result;
   }
@@ -677,6 +818,9 @@ export class TriggerPersistenceService {
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
       metadata: row.metadata ?? {},
+      cursor: row.cursor ?? null,
+      backoffCount: Number(row.backoffCount ?? row.backoff_count ?? 0),
+      lastStatus: row.lastStatus ?? row.last_status ?? null,
     };
   }
 
