@@ -1519,6 +1519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectionId?: string;
         label?: string;
         error?: string;
+        userInfoError?: string;
       }
     ) => {
       const messagePayload = {
@@ -1574,7 +1575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { returnUrl, connectionId: storedConnectionId, label: connectionLabel } = await oauthManager.handleCallback(
+      const { returnUrl, connectionId: storedConnectionId, label: connectionLabel, userInfoError } = await oauthManager.handleCallback(
         queryCode,
         queryState,
         provider
@@ -1585,6 +1586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (connectionLabel) {
         params.set('label', connectionLabel);
+      }
+      if (userInfoError) {
+        params.set('userInfoError', userInfoError);
       }
       const query = params.toString();
       const finalReturnUrl = returnUrl
@@ -1597,7 +1601,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         state: queryState,
         returnUrl: finalReturnUrl,
         connectionId: storedConnectionId || undefined,
-        label: connectionLabel || undefined
+        label: connectionLabel || undefined,
+        userInfoError: userInfoError || undefined
       });
     } catch (error) {
       const errorMessage = getErrorMessage(error);

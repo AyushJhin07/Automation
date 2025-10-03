@@ -18,12 +18,13 @@ const OAuthCallback = () => {
   const [status, setStatus] = useState<CallbackStatus>('idle');
   const [message, setMessage] = useState<string>('Finishing OAuth connection…');
   const [details, setDetails] = useState<string | undefined>();
+  const [userInfoErrorMessage, setUserInfoErrorMessage] = useState<string | undefined>();
 
   const formattedProvider = useMemo(() => prettifyProvider(provider || 'integration'), [provider]);
   const connectionId = searchParams.get('connectionId') || undefined;
   const label = searchParams.get('label') || undefined;
 
-  const notifyParent = useCallback((payload: { success: boolean; error?: string }) => {
+  const notifyParent = useCallback((payload: { success: boolean; error?: string; userInfoError?: string }) => {
     if (!window.opener) {
       return;
     }
@@ -34,6 +35,7 @@ const OAuthCallback = () => {
           success: payload.success,
           provider,
           error: payload.error,
+          userInfoError: payload.userInfoError,
           connectionId,
           label
         },
@@ -96,11 +98,29 @@ const OAuthCallback = () => {
       const session = window.sessionStorage;
       const progress = session.getItem(storageKey);
 
+      const userInfoErrorParam = searchParams.get('userInfoError');
+      if (userInfoErrorParam) {
+        session.setItem(storageKey, 'complete');
+        setUserInfoErrorMessage(userInfoErrorParam);
+        setStatus('success');
+        const successMessage = label
+          ? `Connected ${label}, but profile details were unavailable.`
+          : `Connection established, but profile details were unavailable.`;
+        setMessage(successMessage);
+        setDetails('We saved the connection even though the provider did not share user profile information.');
+        notifyParent({ success: true, error: userInfoErrorParam, userInfoError: userInfoErrorParam });
+        if (window.opener) {
+          setTimeout(() => window.close(), 1500);
+        }
+        return;
+      }
+
       if (!progress) {
         session.setItem(storageKey, 'pending');
         setStatus('redirecting');
         setMessage('Finalizing secure connection…');
         setDetails(undefined);
+        setUserInfoErrorMessage(undefined);
         window.location.replace(`/api/oauth/callback/${provider}${window.location.search}`);
         return;
       }
@@ -115,6 +135,7 @@ const OAuthCallback = () => {
         : 'Connection established successfully. You can close this window.';
       setMessage(successMessage);
       setDetails('This window will close automatically once the secure redirect completes.');
+      setUserInfoErrorMessage(undefined);
       notifyParent({ success: true });
       if (window.opener) {
         setTimeout(() => window.close(), 1500);
@@ -167,6 +188,13 @@ const OAuthCallback = () => {
           )}
           {details && status !== 'error' && (
             <p className="text-sm text-muted-foreground">{details}</p>
+          )}
+          {userInfoErrorMessage && (
+            <Alert className="border-amber-500/70 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-950/50 dark:text-amber-100">
+              <AlertDescription>
+                We connected to {formattedProvider}, but the provider did not share profile details: {userInfoErrorMessage}
+              </AlertDescription>
+            </Alert>
           )}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="secondary" onClick={handleClose}>
