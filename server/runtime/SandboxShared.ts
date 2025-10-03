@@ -16,6 +16,11 @@ export interface SandboxExecutorRunOptions {
   timeoutMs: number;
   signal?: AbortSignal;
   secrets: string[];
+  resourceLimits?: SandboxResourceLimits;
+  networkPolicy?: SandboxNetworkPolicy | null;
+  heartbeatIntervalMs?: number;
+  heartbeatTimeoutMs?: number;
+  onPolicyEvent?: (event: SandboxPolicyEvent) => void;
 }
 
 export interface SandboxExecutionResult {
@@ -23,6 +28,43 @@ export interface SandboxExecutionResult {
   logs: SandboxLogEntry[];
   durationMs: number;
 }
+
+export interface SandboxResourceLimits {
+  maxCpuMs?: number;
+  maxMemoryBytes?: number;
+}
+
+export interface SandboxNetworkAllowlist {
+  domains: string[];
+  ipRanges: string[];
+}
+
+export interface SandboxNetworkPolicy {
+  allowlist: SandboxNetworkAllowlist | null;
+  audit?: {
+    organizationId?: string;
+    executionId?: string;
+    nodeId?: string;
+    connectionId?: string;
+    userId?: string;
+  } | null;
+}
+
+export type SandboxPolicyEvent =
+  | {
+      type: 'network-denied';
+      host: string;
+      url: string;
+      reason: string;
+      allowlist?: SandboxNetworkAllowlist | null;
+      audit?: SandboxNetworkPolicy['audit'];
+    }
+  | {
+      type: 'resource-limit';
+      resource: 'cpu' | 'memory';
+      usage: number;
+      limit: number;
+    };
 
 export interface SandboxExecutor {
   run(options: SandboxExecutorRunOptions): Promise<SandboxExecutionResult>;
@@ -183,6 +225,202 @@ export function formatLog(args: any[]): string {
     .join(' ');
 }
 
+const networkPolicyHelpersSource = `function normalizeAllowlistInput(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  const normalized = [];
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) {
+      continue;
+    }
+    if (!normalized.includes(trimmed)) {
+      normalized.push(trimmed);
+    }
+  }
+  return normalized;
+}
+
+function parseIpv4(address) {
+  if (typeof address !== 'string') {
+    return null;
+  }
+  const parts = address.trim().split('.');
+  if (parts.length !== 4) {
+    return null;
+  }
+  let value = 0;
+  for (const part of parts) {
+    if (!/^\d+$/.test(part)) {
+      return null;
+    }
+    const num = Number(part);
+    if (!Number.isInteger(num) || num < 0 || num > 255) {
+      return null;
+    }
+    value = (value << 8) | num;
+  }
+  return value >>> 0;
+}
+
+function expandIpv6(address) {
+  if (typeof address !== 'string') {
+    return null;
+  }
+  const trimmed = address.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const lower = trimmed.toLowerCase();
+  const sections = lower.split('::');
+  if (sections.length > 2) {
+    return null;
+  }
+  const head = sections[0] ? sections[0].split(':') : [];
+  const tail = sections[1] ? sections[1].split(':') : [];
+  if (head.length === 1 && head[0] === '') {
+    head.length = 0;
+  }
+  if (tail.length === 1 && tail[0] === '') {
+    tail.length = 0;
+  }
+  const missing = 8 - (head.length + tail.length);
+  if (missing < 0) {
+    return null;
+  }
+  const segments = head.concat(Array(missing).fill('0'), tail);
+  if (segments.length !== 8) {
+    return null;
+  }
+  const values = [];
+  for (const segment of segments) {
+    if (!segment) {
+      values.push(0);
+      continue;
+    }
+    if (!/^[0-9a-f]{1,4}$/i.test(segment)) {
+      return null;
+    }
+    values.push(parseInt(segment, 16));
+  }
+  return values;
+}
+
+function parseIpv6(address) {
+  const expanded = expandIpv6(address);
+  if (!expanded) {
+    return null;
+  }
+  let value = 0n;
+  for (const segment of expanded) {
+    value = (value << 16n) | BigInt(segment);
+  }
+  return value;
+}
+
+function isIpv4InCidr(ip, cidr) {
+  const parts = typeof cidr === 'string' ? cidr.split('/') : [];
+  if (parts.length !== 2) {
+    return false;
+  }
+  const [range, prefixStr] = parts;
+  const prefix = Number(prefixStr);
+  if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) {
+    return false;
+  }
+  const rangeValue = parseIpv4(range);
+  const ipValue = parseIpv4(ip);
+  if (rangeValue === null || ipValue === null) {
+    return false;
+  }
+  if (prefix === 0) {
+    return true;
+  }
+  const mask = prefix === 32 ? 0xffffffff : (~((1 << (32 - prefix)) - 1)) >>> 0;
+  return (rangeValue & mask) === (ipValue & mask);
+}
+
+function isIpv6InCidr(ip, cidr) {
+  const parts = typeof cidr === 'string' ? cidr.split('/') : [];
+  if (parts.length !== 2) {
+    return false;
+  }
+  const [range, prefixStr] = parts;
+  const prefix = Number(prefixStr);
+  if (!Number.isInteger(prefix) || prefix < 0 || prefix > 128) {
+    return false;
+  }
+  const rangeValue = parseIpv6(range);
+  const ipValue = parseIpv6(ip);
+  if (rangeValue === null || ipValue === null) {
+    return false;
+  }
+  if (prefix === 0) {
+    return true;
+  }
+  const shift = 128 - prefix;
+  const mask = shift === 0 ? (1n << 128n) - 1n : ((1n << 128n) - 1n) ^ ((1n << BigInt(shift)) - 1n);
+  return (rangeValue & mask) === (ipValue & mask);
+}
+
+function isHostnameAllowed(hostname, domains) {
+  for (const domain of domains) {
+    if (!domain) {
+      continue;
+    }
+    if (domain === '*') {
+      return true;
+    }
+    if (domain.startsWith('*.')) {
+      const suffix = domain.slice(2);
+      if (hostname === suffix || hostname.endsWith('.' + suffix)) {
+        return true;
+      }
+      continue;
+    }
+    if (hostname === domain) {
+      return true;
+    }
+    if (hostname.endsWith('.' + domain)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isIpAllowed(hostname, ranges) {
+  if (typeof hostname !== 'string') {
+    return false;
+  }
+  const ipv4 = parseIpv4(hostname);
+  const ipv6 = ipv4 === null ? parseIpv6(hostname) : null;
+  if (ipv4 === null && ipv6 === null) {
+    return false;
+  }
+  for (const range of ranges) {
+    if (!range) {
+      continue;
+    }
+    if (range.includes('/')) {
+      if (ipv4 !== null && isIpv4InCidr(hostname, range)) {
+        return true;
+      }
+      if (ipv6 !== null && isIpv6InCidr(hostname, range)) {
+        return true;
+      }
+      continue;
+    }
+    if (hostname === range) {
+      return true;
+    }
+  }
+  return false;
+}`;
+
 const sanitizeErrorSource = function sanitizeError(error: any) {
   if (error == null) {
     return { name: 'Error', message: 'Unknown error' };
@@ -229,7 +467,9 @@ const {
   params,
   context,
   timeoutMs,
-  secrets
+  secrets,
+  networkPolicy: rawNetworkPolicy,
+  heartbeatIntervalMs
 } = runtimeData;
 
 const resolvedEntryPoint = typeof requestedEntryPoint === 'string' && requestedEntryPoint.length > 0
@@ -247,6 +487,34 @@ const escapeForRegExp = ${escapeRegExpSource};
 const redactValue = ${redactFunctionSource};
 const sanitizeError = ${sanitizeErrorSource};
 const formatLog = ${formatLogSource};
+${networkPolicyHelpersSource}
+
+const networkPolicy = (() => {
+  if (!rawNetworkPolicy || typeof rawNetworkPolicy !== 'object') {
+    return null;
+  }
+
+  const allowlistSource = rawNetworkPolicy.allowlist;
+  const allowlist = allowlistSource && typeof allowlistSource === 'object'
+    ? {
+        domains: normalizeAllowlistInput(allowlistSource.domains),
+        ipRanges: normalizeAllowlistInput(allowlistSource.ipRanges)
+      }
+    : null;
+
+  const auditSource = rawNetworkPolicy.audit;
+  const audit = auditSource && typeof auditSource === 'object'
+    ? {
+        organizationId: auditSource.organizationId ?? undefined,
+        executionId: auditSource.executionId ?? undefined,
+        nodeId: auditSource.nodeId ?? undefined,
+        connectionId: auditSource.connectionId ?? undefined,
+        userId: auditSource.userId ?? undefined
+      }
+    : null;
+
+  return { allowlist, audit };
+})();
 
 const redactionSecrets = Array.isArray(secrets) ? secrets.filter((value) => typeof value === 'string' && value.length > 0) : [];
 
@@ -261,9 +529,15 @@ const sendMessage = (message) => {
   }
 };
 
+let heartbeatTimer = null;
+
 const handleControlMessage = (message) => {
   if (message && message.type === 'abort') {
     abortController.abort();
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   }
 };
 
@@ -282,13 +556,103 @@ for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
   };
 }
 
-const safeFetch = (input, init) => {
-  const merged = init ? { ...init } : {};
-  if (!merged.signal) {
-    merged.signal = abortController.signal;
+const heartbeatInterval = typeof heartbeatIntervalMs === 'number' && heartbeatIntervalMs > 0
+  ? Math.max(heartbeatIntervalMs, 25)
+  : 500;
+
+heartbeatTimer = setInterval(() => {
+  sendMessage({ type: 'heartbeat', ts: Date.now() });
+}, heartbeatInterval);
+if (heartbeatTimer && typeof heartbeatTimer.unref === 'function') {
+  heartbeatTimer.unref();
+}
+
+const resolveRequestUrl = (input, init) => {
+  try {
+    if (typeof input === 'string') {
+      return input;
+    }
+    if (input && typeof input === 'object') {
+      if (typeof input.url === 'string') {
+        return input.url;
+      }
+      if (typeof input.href === 'string') {
+        return input.href;
+      }
+    }
+  } catch {
+    return undefined;
   }
-  return fetch(input, merged);
+  if (init && typeof init.url === 'string') {
+    return init.url;
+  }
+  return undefined;
 };
+
+const enforceNetworkPolicy = async (url) => {
+  if (!networkPolicy || !networkPolicy.allowlist) {
+    return;
+  }
+
+  const allowlist = networkPolicy.allowlist;
+  if (!allowlist || (allowlist.domains.length === 0 && allowlist.ipRanges.length === 0)) {
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(url, 'http://sandbox.local');
+  } catch {
+    return;
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  const port = parsed.port || '';
+  const hostWithPort = port ? hostname + ':' + port : hostname;
+
+  const domainAllowed = allowlist.domains.length > 0 && isHostnameAllowed(hostname, allowlist.domains);
+  const ipAllowed = allowlist.ipRanges.length > 0 && isIpAllowed(hostname, allowlist.ipRanges);
+
+  if (domainAllowed || ipAllowed) {
+    return;
+  }
+
+  sendMessage({
+    type: 'policy_violation',
+    event: {
+      type: 'network-denied',
+      host: hostWithPort,
+      url: parsed.href,
+      reason: 'host_not_allowlisted',
+      allowlist,
+      audit: networkPolicy.audit || null
+    }
+  });
+
+  throw new Error('Network request blocked: ' + hostWithPort + ' is not allowlisted for this organization');
+};
+
+const createSandboxFetch = (originalFetch) => {
+  return (input, init) => {
+    const merged = init ? { ...init } : {};
+    if (!merged.signal) {
+      merged.signal = abortController.signal;
+    }
+
+    const resolved = resolveRequestUrl(input, merged);
+
+    const execute = async () => {
+      if (resolved) {
+        await enforceNetworkPolicy(resolved);
+      }
+      return originalFetch(input, merged);
+    };
+
+    return execute();
+  };
+};
+
+const safeFetch = createSandboxFetch(fetch);
 
 const safeGlobals = {
   console: consoleProxy,
@@ -408,6 +772,11 @@ async function loadModule() {
     const serialized = sanitizeError(error);
     const redacted = redactValue(serialized, redactionSecrets);
     sendMessage({ type: 'error', error: redacted });
+  } finally {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   }
 })();
 `;
@@ -423,5 +792,44 @@ export class SandboxAbortError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'SandboxAbortError';
+  }
+}
+
+export class SandboxPolicyViolationError extends Error {
+  public readonly violation: SandboxPolicyEvent;
+
+  constructor(message: string, violation: SandboxPolicyEvent, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'SandboxPolicyViolationError';
+    this.violation = violation;
+    if (options?.cause !== undefined) {
+      try {
+        (this as any).cause = options.cause;
+      } catch {
+        // ignore assignment failures in older runtimes
+      }
+    }
+  }
+}
+
+export class SandboxResourceLimitError extends SandboxPolicyViolationError {
+  public readonly resource: 'cpu' | 'memory';
+  public readonly usage: number;
+  public readonly limit: number;
+
+  constructor(resource: 'cpu' | 'memory', usage: number, limit: number, message?: string, options?: { cause?: unknown }) {
+    const violation: SandboxPolicyEvent = { type: 'resource-limit', resource, usage, limit };
+    super(message ?? `Sandbox ${resource.toUpperCase()} limit exceeded`, violation, options);
+    this.name = 'SandboxResourceLimitError';
+    this.resource = resource;
+    this.usage = usage;
+    this.limit = limit;
+  }
+}
+
+export class SandboxHeartbeatTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SandboxHeartbeatTimeoutError';
   }
 }

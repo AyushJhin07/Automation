@@ -10,7 +10,11 @@ import { resolveAllParams } from './ParameterResolver';
 import { retryManager, RetryPolicy } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
 import type { NodeExecution } from './RunExecutionManager';
-import { nodeSandbox, collectSecretStrings } from '../runtime/NodeSandbox';
+import {
+  nodeSandbox,
+  collectSecretStrings,
+  SandboxPolicyViolationError,
+} from '../runtime/NodeSandbox';
 import { db, workflowTimers } from '../database/schema.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 
@@ -210,15 +214,31 @@ export class WorkflowRuntime {
 
           console.log(`✅ Node ${node.id} completed successfully`);
         } catch (error) {
-          const message = (error as Error)?.message ?? 'Unknown error';
+          const err = error instanceof Error ? error : new Error(String(error));
+          const originalMessage = err.message ?? 'Unknown error';
+          const message = originalMessage;
+          if (err instanceof SandboxPolicyViolationError) {
+            this.setNodeMetadata(context.executionId, node.id, {
+              policyViolation: err.violation,
+            });
+            retryManager.emitActionableError({
+              executionId: context.executionId,
+              nodeId: node.id,
+              nodeType: node.type,
+              code: err.violation.type === 'resource-limit' ? 'SANDBOX_RESOURCE_LIMIT' : 'SANDBOX_NETWORK_POLICY',
+              message: originalMessage,
+              details: err.violation,
+            });
+          }
           const metadata = this.consumeNodeMetadata(context.executionId, node.id);
           const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
           await runExecutionManager.failNodeExecution(context.executionId, node.id, message, {
             ...metadata,
             circuitState
           });
-          console.error(`❌ Node ${node.id} failed:`, error);
-          throw new Error(`Node "${node.label}" failed: ${message}`);
+          console.error(`❌ Node ${node.id} failed:`, err);
+          err.message = `Node "${node.label}" failed: ${originalMessage}`;
+          throw err;
         } finally {
           nodeAbortController.abort();
         }
