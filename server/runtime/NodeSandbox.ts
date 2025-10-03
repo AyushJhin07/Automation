@@ -1,5 +1,8 @@
 import { Worker } from 'node:worker_threads';
 import { performance } from 'node:perf_hooks';
+import { SpanStatusCode } from '@opentelemetry/api';
+
+import { recordNodeLatency, tracer } from '../observability/index.js';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const REDACTION_TOKEN = '[REDACTED]';
@@ -411,116 +414,145 @@ export class NodeSandbox {
       throw new SandboxAbortError('Sandbox execution aborted before start');
     }
 
-    const start = performance.now();
+    const spanAttributes = {
+      'workflow.execution_id': (context as Record<string, unknown>)?.executionId as string | undefined,
+      'workflow.workflow_id': (context as Record<string, unknown>)?.workflowId as string | undefined,
+      'workflow.node_id': (context as Record<string, unknown>)?.nodeId as string | undefined,
+      'sandbox.entry_point': entryPoint,
+    } as const;
 
-    const sanitizedParams = sanitizeForTransfer(params, 'params');
-    const sanitizedContext = sanitizeForTransfer(context, 'context');
-    const collectedSecrets = dedupeSecrets(secrets);
+    return tracer.startActiveSpan('workflow.sandbox', { attributes: spanAttributes }, async (span) => {
+      const start = performance.now();
+      try {
+        const sanitizedParams = sanitizeForTransfer(params, 'params');
+        const sanitizedContext = sanitizeForTransfer(context, 'context');
+        const collectedSecrets = dedupeSecrets(secrets);
 
-    const worker = new Worker(workerSource, {
-      eval: true,
-      workerData: {
-        code,
-        entryPoint,
-        params: sanitizedParams,
-        context: sanitizedContext,
-        timeoutMs,
-        secrets: collectedSecrets
-      },
-      type: 'module'
-    });
+        const worker = new Worker(workerSource, {
+          eval: true,
+          workerData: {
+            code,
+            entryPoint,
+            params: sanitizedParams,
+            context: sanitizedContext,
+            timeoutMs,
+            secrets: collectedSecrets
+          },
+          type: 'module'
+        });
 
-    const logs: SandboxLogEntry[] = [];
+        const logs: SandboxLogEntry[] = [];
 
-    return await new Promise<SandboxExecutionResult>((resolve, reject) => {
-      let settled = false;
-      let hardTimeout: NodeJS.Timeout | null = null;
+        const outcome = await new Promise<SandboxExecutionResult>((resolve, reject) => {
+          let settled = false;
+          let hardTimeout: NodeJS.Timeout | null = null;
 
-      const finalize = (error: Error | null, result?: AllowedValue) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (hardTimeout) {
-          clearTimeout(hardTimeout);
-          hardTimeout = null;
-        }
-        signal?.removeEventListener('abort', handleAbort);
-        worker.removeAllListeners?.('message');
-        worker.removeAllListeners?.('error');
-        worker.removeAllListeners?.('exit');
-        worker.terminate().catch(() => {});
-
-        const durationMs = performance.now() - start;
-
-        if (error) {
-          reject(error);
-        } else {
-          resolve({ result: result ?? null, logs, durationMs });
-        }
-      };
-
-      const handleAbort = () => {
-        worker.postMessage({ type: 'abort' });
-        finalize(new SandboxAbortError('Sandbox execution aborted'));
-      };
-
-      if (signal) {
-        signal.addEventListener('abort', handleAbort, { once: true });
-      }
-
-      if (timeoutMs > 0) {
-        hardTimeout = setTimeout(() => {
-          worker.postMessage({ type: 'abort' });
-          hardTimeout = setTimeout(() => {
+          const finalize = (error: Error | null, result?: AllowedValue) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            if (hardTimeout) {
+              clearTimeout(hardTimeout);
+              hardTimeout = null;
+            }
+            signal?.removeEventListener('abort', handleAbort);
+            worker.removeAllListeners?.('message');
+            worker.removeAllListeners?.('error');
+            worker.removeAllListeners?.('exit');
             worker.terminate().catch(() => {});
-          }, 1000);
-          finalize(new SandboxTimeoutError(`Sandbox execution timed out after ${timeoutMs}ms`));
-        }, timeoutMs);
+
+            const durationMs = performance.now() - start;
+
+            if (error) {
+              reject(error);
+            } else {
+              resolve({ result: result ?? null, logs, durationMs });
+            }
+          };
+
+          const handleAbort = () => {
+            worker.postMessage({ type: 'abort' });
+            finalize(new SandboxAbortError('Sandbox execution aborted'));
+          };
+
+          if (signal) {
+            signal.addEventListener('abort', handleAbort, { once: true });
+          }
+
+          if (timeoutMs > 0) {
+            hardTimeout = setTimeout(() => {
+              worker.postMessage({ type: 'abort' });
+              hardTimeout = setTimeout(() => {
+                worker.terminate().catch(() => {});
+              }, 1000);
+              finalize(new SandboxTimeoutError(`Sandbox execution timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+          }
+
+          worker.on('message', (message: any) => {
+            if (!message) return;
+            if (message.type === 'log') {
+              try {
+                const formatted = typeof message.data === 'string' ? message.data : formatLog(message.data as any[]);
+                logs.push({
+                  level: (message.level as SandboxLogLevel) || 'log',
+                  message: formatted
+                });
+              } catch (error) {
+                logs.push({ level: 'warn', message: '[Sandbox] Failed to format log output' });
+              }
+              return;
+            }
+            if (message.type === 'result') {
+              finalize(null, message.data as AllowedValue);
+              return;
+            }
+            if (message.type === 'error') {
+              const err = new Error(message.error?.message || 'Sandbox execution failed');
+              if (message.error?.name) {
+                err.name = message.error.name;
+              }
+              if (message.error?.stack) {
+                err.stack = message.error.stack;
+              }
+              finalize(err);
+            }
+          });
+
+          worker.once('error', (error) => {
+            finalize(error instanceof Error ? error : new Error(String(error)));
+          });
+
+          worker.once('exit', (code) => {
+            if (settled) return;
+            if (code === 0) {
+              finalize(new Error('Sandbox worker exited unexpectedly without a result'));
+            } else {
+              finalize(new Error(`Sandbox worker exited with code ${code}`));
+            }
+          });
+        });
+
+        span.setAttribute('sandbox.log_count', outcome.logs.length);
+        span.setStatus({ code: SpanStatusCode.OK });
+        return outcome;
+      } catch (error) {
+        const exception = error instanceof Error ? error : new Error(String(error));
+        span.recordException(exception);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: exception.message });
+        throw error;
+      } finally {
+        const durationMs = performance.now() - start;
+        span.setAttribute('sandbox.duration_ms', durationMs);
+        recordNodeLatency(durationMs, {
+          workflow_id: spanAttributes['workflow.workflow_id'],
+          execution_id: spanAttributes['workflow.execution_id'],
+          node_id: spanAttributes['workflow.node_id'],
+          entry_point: entryPoint,
+        });
+        span.end();
       }
-
-      worker.on('message', (message: any) => {
-        if (!message) return;
-        if (message.type === 'log') {
-          try {
-            const formatted = typeof message.data === 'string' ? message.data : formatLog(message.data as any[]);
-            logs.push({
-              level: (message.level as SandboxLogLevel) || 'log',
-              message: formatted
-            });
-          } catch (error) {
-            logs.push({ level: 'warn', message: '[Sandbox] Failed to format log output' });
-          }
-          return;
-        }
-        if (message.type === 'result') {
-          finalize(null, message.data as AllowedValue);
-          return;
-        }
-        if (message.type === 'error') {
-          const err = new Error(message.error?.message || 'Sandbox execution failed');
-          if (message.error?.name) {
-            err.name = message.error.name;
-          }
-          if (message.error?.stack) {
-            err.stack = message.error.stack;
-          }
-          finalize(err);
-        }
-      });
-
-      worker.once('error', (error) => {
-        finalize(error instanceof Error ? error : new Error(String(error)));
-      });
-
-      worker.once('exit', (code) => {
-        if (settled) return;
-        if (code === 0) {
-          finalize(new Error('Sandbox worker exited unexpectedly without a result'));
-        } else {
-          finalize(new Error(`Sandbox worker exited with code ${code}`));
-        }
-      });
     });
   }
 }

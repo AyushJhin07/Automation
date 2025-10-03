@@ -1,10 +1,12 @@
 import type { Job, Processor, Worker, WorkerOptions } from 'bullmq';
+import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 
 import {
   createWorker,
   type JobPayloads,
   type QueueName,
 } from '../queue/BullMQFactory.js';
+import { tracer } from '../observability/index.js';
 
 type JobPayload<Name extends QueueName> = JobPayloads[Name];
 
@@ -80,5 +82,36 @@ export function registerQueueWorker<Name extends QueueName, ResultType = unknown
     },
   };
 
-  return createWorker(name, processor, finalOptions);
+  const instrumentedProcessor: Processor<JobPayload<Name>, ResultType, Name> = async (job) => {
+    return tracer.startActiveSpan(`queue.process ${String(name)}`, {
+      kind: SpanKind.CONSUMER,
+      attributes: {
+        'queue.name': String(name),
+        'queue.job_id': job.id ?? undefined,
+        'queue.attempt': job.attemptsMade + 1,
+        'queue.max_attempts': job.opts.attempts ?? undefined,
+        'workflow.execution_id': (job.data as Record<string, unknown>)?.executionId as string | undefined,
+        'workflow.workflow_id': (job.data as Record<string, unknown>)?.workflowId as string | undefined,
+        'workflow.organization_id': (job.data as Record<string, unknown>)?.organizationId as string | undefined,
+      },
+    }, async (span) => {
+      const startTime = process.hrtime.bigint();
+      try {
+        const result = await processor(job);
+        span.setStatus({ code: SpanStatusCode.OK });
+        return result;
+      } catch (error: unknown) {
+        const exception = error instanceof Error ? error : new Error(String(error));
+        span.recordException(exception);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: exception.message });
+        throw error;
+      } finally {
+        const durationMs = Number(process.hrtime.bigint() - startTime) / 1_000_000;
+        span.setAttribute('queue.job.duration_ms', durationMs);
+        span.end();
+      }
+    });
+  };
+
+  return createWorker(name, instrumentedProcessor, finalOptions);
 }

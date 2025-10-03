@@ -13,6 +13,7 @@ import {
 } from '../queue/BullMQFactory.js';
 import { registerQueueWorker } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
+import { updateQueueDepthMetric } from '../observability/index.js';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -198,6 +199,9 @@ class ExecutionQueueService {
     if (!this.telemetryCleanup) {
       this.telemetryCleanup = registerQueueTelemetry(queue, this.queueEvents, {
         logger: console,
+        onMetrics: (counts) => {
+          updateQueueDepthMetric(queue.name, counts);
+        },
       });
     }
 

@@ -1,3 +1,4 @@
+import '../observability/index.js';
 import { env } from '../env';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
 import { WebhookManager } from '../webhooks/WebhookManager.js';
