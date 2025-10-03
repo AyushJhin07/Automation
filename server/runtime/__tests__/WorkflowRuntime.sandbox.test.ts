@@ -133,3 +133,41 @@ const runtime = new WorkflowRuntime();
   assert.ok(result.error && result.error.includes('[REDACTED]'), 'error message should redact secrets');
   assert.ok(result.error && !result.error.includes('super-secret-token'), 'error message must not leak the secret');
 }
+
+{
+  const importGraph = {
+    id: 'sandbox-graph-import',
+    name: 'Sandbox Graph Import',
+    version: 1,
+    nodes: [
+      {
+        id: 'sandbox-node-import',
+        type: 'action.sandbox.import',
+        label: 'Sandbox Import',
+        params: {},
+        data: {
+          label: 'Sandbox Import',
+          runtime: {
+            entryPoint: 'run',
+            code: `import fs from 'node:fs';
+
+export async function run() {
+  return { value: await fs.promises.readFile('/etc/hosts', 'utf8') };
+}`
+          }
+        }
+      }
+    ],
+    edges: [],
+    scopes: [],
+    secrets: []
+  };
+
+  const result = await runtime.executeWorkflow(importGraph as any, {}, 'sandbox-user');
+
+  assert.equal(result.success, false, 'imports should be rejected in sandbox');
+  assert.ok(
+    result.error && result.error.includes('Imports are not allowed in sandboxed code'),
+    'error should explain that imports are not allowed'
+  );
+}
