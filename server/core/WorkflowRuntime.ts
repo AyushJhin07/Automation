@@ -119,7 +119,7 @@ export class WorkflowRuntime {
     }
 
     // Start execution tracking
-    runExecutionManager.startExecution(executionId, graph, userId, triggerType, initialData);
+    await runExecutionManager.startExecution(executionId, graph, userId, triggerType, initialData);
 
     console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
 
@@ -138,7 +138,7 @@ export class WorkflowRuntime {
         const configuredTimeout = this.resolveConfiguredTimeout(node.id, runtimeOptions);
 
         // Start node execution tracking
-        runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput, {
+        await runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput, {
           timeoutMs: configuredTimeout,
           connectorId
         });
@@ -167,7 +167,7 @@ export class WorkflowRuntime {
           // Track successful completion
           const metadata = this.consumeNodeMetadata(context.executionId, node.id);
           const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
-          runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeOutput, {
+          await runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeOutput, {
             ...metadata,
             circuitState
           });
@@ -187,7 +187,7 @@ export class WorkflowRuntime {
                   (nodeOutput as Record<string, any>).scheduled = true;
                   (nodeOutput as Record<string, any>).resumeAt = scheduleResult.resumeAt.toISOString();
                 }
-                runExecutionManager.markExecutionWaiting(
+                await runExecutionManager.markExecutionWaiting(
                   context.executionId,
                   `Timer scheduled for node ${node.label}`,
                   scheduleResult.resumeAt
@@ -213,7 +213,7 @@ export class WorkflowRuntime {
           const message = (error as Error)?.message ?? 'Unknown error';
           const metadata = this.consumeNodeMetadata(context.executionId, node.id);
           const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
-          runExecutionManager.failNodeExecution(context.executionId, node.id, message, {
+          await runExecutionManager.failNodeExecution(context.executionId, node.id, message, {
             ...metadata,
             circuitState
           });
@@ -227,7 +227,7 @@ export class WorkflowRuntime {
       const executionTime = Date.now() - startTime.getTime();
       
       // Track successful completion
-      runExecutionManager.completeExecution(context.executionId, context.prevOutput);
+      await runExecutionManager.completeExecution(context.executionId, context.prevOutput);
 
       console.log(`🎉 Workflow execution completed in ${executionTime}ms`);
 
@@ -243,7 +243,7 @@ export class WorkflowRuntime {
       const errorMessage = (error as Error)?.message ?? 'Unknown error';
 
       // Track failed completion
-      runExecutionManager.completeExecution(context.executionId, undefined, errorMessage);
+      await runExecutionManager.completeExecution(context.executionId, undefined, errorMessage);
 
       console.error(`💥 Workflow execution failed after ${executionTime}ms:`, error);
 

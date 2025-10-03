@@ -19,6 +19,7 @@ import workflowDeploymentRoutes from "./routes/workflow-deployments.js";
 import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
 import oauthRoutes from "./routes/oauth";
+import executionRoutes from "./routes/executions.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
@@ -117,6 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P1-6: App parameter schema routes
   app.use('/api/app-schemas', appSchemaRoutes);
+  app.use('/api/executions', executionRoutes);
 
   app.use('/api/google', googleSheetsRoutes);
   app.use('/api/metadata', metadataRoutes);
@@ -4325,96 +4327,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== RUN EXECUTION & OBSERVABILITY API =====
-  
-  // Get workflow executions with filtering and pagination
-  app.get('/api/executions', async (req, res) => {
-    try {
-      const { runExecutionManager } = await import('./core/RunExecutionManager');
-      
-      const query = {
-        executionId: req.query.executionId as string,
-        workflowId: req.query.workflowId as string,
-        userId: req.query.userId as string,
-        status: req.query.status ? [req.query.status as string] : undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
-        sortBy: req.query.sortBy as 'startTime' | 'duration' | 'status',
-        sortOrder: req.query.sortOrder as 'asc' | 'desc'
-      };
-      
-      const result = runExecutionManager.queryExecutions(query);
-      res.json(result);
-    } catch (error) {
-      console.error('Failed to query executions:', error);
-      res.status(500).json({ error: 'Failed to query executions' });
-    }
-  });
-  
-  // Get specific execution details
-  app.get('/api/executions/:executionId', async (req, res) => {
-    try {
-      const { runExecutionManager } = await import('./core/RunExecutionManager');
-      const execution = runExecutionManager.getExecution(req.params.executionId);
-      
-      if (!execution) {
-        return res.status(404).json({ error: 'Execution not found' });
-      }
-      
-      res.json(execution);
-    } catch (error) {
-      console.error('Failed to get execution:', error);
-      res.status(500).json({ error: 'Failed to get execution' });
-    }
-  });
-  
-  // Retry entire execution
-  app.post('/api/executions/:executionId/retry', async (req, res) => {
-    try {
-      const { workflowRuntime } = await import('./core/WorkflowRuntime');
-      const { runExecutionManager } = await import('./core/RunExecutionManager');
-      
-      const execution = runExecutionManager.getExecution(req.params.executionId);
-      if (!execution) {
-        return res.status(404).json({ error: 'Execution not found' });
-      }
-      
-      // TODO: Implement retry logic by re-running the workflow
-      // For now, just return success
-      res.json({ success: true, message: 'Retry scheduled' });
-    } catch (error) {
-      console.error('Failed to retry execution:', error);
-      res.status(500).json({ error: 'Failed to retry execution' });
-    }
-  });
-  
-  // Retry specific node
-  app.post('/api/executions/:executionId/nodes/:nodeId/retry', async (req, res) => {
-    try {
-      const { retryManager } = await import('./core/RetryManager');
-      
-      await retryManager.replayFromDLQ(req.params.executionId, req.params.nodeId);
-      res.json({ success: true, message: 'Node retry scheduled' });
-    } catch (error) {
-      console.error('Failed to retry node:', error);
-      res.status(500).json({ error: 'Failed to retry node' });
-    }
-  });
-  
-  // Get execution statistics
-  app.get('/api/executions/stats/:timeframe', async (req, res) => {
-    try {
-      const { runExecutionManager } = await import('./core/RunExecutionManager');
-      const timeframe = req.params.timeframe as 'hour' | 'day' | 'week';
-      
-      const stats = runExecutionManager.getExecutionStats(timeframe);
-      res.json(stats);
-    } catch (error) {
-      console.error('Failed to get execution stats:', error);
-      res.status(500).json({ error: 'Failed to get execution stats' });
-    }
-  });
-  
   // Get DLQ items
   app.get('/api/dlq', async (req, res) => {
     try {
