@@ -392,6 +392,14 @@
       "name": "Payment Succeeded",
       "description": "Triggered when a payment is successfully processed",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "stripe",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "stripe-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -425,6 +433,14 @@
       "name": "Payment Failed",
       "description": "Triggered when a payment fails",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "stripe",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "stripe-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -453,6 +469,14 @@
       "name": "Subscription Created",
       "description": "Triggered when a new subscription is created",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "stripe",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "stripe-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -482,6 +506,14 @@
       "name": "Invoice Payment Succeeded",
       "description": "Triggered when an invoice payment succeeds",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "stripe",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "stripe-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {

@@ -406,6 +406,14 @@
       "name": "Message Received",
       "description": "Triggered when a new message is posted",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "slack",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "x-slack-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -450,6 +458,14 @@
       "name": "Reaction Added",
       "description": "Triggered when a reaction is added to a message",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "slack",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "x-slack-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -489,6 +505,14 @@
       "name": "User Joined Channel",
       "description": "Triggered when a user joins a channel",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "slack",
+          "required": true,
+          "timestampToleranceSeconds": 300,
+          "signatureHeader": "x-slack-signature"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {

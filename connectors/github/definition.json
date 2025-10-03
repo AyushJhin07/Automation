@@ -567,6 +567,13 @@
       "name": "Issue Opened",
       "description": "Triggered when a new issue is opened",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "github",
+          "required": true,
+          "signatureHeader": "x-hub-signature-256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -603,6 +610,13 @@
       "name": "Pull Request Opened",
       "description": "Triggered when a new pull request is opened",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "github",
+          "required": true,
+          "signatureHeader": "x-hub-signature-256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -638,6 +652,13 @@
       "name": "Push",
       "description": "Triggered when commits are pushed to a repository",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "github",
+          "required": true,
+          "signatureHeader": "x-hub-signature-256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -674,6 +695,13 @@
       "name": "Issue Closed",
       "description": "Triggered when an issue is closed",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "github",
+          "required": true,
+          "signatureHeader": "x-hub-signature-256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -703,6 +731,13 @@
       "name": "Pull Request Merged",
       "description": "Triggered when a pull request is merged",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "github",
+          "required": true,
+          "signatureHeader": "x-hub-signature-256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {

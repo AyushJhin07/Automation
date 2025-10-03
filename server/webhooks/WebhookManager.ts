@@ -8,6 +8,11 @@ import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
 import type { ConnectionService } from '../services/ConnectionService';
+import {
+  webhookVerifier,
+  WebhookVerificationFailureReason,
+  type WebhookVerificationResult,
+} from './WebhookVerifier';
 
 type QueueService = {
   enqueue: (request: {
@@ -17,6 +22,13 @@ type QueueService = {
     triggerData?: Record<string, any> | null;
     organizationId: string;
   }) => Promise<{ executionId: string }>;
+};
+
+type SignatureEnforcementConfig = {
+  providerId: string;
+  required: boolean;
+  timestampToleranceSeconds?: number;
+  signatureHeader?: string;
 };
 
 export class WebhookManager {
@@ -155,8 +167,163 @@ export class WebhookManager {
       }
 
       const parsed = new Date(trimmed);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private lookupSignatureEnforcement(appId: string, triggerId: string): SignatureEnforcementConfig | null {
+    try {
+      const definition = connectorRegistry.getConnectorDefinition(appId);
+      if (!definition) {
+        return null;
+      }
+
+      const triggerDef = definition.triggers?.find((item) => item.id === triggerId);
+      if (!triggerDef) {
+        return null;
+      }
+
+      const metadata = (triggerDef as any).metadata;
+      if (!metadata || typeof metadata !== 'object') {
+        return null;
+      }
+
+      const signatureConfig = (metadata as any).signatureVerification;
+      if (!signatureConfig || typeof signatureConfig.providerId !== 'string') {
+        return null;
+      }
+
+      return {
+        providerId: signatureConfig.providerId,
+        required: signatureConfig.required !== false,
+        timestampToleranceSeconds: Number.isFinite(signatureConfig.timestampToleranceSeconds)
+          ? Number(signatureConfig.timestampToleranceSeconds)
+          : undefined,
+        signatureHeader: typeof signatureConfig.signatureHeader === 'string'
+          ? signatureConfig.signatureHeader
+          : undefined,
+      };
+    } catch (error) {
+      console.warn(
+        `⚠️ Failed to resolve signature enforcement for ${appId}.${triggerId}:`,
+        getErrorMessage(error)
+      );
+      return null;
     }
+  }
+
+  private resolveStoredSignatureConfig(webhook: WebhookTrigger): SignatureEnforcementConfig | null {
+    const metadata = webhook.metadata as Record<string, any> | undefined;
+    const stored = metadata?.signatureVerification;
+    if (stored && typeof stored.providerId === 'string') {
+      return {
+        providerId: stored.providerId,
+        required: stored.required !== false,
+        timestampToleranceSeconds: Number.isFinite(stored.timestampToleranceSeconds)
+          ? Number(stored.timestampToleranceSeconds)
+          : undefined,
+        signatureHeader: typeof stored.signatureHeader === 'string' ? stored.signatureHeader : undefined,
+      };
+    }
+    return null;
+  }
+
+  private resolveSignatureConfig(webhook: WebhookTrigger): SignatureEnforcementConfig | null {
+    return this.resolveStoredSignatureConfig(webhook) ?? this.lookupSignatureEnforcement(webhook.appId, webhook.triggerId);
+  }
+
+  private getHeaderValue(headers: Record<string, string>, headerName?: string): string | undefined {
+    if (!headerName) {
+      return undefined;
+    }
+    const target = headerName.toLowerCase();
+    for (const [name, value] of Object.entries(headers ?? {})) {
+      if (typeof value === 'string' && name.toLowerCase() === target) {
+        return value;
+      }
+    }
+    return undefined;
+  }
+
+  private resolveVerificationProvider(webhook: WebhookTrigger, config: SignatureEnforcementConfig | null): string | null {
+    if (config?.providerId) {
+      return config.providerId;
+    }
+    if (webhook.secret) {
+      if (webhookVerifier.hasProvider(webhook.appId)) {
+        return webhook.appId;
+      }
+      return 'generic_hmac';
+    }
+    return null;
+  }
+
+  private async ensureSignatureVerified(
+    webhook: WebhookTrigger,
+    event: TriggerEvent,
+    headers: Record<string, string>,
+    rawBody: string | undefined,
+    config: SignatureEnforcementConfig | null
+  ): Promise<boolean> {
+    const providerId = this.resolveVerificationProvider(webhook, config);
+    if (!providerId) {
+      return true;
+    }
+
+    const secret = webhook.secret ?? '';
+    const isRequired = config ? config.required !== false : secret.length > 0;
+
+    if (!secret) {
+      if (!isRequired) {
+        return true;
+      }
+
+      const failureResult: WebhookVerificationResult = {
+        isValid: false,
+        provider: providerId,
+        failureReason: WebhookVerificationFailureReason.MISSING_SECRET,
+        message: 'Webhook secret missing for signature verification',
+        signatureHeader: config?.signatureHeader,
+      };
+      await this.recordVerificationFailure(event, failureResult);
+      console.warn(`🔒 Missing webhook secret for ${webhook.id}; rejecting event`);
+      return false;
+    }
+
+    const verificationResult = await webhookVerifier.verifyWebhook(providerId, {
+      headers,
+      payload: event.payload,
+      rawBody,
+      secret,
+      toleranceSecondsOverride: config?.timestampToleranceSeconds,
+    });
+
+    if (!verificationResult.isValid) {
+      if (verificationResult.providedSignature) {
+        event.signature = verificationResult.providedSignature;
+      }
+      await this.recordVerificationFailure(event, verificationResult);
+      console.warn(
+        `🔒 Invalid webhook signature for ${webhook.id}:`,
+        verificationResult.message ?? verificationResult.failureReason ?? 'unknown reason'
+      );
+      return false;
+    }
+
+    if (verificationResult.providedSignature) {
+      event.signature = verificationResult.providedSignature;
+    }
+
+    return true;
+  }
+
+  private async recordVerificationFailure(event: TriggerEvent, result: WebhookVerificationResult): Promise<void> {
+    const message = result.message ?? `Webhook signature verification failed (${result.failureReason ?? 'unknown'})`;
+    const logId = await this.persistence.logWebhookEvent(event);
+    if (logId) {
+      event.id = logId;
+    }
+    await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
+  }
 
     return null;
   }
@@ -255,6 +422,12 @@ export class WebhookManager {
       const endpoint = `/api/webhooks/${webhookId}`;
 
       const normalizedMetadata = { ...(trigger.metadata ?? {}) };
+      if (!normalizedMetadata.signatureVerification) {
+        const signatureConfig = this.lookupSignatureEnforcement(trigger.appId, trigger.triggerId);
+        if (signatureConfig) {
+          normalizedMetadata.signatureVerification = signatureConfig;
+        }
+      }
       if (trigger.organizationId && !normalizedMetadata.organizationId) {
         normalizedMetadata.organizationId = trigger.organizationId;
       }
@@ -297,11 +470,7 @@ export class WebhookManager {
         return false;
       }
 
-      // Verify webhook signature if secret is provided
-      if (webhook.secret && !this.verifySignature(payload, headers, webhook.secret, webhook.appId, rawBody)) {
-        console.warn(`🔒 Invalid webhook signature for ${webhookId}`);
-        return false;
-      }
+      const signatureConfig = this.resolveSignatureConfig(webhook);
 
       const organizationId =
         (webhook.metadata && (webhook.metadata as any).organizationId) ||
@@ -316,7 +485,6 @@ export class WebhookManager {
         (webhook.metadata && (webhook.metadata as any).userId) ||
         webhook.userId;
 
-      // Create trigger event
       const timestamp = this.resolveEventTimestamp(headers, payload) ?? new Date();
 
       const event: TriggerEvent = {
@@ -327,12 +495,33 @@ export class WebhookManager {
         payload,
         headers,
         timestamp,
-        signature: headers['x-signature'] || headers['x-hub-signature-256'],
+        signature: undefined,
         processed: false,
         source: 'webhook',
         organizationId,
         userId,
       };
+
+      const defaultSignature =
+        this.getHeaderValue(headers, signatureConfig?.signatureHeader) ||
+        this.getHeaderValue(headers, 'x-signature') ||
+        this.getHeaderValue(headers, 'x-hub-signature-256') ||
+        this.getHeaderValue(headers, 'stripe-signature');
+      if (defaultSignature) {
+        event.signature = defaultSignature;
+      }
+
+      const verified = await this.ensureSignatureVerified(
+        webhook,
+        event,
+        headers,
+        rawBody,
+        signatureConfig
+      );
+
+      if (!verified) {
+        return false;
+      }
 
       if (!this.isTimestampWithinTolerance(event.timestamp)) {
         console.warn(
@@ -835,500 +1024,6 @@ export class WebhookManager {
       await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
       return false;
     }
-  }
-
-  /**
-   * Verify webhook signature
-   */
-  private verifySignature(payload: any, headers: Record<string, string>, secret: string, appId?: string, rawBody?: string): boolean {
-    try {
-      if (!appId) {
-        return this.verifyGenericSignature(payload, headers, secret);
-      }
-
-      // Route to vendor-specific signature verification
-      switch (appId.toLowerCase()) {
-        case 'slack':
-        case 'slack-enhanced':
-          return this.verifySlackSignature(payload, headers, secret, rawBody);
-        
-        case 'stripe':
-        case 'stripe-enhanced':
-          return this.verifyStripeSignature(payload, headers, secret, rawBody);
-        
-        case 'shopify':
-        case 'shopify-enhanced':
-          return this.verifyShopifySignature(payload, headers, secret, rawBody);
-        
-        case 'github':
-        case 'github-enhanced':
-          return this.verifyGitHubSignature(payload, headers, secret, rawBody);
-        
-        case 'gitlab':
-          return this.verifyGitLabSignature(payload, headers, secret);
-        
-        case 'bitbucket':
-          return this.verifyBitbucketSignature(payload, headers, secret);
-        
-        case 'zendesk':
-          return this.verifyZendeskSignature(payload, headers, secret);
-        
-        case 'intercom':
-          return this.verifyIntercomSignature(payload, headers, secret);
-        
-        case 'jira':
-        case 'jira-service-management':
-          return this.verifyJiraSignature(payload, headers, secret);
-        
-        case 'hubspot':
-        case 'hubspot-enhanced':
-          return this.verifyHubSpotSignature(payload, headers, secret);
-        
-        // New app signature verifications
-        case 'marketo':
-          return this.verifyMarketoSignature(payload, headers, secret, rawBody);
-        
-        case 'iterable':
-          return this.verifyIterableSignature(payload, headers, secret, rawBody);
-        
-        case 'braze':
-          return this.verifyBrazeSignature(payload, headers, secret, rawBody);
-        
-        case 'docusign':
-          return this.verifyDocuSignSignature(payload, headers, secret, rawBody);
-        
-        case 'adobesign':
-          return this.verifyAdobeSignSignature(payload, headers, secret, rawBody);
-        
-        case 'hellosign':
-          return this.verifyHelloSignSignature(payload, headers, secret, rawBody);
-        
-        case 'calendly':
-          return this.verifyCalendlySignature(payload, headers, secret, rawBody);
-        
-        case 'caldotcom':
-          return this.verifyCalDotComSignature(payload, headers, secret, rawBody);
-        
-        case 'webex':
-          return this.verifyWebexSignature(payload, headers, secret, rawBody);
-        
-        case 'ringcentral':
-          return this.verifyRingCentralSignature(payload, headers, secret, rawBody);
-        
-        case 'paypal':
-          return this.verifyPayPalSignature(payload, headers, secret, rawBody);
-        
-        case 'square':
-          return this.verifySquareSignature(payload, headers, secret, rawBody);
-        
-        case 'bigcommerce':
-          return this.verifyBigCommerceSignature(payload, headers, secret, rawBody);
-        
-        case 'surveymonkey':
-          return this.verifySurveyMonkeySignature(payload, headers, secret, rawBody);
-        
-        default:
-          return this.verifyGenericSignature(payload, headers, secret);
-      }
-      
-    } catch (error) {
-      console.error('❌ Error verifying signature:', getErrorMessage(error));
-      return false;
-    }
-  }
-
-  /**
-   * Generic signature verification (fallback)
-   */
-  private verifyGenericSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-signature'] || headers['x-hub-signature-256'];
-    if (!signature) {
-      return false;
-    }
-
-    const expectedSignature = createHash('sha256')
-      .update(JSON.stringify(payload) + secret)
-      .digest('hex');
-    
-    return signature === expectedSignature || signature === `sha256=${expectedSignature}`;
-  }
-
-  /**
-   * Slack webhook signature verification
-   * Uses v0:timestamp:body HMAC SHA256 with timestamp validation
-   */
-  private verifySlackSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-slack-signature'];
-    const timestamp = headers['x-slack-request-timestamp'];
-    
-    if (!signature || !timestamp) {
-      return false;
-    }
-
-    // Reject old requests (older than 5 minutes)
-    const timestampNum = parseInt(timestamp);
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (Math.abs(currentTime - timestampNum) > 300) {
-      console.warn('❌ Slack webhook rejected: timestamp too old');
-      return false;
-    }
-
-    // Use raw body if provided, otherwise fallback to JSON string
-    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
-    const signatureBaseString = `v0:${timestamp}:${body}`;
-    
-    const expectedSignature = 'v0=' + createHash('sha256')
-      .update(signatureBaseString, 'utf8')
-      .digest('hex');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Stripe webhook signature verification
-   * Uses timestamp and tolerance window with RAW BODY (critical for Stripe)
-   */
-  private verifyStripeSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['stripe-signature'];
-    if (!signature) {
-      return false;
-    }
-
-    // Parse Stripe signature format: t=timestamp,v1=signature
-    const elements = signature.split(',');
-    const timestamp = elements.find(el => el.startsWith('t='))?.substring(2);
-    const v1Signature = elements.find(el => el.startsWith('v1='))?.substring(3);
-
-    if (!timestamp || !v1Signature) {
-      return false;
-    }
-
-    // Check timestamp tolerance (5 minutes)
-    const timestampNum = parseInt(timestamp);
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (Math.abs(currentTime - timestampNum) > 300) {
-      console.warn('❌ Stripe webhook rejected: timestamp outside tolerance window');
-      return false;
-    }
-
-    // Stripe REQUIRES raw body - this is critical!
-    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
-    const signedPayload = `${timestamp}.${body}`;
-    
-    const expectedSignature = createHash('sha256')
-      .update(signedPayload + secret, 'utf8')
-      .digest('hex');
-
-    return v1Signature === expectedSignature;
-  }
-
-  /**
-   * Shopify webhook signature verification
-   * Uses X-Shopify-Hmac-Sha256 with Base64 encoding and RAW BODY
-   */
-  private verifyShopifySignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-shopify-hmac-sha256'];
-    if (!signature) {
-      return false;
-    }
-
-    // Shopify requires raw body for accurate verification
-    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
-    
-    const expectedSignature = createHash('sha256')
-      .update(body + secret, 'utf8')
-      .digest('base64');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * GitHub webhook signature verification
-   * Uses X-Hub-Signature-256 with sha256= prefix and RAW BODY
-   */
-  private verifyGitHubSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-hub-signature-256'];
-    if (!signature) {
-      return false;
-    }
-
-    // GitHub requires raw body for accurate verification
-    const body = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
-    
-    const expectedSignature = 'sha256=' + createHash('sha256')
-      .update(body + secret, 'utf8')
-      .digest('hex');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * GitLab webhook signature verification
-   */
-  private verifyGitLabSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-gitlab-token'];
-    return signature === secret;
-  }
-
-  /**
-   * Bitbucket webhook signature verification
-   */
-  private verifyBitbucketSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-hub-signature'];
-    if (!signature) {
-      return false;
-    }
-
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    
-    const expectedSignature = 'sha1=' + createHash('sha1')
-      .update(rawBody, 'utf8')
-      .digest('hex');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Zendesk webhook signature verification
-   */
-  private verifyZendeskSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-zendesk-webhook-signature'];
-    if (!signature) {
-      return false;
-    }
-
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    const timestamp = headers['x-zendesk-webhook-signature-timestamp'] || '';
-    
-    const signedPayload = `${rawBody}${secret}${timestamp}`;
-    
-    const expectedSignature = createHash('sha256')
-      .update(signedPayload, 'utf8')
-      .digest('base64');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Intercom webhook signature verification
-   */
-  private verifyIntercomSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-hub-signature'];
-    if (!signature) {
-      return false;
-    }
-
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    
-    const expectedSignature = 'sha1=' + createHash('sha1')
-      .update(rawBody + secret, 'utf8')
-      .digest('hex');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Jira webhook signature verification
-   */
-  private verifyJiraSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-atlassian-webhook-identifier'];
-    return signature === secret;
-  }
-
-  /**
-   * HubSpot webhook signature verification
-   */
-  private verifyHubSpotSignature(payload: any, headers: Record<string, string>, secret: string): boolean {
-    const signature = headers['x-hubspot-signature'];
-    const timestamp = headers['x-hubspot-request-timestamp'];
-    
-    if (!signature || !timestamp) {
-      return false;
-    }
-
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    const signedPayload = `POST${headers['host'] || ''}${headers['path'] || '/webhooks'}${rawBody}${timestamp}`;
-    
-    const expectedSignature = createHash('sha256')
-      .update(signedPayload + secret, 'utf8')
-      .digest('hex');
-
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Marketo webhook signature verification
-   * Uses HMAC with shared secret
-   */
-  private verifyMarketoSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-marketo-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Iterable webhook signature verification
-   * Uses X-Iterable-Signature HMAC SHA1 over raw body
-   */
-  private verifyIterableSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-iterable-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha1').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Braze webhook signature verification
-   * Uses shared secret HMAC
-   */
-  private verifyBrazeSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-braze-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * DocuSign webhook signature verification
-   * Uses x-docusign-signature-1 HMAC SHA256 over raw body
-   */
-  private verifyDocuSignSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-docusign-signature-1'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('base64');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Adobe Sign webhook signature verification
-   * Uses HMAC X-AdobeSign-ClientId + secret
-   */
-  private verifyAdobeSignSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-adobesign-clientid'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * HelloSign webhook signature verification
-   * Uses X-HelloSign-Signature HMAC hex of raw body
-   */
-  private verifyHelloSignSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-hellosign-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Calendly webhook signature verification
-   * Uses Calendly-Webhook-Signature HMAC SHA256
-   */
-  private verifyCalendlySignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['calendly-webhook-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('base64');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Cal.com webhook signature verification
-   * Uses shared secret HMAC
-   */
-  private verifyCalDotComSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-cal-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * Webex webhook signature verification
-   * Uses X-Spark-Signature HMAC SHA1
-   */
-  private verifyWebexSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-spark-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha1').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * RingCentral webhook signature verification
-   * Uses signature header validation
-   */
-  private verifyRingCentralSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['validation-token'] || headers['verification-token'];
-    return signature === secret; // RingCentral uses validation token
-  }
-
-  /**
-   * PayPal webhook signature verification
-   * Verifies with PayPal Webhook ID
-   */
-  private verifyPayPalSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    // PayPal uses webhook ID verification via API call
-    // For now, return true and implement verification via PayPal API
-    return true;
-  }
-
-  /**
-   * Square webhook signature verification
-   * Uses x-square-hmacsha256-signature HMAC
-   */
-  private verifySquareSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-square-hmacsha256-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('base64');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * BigCommerce webhook signature verification
-   * Uses X-BC-Signature HMAC SHA256
-   */
-  private verifyBigCommerceSignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-bc-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha256').update(body + secret).digest('hex');
-    return signature === expectedSignature;
-  }
-
-  /**
-   * SurveyMonkey webhook signature verification
-   * Uses X-Surveymonkey-Signature HMAC SHA1
-   */
-  private verifySurveyMonkeySignature(payload: any, headers: Record<string, string>, secret: string, rawBody?: string): boolean {
-    const signature = headers['x-surveymonkey-signature'];
-    if (!signature) return false;
-    
-    const body = rawBody || JSON.stringify(payload);
-    const expectedSignature = createHash('sha1').update(body + secret).digest('hex');
-    return signature === expectedSignature;
   }
 
   /**
