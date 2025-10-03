@@ -15,8 +15,17 @@ Set the following variables to configure the Redis connection that BullMQ should
 | `QUEUE_REDIS_PASSWORD` | Optional Redis password. | _empty_ |
 | `QUEUE_REDIS_TLS` | Set to `true` to enable TLS connections. | `false` |
 | `QUEUE_METRICS_INTERVAL_MS` | Interval (ms) for periodic queue metrics collection/logging. | `60000` |
+| `EXECUTION_WORKER_CONCURRENCY` | Maximum number of workflow jobs processed concurrently across all tenants. | `2` |
+| `EXECUTION_TENANT_CONCURRENCY` | Maximum number of workflow jobs processed concurrently per tenant/organization. | `EXECUTION_WORKER_CONCURRENCY` |
 
 All queues created via the factory automatically honour these settings.
+
+## Worker processes
+
+Builds now emit separate entry points for the API (`dist/index.js`) and the execution worker
+(`dist/workers/execution.js`). Use `npm run start:api` to launch the HTTP server and
+`npm run start:worker` to launch the BullMQ worker. Dockerfiles `Dockerfile.api` and
+`Dockerfile.worker` are provided to containerize each process independently.
 
 ## Local development with Docker Compose
 

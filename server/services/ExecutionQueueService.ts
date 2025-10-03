@@ -7,10 +7,10 @@ import { db } from '../database/schema.js';
 import {
   createQueue,
   createQueueEvents,
-  createWorker,
   registerQueueTelemetry,
   type WorkflowExecuteJobPayload,
 } from '../queue/BullMQFactory.js';
+import { registerQueueWorker } from '../workers/queueWorker.js';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -23,6 +23,7 @@ type QueueRunRequest = {
 class ExecutionQueueService {
   private static instance: ExecutionQueueService;
   private readonly concurrency: number;
+  private readonly tenantConcurrency: number;
   private readonly maxRetries: number;
   private readonly baseRetryDelayMs: number;
   private readonly maxRetryDelayMs: number;
@@ -33,8 +34,24 @@ class ExecutionQueueService {
   private queueEvents: QueueEvents | null = null;
   private telemetryCleanup: (() => void) | null = null;
 
-  private constructor(concurrency = 2) {
-    this.concurrency = Math.max(1, concurrency);
+  private constructor() {
+    const configuredConcurrency = Number.parseInt(
+      process.env.EXECUTION_WORKER_CONCURRENCY ?? '2',
+      10
+    );
+    const normalizedConcurrency = Number.isNaN(configuredConcurrency)
+      ? 2
+      : configuredConcurrency;
+    this.concurrency = Math.max(1, normalizedConcurrency);
+
+    const configuredTenantConcurrency = Number.parseInt(
+      process.env.EXECUTION_TENANT_CONCURRENCY ?? `${this.concurrency}`,
+      10
+    );
+    const normalizedTenantConcurrency = Number.isNaN(configuredTenantConcurrency)
+      ? this.concurrency
+      : configuredTenantConcurrency;
+    this.tenantConcurrency = Math.max(1, Math.min(this.concurrency, normalizedTenantConcurrency));
     this.maxRetries = Math.max(0, Number.parseInt(process.env.EXECUTION_MAX_RETRIES ?? '3', 10));
     this.baseRetryDelayMs = Math.max(500, Number.parseInt(process.env.EXECUTION_RETRY_DELAY_MS ?? '1000', 10));
     this.maxRetryDelayMs = Math.max(
@@ -89,6 +106,9 @@ class ExecutionQueueService {
         },
         {
           jobId: execution.id,
+          group: {
+            id: req.organizationId,
+          },
         }
       );
     } catch (error) {
@@ -131,11 +151,13 @@ class ExecutionQueueService {
       });
     }
 
-    this.worker = createWorker(
+    this.worker = registerQueueWorker(
       'workflow.execute',
       async (job) => this.process(job),
       {
         concurrency: this.concurrency,
+        tenantConcurrency: this.tenantConcurrency,
+        resolveTenantId: (job) => job.data.organizationId,
         settings: {
           backoffStrategies: {
             'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
@@ -150,7 +172,9 @@ class ExecutionQueueService {
 
     this.started = true;
 
-    console.log(`🧵 ExecutionQueueService started (concurrency=${this.concurrency})`);
+    console.log(
+      `🧵 ExecutionQueueService started (concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
+    );
   }
 
   public stop(): Promise<void> {
