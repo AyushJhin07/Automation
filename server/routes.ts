@@ -4385,12 +4385,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { webhookVerifier } = await import('./webhooks/WebhookVerifier');
       const { provider, headers, body, config } = req.body;
       
-      const result = await webhookVerifier.verifyWebhook(
-        provider,
-        headers,
-        body,
-        config
-      );
+      const result = await webhookVerifier.verifyWebhook(provider, {
+        headers: headers ?? {},
+        payload: body,
+        rawBody: typeof body === 'string' ? body : config?.rawBody,
+        secret: config?.secret ?? '',
+        toleranceSecondsOverride: config?.timestampTolerance,
+      });
       
       res.json(result);
     } catch (error) {

@@ -558,6 +558,13 @@
       "name": "Order Created",
       "description": "Triggered when a new order is created",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "shopify",
+          "required": true,
+          "signatureHeader": "x-shopify-hmac-sha256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -596,6 +603,13 @@
       "name": "Order Updated",
       "description": "Triggered when an order is updated",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "shopify",
+          "required": true,
+          "signatureHeader": "x-shopify-hmac-sha256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -624,6 +638,13 @@
       "name": "Order Paid",
       "description": "Triggered when an order is paid",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "shopify",
+          "required": true,
+          "signatureHeader": "x-shopify-hmac-sha256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {},
@@ -646,6 +667,13 @@
       "name": "Product Created",
       "description": "Triggered when a new product is created",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "shopify",
+          "required": true,
+          "signatureHeader": "x-shopify-hmac-sha256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -678,6 +706,13 @@
       "name": "Customer Created",
       "description": "Triggered when a new customer is created",
       "type": "webhook",
+      "metadata": {
+        "signatureVerification": {
+          "providerId": "shopify",
+          "required": true,
+          "signatureHeader": "x-shopify-hmac-sha256"
+        }
+      },
       "parameters": {
         "type": "object",
         "properties": {},
