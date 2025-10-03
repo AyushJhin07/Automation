@@ -1,8 +1,16 @@
 import { eq, and, sql } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { connections, db, organizations, type OrganizationSecuritySettings } from '../database/schema';
+import {
+  connections,
+  connectionScopedTokens,
+  db,
+  organizations,
+  type OrganizationSecuritySettings,
+} from '../database/schema';
+import { encryptionRotationService } from './EncryptionRotationService';
+import type { EncryptionRotationJobSummary } from './EncryptionRotationService';
 import { EncryptionService } from './EncryptionService';
 import { getErrorMessage } from '../types/common';
 import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
@@ -49,6 +57,7 @@ export interface DecryptedConnection {
   provider: string;
   type: string;
   iv: string;
+  encryptionKeyId?: string | null;
   credentials: Record<string, any>;
   metadata?: Record<string, any>;
   isActive: boolean;
@@ -120,6 +129,35 @@ export interface AutoRefreshContext {
   networkAllowlist?: OrganizationNetworkAllowlist;
 }
 
+export interface ScopedTokenIssueRequest {
+  connectionId: string;
+  organizationId: string;
+  stepId: string;
+  ttlSeconds?: number;
+  scope?: Record<string, any> | string[] | null;
+  metadata?: Record<string, any> | null;
+  createdBy?: string;
+}
+
+export interface ScopedTokenIssueResult {
+  token: string;
+  expiresAt: Date;
+  connectionId: string;
+  organizationId: string;
+  stepId: string;
+  encryptionKeyId?: string | null;
+}
+
+export interface ScopedTokenRedeemResult {
+  connection: DecryptedConnection;
+  credentials: Record<string, any>;
+  scope?: Record<string, any> | string[] | null;
+  metadata?: Record<string, any> | null;
+  expiresAt: Date;
+  usedAt: Date;
+}
+
+
 interface FileConnectionRecord {
   id: string;
   userId: string;
@@ -129,6 +167,7 @@ interface FileConnectionRecord {
   type: string;
   encryptedCredentials: string;
   iv: string;
+  encryptionKeyId?: string | null;
   metadata?: Record<string, any>;
   isActive: boolean;
   lastTested?: string;
@@ -228,7 +267,11 @@ export class ConnectionService {
   }
 
   private toDecryptedConnection(record: FileConnectionRecord): DecryptedConnection {
-    const credentials = EncryptionService.decryptCredentials(record.encryptedCredentials, record.iv);
+    const credentials = EncryptionService.decryptCredentials(
+      record.encryptedCredentials,
+      record.iv,
+      record.encryptionKeyId
+    );
     return {
       id: record.id,
       userId: record.userId,
@@ -237,6 +280,7 @@ export class ConnectionService {
       provider: record.provider,
       type: record.type,
       iv: record.iv,
+      encryptionKeyId: record.encryptionKeyId ?? null,
       credentials,
       metadata: record.metadata,
       isActive: record.isActive,
@@ -251,7 +295,64 @@ export class ConnectionService {
     };
   }
 
-  private encryptCredentials(credentials: Record<string, any>): { encryptedData: string; iv: string } {
+  private async loadDecryptedConnectionById(
+    connectionId: string,
+    organizationId: string
+  ): Promise<DecryptedConnection | null> {
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const record = records.find(
+        (conn) => conn.id === connectionId && conn.organizationId === organizationId && conn.isActive
+      );
+      return record ? this.toDecryptedConnection(record) : null;
+    }
+
+    this.ensureDb();
+    const [row] = await this.db
+      .select()
+      .from(connections)
+      .where(and(
+        eq(connections.id, connectionId),
+        eq(connections.organizationId, organizationId),
+        eq(connections.isActive, true)
+      ))
+      .limit(1);
+
+    if (!row) {
+      return null;
+    }
+
+    const credentials = EncryptionService.decryptCredentials(
+      row.encryptedCredentials,
+      row.iv,
+      row.encryptionKeyId
+    );
+
+    return {
+      id: row.id,
+      userId: row.userId,
+      organizationId: row.organizationId,
+      name: row.name,
+      provider: row.provider,
+      type: row.type,
+      iv: row.iv,
+      encryptionKeyId: row.encryptionKeyId ?? null,
+      credentials,
+      metadata: row.metadata,
+      isActive: row.isActive,
+      lastTested: row.lastTested,
+      testStatus: row.testStatus,
+      testError: row.testError,
+      lastUsed: row.lastUsed,
+      lastError: row.lastError,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private encryptCredentials(
+    credentials: Record<string, any>
+  ): ReturnType<typeof EncryptionService.encryptCredentials> {
     return EncryptionService.encryptCredentials(credentials);
   }
 
@@ -276,6 +377,43 @@ export class ConnectionService {
       }
     }
     return Array.from(new Set(normalized));
+  }
+
+  private supportsScopedTokens(metadata: Record<string, any> | undefined | null): boolean {
+    if (!metadata || typeof metadata !== 'object') {
+      return false;
+    }
+
+    if (typeof metadata.supportsScopedTokens === 'boolean') {
+      return metadata.supportsScopedTokens;
+    }
+
+    const scopedConfig = metadata.scopedTokens ?? metadata.scopedTokenConfig;
+    if (scopedConfig && typeof scopedConfig === 'object') {
+      const flag = (scopedConfig as Record<string, any>).enabled;
+      if (typeof flag === 'boolean') {
+        return flag;
+      }
+    }
+
+    if (typeof metadata.authenticationMode === 'string') {
+      const mode = metadata.authenticationMode.toLowerCase();
+      if (mode === 'sts' || mode === 'scoped_token' || mode === 'assume_role') {
+        return true;
+      }
+    }
+
+    if (Array.isArray(metadata.capabilities)) {
+      return metadata.capabilities.some((cap: any) =>
+        typeof cap === 'string' && cap.toLowerCase().includes('scoped-token')
+      );
+    }
+
+    return false;
+  }
+
+  private hashScopedToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   private async getOrganizationSecuritySettings(
@@ -587,6 +725,7 @@ export class ConnectionService {
           ...records[index],
           encryptedCredentials: encrypted.encryptedData,
           iv: encrypted.iv,
+          encryptionKeyId: encrypted.keyId ?? records[index].encryptionKeyId ?? null,
           metadata,
           updatedAt: updatedAt.toISOString(),
         };
@@ -599,6 +738,7 @@ export class ConnectionService {
         .set({
           encryptedCredentials: encrypted.encryptedData,
           iv: encrypted.iv,
+          encryptionKeyId: encrypted.keyId ?? connection.encryptionKeyId ?? null,
           metadata,
           updatedAt,
         })
@@ -614,6 +754,7 @@ export class ConnectionService {
     return {
       ...connection,
       credentials: mergedCredentials,
+      encryptionKeyId: encrypted.keyId ?? connection.encryptionKeyId ?? null,
       metadata,
       updatedAt,
     };
@@ -654,6 +795,7 @@ export class ConnectionService {
         type: request.type,
         encryptedCredentials: encrypted.encryptedData,
         iv: encrypted.iv,
+        encryptionKeyId: encrypted.keyId ?? null,
         metadata: request.metadata || {},
         isActive: true,
         createdAt: nowIso,
@@ -674,6 +816,7 @@ export class ConnectionService {
       type: request.type,
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
+      encryptionKeyId: encrypted.keyId ?? null,
       metadata: request.metadata || {},
       isActive: true,
     }).returning({ id: connections.id });
@@ -719,7 +862,8 @@ export class ConnectionService {
 
     const credentials = EncryptionService.decryptCredentials(
       connection.encryptedCredentials,
-      connection.iv
+      connection.iv,
+      connection.encryptionKeyId
     );
 
     return {
@@ -730,6 +874,7 @@ export class ConnectionService {
       provider: connection.provider,
       type: connection.type,
       iv: connection.iv,
+      encryptionKeyId: connection.encryptionKeyId ?? null,
       credentials,
       metadata: connection.metadata,
       isActive: connection.isActive,
@@ -800,7 +945,8 @@ export class ConnectionService {
     return userConnections.map(connection => {
       const credentials = EncryptionService.decryptCredentials(
         connection.encryptedCredentials,
-        connection.iv
+        connection.iv,
+        connection.encryptionKeyId
       );
 
       return {
@@ -811,6 +957,7 @@ export class ConnectionService {
         provider: connection.provider,
         type: connection.type,
         iv: connection.iv,
+        encryptionKeyId: connection.encryptionKeyId ?? null,
         credentials,
         metadata: connection.metadata,
         isActive: connection.isActive,
@@ -859,7 +1006,8 @@ export class ConnectionService {
 
     const credentials = EncryptionService.decryptCredentials(
       connection.encryptedCredentials,
-      connection.iv
+      connection.iv,
+      connection.encryptionKeyId
     );
 
     return {
@@ -870,6 +1018,7 @@ export class ConnectionService {
       provider: connection.provider,
       type: connection.type,
       iv: connection.iv,
+      encryptionKeyId: connection.encryptionKeyId ?? null,
       credentials,
       metadata: connection.metadata,
       isActive: connection.isActive,
@@ -1277,6 +1426,7 @@ export class ConnectionService {
           name: connectionName,
           encryptedCredentials: encrypted.encryptedData,
           iv: encrypted.iv,
+          encryptionKeyId: encrypted.keyId ?? existing.encryptionKeyId ?? null,
           metadata,
           updatedAt: nowIso,
           isActive: true,
@@ -1297,6 +1447,7 @@ export class ConnectionService {
         type: options.type || 'saas',
         encryptedCredentials: encrypted.encryptedData,
         iv: encrypted.iv,
+        encryptionKeyId: encrypted.keyId ?? null,
         metadata,
         isActive: true,
         createdAt: nowIso,
@@ -1346,6 +1497,7 @@ export class ConnectionService {
           name: connectionName,
           encryptedCredentials: encrypted.encryptedData,
           iv: encrypted.iv,
+          encryptionKeyId: encrypted.keyId ?? null,
           metadata,
           updatedAt: new Date(),
           isActive: true,
@@ -1369,6 +1521,7 @@ export class ConnectionService {
       type: options.type || 'saas',
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
+      encryptionKeyId: encrypted.keyId ?? null,
       metadata,
       isActive: true,
     };
@@ -1391,6 +1544,7 @@ export class ConnectionService {
           name: connectionName,
           encryptedCredentials: encrypted.encryptedData,
           iv: encrypted.iv,
+          encryptionKeyId: encrypted.keyId ?? null,
           metadata,
           updatedAt: new Date(),
           isActive: true,
@@ -1686,6 +1840,7 @@ export class ConnectionService {
       const encrypted = this.encryptCredentials(updates.credentials);
       updateData.encryptedCredentials = encrypted.encryptedData;
       updateData.iv = encrypted.iv;
+      updateData.encryptionKeyId = encrypted.keyId ?? null;
     }
 
     if (this.useFileStore) {
@@ -1704,6 +1859,7 @@ export class ConnectionService {
           metadata: updateData.metadata ?? existing.metadata,
           encryptedCredentials: updateData.encryptedCredentials ?? existing.encryptedCredentials,
           iv: updateData.iv ?? existing.iv,
+          encryptionKeyId: updateData.encryptionKeyId ?? existing.encryptionKeyId ?? null,
           updatedAt: new Date().toISOString(),
         };
         await this.writeFileStore(records);
@@ -1776,9 +1932,173 @@ export class ConnectionService {
     provider: string
   ): Promise<DecryptedConnection | null> {
     const userConnections = await this.getUserConnections(userId, organizationId, provider);
-    
+
     // Return the first active LLM connection for the provider
     return userConnections.find(conn => conn.type === 'llm') || null;
+  }
+
+  public async pruneExpiredScopedTokens(limit: number = 200): Promise<number> {
+    if (this.useFileStore || !this.db) {
+      return 0;
+    }
+
+    const boundedLimit = Math.max(1, Math.min(limit, 1000));
+    const result = await this.db.execute(
+      sql`
+        WITH expired AS (
+          SELECT id
+          FROM ${connectionScopedTokens}
+          WHERE ${connectionScopedTokens.usedAt} IS NOT NULL
+             OR ${connectionScopedTokens.expiresAt} < NOW()
+          LIMIT ${boundedLimit}
+        )
+        DELETE FROM ${connectionScopedTokens}
+        USING expired
+        WHERE ${connectionScopedTokens}.id = expired.id
+        RETURNING ${connectionScopedTokens}.id
+      `
+    );
+
+    const rows = (result as { rows?: Array<Record<string, any>> }).rows ?? [];
+    return rows.length;
+  }
+
+  public async issueScopedToken(params: ScopedTokenIssueRequest): Promise<ScopedTokenIssueResult> {
+    if (this.useFileStore || !this.db) {
+      throw new ConnectionServiceError('Scoped token issuance requires database storage', 503);
+    }
+
+    const connection = await this.loadDecryptedConnectionById(
+      params.connectionId,
+      params.organizationId
+    );
+
+    if (!connection) {
+      throw new ConnectionServiceError('Connection not found', 404);
+    }
+
+    if (!this.supportsScopedTokens(connection.metadata)) {
+      throw new ConnectionServiceError('Connection does not support scoped tokens', 400);
+    }
+
+    await this.pruneExpiredScopedTokens(100);
+
+    const ttlSeconds = Math.max(30, params.ttlSeconds ?? 300);
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    const token = EncryptionService.generateRandomString(64);
+    const tokenHash = this.hashScopedToken(token);
+
+    await this.db.insert(connectionScopedTokens).values({
+      id: randomUUID(),
+      connectionId: connection.id,
+      organizationId: params.organizationId,
+      tokenHash,
+      scope: params.scope ?? null,
+      stepId: params.stepId,
+      createdBy: params.createdBy ?? null,
+      expiresAt,
+      usedAt: null,
+      metadata: params.metadata ?? null,
+    });
+
+    return {
+      token,
+      expiresAt,
+      connectionId: connection.id,
+      organizationId: params.organizationId,
+      stepId: params.stepId,
+      encryptionKeyId: connection.encryptionKeyId ?? null,
+    };
+  }
+
+  public async redeemScopedToken(
+    token: string,
+    params: { organizationId: string; stepId: string }
+  ): Promise<ScopedTokenRedeemResult> {
+    if (this.useFileStore || !this.db) {
+      throw new ConnectionServiceError('Scoped token redemption requires database storage', 503);
+    }
+
+    const tokenHash = this.hashScopedToken(token);
+    const [record] = await this.db
+      .select()
+      .from(connectionScopedTokens)
+      .where(and(
+        eq(connectionScopedTokens.tokenHash, tokenHash),
+        eq(connectionScopedTokens.organizationId, params.organizationId),
+        eq(connectionScopedTokens.stepId, params.stepId)
+      ))
+      .limit(1);
+
+    if (!record) {
+      throw new ConnectionServiceError('Scoped token not found', 404);
+    }
+
+    const now = new Date();
+
+    if (record.usedAt) {
+      throw new ConnectionServiceError('Scoped token already used', 410);
+    }
+
+    if (record.expiresAt && record.expiresAt < now) {
+      await this.db
+        .update(connectionScopedTokens)
+        .set({ usedAt: now, updatedAt: now })
+        .where(eq(connectionScopedTokens.id, record.id));
+      throw new ConnectionServiceError('Scoped token expired', 410);
+    }
+
+    const connection = await this.loadDecryptedConnectionById(
+      record.connectionId,
+      params.organizationId
+    );
+
+    if (!connection) {
+      await this.db
+        .update(connectionScopedTokens)
+        .set({ usedAt: now, updatedAt: now })
+        .where(eq(connectionScopedTokens.id, record.id));
+      throw new ConnectionServiceError('Connection not found for scoped token', 404);
+    }
+
+    await this.db
+      .update(connectionScopedTokens)
+      .set({ usedAt: now, updatedAt: now })
+      .where(eq(connectionScopedTokens.id, record.id));
+
+    return {
+      connection,
+      credentials: connection.credentials,
+      scope: record.scope as Record<string, any> | string[] | null,
+      metadata: record.metadata as Record<string, any> | null,
+      expiresAt: record.expiresAt,
+      usedAt: now,
+    };
+  }
+
+  public async startCredentialReencryption(options: {
+    targetKeyId?: string | null;
+    metadata?: Record<string, any>;
+  } = {}): Promise<{ jobId: string }> {
+    if (this.useFileStore || !this.db) {
+      throw new ConnectionServiceError('Credential rotation requires database storage', 503);
+    }
+
+    return encryptionRotationService.startRotation(options);
+  }
+
+  public async getCredentialReencryptionJob(jobId: string): Promise<EncryptionRotationJobSummary | null> {
+    if (this.useFileStore || !this.db) {
+      return null;
+    }
+    return encryptionRotationService.getJob(jobId);
+  }
+
+  public async listCredentialReencryptionJobs(limit: number = 20): Promise<EncryptionRotationJobSummary[]> {
+    if (this.useFileStore || !this.db) {
+      return [];
+    }
+    return encryptionRotationService.listJobs(limit);
   }
 
   /**
