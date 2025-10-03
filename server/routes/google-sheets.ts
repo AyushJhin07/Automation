@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, requirePermission } from "../middleware/auth";
 import { connectionService } from "../services/ConnectionService";
 import { getErrorMessage } from "../types/common";
 import { connectorMetadataService } from "../services/metadata/ConnectorMetadataService";
@@ -10,6 +10,7 @@ const SHEET_ID_RE = /^[a-zA-Z0-9-_]+$/;
 router.get(
   "/sheets/:spreadsheetId/metadata",
   authenticateToken,
+  requirePermission("integration:metadata:read"),
   async (req, res) => {
     const userId = (req as any)?.user?.id;
     const organizationId = (req as any)?.organizationId;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { oauthManager } from '../oauth/OAuthManager';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, requirePermission } from '../middleware/auth';
 import { getErrorMessage } from '../types/common';
 
 const oauthRouter = Router();
@@ -16,7 +16,7 @@ function normalizeRedirectUrl(url: string, providerId: string): URL {
   return target;
 }
 
-oauthRouter.post('/authorize/:provider', authenticateToken, async (req, res) => {
+oauthRouter.post('/authorize/:provider', authenticateToken, requirePermission('connections:write'), async (req, res) => {
   try {
     const providerId = String(req.params.provider || '').toLowerCase();
     if (!providerId) {

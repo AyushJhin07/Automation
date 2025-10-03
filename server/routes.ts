@@ -21,6 +21,7 @@ import flowRoutes from "./routes/flows.js";
 import oauthRoutes from "./routes/oauth";
 import executionRoutes from "./routes/executions.js";
 import { RealAIService, ConversationManager } from "./realAIService";
+import organizationRoleRoutes from "./routes/organization-roles";
 
 // Production services
 import { authService } from "./services/AuthService";
@@ -153,7 +154,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ChatGPT Fix: Flow storage routes for AI Builder → Graph Editor handoff
   app.use('/api/flows', flowRoutes);
-  
+
+  // Organization role management APIs
+  app.use('/api/organizations', organizationRoleRoutes);
+
   // (removed duplicate /api/ai/models in favor of aiRouter.get('/models'))
   
   // (removed duplicate /api/registry/connectors in favor of the consolidated version below)
