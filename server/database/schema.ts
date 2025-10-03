@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
   json,
+  jsonb,
   uuid,
   index,
   uniqueIndex,
@@ -463,6 +464,28 @@ export const workflowExecutions = pgTable(
   })
 );
 
+export const nodeExecutionResults = pgTable(
+  'node_execution_results',
+  {
+    id: serial('id').primaryKey(),
+    executionId: text('execution_id').notNull(),
+    nodeId: text('node_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    resultHash: text('result_hash').notNull(),
+    resultData: jsonb('result_data').$type<any>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+  },
+  (table) => ({
+    executionLookupIdx: uniqueIndex('node_execution_results_execution_idx').on(
+      table.executionId,
+      table.nodeId,
+      table.idempotencyKey
+    ),
+    expiryIdx: index('node_execution_results_expiry_idx').on(table.expiresAt),
+  })
+);
+
 export const workflowTimers = pgTable(
   'workflow_timers',
   {
@@ -820,6 +843,7 @@ if (!connectionString) {
       connections,
       workflows,
       workflowExecutions,
+      nodeExecutionResults,
       workflowTimers,
       usageTracking,
       connectorDefinitions,
