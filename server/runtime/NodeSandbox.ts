@@ -216,12 +216,21 @@ import vm from 'node:vm';
 
 const {
   code,
-  entryPoint,
+  entryPoint: requestedEntryPoint,
   params,
   context,
   timeoutMs,
   secrets
 } = workerData;
+
+const resolvedEntryPoint = typeof requestedEntryPoint === 'string' && requestedEntryPoint.length > 0
+  ? requestedEntryPoint
+  : 'run';
+
+const { SourceTextModule } = vm;
+if (typeof SourceTextModule !== 'function') {
+  throw new Error('Node runtime missing vm.SourceTextModule; start with NODE_OPTIONS=--experimental-vm-modules');
+}
 
 const isPlainObject = ${isPlainObjectSource};
 const sanitizeForTransfer = ${sanitizeFunctionSource};
@@ -332,7 +341,7 @@ globalObject.__filename = undefined;
 const moduleContext = vm.createContext(globalObject, { name: 'sandbox-context' });
 
 async function loadModule() {
-  const module = new vm.SourceTextModule(code, {
+  const module = new SourceTextModule(code, {
     identifier: 'sandboxed-connector',
     context: moduleContext
   });
@@ -349,7 +358,7 @@ async function loadModule() {
 (async () => {
   try {
     const namespace = await loadModule();
-    let handler = namespace[entryPoint] as any;
+    let handler = namespace[resolvedEntryPoint];
     if (typeof handler !== 'function') {
       if (typeof namespace.default === 'function') {
         handler = namespace.default;
@@ -357,7 +366,7 @@ async function loadModule() {
     }
 
     if (typeof handler !== 'function') {
-      throw new Error(\`Entry point ${entryPoint} is not exported as a function\`);
+      throw new Error('Entry point ' + resolvedEntryPoint + ' is not exported as a function');
     }
 
     const payload = {
@@ -494,7 +503,9 @@ export class NodeSandbox {
             if (!message) return;
             if (message.type === 'log') {
               try {
-                const formatted = typeof message.data === 'string' ? message.data : formatLog(message.data as any[]);
+                const formatted = typeof message.data === 'string'
+                  ? message.data
+                  : formatLog(Array.isArray(message.data) ? message.data : [message.data]);
                 logs.push({
                   level: (message.level as SandboxLogLevel) || 'log',
                   message: formatted
