@@ -20,6 +20,7 @@ import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
 import oauthRoutes from "./routes/oauth";
 import executionRoutes from "./routes/executions.js";
+import expressionRoutes from "./routes/expressions.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 import organizationRoleRoutes from "./routes/organization-roles";
 
@@ -138,12 +139,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // P2-3: Advanced analytics routes
   app.use('/api/analytics', analyticsRoutes);
-  
+
   // CRITICAL FIX: LLM automation planner routes (replaces static Q&A)
   app.use('/api/ai-planner', aiPlannerRoutes);
-  
+
   // CRITICAL FIX: LLM answer normalization routes (ChatGPT's solution)
   app.use('/api/ai-normalizer', aiNormalizerRoutes);
+
+  // Expression evaluation tooling
+  app.use('/api/expressions', expressionRoutes);
   
   // CRITICAL FIX: Workflow read routes for Graph Editor handoff
   app.use('/api', workflowReadRoutes);

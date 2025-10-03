@@ -310,6 +310,12 @@ export type EvaluatedValue =
       maxTokens?: number;
       jsonSchema?: any;
       cacheTtlSec?: number;
+    }
+  | {
+      mode: 'expr';
+      expression: string;
+      vars?: Record<string, any>;
+      fallback?: any;
     };
 
 // Context for parameter resolution

@@ -5,6 +5,7 @@
 
 import { llmRegistry } from '../llm/LLMProvider';
 import { ParamValue, EvaluatedValue, ParameterContext } from '../../shared/nodeGraphSchema';
+import { expressionEvaluator } from './ExpressionEvaluator';
 
 /**
  * Cache for LLM responses to avoid repeated API calls
@@ -70,6 +71,9 @@ export async function resolveParamValue(
     
     case 'llm':
       return await resolveLLMValue(evalValue, context);
+
+    case 'expr':
+      return resolveExpressionValue(evalValue, context);
     
     default:
       // Fallback: treat as static object
@@ -313,9 +317,31 @@ export function clearLLMCache(): void {
  * Utility to check if a value is an EvaluatedValue
  */
 export function isEvaluatedValue(value: any): value is EvaluatedValue {
-  return typeof value === 'object' && 
-         value !== null && 
-         !Array.isArray(value) && 
+  return typeof value === 'object' &&
+         value !== null &&
+         !Array.isArray(value) &&
          'mode' in value &&
-         ['static', 'ref', 'llm'].includes(value.mode);
+         ['static', 'ref', 'llm', 'expr'].includes(value.mode);
+}
+
+function resolveExpressionValue(
+  expressionValue: Extract<EvaluatedValue, { mode: 'expr' }>,
+  context: ParameterContext
+): any {
+  try {
+    return expressionEvaluator.evaluate(expressionValue.expression, {
+      nodeOutputs: context.nodeOutputs,
+      currentNodeId: context.currentNodeId,
+      workflowId: context.workflowId,
+      executionId: context.executionId,
+      userId: context.userId,
+      vars: expressionValue.vars,
+    });
+  } catch (error) {
+    if (Object.prototype.hasOwnProperty.call(expressionValue, 'fallback')) {
+      return expressionValue.fallback;
+    }
+
+    throw error instanceof Error ? error : new Error('Expression evaluation failed');
+  }
 }
