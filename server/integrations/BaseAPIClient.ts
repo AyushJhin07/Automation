@@ -6,6 +6,7 @@ import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import { isIP } from 'node:net';
 import type { OrganizationNetworkAllowlist } from '../services/ConnectionService';
 import { connectionService } from '../services/ConnectionService';
+import { rateLimiter, type RateLimitRules } from './RateLimiter';
 
 export interface APICredentials {
   apiKey?: string;
@@ -87,6 +88,10 @@ export abstract class BaseAPIClient {
   protected baseURL: string;
   protected credentials: APICredentials;
   protected rateLimitInfo?: RateLimitInfo;
+  private connectorId?: string;
+  private connectorRateLimits?: RateLimitRules | null;
+  private lastRateLimitWaitMs = 0;
+  private lastRateLimitAttempts = 0;
   private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
   private __dynamicOptionHandlers?: Map<string, DynamicOptionHandler>;
 
@@ -99,11 +104,49 @@ export abstract class BaseAPIClient {
     return validator;
   }
 
-  constructor(baseURL: string, credentials: APICredentials) {
+  constructor(
+    baseURL: string,
+    credentials: APICredentials,
+    options?: { connectorId?: string; connectionId?: string; rateLimits?: RateLimitRules | null }
+  ) {
     this.baseURL = baseURL;
     this.credentials = credentials;
     this.__functionHandlers = new Map();
     this.__dynamicOptionHandlers = new Map();
+
+    if (options?.connectionId && !this.credentials.__connectionId) {
+      this.credentials.__connectionId = options.connectionId;
+    }
+
+    const inferredConnectorId =
+      options?.connectorId || (this.credentials as Record<string, any>).__connectorId || this.deriveConnectorId();
+    if (inferredConnectorId) {
+      this.connectorId = inferredConnectorId;
+      (this.credentials as Record<string, any>).__connectorId = inferredConnectorId;
+    }
+
+    this.connectorRateLimits = options?.rateLimits ?? null;
+  }
+
+  public setConnectorContext(
+    connectorId: string,
+    connectionId?: string | null,
+    rateLimits?: RateLimitRules | null
+  ): void {
+    if (connectorId) {
+      this.connectorId = connectorId;
+      (this.credentials as Record<string, any>).__connectorId = connectorId;
+    }
+    if (connectionId) {
+      this.credentials.__connectionId = connectionId;
+    }
+    if (rateLimits !== undefined) {
+      this.connectorRateLimits = rateLimits ?? null;
+    }
+  }
+
+  protected getLastRateLimiterMetrics(): { waitMs: number; attempts: number } {
+    return { waitMs: this.lastRateLimitWaitMs, attempts: this.lastRateLimitAttempts };
   }
 
   protected async applyTokenRefresh(update: TokenRefreshPayload): Promise<void> {
@@ -165,6 +208,15 @@ export abstract class BaseAPIClient {
     try {
       const url = this.buildRequestUrl(endpoint);
       this.assertHostAllowed(url);
+
+      const limiterResult = await rateLimiter.acquire({
+        connectorId: this.connectorId ?? this.deriveConnectorId() ?? 'unknown',
+        connectionId: this.credentials.__connectionId,
+        rules: this.connectorRateLimits,
+      });
+
+      this.lastRateLimitWaitMs = limiterResult.waitMs;
+      this.lastRateLimitAttempts = limiterResult.attempts;
 
       // Add authentication headers
       const authHeaders = this.getAuthHeaders();
@@ -246,6 +298,21 @@ export abstract class BaseAPIClient {
     }
 
     return `${this.baseURL}/${endpoint}`;
+  }
+
+  private deriveConnectorId(): string | undefined {
+    const rawName = this.constructor?.name ?? '';
+    if (!rawName) {
+      return undefined;
+    }
+    const trimmed = rawName.replace(/APIClient$/i, '');
+    if (!trimmed) {
+      return undefined;
+    }
+    return trimmed
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+      .toLowerCase();
   }
 
   private getNetworkAllowlist(): OrganizationNetworkAllowlist | null {

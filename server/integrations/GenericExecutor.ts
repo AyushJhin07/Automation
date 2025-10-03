@@ -2,7 +2,7 @@ import type { APICredentials, APIResponse } from './BaseAPIClient';
 import { connectorRegistry } from '../ConnectorRegistry';
 import { validateParams } from './RequestValidator';
 import { normalizeListResponse } from './Normalizers';
-import { rateLimiter } from './RateLimiter';
+import { rateLimiter, type RateLimitRules } from './RateLimiter';
 import { recordExecution } from '../services/ExecutionAuditService';
 import { getRequestContext } from '../utils/ExecutionContext';
 
@@ -13,6 +13,15 @@ interface ExecuteParams {
   functionId: string;
   parameters: Record<string, any>;
   credentials: APICredentials;
+}
+
+interface BackoffEvent {
+  type: 'rate_limiter' | 'http_retry' | 'network_retry';
+  waitMs: number;
+  attempt: number;
+  reason?: string;
+  statusCode?: number;
+  limiterAttempts?: number;
 }
 
 export class GenericExecutor {
@@ -75,6 +84,48 @@ export class GenericExecutor {
       if (last && last.id) return { starting_after: last.id };
     }
     return null;
+  }
+
+  private mergeRateLimitRules(
+    connector?: RateLimitRules | null,
+    operation?: RateLimitRules | null
+  ): RateLimitRules | null {
+    if (!connector && !operation) {
+      return null;
+    }
+
+    const selectMin = (a?: number, b?: number): number | undefined => {
+      if (typeof a === 'number' && Number.isFinite(a) && a > 0) {
+        if (typeof b === 'number' && Number.isFinite(b) && b > 0) {
+          return Math.min(a, b);
+        }
+        return a;
+      }
+      if (typeof b === 'number' && Number.isFinite(b) && b > 0) {
+        return b;
+      }
+      return undefined;
+    };
+
+    const merged: RateLimitRules = {};
+    const rps = selectMin(connector?.requestsPerSecond, operation?.requestsPerSecond);
+    if (rps !== undefined) {
+      merged.requestsPerSecond = rps;
+    }
+    const rpm = selectMin(connector?.requestsPerMinute, operation?.requestsPerMinute);
+    if (rpm !== undefined) {
+      merged.requestsPerMinute = rpm;
+    }
+    const burst = selectMin(connector?.burst, operation?.burst);
+    if (burst !== undefined) {
+      merged.burst = burst;
+    }
+
+    if (Object.keys(merged).length === 0) {
+      return operation ?? connector ?? null;
+    }
+
+    return merged;
   }
   public async testConnection(appId: string, credentials: APICredentials): Promise<APIResponse<any>> {
     const def = connectorRegistry.getConnectorDefinition(appId);
@@ -153,6 +204,11 @@ export class GenericExecutor {
     const endpoint: string = (fn as any).endpoint || '';
     const method: HttpMethod = (((fn as any).method || 'POST') as string).toUpperCase() as HttpMethod;
 
+    const connectorRateLimits = def?.rateLimits ?? null;
+    const operationRateLimits = (fn as any)?.rateLimits ?? null;
+    const effectiveRateLimits = this.mergeRateLimitRules(connectorRateLimits, operationRateLimits);
+    const connectionId = credentials.__connectionId ?? (parameters?.connectionId as string | undefined);
+
     if (!baseUrl || !endpoint) {
       return { success: false, error: `Connector ${appId} lacks baseUrl/endpoint for ${functionId}` };
     }
@@ -176,6 +232,9 @@ export class GenericExecutor {
     const finalUrl = qs ? `${url}?${qs}` : url;
 
     const reqStart = Date.now();
+    const backoffEvents: BackoffEvent[] = [];
+    let totalRateLimiterWaitMs = 0;
+    let totalRateLimiterAttempts = 0;
     try {
       let reqBody: any = undefined;
       let reqHeaders = { ...headers } as Record<string, string>;
@@ -204,7 +263,22 @@ export class GenericExecutor {
       let lastErr: any = null;
       while (attempt <= maxRetries) {
         try {
-          await rateLimiter.acquire(appId);
+          const limiterResult = await rateLimiter.acquire({
+            connectorId: appId,
+            connectionId,
+            rules: effectiveRateLimits,
+          });
+          if (limiterResult.waitMs > 0 || limiterResult.enforced) {
+            backoffEvents.push({
+              type: 'rate_limiter',
+              waitMs: limiterResult.waitMs,
+              attempt,
+              reason: 'token_bucket',
+              limiterAttempts: limiterResult.attempts,
+            });
+          }
+          totalRateLimiterWaitMs += limiterResult.waitMs;
+          totalRateLimiterAttempts += limiterResult.attempts;
           resp = await fetch(finalUrl, {
             method,
             headers: reqHeaders,
@@ -213,6 +287,15 @@ export class GenericExecutor {
           if (resp.status === 429 || (resp.status >= 500 && resp.status <= 599)) {
             // Backoff then retry
             const wait = Math.min(1000 * Math.pow(2, attempt), 4000);
+            if (wait > 0) {
+              backoffEvents.push({
+                type: 'http_retry',
+                waitMs: wait,
+                attempt,
+                reason: resp.status === 429 ? 'http_429' : `http_${resp.status}`,
+                statusCode: resp.status,
+              });
+            }
             await new Promise(r => setTimeout(r, wait));
             attempt++;
             continue;
@@ -221,6 +304,14 @@ export class GenericExecutor {
         } catch (e) {
           lastErr = e;
           const wait = Math.min(1000 * Math.pow(2, attempt), 4000);
+          if (wait > 0) {
+            backoffEvents.push({
+              type: 'network_retry',
+              waitMs: wait,
+              attempt,
+              reason: (e as any)?.name || 'network_error',
+            });
+          }
           await new Promise(r => setTimeout(r, wait));
           attempt++;
         }
@@ -262,24 +353,53 @@ export class GenericExecutor {
       const normalized = normalizeListResponse(appId, data);
       const payload = normalized ? { meta: normalized.meta, items: normalized.items } : (meta && Object.keys(meta).length ? { meta, ...data } : data);
       const ctx = getRequestContext();
+      const executionMeta: Record<string, any> = {
+        rateLimited: attempt > 0 || totalRateLimiterAttempts > 0,
+      };
+
+      if (totalRateLimiterAttempts > 0) {
+        executionMeta.rateLimiterAttempts = totalRateLimiterAttempts;
+      }
+      if (totalRateLimiterWaitMs > 0) {
+        executionMeta.rateLimiterWaitMs = totalRateLimiterWaitMs;
+      }
+
+      if (backoffEvents.length > 0) {
+        const totalBackoffMs = backoffEvents.reduce((sum, event) => sum + (event.waitMs || 0), 0);
+        executionMeta.backoffs = backoffEvents;
+        executionMeta.totalBackoffMs = totalBackoffMs;
+      }
+
       recordExecution({
         requestId: ctx?.requestId || 'unknown',
         appId,
         functionId,
         durationMs: Date.now() - reqStart,
         success: true,
-        meta: { rateLimited: attempt > 0 }
+        meta: executionMeta
       });
       return { success: true, data: payload };
     } catch (error: any) {
       const ctx = getRequestContext();
+      const executionMeta: Record<string, any> = {};
+      if (backoffEvents.length > 0) {
+        executionMeta.backoffs = backoffEvents;
+        executionMeta.totalBackoffMs = backoffEvents.reduce((sum, event) => sum + (event.waitMs || 0), 0);
+      }
+      if (totalRateLimiterAttempts > 0) {
+        executionMeta.rateLimiterAttempts = totalRateLimiterAttempts;
+      }
+      if (totalRateLimiterWaitMs > 0) {
+        executionMeta.rateLimiterWaitMs = totalRateLimiterWaitMs;
+      }
       recordExecution({
         requestId: ctx?.requestId || 'unknown',
         appId,
         functionId,
         durationMs: Date.now() - reqStart,
         success: false,
-        error: error?.message || String(error)
+        error: error?.message || String(error),
+        meta: Object.keys(executionMeta).length ? executionMeta : undefined
       });
       return { success: false, error: error?.message || String(error) };
     }
