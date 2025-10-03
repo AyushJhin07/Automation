@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { and, eq, gt, lte, sql } from 'drizzle-orm';
 
 import { db, nodeExecutionResults } from '../database/schema.js';
+import { SandboxPolicyViolationError } from '../runtime/SandboxShared.js';
 
 /**
  * RETRY MANAGER - Production-grade retry system with exponential backoff
@@ -538,6 +539,12 @@ class RetryManager {
       const circuitState = this.recordCircuitFailure(retryExecution, error);
 
       const shouldRetry = this.shouldRetryError(error, retryExecution.policy);
+
+      if (error instanceof SandboxPolicyViolationError) {
+        retryExecution.status = 'dlq';
+        retryExecution.updatedAt = new Date();
+        throw error;
+      }
 
       if (circuitState && circuitState.state === 'open') {
         retryExecution.status = 'failed';

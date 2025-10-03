@@ -335,6 +335,24 @@ export class ConnectionService {
     return { domains, ipRanges };
   }
 
+  public async getOrganizationNetworkAllowlist(
+    organizationId: string | undefined
+  ): Promise<OrganizationNetworkAllowlist | null> {
+    if (!organizationId) {
+      return null;
+    }
+
+    const allowlist = await this.resolveNetworkAllowlist(organizationId);
+    if (!allowlist) {
+      return null;
+    }
+
+    return {
+      domains: Array.isArray(allowlist.domains) ? allowlist.domains : [],
+      ipRanges: Array.isArray(allowlist.ipRanges) ? allowlist.ipRanges : [],
+    };
+  }
+
   public invalidateOrganizationSecurityCache(organizationId: string): void {
     this.organizationSecurityCache.delete(organizationId);
   }

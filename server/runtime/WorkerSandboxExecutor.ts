@@ -10,20 +10,63 @@ import {
   SANDBOX_BOOTSTRAP_SOURCE,
   SandboxAbortError,
   SandboxTimeoutError,
+  SandboxHeartbeatTimeoutError,
+  SandboxPolicyEvent,
 } from './SandboxShared';
+
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 500;
+const DEFAULT_HEARTBEAT_TIMEOUT_MS = 3_000;
 
 export class WorkerSandboxExecutor implements SandboxExecutor {
   async run(options: SandboxExecutorRunOptions): Promise<SandboxExecutionResult> {
-    const { code, entryPoint, params, context, timeoutMs, signal, secrets } = options;
+    const {
+      code,
+      entryPoint,
+      params,
+      context,
+      timeoutMs,
+      signal,
+      secrets,
+      networkPolicy,
+      heartbeatIntervalMs = DEFAULT_HEARTBEAT_INTERVAL_MS,
+      heartbeatTimeoutMs,
+      onPolicyEvent,
+    } = options;
 
     const start = performance.now();
+    const effectiveHeartbeatInterval = Number.isFinite(heartbeatIntervalMs)
+      ? Math.max(25, Math.floor(heartbeatIntervalMs))
+      : DEFAULT_HEARTBEAT_INTERVAL_MS;
+    const effectiveHeartbeatTimeout = Number.isFinite(heartbeatTimeoutMs)
+      ? Math.max(effectiveHeartbeatInterval * 2, Math.floor(heartbeatTimeoutMs))
+      : Math.max(effectiveHeartbeatInterval * 3, DEFAULT_HEARTBEAT_TIMEOUT_MS);
+
     const worker = new Worker(SANDBOX_BOOTSTRAP_SOURCE, {
       eval: true,
-      workerData: { code, entryPoint, params, context, timeoutMs, secrets },
+      workerData: {
+        code,
+        entryPoint,
+        params,
+        context,
+        timeoutMs,
+        secrets,
+        networkPolicy: networkPolicy ?? null,
+        heartbeatIntervalMs: effectiveHeartbeatInterval,
+      },
       type: 'module',
     });
 
     const logs: SandboxLogEntry[] = [];
+    let lastHeartbeat = Date.now();
+    let heartbeatMonitor: NodeJS.Timeout | null = null;
+
+    const emitPolicyEvent = (event: SandboxPolicyEvent) => {
+      try {
+        onPolicyEvent?.(event);
+      } catch (error) {
+        console.warn('[Sandbox] Failed to dispatch policy event', error);
+      }
+    };
 
     return new Promise<SandboxExecutionResult>((resolve, reject) => {
       let settled = false;
@@ -34,6 +77,10 @@ export class WorkerSandboxExecutor implements SandboxExecutor {
         worker.removeAllListeners('message');
         worker.removeAllListeners('error');
         worker.removeAllListeners('exit');
+        if (heartbeatMonitor) {
+          clearInterval(heartbeatMonitor);
+          heartbeatMonitor = null;
+        }
       };
 
       const finalize = (error: Error | null, value?: any) => {
@@ -69,6 +116,18 @@ export class WorkerSandboxExecutor implements SandboxExecutor {
         signal.addEventListener('abort', handleAbort, { once: true });
       }
 
+      heartbeatMonitor = setInterval(() => {
+        const elapsed = Date.now() - lastHeartbeat;
+        if (elapsed > effectiveHeartbeatTimeout) {
+          finalize(new SandboxHeartbeatTimeoutError(
+            `Sandbox heartbeat missed for ${elapsed}ms (timeout=${effectiveHeartbeatTimeout}ms)`,
+          ));
+        }
+      }, Math.min(Math.max(effectiveHeartbeatInterval, 50), effectiveHeartbeatTimeout));
+      if (heartbeatMonitor && typeof heartbeatMonitor.unref === 'function') {
+        heartbeatMonitor.unref();
+      }
+
       if (timeoutMs > 0) {
         hardTimeout = setTimeout(() => {
           try {
@@ -85,6 +144,17 @@ export class WorkerSandboxExecutor implements SandboxExecutor {
 
       worker.on('message', (message: any) => {
         if (!message) return;
+        if (message.type === 'heartbeat') {
+          lastHeartbeat = Date.now();
+          return;
+        }
+        if (message.type === 'policy_violation') {
+          const event = message.event as SandboxPolicyEvent | undefined;
+          if (event && event.type) {
+            emitPolicyEvent(event);
+          }
+          return;
+        }
         if (message.type === 'log') {
           try {
             const formatted = typeof message.data === 'string'

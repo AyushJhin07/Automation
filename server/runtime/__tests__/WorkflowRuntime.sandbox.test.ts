@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { WorkflowRuntime } from '../../core/WorkflowRuntime.js';
+import { connectionService } from '../../services/ConnectionService.js';
 
 const runtime = new WorkflowRuntime();
 
@@ -53,6 +54,52 @@ const runtime = new WorkflowRuntime();
   assert.equal(result.data.timestamp, '2024-01-02T03:04:05.000Z');
   assert.equal(result.nodeOutputs['sandbox-node-success'].leaked, '[REDACTED]');
   assert.equal(result.nodeOutputs['sandbox-node-success'].sawSecret, true);
+}
+
+{
+  const networkGraph = {
+    id: 'sandbox-graph-network',
+    name: 'Sandbox Graph Network Policy',
+    version: 1,
+    nodes: [
+      {
+        id: 'sandbox-node-network',
+        type: 'action.sandbox.network',
+        label: 'Sandbox Network',
+        params: {},
+        data: {
+          label: 'Sandbox Network',
+          runtime: {
+            entryPoint: 'run',
+            code: `export async function run({ fetch }) {
+  await fetch('https://blocked.example.com/data');
+  return { ok: true };
+}`,
+          },
+        },
+      },
+    ],
+    edges: [],
+    scopes: [],
+    secrets: [],
+  };
+
+  const originalAllowlist = connectionService.getOrganizationNetworkAllowlist.bind(connectionService);
+  connectionService.getOrganizationNetworkAllowlist = async () => ({
+    domains: ['allowed.example.com'],
+    ipRanges: [],
+  });
+
+  try {
+    const result = await runtime.executeWorkflow(networkGraph as any, {}, 'sandbox-user', {
+      organizationId: 'org-policy',
+    });
+
+    assert.equal(result.success, false, 'network policy violation should fail execution');
+    assert.ok(result.error && result.error.includes('Network request blocked'), 'error should indicate network block');
+  } finally {
+    connectionService.getOrganizationNetworkAllowlist = originalAllowlist;
+  }
 }
 
 {
