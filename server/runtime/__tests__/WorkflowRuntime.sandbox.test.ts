@@ -171,3 +171,75 @@ export async function run() {
     'error should explain that imports are not allowed'
   );
 }
+
+{
+  const crashGraph = {
+    id: 'sandbox-graph-crash',
+    name: 'Sandbox Graph Crash',
+    version: 1,
+    nodes: [
+      {
+        id: 'sandbox-node-crash',
+        type: 'action.sandbox.crash',
+        label: 'Sandbox Crash',
+        params: {},
+        data: {
+          label: 'Sandbox Crash',
+          runtime: {
+            entryPoint: 'run',
+            timeoutMs: 500,
+            code: `export async function run() {
+  setTimeout(() => {
+    throw new Error('Simulated crash');
+  }, 10);
+  await new Promise(() => {});
+  return { unreachable: true };
+}`
+          }
+        }
+      }
+    ],
+    edges: [],
+    scopes: [],
+    secrets: []
+  };
+
+  const crashResult = await runtime.executeWorkflow(crashGraph as any, {}, 'sandbox-user');
+
+  assert.equal(crashResult.success, false, 'crash should surface as a sandbox failure');
+  assert.ok(
+    crashResult.error && /Sandbox (process|worker) exited/i.test(crashResult.error),
+    'crash error should indicate the sandbox runtime exited'
+  );
+
+  const recoveryGraph = {
+    id: 'sandbox-graph-recovery',
+    name: 'Sandbox Graph Recovery',
+    version: 1,
+    nodes: [
+      {
+        id: 'sandbox-node-recovery',
+        type: 'action.sandbox.echo',
+        label: 'Sandbox Echo',
+        params: {},
+        data: {
+          label: 'Sandbox Echo',
+          runtime: {
+            entryPoint: 'run',
+            code: `export async function run() {
+  return { ok: true };
+}`
+          }
+        }
+      }
+    ],
+    edges: [],
+    scopes: [],
+    secrets: []
+  };
+
+  const recoveryResult = await runtime.executeWorkflow(recoveryGraph as any, {}, 'sandbox-user');
+
+  assert.equal(recoveryResult.success, true, 'subsequent sandbox execution should still succeed');
+  assert.equal(recoveryResult.data.ok, true);
+}
