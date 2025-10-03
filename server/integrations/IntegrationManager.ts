@@ -203,6 +203,7 @@ export class IntegrationManager {
         };
       }
 
+      const definition = connectorRegistry.getConnectorDefinition(appKey);
       const client = this.createAPIClient(appKey, config.credentials, config.additionalConfig);
       if (!client) {
         return {
@@ -210,6 +211,8 @@ export class IntegrationManager {
           error: `Application ${config.appName} is not yet implemented`
         };
       }
+
+      client.setConnectorContext(appKey, config.connectionId, definition?.rateLimits);
 
       // Test the connection
       const testResult = await client.testConnection();
@@ -514,48 +517,51 @@ export class IntegrationManager {
    * Create API client for specific application
    */
   private createAPIClient(
-    appKey: string, 
-    credentials: APICredentials, 
+    appKey: string,
+    credentials: APICredentials,
     additionalConfig?: Record<string, any>
   ): BaseAPIClient | null {
+    const enrichedCredentials: APICredentials = { ...credentials };
+    (enrichedCredentials as Record<string, any>).__connectorId = appKey;
+
     switch (appKey) {
       case 'gmail':
-        return new GmailAPIClient(credentials);
+        return new GmailAPIClient(enrichedCredentials);
 
       case 'shopify':
         if (!additionalConfig?.shopDomain) {
           throw new Error('Shopify integration requires shopDomain in additionalConfig');
         }
-        return new ShopifyAPIClient({ ...credentials, shopDomain: additionalConfig.shopDomain });
+        return new ShopifyAPIClient({ ...enrichedCredentials, shopDomain: additionalConfig.shopDomain });
 
       case 'slack': {
-        const accessToken = credentials.accessToken ?? credentials.botToken;
+        const accessToken = enrichedCredentials.accessToken ?? enrichedCredentials.botToken;
         if (!accessToken) {
           throw new Error('Slack integration requires an access token');
         }
-        return new SlackAPIClient({ ...credentials, accessToken });
+        return new SlackAPIClient({ ...enrichedCredentials, accessToken });
       }
 
       case 'notion': {
-        const accessToken = credentials.accessToken ?? credentials.integrationToken;
+        const accessToken = enrichedCredentials.accessToken ?? enrichedCredentials.integrationToken;
         if (!accessToken) {
           throw new Error('Notion integration requires an access token');
         }
-        return new NotionAPIClient({ ...credentials, accessToken });
+        return new NotionAPIClient({ ...enrichedCredentials, accessToken });
       }
 
       case 'airtable': {
-        if (!credentials.apiKey) {
+        if (!enrichedCredentials.apiKey) {
           throw new Error('Airtable integration requires an API key');
         }
-        return new AirtableAPIClient(credentials);
+        return new AirtableAPIClient(enrichedCredentials);
       }
 
       case 'sheets':
-        return new LocalSheetsAPIClient(credentials);
+        return new LocalSheetsAPIClient(enrichedCredentials);
 
       case 'time':
-        return new LocalTimeAPIClient(credentials);
+        return new LocalTimeAPIClient(enrichedCredentials);
 
       default:
         break;
@@ -565,7 +571,7 @@ export class IntegrationManager {
     try {
       const ctor = connectorRegistry.getAPIClient(appKey);
       if (ctor) {
-        const config = { ...credentials, ...(additionalConfig ?? {}) };
+        const config = { ...enrichedCredentials, ...(additionalConfig ?? {}) };
         return new ctor(config as any);
       }
     } catch {
