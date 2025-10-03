@@ -28,6 +28,54 @@ export interface IdempotencyKey {
   expiresAt: Date;
 }
 
+export interface CircuitBreakerConfig {
+  failureThreshold: number;
+  cooldownMs: number;
+  halfOpenMaxAttempts: number;
+}
+
+export interface CircuitBreakerSnapshot {
+  key: string;
+  nodeId: string;
+  nodeLabel?: string;
+  connectorId: string;
+  state: 'closed' | 'open' | 'half_open';
+  consecutiveFailures: number;
+  openedAt?: Date;
+  lastFailureAt?: Date;
+  lastRecoveryAt?: Date;
+  lastError?: string;
+  halfOpenAttempts: number;
+  failureThreshold: number;
+  cooldownMs: number;
+  halfOpenMaxAttempts: number;
+}
+
+interface CircuitBreakerState {
+  key: string;
+  nodeId: string;
+  nodeLabel?: string;
+  connectorId: string;
+  state: 'closed' | 'open' | 'half_open';
+  consecutiveFailures: number;
+  openedAt?: Date;
+  lastFailureAt?: Date;
+  lastRecoveryAt?: Date;
+  lastError?: string;
+  halfOpenAttempts: number;
+  config: CircuitBreakerConfig;
+}
+
+export class CircuitBreakerOpenError extends Error {
+  constructor(message: string, public readonly snapshot: CircuitBreakerSnapshot, cause?: Error) {
+    super(message);
+    this.name = 'CircuitBreakerOpenError';
+    if (cause) {
+      (this as any).cause = cause;
+    }
+  }
+}
+
 export interface RetryableExecution {
   nodeId: string;
   executionId: string;
@@ -38,11 +86,16 @@ export interface RetryableExecution {
   lastError?: string;
   createdAt: Date;
   updatedAt: Date;
+  connectorId?: string;
+  nodeType?: string;
+  nodeLabel?: string;
+  circuitConfig?: CircuitBreakerConfig;
 }
 
 class RetryManager {
   private executions = new Map<string, RetryableExecution>();
   private idempotencyCache = new Map<string, IdempotencyKey>();
+  private circuitStates = new Map<string, CircuitBreakerState>();
   private defaultPolicy: RetryPolicy = {
     maxAttempts: 3,
     initialDelayMs: 1000,
@@ -50,6 +103,11 @@ class RetryManager {
     backoffMultiplier: 2,
     jitterEnabled: true,
     retryableErrors: ['TIMEOUT', 'RATE_LIMIT', 'NETWORK_ERROR', 'SERVICE_UNAVAILABLE']
+  };
+  private defaultCircuitConfig: CircuitBreakerConfig = {
+    failureThreshold: 3,
+    cooldownMs: 60_000,
+    halfOpenMaxAttempts: 1
   };
 
   /**
@@ -63,9 +121,13 @@ class RetryManager {
       policy?: Partial<RetryPolicy>;
       idempotencyKey?: string;
       nodeType?: string;
+      connectorId?: string;
+      nodeLabel?: string;
+      circuitBreaker?: Partial<CircuitBreakerConfig>;
     } = {}
   ): Promise<T> {
     const policy = { ...this.defaultPolicy, ...options.policy };
+    const circuitConfig = { ...this.defaultCircuitConfig, ...options.circuitBreaker };
     const executionKey = `${executionId}:${nodeId}`;
     
     // Check idempotency cache first
@@ -88,9 +150,25 @@ class RetryManager {
         status: 'pending',
         idempotencyKey: options.idempotencyKey,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        connectorId: options.connectorId,
+        nodeType: options.nodeType,
+        nodeLabel: options.nodeLabel,
+        circuitConfig
       };
       this.executions.set(executionKey, retryExecution);
+    } else {
+      retryExecution.policy = policy;
+      retryExecution.circuitConfig = circuitConfig;
+      if (options.connectorId) {
+        retryExecution.connectorId = options.connectorId;
+      }
+      if (options.nodeType) {
+        retryExecution.nodeType = options.nodeType;
+      }
+      if (options.nodeLabel) {
+        retryExecution.nodeLabel = options.nodeLabel;
+      }
     }
 
     return this.attemptExecution(retryExecution, executor);
@@ -104,12 +182,14 @@ class RetryManager {
     executor: () => Promise<T>
   ): Promise<T> {
     const currentAttempt = retryExecution.attempts.length + 1;
-    
+
     if (currentAttempt > retryExecution.policy.maxAttempts) {
       retryExecution.status = 'dlq';
       retryExecution.updatedAt = new Date();
       throw new Error(`Node ${retryExecution.nodeId} failed after ${retryExecution.policy.maxAttempts} attempts - moved to DLQ`);
     }
+
+    this.ensureCircuitAvailability(retryExecution);
 
     const attempt: RetryAttempt = {
       attempt: currentAttempt,
@@ -128,6 +208,7 @@ class RetryManager {
       // Success - cache result if idempotency key provided
       retryExecution.status = 'succeeded';
       retryExecution.updatedAt = new Date();
+      this.recordCircuitSuccess(retryExecution);
 
       if (retryExecution.idempotencyKey) {
         this.cacheIdempotentResult(retryExecution.idempotencyKey, retryExecution.nodeId, retryExecution.executionId, result);
@@ -141,8 +222,21 @@ class RetryManager {
       retryExecution.lastError = error.message;
       retryExecution.updatedAt = new Date();
 
+      const circuitState = this.recordCircuitFailure(retryExecution, error);
+
       const shouldRetry = this.shouldRetryError(error, retryExecution.policy);
-      
+
+      if (circuitState && circuitState.state === 'open') {
+        retryExecution.status = 'failed';
+        const snapshot = this.toCircuitSnapshot(circuitState);
+        console.error(`🚫 Circuit breaker opened for ${circuitState.connectorId}:${circuitState.nodeId}`);
+        throw new CircuitBreakerOpenError(
+          `Circuit breaker open for ${circuitState.connectorId} on node ${retryExecution.nodeLabel || retryExecution.nodeId}`,
+          snapshot,
+          error instanceof Error ? error : undefined
+        );
+      }
+
       if (!shouldRetry || currentAttempt >= retryExecution.policy.maxAttempts) {
         retryExecution.status = 'failed';
         console.error(`❌ Node ${retryExecution.nodeId} failed permanently:`, error.message);
@@ -154,10 +248,10 @@ class RetryManager {
       attempt.nextRetryAt = new Date(Date.now() + delay);
       
       console.warn(`⚠️ Node ${retryExecution.nodeId} failed on attempt ${currentAttempt}, retrying in ${delay}ms:`, error.message);
-      
+
       // Wait for retry delay
       await new Promise(resolve => setTimeout(resolve, delay));
-      
+
       // Recursive retry
       return this.attemptExecution(retryExecution, executor);
     }
@@ -169,6 +263,162 @@ class RetryManager {
   private shouldRetryError(error: any, policy: RetryPolicy): boolean {
     const errorType = this.classifyError(error);
     return policy.retryableErrors.includes(errorType);
+  }
+
+  private ensureCircuitAvailability(retryExecution: RetryableExecution): void {
+    const state = this.getOrCreateCircuitState(retryExecution);
+    if (!state) {
+      return;
+    }
+
+    if (state.state === 'open') {
+      if (state.openedAt && Date.now() - state.openedAt.getTime() >= state.config.cooldownMs) {
+        state.state = 'half_open';
+        state.halfOpenAttempts = 0;
+        console.warn(`🔁 Circuit breaker for ${state.connectorId}:${state.nodeId} entering HALF_OPEN`);
+      } else {
+        const snapshot = this.toCircuitSnapshot(state);
+        throw new CircuitBreakerOpenError(
+          `Circuit breaker open for ${state.connectorId} on node ${state.nodeLabel || state.nodeId}`,
+          snapshot
+        );
+      }
+    }
+
+    if (state.state === 'half_open') {
+      if (state.halfOpenAttempts >= state.config.halfOpenMaxAttempts) {
+        const snapshot = this.toCircuitSnapshot(state);
+        throw new CircuitBreakerOpenError(
+          `Circuit breaker half-open limit reached for ${state.connectorId} on node ${state.nodeLabel || state.nodeId}`,
+          snapshot
+        );
+      }
+      state.halfOpenAttempts++;
+    }
+  }
+
+  private getCircuitKey(connectorId: string, nodeId: string): string {
+    return `${connectorId}:${nodeId}`;
+  }
+
+  private getOrCreateCircuitState(retryExecution: RetryableExecution): CircuitBreakerState | undefined {
+    if (!retryExecution.connectorId) {
+      return undefined;
+    }
+
+    const key = this.getCircuitKey(retryExecution.connectorId, retryExecution.nodeId);
+    const config = retryExecution.circuitConfig ?? this.defaultCircuitConfig;
+    let state = this.circuitStates.get(key);
+
+    if (!state) {
+      state = {
+        key,
+        nodeId: retryExecution.nodeId,
+        nodeLabel: retryExecution.nodeLabel,
+        connectorId: retryExecution.connectorId,
+        state: 'closed',
+        consecutiveFailures: 0,
+        openedAt: undefined,
+        lastFailureAt: undefined,
+        lastRecoveryAt: undefined,
+        lastError: undefined,
+        halfOpenAttempts: 0,
+        config
+      };
+      this.circuitStates.set(key, state);
+    } else {
+      state.config = config;
+      if (retryExecution.nodeLabel) {
+        state.nodeLabel = retryExecution.nodeLabel;
+      }
+    }
+
+    return state;
+  }
+
+  private recordCircuitSuccess(retryExecution: RetryableExecution): void {
+    const state = this.getOrCreateCircuitState(retryExecution);
+    if (!state) {
+      return;
+    }
+
+    if (state.consecutiveFailures > 0 || state.state !== 'closed') {
+      console.log(`🔌 Circuit breaker reset for ${state.connectorId}:${state.nodeId}`);
+    }
+
+    state.consecutiveFailures = 0;
+    state.state = 'closed';
+    state.openedAt = undefined;
+    state.lastFailureAt = undefined;
+    state.lastError = undefined;
+    state.lastRecoveryAt = new Date();
+    state.halfOpenAttempts = 0;
+  }
+
+  private recordCircuitFailure(retryExecution: RetryableExecution, error: any): CircuitBreakerState | undefined {
+    const state = this.getOrCreateCircuitState(retryExecution);
+    if (!state) {
+      return undefined;
+    }
+
+    state.consecutiveFailures += 1;
+    state.lastFailureAt = new Date();
+    state.lastError = typeof error?.message === 'string' ? error.message : String(error);
+
+    if (state.state === 'half_open' || state.consecutiveFailures >= state.config.failureThreshold) {
+      if (state.state !== 'open') {
+        console.warn(`🚨 Opening circuit breaker for ${state.connectorId}:${state.nodeId}`);
+      }
+      state.state = 'open';
+      state.openedAt = new Date();
+      state.halfOpenAttempts = 0;
+    }
+
+    return state;
+  }
+
+  private toCircuitSnapshot(state: CircuitBreakerState): CircuitBreakerSnapshot {
+    return {
+      key: state.key,
+      nodeId: state.nodeId,
+      nodeLabel: state.nodeLabel,
+      connectorId: state.connectorId,
+      state: state.state,
+      consecutiveFailures: state.consecutiveFailures,
+      openedAt: state.openedAt,
+      lastFailureAt: state.lastFailureAt,
+      lastRecoveryAt: state.lastRecoveryAt,
+      lastError: state.lastError,
+      halfOpenAttempts: state.halfOpenAttempts,
+      failureThreshold: state.config.failureThreshold,
+      cooldownMs: state.config.cooldownMs,
+      halfOpenMaxAttempts: state.config.halfOpenMaxAttempts
+    };
+  }
+
+  getCircuitState(connectorId: string, nodeId: string): CircuitBreakerSnapshot | undefined {
+    if (!connectorId) {
+      return undefined;
+    }
+
+    const key = this.getCircuitKey(connectorId, nodeId);
+    const state = this.circuitStates.get(key);
+    if (!state) {
+      return {
+        key,
+        nodeId,
+        nodeLabel: undefined,
+        connectorId,
+        state: 'closed',
+        consecutiveFailures: 0,
+        halfOpenAttempts: 0,
+        failureThreshold: this.defaultCircuitConfig.failureThreshold,
+        cooldownMs: this.defaultCircuitConfig.cooldownMs,
+        halfOpenMaxAttempts: this.defaultCircuitConfig.halfOpenMaxAttempts
+      };
+    }
+
+    return this.toCircuitSnapshot(state);
   }
 
   /**
@@ -268,22 +518,33 @@ class RetryManager {
   cleanup(): void {
     const now = new Date();
     const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-    
+
     // Clean old executions
     for (const [key, execution] of this.executions.entries()) {
       if (now.getTime() - execution.createdAt.getTime() > maxAge) {
         this.executions.delete(key);
       }
     }
-    
+
     // Clean expired idempotency keys
     for (const [key, item] of this.idempotencyCache.entries()) {
       if (item.expiresAt <= now) {
         this.idempotencyCache.delete(key);
       }
     }
-    
-    console.log(`🧹 Cleanup completed - ${this.executions.size} active executions, ${this.idempotencyCache.size} cached keys`);
+
+    for (const [key, state] of this.circuitStates.entries()) {
+      const lastActivity = state.lastFailureAt?.getTime()
+        ?? state.lastRecoveryAt?.getTime()
+        ?? state.openedAt?.getTime()
+        ?? 0;
+
+      if (state.state === 'closed' && lastActivity > 0 && now.getTime() - lastActivity > maxAge) {
+        this.circuitStates.delete(key);
+      }
+    }
+
+    console.log(`🧹 Cleanup completed - ${this.executions.size} active executions, ${this.idempotencyCache.size} cached keys, ${this.circuitStates.size} circuit states`);
   }
 
   /**
@@ -294,17 +555,19 @@ class RetryManager {
     cachedKeys: number;
     dlqItems: number;
     successRate: number;
+    openCircuits: number;
   } {
     const executions = Array.from(this.executions.values());
     const dlqItems = executions.filter(e => e.status === 'dlq').length;
     const succeeded = executions.filter(e => e.status === 'succeeded').length;
     const total = executions.length;
-    
+
     return {
       activeExecutions: executions.filter(e => e.status === 'pending' || e.status === 'retrying').length,
       cachedKeys: this.idempotencyCache.size,
       dlqItems,
-      successRate: total > 0 ? succeeded / total : 1
+      successRate: total > 0 ? succeeded / total : 1,
+      openCircuits: Array.from(this.circuitStates.values()).filter(state => state.state === 'open').length
     };
   }
 }

@@ -11,6 +11,32 @@ import { retryManager, RetryPolicy } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
 import { nodeSandbox, collectSecretStrings } from '../runtime/NodeSandbox';
 
+const DEFAULT_NODE_TIMEOUT_MS = 30_000;
+
+export interface WorkflowRuntimeOptions {
+  defaultNodeTimeoutMs?: number;
+  nodeTimeouts?: Record<string, number>;
+}
+
+interface NormalizedRuntimeOptions {
+  defaultNodeTimeoutMs: number;
+  nodeTimeouts: Record<string, number>;
+}
+
+interface NodeExecutionOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+interface NodeExecutionMetadataSnapshot {
+  timeoutMs?: number;
+}
+
+interface TimeoutGuard {
+  promise: Promise<never>;
+  cancel: () => void;
+}
+
 export interface ExecutionContext {
   outputs: Record<string, any>;
   prevOutput?: any;
@@ -29,14 +55,21 @@ export interface ExecutionResult {
 }
 
 export class WorkflowRuntime {
+  private nodeMetadata = new Map<string, NodeExecutionMetadataSnapshot>();
+
   /**
    * Execute a workflow graph server-side
    * Particularly useful for LLM nodes and testing
    */
-  async executeWorkflow(graph: NodeGraph, initialData: any = {}, userId?: string): Promise<ExecutionResult> {
+  async executeWorkflow(
+    graph: NodeGraph,
+    initialData: any = {},
+    userId?: string,
+    options: WorkflowRuntimeOptions = {}
+  ): Promise<ExecutionResult> {
     const startTime = new Date();
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    
+
     const context: ExecutionContext = {
       outputs: {},
       prevOutput: initialData,
@@ -45,6 +78,8 @@ export class WorkflowRuntime {
       startTime,
       executionId
     };
+
+    const runtimeOptions = this.normalizeOptions(options);
 
     // Start execution tracking
     runExecutionManager.startExecution(executionId, graph, userId, 'manual', initialData);
@@ -63,21 +98,29 @@ export class WorkflowRuntime {
         }
 
         console.log(`📋 Executing node: ${node.label} (${node.type})`);
-        
+
+        const connectorId = this.resolveConnectorId(node);
+        const configuredTimeout = this.resolveConfiguredTimeout(node.id, runtimeOptions);
+
         // Start node execution tracking
-        const nodeExecution = runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput);
-        
+        runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput, {
+          timeoutMs: configuredTimeout,
+          connectorId
+        });
+
         const nodeAbortController = new AbortController();
         try {
           // Execute node with retry logic and idempotency
           const nodeResult = await retryManager.executeWithRetry(
             node.id,
             context.executionId,
-            () => this.executeNode(node, context, nodeAbortController.signal),
+            () => this.executeNode(node, context, { signal: nodeAbortController.signal, timeoutMs: configuredTimeout }),
             {
               policy: this.getRetryPolicyForNode(node),
               idempotencyKey: this.generateIdempotencyKey(node, context),
-              nodeType: node.type
+              nodeType: node.type,
+              connectorId,
+              nodeLabel: node.label
             }
           );
 
@@ -85,14 +128,22 @@ export class WorkflowRuntime {
           context.prevOutput = nodeResult;
 
           // Track successful completion
+          const metadata = this.consumeNodeMetadata(context.executionId, node.id);
+          const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
           runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeResult, {
-            // Add any metadata from the execution
+            ...metadata,
+            circuitState
           });
 
           console.log(`✅ Node ${node.id} completed successfully`);
         } catch (error) {
           const message = (error as Error)?.message ?? 'Unknown error';
-          runExecutionManager.failNodeExecution(context.executionId, node.id, message);
+          const metadata = this.consumeNodeMetadata(context.executionId, node.id);
+          const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
+          runExecutionManager.failNodeExecution(context.executionId, node.id, message, {
+            ...metadata,
+            circuitState
+          });
           console.error(`❌ Node ${node.id} failed:`, error);
           throw new Error(`Node "${node.label}" failed: ${message}`);
         } finally {
@@ -133,7 +184,8 @@ export class WorkflowRuntime {
   /**
    * Execute a single node
    */
-  private async executeNode(node: GraphNode, context: ExecutionContext, signal?: AbortSignal): Promise<any> {
+  private async executeNode(node: GraphNode, context: ExecutionContext, options: NodeExecutionOptions = {}): Promise<any> {
+    const { signal, timeoutMs } = options;
     // Resolve node parameters using AI-as-a-field ParameterResolver
     const paramContext: ParameterContext = {
       nodeOutputs: context.outputs,
@@ -148,6 +200,9 @@ export class WorkflowRuntime {
     const runtimeConfig = (node.data as any)?.runtime ?? (resolvedParams as any)?.runtime;
 
     if (runtimeConfig && typeof runtimeConfig.code === 'string') {
+      const effectiveTimeout = this.resolveEffectiveTimeout(runtimeConfig, timeoutMs);
+      this.setNodeMetadata(context.executionId, node.id, { timeoutMs: effectiveTimeout });
+
       const sandboxParams = this.extractSandboxParams(resolvedParams);
       const sandboxContext: Record<string, any> = {
         workflowId: context.workflowId,
@@ -183,39 +238,52 @@ export class WorkflowRuntime {
         node.auth
       );
 
-      const sandboxOutcome = await nodeSandbox.execute({
-        code: runtimeConfig.code,
-        entryPoint: runtimeConfig.entryPoint ?? runtimeConfig.entry ?? 'run',
-        params: sandboxParams,
-        context: sandboxContext,
-        timeoutMs: typeof runtimeConfig.timeoutMs === 'number' ? runtimeConfig.timeoutMs : undefined,
-        signal,
-        secrets
-      });
+      const timeoutController = new AbortController();
+      const { signal: combinedSignal, cleanup } = this.createCombinedSignal(signal, timeoutController.signal);
+      const guard = this.createTimeoutGuard(node, effectiveTimeout, () => timeoutController.abort());
 
-      if (sandboxOutcome.logs.length > 0) {
-        for (const logEntry of sandboxOutcome.logs) {
-          const prefix = `🧪 [Sandbox:${node.id}]`;
-          switch (logEntry.level) {
-            case 'error':
-              console.error(`${prefix} ${logEntry.message}`);
-              break;
-            case 'warn':
-              console.warn(`${prefix} ${logEntry.message}`);
-              break;
-            case 'info':
-            case 'log':
-              console.log(`${prefix} ${logEntry.message}`);
-              break;
-            case 'debug':
-            default:
-              console.debug(`${prefix} ${logEntry.message}`);
-              break;
+      try {
+        const sandboxPromise = nodeSandbox.execute({
+          code: runtimeConfig.code,
+          entryPoint: runtimeConfig.entryPoint ?? runtimeConfig.entry ?? 'run',
+          params: sandboxParams,
+          context: sandboxContext,
+          timeoutMs: effectiveTimeout,
+          signal: combinedSignal,
+          secrets
+        });
+
+        const sandboxOutcome = guard
+          ? await Promise.race([sandboxPromise, guard.promise])
+          : await sandboxPromise;
+
+        if (sandboxOutcome.logs.length > 0) {
+          for (const logEntry of sandboxOutcome.logs) {
+            const prefix = `🧪 [Sandbox:${node.id}]`;
+            switch (logEntry.level) {
+              case 'error':
+                console.error(`${prefix} ${logEntry.message}`);
+                break;
+              case 'warn':
+                console.warn(`${prefix} ${logEntry.message}`);
+                break;
+              case 'info':
+              case 'log':
+                console.log(`${prefix} ${logEntry.message}`);
+                break;
+              case 'debug':
+              default:
+                console.debug(`${prefix} ${logEntry.message}`);
+                break;
+            }
           }
         }
-      }
 
-      return sandboxOutcome.result;
+        return sandboxOutcome.result;
+      } finally {
+        guard?.cancel();
+        cleanup();
+      }
     }
 
     // Execute based on node type
@@ -462,6 +530,155 @@ export class WorkflowRuntime {
     }
 
     return relevantInputs;
+  }
+
+  private normalizeOptions(options: WorkflowRuntimeOptions): NormalizedRuntimeOptions {
+    const defaultNodeTimeout = this.isPositiveNumber(options.defaultNodeTimeoutMs)
+      ? options.defaultNodeTimeoutMs!
+      : DEFAULT_NODE_TIMEOUT_MS;
+
+    const nodeTimeouts: Record<string, number> = {};
+    if (options.nodeTimeouts) {
+      for (const [nodeId, value] of Object.entries(options.nodeTimeouts)) {
+        if (this.isPositiveNumber(value)) {
+          nodeTimeouts[nodeId] = value;
+        }
+      }
+    }
+
+    return {
+      defaultNodeTimeoutMs: defaultNodeTimeout,
+      nodeTimeouts
+    };
+  }
+
+  private resolveConfiguredTimeout(nodeId: string, options: NormalizedRuntimeOptions): number | undefined {
+    const override = options.nodeTimeouts[nodeId];
+    if (this.isPositiveNumber(override)) {
+      return override;
+    }
+    return options.defaultNodeTimeoutMs;
+  }
+
+  private resolveEffectiveTimeout(runtimeConfig: any, configuredTimeout?: number): number | undefined {
+    const runtimeTimeout = typeof runtimeConfig?.timeoutMs === 'number' ? runtimeConfig.timeoutMs : undefined;
+    const candidates = [configuredTimeout, runtimeTimeout, DEFAULT_NODE_TIMEOUT_MS];
+
+    for (const candidate of candidates) {
+      if (this.isPositiveNumber(candidate)) {
+        return candidate;
+      }
+    }
+
+    return undefined;
+  }
+
+  private setNodeMetadata(executionId: string, nodeId: string, metadata: NodeExecutionMetadataSnapshot): void {
+    const key = this.getMetadataKey(executionId, nodeId);
+    const existing = this.nodeMetadata.get(key) || {};
+    this.nodeMetadata.set(key, { ...existing, ...metadata });
+  }
+
+  private consumeNodeMetadata(executionId: string, nodeId: string): NodeExecutionMetadataSnapshot {
+    const key = this.getMetadataKey(executionId, nodeId);
+    const metadata = this.nodeMetadata.get(key) || {};
+    this.nodeMetadata.delete(key);
+    return metadata;
+  }
+
+  private getMetadataKey(executionId: string, nodeId: string): string {
+    return `${executionId}:${nodeId}`;
+  }
+
+  private createCombinedSignal(primary?: AbortSignal, secondary?: AbortSignal): { signal: AbortSignal; cleanup: () => void } {
+    const controller = new AbortController();
+    const listeners: Array<{ signal: AbortSignal; handler: () => void }> = [];
+    const sources = [primary, secondary].filter((signal): signal is AbortSignal => Boolean(signal));
+
+    const abort = () => {
+      if (!controller.signal.aborted) {
+        controller.abort();
+      }
+    };
+
+    for (const source of sources) {
+      if (source.aborted) {
+        abort();
+      } else {
+        const handler = () => abort();
+        source.addEventListener('abort', handler);
+        listeners.push({ signal: source, handler });
+      }
+    }
+
+    return {
+      signal: controller.signal,
+      cleanup: () => {
+        for (const { signal, handler } of listeners) {
+          signal.removeEventListener('abort', handler);
+        }
+      }
+    };
+  }
+
+  private createTimeoutGuard(node: GraphNode, timeoutMs?: number, onTimeout?: () => void): TimeoutGuard | undefined {
+    if (!this.isPositiveNumber(timeoutMs)) {
+      return undefined;
+    }
+
+    let timer: NodeJS.Timeout;
+    const promise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        onTimeout?.();
+        reject(new Error(`Node "${node.label}" (${node.id}) timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    return {
+      promise,
+      cancel: () => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      }
+    };
+  }
+
+  private resolveConnectorId(node: GraphNode): string | undefined {
+    const data = node.data || {};
+    const metadata = node.metadata || {};
+    const candidates = [
+      (data as any)?.connectorId,
+      (metadata as any)?.connectorId,
+      (data as any)?.provider,
+      (data as any)?.appKey,
+      (data as any)?.app,
+      node.app,
+      node.connectionId,
+      (data as any)?.connectionId
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+
+    if (typeof node.type === 'string') {
+      const parts = node.type.split('.');
+      if (parts.length >= 2) {
+        const [category, connector] = parts;
+        if (category === 'action' || category === 'trigger') {
+          return connector;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private isPositiveNumber(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
   }
 
   private extractSandboxParams(resolvedParams: Record<string, any>): any {
