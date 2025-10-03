@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalBaseUrl = process.env.BASE_URL;
 const originalEncryptionKey = process.env.ENCRYPTION_MASTER_KEY;
 const originalJwtSecret = process.env.JWT_SECRET;
 const originalFileStore = process.env.ALLOW_FILE_CONNECTION_STORE;
+const originalConnectionStorePath = process.env.CONNECTION_STORE_PATH;
 
 const envKeys = [
   'GMAIL_CLIENT_ID',
@@ -35,8 +38,6 @@ process.env.SLACK_CLIENT_SECRET = 'test-slack-client-secret';
 process.env.NOTION_CLIENT_ID = 'test-notion-client-id';
 process.env.NOTION_CLIENT_SECRET = 'test-notion-client-secret';
 
-const originalFetch = globalThis.fetch;
-
 const tokenResponse = {
   access_token: 'test-access-token',
   refresh_token: 'test-refresh-token',
@@ -51,69 +52,71 @@ const userInfoResponse = {
   name: 'Test Gmail User',
 };
 
-(globalThis as any).fetch = async (input: RequestInfo, init?: RequestInit) => {
-  const url = typeof input === 'string'
-    ? input
-    : input instanceof URL
-      ? input.toString()
-      : input.url;
-
-  if (url.includes('oauth2.googleapis.com/token')) {
-    return new Response(JSON.stringify(tokenResponse), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  if (url.includes('www.googleapis.com/oauth2/v2/userinfo')) {
-    return new Response(JSON.stringify(userInfoResponse), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  return originalFetch(input as any, init);
-};
-
 const app = express();
 app.use(express.json());
 (globalThis as any).app = app;
 
 let server: Server | undefined;
 let exitCode = 0;
-
-const storedConnections: Array<{
-  userId: string;
-  organizationId: string;
-  provider: string;
-  tokens: any;
-  userInfo?: any;
-  options?: any;
-}> = [];
 let connectionService: any;
-let originalStoreConnection: ((...args: any[]) => any) | undefined;
 let authService: any;
 let originalVerifyToken: ((...args: any[]) => any) | undefined;
+const originalOAuthMethods = new Map<string, (...args: any[]) => any>();
+
+const connectionStorePath = path.join(process.cwd(), '.data', 'oauth-flow-test-connections.json');
+
+await fs.mkdir(path.dirname(connectionStorePath), { recursive: true });
+await fs.rm(connectionStorePath, { force: true });
+process.env.CONNECTION_STORE_PATH = connectionStorePath;
 
 try {
+  const mockOAuthModule = await import('../../oauth/__mocks__/OAuthManager.ts');
+  const mockOAuthManager = mockOAuthModule.oauthManager;
+  mockOAuthManager.reset();
+  mockOAuthManager.registerProvider('gmail', {
+    displayName: 'Gmail',
+    config: {
+      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      scopes: ['https://www.googleapis.com/auth/gmail.modify'],
+      redirectUri: `${process.env.BASE_URL}/oauth/callback/gmail`,
+    },
+    tokens: {
+      accessToken: tokenResponse.access_token,
+      refreshToken: tokenResponse.refresh_token,
+      tokenType: tokenResponse.token_type,
+      scope: tokenResponse.scope,
+    },
+    userInfo: userInfoResponse,
+  });
+
+  const oauthModule = await import('../../oauth/OAuthManager');
+  const methodsToMock = [
+    'supportsOAuth',
+    'generateAuthUrl',
+    'handleCallback',
+    'resolveReturnUrl',
+    'listProviders',
+    'listDisabledProviders',
+    'getProvider',
+    'getSupportedProviders',
+    'isProviderConfigured',
+    'refreshToken',
+  ] as const;
+
+  for (const method of methodsToMock) {
+    const original = (oauthModule.oauthManager as any)[method];
+    if (typeof original === 'function') {
+      originalOAuthMethods.set(method, original.bind(oauthModule.oauthManager));
+    }
+    (oauthModule.oauthManager as any)[method] = (mockOAuthManager as any)[method].bind(mockOAuthManager);
+  }
+
   const { registerRoutes } = await import('../../routes.ts');
   ({ connectionService } = await import('../../services/ConnectionService'));
   ({ authService } = await import('../../services/AuthService'));
 
-  originalStoreConnection = connectionService.storeConnection;
   originalVerifyToken = authService.verifyToken;
-
-  (connectionService as any).storeConnection = async (
-    userId: string,
-    organizationId: string,
-    provider: string,
-    tokens: any,
-    userInfo?: any,
-    options?: any
-  ) => {
-    storedConnections.push({ userId, organizationId, provider, tokens, userInfo, options });
-    return 'test-connection-id';
-  };
 
   authService.verifyToken = async () => ({
     id: 'dev-user',
@@ -207,11 +210,8 @@ try {
   assert.equal(redirectUrl.searchParams.get('code'), 'test-code', 'redirect should preserve OAuth code');
   assert.equal(redirectUrl.searchParams.get('state'), state, 'redirect should preserve OAuth state');
   assert.equal(redirectUrl.searchParams.get('provider'), 'gmail', 'redirect should include provider identifier');
-  assert.equal(
-    redirectUrl.searchParams.get('connectionId'),
-    'test-connection-id',
-    'redirect should include the stored connection identifier'
-  );
+  const connectionId = redirectUrl.searchParams.get('connectionId');
+  assert.ok(connectionId, 'redirect should include the stored connection identifier');
   assert.equal(
     redirectUrl.searchParams.get('label'),
     userInfoResponse.email,
@@ -223,27 +223,39 @@ try {
     'redirect should include the user email when available'
   );
 
-  assert.equal(storedConnections.length, 1, 'ConnectionService.storeConnection should be called once');
-  const stored = storedConnections[0];
-  assert.equal(stored.provider, 'gmail', 'stored connection should reference the Gmail provider');
-  assert.equal(stored.userId, 'dev-user', 'stored connection should use the development fallback user');
-  assert.equal(stored.organizationId, 'dev-org', 'stored connection should persist the organization context');
-  assert.equal(stored.tokens.accessToken, tokenResponse.access_token, 'stored connection should include access token');
-  assert.equal(stored.userInfo.email, userInfoResponse.email, 'stored connection should include user info');
-  assert.ok(typeof stored.tokens.expiresAt === 'number', 'stored token should include expiry metadata');
-  assert.equal(stored.options?.name, userInfoResponse.email, 'storeConnection should receive the resolved connection label');
+  const persistedConnection = await connectionService.getConnection(connectionId!, 'dev-user', 'dev-org');
+  assert.ok(persistedConnection, 'persisted connection should be retrievable from ConnectionService');
+  assert.equal(persistedConnection.provider, 'gmail', 'stored connection should reference the Gmail provider');
+  assert.equal(persistedConnection.userId, 'dev-user', 'stored connection should use the development fallback user');
+  assert.equal(persistedConnection.organizationId, 'dev-org', 'stored connection should persist the organization context');
+  assert.equal(persistedConnection.name, userInfoResponse.email, 'stored connection should preserve the resolved label');
+  assert.equal(persistedConnection.credentials.accessToken, tokenResponse.access_token, 'stored connection should include access token');
+  assert.equal(persistedConnection.credentials.refreshToken, tokenResponse.refresh_token, 'stored connection should include refresh token');
+  assert.equal(persistedConnection.credentials.userInfo.email, userInfoResponse.email, 'stored connection should include user info');
+  assert.equal(persistedConnection.metadata?.providerId, 'gmail', 'stored metadata should record the provider identifier');
+  assert.ok(Array.isArray(persistedConnection.metadata?.scopes), 'stored metadata should contain scopes');
+  assert.ok(persistedConnection.metadata?.deterministic, 'stored metadata should note deterministic persistence');
 
   console.log('OAuth authorize + callback endpoints exchange tokens, persist connections, and redirect to the React handler.');
 } catch (error) {
   exitCode = 1;
   console.error(error);
 } finally {
-  if (connectionService && originalStoreConnection) {
-    (connectionService as any).storeConnection = originalStoreConnection;
+  try {
+    await fs.rm(connectionStorePath, { force: true });
+  } catch (error) {
+    console.warn('Failed to clean up connection store path', error);
   }
 
   if (authService && originalVerifyToken) {
     authService.verifyToken = originalVerifyToken;
+  }
+
+  if (originalOAuthMethods.size > 0) {
+    const oauthModule = await import('../../oauth/OAuthManager');
+    for (const [method, implementation] of originalOAuthMethods) {
+      (oauthModule.oauthManager as any)[method] = implementation;
+    }
   }
 
   delete (globalThis as any).app;
@@ -253,8 +265,6 @@ try {
       server!.close((err) => (err ? reject(err) : resolve()));
     });
   }
-
-  (globalThis as any).fetch = originalFetch;
 
   if (originalNodeEnv !== undefined) {
     process.env.NODE_ENV = originalNodeEnv;
@@ -284,6 +294,12 @@ try {
     process.env.ALLOW_FILE_CONNECTION_STORE = originalFileStore;
   } else {
     delete process.env.ALLOW_FILE_CONNECTION_STORE;
+  }
+
+  if (originalConnectionStorePath !== undefined) {
+    process.env.CONNECTION_STORE_PATH = originalConnectionStorePath;
+  } else {
+    delete process.env.CONNECTION_STORE_PATH;
   }
 
   for (const key of envKeys) {
