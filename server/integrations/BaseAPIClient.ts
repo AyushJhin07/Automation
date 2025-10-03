@@ -4,9 +4,26 @@
 import { getErrorMessage } from '../types/common';
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import { isIP } from 'node:net';
-import type { OrganizationNetworkAllowlist } from '../services/ConnectionService';
-import { connectionService } from '../services/ConnectionService';
+import type { ConnectionService, OrganizationNetworkAllowlist } from '../services/ConnectionService';
 import { rateLimiter, type RateLimitRules } from './RateLimiter';
+
+let cachedConnectionService: ConnectionService | null | undefined;
+
+async function getConnectionService(): Promise<ConnectionService | null> {
+  if (cachedConnectionService !== undefined) {
+    return cachedConnectionService;
+  }
+
+  try {
+    const module = await import('../services/ConnectionService.js');
+    cachedConnectionService = module.connectionService ?? null;
+  } catch (error) {
+    console.warn('[BaseAPIClient] Failed to load ConnectionService:', error);
+    cachedConnectionService = null;
+  }
+
+  return cachedConnectionService;
+}
 
 export interface APICredentials {
   apiKey?: string;
@@ -207,7 +224,7 @@ export abstract class BaseAPIClient {
   ): Promise<APIResponse<T>> {
     try {
       const url = this.buildRequestUrl(endpoint);
-      this.assertHostAllowed(url);
+      await this.assertHostAllowed(url);
 
       const limiterResult = await rateLimiter.acquire({
         connectorId: this.connectorId ?? this.deriveConnectorId() ?? 'unknown',
@@ -337,7 +354,7 @@ export abstract class BaseAPIClient {
     };
   }
 
-  private assertHostAllowed(url: string): void {
+  private async assertHostAllowed(url: string): Promise<void> {
     const allowlist = this.getNetworkAllowlist();
     if (!allowlist) {
       return;
@@ -371,7 +388,8 @@ export abstract class BaseAPIClient {
     const connectionId = this.credentials.__connectionId;
     const userId = this.credentials.__userId;
 
-    connectionService.recordDeniedNetworkAccess({
+    const service = await getConnectionService();
+    service?.recordDeniedNetworkAccess({
       organizationId,
       connectionId,
       userId,
