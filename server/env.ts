@@ -44,6 +44,13 @@ export const env = {
   SERVER_PUBLIC_URL: process.env.SERVER_PUBLIC_URL || '',
   ENABLE_LLM_FEATURES: process.env.ENABLE_LLM_FEATURES === 'true',
   GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true',
+  QUEUE_REDIS_HOST: process.env.QUEUE_REDIS_HOST || '127.0.0.1',
+  QUEUE_REDIS_PORT: Number.parseInt(process.env.QUEUE_REDIS_PORT ?? '6379', 10),
+  QUEUE_REDIS_DB: Number.parseInt(process.env.QUEUE_REDIS_DB ?? '0', 10),
+  QUEUE_REDIS_USERNAME: process.env.QUEUE_REDIS_USERNAME,
+  QUEUE_REDIS_PASSWORD: process.env.QUEUE_REDIS_PASSWORD,
+  QUEUE_REDIS_TLS: process.env.QUEUE_REDIS_TLS === 'true',
+  QUEUE_METRICS_INTERVAL_MS: Number.parseInt(process.env.QUEUE_METRICS_INTERVAL_MS ?? '60000', 10),
 } as const;
 
 export const FLAGS = {
