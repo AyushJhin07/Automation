@@ -274,6 +274,24 @@ export interface RetryableExecution {
   circuitConfig?: CircuitBreakerConfig;
 }
 
+export type ActionableErrorSeverity = 'info' | 'warn' | 'error';
+
+export interface ActionableErrorEvent {
+  executionId: string;
+  nodeId: string;
+  code: string;
+  message: string;
+  nodeType?: string;
+  severity: ActionableErrorSeverity;
+  timestamp: Date;
+  details?: Record<string, any>;
+}
+
+type ActionableErrorInput = Omit<ActionableErrorEvent, 'timestamp' | 'severity'> & {
+  severity?: ActionableErrorSeverity;
+  timestamp?: Date;
+};
+
 class RetryManager {
   private executions = new Map<string, RetryableExecution>();
   private circuitStates = new Map<string, CircuitBreakerState>();
@@ -293,6 +311,7 @@ class RetryManager {
     cooldownMs: 60_000,
     halfOpenMaxAttempts: 1
   };
+  private actionableErrors: ActionableErrorEvent[] = [];
 
   private getNodeExecutionResultStore(): NodeExecutionResultStore {
     return currentNodeExecutionResultStore;
@@ -340,6 +359,63 @@ class RetryManager {
       .digest('hex');
 
     return { normalized, hash };
+  }
+
+  emitActionableError(event: ActionableErrorInput): void {
+    const enriched: ActionableErrorEvent = {
+      executionId: event.executionId,
+      nodeId: event.nodeId,
+      code: event.code,
+      message: event.message,
+      nodeType: event.nodeType,
+      severity: event.severity ?? 'error',
+      timestamp: event.timestamp ?? new Date(),
+      details: event.details,
+    };
+
+    this.actionableErrors.push(enriched);
+    if (this.actionableErrors.length > 1000) {
+      this.actionableErrors.shift();
+    }
+
+    const logContext = {
+      executionId: enriched.executionId,
+      nodeId: enriched.nodeId,
+      nodeType: enriched.nodeType,
+      details: enriched.details,
+    };
+
+    switch (enriched.severity) {
+      case 'info':
+        console.info(`📣 [RetryManager] ${enriched.code} (info) - ${enriched.message}`, logContext);
+        break;
+      case 'warn':
+        console.warn(`📣 [RetryManager] ${enriched.code} (warn) - ${enriched.message}`, logContext);
+        break;
+      case 'error':
+      default:
+        console.error(`📣 [RetryManager] ${enriched.code} (error) - ${enriched.message}`, logContext);
+        break;
+    }
+  }
+
+  getActionableErrors(filter: { executionId?: string; nodeId?: string; code?: string } = {}): ActionableErrorEvent[] {
+    return this.actionableErrors.filter(event => {
+      if (filter.executionId && event.executionId !== filter.executionId) {
+        return false;
+      }
+      if (filter.nodeId && event.nodeId !== filter.nodeId) {
+        return false;
+      }
+      if (filter.code && event.code !== filter.code) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  clearActionableErrors(): void {
+    this.actionableErrors = [];
   }
 
   /**
@@ -829,6 +905,7 @@ class RetryManager {
     this.circuitStates.clear();
     this.cachedKeyEstimate = 0;
     this.cachedKeyEstimateStale = true;
+    this.clearActionableErrors();
   }
 }
 
@@ -840,3 +917,5 @@ setInterval(() => {
     console.error('⚠️ RetryManager cleanup failed', error);
   });
 }, 60 * 60 * 1000); // Every hour
+
+export type { ActionableErrorEvent };

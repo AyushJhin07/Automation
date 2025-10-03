@@ -1,8 +1,17 @@
-import { llmRegistry, LLMMessage, LLMTool } from '../../llm/LLMProvider';
+import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
+import addFormats from 'ajv-formats';
+import { llmRegistry, LLMMessage, LLMTool, type LLMToolCall } from '../../llm/LLMProvider';
 import { fetchAndSummarizeURLs, formatNodeDataForContext, isUrlSafe } from './rag';
 import { moderateInput, scrubPII, validatePrompt } from './safety';
 import { llmValidationAndRepair } from '../../llm/LLMValidationAndRepair';
 import { llmBudgetAndCache } from '../../llm/LLMBudgetAndCache';
+import { retryManager } from '../../core/RetryManager';
+
+const toolOutputAjv = new Ajv({ allErrors: true, strict: false });
+addFormats(toolOutputAjv);
+
+const toolSchemaValidators = new Map<string, ValidateFunction>();
+const MAX_TOOL_CALL_REPAIR_ATTEMPTS = 2;
 
 /**
  * Execute LLM Generate action
@@ -391,47 +400,295 @@ export async function runLLMToolCall(params: any, ctx: any) {
   }
   messages.push({ role: 'user', content: await scrubPII(prompt) });
 
+  const toolMap = new Map<string, LLMTool>();
+  for (const tool of tools as LLMTool[]) {
+    toolMap.set(tool.name, tool);
+  }
+
   try {
     const llmProvider = llmRegistry.get(provider);
-    const result = await llmProvider.generate({
-      model,
-      messages,
-      tools: tools as LLMTool[],
-      toolChoice: 'auto',
-      temperature: temperature ?? 0.2,
-      maxTokens: maxTokens ?? 1024
-    });
+    const baseMessages = [...messages];
+    let currentMessages = baseMessages;
+    let aggregatedUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number; costUSD?: number } | undefined;
+    let totalTokensUsed = 0;
+    let lastResult: { result: Awaited<ReturnType<typeof llmProvider.generate>>; attempt: number } | undefined;
 
-    const tokensUsed = result.tokensUsed
-      ?? (result.usage?.totalTokens ?? ((result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0)));
-    const costUSD = result.usage?.costUSD ?? 0;
-
-    if ((tokensUsed ?? 0) > 0 || costUSD > 0) {
-      llmBudgetAndCache.recordUsage({
-        userId: ctx.userId,
-        workflowId: ctx.workflowId,
-        organizationId: ctx.organizationId,
-        provider,
+    for (let attempt = 0; attempt <= MAX_TOOL_CALL_REPAIR_ATTEMPTS; attempt++) {
+      const result = await llmProvider.generate({
         model,
-        tokensUsed: tokensUsed ?? 0,
-        costUSD,
-        executionId: ctx.executionId || 'unknown',
-        nodeId: ctx.nodeId || 'unknown'
+        messages: currentMessages,
+        tools: tools as LLMTool[],
+        toolChoice: 'auto',
+        temperature: temperature ?? 0.2,
+        maxTokens: maxTokens ?? 1024
       });
+
+      lastResult = { result, attempt };
+
+      const attemptTokensUsed = result.tokensUsed
+        ?? (result.usage?.totalTokens ?? ((result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0)));
+      const normalizedTokensUsed = attemptTokensUsed ?? 0;
+      const costUSD = result.usage?.costUSD ?? 0;
+
+      aggregatedUsage = accumulateUsage(aggregatedUsage, result.usage);
+      totalTokensUsed += normalizedTokensUsed;
+
+      if (normalizedTokensUsed > 0 || costUSD > 0) {
+        llmBudgetAndCache.recordUsage({
+          userId: ctx.userId,
+          workflowId: ctx.workflowId,
+          organizationId: ctx.organizationId,
+          provider,
+          model,
+          tokensUsed: normalizedTokensUsed,
+          costUSD,
+          executionId: ctx.executionId || 'unknown',
+          nodeId: ctx.nodeId || 'unknown'
+        });
+      }
+
+      const validation = validateToolCalls(result.toolCalls, toolMap);
+      if (validation.valid) {
+        return {
+          toolCalls: result.toolCalls || [],
+          text: result.text,
+          hasToolCalls: Boolean(result.toolCalls && result.toolCalls.length > 0),
+          usage: aggregatedUsage ?? result.usage,
+          tokensUsed: totalTokensUsed,
+          model: model,
+          provider: provider
+        };
+      }
+
+      retryManager.emitActionableError({
+        executionId: ctx.executionId || 'unknown',
+        nodeId: ctx.nodeId || 'unknown',
+        nodeType: 'action.llm.tool_call',
+        code: 'LLM_TOOL_OUTPUT_SCHEMA_MISMATCH',
+        severity: 'warn',
+        message: `Tool call schema validation failed on attempt ${attempt + 1}`,
+        details: {
+          attempt: attempt + 1,
+          toolCalls: result.toolCalls,
+          issues: validation.issues
+        }
+      });
+
+      if (attempt === MAX_TOOL_CALL_REPAIR_ATTEMPTS) {
+        retryManager.emitActionableError({
+          executionId: ctx.executionId || 'unknown',
+          nodeId: ctx.nodeId || 'unknown',
+          nodeType: 'action.llm.tool_call',
+          code: 'LLM_TOOL_OUTPUT_SCHEMA_MISMATCH_FINAL',
+          severity: 'error',
+          message: `Tool call schema validation failed after ${attempt + 1} attempts`,
+          details: {
+            attempts: attempt + 1,
+            toolCalls: result.toolCalls,
+            issues: validation.issues
+          }
+        });
+
+        throw new ToolCallValidationError(
+          `LLM tool call arguments failed schema validation after ${attempt + 1} attempt${attempt + 1 === 1 ? '' : 's'}`,
+          validation.issues,
+          result.toolCalls
+        );
+      }
+
+      const repairPrompt = buildToolRepairPrompt({
+        attempt,
+        issues: validation.issues,
+        previousToolCalls: result.toolCalls,
+        toolMap
+      });
+      const sanitizedRepairPrompt = await scrubPII(repairPrompt);
+      currentMessages = [...currentMessages, { role: 'user', content: sanitizedRepairPrompt }];
     }
 
-    return {
-      toolCalls: result.toolCalls || [],
-      text: result.text,
-      hasToolCalls: Boolean(result.toolCalls && result.toolCalls.length > 0),
-      usage: result.usage,
-      tokensUsed: tokensUsed ?? 0,
-      model: model,
-      provider: provider
-    };
+    // This point should be unreachable due to the loop logic, but TypeScript requires a return.
+    if (lastResult) {
+      return {
+        toolCalls: lastResult.result.toolCalls || [],
+        text: lastResult.result.text,
+        hasToolCalls: Boolean(lastResult.result.toolCalls && lastResult.result.toolCalls.length > 0),
+        usage: aggregatedUsage ?? lastResult.result.usage,
+        tokensUsed: totalTokensUsed,
+        model: model,
+        provider: provider
+      };
+    }
+
+    throw new Error('LLM tool call generation returned no result');
   } catch (error) {
     console.error('LLM Tool Call error:', error);
+    if (error instanceof ToolCallValidationError) {
+      throw error;
+    }
     throw new Error(`LLM tool calling failed: ${error.message}`);
+  }
+}
+
+type AggregatedUsage = { promptTokens?: number; completionTokens?: number; totalTokens?: number; costUSD?: number } | undefined;
+
+interface ToolValidationIssue {
+  toolName: string;
+  issues: string[];
+  schema?: any;
+  rawArguments?: any;
+  validationErrors?: ErrorObject[];
+  availableTools?: string[];
+}
+
+interface ToolValidationResult {
+  valid: boolean;
+  issues: ToolValidationIssue[];
+}
+
+function accumulateUsage(current: AggregatedUsage, usage: AggregatedUsage): AggregatedUsage {
+  if (!usage) {
+    return current;
+  }
+
+  return {
+    promptTokens: (current?.promptTokens ?? 0) + (usage.promptTokens ?? 0),
+    completionTokens: (current?.completionTokens ?? 0) + (usage.completionTokens ?? 0),
+    totalTokens: (current?.totalTokens ?? 0)
+      + (usage.totalTokens ?? ((usage.promptTokens ?? 0) + (usage.completionTokens ?? 0))),
+    costUSD: (current?.costUSD ?? 0) + (usage.costUSD ?? 0)
+  };
+}
+
+function getValidatorForSchema(schema: any): ValidateFunction {
+  const cacheKey = JSON.stringify(schema);
+  let validator = toolSchemaValidators.get(cacheKey);
+  if (!validator) {
+    validator = toolOutputAjv.compile(schema);
+    toolSchemaValidators.set(cacheKey, validator);
+  }
+  return validator;
+}
+
+function formatAjvErrors(errors: ErrorObject[] | null | undefined): string[] {
+  if (!errors || errors.length === 0) {
+    return ['Arguments failed schema validation for an unknown reason'];
+  }
+
+  return errors.map(error => {
+    const path = error.instancePath ? error.instancePath.replace(/^\//, '') : '';
+    const location = path ? `property "${path}"` : 'the root object';
+
+    if (error.keyword === 'required' && typeof (error.params as any)?.missingProperty === 'string') {
+      return `Missing required property "${(error.params as any).missingProperty}"`;
+    }
+
+    if (error.keyword === 'additionalProperties' && typeof (error.params as any)?.additionalProperty === 'string') {
+      return `Property "${(error.params as any).additionalProperty}" is not allowed`;
+    }
+
+    const message = error.message ?? 'failed validation';
+    return `${location} ${message}`.trim();
+  });
+}
+
+function validateToolCalls(toolCalls: LLMToolCall[] | undefined, toolMap: Map<string, LLMTool>): ToolValidationResult {
+  if (!toolCalls || toolCalls.length === 0) {
+    return { valid: true, issues: [] };
+  }
+
+  const issues: ToolValidationIssue[] = [];
+
+  for (const toolCall of toolCalls) {
+    const toolName = toolCall?.name || '(unknown)';
+    const toolDefinition = toolMap.get(toolName);
+
+    if (!toolDefinition) {
+      issues.push({
+        toolName,
+        issues: [`Tool "${toolName}" is not available. Choose from: ${Array.from(toolMap.keys()).join(', ')}`],
+        availableTools: Array.from(toolMap.keys()),
+        rawArguments: toolCall?.arguments
+      });
+      continue;
+    }
+
+    const validator = getValidatorForSchema(toolDefinition.parameters);
+    const args = toolCall?.arguments;
+
+    if (args === undefined || args === null || typeof args !== 'object' || Array.isArray(args)) {
+      issues.push({
+        toolName,
+        issues: ['Tool arguments must be a JSON object matching the schema'],
+        schema: toolDefinition.parameters,
+        rawArguments: args
+      });
+      continue;
+    }
+
+    const isValid = validator(args);
+    if (!isValid) {
+      issues.push({
+        toolName,
+        issues: formatAjvErrors(validator.errors),
+        schema: toolDefinition.parameters,
+        rawArguments: args,
+        validationErrors: validator.errors ?? undefined
+      });
+    }
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
+interface RepairPromptInput {
+  attempt: number;
+  issues: ToolValidationIssue[];
+  previousToolCalls?: LLMToolCall[];
+  toolMap: Map<string, LLMTool>;
+}
+
+function buildToolRepairPrompt({ attempt, issues, previousToolCalls, toolMap }: RepairPromptInput): string {
+  const attemptNumber = attempt + 1;
+  const issueSummary = issues
+    .map(issue => {
+      const detail = issue.issues.join('; ');
+      return `• ${issue.toolName}: ${detail}`;
+    })
+    .join('\n');
+
+  const schemaSummaries = issues
+    .map(issue => {
+      const schema = issue.schema ?? toolMap.get(issue.toolName)?.parameters;
+      if (!schema) {
+        return '';
+      }
+      return `Schema for "${issue.toolName}":\n${JSON.stringify(schema, null, 2)}`;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
+  const previousSummary = previousToolCalls && previousToolCalls.length > 0
+    ? `Previous tool call payloads:\n${JSON.stringify(previousToolCalls, null, 2)}`
+    : '';
+
+  return [
+    `Attempt ${attemptNumber} produced tool call arguments that failed schema validation.`,
+    'Issues detected:',
+    issueSummary,
+    previousSummary,
+    schemaSummaries ? `Reference schemas:\n${schemaSummaries}` : '',
+    'Please respond with a corrected tool call that strictly conforms to the schema. Return only valid JSON for the tool arguments.'
+  ].filter(Boolean).join('\n\n');
+}
+
+class ToolCallValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly issues: ToolValidationIssue[],
+    public readonly toolCalls?: LLMToolCall[]
+  ) {
+    super(message);
+    this.name = 'ToolCallValidationError';
   }
 }
 
