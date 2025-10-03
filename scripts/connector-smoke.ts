@@ -6,6 +6,8 @@ import Ajv from 'ajv';
 import { IntegrationManager } from '../server/integrations/IntegrationManager';
 import { connectorRegistry } from '../server/ConnectorRegistry';
 import type { APICredentials } from '../server/integrations/BaseAPIClient';
+import { ConnectorSimulator } from '../server/testing/ConnectorSimulator';
+import type { ConnectorSimulatorSmokePlan } from '../server/testing/ConnectorSimulator';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -49,12 +51,16 @@ interface ScriptOptions {
   configPath: string;
   only?: Set<string>;
   includeExperimental: boolean;
+  useSimulator: boolean;
+  simulatorFixturesDir?: string;
 }
 
 function parseArgs(argv: string[]): ScriptOptions {
   let configPath = DEFAULT_CONFIG_PATH;
   let only: Set<string> | undefined;
   let includeExperimental = false;
+  let useSimulator = process.env.CONNECTOR_SIMULATOR_ENABLED === 'true' || process.env.CI === 'true';
+  let simulatorFixturesDir = process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -76,9 +82,21 @@ function parseArgs(argv: string[]): ScriptOptions {
       includeExperimental = true;
       continue;
     }
+    if (arg === '--use-simulator') {
+      useSimulator = true;
+      continue;
+    }
+    if (arg === '--no-simulator') {
+      useSimulator = false;
+      continue;
+    }
+    if (arg === '--fixtures' && argv[i + 1]) {
+      simulatorFixturesDir = resolve(process.cwd(), argv[++i]);
+      continue;
+    }
   }
 
-  return { configPath, only, includeExperimental };
+  return { configPath, only, includeExperimental, useSimulator, simulatorFixturesDir };
 }
 
 async function loadConfig(path: string): Promise<SmokeConfig> {
@@ -111,7 +129,19 @@ function formatHeading(title: string): void {
 
 async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
   const config = await loadConfig(options.configPath);
-  const manager = new IntegrationManager();
+  const simulator = options.useSimulator
+    ? new ConnectorSimulator({
+        fixturesDir: options.simulatorFixturesDir,
+        enabled: true,
+        strict: true,
+      })
+    : undefined;
+  const manager = new IntegrationManager({
+    useSimulator: options.useSimulator,
+    simulator,
+    simulatorFixturesDir: options.simulatorFixturesDir,
+    simulatorStrict: true,
+  });
   const connectors = connectorRegistry
     .getAllConnectors({
       includeExperimental: options.includeExperimental,
@@ -142,11 +172,45 @@ async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
       continue;
     }
 
-    const connectorConfig = config[appId];
+    let connectorConfig = config[appId]
+      ? { ...config[appId] }
+      : undefined;
+    let simulatorPlan: ConnectorSimulatorSmokePlan | null | undefined;
+
+    if (options.useSimulator && simulator) {
+      simulatorPlan = await simulator.getSmokePlan(appId);
+
+      if (!connectorConfig && simulatorPlan) {
+        connectorConfig = {
+          credentials: simulatorPlan.credentials,
+          additionalConfig: simulatorPlan.additionalConfig,
+          connectionId: simulatorPlan.connectionId,
+          actions: simulatorPlan.actions,
+          triggers: simulatorPlan.triggers,
+          notes: simulatorPlan.notes ?? 'Using connector simulator fixtures.',
+        };
+      } else if (connectorConfig && simulatorPlan) {
+        connectorConfig.credentials = connectorConfig.credentials ?? simulatorPlan.credentials;
+        connectorConfig.additionalConfig = connectorConfig.additionalConfig ?? simulatorPlan.additionalConfig;
+        connectorConfig.connectionId = connectorConfig.connectionId ?? simulatorPlan.connectionId;
+        if (!connectorConfig.actions?.length && simulatorPlan.actions?.length) {
+          connectorConfig.actions = simulatorPlan.actions;
+        }
+        if (!connectorConfig.triggers?.length && simulatorPlan.triggers?.length) {
+          connectorConfig.triggers = simulatorPlan.triggers;
+        }
+        if (!connectorConfig.notes && simulatorPlan.notes) {
+          connectorConfig.notes = simulatorPlan.notes;
+        }
+      }
+    }
+
     if (!connectorConfig || connectorConfig.skip) {
       const reason = connectorConfig?.skip
         ? connectorConfig.notes || 'Marked as skip in configuration.'
-        : 'No credentials provided in smoke config.';
+        : simulatorPlan
+          ? 'Simulator fixtures did not provide credentials or actions.'
+          : 'No credentials provided in smoke config.';
       results.push({
         appId,
         status: 'skipped',
@@ -157,16 +221,25 @@ async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
     }
 
     if (!connectorConfig.credentials) {
-      results.push({
-        appId,
-        status: 'skipped',
-        durationMs: 0,
-        messages: ['Configuration is missing credentials property.'],
-      });
-      continue;
+      if (options.useSimulator && simulatorPlan?.credentials) {
+        connectorConfig.credentials = simulatorPlan.credentials;
+      }
+
+      if (!connectorConfig.credentials) {
+        results.push({
+          appId,
+          status: 'skipped',
+          durationMs: 0,
+          messages: ['Configuration is missing credentials property.'],
+        });
+        continue;
+      }
     }
 
     const messages: string[] = [];
+    if (options.useSimulator && simulatorPlan) {
+      messages.push('Using connector simulator fixtures.');
+    }
     const startedAt = performance.now();
     let status: SmokeStatus = 'passed';
 
