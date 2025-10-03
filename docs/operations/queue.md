@@ -22,10 +22,34 @@ All queues created via the factory automatically honour these settings.
 
 ## Worker processes
 
-Builds now emit separate entry points for the API (`dist/index.js`) and the execution worker
-(`dist/workers/execution.js`). Use `npm run start:api` to launch the HTTP server and
-`npm run start:worker` to launch the BullMQ worker. Dockerfiles `Dockerfile.api` and
-`Dockerfile.worker` are provided to containerize each process independently.
+Builds now emit separate entry points for the API (`dist/index.js`), the execution worker
+(`dist/workers/execution.js`), the scheduling coordinator (`dist/workers/scheduler.js`), and the
+timer dispatcher (`dist/workers/timerDispatcher.js`).
+
+Use the following npm scripts to launch each process locally:
+
+- `npm run start:api` — starts the HTTP server.
+- `npm run start:worker` — runs the queue execution worker.
+- `npm run start:scheduler` — runs the scheduler that promotes scheduled jobs onto the execution queue.
+- `npm run start:timers` — runs the timer dispatcher responsible for delayed job fan-out.
+
+`Dockerfile.api` builds the API container. `Dockerfile.worker` now accepts a `WORKER_SCRIPT`
+build-arg/environment variable so the same image can run any of the worker processes. Build it once,
+then choose the process at runtime, for example:
+
+```bash
+# Execution worker
+docker run --env WORKER_SCRIPT=start:worker my-org/automation-worker
+
+# Scheduler
+docker run --env WORKER_SCRIPT=start:scheduler my-org/automation-worker
+
+# Timer dispatcher
+docker run --env WORKER_SCRIPT=start:timers my-org/automation-worker
+```
+
+This tri-process topology keeps queue responsibilities isolated across dedicated containers while
+sharing the same build artifacts.
 
 ## Local development with Docker Compose
 

@@ -13,8 +13,10 @@ RUN npm run build
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+ARG WORKER_SCRIPT=start:worker
+ENV WORKER_SCRIPT=${WORKER_SCRIPT}
 COPY package*.json ./
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 RUN npm prune --omit=dev
-CMD ["npm", "run", "start:worker"]
+CMD ["sh", "-c", "npm run ${WORKER_SCRIPT}"]
