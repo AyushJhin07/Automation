@@ -7,6 +7,7 @@ const REQUIRED_TABLES = [
   'workflow_triggers',
   'polling_triggers',
   'webhook_logs',
+  'webhook_dedupe',
 ];
 
 let dbAvailable = Boolean(db);
