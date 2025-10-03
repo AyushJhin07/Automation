@@ -10,12 +10,18 @@ import { resolveAllParams } from './ParameterResolver';
 import { retryManager, RetryPolicy } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
 import { nodeSandbox, collectSecretStrings } from '../runtime/NodeSandbox';
+import { db, workflowTimers } from '../database/schema.js';
+import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 
 const DEFAULT_NODE_TIMEOUT_MS = 30_000;
 
 export interface WorkflowRuntimeOptions {
   defaultNodeTimeoutMs?: number;
   nodeTimeouts?: Record<string, number>;
+  executionId?: string;
+  organizationId?: string;
+  triggerType?: string;
+  resumeState?: WorkflowResumeState | null;
 }
 
 interface NormalizedRuntimeOptions {
@@ -44,14 +50,30 @@ export interface ExecutionContext {
   workflowId: string;
   startTime: Date;
   executionId: string;
+  initialData?: any;
+  organizationId?: string;
 }
 
 export interface ExecutionResult {
   success: boolean;
+  status: 'completed' | 'waiting' | 'failed';
   data?: any;
   error?: string;
   executionTime: number;
   nodeOutputs: Record<string, any>;
+  waitUntil?: string;
+  timerId?: string | null;
+}
+
+interface DelayNodeResult {
+  __workflowDelay: true;
+  delayMs: number;
+  output: any;
+}
+
+interface TimerScheduleResult {
+  timerId: string | null;
+  resumeAt: Date;
 }
 
 export class WorkflowRuntime {
@@ -68,30 +90,43 @@ export class WorkflowRuntime {
     options: WorkflowRuntimeOptions = {}
   ): Promise<ExecutionResult> {
     const startTime = new Date();
-    const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const resumeState = options.resumeState ?? null;
+    const executionId = options.executionId ?? `exec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const triggerType = options.triggerType ?? (resumeState ? 'resume' : 'manual');
 
     const context: ExecutionContext = {
-      outputs: {},
-      prevOutput: initialData,
+      outputs: resumeState?.nodeOutputs ? { ...resumeState.nodeOutputs } : {},
+      prevOutput: resumeState?.prevOutput ?? initialData,
       userId,
       workflowId: graph.id,
       startTime,
-      executionId
+      executionId,
+      initialData,
+      organizationId: options.organizationId,
     };
 
     const runtimeOptions = this.normalizeOptions(options);
 
+    const sortedNodeIds = resumeState?.remainingNodeIds?.length
+      ? [...resumeState.remainingNodeIds]
+      : this.topologicalSort(graph);
+    let startIndex = 0;
+    if (!resumeState?.remainingNodeIds?.length && resumeState?.nextNodeId) {
+      const resumeIndex = sortedNodeIds.indexOf(resumeState.nextNodeId);
+      if (resumeIndex >= 0) {
+        startIndex = resumeIndex;
+      }
+    }
+
     // Start execution tracking
-    runExecutionManager.startExecution(executionId, graph, userId, 'manual', initialData);
+    runExecutionManager.startExecution(executionId, graph, userId, triggerType, initialData);
 
     console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
 
     try {
-      // Topologically sort nodes to ensure proper execution order
-      const sortedNodeIds = this.topologicalSort(graph);
-      
       // Execute nodes in order
-      for (const nodeId of sortedNodeIds) {
+      for (let i = startIndex; i < sortedNodeIds.length; i++) {
+        const nodeId = sortedNodeIds[i];
         const node = graph.nodes.find(n => n.id === nodeId);
         if (!node) {
           throw new Error(`Node ${nodeId} not found in graph`);
@@ -124,16 +159,54 @@ export class WorkflowRuntime {
             }
           );
 
-          context.outputs[node.id] = nodeResult;
-          context.prevOutput = nodeResult;
+          const isDelayResult = this.isDelayResult(nodeResult);
+          const nodeOutput = isDelayResult ? nodeResult.output : nodeResult;
+          context.outputs[node.id] = nodeOutput;
+          context.prevOutput = nodeOutput;
 
           // Track successful completion
           const metadata = this.consumeNodeMetadata(context.executionId, node.id);
           const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
-          runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeResult, {
+          runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeOutput, {
             ...metadata,
             circuitState
           });
+
+          if (isDelayResult && nodeResult.delayMs > 0) {
+            const remainingNodeIds = sortedNodeIds.slice(i + 1);
+            if (remainingNodeIds.length > 0) {
+              const scheduleResult = await this.scheduleWorkflowTimer({
+                context,
+                graph,
+                node,
+                delayMs: nodeResult.delayMs,
+                remainingNodeIds,
+              });
+              if (scheduleResult) {
+                if (nodeOutput && typeof nodeOutput === 'object') {
+                  (nodeOutput as Record<string, any>).scheduled = true;
+                  (nodeOutput as Record<string, any>).resumeAt = scheduleResult.resumeAt.toISOString();
+                }
+                runExecutionManager.markExecutionWaiting(
+                  context.executionId,
+                  `Timer scheduled for node ${node.label}`,
+                  scheduleResult.resumeAt
+                );
+                const executionTime = Date.now() - startTime.getTime();
+                return {
+                  success: true,
+                  status: 'waiting',
+                  data: context.prevOutput,
+                  executionTime,
+                  nodeOutputs: context.outputs,
+                  waitUntil: scheduleResult.resumeAt.toISOString(),
+                  timerId: scheduleResult.timerId,
+                };
+              }
+            }
+
+            await this.waitForDelay(nodeResult.delayMs);
+          }
 
           console.log(`✅ Node ${node.id} completed successfully`);
         } catch (error) {
@@ -155,26 +228,29 @@ export class WorkflowRuntime {
       
       // Track successful completion
       runExecutionManager.completeExecution(context.executionId, context.prevOutput);
-      
+
       console.log(`🎉 Workflow execution completed in ${executionTime}ms`);
-      
+
       return {
         success: true,
+        status: 'completed',
         data: context.prevOutput,
         executionTime,
         nodeOutputs: context.outputs
       };
     } catch (error) {
       const executionTime = Date.now() - startTime.getTime();
-      
+      const errorMessage = (error as Error)?.message ?? 'Unknown error';
+
       // Track failed completion
-      runExecutionManager.completeExecution(context.executionId, undefined, error.message);
-      
+      runExecutionManager.completeExecution(context.executionId, undefined, errorMessage);
+
       console.error(`💥 Workflow execution failed after ${executionTime}ms:`, error);
-      
+
       return {
         success: false,
-        error: error.message,
+        status: 'failed',
+        error: errorMessage,
         executionTime,
         nodeOutputs: context.outputs
       };
@@ -196,6 +272,10 @@ export class WorkflowRuntime {
     };
 
     const resolvedParams = await resolveAllParams(node.data, paramContext);
+
+    if (this.isDelayNode(node)) {
+      return this.buildDelayNodeResult(resolvedParams);
+    }
 
     const runtimeConfig = (node.data as any)?.runtime ?? (resolvedParams as any)?.runtime;
 
@@ -323,7 +403,161 @@ export class WorkflowRuntime {
     }
   }
 
+  private isDelayResult(value: any): value is DelayNodeResult {
+    return Boolean(value && typeof value === 'object' && value.__workflowDelay === true);
+  }
 
+  private isDelayNode(node: GraphNode): boolean {
+    const type = typeof node.type === 'string' ? node.type.toLowerCase() : '';
+    if (type.includes('time') && type.includes('delay')) {
+      return true;
+    }
+    if (type.endsWith('.delay') || type.endsWith(':delay')) {
+      return true;
+    }
+
+    const data = (node.data ?? {}) as Record<string, any>;
+    const appCandidates = [node.app, data.app];
+    const fnCandidates = [data.function, data.op, (node as any).function, node.op];
+    if (appCandidates.some(app => typeof app === 'string' && app.toLowerCase() === 'time')) {
+      if (fnCandidates.some(fn => typeof fn === 'string' && fn.toLowerCase() === 'delay')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private buildDelayNodeResult(params: Record<string, any>): DelayNodeResult {
+    const delayMs = this.calculateDelayMs(params ?? {});
+    const output = {
+      delayedMs: delayMs,
+      requested: this.cloneForTimer(params ?? {}),
+      scheduled: false,
+    };
+
+    return {
+      __workflowDelay: true,
+      delayMs,
+      output,
+    };
+  }
+
+  private calculateDelayMs(params: Record<string, any>): number {
+    const readNumber = (value: unknown): number | null => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isNaN(parsed) ? null : parsed;
+      }
+      return null;
+    };
+
+    let totalMs = 0;
+
+    const direct = readNumber(params.delayMs);
+    if (direct !== null) {
+      totalMs += direct;
+    }
+
+    const seconds = readNumber(params.delaySeconds ?? params.seconds);
+    if (seconds !== null) {
+      totalMs += seconds * 1000;
+    }
+
+    const minutes = readNumber(params.delayMinutes ?? params.minutes);
+    if (minutes !== null) {
+      totalMs += minutes * 60 * 1000;
+    }
+
+    const hours = readNumber(params.delayHours ?? params.hours);
+    if (hours !== null) {
+      totalMs += hours * 60 * 60 * 1000;
+    }
+
+    return Math.max(0, Math.floor(totalMs));
+  }
+
+  private async scheduleWorkflowTimer(params: {
+    context: ExecutionContext;
+    graph: NodeGraph;
+    node: GraphNode;
+    delayMs: number;
+    remainingNodeIds: string[];
+  }): Promise<TimerScheduleResult | null> {
+    if (!db || params.delayMs <= 0 || params.remainingNodeIds.length === 0) {
+      return null;
+    }
+
+    try {
+      const resumeAt = new Date(Date.now() + params.delayMs);
+      const payload: WorkflowTimerPayload = {
+        workflowId: params.graph.id,
+        organizationId: params.context.organizationId,
+        userId: params.context.userId,
+        executionId: params.context.executionId,
+        initialData: this.cloneForTimer(params.context.initialData ?? null),
+        resumeState: {
+          nodeOutputs: this.cloneForTimer(params.context.outputs),
+          prevOutput: this.cloneForTimer(params.context.prevOutput),
+          remainingNodeIds: [...params.remainingNodeIds],
+          nextNodeId: params.remainingNodeIds[0] ?? null,
+          startedAt: params.context.startTime.toISOString(),
+        },
+        triggerType: 'timer',
+        metadata: {
+          reason: 'delay',
+          nodeId: params.node.id,
+          delayMs: params.delayMs,
+        },
+      };
+
+      const [created] = await db
+        .insert(workflowTimers)
+        .values({
+          executionId: params.context.executionId,
+          resumeAt,
+          payload,
+          status: 'pending',
+          attempts: 0,
+          lastError: null,
+        })
+        .returning({ id: workflowTimers.id });
+
+      return { timerId: created?.id ?? null, resumeAt };
+    } catch (error) {
+      const message = (error as Error)?.message ?? 'Unknown error';
+      console.error('Failed to schedule workflow timer:', message);
+      return null;
+    }
+  }
+
+  private cloneForTimer<T>(value: T): T {
+    if (value === undefined || value === null) {
+      return value;
+    }
+
+    if (value instanceof Date) {
+      return new Date(value.getTime()) as unknown as T;
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return value;
+    }
+  }
+
+  private async waitForDelay(delayMs: number): Promise<void> {
+    if (!this.isPositiveNumber(delayMs)) {
+      return;
+    }
+
+    const waitMs = Math.min(delayMs, 50);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
 
   /**
    * Execute HTTP request node
