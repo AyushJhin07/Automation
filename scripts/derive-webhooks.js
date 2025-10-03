@@ -15,13 +15,23 @@ const WEBHOOK_CAPABLE = new Set([
 function ensureDir(p) { if (!existsSync(p)) mkdirSync(p, { recursive: true }); }
 
 function loadConnectors() {
-  const files = readdirSync(CONNECTORS_DIR).filter(f => f.endsWith('.json'));
-  return files.map(f => {
+  const directories = readdirSync(CONNECTORS_DIR, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
+
+  return directories.map(dir => {
+    const definitionPath = join(CONNECTORS_DIR, dir, 'definition.json');
+
+    if (!existsSync(definitionPath)) {
+      return { id: dir, name: dir, triggers: [] };
+    }
+
     try {
-      const j = JSON.parse(readFileSync(join(CONNECTORS_DIR, f), 'utf8'));
-      return { id: j.id || f.replace(/\.json$/, ''), name: j.name || f, triggers: j.triggers || [] };
+      const j = JSON.parse(readFileSync(definitionPath, 'utf8'));
+      return { id: j.id || dir, name: j.name || dir, triggers: j.triggers || [] };
     } catch {
-      return { id: f.replace(/\.json$/, ''), name: f, triggers: [] };
+      return { id: dir, name: dir, triggers: [] };
     }
   });
 }

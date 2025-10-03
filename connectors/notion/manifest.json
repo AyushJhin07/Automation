@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/connector_manifest.schema.json",
+  "id": "notion",
+  "description": "Notion workspace platform for notes, databases, pages, and collaboration",
+  "pricingTier": "starter",
+  "status": {
+    "beta": false,
+    "privatePreview": false,
+    "deprecated": false,
+    "hidden": false,
+    "featured": false
+  }
+}

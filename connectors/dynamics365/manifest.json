@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/connector_manifest.schema.json",
+  "id": "dynamics365",
+  "description": "Microsoft Dynamics 365 business applications suite",
+  "pricingTier": "starter",
+  "status": {
+    "beta": false,
+    "privatePreview": false,
+    "deprecated": false,
+    "hidden": false,
+    "featured": false
+  }
+}

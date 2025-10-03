@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/connector_manifest.schema.json",
+  "id": "databricks",
+  "description": "Databricks unified analytics platform for big data and machine learning",
+  "pricingTier": "starter",
+  "status": {
+    "beta": false,
+    "privatePreview": false,
+    "deprecated": false,
+    "hidden": false,
+    "featured": false
+  }
+}

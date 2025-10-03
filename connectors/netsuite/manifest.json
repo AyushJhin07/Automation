@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/connector_manifest.schema.json",
+  "id": "netsuite",
+  "description": "Oracle NetSuite cloud-based ERP and business management suite",
+  "pricingTier": "starter",
+  "status": {
+    "beta": false,
+    "privatePreview": false,
+    "deprecated": false,
+    "hidden": false,
+    "featured": false
+  }
+}

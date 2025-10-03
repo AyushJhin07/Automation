@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/connector_manifest.schema.json",
+  "id": "stripe-enhanced",
+  "description": "Enhanced Stripe payment processing with advanced subscription and invoicing features",
+  "pricingTier": "starter",
+  "status": {
+    "beta": false,
+    "privatePreview": false,
+    "deprecated": false,
+    "hidden": false,
+    "featured": false
+  }
+}

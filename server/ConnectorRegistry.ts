@@ -8,11 +8,34 @@ import { BaseAPIClient } from './integrations/BaseAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 import type { ConnectorDynamicOptionConfig } from '../common/connectorDynamicOptions.js';
 import { extractDynamicOptionsFromConnector, normalizeDynamicOptionPath } from '../common/connectorDynamicOptions.js';
+import type { OrganizationPlan } from './database/schema';
+import { connectorEntitlementService } from './services/ConnectorEntitlementService';
+
+type ConnectorPricingTier = 'free' | 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
+
+interface ConnectorStatusFlags {
+  beta: boolean;
+  privatePreview: boolean;
+  deprecated: boolean;
+  hidden: boolean;
+  featured: boolean;
+}
+
+interface ConnectorManifestMetadata {
+  id: string;
+  description?: string;
+  displayName?: string;
+  pricingTier: ConnectorPricingTier;
+  status: ConnectorStatusFlags;
+  labels: string[];
+  availabilityOverride?: ConnectorAvailability;
+}
 
 interface ConnectorManifestEntry {
   id: string;
   normalizedId: string;
   definitionPath: string;
+  manifestPath?: string;
   dynamicOptions?: ConnectorDynamicOptionConfig[];
 }
 
@@ -74,11 +97,21 @@ interface ConnectorRegistryEntry {
   categories: string[];
   availability: ConnectorAvailability;
   dynamicOptions: ConnectorDynamicOptionConfig[];
+  manifest?: ConnectorManifestMetadata;
+  pricingTier: ConnectorPricingTier;
+  status: ConnectorStatusFlags;
 }
 
 interface ConnectorFilterOptions {
   includeExperimental?: boolean;
   includeDisabled?: boolean;
+  includeHidden?: boolean;
+  entitlementOverrides?: Map<string, boolean>;
+  organizationPlan?: OrganizationPlan;
+}
+
+interface ConnectorListOptions extends ConnectorFilterOptions {
+  organizationId?: string;
 }
 
 export class ConnectorRegistry {
@@ -89,6 +122,22 @@ export class ConnectorRegistry {
   private connectorsPath: string;
   private integrationsPath: string | null = null;
   private apiClients: Map<string, APIClientConstructor> = new Map();
+  private manifestMetadataCache: Map<string, ConnectorManifestMetadata> = new Map();
+
+  private readonly pricingTierRank: Record<ConnectorPricingTier, number> = {
+    free: 0,
+    starter: 1,
+    professional: 2,
+    enterprise: 3,
+    enterprise_plus: 4,
+  };
+
+  private readonly planRank: Record<OrganizationPlan, number> = {
+    starter: 1,
+    professional: 2,
+    enterprise: 3,
+    enterprise_plus: 4,
+  };
 
   private constructor() {
     const __filename = fileURLToPath(import.meta.url);
@@ -200,6 +249,7 @@ export class ConnectorRegistry {
           id: entry.id,
           normalizedId: entry.normalizedId ?? entry.id,
           definitionPath: entry.definitionPath,
+          manifestPath: typeof (entry as any).manifestPath === 'string' ? (entry as any).manifestPath : undefined,
         };
       });
     } catch (error) {
@@ -375,6 +425,7 @@ export class ConnectorRegistry {
    */
   private loadAllConnectors(): void {
     this.registry.clear();
+    this.manifestMetadataCache.clear();
     let loaded = 0;
     const entries = this.manifestEntries;
 
@@ -384,9 +435,25 @@ export class ConnectorRegistry {
         const appId = manifestEntry.normalizedId;
         const dynamicOptions = extractDynamicOptionsFromConnector(def);
         const hasRegisteredClient = this.apiClients.has(appId);
-        const availability = this.resolveAvailability(appId, def, hasRegisteredClient);
+        const manifestMetadata = this.loadConnectorMetadata(
+          manifestEntry,
+          def.description || def.name || manifestEntry.id,
+          typeof def.availability === 'string' ? def.availability as ConnectorAvailability : 'experimental'
+        );
+        const availability = this.resolveAvailability(
+          appId,
+          def,
+          hasRegisteredClient,
+          manifestMetadata.availabilityOverride
+        );
         const hasImplementation = availability === 'stable' && hasRegisteredClient;
-        const normalizedDefinition: ConnectorDefinition = { ...def, id: appId, availability };
+        const status = this.applyAvailabilityToStatus(manifestMetadata.status, availability);
+        const normalizedDefinition: ConnectorDefinition = {
+          ...def,
+          id: appId,
+          availability,
+          description: manifestMetadata.description ?? def.description,
+        };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
           apiClient: hasImplementation ? this.apiClients.get(appId) : undefined,
@@ -395,6 +462,9 @@ export class ConnectorRegistry {
           categories: [def.category],
           availability,
           dynamicOptions,
+          manifest: manifestMetadata,
+          pricingTier: manifestMetadata.pricingTier,
+          status,
         };
         this.registry.set(appId, entry);
         loaded++;
@@ -445,6 +515,129 @@ export class ConnectorRegistry {
     return parsed;
   }
 
+  private loadConnectorMetadata(
+    entry: ConnectorManifestEntry,
+    fallbackDescription: string,
+    fallbackAvailability: ConnectorAvailability,
+  ): ConnectorManifestMetadata {
+    const cacheKey = entry.normalizedId;
+    if (this.manifestMetadataCache.has(cacheKey)) {
+      return this.manifestMetadataCache.get(cacheKey)!;
+    }
+
+    const defaultStatus: ConnectorStatusFlags = {
+      beta: fallbackAvailability === 'experimental',
+      privatePreview: false,
+      deprecated: fallbackAvailability === 'disabled',
+      hidden: fallbackAvailability === 'disabled',
+      featured: false,
+    };
+
+    const defaults: ConnectorManifestMetadata = {
+      id: entry.id,
+      description: fallbackDescription,
+      pricingTier: 'starter',
+      status: defaultStatus,
+      labels: [],
+    };
+
+    if (!entry.manifestPath) {
+      this.manifestMetadataCache.set(cacheKey, defaults);
+      return defaults;
+    }
+
+    const manifestFile = resolve(process.cwd(), entry.manifestPath);
+
+    try {
+      const raw = JSON.parse(readFileSync(manifestFile, 'utf-8')) as Record<string, unknown>;
+      const metadata: ConnectorManifestMetadata = {
+        id: typeof raw.id === 'string' ? raw.id : entry.id,
+        description: typeof raw.description === 'string' ? raw.description : fallbackDescription,
+        displayName: typeof raw.displayName === 'string' ? raw.displayName : undefined,
+        pricingTier: this.normalizePricingTier((raw as any).pricingTier),
+        status: this.normalizeStatusFlags((raw as any).status, defaultStatus),
+        labels: Array.isArray((raw as any).labels)
+          ? (raw as any).labels.filter((label: unknown) => typeof label === 'string')
+          : [],
+        availabilityOverride: this.normalizeAvailabilityOverride((raw as any).availabilityOverride),
+      };
+      this.manifestMetadataCache.set(cacheKey, metadata);
+      return metadata;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[ConnectorRegistry] Failed to read manifest for ${entry.id} (${entry.manifestPath}): ${message}`);
+      this.manifestMetadataCache.set(cacheKey, defaults);
+      return defaults;
+    }
+  }
+
+  private normalizePricingTier(value: unknown): ConnectorPricingTier {
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      const tiers: ConnectorPricingTier[] = ['free', 'starter', 'professional', 'enterprise', 'enterprise_plus'];
+      if (tiers.includes(normalized as ConnectorPricingTier)) {
+        return normalized as ConnectorPricingTier;
+      }
+      if (normalized === 'enterpriseplus') {
+        return 'enterprise_plus';
+      }
+    }
+    return 'starter';
+  }
+
+  private normalizeStatusFlags(value: unknown, defaults: ConnectorStatusFlags): ConnectorStatusFlags {
+    const result: ConnectorStatusFlags = { ...defaults };
+    if (!value || typeof value !== 'object') {
+      return result;
+    }
+
+    const flags = value as Record<string, unknown>;
+    const setFlag = (key: keyof ConnectorStatusFlags) => {
+      if (typeof flags[key] === 'boolean') {
+        result[key] = flags[key] as boolean;
+      }
+    };
+
+    setFlag('beta');
+    setFlag('privatePreview');
+    setFlag('deprecated');
+    setFlag('hidden');
+    setFlag('featured');
+
+    return result;
+  }
+
+  private normalizeAvailabilityOverride(value: unknown): ConnectorAvailability | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'stable' || normalized === 'experimental' || normalized === 'disabled') {
+      return normalized;
+    }
+    return undefined;
+  }
+
+  private applyAvailabilityToStatus(status: ConnectorStatusFlags, availability: ConnectorAvailability): ConnectorStatusFlags {
+    const merged: ConnectorStatusFlags = { ...status };
+    if (availability === 'disabled') {
+      merged.deprecated = true;
+      merged.hidden = true;
+    } else if (availability === 'experimental') {
+      merged.beta = true;
+    }
+    return merged;
+  }
+
+  private planMeetsTier(plan: OrganizationPlan, tier: ConnectorPricingTier): boolean {
+    const planRank = this.planRank[plan];
+    if (typeof planRank !== 'number') {
+      return true;
+    }
+    const tierRank = this.pricingTierRank[tier];
+    return planRank >= tierRank;
+  }
+
   private enforceStartupParity(): void {
     const missingStable: string[] = [];
 
@@ -469,14 +662,42 @@ export class ConnectorRegistry {
   /**
    * List connector definitions for API responses
    */
-  public async listConnectors(options: ConnectorFilterOptions = {}): Promise<Array<ConnectorDefinition & {
+  public async listConnectors(options: ConnectorListOptions = {}): Promise<Array<ConnectorDefinition & {
     hasImplementation: boolean;
     availability: ConnectorAvailability;
+    pricingTier: ConnectorPricingTier;
+    status: ConnectorStatusFlags;
+    manifest?: ConnectorManifestMetadata;
+    labels: string[];
+    displayName?: string;
   }>> {
-    return this.getAllConnectors(options).map(entry => ({
+    const { organizationId, entitlementOverrides, ...rest } = options;
+    let overridesMap = entitlementOverrides;
+
+    if (!overridesMap && organizationId) {
+      try {
+        overridesMap = await connectorEntitlementService.getOrganizationOverrides(organizationId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[ConnectorRegistry] Failed to load entitlements for organization ${organizationId}: ${message}`);
+      }
+    }
+
+    const connectors = this.getAllConnectors({
+      ...rest,
+      entitlementOverrides: overridesMap,
+    });
+
+    return connectors.map(entry => ({
       ...entry.definition,
+      description: entry.manifest?.description ?? entry.definition.description,
       availability: entry.availability,
-      hasImplementation: entry.hasImplementation
+      hasImplementation: entry.hasImplementation,
+      pricingTier: entry.pricingTier,
+      status: entry.status,
+      manifest: entry.manifest,
+      labels: entry.manifest?.labels ?? [],
+      displayName: entry.manifest?.displayName,
     }));
   }
 
@@ -492,6 +713,13 @@ export class ConnectorRegistry {
    */
   public getConnectorDefinition(appId: string): ConnectorDefinition | undefined {
     return this.registry.get(appId)?.definition;
+  }
+
+  public canAccessPricingTier(plan: OrganizationPlan | undefined, tier: ConnectorPricingTier): boolean {
+    if (!plan) {
+      return true;
+    }
+    return this.planMeetsTier(plan, tier);
   }
 
   /**
@@ -779,8 +1007,13 @@ export class ConnectorRegistry {
     return { connectors, categories };
   }
 
-  private resolveAvailability(appId: string, def: ConnectorDefinition, hasRegisteredClient: boolean): ConnectorAvailability {
-    const declared = def.availability;
+  private resolveAvailability(
+    appId: string,
+    def: ConnectorDefinition,
+    hasRegisteredClient: boolean,
+    override?: ConnectorAvailability,
+  ): ConnectorAvailability {
+    const declared = override ?? def.availability;
     if (declared === 'disabled') {
       return 'disabled';
     }
@@ -797,14 +1030,40 @@ export class ConnectorRegistry {
   }
 
   private filterEntries(options: ConnectorFilterOptions = {}): ConnectorRegistryEntry[] {
-    const { includeExperimental = false, includeDisabled = false } = options;
+    const {
+      includeExperimental = false,
+      includeDisabled = false,
+      includeHidden = false,
+      entitlementOverrides,
+      organizationPlan,
+    } = options;
+
+    const overrides = entitlementOverrides ? new Map(entitlementOverrides) : undefined;
+
     return Array.from(this.registry.values()).filter(entry => {
-      if (entry.availability === 'disabled') {
-        return includeDisabled;
+      const connectorId = entry.definition.id;
+      const override = overrides?.get(connectorId);
+
+      if (override === false) {
+        return false;
       }
-      if (entry.availability === 'experimental') {
-        return includeExperimental;
+
+      if (!includeHidden && entry.status.hidden && override !== true) {
+        return false;
       }
+
+      if (!includeDisabled && entry.availability === 'disabled' && override !== true) {
+        return false;
+      }
+
+      if (!includeExperimental && entry.availability === 'experimental' && override !== true) {
+        return false;
+      }
+
+      if (organizationPlan && override !== true && !this.planMeetsTier(organizationPlan, entry.pricingTier)) {
+        return false;
+      }
+
       return true;
     });
   }

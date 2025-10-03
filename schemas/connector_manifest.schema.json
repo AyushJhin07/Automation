@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automation.example.com/schemas/connector_manifest.schema.json",
+  "title": "Connector Manifest",
+  "description": "Metadata describing commercial and availability characteristics for a connector",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "description", "pricingTier", "status"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Connector identifier; must match the folder name"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Marketing display name override for the connector"
+    },
+    "description": {
+      "type": "string",
+      "description": "Long-form marketing description shown in catalogs"
+    },
+    "pricingTier": {
+      "type": "string",
+      "description": "Commercial tier required to access this connector",
+      "enum": [
+        "free",
+        "starter",
+        "professional",
+        "enterprise",
+        "enterprise_plus"
+      ]
+    },
+    "status": {
+      "type": "object",
+      "description": "Flags that communicate rollout status",
+      "additionalProperties": false,
+      "properties": {
+        "beta": {
+          "type": "boolean",
+          "description": "Connector is in public beta"
+        },
+        "privatePreview": {
+          "type": "boolean",
+          "description": "Connector is in invite-only preview"
+        },
+        "deprecated": {
+          "type": "boolean",
+          "description": "Connector is deprecated and scheduled for removal"
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Connector should not be listed in public catalogs"
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Connector should be highlighted in marketing surfaces"
+        }
+      },
+      "required": [],
+      "default": {}
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional marketing or operational labels"
+    },
+    "availabilityOverride": {
+      "type": "string",
+      "enum": ["stable", "experimental", "disabled"],
+      "description": "Override availability from the connector definition"
+    }
+  }
+}

@@ -49,12 +49,22 @@ export class APIClientGenerator {
     };
 
     try {
-      const connectorFiles = readdirSync(this.connectorsPath).filter(f => f.endsWith('.json'));
-      
-      for (const file of connectorFiles) {
+      const connectorDirectories = readdirSync(this.connectorsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
+
+      for (const directoryName of connectorDirectories) {
         try {
-          const connector = this.loadConnector(file);
-          
+          const definitionPath = join(this.connectorsPath, directoryName, 'definition.json');
+
+          if (!existsSync(definitionPath)) {
+            console.log(`⚠️ Skipping ${directoryName} - missing definition.json`);
+            continue;
+          }
+
+          const connector = this.loadConnector(directoryName);
+
           // Skip Google Workspace apps (they use native Apps Script services)
           if (this.isGoogleWorkspaceApp(connector.id)) {
             console.log(`⚠️ Skipping ${connector.name} - Google Workspace app (uses native services)`);
@@ -83,7 +93,7 @@ export class APIClientGenerator {
           results.generated++;
 
         } catch (error) {
-          const errorMsg = `Failed to generate API client for ${file}: ${error}`;
+          const errorMsg = `Failed to generate API client for ${directoryName}: ${error}`;
           console.error(`❌ ${errorMsg}`);
           results.errors.push(errorMsg);
         }
@@ -338,8 +348,8 @@ ${this.generateTriggerMethods(connector)}
   /**
    * Load connector data
    */
-  private loadConnector(filename: string): ConnectorData {
-    const filePath = join(this.connectorsPath, filename);
+  private loadConnector(directoryName: string): ConnectorData {
+    const filePath = join(this.connectorsPath, directoryName, 'definition.json');
     const content = readFileSync(filePath, 'utf-8');
     return JSON.parse(content);
   }

@@ -1,7 +1,7 @@
 // FIX CONNECTOR IDS - Add missing id fields to connector JSON files
 // Ensures all connectors have the required id field for the registry
 
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
 interface ConnectorData {
@@ -29,21 +29,22 @@ class ConnectorIdFixer {
     };
 
     try {
-      const connectorFiles = readdirSync(this.connectorsPath);
-      
-      connectorFiles
-        .filter(file => file.endsWith('.json'))
-        .forEach(file => {
+      const connectorDirectories = readdirSync(this.connectorsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
+
+      connectorDirectories.forEach(directoryName => {
           try {
-            const fixed = this.fixConnectorFile(file);
+            const fixed = this.fixConnectorFile(directoryName);
             if (fixed) {
               results.fixed++;
-              console.log(`✅ Fixed ${file}`);
+              console.log(`✅ Fixed ${directoryName}`);
             } else {
-              console.log(`⏭️ Skipped ${file} (already has ID)`);
+              console.log(`⏭️ Skipped ${directoryName} (already has ID)`);
             }
           } catch (error) {
-            const errorMsg = `Failed to fix ${file}: ${error}`;
+            const errorMsg = `Failed to fix ${directoryName}: ${error}`;
             console.error(`❌ ${errorMsg}`);
             results.errors.push(errorMsg);
           }
@@ -63,18 +64,23 @@ class ConnectorIdFixer {
   /**
    * Fix a single connector file
    */
-  private fixConnectorFile(filename: string): boolean {
-    const filePath = join(this.connectorsPath, filename);
+  private fixConnectorFile(directoryName: string): boolean {
+    const filePath = join(this.connectorsPath, directoryName, 'definition.json');
+
+    if (!existsSync(filePath)) {
+      throw new Error('Missing definition.json');
+    }
+
     const fileContent = readFileSync(filePath, 'utf-8');
     const connectorData: ConnectorData = JSON.parse(fileContent);
-    
+
     // Check if ID already exists
     if (connectorData.id) {
       return false; // No fix needed
     }
     
-    // Generate ID from filename
-    const id = filename.replace('.json', '').toLowerCase();
+    // Generate ID from directory name
+    const id = directoryName.toLowerCase();
     
     // Add ID as the first field
     const fixedData = {
@@ -98,25 +104,32 @@ class ConnectorIdFixer {
     };
 
     try {
-      const connectorFiles = readdirSync(this.connectorsPath);
-      
-      connectorFiles
-        .filter(file => file.endsWith('.json'))
-        .forEach(file => {
-          try {
-            const filePath = join(this.connectorsPath, file);
-            const fileContent = readFileSync(filePath, 'utf-8');
-            const connectorData: ConnectorData = JSON.parse(fileContent);
-            
-            if (connectorData.id) {
-              results.valid++;
-            } else {
-              results.invalid.push(file);
-            }
-          } catch (error) {
-            results.invalid.push(`${file} (parse error)`);
+      const connectorDirectories = readdirSync(this.connectorsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
+
+      connectorDirectories.forEach(directoryName => {
+        try {
+          const filePath = join(this.connectorsPath, directoryName, 'definition.json');
+
+          if (!existsSync(filePath)) {
+            results.invalid.push(`${directoryName} (missing definition.json)`);
+            return;
           }
-        });
+
+          const fileContent = readFileSync(filePath, 'utf-8');
+          const connectorData: ConnectorData = JSON.parse(fileContent);
+
+          if (connectorData.id) {
+            results.valid++;
+          } else {
+            results.invalid.push(directoryName);
+          }
+        } catch (error) {
+          results.invalid.push(`${directoryName} (parse error)`);
+        }
+      });
     } catch (error) {
       console.error('Validation failed:', error);
     }

@@ -24,20 +24,20 @@ async function ensureConnectorCatalog(): Promise<void> {
     throw new Error(`Failed to read connectors directory (${connectorDir}): ${getErrorMessage(error)}`);
   }
 
-  const connectorFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.json'));
-  if (connectorFiles.length === 0) {
-    throw new Error(`No connector JSON definitions found in ${connectorDir}`);
+  const connectorDirs = entries.filter((entry) => entry.isDirectory());
+  if (connectorDirs.length === 0) {
+    throw new Error(`No connector definitions found in ${connectorDir}`);
   }
 
   let parsed = 0;
-  for (const file of connectorFiles) {
-    const fullPath = path.join(connectorDir, file.name);
+  for (const dir of connectorDirs) {
+    const definitionPath = path.join(connectorDir, dir.name, 'definition.json');
     try {
-      const raw = await fs.readFile(fullPath, 'utf8');
+      const raw = await fs.readFile(definitionPath, 'utf8');
       JSON.parse(raw);
       parsed++;
     } catch (error) {
-      throw new Error(`Invalid connector definition ${file.name}: ${getErrorMessage(error)}`);
+      throw new Error(`Invalid connector definition ${dir.name}: ${getErrorMessage(error)}`);
     }
   }
 

@@ -1,5 +1,5 @@
 // COMPREHENSIVE CONNECTOR SEEDING SCRIPT
-// Seeds ALL /connectors/*.json files into database with proper error handling
+// Seeds ALL /connectors/<id>/definition.json files into database with proper error handling
 
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -134,15 +134,17 @@ export class ComprehensiveConnectorSeeder {
   }
 
   /**
-   * Get all connector JSON files
+   * Get all connector definition files
    */
   private getConnectorFiles(): string[] {
     if (!existsSync(this.connectorsPath)) {
       throw new Error(`Connectors directory not found: ${this.connectorsPath}`);
     }
 
-    return readdirSync(this.connectorsPath)
-      .filter(file => file.endsWith('.json'))
+    return readdirSync(this.connectorsPath, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => join(entry.name, 'definition.json'))
+      .filter(relativePath => existsSync(join(this.connectorsPath, relativePath)))
       .sort();
   }
 
@@ -151,7 +153,7 @@ export class ComprehensiveConnectorSeeder {
    */
   private async loadConnectorData(filename: string): Promise<ConnectorData> {
     const filePath = join(this.connectorsPath, filename);
-    
+
     try {
       const fileContent = readFileSync(filePath, 'utf-8');
       const connector: ConnectorData = JSON.parse(fileContent);
@@ -169,7 +171,9 @@ export class ComprehensiveConnectorSeeder {
 
       // Ensure ID exists (derive from filename if missing)
       if (!connector.id) {
-        connector.id = filename.replace('.json', '');
+        const normalizedPath = filename.replace(/\\/g, '/');
+        const directoryName = normalizedPath.split('/')[0] ?? normalizedPath;
+        connector.id = directoryName;
         console.log(`⚠️ Added missing ID: ${connector.id} to ${filename}`);
       }
 
@@ -331,8 +335,18 @@ export class ComprehensiveConnectorSeeder {
 
     for (const name of connectorNames) {
       try {
-        const filename = name.endsWith('.json') ? name : `${name}.json`;
-        const connector = await this.loadConnectorData(filename);
+        let normalized = name.replace(/\\/g, '/');
+        if (normalized.endsWith('.json')) {
+          normalized = normalized.slice(0, -5);
+        }
+        if (!normalized.includes('/')) {
+          normalized = `${normalized}/definition.json`;
+        } else if (!normalized.endsWith('definition.json')) {
+          const withoutTrailingSlash = normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+          normalized = `${withoutTrailingSlash}/definition.json`;
+        }
+
+        const connector = await this.loadConnectorData(normalized);
         
         if (db && connectorDefinitions) {
           await this.upsertConnectorToDatabase(connector);

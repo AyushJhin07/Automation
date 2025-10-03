@@ -787,8 +787,31 @@ export class CorporateAppsGenerator {
    * Generate connector file
    */
   private generateConnectorFile(connector: ConnectorData): void {
-    const filePath = join(this.connectorsPath, `${connector.id}.json`);
-    writeFileSync(filePath, JSON.stringify(connector, null, 2));
+    const connectorDir = join(this.connectorsPath, connector.id);
+    const definitionPath = join(connectorDir, 'definition.json');
+    const manifestPath = join(connectorDir, 'manifest.json');
+
+    if (!existsSync(connectorDir)) {
+      mkdirSync(connectorDir, { recursive: true });
+    }
+
+    writeFileSync(definitionPath, JSON.stringify(connector, null, 2));
+
+    const manifest = {
+      $schema: '../../schemas/connector_manifest.schema.json',
+      id: connector.id,
+      description: connector.description,
+      pricingTier: 'starter',
+      status: {
+        beta: false,
+        privatePreview: false,
+        deprecated: false,
+        hidden: false,
+        featured: false
+      }
+    };
+
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
   }
 }
 

@@ -7,6 +7,7 @@ interface ConnectorManifestEntry {
   id: string;
   normalizedId: string;
   definitionPath: string;
+  manifestPath?: string;
   dynamicOptions?: ConnectorDynamicOptionConfig[];
 }
 
@@ -28,12 +29,23 @@ async function main(): Promise<void> {
   const manifestPath = resolve(process.cwd(), 'server', 'connector-manifest.json');
 
   const entries: ConnectorManifestEntry[] = [];
-  const files = await fs.readdir(connectorsDir);
+  const entriesInDir = await fs.readdir(connectorsDir, { withFileTypes: true });
 
-  for (const file of files) {
-    if (!file.endsWith('.json')) continue;
-    const fullPath = join(connectorsDir, file);
-    const contents = await fs.readFile(fullPath, 'utf8');
+  for (const entry of entriesInDir) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const connectorDir = join(connectorsDir, entry.name);
+    const definitionPath = join(connectorDir, 'definition.json');
+
+    let contents: string;
+    try {
+      contents = await fs.readFile(definitionPath, 'utf8');
+    } catch (error) {
+      console.warn(`Skipping ${entry.name}; missing definition.json (${(error as Error).message})`);
+      continue;
+    }
     let parsed: any;
     try {
       parsed = JSON.parse(contents);
@@ -45,7 +57,7 @@ async function main(): Promise<void> {
       throw new Error(`Connector definition ${file} must be an object`);
     }
 
-    const rawId = parsed.id;
+    const rawId = parsed.id ?? entry.name;
     if (typeof rawId !== 'string' || rawId.trim() === '') {
       throw new Error(`Connector definition ${file} is missing a valid "id" field`);
     }
@@ -57,10 +69,17 @@ async function main(): Promise<void> {
 
     const dynamicOptions = extractDynamicOptionsFromConnector(parsed);
 
+    const manifestPath = join(connectorDir, 'manifest.json');
+    const relativeDefinitionPath = relative(process.cwd(), definitionPath).replace(/\\/g, '/');
+    const relativeManifestPath = (await fileExists(manifestPath))
+      ? relative(process.cwd(), manifestPath).replace(/\\/g, '/')
+      : undefined;
+
     entries.push({
-      id: parsed.id,
+      id: parsed.id ?? normalizedId,
       normalizedId,
-      definitionPath: relative(process.cwd(), fullPath).replace(/\\/g, '/'),
+      definitionPath: relativeDefinitionPath,
+      manifestPath: relativeManifestPath,
       dynamicOptions: dynamicOptions.length > 0 ? dynamicOptions : undefined,
     });
   }
@@ -74,6 +93,15 @@ async function main(): Promise<void> {
 
   await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
   console.log(`Connector manifest written to ${manifestPath}`);
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await fs.access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 main().catch(err => {

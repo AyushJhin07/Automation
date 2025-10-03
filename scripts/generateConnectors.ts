@@ -710,10 +710,17 @@ class ConnectorGenerator {
    * Generate connector JSON file
    */
   private generateConnectorFile(template: ConnectorTemplate): void {
-    const filename = `${template.name.toLowerCase().replace(/\s+/g, '-')}.json`;
-    const filepath = join(this.connectorsPath, filename);
+    const connectorId = this.normalizeConnectorId(template.name);
+    const connectorDir = join(this.connectorsPath, connectorId);
+    const definitionPath = join(connectorDir, 'definition.json');
+    const manifestPath = join(connectorDir, 'manifest.json');
+
+    if (!existsSync(connectorDir)) {
+      mkdirSync(connectorDir, { recursive: true });
+    }
 
     const connector = {
+      id: connectorId,
       name: template.name,
       category: template.category,
       description: template.description,
@@ -724,15 +731,51 @@ class ConnectorGenerator {
       },
       actions: template.actions,
       triggers: template.triggers,
-      rateLimits: template.rateLimits,
-      pricing: template.pricing
+      rateLimits: template.rateLimits
+    };
+
+    const manifest = {
+      $schema: '../../schemas/connector_manifest.schema.json',
+      id: connectorId,
+      description: template.description,
+      pricingTier: this.mapPricingTier(template.pricing.tier),
+      status: {
+        beta: false,
+        privatePreview: false,
+        deprecated: false,
+        hidden: false,
+        featured: false
+      }
     };
 
     try {
-      writeFileSync(filepath, JSON.stringify(connector, null, 2));
-      console.log(`✅ Generated ${filename} (${template.actions.length} actions, ${template.triggers.length} triggers)`);
+      writeFileSync(definitionPath, JSON.stringify(connector, null, 2));
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      console.log(
+        `✅ Generated ${connectorId} (${template.actions.length} actions, ${template.triggers.length} triggers)`
+      );
     } catch (error) {
-      console.error(`❌ Failed to generate ${filename}:`, error);
+      console.error(`❌ Failed to generate ${connectorId}:`, error);
+    }
+  }
+
+  private normalizeConnectorId(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  private mapPricingTier(tier: ConnectorTemplate['pricing']['tier']): string {
+    switch (tier) {
+      case 'free':
+        return 'free';
+      case 'premium':
+        return 'professional';
+      case 'enterprise':
+        return 'enterprise';
+      default:
+        return 'starter';
     }
   }
 

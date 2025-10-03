@@ -16,12 +16,20 @@ const DEFAULT_TARGETS = [
 ];
 
 function loadConnectors() {
-  const files = readdirSync(CONNECTORS_DIR).filter(f => f.endsWith('.json'));
+  const directories = readdirSync(CONNECTORS_DIR, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
   const map = new Map();
-  for (const f of files) {
+
+  for (const dir of directories) {
+    const definitionPath = join(CONNECTORS_DIR, dir, 'definition.json');
+
+    if (!existsSync(definitionPath)) continue;
+
     try {
-      const json = JSON.parse(readFileSync(join(CONNECTORS_DIR, f), 'utf8'));
-      const id = json.id || f.replace(/\.json$/, '');
+      const json = JSON.parse(readFileSync(definitionPath, 'utf8'));
+      const id = json.id || dir;
       map.set(id, {
         id,
         name: json.name || id,
@@ -33,6 +41,7 @@ function loadConnectors() {
       });
     } catch {}
   }
+
   return map;
 }
 
