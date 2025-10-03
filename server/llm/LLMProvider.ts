@@ -23,11 +23,13 @@ export interface LLMResult {
   text?: string;
   json?: any;
   toolCalls?: LLMToolCall[];
-  usage?: { 
-    promptTokens?: number; 
-    completionTokens?: number; 
-    costUSD?: number 
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    costUSD?: number
   };
+  tokensUsed?: number;
 }
 
 export interface LLMProvider {

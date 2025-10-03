@@ -1,3 +1,5 @@
+import { organizationService } from '../services/OrganizationService';
+
 /**
  * LLM BUDGET & CACHE - Controls costs and improves performance
  * Implements budget limits, cost tracking, and intelligent caching for LLM operations
@@ -18,6 +20,7 @@ export interface BudgetConfig {
 export interface UsageRecord {
   userId?: string;
   workflowId?: string;
+  organizationId?: string;
   provider: string;
   model: string;
   tokensUsed: number;
@@ -25,6 +28,25 @@ export interface UsageRecord {
   timestamp: Date;
   executionId: string;
   nodeId: string;
+}
+
+interface NodeUsageBreakdown {
+  tokensUsed: number;
+  costUSD: number;
+  provider?: string;
+  model?: string;
+}
+
+interface ExecutionUsageAggregate {
+  executionId: string;
+  workflowId?: string;
+  organizationId?: string;
+  userId?: string;
+  totalTokens: number;
+  totalCost: number;
+  nodes: Record<string, NodeUsageBreakdown>;
+  startedAt: Date;
+  updatedAt: Date;
 }
 
 export interface BudgetStatus {
@@ -68,6 +90,7 @@ export interface CacheStats {
 
 class LLMBudgetAndCache {
   private usageRecords: UsageRecord[] = [];
+  private executionUsage = new Map<string, ExecutionUsageAggregate>();
   private cache = new Map<string, CacheEntry>();
   private maxCacheSize = 1000; // Maximum number of cache entries
   private defaultCacheTTL = 24 * 60 * 60; // 24 hours in seconds
@@ -196,14 +219,28 @@ class LLMBudgetAndCache {
     };
 
     this.usageRecords.push(record);
-    
+    this.updateExecutionUsage(record);
+
+    if (record.organizationId) {
+      void organizationService
+        .recordUsage(record.organizationId, {
+          llmTokens: record.tokensUsed,
+          llmCostUSD: record.costUSD,
+        })
+        .catch((error) => {
+          console.warn('⚠️ Failed to record organization LLM usage', error);
+        });
+    }
+
     // Check for alerts
     const budgetStatus = this.getBudgetStatus();
     if (budgetStatus.shouldAlert) {
       this.sendBudgetAlert(budgetStatus);
     }
 
-    console.log(`💰 Recorded LLM usage: $${usage.costUSD} (${usage.tokensUsed} tokens)`);
+    console.log(
+      `💰 Recorded LLM usage: $${usage.costUSD} (${usage.tokensUsed} tokens) [exec=${usage.executionId}]`
+    );
   }
 
   /**
@@ -356,24 +393,11 @@ class LLMBudgetAndCache {
     topModels: Array<{ model: string; cost: number; requests: number }>;
     topProviders: Array<{ provider: string; cost: number; requests: number }>;
     topUsers: Array<{ userId: string; cost: number; requests: number }>;
+    topWorkflows: Array<{ workflowId: string; cost: number; tokens: number; requests: number }>;
     costByDay: Array<{ date: string; cost: number }>;
   } {
-    const now = new Date();
-    let startDate: Date;
+    const records = this.filterUsageRecords(timeframe);
 
-    switch (timeframe) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      default: // day
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    }
-
-    const records = this.usageRecords.filter(record => record.timestamp >= startDate);
-    
     const totalCost = records.reduce((sum, record) => sum + record.costUSD, 0);
     const totalTokens = records.reduce((sum, record) => sum + record.tokensUsed, 0);
     const totalRequests = records.length;
@@ -383,6 +407,7 @@ class LLMBudgetAndCache {
     const modelStats = new Map<string, { cost: number; requests: number }>();
     const providerStats = new Map<string, { cost: number; requests: number }>();
     const userStats = new Map<string, { cost: number; requests: number }>();
+    const workflowStats = new Map<string, { cost: number; tokens: number; requests: number }>();
 
     records.forEach(record => {
       // Models
@@ -408,6 +433,15 @@ class LLMBudgetAndCache {
           requests: existingUser.requests + 1
         });
       }
+
+      if (record.workflowId) {
+        const existingWorkflow = workflowStats.get(record.workflowId) || { cost: 0, tokens: 0, requests: 0 };
+        workflowStats.set(record.workflowId, {
+          cost: existingWorkflow.cost + record.costUSD,
+          tokens: existingWorkflow.tokens + record.tokensUsed,
+          requests: existingWorkflow.requests + 1,
+        });
+      }
     });
 
     const topModels = Array.from(modelStats.entries())
@@ -424,6 +458,11 @@ class LLMBudgetAndCache {
       .sort((a, b) => b.cost - a.cost)
       .slice(0, 10);
 
+    const topWorkflows = Array.from(workflowStats.entries())
+      .map(([workflowId, stats]) => ({ workflowId, ...stats }))
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 10);
+
     // Cost by day
     const costByDay = this.getCostByDay(records);
 
@@ -435,7 +474,118 @@ class LLMBudgetAndCache {
       topModels,
       topProviders,
       topUsers,
+      topWorkflows,
       costByDay
+    };
+  }
+
+  getWorkflowUsageSummary(timeframe: 'day' | 'week' | 'month' = 'day'): {
+    timeframe: 'day' | 'week' | 'month';
+    totalWorkflows: number;
+    totalTokens: number;
+    totalCost: number;
+    workflows: Array<{
+      workflowId: string;
+      totalTokens: number;
+      totalCost: number;
+      requests: number;
+      executions: number;
+      averageTokensPerRequest: number;
+      averageCostPerRequest: number;
+      lastUsedAt: string | null;
+    }>;
+  } {
+    const records = this.filterUsageRecords(timeframe).filter((record) => Boolean(record.workflowId));
+
+    const workflowStats = new Map<
+      string,
+      { tokens: number; cost: number; requests: number; executions: Set<string>; lastUsed: Date | null }
+    >();
+
+    for (const record of records) {
+      if (!record.workflowId) continue;
+      const current = workflowStats.get(record.workflowId) || {
+        tokens: 0,
+        cost: 0,
+        requests: 0,
+        executions: new Set<string>(),
+        lastUsed: null,
+      };
+
+      current.tokens += record.tokensUsed;
+      current.cost += record.costUSD;
+      current.requests += 1;
+      current.executions.add(record.executionId);
+      if (!current.lastUsed || record.timestamp > current.lastUsed) {
+        current.lastUsed = record.timestamp;
+      }
+
+      workflowStats.set(record.workflowId, current);
+    }
+
+    const workflows = Array.from(workflowStats.entries())
+      .map(([workflowId, stats]) => ({
+        workflowId,
+        totalTokens: stats.tokens,
+        totalCost: stats.cost,
+        requests: stats.requests,
+        executions: stats.executions.size,
+        averageTokensPerRequest: stats.requests > 0 ? stats.tokens / stats.requests : 0,
+        averageCostPerRequest: stats.requests > 0 ? stats.cost / stats.requests : 0,
+        lastUsedAt: stats.lastUsed ? stats.lastUsed.toISOString() : null,
+      }))
+      .sort((a, b) => b.totalCost - a.totalCost);
+
+    const totalTokens = workflows.reduce((sum, wf) => sum + wf.totalTokens, 0);
+    const totalCost = workflows.reduce((sum, wf) => sum + wf.totalCost, 0);
+
+    return {
+      timeframe,
+      totalWorkflows: workflows.length,
+      totalTokens,
+      totalCost,
+      workflows,
+    };
+  }
+
+  getExecutionUsage(executionId: string): {
+    executionId: string;
+    workflowId?: string;
+    organizationId?: string;
+    userId?: string;
+    totalTokens: number;
+    totalCost: number;
+    startedAt: string;
+    updatedAt: string;
+    nodes: Array<{
+      nodeId: string;
+      tokensUsed: number;
+      costUSD: number;
+      provider?: string;
+      model?: string;
+    }>;
+  } | null {
+    const aggregate = this.executionUsage.get(executionId);
+    if (!aggregate) {
+      return null;
+    }
+
+    return {
+      executionId: aggregate.executionId,
+      workflowId: aggregate.workflowId,
+      organizationId: aggregate.organizationId,
+      userId: aggregate.userId,
+      totalTokens: aggregate.totalTokens,
+      totalCost: aggregate.totalCost,
+      startedAt: aggregate.startedAt.toISOString(),
+      updatedAt: aggregate.updatedAt.toISOString(),
+      nodes: Object.entries(aggregate.nodes).map(([nodeId, stats]) => ({
+        nodeId,
+        tokensUsed: stats.tokensUsed,
+        costUSD: stats.costUSD,
+        provider: stats.provider,
+        model: stats.model,
+      })),
     };
   }
 
@@ -467,6 +617,70 @@ class LLMBudgetAndCache {
   }
 
   // Private helper methods
+
+  private updateExecutionUsage(record: UsageRecord): void {
+    const existing = this.executionUsage.get(record.executionId);
+    const timestamp = record.timestamp;
+
+    if (!existing) {
+      this.executionUsage.set(record.executionId, {
+        executionId: record.executionId,
+        workflowId: record.workflowId,
+        organizationId: record.organizationId,
+        userId: record.userId,
+        totalTokens: record.tokensUsed,
+        totalCost: record.costUSD,
+        nodes: {
+          [record.nodeId]: {
+            tokensUsed: record.tokensUsed,
+            costUSD: record.costUSD,
+            provider: record.provider,
+            model: record.model,
+          },
+        },
+        startedAt: timestamp,
+        updatedAt: timestamp,
+      });
+      return;
+    }
+
+    existing.totalTokens += record.tokensUsed;
+    existing.totalCost += record.costUSD;
+    existing.workflowId = existing.workflowId ?? record.workflowId;
+    existing.organizationId = existing.organizationId ?? record.organizationId;
+    existing.userId = existing.userId ?? record.userId;
+
+    const currentNode = existing.nodes[record.nodeId] ?? {
+      tokensUsed: 0,
+      costUSD: 0,
+      provider: record.provider,
+      model: record.model,
+    };
+    currentNode.tokensUsed += record.tokensUsed;
+    currentNode.costUSD += record.costUSD;
+    currentNode.provider = currentNode.provider ?? record.provider;
+    currentNode.model = currentNode.model ?? record.model;
+    existing.nodes[record.nodeId] = currentNode;
+
+    existing.updatedAt = timestamp;
+  }
+
+  private filterUsageRecords(timeframe: 'day' | 'week' | 'month'): UsageRecord[] {
+    const startDate = this.getTimeframeStart(timeframe);
+    return this.usageRecords.filter((record) => record.timestamp >= startDate);
+  }
+
+  private getTimeframeStart(timeframe: 'day' | 'week' | 'month'): Date {
+    const now = new Date();
+    switch (timeframe) {
+      case 'week':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case 'month':
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+      default:
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+  }
 
   private generateCacheKey(prompt: string, model: string, provider: string): string {
     const content = `${provider}:${model}:${prompt}`;
@@ -579,7 +793,13 @@ class LLMBudgetAndCache {
     const initialCount = this.usageRecords.length;
     
     this.usageRecords = this.usageRecords.filter(record => record.timestamp >= cutoff);
-    
+
+    for (const [executionId, aggregate] of this.executionUsage.entries()) {
+      if (aggregate.updatedAt < cutoff) {
+        this.executionUsage.delete(executionId);
+      }
+    }
+
     const cleanedCount = initialCount - this.usageRecords.length;
     if (cleanedCount > 0) {
       console.log(`🧹 Cleaned up ${cleanedCount} old usage records`);

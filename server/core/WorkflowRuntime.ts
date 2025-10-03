@@ -9,6 +9,7 @@ import { runLLMGenerate, runLLMExtract, runLLMClassify, runLLMToolCall } from '.
 import { resolveAllParams } from './ParameterResolver';
 import { retryManager, RetryPolicy } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
+import type { NodeExecution } from './RunExecutionManager';
 import { nodeSandbox, collectSecretStrings } from '../runtime/NodeSandbox';
 import { db, workflowTimers } from '../database/schema.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
@@ -34,9 +35,7 @@ interface NodeExecutionOptions {
   timeoutMs?: number;
 }
 
-interface NodeExecutionMetadataSnapshot {
-  timeoutMs?: number;
-}
+type NodeExecutionMetadataSnapshot = Partial<NodeExecution['metadata']>;
 
 interface TimeoutGuard {
   promise: Promise<never>;
@@ -161,6 +160,7 @@ export class WorkflowRuntime {
 
           const isDelayResult = this.isDelayResult(nodeResult);
           const nodeOutput = isDelayResult ? nodeResult.output : nodeResult;
+          this.captureNodeUsageMetadata(context, node, nodeOutput);
           context.outputs[node.id] = nodeOutput;
           context.prevOutput = nodeOutput;
 
@@ -272,6 +272,7 @@ export class WorkflowRuntime {
     };
 
     const resolvedParams = await resolveAllParams(node.data, paramContext);
+    const nodeContext = { ...context, nodeId: node.id };
 
     if (this.isDelayNode(node)) {
       return this.buildDelayNodeResult(resolvedParams);
@@ -370,16 +371,16 @@ export class WorkflowRuntime {
     switch (node.type) {
       // LLM Actions
       case 'action.llm.generate':
-        return await runLLMGenerate(resolvedParams, context);
-      
+        return await runLLMGenerate(resolvedParams, nodeContext);
+
       case 'action.llm.extract':
-        return await runLLMExtract(resolvedParams, context);
-      
+        return await runLLMExtract(resolvedParams, nodeContext);
+
       case 'action.llm.classify':
-        return await runLLMClassify(resolvedParams, context);
-      
+        return await runLLMClassify(resolvedParams, nodeContext);
+
       case 'action.llm.tool_call':
-        return await runLLMToolCall(resolvedParams, context);
+        return await runLLMToolCall(resolvedParams, nodeContext);
       
       // HTTP Actions (useful for testing and API calls)
       case 'action.http.request':
@@ -804,6 +805,91 @@ export class WorkflowRuntime {
       }
     }
 
+    return undefined;
+  }
+
+  private captureNodeUsageMetadata(
+    context: ExecutionContext,
+    node: GraphNode,
+    result: unknown
+  ): void {
+    if (!result) {
+      return;
+    }
+
+    const metadata = this.extractUsageMetadata(result);
+    if (metadata && Object.keys(metadata).length > 0) {
+      this.setNodeMetadata(context.executionId, node.id, metadata);
+    }
+  }
+
+  private extractUsageMetadata(result: unknown): NodeExecutionMetadataSnapshot | null {
+    if (!result || typeof result !== 'object') {
+      return null;
+    }
+
+    const payload = result as Record<string, any>;
+    const usage = this.resolveUsagePayload(payload);
+    const metadata: NodeExecutionMetadataSnapshot = {};
+
+    const tokensUsed = this.resolveTokensUsed(payload, usage);
+    if (typeof tokensUsed === 'number' && Number.isFinite(tokensUsed)) {
+      metadata.tokensUsed = tokensUsed;
+    }
+
+    if (usage) {
+      if (typeof usage.promptTokens === 'number') {
+        metadata.promptTokens = usage.promptTokens;
+      }
+      if (typeof usage.completionTokens === 'number') {
+        metadata.completionTokens = usage.completionTokens;
+      }
+      if (typeof usage.costUSD === 'number') {
+        metadata.costUSD = usage.costUSD;
+      }
+    }
+
+    if (typeof payload.provider === 'string') {
+      metadata.llmProvider = payload.provider;
+    }
+    if (typeof payload.model === 'string') {
+      metadata.llmModel = payload.model;
+    }
+    if (payload.cached === true) {
+      metadata.cacheHit = true;
+    }
+    if (payload.cacheSavings) {
+      metadata.cacheSavings = payload.cacheSavings;
+    }
+
+    return Object.keys(metadata).length > 0 ? metadata : null;
+  }
+
+  private resolveUsagePayload(payload: Record<string, any>): any {
+    if (payload.usage && typeof payload.usage === 'object') {
+      return payload.usage;
+    }
+    if (payload.result && typeof payload.result === 'object' && payload.result.usage) {
+      return payload.result.usage;
+    }
+    if (payload.data && typeof payload.data === 'object' && payload.data.usage) {
+      return payload.data.usage;
+    }
+    return undefined;
+  }
+
+  private resolveTokensUsed(payload: Record<string, any>, usage: any): number | undefined {
+    if (typeof payload.tokensUsed === 'number') {
+      return payload.tokensUsed;
+    }
+    if (usage) {
+      if (typeof usage.totalTokens === 'number') {
+        return usage.totalTokens;
+      }
+      if (typeof usage.promptTokens === 'number' || typeof usage.completionTokens === 'number') {
+        return (usage.promptTokens ?? 0) + (usage.completionTokens ?? 0);
+      }
+    }
     return undefined;
   }
 

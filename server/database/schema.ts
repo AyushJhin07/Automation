@@ -32,6 +32,8 @@ export interface OrganizationUsageMetrics {
   apiCalls: number;
   storageUsed: number;
   usersActive: number;
+  llmTokens?: number;
+  llmCostUSD?: number;
 }
 
 export interface OrganizationFeatureFlags {

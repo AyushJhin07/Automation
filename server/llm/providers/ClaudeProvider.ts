@@ -108,14 +108,21 @@ export class ClaudeProvider implements LLMProvider {
       ? {
           promptTokens: data.usage.input_tokens,
           completionTokens: data.usage.output_tokens,
+          totalTokens:
+            typeof data.usage.output_tokens === 'number' || typeof data.usage.input_tokens === 'number'
+              ? (data.usage.input_tokens ?? 0) + (data.usage.output_tokens ?? 0)
+              : undefined,
           costUSD: undefined,
         }
       : undefined;
+
+    const tokensUsed = usage?.totalTokens;
 
     return {
       text,
       json: jsonResult,
       usage,
+      tokensUsed,
     };
   }
 }

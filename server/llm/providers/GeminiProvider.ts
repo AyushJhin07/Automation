@@ -107,14 +107,21 @@ export class GeminiProvider implements LLMProvider {
       ? {
           promptTokens: data.usageMetadata.promptTokenCount,
           completionTokens: data.usageMetadata.candidatesTokenCount,
+          totalTokens:
+            typeof data.usageMetadata.totalTokenCount === 'number'
+              ? data.usageMetadata.totalTokenCount
+              : (data.usageMetadata.promptTokenCount ?? 0) + (data.usageMetadata.candidatesTokenCount ?? 0),
           costUSD: undefined,
         }
       : undefined;
+
+    const tokensUsed = usage?.totalTokens;
 
     return {
       text,
       json: jsonResult,
       usage,
+      tokensUsed,
     };
   }
 }
