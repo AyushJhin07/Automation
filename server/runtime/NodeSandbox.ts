@@ -337,8 +337,8 @@ async function loadModule() {
     context: moduleContext
   });
 
-  await module.link((specifier) => {
-    throw new Error(\`Imports are not allowed in sandboxed code: ${specifier}\`);
+  await module.link(() => {
+    throw new Error('Imports are not allowed in sandboxed code.');
   });
 
   await module.evaluate({ timeout: typeof timeoutMs === 'number' && timeoutMs > 0 ? Math.min(timeoutMs, 10_000) : 5_000 });
