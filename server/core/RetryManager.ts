@@ -1,7 +1,198 @@
+import { createHash } from 'node:crypto';
+import { and, eq, gt, lte, sql } from 'drizzle-orm';
+
+import { db, nodeExecutionResults } from '../database/schema.js';
+
 /**
  * RETRY MANAGER - Production-grade retry system with exponential backoff
  * Handles retries, idempotency, and failure management for workflow execution
  */
+
+type NodeExecutionResultRow = typeof nodeExecutionResults.$inferSelect;
+
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export interface NodeExecutionResultStore {
+  find(params: { executionId: string; nodeId: string; idempotencyKey: string; now: Date }): Promise<NodeExecutionResultRow | undefined>;
+  upsert(record: { executionId: string; nodeId: string; idempotencyKey: string; resultHash: string; resultData: any; expiresAt: Date }): Promise<void>;
+  deleteExpired(now: Date): Promise<number>;
+  countActive(now: Date): Promise<number>;
+}
+
+class InMemoryNodeExecutionResultStore implements NodeExecutionResultStore {
+  private readonly store = new Map<string, NodeExecutionResultRow>();
+  private nextId = 1;
+
+  private getKey(executionId: string, nodeId: string, idempotencyKey: string): string {
+    return `${executionId}:${nodeId}:${idempotencyKey}`;
+  }
+
+  async find(params: { executionId: string; nodeId: string; idempotencyKey: string; now: Date }): Promise<NodeExecutionResultRow | undefined> {
+    const key = this.getKey(params.executionId, params.nodeId, params.idempotencyKey);
+    const record = this.store.get(key);
+    if (!record) {
+      return undefined;
+    }
+
+    if (record.expiresAt <= params.now) {
+      this.store.delete(key);
+      return undefined;
+    }
+
+    return { ...record };
+  }
+
+  async upsert(record: { executionId: string; nodeId: string; idempotencyKey: string; resultHash: string; resultData: any; expiresAt: Date }): Promise<void> {
+    const key = this.getKey(record.executionId, record.nodeId, record.idempotencyKey);
+    const existing = this.store.get(key);
+
+    if (existing) {
+      this.store.set(key, {
+        ...existing,
+        resultHash: record.resultHash,
+        resultData: record.resultData,
+        expiresAt: record.expiresAt
+      });
+      return;
+    }
+
+    const createdAt = new Date();
+    this.store.set(key, {
+      id: this.nextId++,
+      executionId: record.executionId,
+      nodeId: record.nodeId,
+      idempotencyKey: record.idempotencyKey,
+      resultHash: record.resultHash,
+      resultData: record.resultData,
+      createdAt,
+      expiresAt: record.expiresAt
+    });
+  }
+
+  async deleteExpired(now: Date): Promise<number> {
+    let deleted = 0;
+    for (const [key, record] of this.store.entries()) {
+      if (record.expiresAt <= now) {
+        this.store.delete(key);
+        deleted++;
+      }
+    }
+    return deleted;
+  }
+
+  async countActive(now: Date): Promise<number> {
+    let count = 0;
+    for (const record of this.store.values()) {
+      if (record.expiresAt > now) {
+        count++;
+      }
+    }
+    return count;
+  }
+}
+
+class DatabaseNodeExecutionResultStore implements NodeExecutionResultStore {
+  constructor(private readonly fallback: NodeExecutionResultStore) {}
+
+  private getDb() {
+    return db;
+  }
+
+  async find(params: { executionId: string; nodeId: string; idempotencyKey: string; now: Date }): Promise<NodeExecutionResultRow | undefined> {
+    const database = this.getDb();
+    if (!database) {
+      return this.fallback.find(params);
+    }
+
+    const results = await database
+      .select()
+      .from(nodeExecutionResults)
+      .where(
+        and(
+          eq(nodeExecutionResults.executionId, params.executionId),
+          eq(nodeExecutionResults.nodeId, params.nodeId),
+          eq(nodeExecutionResults.idempotencyKey, params.idempotencyKey),
+          gt(nodeExecutionResults.expiresAt, params.now)
+        )
+      )
+      .limit(1);
+
+    return results[0];
+  }
+
+  async upsert(record: { executionId: string; nodeId: string; idempotencyKey: string; resultHash: string; resultData: any; expiresAt: Date }): Promise<void> {
+    const database = this.getDb();
+    if (!database) {
+      return this.fallback.upsert(record);
+    }
+
+    await database
+      .insert(nodeExecutionResults)
+      .values({
+        executionId: record.executionId,
+        nodeId: record.nodeId,
+        idempotencyKey: record.idempotencyKey,
+        resultHash: record.resultHash,
+        resultData: record.resultData,
+        expiresAt: record.expiresAt
+      })
+      .onConflictDoUpdate({
+        target: [
+          nodeExecutionResults.executionId,
+          nodeExecutionResults.nodeId,
+          nodeExecutionResults.idempotencyKey
+        ],
+        set: {
+          resultHash: record.resultHash,
+          resultData: record.resultData,
+          expiresAt: record.expiresAt
+        }
+      });
+  }
+
+  async deleteExpired(now: Date): Promise<number> {
+    const database = this.getDb();
+    if (!database) {
+      return this.fallback.deleteExpired(now);
+    }
+
+    const [{ value: expiredCount = 0 } = { value: 0 }] = await database
+      .select({ value: sql<number>`count(*)` })
+      .from(nodeExecutionResults)
+      .where(lte(nodeExecutionResults.expiresAt, now));
+
+    if (expiredCount > 0) {
+      await database.delete(nodeExecutionResults).where(lte(nodeExecutionResults.expiresAt, now));
+    }
+
+    return Number(expiredCount ?? 0);
+  }
+
+  async countActive(now: Date): Promise<number> {
+    const database = this.getDb();
+    if (!database) {
+      return this.fallback.countActive(now);
+    }
+
+    const [{ value = 0 } = { value: 0 }] = await database
+      .select({ value: sql<number>`count(*)` })
+      .from(nodeExecutionResults)
+      .where(gt(nodeExecutionResults.expiresAt, now));
+
+    return Number(value ?? 0);
+  }
+}
+
+const fallbackNodeExecutionResultStore = new InMemoryNodeExecutionResultStore();
+let currentNodeExecutionResultStore: NodeExecutionResultStore = new DatabaseNodeExecutionResultStore(fallbackNodeExecutionResultStore);
+
+export function setNodeExecutionResultStoreForTests(store: NodeExecutionResultStore | null): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('setNodeExecutionResultStoreForTests should only be used in test environment');
+  }
+
+  currentNodeExecutionResultStore = store ?? new DatabaseNodeExecutionResultStore(new InMemoryNodeExecutionResultStore());
+}
 
 export interface RetryPolicy {
   maxAttempts: number;
@@ -17,15 +208,6 @@ export interface RetryAttempt {
   timestamp: Date;
   error?: string;
   nextRetryAt?: Date;
-}
-
-export interface IdempotencyKey {
-  key: string;
-  nodeId: string;
-  executionId: string;
-  result?: any;
-  createdAt: Date;
-  expiresAt: Date;
 }
 
 export interface CircuitBreakerConfig {
@@ -94,8 +276,10 @@ export interface RetryableExecution {
 
 class RetryManager {
   private executions = new Map<string, RetryableExecution>();
-  private idempotencyCache = new Map<string, IdempotencyKey>();
   private circuitStates = new Map<string, CircuitBreakerState>();
+  private readonly idempotencyTtlMs = IDEMPOTENCY_TTL_MS;
+  private cachedKeyEstimate = 0;
+  private cachedKeyEstimateStale = true;
   private defaultPolicy: RetryPolicy = {
     maxAttempts: 3,
     initialDelayMs: 1000,
@@ -109,6 +293,54 @@ class RetryManager {
     cooldownMs: 60_000,
     halfOpenMaxAttempts: 1
   };
+
+  private getNodeExecutionResultStore(): NodeExecutionResultStore {
+    return currentNodeExecutionResultStore;
+  }
+
+  private markCachedKeyEstimateStale(): void {
+    this.cachedKeyEstimateStale = true;
+  }
+
+  private async refreshCachedKeyEstimate(now = new Date()): Promise<void> {
+    try {
+      this.cachedKeyEstimate = await this.getNodeExecutionResultStore().countActive(now);
+      this.cachedKeyEstimateStale = false;
+    } catch (error) {
+      console.error('⚠️ Failed to refresh node execution result cache size', error);
+    }
+  }
+
+  private async getCachedResult(idempotencyKey: string, nodeId: string, executionId: string): Promise<any | undefined> {
+    try {
+      const record = await this.getNodeExecutionResultStore().find({
+        executionId,
+        nodeId,
+        idempotencyKey,
+        now: new Date()
+      });
+      return record?.resultData;
+    } catch (error) {
+      console.error(`⚠️ Failed to read idempotent result for ${executionId}:${nodeId}`, error);
+      return undefined;
+    }
+  }
+
+  private computeResultHash(result: any): { normalized: any; hash: string } {
+    const normalized = result === undefined ? null : result;
+    let serialized: string;
+    try {
+      serialized = JSON.stringify(normalized);
+    } catch (error) {
+      serialized = JSON.stringify(String(normalized));
+    }
+
+    const hash = createHash('sha256')
+      .update(serialized ?? '')
+      .digest('hex');
+
+    return { normalized, hash };
+  }
 
   /**
    * Execute a node with retry logic and idempotency
@@ -132,10 +364,10 @@ class RetryManager {
     
     // Check idempotency cache first
     if (options.idempotencyKey) {
-      const cached = this.idempotencyCache.get(options.idempotencyKey);
-      if (cached && cached.expiresAt > new Date()) {
+      const cached = await this.getCachedResult(options.idempotencyKey, nodeId, executionId);
+      if (cached !== undefined) {
         console.log(`🔄 Idempotency hit for ${nodeId} - returning cached result`);
-        return cached.result;
+        return cached;
       }
     }
 
@@ -211,7 +443,12 @@ class RetryManager {
       this.recordCircuitSuccess(retryExecution);
 
       if (retryExecution.idempotencyKey) {
-        this.cacheIdempotentResult(retryExecution.idempotencyKey, retryExecution.nodeId, retryExecution.executionId, result);
+        await this.cacheIdempotentResult(
+          retryExecution.idempotencyKey,
+          retryExecution.nodeId,
+          retryExecution.executionId,
+          result
+        );
       }
 
       console.log(`✅ Node ${retryExecution.nodeId} succeeded on attempt ${currentAttempt}`);
@@ -465,17 +702,25 @@ class RetryManager {
   /**
    * Cache idempotent result
    */
-  private cacheIdempotentResult(key: string, nodeId: string, executionId: string, result: any): void {
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    
-    this.idempotencyCache.set(key, {
-      key,
-      nodeId,
-      executionId,
-      result,
-      createdAt: new Date(),
-      expiresAt
-    });
+  private async cacheIdempotentResult(key: string, nodeId: string, executionId: string, result: any): Promise<void> {
+    const expiresAt = new Date(Date.now() + this.idempotencyTtlMs);
+
+    try {
+      const { normalized, hash } = this.computeResultHash(result);
+      await this.getNodeExecutionResultStore().upsert({
+        executionId,
+        nodeId,
+        idempotencyKey: key,
+        resultHash: hash,
+        resultData: normalized,
+        expiresAt
+      });
+
+      this.markCachedKeyEstimateStale();
+      await this.refreshCachedKeyEstimate();
+    } catch (error) {
+      console.error(`⚠️ Failed to cache idempotent result for ${executionId}:${nodeId}`, error);
+    }
   }
 
   /**
@@ -515,7 +760,7 @@ class RetryManager {
   /**
    * Clean up old executions and expired idempotency keys
    */
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     const now = new Date();
     const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -526,11 +771,11 @@ class RetryManager {
       }
     }
 
-    // Clean expired idempotency keys
-    for (const [key, item] of this.idempotencyCache.entries()) {
-      if (item.expiresAt <= now) {
-        this.idempotencyCache.delete(key);
-      }
+    try {
+      await this.getNodeExecutionResultStore().deleteExpired(now);
+      await this.refreshCachedKeyEstimate(now);
+    } catch (error) {
+      console.error('⚠️ Failed to cleanup node execution result cache', error);
     }
 
     for (const [key, state] of this.circuitStates.entries()) {
@@ -544,7 +789,7 @@ class RetryManager {
       }
     }
 
-    console.log(`🧹 Cleanup completed - ${this.executions.size} active executions, ${this.idempotencyCache.size} cached keys, ${this.circuitStates.size} circuit states`);
+    console.log(`🧹 Cleanup completed - ${this.executions.size} active executions, ${this.cachedKeyEstimate} cached keys, ${this.circuitStates.size} circuit states`);
   }
 
   /**
@@ -562,13 +807,28 @@ class RetryManager {
     const succeeded = executions.filter(e => e.status === 'succeeded').length;
     const total = executions.length;
 
+    if (this.cachedKeyEstimateStale) {
+      void this.refreshCachedKeyEstimate();
+    }
+
     return {
       activeExecutions: executions.filter(e => e.status === 'pending' || e.status === 'retrying').length,
-      cachedKeys: this.idempotencyCache.size,
+      cachedKeys: this.cachedKeyEstimate,
       dlqItems,
       successRate: total > 0 ? succeeded / total : 1,
       openCircuits: Array.from(this.circuitStates.values()).filter(state => state.state === 'open').length
     };
+  }
+
+  resetForTests(): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('resetForTests should only be used in test environment');
+    }
+
+    this.executions.clear();
+    this.circuitStates.clear();
+    this.cachedKeyEstimate = 0;
+    this.cachedKeyEstimateStale = true;
   }
 }
 
@@ -576,5 +836,7 @@ export const retryManager = new RetryManager();
 
 // Start cleanup interval
 setInterval(() => {
-  retryManager.cleanup();
+  retryManager.cleanup().catch(error => {
+    console.error('⚠️ RetryManager cleanup failed', error);
+  });
 }, 60 * 60 * 1000); // Every hour
