@@ -1,0 +1,750 @@
+{
+  "generatedAt": "2025-10-03T06:04:27.956Z",
+  "connectors": [
+    {
+      "id": "adobesign",
+      "normalizedId": "adobesign",
+      "definitionPath": "connectors/adobesign.json"
+    },
+    {
+      "id": "adp",
+      "normalizedId": "adp",
+      "definitionPath": "connectors/adp.json"
+    },
+    {
+      "id": "adyen",
+      "normalizedId": "adyen",
+      "definitionPath": "connectors/adyen.json"
+    },
+    {
+      "id": "airtable",
+      "normalizedId": "airtable",
+      "definitionPath": "connectors/airtable.json"
+    },
+    {
+      "id": "airtable-enhanced",
+      "normalizedId": "airtable-enhanced",
+      "definitionPath": "connectors/airtable-enhanced.json"
+    },
+    {
+      "id": "ansible",
+      "normalizedId": "ansible",
+      "definitionPath": "connectors/ansible.json"
+    },
+    {
+      "id": "argocd",
+      "normalizedId": "argocd",
+      "definitionPath": "connectors/argocd.json"
+    },
+    {
+      "id": "asana-enhanced",
+      "normalizedId": "asana-enhanced",
+      "definitionPath": "connectors/asana-enhanced.json"
+    },
+    {
+      "id": "aws-cloudformation",
+      "normalizedId": "aws-cloudformation",
+      "definitionPath": "connectors/aws-cloudformation.json"
+    },
+    {
+      "id": "aws-codepipeline",
+      "normalizedId": "aws-codepipeline",
+      "definitionPath": "connectors/aws-codepipeline.json"
+    },
+    {
+      "id": "azure-devops",
+      "normalizedId": "azure-devops",
+      "definitionPath": "connectors/azure-devops.json"
+    },
+    {
+      "id": "bamboohr",
+      "normalizedId": "bamboohr",
+      "definitionPath": "connectors/bamboohr.json"
+    },
+    {
+      "id": "basecamp",
+      "normalizedId": "basecamp",
+      "definitionPath": "connectors/basecamp.json"
+    },
+    {
+      "id": "bigcommerce",
+      "normalizedId": "bigcommerce",
+      "definitionPath": "connectors/bigcommerce.json"
+    },
+    {
+      "id": "bigquery",
+      "normalizedId": "bigquery",
+      "definitionPath": "connectors/bigquery.json"
+    },
+    {
+      "id": "bitbucket",
+      "normalizedId": "bitbucket",
+      "definitionPath": "connectors/bitbucket.json"
+    },
+    {
+      "id": "box",
+      "normalizedId": "box",
+      "definitionPath": "connectors/box.json"
+    },
+    {
+      "id": "braze",
+      "normalizedId": "braze",
+      "definitionPath": "connectors/braze.json"
+    },
+    {
+      "id": "brex",
+      "normalizedId": "brex",
+      "definitionPath": "connectors/brex.json"
+    },
+    {
+      "id": "caldotcom",
+      "normalizedId": "caldotcom",
+      "definitionPath": "connectors/caldotcom.json"
+    },
+    {
+      "id": "calendly",
+      "normalizedId": "calendly",
+      "definitionPath": "connectors/calendly.json"
+    },
+    {
+      "id": "circleci",
+      "normalizedId": "circleci",
+      "definitionPath": "connectors/circleci.json"
+    },
+    {
+      "id": "clickup",
+      "normalizedId": "clickup",
+      "definitionPath": "connectors/clickup.json"
+    },
+    {
+      "id": "coda",
+      "normalizedId": "coda",
+      "definitionPath": "connectors/coda.json"
+    },
+    {
+      "id": "concur",
+      "normalizedId": "concur",
+      "definitionPath": "connectors/concur.json"
+    },
+    {
+      "id": "confluence",
+      "normalizedId": "confluence",
+      "definitionPath": "connectors/confluence.json"
+    },
+    {
+      "id": "coupa",
+      "normalizedId": "coupa",
+      "definitionPath": "connectors/coupa.json"
+    },
+    {
+      "id": "databricks",
+      "normalizedId": "databricks",
+      "definitionPath": "connectors/databricks.json"
+    },
+    {
+      "id": "datadog",
+      "normalizedId": "datadog",
+      "definitionPath": "connectors/datadog.json"
+    },
+    {
+      "id": "docker-hub",
+      "normalizedId": "docker-hub",
+      "definitionPath": "connectors/docker-hub.json"
+    },
+    {
+      "id": "docusign",
+      "normalizedId": "docusign",
+      "definitionPath": "connectors/docusign.json"
+    },
+    {
+      "id": "dropbox",
+      "normalizedId": "dropbox",
+      "definitionPath": "connectors/dropbox.json"
+    },
+    {
+      "id": "dropbox-enhanced",
+      "normalizedId": "dropbox-enhanced",
+      "definitionPath": "connectors/dropbox-enhanced.json"
+    },
+    {
+      "id": "dynamics365",
+      "normalizedId": "dynamics365",
+      "definitionPath": "connectors/dynamics365.json"
+    },
+    {
+      "id": "egnyte",
+      "normalizedId": "egnyte",
+      "definitionPath": "connectors/egnyte.json"
+    },
+    {
+      "id": "excel-online",
+      "normalizedId": "excel-online",
+      "definitionPath": "connectors/excel-online.json"
+    },
+    {
+      "id": "expensify",
+      "normalizedId": "expensify",
+      "definitionPath": "connectors/expensify.json"
+    },
+    {
+      "id": "freshdesk",
+      "normalizedId": "freshdesk",
+      "definitionPath": "connectors/freshdesk.json"
+    },
+    {
+      "id": "github",
+      "normalizedId": "github",
+      "definitionPath": "connectors/github.json"
+    },
+    {
+      "id": "github-enhanced",
+      "normalizedId": "github-enhanced",
+      "definitionPath": "connectors/github-enhanced.json"
+    },
+    {
+      "id": "gitlab",
+      "normalizedId": "gitlab",
+      "definitionPath": "connectors/gitlab.json"
+    },
+    {
+      "id": "gmail",
+      "normalizedId": "gmail",
+      "definitionPath": "connectors/gmail.json"
+    },
+    {
+      "id": "gmail-enhanced",
+      "normalizedId": "gmail-enhanced",
+      "definitionPath": "connectors/gmail-enhanced.json"
+    },
+    {
+      "id": "google-admin",
+      "normalizedId": "google-admin",
+      "definitionPath": "connectors/google-admin.json"
+    },
+    {
+      "id": "google-calendar",
+      "normalizedId": "google-calendar",
+      "definitionPath": "connectors/google-calendar.json"
+    },
+    {
+      "id": "google-chat",
+      "normalizedId": "google-chat",
+      "definitionPath": "connectors/google-chat.json"
+    },
+    {
+      "id": "google-contacts",
+      "normalizedId": "google-contacts",
+      "definitionPath": "connectors/google-contacts.json"
+    },
+    {
+      "id": "google-docs",
+      "normalizedId": "google-docs",
+      "definitionPath": "connectors/google-docs.json"
+    },
+    {
+      "id": "google-drive",
+      "normalizedId": "google-drive",
+      "definitionPath": "connectors/google-drive.json"
+    },
+    {
+      "id": "google-forms",
+      "normalizedId": "google-forms",
+      "definitionPath": "connectors/google-forms.json"
+    },
+    {
+      "id": "google-meet",
+      "normalizedId": "google-meet",
+      "definitionPath": "connectors/google-meet.json"
+    },
+    {
+      "id": "google-sheets-enhanced",
+      "normalizedId": "google-sheets-enhanced",
+      "definitionPath": "connectors/google-sheets-enhanced.json"
+    },
+    {
+      "id": "google-slides",
+      "normalizedId": "google-slides",
+      "definitionPath": "connectors/google-slides.json"
+    },
+    {
+      "id": "grafana",
+      "normalizedId": "grafana",
+      "definitionPath": "connectors/grafana.json"
+    },
+    {
+      "id": "greenhouse",
+      "normalizedId": "greenhouse",
+      "definitionPath": "connectors/greenhouse.json"
+    },
+    {
+      "id": "guru",
+      "normalizedId": "guru",
+      "definitionPath": "connectors/guru.json"
+    },
+    {
+      "id": "hashicorp-vault",
+      "normalizedId": "hashicorp-vault",
+      "definitionPath": "connectors/hashicorp-vault.json"
+    },
+    {
+      "id": "hellosign",
+      "normalizedId": "hellosign",
+      "definitionPath": "connectors/hellosign.json"
+    },
+    {
+      "id": "helm",
+      "normalizedId": "helm",
+      "definitionPath": "connectors/helm.json"
+    },
+    {
+      "id": "hubspot",
+      "normalizedId": "hubspot",
+      "definitionPath": "connectors/hubspot.json"
+    },
+    {
+      "id": "hubspot-enhanced",
+      "normalizedId": "hubspot-enhanced",
+      "definitionPath": "connectors/hubspot-enhanced.json"
+    },
+    {
+      "id": "intercom",
+      "normalizedId": "intercom",
+      "definitionPath": "connectors/intercom.json"
+    },
+    {
+      "id": "iterable",
+      "normalizedId": "iterable",
+      "definitionPath": "connectors/iterable.json"
+    },
+    {
+      "id": "jenkins",
+      "normalizedId": "jenkins",
+      "definitionPath": "connectors/jenkins.json"
+    },
+    {
+      "id": "jira",
+      "normalizedId": "jira",
+      "definitionPath": "connectors/jira.json"
+    },
+    {
+      "id": "jira-service-management",
+      "normalizedId": "jira-service-management",
+      "definitionPath": "connectors/jira-service-management.json"
+    },
+    {
+      "id": "jotform",
+      "normalizedId": "jotform",
+      "definitionPath": "connectors/jotform.json"
+    },
+    {
+      "id": "klaviyo",
+      "normalizedId": "klaviyo",
+      "definitionPath": "connectors/klaviyo.json"
+    },
+    {
+      "id": "kubernetes",
+      "normalizedId": "kubernetes",
+      "definitionPath": "connectors/kubernetes.json"
+    },
+    {
+      "id": "kustomer",
+      "normalizedId": "kustomer",
+      "definitionPath": "connectors/kustomer.json"
+    },
+    {
+      "id": "lever",
+      "normalizedId": "lever",
+      "definitionPath": "connectors/lever.json"
+    },
+    {
+      "id": "linear",
+      "normalizedId": "linear",
+      "definitionPath": "connectors/linear.json"
+    },
+    {
+      "id": "llm",
+      "normalizedId": "llm",
+      "definitionPath": "connectors/llm.json"
+    },
+    {
+      "id": "looker",
+      "normalizedId": "looker",
+      "definitionPath": "connectors/looker.json"
+    },
+    {
+      "id": "luma",
+      "normalizedId": "luma",
+      "definitionPath": "connectors/luma.json"
+    },
+    {
+      "id": "magento",
+      "normalizedId": "magento",
+      "definitionPath": "connectors/magento.json"
+    },
+    {
+      "id": "mailchimp",
+      "normalizedId": "mailchimp",
+      "definitionPath": "connectors/mailchimp.json"
+    },
+    {
+      "id": "mailchimp-enhanced",
+      "normalizedId": "mailchimp-enhanced",
+      "definitionPath": "connectors/mailchimp-enhanced.json"
+    },
+    {
+      "id": "mailgun",
+      "normalizedId": "mailgun",
+      "definitionPath": "connectors/mailgun.json"
+    },
+    {
+      "id": "marketo",
+      "normalizedId": "marketo",
+      "definitionPath": "connectors/marketo.json"
+    },
+    {
+      "id": "microsoft-teams",
+      "normalizedId": "microsoft-teams",
+      "definitionPath": "connectors/microsoft-teams.json"
+    },
+    {
+      "id": "microsoft-todo",
+      "normalizedId": "microsoft-todo",
+      "definitionPath": "connectors/microsoft-todo.json"
+    },
+    {
+      "id": "miro",
+      "normalizedId": "miro",
+      "definitionPath": "connectors/miro.json"
+    },
+    {
+      "id": "mixpanel",
+      "normalizedId": "mixpanel",
+      "definitionPath": "connectors/mixpanel.json"
+    },
+    {
+      "id": "monday",
+      "normalizedId": "monday",
+      "definitionPath": "connectors/monday.json"
+    },
+    {
+      "id": "monday-enhanced",
+      "normalizedId": "monday-enhanced",
+      "definitionPath": "connectors/monday-enhanced.json"
+    },
+    {
+      "id": "navan",
+      "normalizedId": "navan",
+      "definitionPath": "connectors/navan.json"
+    },
+    {
+      "id": "netsuite",
+      "normalizedId": "netsuite",
+      "definitionPath": "connectors/netsuite.json"
+    },
+    {
+      "id": "newrelic",
+      "normalizedId": "newrelic",
+      "definitionPath": "connectors/newrelic.json"
+    },
+    {
+      "id": "nexus",
+      "normalizedId": "nexus",
+      "definitionPath": "connectors/nexus.json"
+    },
+    {
+      "id": "notion",
+      "normalizedId": "notion",
+      "definitionPath": "connectors/notion.json"
+    },
+    {
+      "id": "notion-enhanced",
+      "normalizedId": "notion-enhanced",
+      "definitionPath": "connectors/notion-enhanced.json"
+    },
+    {
+      "id": "okta",
+      "normalizedId": "okta",
+      "definitionPath": "connectors/okta.json"
+    },
+    {
+      "id": "onedrive",
+      "normalizedId": "onedrive",
+      "definitionPath": "connectors/onedrive.json"
+    },
+    {
+      "id": "opsgenie",
+      "normalizedId": "opsgenie",
+      "definitionPath": "connectors/opsgenie.json"
+    },
+    {
+      "id": "outlook",
+      "normalizedId": "outlook",
+      "definitionPath": "connectors/outlook.json"
+    },
+    {
+      "id": "pagerduty",
+      "normalizedId": "pagerduty",
+      "definitionPath": "connectors/pagerduty.json"
+    },
+    {
+      "id": "pardot",
+      "normalizedId": "pardot",
+      "definitionPath": "connectors/pardot.json"
+    },
+    {
+      "id": "paypal",
+      "normalizedId": "paypal",
+      "definitionPath": "connectors/paypal.json"
+    },
+    {
+      "id": "pipedrive",
+      "normalizedId": "pipedrive",
+      "definitionPath": "connectors/pipedrive.json"
+    },
+    {
+      "id": "powerbi",
+      "normalizedId": "powerbi",
+      "definitionPath": "connectors/powerbi.json"
+    },
+    {
+      "id": "powerbi-enhanced",
+      "normalizedId": "powerbi-enhanced",
+      "definitionPath": "connectors/powerbi-enhanced.json"
+    },
+    {
+      "id": "prometheus",
+      "normalizedId": "prometheus",
+      "definitionPath": "connectors/prometheus.json"
+    },
+    {
+      "id": "qualtrics",
+      "normalizedId": "qualtrics",
+      "definitionPath": "connectors/qualtrics.json"
+    },
+    {
+      "id": "quickbooks",
+      "normalizedId": "quickbooks",
+      "definitionPath": "connectors/quickbooks.json"
+    },
+    {
+      "id": "ramp",
+      "normalizedId": "ramp",
+      "definitionPath": "connectors/ramp.json"
+    },
+    {
+      "id": "razorpay",
+      "normalizedId": "razorpay",
+      "definitionPath": "connectors/razorpay.json"
+    },
+    {
+      "id": "ringcentral",
+      "normalizedId": "ringcentral",
+      "definitionPath": "connectors/ringcentral.json"
+    },
+    {
+      "id": "sageintacct",
+      "normalizedId": "sageintacct",
+      "definitionPath": "connectors/sageintacct.json"
+    },
+    {
+      "id": "salesforce",
+      "normalizedId": "salesforce",
+      "definitionPath": "connectors/salesforce.json"
+    },
+    {
+      "id": "salesforce-enhanced",
+      "normalizedId": "salesforce-enhanced",
+      "definitionPath": "connectors/salesforce-enhanced.json"
+    },
+    {
+      "id": "sap-ariba",
+      "normalizedId": "sap-ariba",
+      "definitionPath": "connectors/sap-ariba.json"
+    },
+    {
+      "id": "sendgrid",
+      "normalizedId": "sendgrid",
+      "definitionPath": "connectors/sendgrid.json"
+    },
+    {
+      "id": "sentry",
+      "normalizedId": "sentry",
+      "definitionPath": "connectors/sentry.json"
+    },
+    {
+      "id": "servicenow",
+      "normalizedId": "servicenow",
+      "definitionPath": "connectors/servicenow.json"
+    },
+    {
+      "id": "sharepoint",
+      "normalizedId": "sharepoint",
+      "definitionPath": "connectors/sharepoint.json"
+    },
+    {
+      "id": "shopify",
+      "normalizedId": "shopify",
+      "definitionPath": "connectors/shopify.json"
+    },
+    {
+      "id": "shopify-enhanced",
+      "normalizedId": "shopify-enhanced",
+      "definitionPath": "connectors/shopify-enhanced.json"
+    },
+    {
+      "id": "slab",
+      "normalizedId": "slab",
+      "definitionPath": "connectors/slab.json"
+    },
+    {
+      "id": "slack",
+      "normalizedId": "slack",
+      "definitionPath": "connectors/slack.json"
+    },
+    {
+      "id": "slack-enhanced",
+      "normalizedId": "slack-enhanced",
+      "definitionPath": "connectors/slack-enhanced.json"
+    },
+    {
+      "id": "smartsheet",
+      "normalizedId": "smartsheet",
+      "definitionPath": "connectors/smartsheet.json"
+    },
+    {
+      "id": "snowflake",
+      "normalizedId": "snowflake",
+      "definitionPath": "connectors/snowflake.json"
+    },
+    {
+      "id": "sonarqube",
+      "normalizedId": "sonarqube",
+      "definitionPath": "connectors/sonarqube.json"
+    },
+    {
+      "id": "square",
+      "normalizedId": "square",
+      "definitionPath": "connectors/square.json"
+    },
+    {
+      "id": "stripe",
+      "normalizedId": "stripe",
+      "definitionPath": "connectors/stripe.json"
+    },
+    {
+      "id": "stripe-enhanced",
+      "normalizedId": "stripe-enhanced",
+      "definitionPath": "connectors/stripe-enhanced.json"
+    },
+    {
+      "id": "successfactors",
+      "normalizedId": "successfactors",
+      "definitionPath": "connectors/successfactors.json"
+    },
+    {
+      "id": "surveymonkey",
+      "normalizedId": "surveymonkey",
+      "definitionPath": "connectors/surveymonkey.json"
+    },
+    {
+      "id": "tableau",
+      "normalizedId": "tableau",
+      "definitionPath": "connectors/tableau.json"
+    },
+    {
+      "id": "talkdesk",
+      "normalizedId": "talkdesk",
+      "definitionPath": "connectors/talkdesk.json"
+    },
+    {
+      "id": "teamwork",
+      "normalizedId": "teamwork",
+      "definitionPath": "connectors/teamwork.json"
+    },
+    {
+      "id": "terraform-cloud",
+      "normalizedId": "terraform-cloud",
+      "definitionPath": "connectors/terraform-cloud.json"
+    },
+    {
+      "id": "toggl",
+      "normalizedId": "toggl",
+      "definitionPath": "connectors/toggl.json"
+    },
+    {
+      "id": "trello",
+      "normalizedId": "trello",
+      "definitionPath": "connectors/trello.json"
+    },
+    {
+      "id": "trello-enhanced",
+      "normalizedId": "trello-enhanced",
+      "definitionPath": "connectors/trello-enhanced.json"
+    },
+    {
+      "id": "twilio",
+      "normalizedId": "twilio",
+      "definitionPath": "connectors/twilio.json"
+    },
+    {
+      "id": "typeform",
+      "normalizedId": "typeform",
+      "definitionPath": "connectors/typeform.json"
+    },
+    {
+      "id": "victorops",
+      "normalizedId": "victorops",
+      "definitionPath": "connectors/victorops.json"
+    },
+    {
+      "id": "webex",
+      "normalizedId": "webex",
+      "definitionPath": "connectors/webex.json"
+    },
+    {
+      "id": "webflow",
+      "normalizedId": "webflow",
+      "definitionPath": "connectors/webflow.json"
+    },
+    {
+      "id": "woocommerce",
+      "normalizedId": "woocommerce",
+      "definitionPath": "connectors/woocommerce.json"
+    },
+    {
+      "id": "workday",
+      "normalizedId": "workday",
+      "definitionPath": "connectors/workday.json"
+    },
+    {
+      "id": "workfront",
+      "normalizedId": "workfront",
+      "definitionPath": "connectors/workfront.json"
+    },
+    {
+      "id": "xero",
+      "normalizedId": "xero",
+      "definitionPath": "connectors/xero.json"
+    },
+    {
+      "id": "zendesk",
+      "normalizedId": "zendesk",
+      "definitionPath": "connectors/zendesk.json"
+    },
+    {
+      "id": "zoho-books",
+      "normalizedId": "zoho-books",
+      "definitionPath": "connectors/zoho-books.json"
+    },
+    {
+      "id": "zoho-crm",
+      "normalizedId": "zoho-crm",
+      "definitionPath": "connectors/zoho-crm.json"
+    },
+    {
+      "id": "zoom-enhanced",
+      "normalizedId": "zoom-enhanced",
+      "definitionPath": "connectors/zoom-enhanced.json"
+    }
+  ]
+}

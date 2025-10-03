@@ -3,91 +3,21 @@
 
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { GmailAPIClient } from './integrations/GmailAPIClient';
-import { ShopifyAPIClient } from './integrations/ShopifyAPIClient';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
-import { AirtableAPIClient } from './integrations/AirtableAPIClient';
-import { NotionAPIClient } from './integrations/NotionAPIClient';
-import { SlackAPIClient } from './integrations/SlackAPIClient';
-import { HubspotAPIClient } from './integrations/HubspotAPIClient';
-import { StripeAPIClient } from './integrations/StripeAPIClient';
-import { GithubAPIClient } from './integrations/GithubAPIClient';
-import { DropboxAPIClient } from './integrations/DropboxAPIClient';
-import { GoogleDriveAPIClient } from './integrations/GoogleDriveAPIClient';
-import { GoogleCalendarAPIClient } from './integrations/GoogleCalendarAPIClient';
-import { GoogleDocsAPIClient } from './integrations/GoogleDocsAPIClient';
-import { GoogleSlidesAPIClient } from './integrations/GoogleSlidesAPIClient';
-import { GoogleFormsAPIClient } from './integrations/GoogleFormsAPIClient';
-import { TrelloAPIClient } from './integrations/TrelloAPIClient';
-import { TypeformAPIClient } from './integrations/TypeformAPIClient';
-import { AsanaAPIClient } from './integrations/AsanaAPIClient';
-import { SendgridAPIClient } from './integrations/SendgridAPIClient';
-import { MailgunAPIClient } from './integrations/MailgunAPIClient';
-import { MailchimpAPIClient } from './integrations/MailchimpAPIClient';
-import { MarketoAPIClient } from './integrations/MarketoAPIClient';
-import { ZendeskAPIClient } from './integrations/ZendeskAPIClient';
-import { PipedriveAPIClient } from './integrations/PipedriveAPIClient';
-import { TwilioAPIClient } from './integrations/TwilioAPIClient';
-import { BoxAPIClient } from './integrations/BoxAPIClient';
-import { OnedriveAPIClient } from './integrations/OnedriveAPIClient';
-import { SharepointAPIClient } from './integrations/SharepointAPIClient';
-import { SmartsheetAPIClient } from './integrations/SmartsheetAPIClient';
-import { PardotAPIClient } from './integrations/PardotAPIClient';
-import { MicrosoftTeamsAPIClient } from './integrations/MicrosoftTeamsAPIClient';
-import { OutlookAPIClient } from './integrations/OutlookAPIClient';
-import { GoogleChatAPIClient } from './integrations/GoogleChatAPIClient';
-import { ZoomAPIClient } from './integrations/ZoomAPIClient';
-import { CalendlyAPIClient } from './integrations/CalendlyAPIClient';
-import { IntercomAPIClient } from './integrations/IntercomAPIClient';
-import { MondayAPIClient } from './integrations/MondayAPIClient';
-import { ServicenowAPIClient } from './integrations/ServicenowAPIClient';
-import { FreshdeskAPIClient } from './integrations/FreshdeskAPIClient';
-import { IterableAPIClient } from './integrations/IterableAPIClient';
-import { GitlabAPIClient } from './integrations/GitlabAPIClient';
-import { BitbucketAPIClient } from './integrations/BitbucketAPIClient';
-import { ConfluenceAPIClient } from './integrations/ConfluenceAPIClient';
-import { JiraServiceManagementAPIClient } from './integrations/JiraServiceManagementAPIClient';
-import { QuickbooksAPIClient } from './integrations/QuickbooksAPIClient';
-import { NetsuiteAPIClient } from './integrations/NetsuiteAPIClient';
-import { XeroAPIClient } from './integrations/XeroAPIClient';
-import { BrexAPIClient } from './integrations/BrexAPIClient';
-import { RampAPIClient } from './integrations/RampAPIClient';
-import { RazorpayAPIClient } from './integrations/RazorpayAPIClient';
-import { ZohoBooksAPIClient } from './integrations/ZohoBooksAPIClient';
-import { SageintacctAPIClient } from './integrations/SageintacctAPIClient';
-import { AdyenAPIClient } from './integrations/AdyenAPIClient';
-import { BamboohrAPIClient } from './integrations/BamboohrAPIClient';
-import { PagerdutyAPIClient } from './integrations/PagerdutyAPIClient';
-import { SalesforceAPIClient } from './integrations/SalesforceAPIClient';
-import { BigCommerceAPIClient } from './integrations/BigCommerceAPIClient';
-import { MagentoAPIClient } from './integrations/MagentoAPIClient';
-import { WooCommerceAPIClient } from './integrations/WooCommerceAPIClient';
-import { SquareAPIClient } from './integrations/SquareAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
-import { AzureDevopsAPIClient } from './integrations/AzureDevopsAPIClient';
-import { CircleCIApiClient } from './integrations/CircleCIApiClient';
-import { JenkinsAPIClient } from './integrations/JenkinsAPIClient';
-import { KubernetesAPIClient } from './integrations/KubernetesAPIClient';
-import { ArgocdAPIClient } from './integrations/ArgocdAPIClient';
-import { TerraformCloudAPIClient } from './integrations/TerraformCloudAPIClient';
-import { HashicorpVaultAPIClient } from './integrations/HashicorpVaultAPIClient';
-import { HelmAPIClient } from './integrations/HelmAPIClient';
-import { AnsibleAPIClient } from './integrations/AnsibleAPIClient';
-import { AwsCloudFormationAPIClient } from './integrations/AwsCloudFormationAPIClient';
-import { AwsCodePipelineAPIClient } from './integrations/AwsCodePipelineAPIClient';
-import { KlaviyoAPIClient } from './integrations/KlaviyoAPIClient';
-import { DatadogAPIClient } from './integrations/DatadogAPIClient';
-import { GrafanaAPIClient } from './integrations/GrafanaAPIClient';
-import { PrometheusAPIClient } from './integrations/PrometheusAPIClient';
-import { NewrelicAPIClient } from './integrations/NewrelicAPIClient';
-import { SentryAPIClient } from './integrations/SentryAPIClient';
-import { OktaAPIClient } from './integrations/OktaAPIClient';
-import { GoogleAdminAPIClient } from './integrations/GoogleAdminAPIClient';
-import { DocusignAPIClient } from './integrations/DocusignAPIClient';
-import { HellosignAPIClient } from './integrations/HellosignAPIClient';
-import { AdobesignAPIClient } from './integrations/AdobesignAPIClient';
-import { EgnyteAPIClient } from './integrations/EgnyteAPIClient';
+
+interface ConnectorManifestEntry {
+  id: string;
+  normalizedId: string;
+  definitionPath: string;
+}
+
+interface LoadedAPIClientInfo {
+  exportName: string;
+  absolutePath: string;
+  matchedViaFallback: boolean;
+}
 
 interface ConnectorFunction {
   id: string;
@@ -150,49 +80,27 @@ interface ConnectorFilterOptions {
 export class ConnectorRegistry {
   private static instance: ConnectorRegistry;
   private registry: Map<string, ConnectorRegistryEntry> = new Map();
+  private connectorManifestPath: string;
+  private manifestEntries: ConnectorManifestEntry[] = [];
   private connectorsPath: string;
+  private integrationsPath: string | null = null;
   private apiClients: Map<string, APIClientConstructor> = new Map();
 
   private constructor() {
-    // Get current file directory in ES module
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
-    
-    // Prefer the real /connectors with JSON files
-    const candidates = [
-      // project root
-      resolve(process.cwd(), "connectors"),
-      // when running from /server
-      resolve(__dirname, "..", "connectors"),
-      // bundled dist layouts
-      resolve(__dirname, "..", "..", "connectors"),
-    ];
 
-    // Pick the first folder that both exists AND contains at least one .json
-    let selected: string | null = null;
-    for (const p of candidates) {
-      if (existsSync(p)) {
-        try {
-          const files = readdirSync(p);
-          if (files.some(f => f.endsWith(".json"))) {
-            selected = p;
-            break;
-          }
-        } catch {}
-      }
-    }
+    this.connectorManifestPath = this.resolveConnectorManifestPath(__dirname);
+    this.manifestEntries = this.loadConnectorManifest();
+    this.connectorsPath = this.deriveConnectorsPath();
+    this.integrationsPath = this.resolveIntegrationsPath(__dirname);
 
-    if (!selected) {
-      console.warn("[ConnectorRegistry] Could not locate a connectors folder with .json files. Checked:", candidates);
-      // fall back to project root, even if empty
-      selected = resolve(process.cwd(), "connectors");
-    }
-
-    this.connectorsPath = selected;
-    console.log("[ConnectorRegistry] Using connectorsPath:", this.connectorsPath);
+    console.log('[ConnectorRegistry] Using connector manifest:', this.connectorManifestPath);
+    console.log('[ConnectorRegistry] Using connectorsPath:', this.connectorsPath);
 
     this.initializeAPIClients();
     this.loadAllConnectors();
+    this.enforceStartupParity();
   }
 
   public static getInstance(): ConnectorRegistry {
@@ -249,95 +157,213 @@ export class ConnectorRegistry {
     };
   }
 
+  private resolveConnectorManifestPath(currentDir: string): string {
+    const candidates = [
+      resolve(process.cwd(), 'server', 'connector-manifest.json'),
+      resolve(currentDir, 'connector-manifest.json'),
+      resolve(currentDir, '..', 'connector-manifest.json'),
+      resolve(currentDir, '..', '..', 'connector-manifest.json'),
+    ];
+
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    throw new Error(`[ConnectorRegistry] Unable to locate connector manifest. Checked: ${candidates.join(', ')}`);
+  }
+
+  private loadConnectorManifest(): ConnectorManifestEntry[] {
+    try {
+      const raw = JSON.parse(readFileSync(this.connectorManifestPath, 'utf-8'));
+      if (!raw || typeof raw !== 'object' || !Array.isArray(raw.connectors)) {
+        throw new Error('manifest is missing a "connectors" array');
+      }
+
+      return raw.connectors.map((entry: ConnectorManifestEntry) => {
+        if (!entry || typeof entry !== 'object') {
+          throw new Error('manifest entry must be an object');
+        }
+        if (typeof entry.id !== 'string' || entry.id.trim() === '') {
+          throw new Error('manifest entry is missing an id');
+        }
+        if (typeof entry.definitionPath !== 'string' || entry.definitionPath.trim() === '') {
+          throw new Error(`manifest entry for ${entry.id} is missing a definitionPath`);
+        }
+
+        return {
+          id: entry.id,
+          normalizedId: entry.normalizedId ?? entry.id,
+          definitionPath: entry.definitionPath,
+        };
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`[ConnectorRegistry] Failed to load connector manifest ${this.connectorManifestPath}: ${message}`);
+    }
+  }
+
+  private deriveConnectorsPath(): string {
+    if (!this.manifestEntries.length) {
+      return resolve(process.cwd(), 'connectors');
+    }
+
+    const first = this.manifestEntries[0];
+    return dirname(resolve(process.cwd(), first.definitionPath));
+  }
+
+  private resolveIntegrationsPath(currentDir: string): string | null {
+    const candidates = [
+      resolve(currentDir, 'integrations'),
+      resolve(currentDir, '..', 'integrations'),
+      resolve(process.cwd(), 'server', 'integrations'),
+      resolve(process.cwd(), 'dist', 'integrations'),
+    ];
+
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    console.warn('[ConnectorRegistry] Could not resolve integrations directory. Checked:', candidates);
+    return null;
+  }
+
+  private toCanonicalId(value: string): string {
+    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  }
+
+  private importModuleSync(modulePath: string): Record<string, unknown> {
+    const url = pathToFileURL(modulePath).href;
+    const sab = new SharedArrayBuffer(4);
+    const view = new Int32Array(sab);
+    let result: Record<string, unknown> | null = null;
+    let error: unknown;
+
+    import(url)
+      .then(mod => {
+        result = mod as Record<string, unknown>;
+        Atomics.store(view, 0, 1);
+        Atomics.notify(view, 0);
+      })
+      .catch(err => {
+        error = err;
+        Atomics.store(view, 0, 1);
+        Atomics.notify(view, 0);
+      });
+
+    Atomics.wait(view, 0, 0);
+
+    if (error) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+
+    return result ?? {};
+  }
+
+  private loadAPIClientConstructors(): Map<string, APIClientConstructor> {
+    const constructors = new Map<string, APIClientConstructor>();
+
+    if (!this.integrationsPath) {
+      return constructors;
+    }
+
+    const connectorsByCanonical = new Map<string, ConnectorManifestEntry>();
+    for (const entry of this.manifestEntries) {
+      connectorsByCanonical.set(this.toCanonicalId(entry.normalizedId), entry);
+    }
+
+    let files: string[] = [];
+    try {
+      files = readdirSync(this.integrationsPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`[ConnectorRegistry] Failed to read integrations directory ${this.integrationsPath}: ${message}`);
+    }
+
+    const candidateConstructors = new Map<string, LoadedAPIClientInfo>();
+    const unmatchedClients: string[] = [];
+
+    for (const file of files) {
+      if (!/APIClient\.(ts|js)$/i.test(file) || file.endsWith('.d.ts')) {
+        continue;
+      }
+
+      const baseName = file.replace(/\.[^.]+$/, '');
+      const withoutSuffix = baseName.replace(/APIClient$/i, '');
+      const canonicalName = this.toCanonicalId(withoutSuffix);
+
+      if (canonicalName === 'base' || canonicalName === 'generic') {
+        continue;
+      }
+
+      let matched = connectorsByCanonical.get(canonicalName);
+      let matchedViaFallback = false;
+      if (!matched) {
+        const fallback = connectorsByCanonical.get(`${canonicalName}enhanced`);
+        if (fallback) {
+          matched = fallback;
+          matchedViaFallback = true;
+        }
+      }
+
+      if (!matched) {
+        unmatchedClients.push(baseName);
+        continue;
+      }
+
+      const info: LoadedAPIClientInfo = {
+        exportName: baseName,
+        absolutePath: join(this.integrationsPath, file),
+        matchedViaFallback,
+      };
+
+      const targetId = matched.normalizedId ?? matched.id;
+      const existing = candidateConstructors.get(targetId);
+      if (existing) {
+        if (existing.matchedViaFallback && !matchedViaFallback) {
+          candidateConstructors.set(targetId, info);
+        }
+        continue;
+      }
+
+      candidateConstructors.set(targetId, info);
+    }
+
+    if (unmatchedClients.length > 0) {
+      throw new Error(`[ConnectorRegistry] API client(s) without connector definition: ${unmatchedClients.join(', ')}`);
+    }
+
+    for (const [id, info] of candidateConstructors) {
+      const moduleExports = this.importModuleSync(info.absolutePath);
+      const exported = moduleExports[info.exportName];
+      if (typeof exported !== 'function') {
+        throw new Error(`[ConnectorRegistry] Expected ${info.exportName} to export a constructor from ${info.absolutePath}`);
+      }
+      constructors.set(id, exported as APIClientConstructor);
+    }
+
+    console.log(`[ConnectorRegistry] Registered ${constructors.size} API client constructors from ${this.integrationsPath}`);
+    return constructors;
+  }
+
   /**
    * Initialize available API clients
    */
   private initializeAPIClients(): void {
-    // Register the concrete API clients that are actually wired today.
-    this.registerAPIClient('gmail', GmailAPIClient);
-    this.registerAPIClient('shopify', ShopifyAPIClient);
-    this.registerAPIClient('slack', SlackAPIClient);
-    this.registerAPIClient('notion', NotionAPIClient);
-    this.registerAPIClient('airtable', AirtableAPIClient);
+    this.apiClients.clear();
 
-    // Promote commonly used connectors to Stable by registering API clients
-    this.registerAPIClient('hubspot', HubspotAPIClient);
-    this.registerAPIClient('stripe', StripeAPIClient);
-    this.registerAPIClient('github', GithubAPIClient);
-    this.registerAPIClient('dropbox', DropboxAPIClient);
-    this.registerAPIClient('google-drive', GoogleDriveAPIClient);
-    this.registerAPIClient('google-calendar', GoogleCalendarAPIClient);
-    this.registerAPIClient('trello', TrelloAPIClient);
-    this.registerAPIClient('typeform', TypeformAPIClient);
-    this.registerAPIClient('asana', AsanaAPIClient);
-    this.registerAPIClient('sendgrid', SendgridAPIClient);
-    this.registerAPIClient('mailgun', MailgunAPIClient);
-    this.registerAPIClient('mailchimp', MailchimpAPIClient);
-    this.registerAPIClient('marketo', MarketoAPIClient);
-    this.registerAPIClient('pardot', PardotAPIClient);
-    this.registerAPIClient('iterable', IterableAPIClient);
-    this.registerAPIClient('klaviyo', KlaviyoAPIClient);
-    this.registerAPIClient('bigcommerce', BigCommerceAPIClient);
-    this.registerAPIClient('magento', MagentoAPIClient);
-    this.registerAPIClient('woocommerce', WooCommerceAPIClient);
-    this.registerAPIClient('square', SquareAPIClient);
-    this.registerAPIClient('zendesk', ZendeskAPIClient);
-    this.registerAPIClient('pipedrive', PipedriveAPIClient);
-    this.registerAPIClient('twilio', TwilioAPIClient);
-    this.registerAPIClient('salesforce', SalesforceAPIClient);
-    this.registerAPIClient('quickbooks', QuickbooksAPIClient);
-    this.registerAPIClient('adyen', AdyenAPIClient);
-    this.registerAPIClient('netsuite', NetsuiteAPIClient);
-    this.registerAPIClient('xero', XeroAPIClient);
-    this.registerAPIClient('brex', BrexAPIClient);
-    this.registerAPIClient('ramp', RampAPIClient);
-    this.registerAPIClient('razorpay', RazorpayAPIClient);
-    this.registerAPIClient('zoho-books', ZohoBooksAPIClient);
-    this.registerAPIClient('sageintacct', SageintacctAPIClient);
-    this.registerAPIClient('box', BoxAPIClient);
-    this.registerAPIClient('onedrive', OnedriveAPIClient);
-    this.registerAPIClient('sharepoint', SharepointAPIClient);
-    this.registerAPIClient('smartsheet', SmartsheetAPIClient);
-    this.registerAPIClient('google-docs', GoogleDocsAPIClient);
-    this.registerAPIClient('google-slides', GoogleSlidesAPIClient);
-    this.registerAPIClient('google-forms', GoogleFormsAPIClient);
-    this.registerAPIClient('microsoft-teams', MicrosoftTeamsAPIClient);
-    this.registerAPIClient('outlook', OutlookAPIClient);
-    this.registerAPIClient('google-chat', GoogleChatAPIClient);
-    this.registerAPIClient('zoom', ZoomAPIClient);
-    this.registerAPIClient('calendly', CalendlyAPIClient);
-    this.registerAPIClient('intercom', IntercomAPIClient);
-    this.registerAPIClient('monday', MondayAPIClient);
-    this.registerAPIClient('servicenow', ServicenowAPIClient);
-    this.registerAPIClient('freshdesk', FreshdeskAPIClient);
-    this.registerAPIClient('bamboohr', BamboohrAPIClient);
-    this.registerAPIClient('gitlab', GitlabAPIClient);
-    this.registerAPIClient('bitbucket', BitbucketAPIClient);
-    this.registerAPIClient('confluence', ConfluenceAPIClient);
-    this.registerAPIClient('jira-service-management', JiraServiceManagementAPIClient);
-    this.registerAPIClient('pagerduty', PagerdutyAPIClient);
-    this.registerAPIClient('datadog', DatadogAPIClient);
-    this.registerAPIClient('grafana', GrafanaAPIClient);
-    this.registerAPIClient('prometheus', PrometheusAPIClient);
-    this.registerAPIClient('newrelic', NewrelicAPIClient);
-    this.registerAPIClient('sentry', SentryAPIClient);
-    this.registerAPIClient('okta', OktaAPIClient);
-    this.registerAPIClient('google-admin', GoogleAdminAPIClient);
-    this.registerAPIClient('docusign', DocusignAPIClient);
-    this.registerAPIClient('hellosign', HellosignAPIClient);
-    this.registerAPIClient('adobesign', AdobesignAPIClient);
-    this.registerAPIClient('egnyte', EgnyteAPIClient);
-    this.registerAPIClient('azure-devops', AzureDevopsAPIClient);
-    this.registerAPIClient('circleci', CircleCIApiClient);
-    this.registerAPIClient('jenkins', JenkinsAPIClient);
-    this.registerAPIClient('kubernetes', KubernetesAPIClient);
-    this.registerAPIClient('argocd', ArgocdAPIClient);
-    this.registerAPIClient('terraform-cloud', TerraformCloudAPIClient);
-    this.registerAPIClient('aws-cloudformation', AwsCloudFormationAPIClient);
-    this.registerAPIClient('aws-codepipeline', AwsCodePipelineAPIClient);
-    this.registerAPIClient('hashicorp-vault', HashicorpVaultAPIClient);
-    this.registerAPIClient('helm', HelmAPIClient);
-    this.registerAPIClient('ansible', AnsibleAPIClient);
+    if (!this.manifestEntries.length) {
+      console.warn('[ConnectorRegistry] No connector manifest entries found. API clients not initialized.');
+      return;
+    }
+
+    const constructors = this.loadAPIClientConstructors();
+    constructors.forEach((ctor, appId) => {
+      this.apiClients.set(appId, ctor);
+    });
   }
 
   /**
@@ -345,23 +371,17 @@ export class ConnectorRegistry {
    */
   private loadAllConnectors(): void {
     this.registry.clear();
-    let files: string[] = [];
-    try {
-      files = readdirSync(this.connectorsPath).filter(f => f.endsWith(".json"));
-    } catch (e) {
-      console.warn("[ConnectorRegistry] Failed to read connectorsPath:", this.connectorsPath, e);
-      return;
-    }
-
     let loaded = 0;
-    for (const file of files) {
+    const entries = this.manifestEntries;
+
+    for (const manifestEntry of entries) {
       try {
-        const def = this.loadConnectorDefinition(file); // already joins connectorsPath
-        const appId = def.id;
+        const def = this.loadConnectorDefinition(manifestEntry);
+        const appId = manifestEntry.normalizedId;
         const hasRegisteredClient = this.apiClients.has(appId);
         const availability = this.resolveAvailability(appId, def, hasRegisteredClient);
         const hasImplementation = availability === 'stable' && hasRegisteredClient;
-        const normalizedDefinition: ConnectorDefinition = { ...def, availability };
+        const normalizedDefinition: ConnectorDefinition = { ...def, id: appId, availability };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
           apiClient: hasImplementation ? this.apiClients.get(appId) : undefined,
@@ -373,10 +393,10 @@ export class ConnectorRegistry {
         this.registry.set(appId, entry);
         loaded++;
       } catch (err) {
-        console.warn(`[ConnectorRegistry] Failed to load ${file}:`, err);
+        console.warn(`[ConnectorRegistry] Failed to load ${manifestEntry.definitionPath}:`, err);
       }
     }
-    console.log(`[ConnectorRegistry] Loaded ${loaded}/${files.length} connector JSON files from ${this.connectorsPath}`);
+    console.log(`[ConnectorRegistry] Loaded ${loaded}/${entries.length} connector JSON files from manifest`);
     
     // ChatGPT Fix: Accurate implementation counting after loading
     try {
@@ -398,10 +418,39 @@ export class ConnectorRegistry {
   /**
    * Load a single connector definition from JSON file
    */
-  private loadConnectorDefinition(filename: string): ConnectorDefinition {
-    const filePath = join(this.connectorsPath, filename);
+  private loadConnectorDefinition(entry: ConnectorManifestEntry): ConnectorDefinition {
+    const filePath = resolve(process.cwd(), entry.definitionPath);
     const fileContent = readFileSync(filePath, 'utf-8');
-    return JSON.parse(fileContent);
+    const parsed = JSON.parse(fileContent) as ConnectorDefinition;
+
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error(`Connector definition at ${filePath} is not a valid object`);
+    }
+
+    if (typeof parsed.id !== 'string') {
+      parsed.id = entry.normalizedId;
+    }
+
+    if (parsed.id !== entry.id && parsed.id !== entry.normalizedId) {
+      console.warn(`[ConnectorRegistry] Definition id mismatch for ${filePath}. Manifest id: ${entry.id}, file id: ${parsed.id}`);
+    }
+
+    parsed.id = entry.normalizedId;
+    return parsed;
+  }
+
+  private enforceStartupParity(): void {
+    const missingStable: string[] = [];
+
+    for (const entry of this.registry.values()) {
+      if (entry.availability === 'stable' && !entry.hasImplementation) {
+        missingStable.push(entry.definition.id);
+      }
+    }
+
+    if (missingStable.length > 0) {
+      throw new Error(`[ConnectorRegistry] Stable connectors missing API clients: ${missingStable.join(', ')}`);
+    }
   }
 
   /**
@@ -560,24 +609,17 @@ export class ConnectorRegistry {
    * Refresh registry (reload from files)
    */
   public refresh(): void {
+    this.manifestEntries = this.loadConnectorManifest();
+    this.connectorsPath = this.deriveConnectorsPath();
+    this.initializeAPIClients();
     this.registry.clear();
     this.loadAllConnectors();
+    this.enforceStartupParity();
   }
 
   /**
    * Register a new API client implementation
    */
-  public registerAPIClient(appId: string, clientClass: APIClientConstructor): void {
-    this.apiClients.set(appId, clientClass);
-    
-    // Update registry entry if it exists
-    const entry = this.registry.get(appId);
-    if (entry) {
-      entry.apiClient = clientClass;
-      entry.hasImplementation = true;
-    }
-  }
-
   /**
    * Get function definition by type
    */
@@ -605,8 +647,7 @@ export class ConnectorRegistry {
    * Reload connectors from disk (dev utility)
    */
   public reload(): void {
-    this.registry.clear();
-    this.loadAllConnectors();
+    this.refresh();
   }
 
   /**
@@ -615,6 +656,8 @@ export class ConnectorRegistry {
   public getStats() {
     return {
       connectorsPath: this.connectorsPath,
+      manifestPath: this.connectorManifestPath,
+      apiClientCount: this.apiClients.size,
       count: this.registry.size,
       apps: Array.from(this.registry.keys()).sort()
     };
