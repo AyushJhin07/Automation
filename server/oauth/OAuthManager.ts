@@ -323,6 +323,8 @@ export class OAuthManager {
           'https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/gmail.send',
           'openid',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/userinfo.profile',
           'email',
           'profile'
         ],
@@ -346,6 +348,8 @@ export class OAuthManager {
           'https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/gmail.send',
           'openid',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/userinfo.profile',
           'email',
           'profile'
         ],
@@ -1748,14 +1752,14 @@ export class OAuthManager {
     code: string,
     state: string,
     providerId: string
-  ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string; connectionId: string; label: string }> {
+  ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string; connectionId: string; label: string; userInfoError?: string }> {
     // Verify state
     const storedState = this.pendingStates.get(state);
     if (!storedState || storedState.provider !== providerId) {
       throw new Error('Invalid OAuth state');
     }
 
-    const redirectUrl = storedState.returnUrl ?? this.getRedirectUri(providerId);
+    let redirectUrl = storedState.returnUrl ?? this.getRedirectUri(providerId);
 
     if (!storedState.organizationId) {
       throw new Error('OAuth state missing organization context');
@@ -1783,15 +1787,37 @@ export class OAuthManager {
 
     // Get user info if URL is provided
     let userInfo: OAuthUserInfo | undefined;
+    let userInfoError: string | undefined;
     if (provider.config.userInfoUrl && tokens.accessToken) {
       try {
         userInfo = await this.getUserInfo(provider, tokens.accessToken);
       } catch (error) {
+        userInfoError = getErrorMessage(error);
         console.warn(`Failed to get user info for ${providerId}:`, error);
       }
     }
 
-    const label = storedState.label || userInfo?.email || providerId;
+    const fallbackLabel = `${provider.displayName || providerId} account`;
+    const label = storedState.label || userInfo?.email || fallbackLabel;
+
+    if (userInfoError) {
+      const configuredBaseUrl = env.SERVER_PUBLIC_URL || process.env.BASE_URL || '';
+      if (configuredBaseUrl) {
+        const normalizedBase = configuredBaseUrl.endsWith('/')
+          ? configuredBaseUrl.slice(0, -1)
+          : configuredBaseUrl;
+        redirectUrl = `${normalizedBase}/oauth/callback/${providerId}`;
+      } else {
+        try {
+          const parsed = new URL(redirectUrl);
+          parsed.pathname = parsed.pathname.replace('/api/oauth/callback', '/oauth/callback');
+          parsed.search = '';
+          redirectUrl = parsed.toString();
+        } catch {
+          // If we cannot parse the URL, keep the existing redirect URL.
+        }
+      }
+    }
 
     // Store connection
     const connectionId = await connectionService.storeConnection(
@@ -1808,11 +1834,12 @@ export class OAuthManager {
           scopes: provider.config.scopes ?? [],
           authUrl: provider.config.authUrl,
           tokenUrl: provider.config.tokenUrl,
+          ...(userInfoError ? { userInfoError } : {})
         }
       }
     );
 
-    return { tokens, userInfo, returnUrl: redirectUrl, connectionId, label };
+    return { tokens, userInfo, returnUrl: redirectUrl, connectionId, label, userInfoError };
   }
 
   /**
