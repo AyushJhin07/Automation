@@ -4503,6 +4503,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get usage analytics' });
     }
   });
+
+  // Get per-workflow LLM consumption summary
+  app.get('/api/llm/usage/workflows', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'day';
+      const summary = llmBudgetAndCache.getWorkflowUsageSummary(timeframe);
+      res.json(summary);
+    } catch (error) {
+      console.error('Failed to get workflow usage summary:', error);
+      res.status(500).json({ error: 'Failed to get workflow usage summary' });
+    }
+  });
+
+  // Get execution-level LLM consumption breakdown
+  app.get('/api/llm/usage/executions/:executionId', async (req, res) => {
+    try {
+      const { llmBudgetAndCache } = await import('./llm/LLMBudgetAndCache');
+      const execution = llmBudgetAndCache.getExecutionUsage(req.params.executionId);
+      if (!execution) {
+        res.status(404).json({ error: 'Execution usage not found' });
+        return;
+      }
+      res.json(execution);
+    } catch (error) {
+      console.error('Failed to get execution usage:', error);
+      res.status(500).json({ error: 'Failed to get execution usage' });
+    }
+  });
   
   // Check budget constraints for a request
   app.post('/api/llm/budget/check', async (req, res) => {

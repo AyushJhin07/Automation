@@ -36,6 +36,15 @@ export interface NodeExecution {
     cacheHit?: boolean;
     costUSD?: number;
     tokensUsed?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    llmProvider?: string;
+    llmModel?: string;
+    cacheSavings?: {
+      tokensSaved?: number;
+      costSaved?: number;
+      [key: string]: any;
+    };
     httpStatusCode?: number;
     headers?: Record<string, string>;
     timeoutMs?: number;

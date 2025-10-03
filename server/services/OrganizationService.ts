@@ -687,11 +687,14 @@ export class OrganizationService {
       return;
     }
 
+    const currentUsage = quota.usage as OrganizationUsageMetrics;
     const nextUsage: OrganizationUsageMetrics = {
-      workflowExecutions: quota.usage.workflowExecutions + (usage.workflowExecutions ?? 0),
-      apiCalls: quota.usage.apiCalls + (usage.apiCalls ?? 0),
-      storageUsed: quota.usage.storageUsed + (usage.storageUsed ?? 0),
-      usersActive: Math.max(quota.usage.usersActive, usage.usersActive ?? quota.usage.usersActive),
+      workflowExecutions: currentUsage.workflowExecutions + (usage.workflowExecutions ?? 0),
+      apiCalls: currentUsage.apiCalls + (usage.apiCalls ?? 0),
+      storageUsed: currentUsage.storageUsed + (usage.storageUsed ?? 0),
+      usersActive: Math.max(currentUsage.usersActive, usage.usersActive ?? currentUsage.usersActive),
+      llmTokens: (currentUsage.llmTokens ?? 0) + (usage.llmTokens ?? 0),
+      llmCostUSD: (currentUsage.llmCostUSD ?? 0) + (usage.llmCostUSD ?? 0),
     };
 
     await db

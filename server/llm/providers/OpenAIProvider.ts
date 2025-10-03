@@ -74,11 +74,17 @@ export class OpenAIProvider implements LLMProvider {
       })) ?? undefined;
 
       // Calculate usage
-      const usage = data.usage ? {
-        promptTokens: data.usage.prompt_tokens,
-        completionTokens: data.usage.completion_tokens,
-        costUSD: this.calculateCost(model, data.usage)
-      } : undefined;
+      const usage = data.usage
+        ? {
+            promptTokens: data.usage.prompt_tokens,
+            completionTokens: data.usage.completion_tokens,
+            totalTokens:
+              typeof data.usage.total_tokens === 'number'
+                ? data.usage.total_tokens
+                : (data.usage.prompt_tokens ?? 0) + (data.usage.completion_tokens ?? 0),
+            costUSD: this.calculateCost(model, data.usage)
+          }
+        : undefined;
 
       const text = msg?.content ?? undefined;
       let json;
@@ -88,7 +94,9 @@ export class OpenAIProvider implements LLMProvider {
         json = safeParse(text);
       }
 
-      return { text, json, toolCalls, usage };
+      const tokensUsed = usage?.totalTokens;
+
+      return { text, json, toolCalls, usage, tokensUsed };
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('OpenAI request was aborted');

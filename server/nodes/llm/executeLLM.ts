@@ -73,9 +73,28 @@ export async function runLLMGenerate(params: any, ctx: any) {
       responseFormat: 'text'
     });
 
+    const tokensUsed = result.tokensUsed
+      ?? (result.usage?.totalTokens ?? ((result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0)));
+    const costUSD = result.usage?.costUSD ?? 0;
+
+    if ((tokensUsed ?? 0) > 0 || costUSD > 0) {
+      llmBudgetAndCache.recordUsage({
+        userId: ctx.userId,
+        workflowId: ctx.workflowId,
+        organizationId: ctx.organizationId,
+        provider,
+        model,
+        tokensUsed: tokensUsed ?? 0,
+        costUSD,
+        executionId: ctx.executionId || 'unknown',
+        nodeId: ctx.nodeId || 'unknown'
+      });
+    }
+
     return {
       text: result.text,
       usage: result.usage,
+      tokensUsed: tokensUsed ?? 0,
       model: model,
       provider: provider
     };
@@ -116,12 +135,14 @@ export async function runLLMExtract(params: any, ctx: any) {
     const cachedResponse = llmBudgetAndCache.getCachedResponse(cacheKey, model, provider);
     
     if (cachedResponse) {
+      const cachedTokens = cachedResponse.tokensUsed ?? 0;
       return {
         json: JSON.parse(cachedResponse.response),
         extracted: JSON.parse(cachedResponse.response),
         usage: {
-          promptTokens: cachedResponse.tokensUsed,
+          promptTokens: 0,
           completionTokens: 0,
+          totalTokens: 0,
           costUSD: 0 // Cache hit = $0 cost
         },
         model: model,
@@ -133,7 +154,12 @@ export async function runLLMExtract(params: any, ctx: any) {
           originalResponse: cachedResponse.response,
           finalResponse: cachedResponse.response
         },
-        cached: true
+        cached: true,
+        tokensUsed: 0,
+        cacheSavings: {
+          tokensSaved: cachedTokens,
+          costSaved: cachedResponse.costUSD ?? 0
+        }
       };
     }
 
@@ -191,14 +217,20 @@ export async function runLLMExtract(params: any, ctx: any) {
     }
 
     // Record usage for budget tracking
-    const actualCost = result.usage?.costUSD || estimatedCost;
-    const actualTokens = result.usage?.promptTokens && result.usage?.completionTokens 
-      ? result.usage.promptTokens + result.usage.completionTokens 
-      : estimatedTokens;
+    const actualCost = result.usage?.costUSD ?? estimatedCost;
+    const usageTokenEstimate =
+      result.usage && (result.usage.promptTokens !== undefined || result.usage.completionTokens !== undefined)
+        ? (result.usage.promptTokens ?? 0) + (result.usage.completionTokens ?? 0)
+        : undefined;
+    const actualTokens = result.tokensUsed
+      ?? result.usage?.totalTokens
+      ?? usageTokenEstimate
+      ?? estimatedTokens;
 
     llmBudgetAndCache.recordUsage({
       userId: ctx.userId,
       workflowId: ctx.workflowId,
+      organizationId: ctx.organizationId,
       provider,
       model,
       tokensUsed: actualTokens,
@@ -223,6 +255,7 @@ export async function runLLMExtract(params: any, ctx: any) {
       json: extractedData,
       extracted: extractedData, // Alias for backward compatibility
       usage: result.usage,
+      tokensUsed: actualTokens,
       model: model,
       provider: provider,
       validation: {
@@ -274,8 +307,26 @@ export async function runLLMClassify(params: any, ctx: any) {
       maxTokens: 50 // Classifications should be short
     });
 
+    const tokensUsed = result.tokensUsed
+      ?? (result.usage?.totalTokens ?? ((result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0)));
+    const costUSD = result.usage?.costUSD ?? 0;
+
+    if ((tokensUsed ?? 0) > 0 || costUSD > 0) {
+      llmBudgetAndCache.recordUsage({
+        userId: ctx.userId,
+        workflowId: ctx.workflowId,
+        organizationId: ctx.organizationId,
+        provider,
+        model,
+        tokensUsed: tokensUsed ?? 0,
+        costUSD,
+        executionId: ctx.executionId || 'unknown',
+        nodeId: ctx.nodeId || 'unknown'
+      });
+    }
+
     const label = (result.text || '').trim();
-    
+
     // Validate that the returned label is in the allowed classes
     if (!classes.includes(label)) {
       // Try to find a close match (case insensitive)
@@ -287,6 +338,7 @@ export async function runLLMClassify(params: any, ctx: any) {
           label: matchedClass,
           confidence: 'medium',
           usage: result.usage,
+          tokensUsed: tokensUsed ?? 0,
           model: model,
           provider: provider
         };
@@ -299,6 +351,7 @@ export async function runLLMClassify(params: any, ctx: any) {
       label,
       confidence: 'high',
       usage: result.usage,
+      tokensUsed: tokensUsed ?? 0,
       model: model,
       provider: provider
     };
@@ -349,11 +402,30 @@ export async function runLLMToolCall(params: any, ctx: any) {
       maxTokens: maxTokens ?? 1024
     });
 
+    const tokensUsed = result.tokensUsed
+      ?? (result.usage?.totalTokens ?? ((result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0)));
+    const costUSD = result.usage?.costUSD ?? 0;
+
+    if ((tokensUsed ?? 0) > 0 || costUSD > 0) {
+      llmBudgetAndCache.recordUsage({
+        userId: ctx.userId,
+        workflowId: ctx.workflowId,
+        organizationId: ctx.organizationId,
+        provider,
+        model,
+        tokensUsed: tokensUsed ?? 0,
+        costUSD,
+        executionId: ctx.executionId || 'unknown',
+        nodeId: ctx.nodeId || 'unknown'
+      });
+    }
+
     return {
       toolCalls: result.toolCalls || [],
       text: result.text,
       hasToolCalls: Boolean(result.toolCalls && result.toolCalls.length > 0),
       usage: result.usage,
+      tokensUsed: tokensUsed ?? 0,
       model: model,
       provider: provider
     };
