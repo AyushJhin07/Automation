@@ -49,7 +49,7 @@
     {
       "id": "ci-smoke",
       "title": "CI smoke tests for execute/test",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "recipes",

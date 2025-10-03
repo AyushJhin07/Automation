@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 
 import { IntegrationManager } from '../IntegrationManager.js';
 import { APICredentials } from '../BaseAPIClient.js';
 import { IMPLEMENTED_CONNECTOR_IDS } from '../supportedApps.js';
+import { ConnectorSimulator } from '../../testing/ConnectorSimulator.js';
 
 const manager = new IntegrationManager();
 
@@ -257,4 +259,33 @@ for (const appId of IMPLEMENTED_CONNECTOR_IDS) {
 console.log(
   'IntegrationManager createAPIClient returns concrete clients for:',
   IMPLEMENTED_CONNECTOR_IDS.join(', ')
+);
+
+const simulator = new ConnectorSimulator({
+  fixturesDir: resolve(process.cwd(), 'server', 'testing', 'fixtures'),
+  enabled: true,
+  strict: true,
+});
+
+const simulatedManager = new IntegrationManager({ simulator, useSimulator: true });
+
+const simulatedInit = await simulatedManager.initializeIntegration({
+  appName: 'gmail',
+  credentials: { accessToken: 'ignored-in-simulator' },
+});
+
+assert.equal(simulatedInit.success, true, 'Simulator-backed initializeIntegration should succeed.');
+
+const simulatedExecution = await simulatedManager.executeFunction({
+  appName: 'gmail',
+  functionId: 'send_email',
+  parameters: {},
+  credentials: { accessToken: 'ignored-in-simulator' },
+});
+
+assert.equal(simulatedExecution.success, true, 'Simulator-backed executeFunction should succeed.');
+assert.equal(
+  (simulatedExecution.data as any)?.id,
+  'simulated-message-id',
+  'Simulator should return fixture payload for Gmail send_email.'
 );

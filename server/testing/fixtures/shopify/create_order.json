@@ -1,0 +1,102 @@
+{
+  "description": "Simulated Shopify create_order action creating an order with a single line item.",
+  "defaults": {
+    "credentials": {
+      "accessToken": "shpat_simulated_token",
+      "shopDomain": "simulated-shop"
+    },
+    "notes": "Connector simulator fixture for Shopify create_order"
+  },
+  "params": {
+    "line_items": [
+      {
+        "title": "Simulator Tee",
+        "quantity": 1,
+        "price": "29.00"
+      }
+    ],
+    "customer": {
+      "email": "customer@example.com",
+      "first_name": "Sim",
+      "last_name": "User"
+    },
+    "billing_address": {
+      "first_name": "Sim",
+      "last_name": "User",
+      "address1": "123 Simulation Way",
+      "city": "Testville",
+      "province": "CA",
+      "country": "US",
+      "zip": "94016"
+    }
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://simulated-shop.myshopify.com/admin/api/2023-10/orders.json",
+    "body": {
+      "order": {
+        "line_items": [
+          {
+            "title": "Simulator Tee",
+            "quantity": 1,
+            "price": "29.00"
+          }
+        ],
+        "customer": {
+          "email": "customer@example.com",
+          "first_name": "Sim",
+          "last_name": "User"
+        },
+        "billing_address": {
+          "first_name": "Sim",
+          "last_name": "User",
+          "address1": "123 Simulation Way",
+          "city": "Testville",
+          "province": "CA",
+          "country": "US",
+          "zip": "94016"
+        }
+      }
+    }
+  },
+  "response": {
+    "status": 201,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "order": {
+        "id": 9876543210,
+        "name": "#SIM-1001",
+        "email": "customer@example.com",
+        "financial_status": "paid",
+        "fulfillment_status": "unfulfilled",
+        "line_items": [
+          {
+            "name": "Simulator Tee",
+            "quantity": 1,
+            "price": "29.00"
+          }
+        ]
+      }
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "order": {
+        "id": 9876543210,
+        "name": "#SIM-1001",
+        "financial_status": "paid",
+        "fulfillment_status": "unfulfilled",
+        "line_items": [
+          {
+            "name": "Simulator Tee",
+            "quantity": 1,
+            "price": "29.00"
+          }
+        ]
+      }
+    }
+  }
+}

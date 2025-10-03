@@ -1,5 +1,6 @@
 // Load environment variables as the very first thing
 import dotenv from 'dotenv';
+import { resolve } from 'node:path';
 
 // Load .env file
 dotenv.config();
@@ -31,6 +32,10 @@ if (environment === 'production') {
 }
 
 // Export environment variables for easy access
+const CONNECTOR_SIMULATOR_FIXTURES_DIR = process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR
+  ? resolve(process.cwd(), process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR)
+  : resolve(process.cwd(), 'server', 'testing', 'fixtures');
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV,
   DATABASE_URL: process.env.DATABASE_URL,
@@ -44,6 +49,8 @@ export const env = {
   SERVER_PUBLIC_URL: process.env.SERVER_PUBLIC_URL || '',
   ENABLE_LLM_FEATURES: process.env.ENABLE_LLM_FEATURES === 'true',
   GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true',
+  CONNECTOR_SIMULATOR_ENABLED: process.env.CONNECTOR_SIMULATOR_ENABLED === 'true',
+  CONNECTOR_SIMULATOR_FIXTURES_DIR,
   QUEUE_REDIS_HOST: process.env.QUEUE_REDIS_HOST || '127.0.0.1',
   QUEUE_REDIS_PORT: Number.parseInt(process.env.QUEUE_REDIS_PORT ?? '6379', 10),
   QUEUE_REDIS_DB: Number.parseInt(process.env.QUEUE_REDIS_DB ?? '0', 10),
@@ -64,5 +71,6 @@ export const env = {
 } as const;
 
 export const FLAGS = {
-  GENERIC_EXECUTOR_ENABLED: (process.env.GENERIC_EXECUTOR_ENABLED === 'true')
+  GENERIC_EXECUTOR_ENABLED: (process.env.GENERIC_EXECUTOR_ENABLED === 'true'),
+  CONNECTOR_SIMULATOR_ENABLED: (process.env.CONNECTOR_SIMULATOR_ENABLED === 'true'),
 } as const;

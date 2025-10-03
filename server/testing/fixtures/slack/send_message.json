@@ -1,0 +1,54 @@
+{
+  "description": "Simulated Slack send_message action posting to a channel with a bot token.",
+  "defaults": {
+    "credentials": {
+      "botToken": "xoxb-simulated-slack-token"
+    },
+    "notes": "Connector simulator fixture for Slack send_message"
+  },
+  "params": {
+    "channel": "C0123456789",
+    "text": "Connector simulator smoke message"
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://slack.com/api/chat.postMessage",
+    "headers": {
+      "authorization": "Bearer xoxb-simulated-slack-token"
+    },
+    "body": {
+      "channel": "C0123456789",
+      "text": "Connector simulator smoke message",
+      "as_user": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true,
+      "channel": "C0123456789",
+      "ts": "1735689600.000100",
+      "message": {
+        "text": "Connector simulator smoke message",
+        "user": "USIMULATOR",
+        "bot_id": "BSIM12345"
+      }
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "ok": true,
+      "channel": "C0123456789",
+      "ts": "1735689600.000100",
+      "message": {
+        "text": "Connector simulator smoke message",
+        "user": "USIMULATOR",
+        "bot_id": "BSIM12345"
+      }
+    }
+  }
+}

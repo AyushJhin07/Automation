@@ -27,3 +27,6 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
 - Run `npm run smoke:connectors` to execute `testConnection` plus the configured
   actions/triggers for every registered connector. Results include pass/fail
   summaries you can attach to release checklists.
+- CI runs `npm run ci:smoke`, which exercises the suite against the connector
+  simulator fixtures in `server/testing/fixtures` so that smoke coverage is
+  available without live credentials.

@@ -13,6 +13,7 @@ import { genericExecutor } from './GenericExecutor';
 import { env } from '../env';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
+import { ConnectorSimulator } from '../testing/ConnectorSimulator';
 
 export interface IntegrationConfig {
   appName: string;
@@ -48,9 +49,34 @@ export interface DynamicOptionRequest {
   context?: DynamicOptionHandlerContext;
 }
 
+export interface IntegrationManagerOptions {
+  simulator?: ConnectorSimulator | null;
+  useSimulator?: boolean;
+  simulatorFixturesDir?: string;
+  simulatorStrict?: boolean;
+}
+
 export class IntegrationManager {
   private clients: Map<string, BaseAPIClient> = new Map();
   private supportedApps = new Set(IMPLEMENTED_CONNECTOR_IDS);
+  private simulator?: ConnectorSimulator;
+
+  constructor(options: IntegrationManagerOptions = {}) {
+    const shouldUseSimulator = options.useSimulator ?? env.CONNECTOR_SIMULATOR_ENABLED;
+
+    if (options.simulator) {
+      this.simulator = options.simulator;
+      if (shouldUseSimulator) {
+        this.simulator.setEnabled(true);
+      }
+    } else if (shouldUseSimulator) {
+      this.simulator = new ConnectorSimulator({
+        fixturesDir: options.simulatorFixturesDir ?? env.CONNECTOR_SIMULATOR_FIXTURES_DIR,
+        enabled: true,
+        strict: options.simulatorStrict ?? false,
+      });
+    }
+  }
 
   private buildClientKey(appKey: string, connectionId?: string): string {
     return connectionId ? `${appKey}::${connectionId}` : appKey;
@@ -189,6 +215,13 @@ export class IntegrationManager {
       const appKey = this.normalizeAppId(config.appName);
       const clientKey = this.buildClientKey(appKey, config.connectionId);
 
+      if (this.simulator?.isEnabled()) {
+        const simulated = await this.simulator.initializeIntegration(appKey, config);
+        if (simulated) {
+          return simulated;
+        }
+      }
+
       if (!this.supportedApps.has(appKey)) {
         if (env.GENERIC_EXECUTOR_ENABLED) {
           // Try a generic test connection; if passes, mark as connected in memory-less mode
@@ -251,6 +284,26 @@ export class IntegrationManager {
     const clientKey = this.buildClientKey(appKey, params.connectionId);
 
     try {
+      if (this.simulator?.isEnabled()) {
+        const simulated = await this.simulator.executeFunction({
+          appName: params.appName,
+          appKey,
+          functionId: params.functionId,
+          parameters: params.parameters,
+        });
+
+        if (simulated) {
+          return {
+            success: simulated.success,
+            data: simulated.data,
+            error: simulated.error,
+            appName: params.appName,
+            functionId: params.functionId,
+            executionTime: Date.now() - startTime,
+          };
+        }
+      }
+
       // Check if app is supported; if not, try generic executor when enabled
       if (!this.supportedApps.has(appKey)) {
         if (env.GENERIC_EXECUTOR_ENABLED) {
@@ -368,6 +421,16 @@ export class IntegrationManager {
     const appKey = this.normalizeAppId(appName);
 
     try {
+      if (this.simulator?.isEnabled()) {
+        const simulated = await this.simulator.initializeIntegration(appKey, {
+          appName,
+          credentials,
+        });
+        if (simulated) {
+          return simulated;
+        }
+      }
+
       const client = this.createAPIClient(appKey, credentials);
       if (client) {
         return await client.testConnection();
@@ -878,7 +941,10 @@ export class IntegrationManager {
 }
 
 // Export singleton instance
-export const integrationManager = new IntegrationManager();
+export const integrationManager = new IntegrationManager({
+  useSimulator: env.CONNECTOR_SIMULATOR_ENABLED,
+  simulatorFixturesDir: env.CONNECTOR_SIMULATOR_FIXTURES_DIR,
+});
 
 // Convenience method for routes needing an API client instance
 export type { BaseAPIClient } from './BaseAPIClient';
