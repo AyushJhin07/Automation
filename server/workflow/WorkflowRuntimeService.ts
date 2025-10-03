@@ -892,6 +892,16 @@ export class WorkflowRuntimeService {
 
       const credentials = { ...context.credentials };
 
+      if (context.networkAllowlist) {
+        (credentials as APICredentials).__organizationNetworkAllowlist = context.networkAllowlist;
+      }
+
+      (credentials as APICredentials).__organizationId = context.connection.organizationId;
+      (credentials as APICredentials).__connectionId = context.connection.id;
+      if (userId) {
+        (credentials as APICredentials).__userId = userId;
+      }
+
       return {
         success: true,
         credentials,

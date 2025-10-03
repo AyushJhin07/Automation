@@ -142,6 +142,8 @@ export class OrganizationService {
 
   private readonly DEFAULT_SECURITY: OrganizationSecuritySettings = {
     ipWhitelist: [],
+    allowedDomains: [],
+    allowedIpRanges: [],
     mfaRequired: false,
     sessionTimeout: 480,
     passwordPolicy: {
@@ -160,6 +162,53 @@ export class OrganizationService {
     dataResidency: 'us',
     retentionPolicyDays: 2555,
   };
+
+  private normalizeSecuritySettings(
+    security?: OrganizationSecuritySettings | null
+  ): OrganizationSecuritySettings {
+    const base = this.DEFAULT_SECURITY;
+    const input = security ?? ({} as OrganizationSecuritySettings);
+
+    const normalizeList = (values: unknown): string[] => {
+      if (!Array.isArray(values)) {
+        return [];
+      }
+      return Array.from(
+        new Set(
+          values
+            .map((value) => (typeof value === 'string' ? value.trim() : String(value ?? '').trim()))
+            .filter((value) => value.length > 0)
+            .map((value) => value.toLowerCase())
+        )
+      );
+    };
+
+    return {
+      ...base,
+      ...input,
+      ipWhitelist: Array.isArray(input.ipWhitelist) ? input.ipWhitelist : base.ipWhitelist,
+      allowedDomains: normalizeList((input as any).allowedDomains ?? base.allowedDomains),
+      allowedIpRanges: normalizeList((input as any).allowedIpRanges ?? base.allowedIpRanges),
+      passwordPolicy: {
+        ...base.passwordPolicy,
+        ...(input?.passwordPolicy ?? {}),
+      },
+    };
+  }
+
+  private sanitizeAllowlistInput(values: unknown): string[] {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+    return Array.from(
+      new Set(
+        values
+          .map((value) => (typeof value === 'string' ? value.trim() : String(value ?? '').trim()))
+          .filter((value) => value.length > 0)
+          .map((value) => value.toLowerCase())
+      )
+    );
+  }
 
   public async createOrganizationForUser(
     user: { id: string; email: string; name?: string | null },
@@ -202,7 +251,7 @@ export class OrganizationService {
           limits,
         },
         features,
-        security: this.DEFAULT_SECURITY,
+        security: this.normalizeSecuritySettings(this.DEFAULT_SECURITY),
         branding: {
           companyName: name,
           supportEmail: domain ? `support@${domain}` : 'support@example.com',
@@ -295,7 +344,7 @@ export class OrganizationService {
       lastActiveAt: membership.lastActiveAt,
       subdomain: organization.subdomain,
       features,
-      security: this.DEFAULT_SECURITY,
+      security: this.normalizeSecuritySettings(this.DEFAULT_SECURITY),
       branding: organization.branding,
       compliance: organization.compliance,
     };
@@ -572,6 +621,54 @@ export class OrganizationService {
     return result.length > 0;
   }
 
+  public async getSecuritySettings(organizationId: string): Promise<OrganizationSecuritySettings> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const [record] = await db
+      .select({ security: organizations.security })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    if (!record) {
+      throw new Error('Organization not found');
+    }
+
+    return this.normalizeSecuritySettings(record.security as OrganizationSecuritySettings | null);
+  }
+
+  public async updateNetworkAllowlist(
+    organizationId: string,
+    updates: { allowedDomains?: string[]; allowedIpRanges?: string[] }
+  ): Promise<OrganizationSecuritySettings> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const current = await this.getSecuritySettings(organizationId);
+
+    const next: OrganizationSecuritySettings = {
+      ...current,
+      allowedDomains:
+        updates.allowedDomains !== undefined
+          ? this.sanitizeAllowlistInput(updates.allowedDomains)
+          : current.allowedDomains,
+      allowedIpRanges:
+        updates.allowedIpRanges !== undefined
+          ? this.sanitizeAllowlistInput(updates.allowedIpRanges)
+          : current.allowedIpRanges,
+    };
+
+    await db
+      .update(organizations)
+      .set({ security: next, updatedAt: new Date() })
+      .where(eq(organizations.id, organizationId));
+
+    return next;
+  }
+
   public async recordUsage(
     organizationId: string,
     usage: Partial<OrganizationUsageMetrics>
@@ -648,7 +745,7 @@ export class OrganizationService {
       lastActiveAt: membership.lastActiveAt,
       subdomain: organization.subdomain,
       features: organization.features as OrganizationFeatureFlags,
-      security: organization.security as OrganizationSecuritySettings,
+      security: this.normalizeSecuritySettings(organization.security as OrganizationSecuritySettings | null),
       branding: organization.branding as OrganizationBranding,
       compliance: organization.compliance as OrganizationComplianceSettings,
     };

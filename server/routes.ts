@@ -49,6 +49,7 @@ import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
 import { env } from './env';
+import organizationSecurityRoutes from "./routes/organization-security";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -157,6 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Organization role management APIs
   app.use('/api/organizations', organizationRoleRoutes);
+  app.use('/api/organizations', organizationSecurityRoutes);
 
   // (removed duplicate /api/ai/models in favor of aiRouter.get('/models'))
   

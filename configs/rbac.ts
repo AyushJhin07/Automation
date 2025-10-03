@@ -14,6 +14,8 @@ export type Permission =
   | 'organization:remove_member'
   | 'organization:manage_roles'
   | 'organization:view_usage'
+  | 'organization:manage_security'
+  | 'organization:view_security_audit'
   | 'billing:manage';
 
 export interface RolePermissionMatrix {
@@ -35,6 +37,8 @@ const OWNER_PERMISSIONS: Permission[] = [
   'organization:remove_member',
   'organization:manage_roles',
   'organization:view_usage',
+  'organization:manage_security',
+  'organization:view_security_audit',
   'billing:manage',
 ];
 
