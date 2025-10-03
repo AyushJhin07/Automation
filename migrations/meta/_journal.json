@@ -36,6 +36,13 @@
       "when": 1759132944664,
       "tag": "0004_polling_triggers_backoff",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1759132945664,
+      "tag": "0007_execution_node_logs",
+      "breakpoints": true
     }
   ]
 }
