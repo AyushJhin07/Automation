@@ -38,6 +38,13 @@ export interface RateLimitInfo {
   resetTime: number;
 }
 
+type TokenRefreshPayload = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number | string | null;
+  [key: string]: any;
+};
+
 export abstract class BaseAPIClient {
   private static readonly ajv = new Ajv({ allErrors: true, strict: false });
   private static readonly schemaCache = new WeakMap<object, ValidateFunction>();
@@ -60,6 +67,53 @@ export abstract class BaseAPIClient {
     this.baseURL = baseURL;
     this.credentials = credentials;
     this.__functionHandlers = new Map();
+  }
+
+  protected async applyTokenRefresh(update: TokenRefreshPayload): Promise<void> {
+    this.credentials.accessToken = update.accessToken;
+
+    if (update.refreshToken !== undefined) {
+      this.credentials.refreshToken = update.refreshToken;
+    }
+
+    const rawExpiresAt = update.expiresAt;
+    if (rawExpiresAt !== undefined) {
+      const expiresAt =
+        typeof rawExpiresAt === 'string'
+          ? Date.parse(rawExpiresAt)
+          : typeof rawExpiresAt === 'number'
+            ? rawExpiresAt
+            : null;
+
+      if (expiresAt && Number.isFinite(expiresAt)) {
+        (this.credentials as Record<string, any>).expiresAt = expiresAt;
+      } else {
+        delete (this.credentials as Record<string, any>).expiresAt;
+      }
+    }
+
+    for (const [key, value] of Object.entries(update)) {
+      if (key === 'accessToken' || key === 'refreshToken' || key === 'expiresAt') {
+        continue;
+      }
+      if (value !== undefined) {
+        (this.credentials as Record<string, any>)[key] = value;
+      }
+    }
+
+    const callback = this.credentials.onTokenRefreshed;
+    if (typeof callback === 'function') {
+      await callback({
+        accessToken: this.credentials.accessToken ?? update.accessToken,
+        refreshToken: this.credentials.refreshToken,
+        expiresAt:
+          typeof (this.credentials as Record<string, any>).expiresAt === 'number'
+            ? (this.credentials as Record<string, any>).expiresAt
+            : typeof rawExpiresAt === 'number'
+              ? rawExpiresAt
+              : undefined,
+      });
+    }
   }
 
   /**

@@ -88,26 +88,35 @@ async function runConnectionIdAuthRegression(): Promise<void> {
   };
 
   let getFreshCalled = 0;
+  const baseConnection = {
+    id: 'conn-auth-1',
+    userId: 'user-auth',
+    organizationId: 'org-auth',
+    name: 'Auth Connection',
+    provider: 'sheets',
+    type: 'saas',
+    credentials: { local: true, accessToken: 'refreshed-access-token' },
+    metadata: { additionalConfig: { sandbox: true }, expiresAt: new Date(Date.now() + 3600000).toISOString() },
+    iv: 'iv',
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
   const mockConnectionService = {
-    async getConnectionWithFreshTokens(connectionId: string, userId: string, organizationId: string) {
+    async prepareConnectionForClient({ connectionId, userId, organizationId }: { connectionId?: string; userId: string; organizationId: string; }) {
       getFreshCalled++;
       assert.equal(connectionId, 'conn-auth-1', 'Runtime should request the configured connection id');
       assert.equal(userId, 'user-auth', 'Runtime should request connection for current user');
       assert.equal(organizationId, 'org-auth', 'Runtime should include organization when resolving connection');
       return {
-        id: connectionId,
-        userId,
-        organizationId,
-        name: 'Auth Connection',
-        provider: 'sheets',
-        type: 'saas',
-        credentials: { local: true, accessToken: 'refreshed-access-token' },
-        metadata: { additionalConfig: { sandbox: true }, expiresAt: new Date(Date.now() + 3600000).toISOString() },
-        iv: 'iv',
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        connection: { ...baseConnection },
+        credentials: { ...baseConnection.credentials, onTokenRefreshed: async () => {} }
       };
+    },
+    async getConnectionWithFreshTokens(connectionId: string, userId: string, organizationId: string) {
+      const context = await this.prepareConnectionForClient({ connectionId, userId, organizationId });
+      return context?.connection ?? null;
     }
   };
 
@@ -166,11 +175,16 @@ async function runConnectionIdAuthRegression(): Promise<void> {
       'Action node should return append_row metadata when using stored connection'
     );
 
-    assert.equal(getFreshCalled, 1, 'Runtime should request refreshed connection credentials once');
+    assert.equal(getFreshCalled, 1, 'Runtime should resolve connection credentials once');
     assert.equal(
       receivedCredentials?.accessToken,
       'refreshed-access-token',
       'Integration manager should receive updated OAuth tokens'
+    );
+    assert.equal(
+      typeof receivedCredentials?.onTokenRefreshed,
+      'function',
+      'Integration manager should receive token refresh hook'
     );
   } finally {
     integrationManager.executeFunction = originalExecuteFunction;

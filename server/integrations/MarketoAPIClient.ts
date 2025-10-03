@@ -154,13 +154,14 @@ export class MarketoAPIClient extends BaseAPIClient {
         }
 
         const payload = await response.json();
-        this.credentials.accessToken = payload.access_token;
-        if (payload.refresh_token) {
-          this.credentials.refreshToken = payload.refresh_token;
-        }
-        if (payload.expires_in) {
-          (this.credentials as MarketoCredentials).expiresAt = Date.now() + Number(payload.expires_in) * 1000;
-        }
+        const expiresAt = payload.expires_in ? Date.now() + Number(payload.expires_in) * 1000 : undefined;
+        await this.applyTokenRefresh({
+          accessToken: payload.access_token,
+          refreshToken: payload.refresh_token,
+          expiresAt,
+          tokenType: payload.token_type,
+          scope: payload.scope,
+        });
         this.refreshPromise = undefined;
       })().catch(error => {
         this.refreshPromise = undefined;

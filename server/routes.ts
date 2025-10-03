@@ -22,7 +22,7 @@ import { RealAIService, ConversationManager } from "./realAIService";
 
 // Production services
 import { authService } from "./services/AuthService";
-import { connectionService, ConnectionService } from "./services/ConnectionService";
+import { connectionService, ConnectionService, type AutoRefreshContext } from "./services/ConnectionService";
 import { LLMProviderService } from "./services/LLMProviderService.js";
 import { productionLLMOrchestrator } from "./services/ProductionLLMOrchestrator";
 import { productionGraphCompiler } from "./core/ProductionGraphCompiler";
@@ -1137,27 +1137,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let { appName, functionId, parameters, credentials, connectionId, provider } = op;
         if ((!credentials) && (connectionId || provider)) {
           const userId = req.user!.id;
-          let conn = null as any;
+          let context = null as AutoRefreshContext | null;
           if (connectionId) {
-            conn = await connectionService.getConnectionWithFreshTokens(
-              String(connectionId),
+            context = await connectionService.prepareConnectionForClient({
+              connectionId: String(connectionId),
               userId,
-              req.organizationId
-            );
+              organizationId: req.organizationId,
+            });
           } else if (provider) {
-            conn = await connectionService.getConnectionByProviderWithFreshTokens(
+            context = await connectionService.prepareConnectionForClient({
+              provider: String(provider),
               userId,
-              req.organizationId,
-              String(provider)
-            );
+              organizationId: req.organizationId,
+            });
           }
-          if (!conn) {
+          if (!context) {
             results.push({ success: false, error: 'Connection not found', appName, functionId });
             continue;
           }
-          credentials = conn.credentials;
-          appName = appName || conn.provider;
-          connectionId = conn.id;
+          credentials = context.credentials;
+          appName = appName || context.connection.provider;
+          connectionId = context.connection.id;
         }
         if (!appName || !functionId) {
           results.push({ success: false, error: 'Missing appName/functionId', appName, functionId });
@@ -1920,27 +1920,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
-        let conn = null as any;
+        let context = null as AutoRefreshContext | null;
         if (connectionId) {
-          conn = await connectionService.getConnectionWithFreshTokens(
-            String(connectionId),
+          context = await connectionService.prepareConnectionForClient({
+            connectionId: String(connectionId),
             userId,
-            req.organizationId
-          );
+            organizationId: req.organizationId,
+          });
         } else if (provider) {
-          conn = await connectionService.getConnectionByProviderWithFreshTokens(
+          context = await connectionService.prepareConnectionForClient({
+            provider: String(provider),
             userId,
-            req.organizationId,
-            String(provider)
-          );
+            organizationId: req.organizationId,
+          });
         }
-        if (!conn) {
+        if (!context) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
         }
-        credentials = conn.credentials;
-        additionalConfig = { ...(conn.metadata || {}), ...(additionalConfig || {}) };
-        appName = appName || conn.provider;
-        connectionId = conn.id;
+        credentials = context.credentials;
+        additionalConfig = { ...(context.connection.metadata || {}), ...(additionalConfig || {}) };
+        appName = appName || context.connection.provider;
+        connectionId = context.connection.id;
       }
 
       if (!appName || !functionId || !parameters || !credentials) {
@@ -1999,27 +1999,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
-        let conn = null as any;
+        let context = null as AutoRefreshContext | null;
         if (connectionId) {
-          conn = await connectionService.getConnectionWithFreshTokens(
-            String(connectionId),
+          context = await connectionService.prepareConnectionForClient({
+            connectionId: String(connectionId),
             userId,
-            req.organizationId
-          );
+            organizationId: req.organizationId,
+          });
         } else if (provider) {
-          conn = await connectionService.getConnectionByProviderWithFreshTokens(
+          context = await connectionService.prepareConnectionForClient({
+            provider: String(provider),
             userId,
-            req.organizationId,
-            String(provider)
-          );
+            organizationId: req.organizationId,
+          });
         }
-        if (!conn) {
+        if (!context) {
           return res.status(404).json({ success: false, error: 'Connection not found' });
         }
-        credentials = conn.credentials;
-        additionalConfig = { ...(conn.metadata || {}), ...(additionalConfig || {}) };
-        appName = appName || conn.provider;
-        connectionId = conn.id;
+        credentials = context.credentials;
+        additionalConfig = { ...(context.connection.metadata || {}), ...(additionalConfig || {}) };
+        appName = appName || context.connection.provider;
+        connectionId = context.connection.id;
       }
 
       if (!appName || !functionId || !parameters || !credentials) {
@@ -2067,23 +2067,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if ((!credentials) && (connectionId || provider)) {
         const userId = req.user!.id;
-        let conn = null as any;
+        let context = null as AutoRefreshContext | null;
         if (connectionId) {
-          conn = await connectionService.getConnectionWithFreshTokens(
-            String(connectionId),
+          context = await connectionService.prepareConnectionForClient({
+            connectionId: String(connectionId),
             userId,
-            req.organizationId
-          );
+            organizationId: req.organizationId,
+          });
         } else if (provider) {
-          conn = await connectionService.getConnectionByProviderWithFreshTokens(
+          context = await connectionService.prepareConnectionForClient({
+            provider: String(provider),
             userId,
-            req.organizationId,
-            String(provider)
-          );
+            organizationId: req.organizationId,
+          });
         }
-        if (!conn) return res.status(404).json({ success: false, error: 'Connection not found' });
-        credentials = conn.credentials;
-        appName = appName || conn.provider;
+        if (!context) return res.status(404).json({ success: false, error: 'Connection not found' });
+        credentials = context.credentials;
+        appName = appName || context.connection.provider;
       }
       const { genericExecutor } = await import('./integrations/GenericExecutor.js');
       const resp = await genericExecutor.executePaginated({
@@ -3834,19 +3834,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalConnections++;
 
         try {
-          const hydrated = await connectionService.getConnectionWithFreshTokens(
-            connection.id,
+          const context = await connectionService.prepareConnectionForClient({
+            connectionId: connection.id,
             userId,
-            req.organizationId
-          );
-          const activeConnection = hydrated ?? connection;
+            organizationId: req.organizationId,
+          });
+          const activeConnection = context?.connection ?? connection;
+          const credentialsToUse = context?.credentials ?? connection.credentials ?? {};
 
           // Use the integrationManager to test the connection
           const testResult = await integrationManager.executeFunction({
             appName: activeConnection.provider,
             functionId: 'test_connection',
             parameters: {},
-            credentials: activeConnection.credentials || {},
+            credentials: credentialsToUse,
             connectionId: activeConnection.id
           });
 
@@ -3929,19 +3930,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let activeConnection = connection;
 
       try {
-        const hydrated = await connectionService.getConnectionWithFreshTokens(
-          connection.id,
+        const context = await connectionService.prepareConnectionForClient({
+          connectionId: connection.id,
           userId,
-          req.organizationId
-        );
-        activeConnection = hydrated ?? connection;
+          organizationId: req.organizationId,
+        });
+        activeConnection = context?.connection ?? connection;
 
         // Test the specific connection
         const testResult = await integrationManager.executeFunction({
           appName: provider,
           functionId: 'test_connection',
           parameters: {},
-          credentials: activeConnection.credentials || {},
+          credentials: context?.credentials ?? activeConnection.credentials || {},
           connectionId: activeConnection.id
         });
 

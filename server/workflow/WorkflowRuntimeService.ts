@@ -876,12 +876,12 @@ export class WorkflowRuntimeService {
         };
       }
 
-      const connection = await service.getConnectionWithFreshTokens(
+      const context = await service.prepareConnectionForClient({
         connectionId,
         userId,
-        organizationId
-      );
-      if (!connection) {
+        organizationId,
+      });
+      if (!context) {
         return {
           success: false,
           error: `Connection not found: ${connectionId}`,
@@ -890,12 +890,14 @@ export class WorkflowRuntimeService {
         };
       }
 
+      const credentials = { ...context.credentials };
+
       return {
         success: true,
-        credentials: this.clone(connection.credentials),
+        credentials,
         source: 'connection',
         connectionId,
-        additionalConfig: this.extractAdditionalConfig(node, connection.metadata || {})
+        additionalConfig: this.extractAdditionalConfig(node, context.connection.metadata || {})
       };
     } catch (error: any) {
       const message = getErrorMessage(error);

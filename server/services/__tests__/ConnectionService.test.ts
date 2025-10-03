@@ -109,6 +109,31 @@ try {
     refreshedConnection?.metadata?.expiresAt && Date.parse(refreshedConnection.metadata.expiresAt) > Date.now(),
     'refreshed metadata should expose a future expiry'
   );
+
+  const autoRefreshContext = await service.prepareConnectionForClient({
+    connectionId: gmailConnectionId,
+    userId: request.userId,
+    organizationId: request.organizationId,
+  });
+
+  assert.ok(autoRefreshContext, 'prepareConnectionForClient should return a context object');
+  assert.equal(
+    typeof autoRefreshContext?.credentials.onTokenRefreshed,
+    'function',
+    'credentials should expose an onTokenRefreshed callback'
+  );
+
+  await autoRefreshContext?.credentials.onTokenRefreshed?.({
+    accessToken: 'auto-refresh-token',
+    expiresAt: Date.now() + 120_000,
+  });
+
+  const persisted = await service.getConnection(gmailConnectionId, request.userId, request.organizationId);
+  assert.equal(persisted?.credentials.accessToken, 'auto-refresh-token', 'persisted connection should include refreshed token');
+  assert.ok(
+    persisted?.metadata?.refreshedAt && Date.parse(persisted.metadata.refreshedAt) <= Date.now(),
+    'metadata should record refreshedAt timestamp after callback'
+  );
 } finally {
   oauthModule.oauthManager.refreshToken = originalRefresh;
 }
