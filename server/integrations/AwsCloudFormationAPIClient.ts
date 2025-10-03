@@ -1,12 +1,6 @@
-import {
-  CloudFormationClient,
-  CreateStackCommand,
-  DeleteStackCommand,
-  DescribeStacksCommand,
-  ListStacksCommand,
-  UpdateStackCommand,
-  type CloudFormationClientConfig
-} from '@aws-sdk/client-cloudformation';
+import type { CloudFormationClientConfig } from './aws/stubs/cloudformation';
+
+import { loadCloudFormationSdk } from './aws/sdk-loader';
 
 import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
 import { getErrorMessage } from '../types/common';
@@ -79,6 +73,15 @@ function sanitizeSessionToken(credentials: AwsCloudFormationCredentials): string
     credentials.accessToken
   );
 }
+
+const {
+  CloudFormationClient,
+  CreateStackCommand,
+  DeleteStackCommand,
+  DescribeStacksCommand,
+  ListStacksCommand,
+  UpdateStackCommand
+} = await loadCloudFormationSdk();
 
 export class AwsCloudFormationAPIClient extends BaseAPIClient {
   private readonly client: CloudFormationClient;

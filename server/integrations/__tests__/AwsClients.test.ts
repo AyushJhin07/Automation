@@ -1,23 +1,26 @@
 import assert from 'node:assert/strict';
 
-import {
+import { loadCloudFormationSdk, loadCodePipelineSdk } from '../aws/sdk-loader.js';
+
+import { AwsCloudFormationAPIClient } from '../AwsCloudFormationAPIClient.js';
+import { AwsCodePipelineAPIClient } from '../AwsCodePipelineAPIClient.js';
+import { getRuntimeOpHandler } from '../../workflow/compiler/op-map.js';
+
+const {
   CreateStackCommand,
   DeleteStackCommand,
   DescribeStacksCommand,
   ListStacksCommand,
   UpdateStackCommand
-} from '@aws-sdk/client-cloudformation';
-import {
+} = await loadCloudFormationSdk();
+
+const {
   CreatePipelineCommand,
   GetPipelineStateCommand,
   ListPipelinesCommand,
   StartPipelineExecutionCommand,
   StopPipelineExecutionCommand
-} from '@aws-sdk/client-codepipeline';
-
-import { AwsCloudFormationAPIClient } from '../AwsCloudFormationAPIClient.js';
-import { AwsCodePipelineAPIClient } from '../AwsCodePipelineAPIClient.js';
-import { getRuntimeOpHandler } from '../../workflow/compiler/op-map.js';
+} = await loadCodePipelineSdk();
 
 class StubAwsClient<TCommand = any> {
   public readonly sent: TCommand[] = [];
