@@ -5,6 +5,11 @@
  */
 
 import { NodeGraph, GraphNode, ParameterContext } from '../../shared/nodeGraphSchema';
+import {
+  createWorkflowNodeMetadataSnapshot,
+  type WorkflowMetadata,
+  type WorkflowMetadataSource,
+} from '../../shared/workflow/metadata';
 import { runLLMGenerate, runLLMExtract, runLLMClassify, runLLMToolCall } from '../nodes/llm/executeLLM';
 import { resolveAllParams } from './ParameterResolver';
 import { retryManager, RetryPolicy } from './RetryManager';
@@ -160,6 +165,7 @@ export class WorkflowRuntime {
 
           const isDelayResult = this.isDelayResult(nodeResult);
           const nodeOutput = isDelayResult ? nodeResult.output : nodeResult;
+          this.captureNodeMetadataSnapshot(context, node, nodeOutput);
           this.captureNodeUsageMetadata(context, node, nodeOutput);
           context.outputs[node.id] = nodeOutput;
           context.prevOutput = nodeOutput;
@@ -865,6 +871,41 @@ export class WorkflowRuntime {
     return Object.keys(metadata).length > 0 ? metadata : null;
   }
 
+  private captureNodeMetadataSnapshot(
+    context: ExecutionContext,
+    node: GraphNode,
+    result: unknown
+  ): void {
+    const inputSources: WorkflowMetadataSource[] = [];
+    const outputSources: WorkflowMetadataSource[] = [];
+
+    const addSource = (value: unknown, collection: WorkflowMetadataSource[]) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+      collection.push(value as WorkflowMetadata);
+    };
+
+    addSource((node as any)?.metadata, inputSources);
+    addSource((node.data as any)?.metadata, inputSources);
+    addSource((node as any)?.outputMetadata, outputSources);
+    addSource((node.data as any)?.outputMetadata, outputSources);
+
+    const snapshot = createWorkflowNodeMetadataSnapshot({
+      nodeId: node.id,
+      inputs: inputSources,
+      outputs: outputSources,
+      runtimeOutput: result,
+      timestamp: new Date(),
+    });
+
+    if (!snapshot) {
+      return;
+    }
+
+    this.setNodeMetadata(context.executionId, node.id, {
+      metadataSnapshots: [snapshot],
+    });
+  }
+
   private resolveUsagePayload(payload: Record<string, any>): any {
     if (payload.usage && typeof payload.usage === 'object') {
       return payload.usage;
@@ -896,7 +937,14 @@ export class WorkflowRuntime {
   private setNodeMetadata(executionId: string, nodeId: string, metadata: NodeExecutionMetadataSnapshot): void {
     const key = this.getMetadataKey(executionId, nodeId);
     const existing = this.nodeMetadata.get(key) || {};
-    this.nodeMetadata.set(key, { ...existing, ...metadata });
+    const merged: NodeExecutionMetadataSnapshot = { ...existing, ...metadata };
+    if (metadata.metadataSnapshots && metadata.metadataSnapshots.length > 0) {
+      const current = Array.isArray(existing.metadataSnapshots)
+        ? existing.metadataSnapshots
+        : [];
+      merged.metadataSnapshots = [...current, ...metadata.metadataSnapshots];
+    }
+    this.nodeMetadata.set(key, merged);
   }
 
   private consumeNodeMetadata(executionId: string, nodeId: string): NodeExecutionMetadataSnapshot {

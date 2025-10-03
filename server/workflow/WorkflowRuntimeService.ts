@@ -5,6 +5,13 @@ import type { ConnectionService } from '../services/ConnectionService.js';
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from './WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
+import {
+  createWorkflowNodeMetadataSnapshot,
+  inferWorkflowMetadataFromValue,
+  type WorkflowMetadata,
+  type WorkflowMetadataSource,
+  type WorkflowNodeMetadataSnapshot,
+} from '@shared/workflow/metadata';
 
 interface WorkflowExecutionContext {
   workflowId: string;
@@ -23,6 +30,7 @@ interface NodeExecutionResult {
   logs: string[];
   parameters: Record<string, any>;
   diagnostics?: Record<string, any>;
+  metadataSnapshot?: WorkflowNodeMetadataSnapshot;
 }
 
 interface CredentialResolutionSuccess {
@@ -105,6 +113,7 @@ export class WorkflowRuntimeService {
     if (role === 'trigger') {
       const triggerOutput = this.buildTriggerOutput(node, resolvedParams);
       context.nodeOutputs[node.id] = triggerOutput;
+      const metadataSnapshot = this.buildMetadataSnapshot(node, resolvedParams, triggerOutput);
 
       return {
         summary: `Prepared trigger ${label}`,
@@ -118,13 +127,15 @@ export class WorkflowRuntimeService {
         diagnostics: {
           role,
           usedSample: Boolean(triggerOutput.__sampleSource)
-        }
+        },
+        metadataSnapshot
       };
     }
 
     if (role === 'transform') {
       const transformOutput = { ...resolvedParams };
       context.nodeOutputs[node.id] = transformOutput;
+      const metadataSnapshot = this.buildMetadataSnapshot(node, resolvedParams, transformOutput);
 
       return {
         summary: `Evaluated transform ${label}`,
@@ -135,7 +146,8 @@ export class WorkflowRuntimeService {
           `Produced ${Object.keys(transformOutput).length} field${Object.keys(transformOutput).length === 1 ? '' : 's'}`
         ],
         parameters: resolvedParams,
-        diagnostics: { role }
+        diagnostics: { role },
+        metadataSnapshot
       };
     }
 
@@ -221,6 +233,7 @@ export class WorkflowRuntimeService {
 
     const output = executionResponse.data ?? null;
     context.nodeOutputs[node.id] = this.prepareContextOutput(output, resolvedParams);
+    const metadataSnapshot = this.buildMetadataSnapshot(node, resolvedParams, output);
 
     return {
       summary: `Executed ${appId}.${functionId}`,
@@ -239,7 +252,8 @@ export class WorkflowRuntimeService {
         functionId,
         credentialsSource: credentialResolution.source,
         executionTime: executionResponse.executionTime
-      }
+      },
+      metadataSnapshot
     };
   }
 
@@ -397,6 +411,8 @@ export class WorkflowRuntimeService {
       ? `Condition matched branch ${matchedLabel ? `"${matchedLabel}"` : matchedBranchValue}`
       : `Evaluated condition ${label}`;
 
+    const metadataSnapshot = this.buildMetadataSnapshot(node, params, output);
+
     return {
       summary,
       output,
@@ -412,7 +428,8 @@ export class WorkflowRuntimeService {
         result: matchedBranchValue === 'true',
         availableBranches: branches,
         evaluationError
-      }
+      },
+      metadataSnapshot
     };
   }
 
@@ -759,6 +776,50 @@ export class WorkflowRuntimeService {
     }
     preview.__truncated = keys.length - 10;
     return preview;
+  }
+
+  private toMetadataSource(value: unknown): WorkflowMetadata | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as WorkflowMetadata;
+  }
+
+  private buildMetadataSnapshot(
+    node: any,
+    params: Record<string, any>,
+    output: unknown
+  ): WorkflowNodeMetadataSnapshot | undefined {
+    const inputs: WorkflowMetadataSource[] = [];
+    const outputs: WorkflowMetadataSource[] = [];
+
+    const pushSource = (collection: WorkflowMetadataSource[], candidate: unknown) => {
+      const source = this.toMetadataSource(candidate);
+      if (source) {
+        collection.push(source);
+      }
+    };
+
+    pushSource(inputs, node?.metadata);
+    pushSource(inputs, node?.data?.metadata);
+
+    const paramMetadata = inferWorkflowMetadataFromValue(params);
+    if (paramMetadata) {
+      inputs.push(paramMetadata);
+    }
+
+    pushSource(outputs, node?.outputMetadata);
+    pushSource(outputs, node?.data?.outputMetadata);
+
+    const snapshot = createWorkflowNodeMetadataSnapshot({
+      nodeId: node?.id ? String(node.id) : undefined,
+      inputs,
+      outputs,
+      runtimeOutput: output,
+      timestamp: new Date(),
+    });
+
+    return snapshot ?? undefined;
   }
 
   private prepareContextOutput(output: any, params: Record<string, any>): any {
