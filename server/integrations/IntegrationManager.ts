@@ -1,7 +1,7 @@
 // INTEGRATION MANAGER - COORDINATES ALL API CLIENTS
 // Provides unified interface for executing functions across all integrated applications
 
-import { BaseAPIClient, APICredentials, APIResponse } from './BaseAPIClient';
+import { BaseAPIClient, APICredentials, APIResponse, DynamicOptionHandlerContext, DynamicOptionResult } from './BaseAPIClient';
 import { AirtableAPIClient } from './AirtableAPIClient';
 import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
@@ -37,6 +37,15 @@ export interface FunctionExecutionResult {
   executionTime?: number;
   appName: string;
   functionId: string;
+}
+
+export interface DynamicOptionRequest {
+  appName: string;
+  handlerId: string;
+  credentials: APICredentials;
+  connectionId?: string;
+  additionalConfig?: Record<string, any>;
+  context?: DynamicOptionHandlerContext;
 }
 
 export class IntegrationManager {
@@ -369,6 +378,89 @@ export class IntegrationManager {
       return {
         success: false,
         error: getErrorMessage(error)
+      };
+    }
+  }
+
+  public async getDynamicOptions(request: DynamicOptionRequest): Promise<DynamicOptionResult> {
+    const appKey = this.normalizeAppId(request.appName);
+    const clientKey = this.buildClientKey(appKey, request.connectionId);
+
+    try {
+      if (!this.supportedApps.has(appKey)) {
+        return {
+          success: false,
+          options: [],
+          error: `Application ${request.appName} does not support dynamic options`,
+        };
+      }
+
+      let client = this.clients.get(clientKey);
+      if (!client) {
+        const initResult = await this.initializeIntegration({
+          appName: request.appName,
+          credentials: request.credentials,
+          additionalConfig: request.additionalConfig,
+          connectionId: request.connectionId,
+        });
+
+        if (!initResult.success) {
+          return {
+            success: false,
+            options: [],
+            error: `Failed to initialize ${request.appName}: ${initResult.error}`,
+          };
+        }
+
+        client = this.clients.get(clientKey);
+      }
+
+      if (!client) {
+        return {
+          success: false,
+          options: [],
+          error: `Application ${request.appName} is not yet implemented`,
+        };
+      }
+
+      if (typeof client.updateCredentials === 'function') {
+        client.updateCredentials(request.credentials);
+      }
+
+      const dynamicGetter = (client as any).getDynamicOptions as
+        | ((handlerId: string, context?: DynamicOptionHandlerContext) => Promise<DynamicOptionResult>)
+        | undefined;
+
+      if (typeof dynamicGetter !== 'function') {
+        return {
+          success: false,
+          options: [],
+          error: `Dynamic options not supported for ${request.appName}`,
+        };
+      }
+
+      const result = await dynamicGetter.call(client, request.handlerId, request.context ?? {});
+      if (!result || typeof result !== 'object') {
+        return {
+          success: false,
+          options: [],
+          error: `Dynamic option handler ${request.handlerId} returned an invalid result`,
+        };
+      }
+
+      return {
+        success: result.success !== false,
+        options: Array.isArray(result.options) ? result.options : [],
+        nextCursor: result.nextCursor ?? undefined,
+        totalCount: result.totalCount ?? undefined,
+        error: result.success === false ? (result.error || `Dynamic option handler ${request.handlerId} failed`) : result.error,
+        raw: result.raw,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        options: [],
+        error: getErrorMessage(error),
       };
     }
   }

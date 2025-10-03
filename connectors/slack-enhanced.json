@@ -53,7 +53,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID or name"
+            "description": "Channel ID or name",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "text": {
             "type": "string",
@@ -222,11 +231,29 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID"
+            "description": "Channel ID",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "user": {
             "type": "string",
-            "description": "User ID"
+            "description": "User ID",
+            "x-dynamicOptions": {
+              "handler": "list_users",
+              "labelField": "real_name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": ["channel", "user"],
@@ -242,7 +269,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID"
+            "description": "Channel ID",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "cursor": {
             "type": "string",
@@ -325,7 +361,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel where the message to add reaction to was posted"
+            "description": "Channel where the message to add reaction to was posted",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "name": {
             "type": "string",
@@ -405,7 +450,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID"
+            "description": "Channel ID",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "topic": {
             "type": "string",
@@ -425,7 +479,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID"
+            "description": "Channel ID",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": ["channel"],
@@ -441,7 +504,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID"
+            "description": "Channel ID",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "timestamp": {
             "type": "string",
@@ -461,7 +533,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID or name"
+            "description": "Channel ID or name",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "text": {
             "type": "string",
@@ -539,7 +620,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to monitor"
+            "description": "Channel ID to monitor",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "user": {
             "type": "string",
@@ -648,7 +738,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to monitor for file uploads"
+            "description": "Channel ID to monitor for file uploads",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "user": {
             "type": "string",
@@ -714,7 +813,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to monitor"
+            "description": "Channel ID to monitor",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "reaction": {
             "type": "string",

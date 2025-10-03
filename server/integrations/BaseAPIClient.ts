@@ -38,6 +38,34 @@ export interface RateLimitInfo {
   resetTime: number;
 }
 
+export interface DynamicOptionValue {
+  value: string;
+  label: string;
+  data?: Record<string, any> | null;
+}
+
+export interface DynamicOptionHandlerContext {
+  search?: string;
+  cursor?: string;
+  limit?: number;
+  dependencies?: Record<string, any>;
+  operationId?: string;
+  operationType?: string;
+  parameterPath?: string;
+  [key: string]: any;
+}
+
+export interface DynamicOptionResult {
+  success: boolean;
+  options: DynamicOptionValue[];
+  nextCursor?: string | null;
+  totalCount?: number | null;
+  error?: string;
+  raw?: any;
+}
+
+type DynamicOptionHandler = (context: DynamicOptionHandlerContext) => Promise<DynamicOptionResult>;
+
 type TokenRefreshPayload = {
   accessToken: string;
   refreshToken?: string;
@@ -53,6 +81,7 @@ export abstract class BaseAPIClient {
   protected credentials: APICredentials;
   protected rateLimitInfo?: RateLimitInfo;
   private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
+  private __dynamicOptionHandlers?: Map<string, DynamicOptionHandler>;
 
   private static getSchemaValidator(schema: object): ValidateFunction {
     let validator = BaseAPIClient.schemaCache.get(schema);
@@ -67,6 +96,7 @@ export abstract class BaseAPIClient {
     this.baseURL = baseURL;
     this.credentials = credentials;
     this.__functionHandlers = new Map();
+    this.__dynamicOptionHandlers = new Map();
   }
 
   protected async applyTokenRefresh(update: TokenRefreshPayload): Promise<void> {
@@ -196,6 +226,66 @@ export abstract class BaseAPIClient {
   protected registerHandler(functionId: string, handler: (params: Record<string, any>) => Promise<APIResponse<any>>): void {
     if (!this.__functionHandlers) this.__functionHandlers = new Map();
     this.__functionHandlers.set(String(functionId).toLowerCase(), handler);
+  }
+
+  protected registerDynamicOptionHandler(handlerId: string, handler: DynamicOptionHandler): void {
+    if (!this.__dynamicOptionHandlers) this.__dynamicOptionHandlers = new Map();
+    this.__dynamicOptionHandlers.set(String(handlerId || '').toLowerCase(), handler);
+  }
+
+  protected registerDynamicOptionHandlers(handlers: Record<string, DynamicOptionHandler>): void {
+    for (const [id, handler] of Object.entries(handlers)) {
+      this.registerDynamicOptionHandler(id, handler);
+    }
+  }
+
+  public hasDynamicOptionHandler(handlerId: string): boolean {
+    if (!handlerId) {
+      return false;
+    }
+    return Boolean(this.__dynamicOptionHandlers?.has(String(handlerId).toLowerCase()));
+  }
+
+  public async getDynamicOptions(
+    handlerId: string,
+    context: DynamicOptionHandlerContext = {}
+  ): Promise<DynamicOptionResult> {
+    const handlers = this.__dynamicOptionHandlers || new Map();
+    const handler = handlers.get(String(handlerId || '').toLowerCase());
+
+    if (!handler) {
+      return {
+        success: false,
+        options: [],
+        error: `Unknown dynamic option handler: ${handlerId}`,
+      };
+    }
+
+    try {
+      const result = await handler(context);
+      if (!result || typeof result !== 'object') {
+        return {
+          success: false,
+          options: [],
+          error: `Dynamic option handler ${handlerId} returned an invalid result`,
+        };
+      }
+
+      return {
+        success: result.success !== false,
+        options: Array.isArray(result.options) ? result.options : [],
+        nextCursor: result.nextCursor ?? undefined,
+        totalCount: result.totalCount ?? undefined,
+        error: result.success === false ? (result.error || `Dynamic option handler ${handlerId} failed`) : result.error,
+        raw: result.raw,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        options: [],
+        error: getErrorMessage(error),
+      };
+    }
   }
 
   /**

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2025-10-03T06:04:27.956Z",
+  "generatedAt": "2025-10-03T07:06:56.119Z",
   "connectors": [
     {
       "id": "adobesign",
@@ -599,12 +599,436 @@
     {
       "id": "slack",
       "normalizedId": "slack",
-      "definitionPath": "connectors/slack.json"
+      "definitionPath": "connectors/slack.json",
+      "dynamicOptions": [
+        {
+          "operationType": "action",
+          "operationId": "send_message",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "invite_to_channel",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "invite_to_channel",
+          "parameterPath": "users",
+          "schemaType": "string",
+          "handler": "list_users",
+          "labelField": "real_name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_users",
+            "labelField": "real_name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "get_channel_info",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "add_reaction",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "schedule_message",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "trigger",
+          "operationId": "message_received",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "trigger",
+          "operationId": "reaction_added",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "trigger",
+          "operationId": "user_joined_channel",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        }
+      ]
     },
     {
       "id": "slack-enhanced",
       "normalizedId": "slack-enhanced",
-      "definitionPath": "connectors/slack-enhanced.json"
+      "definitionPath": "connectors/slack-enhanced.json",
+      "dynamicOptions": [
+        {
+          "operationType": "action",
+          "operationId": "send_message",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "invite_user_to_channel",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "invite_user_to_channel",
+          "parameterPath": "user",
+          "schemaType": "string",
+          "handler": "list_users",
+          "labelField": "real_name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_users",
+            "labelField": "real_name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "get_channel_history",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "add_reaction",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "set_channel_topic",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "archive_channel",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "pin_message",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "action",
+          "operationId": "schedule_message",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "trigger",
+          "operationId": "new_message",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "trigger",
+          "operationId": "new_file",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        },
+        {
+          "operationType": "trigger",
+          "operationId": "reaction_added",
+          "parameterPath": "channel",
+          "schemaType": "string",
+          "handler": "list_channels",
+          "labelField": "name",
+          "valueField": "id",
+          "searchParam": "search",
+          "cacheTtlMs": 300000,
+          "extension": {
+            "handler": "list_channels",
+            "labelField": "name",
+            "valueField": "id",
+            "searchParam": "search",
+            "cache": {
+              "ttlMs": 300000
+            }
+          }
+        }
+      ]
     },
     {
       "id": "smartsheet",

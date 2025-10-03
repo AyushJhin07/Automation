@@ -6,11 +6,14 @@ import { join, resolve, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
+import type { ConnectorDynamicOptionConfig } from '../common/connectorDynamicOptions.js';
+import { extractDynamicOptionsFromConnector, normalizeDynamicOptionPath } from '../common/connectorDynamicOptions.js';
 
 interface ConnectorManifestEntry {
   id: string;
   normalizedId: string;
   definitionPath: string;
+  dynamicOptions?: ConnectorDynamicOptionConfig[];
 }
 
 interface LoadedAPIClientInfo {
@@ -70,6 +73,7 @@ interface ConnectorRegistryEntry {
   functionCount: number;
   categories: string[];
   availability: ConnectorAvailability;
+  dynamicOptions: ConnectorDynamicOptionConfig[];
 }
 
 interface ConnectorFilterOptions {
@@ -378,6 +382,7 @@ export class ConnectorRegistry {
       try {
         const def = this.loadConnectorDefinition(manifestEntry);
         const appId = manifestEntry.normalizedId;
+        const dynamicOptions = extractDynamicOptionsFromConnector(def);
         const hasRegisteredClient = this.apiClients.has(appId);
         const availability = this.resolveAvailability(appId, def, hasRegisteredClient);
         const hasImplementation = availability === 'stable' && hasRegisteredClient;
@@ -388,7 +393,8 @@ export class ConnectorRegistry {
           hasImplementation,
           functionCount: (def.actions?.length || 0) + (def.triggers?.length || 0),
           categories: [def.category],
-          availability
+          availability,
+          dynamicOptions,
         };
         this.registry.set(appId, entry);
         loaded++;
@@ -515,11 +521,38 @@ export class ConnectorRegistry {
     if (!connector) {
       return { actions: [], triggers: [] };
     }
-    
+
     return {
       actions: connector.definition.actions || [],
       triggers: connector.definition.triggers || []
     };
+  }
+
+  public getDynamicOptions(appId: string): ConnectorDynamicOptionConfig[] {
+    return this.registry.get(appId)?.dynamicOptions ?? [];
+  }
+
+  public getDynamicOptionConfig(
+    appId: string,
+    operationType: 'action' | 'trigger',
+    operationId: string,
+    parameterPath: string
+  ): ConnectorDynamicOptionConfig | undefined {
+    const entry = this.registry.get(appId);
+    if (!entry) {
+      return undefined;
+    }
+
+    const normalizedType: 'action' | 'trigger' = operationType === 'trigger' ? 'trigger' : 'action';
+    const normalizedOperationId = String(operationId ?? '').trim().toLowerCase();
+    const normalizedPath = normalizeDynamicOptionPath(parameterPath ?? '').toLowerCase();
+
+    return entry.dynamicOptions.find(option => {
+      if (!option) return false;
+      const optionOperation = String(option.operationId ?? '').trim().toLowerCase();
+      const optionPath = normalizeDynamicOptionPath(option.parameterPath ?? '').toLowerCase();
+      return option.operationType === normalizedType && optionOperation === normalizedOperationId && optionPath === normalizedPath;
+    });
   }
 
   /**

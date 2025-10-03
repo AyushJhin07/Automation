@@ -9,6 +9,8 @@ import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
 import { integrationManager } from '../integrations/IntegrationManager';
 import { env } from '../env';
 import { genericExecutor } from '../integrations/GenericExecutor';
+import type { DynamicOptionHandlerContext, DynamicOptionResult } from '../integrations/BaseAPIClient';
+import { normalizeDynamicOptionPath } from '../../common/connectorDynamicOptions.js';
 
 type OAuthTokenRefresher = {
   refreshToken(userId: string, organizationId: string, providerId: string): Promise<OAuthTokens>;
@@ -66,6 +68,33 @@ type TokenRefreshUpdate = {
   [key: string]: any;
 };
 
+type DynamicOptionCacheEntry = {
+  cacheKey: string;
+  expiresAt: number;
+  result: DynamicOptionResult;
+};
+
+export type FetchDynamicOptionsParams = {
+  connectionId: string;
+  userId: string;
+  organizationId: string;
+  appId: string;
+  handlerId: string;
+  operationType: 'action' | 'trigger';
+  operationId: string;
+  parameterPath: string;
+  context?: DynamicOptionHandlerContext;
+  cacheTtlMs?: number;
+  forceRefresh?: boolean;
+  additionalConfig?: Record<string, any>;
+};
+
+export type DynamicOptionFetchResult = DynamicOptionResult & {
+  cached: boolean;
+  cacheKey: string;
+  cacheExpiresAt?: number;
+};
+
 export interface AutoRefreshContext {
   connection: DecryptedConnection;
   credentials: Record<string, any> & {
@@ -101,6 +130,7 @@ export class ConnectionService {
   private oauthManagerOverride?: OAuthTokenRefresher;
   private cachedOAuthManager?: OAuthTokenRefresher;
   private readonly refreshThresholdMs: number;
+  private readonly dynamicOptionCache: Map<string, Map<string, DynamicOptionCacheEntry>> = new Map();
 
   constructor() {
     this.db = db;
@@ -127,6 +157,20 @@ export class ConnectionService {
     }
 
     this.useFileStore = !this.db && this.allowFileStore;
+  }
+
+  private static stableStringify(value: any): string {
+    return JSON.stringify(value, (_key, val) => {
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        return Object.keys(val)
+          .sort()
+          .reduce((acc, key) => {
+            acc[key] = val[key];
+            return acc;
+          }, {} as Record<string, any>);
+      }
+      return val;
+    });
   }
 
   private ensureDb() {
@@ -197,6 +241,87 @@ export class ConnectionService {
 
     const { onTokenRefreshed, ...rest } = credentials as Record<string, any>;
     return { ...rest };
+  }
+
+  private buildDynamicOptionCacheKey(params: FetchDynamicOptionsParams): string {
+    const normalizedPath = normalizeDynamicOptionPath(params.parameterPath ?? '').toLowerCase();
+    const payload = {
+      appId: params.appId,
+      handlerId: String(params.handlerId ?? '').toLowerCase(),
+      operationType: params.operationType,
+      operationId: String(params.operationId ?? '').toLowerCase(),
+      parameterPath: normalizedPath,
+      context: params.context ?? {},
+    };
+    return ConnectionService.stableStringify(payload);
+  }
+
+  private readDynamicOptionCache(connectionId: string, cacheKey: string): DynamicOptionCacheEntry | undefined {
+    const cache = this.dynamicOptionCache.get(connectionId);
+    if (!cache) {
+      return undefined;
+    }
+
+    const entry = cache.get(cacheKey);
+    if (!entry) {
+      return undefined;
+    }
+
+    if (entry.expiresAt <= Date.now()) {
+      cache.delete(cacheKey);
+      if (cache.size === 0) {
+        this.dynamicOptionCache.delete(connectionId);
+      }
+      return undefined;
+    }
+
+    return entry;
+  }
+
+  private writeDynamicOptionCache(
+    connectionId: string,
+    cacheKey: string,
+    result: DynamicOptionResult,
+    ttlMs: number
+  ): number | undefined {
+    if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
+      return undefined;
+    }
+
+    const expiresAt = Date.now() + ttlMs;
+    const bucket = this.dynamicOptionCache.get(connectionId) ?? new Map<string, DynamicOptionCacheEntry>();
+    bucket.set(cacheKey, {
+      cacheKey,
+      expiresAt,
+      result,
+    });
+    this.dynamicOptionCache.set(connectionId, bucket);
+    return expiresAt;
+  }
+
+  private invalidateDynamicOptionCache(
+    connectionId: string,
+    predicate?: (key: string, entry: DynamicOptionCacheEntry) => boolean
+  ): void {
+    const cache = this.dynamicOptionCache.get(connectionId);
+    if (!cache) {
+      return;
+    }
+
+    if (typeof predicate !== 'function') {
+      this.dynamicOptionCache.delete(connectionId);
+      return;
+    }
+
+    for (const [key, entry] of Array.from(cache.entries())) {
+      if (predicate(key, entry)) {
+        cache.delete(key);
+      }
+    }
+
+    if (cache.size === 0) {
+      this.dynamicOptionCache.delete(connectionId);
+    }
   }
 
   /**
@@ -343,6 +468,8 @@ export class ConnectionService {
           eq(connections.userId, connection.userId)
         ));
     }
+
+    this.invalidateDynamicOptionCache(connection.id);
 
     return {
       ...connection,
@@ -706,6 +833,101 @@ export class ConnectionService {
     }
   }
 
+  public async fetchDynamicOptions(params: FetchDynamicOptionsParams): Promise<DynamicOptionFetchResult> {
+    const {
+      connectionId,
+      userId,
+      organizationId,
+      appId,
+      handlerId,
+      operationType,
+      operationId,
+      parameterPath,
+      context,
+      cacheTtlMs,
+      forceRefresh,
+      additionalConfig,
+    } = params;
+
+    if (!connectionId) {
+      throw new ConnectionServiceError('connectionId is required for dynamic options', 400);
+    }
+
+    const effectiveTtl = Number.isFinite(cacheTtlMs) && cacheTtlMs !== undefined && cacheTtlMs >= 0
+      ? Number(cacheTtlMs)
+      : 5 * 60 * 1000;
+
+    const normalizedPath = normalizeDynamicOptionPath(parameterPath ?? '');
+    const cacheKey = this.buildDynamicOptionCacheKey({
+      ...params,
+      parameterPath: normalizedPath,
+      context,
+    });
+
+    if (!forceRefresh) {
+      const cachedEntry = this.readDynamicOptionCache(connectionId, cacheKey);
+      if (cachedEntry) {
+        return {
+          ...cachedEntry.result,
+          cached: true,
+          cacheKey,
+          cacheExpiresAt: cachedEntry.expiresAt,
+        };
+      }
+    }
+
+    try {
+      const result = await this.withAutoRefresh(
+        { connectionId, userId, organizationId },
+        async ({ connection, credentials }) => {
+          const mergedContext: DynamicOptionHandlerContext = {
+            ...(context ?? {}),
+            operationId,
+            operationType,
+            parameterPath: normalizedPath,
+            appId,
+          };
+
+          const dynamicResult = await integrationManager.getDynamicOptions({
+            appName: appId,
+            handlerId,
+            credentials,
+            connectionId: connection.id,
+            additionalConfig: additionalConfig ?? connection.metadata?.additionalConfig,
+            context: mergedContext,
+          });
+
+          let cacheExpiresAt: number | undefined;
+          if (dynamicResult.success && effectiveTtl > 0) {
+            cacheExpiresAt = this.writeDynamicOptionCache(connection.id, cacheKey, dynamicResult, effectiveTtl);
+          }
+
+          return {
+            ...dynamicResult,
+            cached: false,
+            cacheKey,
+            cacheExpiresAt,
+          } satisfies DynamicOptionFetchResult;
+        }
+      );
+
+      return result;
+    } catch (error) {
+      if (error instanceof ConnectionServiceError) {
+        throw error;
+      }
+
+      const message = getErrorMessage(error);
+      return {
+        success: false,
+        options: [],
+        error: message,
+        cached: false,
+        cacheKey,
+      };
+    }
+  }
+
   public async refreshConnectionsExpiringSoon(
     options: { lookaheadMs?: number; limit?: number } = {}
   ): Promise<{ scanned: number; refreshed: number; skipped: number; errors: number }> {
@@ -919,6 +1141,7 @@ export class ConnectionService {
         records[existingIndex] = updated;
         await this.writeFileStore(records);
         console.log(`🔄 Updated connection (${normalizedProvider}:${connectionName}) for ${userId}`);
+        this.invalidateDynamicOptionCache(updated.id);
         return updated.id;
       }
 
@@ -991,6 +1214,7 @@ export class ConnectionService {
           eq(connections.userId, userId)
         ));
       console.log(`🔄 Updated connection (${normalizedProvider}:${connectionName}) for ${userId}`);
+      this.invalidateDynamicOptionCache(existingConnectionId);
       return existingConnectionId;
     }
 
@@ -1341,6 +1565,7 @@ export class ConnectionService {
         };
         await this.writeFileStore(records);
       }
+      this.invalidateDynamicOptionCache(connectionId);
       return;
     }
 
@@ -1353,6 +1578,7 @@ export class ConnectionService {
         eq(connections.userId, userId),
         eq(connections.organizationId, organizationId)
       ));
+    this.invalidateDynamicOptionCache(connectionId);
   }
 
   /**
@@ -1379,6 +1605,7 @@ export class ConnectionService {
         };
         await this.writeFileStore(records);
       }
+      this.invalidateDynamicOptionCache(connectionId);
       return;
     }
 
@@ -1394,6 +1621,7 @@ export class ConnectionService {
         eq(connections.userId, userId),
         eq(connections.organizationId, organizationId)
       ));
+    this.invalidateDynamicOptionCache(connectionId);
   }
 
   /**

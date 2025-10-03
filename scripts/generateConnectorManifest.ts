@@ -1,10 +1,13 @@
 import { promises as fs } from 'fs';
 import { join, relative, resolve } from 'path';
+import type { ConnectorDynamicOptionConfig } from '../common/connectorDynamicOptions.js';
+import { extractDynamicOptionsFromConnector } from '../common/connectorDynamicOptions.js';
 
 interface ConnectorManifestEntry {
   id: string;
   normalizedId: string;
   definitionPath: string;
+  dynamicOptions?: ConnectorDynamicOptionConfig[];
 }
 
 interface ConnectorManifest {
@@ -52,10 +55,13 @@ async function main(): Promise<void> {
       console.warn(`Normalizing connector id from "${rawId}" to "${normalizedId}" for ${file}`);
     }
 
+    const dynamicOptions = extractDynamicOptionsFromConnector(parsed);
+
     entries.push({
       id: parsed.id,
       normalizedId,
       definitionPath: relative(process.cwd(), fullPath).replace(/\\/g, '/'),
+      dynamicOptions: dynamicOptions.length > 0 ? dynamicOptions : undefined,
     });
   }
 
