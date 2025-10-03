@@ -1,4 +1,11 @@
-import { APICredentials, APIResponse, BaseAPIClient } from './BaseAPIClient';
+import {
+  APICredentials,
+  APIResponse,
+  BaseAPIClient,
+  DynamicOptionHandlerContext,
+  DynamicOptionResult,
+  DynamicOptionValue,
+} from './BaseAPIClient';
 
 interface SlackMessageParams {
   channel: string;
@@ -95,6 +102,11 @@ export class SlackAPIClient extends BaseAPIClient {
       'add_reaction': this.addReaction.bind(this) as any,
       'remove_reaction': this.removeReaction.bind(this) as any,
       'schedule_message': this.scheduleMessage.bind(this) as any,
+    });
+
+    this.registerDynamicOptionHandlers({
+      'list_channels': this.buildChannelOptions.bind(this),
+      'list_users': this.buildUserOptions.bind(this),
     });
   }
 
@@ -255,6 +267,142 @@ export class SlackAPIClient extends BaseAPIClient {
     });
 
     return this.normalizeSlackResponse(response);
+  }
+
+  private clampOptionLimit(rawLimit: any, fallback: number = 200): number {
+    const parsed = Number(rawLimit);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.min(Math.max(Math.floor(parsed), 1), fallback);
+    }
+    return fallback;
+  }
+
+  private async buildChannelOptions(
+    context: DynamicOptionHandlerContext = {}
+  ): Promise<DynamicOptionResult> {
+    const limit = this.clampOptionLimit(context.limit, 200);
+    const cursor = typeof context.cursor === 'string' && context.cursor.length > 0 ? context.cursor : undefined;
+    const types = typeof context.dependencies?.types === 'string' ? context.dependencies.types : undefined;
+
+    const response = await this.listChannels({
+      limit,
+      cursor,
+      types: types ?? 'public_channel,private_channel',
+    });
+
+    if (!response.success) {
+      return {
+        success: false,
+        options: [],
+        error: response.error || 'Failed to load Slack channels',
+      };
+    }
+
+    const payload = response.data ?? {};
+    const channels = Array.isArray((payload as any).channels) ? (payload as any).channels : [];
+    const searchTerm = typeof context.search === 'string' ? context.search.trim().toLowerCase() : '';
+
+    const options: DynamicOptionValue[] = channels
+      .filter(channel => {
+        if (!searchTerm) return true;
+        const name = typeof channel?.name === 'string' ? channel.name.toLowerCase() : '';
+        const topic = typeof channel?.topic?.value === 'string' ? channel.topic.value.toLowerCase() : '';
+        const purpose = typeof channel?.purpose?.value === 'string' ? channel.purpose.value.toLowerCase() : '';
+        return name.includes(searchTerm) || topic.includes(searchTerm) || purpose.includes(searchTerm);
+      })
+      .map(channel => {
+        const value = channel?.id ?? channel?.channel;
+        const label = channel?.name ?? channel?.id ?? '';
+        if (!value || !label) {
+          return null;
+        }
+        return {
+          value: String(value),
+          label: String(label),
+          data: channel ?? null,
+        } as DynamicOptionValue;
+      })
+      .filter((option): option is DynamicOptionValue => Boolean(option));
+
+    const nextCursor = (payload as any)?.response_metadata?.next_cursor;
+    const normalizedCursor = typeof nextCursor === 'string' && nextCursor.length > 0 ? nextCursor : undefined;
+    const totalCount = typeof (payload as any)?.total === 'number' ? Number((payload as any).total) : undefined;
+
+    return {
+      success: true,
+      options,
+      nextCursor: normalizedCursor,
+      totalCount,
+      raw: payload,
+    };
+  }
+
+  private async buildUserOptions(
+    context: DynamicOptionHandlerContext = {}
+  ): Promise<DynamicOptionResult> {
+    const limit = this.clampOptionLimit(context.limit, 200);
+    const cursor = typeof context.cursor === 'string' && context.cursor.length > 0 ? context.cursor : undefined;
+
+    const response = await this.listUsers({
+      limit,
+      cursor,
+    });
+
+    if (!response.success) {
+      return {
+        success: false,
+        options: [],
+        error: response.error || 'Failed to load Slack users',
+      };
+    }
+
+    const payload = response.data ?? {};
+    const members = Array.isArray((payload as any).members) ? (payload as any).members : [];
+    const searchTerm = typeof context.search === 'string' ? context.search.trim().toLowerCase() : '';
+
+    const options: DynamicOptionValue[] = members
+      .filter(member => {
+        if (!searchTerm) return true;
+        const candidates: string[] = [];
+        if (typeof member?.real_name === 'string') candidates.push(member.real_name.toLowerCase());
+        if (typeof member?.name === 'string') candidates.push(member.name.toLowerCase());
+        if (typeof member?.profile?.display_name === 'string') candidates.push(member.profile.display_name.toLowerCase());
+        if (typeof member?.profile?.real_name === 'string') candidates.push(member.profile.real_name.toLowerCase());
+        if (typeof member?.profile?.email === 'string') candidates.push(member.profile.email.toLowerCase());
+        return candidates.some(value => value.includes(searchTerm));
+      })
+      .map(member => {
+        const value = member?.id;
+        const labelCandidate =
+          member?.profile?.display_name ||
+          member?.profile?.real_name ||
+          member?.real_name ||
+          member?.name ||
+          member?.profile?.email;
+
+        if (!value || !labelCandidate) {
+          return null;
+        }
+
+        return {
+          value: String(value),
+          label: String(labelCandidate),
+          data: member ?? null,
+        } as DynamicOptionValue;
+      })
+      .filter((option): option is DynamicOptionValue => Boolean(option));
+
+    const nextCursor = (payload as any)?.response_metadata?.next_cursor;
+    const normalizedCursor = typeof nextCursor === 'string' && nextCursor.length > 0 ? nextCursor : undefined;
+    const totalCount = typeof (payload as any)?.total === 'number' ? Number((payload as any).total) : undefined;
+
+    return {
+      success: true,
+      options,
+      nextCursor: normalizedCursor,
+      totalCount,
+      raw: payload,
+    };
   }
 
   private normalizeSlackResponse<T>(response: APIResponse<SlackAPIResponse<T>>): APIResponse<T> {

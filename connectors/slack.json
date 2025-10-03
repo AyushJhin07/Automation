@@ -57,7 +57,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID or user ID to send message to"
+            "description": "Channel ID or user ID to send message to",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "text": {
             "type": "string",
@@ -125,11 +134,29 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to invite users to"
+            "description": "Channel ID to invite users to",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "users": {
             "type": "string",
-            "description": "Comma-separated list of user IDs"
+            "description": "Comma-separated list of user IDs",
+            "x-dynamicOptions": {
+              "handler": "list_users",
+              "labelField": "real_name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": ["channel", "users"],
@@ -185,7 +212,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to get info for"
+            "description": "Channel ID to get info for",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": ["channel"],
@@ -264,7 +300,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel containing the message"
+            "description": "Channel containing the message",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "timestamp": {
             "type": "string",
@@ -290,7 +335,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to send message to"
+            "description": "Channel ID to send message to",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "text": {
             "type": "string",
@@ -357,7 +411,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to monitor (optional, monitors all if empty)"
+            "description": "Channel ID to monitor (optional, monitors all if empty)",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "user": {
             "type": "string",
@@ -392,7 +455,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to monitor"
+            "description": "Channel ID to monitor",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "emoji": {
             "type": "string",
@@ -422,7 +494,16 @@
         "properties": {
           "channel": {
             "type": "string",
-            "description": "Channel ID to monitor"
+            "description": "Channel ID to monitor",
+            "x-dynamicOptions": {
+              "handler": "list_channels",
+              "labelField": "name",
+              "valueField": "id",
+              "searchParam": "search",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": ["channel"],
