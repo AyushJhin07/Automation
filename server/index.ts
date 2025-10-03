@@ -101,7 +101,7 @@ app.use((req, res, next) => {
     throw new Error(`Invalid PORT value provided: ${env.PORT}`);
   }
 
-  const host = env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+  const host = process.env.HOST ?? (env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
   const publicUrl = env.SERVER_PUBLIC_URL || `http://${host === '0.0.0.0' ? 'localhost' : host}:${parsedPort}`;
 
   server.on('error', (error: NodeJS.ErrnoException) => {

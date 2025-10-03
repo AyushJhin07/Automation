@@ -65,7 +65,7 @@ export class OAuthManager {
 
   private getRedirectUri(providerId: string): string {
     const baseUrl = env.SERVER_PUBLIC_URL || process.env.BASE_URL || 'http://localhost:5000';
-    return `${baseUrl}/oauth/callback/${providerId}`;
+    return `${baseUrl}/api/oauth/callback/${providerId}`;
   }
 
   public resolveReturnUrl(providerId: string, state?: string): string {
