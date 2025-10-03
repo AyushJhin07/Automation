@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -57,6 +57,20 @@ export interface DecryptedConnection {
   lastError?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+type TokenRefreshUpdate = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number | null;
+  [key: string]: any;
+};
+
+export interface AutoRefreshContext {
+  connection: DecryptedConnection;
+  credentials: Record<string, any> & {
+    onTokenRefreshed?: (tokens: TokenRefreshUpdate) => void | Promise<void>;
+  };
 }
 
 interface FileConnectionRecord {
@@ -176,6 +190,15 @@ export class ConnectionService {
     return EncryptionService.encryptCredentials(credentials);
   }
 
+  private stripCredentialCallbacks(credentials: Record<string, any> | undefined): Record<string, any> {
+    if (!credentials || typeof credentials !== 'object') {
+      return {};
+    }
+
+    const { onTokenRefreshed, ...rest } = credentials as Record<string, any>;
+    return { ...rest };
+  }
+
   /**
    * Only used in tests to replace the OAuth manager implementation
    */
@@ -217,7 +240,10 @@ export class ConnectionService {
     return null;
   }
 
-  private needsTokenRefresh(connection: DecryptedConnection): boolean {
+  private needsTokenRefresh(
+    connection: DecryptedConnection,
+    thresholdOverrideMs?: number
+  ): boolean {
     const refreshToken = connection.credentials?.refreshToken;
     if (!refreshToken) {
       return false;
@@ -231,7 +257,12 @@ export class ConnectionService {
       return false;
     }
 
-    return expiryTimestamp - Date.now() <= this.refreshThresholdMs;
+    const threshold =
+      typeof thresholdOverrideMs === 'number' && Number.isFinite(thresholdOverrideMs) && thresholdOverrideMs >= 0
+        ? thresholdOverrideMs
+        : this.refreshThresholdMs;
+
+    return expiryTimestamp - Date.now() <= threshold;
   }
 
   private buildRefreshedMetadata(
@@ -257,25 +288,68 @@ export class ConnectionService {
 
     try {
       const tokens = await oauthManager.refreshToken(userId, organizationId, connection.provider);
-      const latest = await this.getConnection(connection.id, userId, organizationId);
-
-      if (latest) {
-        return {
-          ...latest,
-          credentials: { ...latest.credentials, ...tokens },
-          metadata: this.buildRefreshedMetadata(latest.metadata, tokens),
-        };
-      }
-
-      return {
-        ...connection,
-        credentials: { ...connection.credentials, ...tokens },
-        metadata: this.buildRefreshedMetadata(connection.metadata, tokens),
-      };
+      const latest = (await this.getConnection(connection.id, userId, organizationId)) ?? connection;
+      return this.persistRefreshedTokens(latest, tokens);
     } catch (error) {
       const message = getErrorMessage(error);
       throw new ConnectionServiceError(`Failed to refresh OAuth tokens: ${message}`, 401);
     }
+  }
+
+  private async persistRefreshedTokens(
+    connection: DecryptedConnection,
+    tokens: TokenRefreshUpdate
+  ): Promise<DecryptedConnection> {
+    const baseCredentials = this.stripCredentialCallbacks(connection.credentials);
+    const mergedCredentials = { ...baseCredentials, ...tokens };
+    const metadata = this.buildRefreshedMetadata(connection.metadata, tokens);
+    const encrypted = this.encryptCredentials(mergedCredentials);
+    const updatedAt = new Date();
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const index = records.findIndex(
+        (record) =>
+          record.id === connection.id &&
+          record.userId === connection.userId &&
+          record.organizationId === connection.organizationId
+      );
+
+      if (index === -1) {
+        console.warn(`⚠️ ConnectionService: Unable to persist refreshed tokens for missing connection ${connection.id}`);
+      } else {
+        records[index] = {
+          ...records[index],
+          encryptedCredentials: encrypted.encryptedData,
+          iv: encrypted.iv,
+          metadata,
+          updatedAt: updatedAt.toISOString(),
+        };
+        await this.writeFileStore(records);
+      }
+    } else {
+      this.ensureDb();
+      await this.db
+        .update(connections)
+        .set({
+          encryptedCredentials: encrypted.encryptedData,
+          iv: encrypted.iv,
+          metadata,
+          updatedAt,
+        })
+        .where(and(
+          eq(connections.id, connection.id),
+          eq(connections.organizationId, connection.organizationId),
+          eq(connections.userId, connection.userId)
+        ));
+    }
+
+    return {
+      ...connection,
+      credentials: mergedCredentials,
+      metadata,
+      updatedAt,
+    };
   }
 
   /**
@@ -555,6 +629,176 @@ export class ConnectionService {
     }
 
     return this.refreshConnectionTokens(connection, userId, organizationId);
+  }
+
+  public async withAutoRefresh<T>(
+    params: {
+      connectionId?: string;
+      provider?: string;
+      userId: string;
+      organizationId: string;
+      thresholdMs?: number;
+    },
+    factory: (context: AutoRefreshContext) => Promise<T> | T
+  ): Promise<T> {
+    const { connectionId, provider, userId, organizationId, thresholdMs } = params;
+
+    if (!connectionId && !provider) {
+      throw new ConnectionServiceError('connectionId or provider is required for auto-refresh', 400);
+    }
+
+    let connection: DecryptedConnection | null = null;
+
+    if (connectionId) {
+      connection = await this.getConnection(connectionId, userId, organizationId);
+    } else if (provider) {
+      connection = await this.getConnectionByProvider(userId, organizationId, provider);
+    }
+
+    if (!connection) {
+      throw new ConnectionServiceError('Connection not found', 404);
+    }
+
+    if (this.needsTokenRefresh(connection, thresholdMs)) {
+      connection = await this.refreshConnectionTokens(connection, userId, organizationId);
+    }
+
+    const credentialsBase = this.stripCredentialCallbacks(connection.credentials);
+    const credentials: AutoRefreshContext['credentials'] = { ...credentialsBase };
+
+    let currentConnection: DecryptedConnection = {
+      ...connection,
+      credentials,
+    };
+
+    const onTokenRefreshed = async (tokens: TokenRefreshUpdate) => {
+      const updated = await this.persistRefreshedTokens(currentConnection, tokens);
+      const sanitized = this.stripCredentialCallbacks(updated.credentials);
+      Object.assign(credentials, sanitized);
+      credentials.onTokenRefreshed = onTokenRefreshed;
+      currentConnection = { ...updated, credentials };
+    };
+
+    credentials.onTokenRefreshed = onTokenRefreshed;
+
+    return factory({
+      connection: currentConnection,
+      credentials,
+    });
+  }
+
+  public async prepareConnectionForClient(
+    params: {
+      connectionId?: string;
+      provider?: string;
+      userId: string;
+      organizationId: string;
+      thresholdMs?: number;
+    }
+  ): Promise<AutoRefreshContext | null> {
+    try {
+      return await this.withAutoRefresh(params, async (context) => context);
+    } catch (error) {
+      if (error instanceof ConnectionServiceError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  public async refreshConnectionsExpiringSoon(
+    options: { lookaheadMs?: number; limit?: number } = {}
+  ): Promise<{ scanned: number; refreshed: number; skipped: number; errors: number }> {
+    const lookaheadMs = Math.max(
+      0,
+      typeof options.lookaheadMs === 'number' && Number.isFinite(options.lookaheadMs)
+        ? options.lookaheadMs
+        : this.refreshThresholdMs
+    );
+    const limit = Math.max(
+      1,
+      typeof options.limit === 'number' && Number.isFinite(options.limit)
+        ? options.limit
+        : 50
+    );
+    const thresholdIso = new Date(Date.now() + lookaheadMs).toISOString();
+
+    const candidates: Array<{ id: string; userId: string; organizationId: string }> = [];
+
+    if (this.useFileStore) {
+      const records = await this.readFileStore();
+      const eligible = records
+        .filter((record) =>
+          record.isActive &&
+          Boolean(record.metadata?.refreshToken) &&
+          typeof record.metadata?.expiresAt === 'string'
+        )
+        .filter((record) => {
+          const expiresAt = Date.parse(String(record.metadata?.expiresAt));
+          return Number.isFinite(expiresAt) && expiresAt - Date.now() <= lookaheadMs;
+        })
+        .sort((a, b) => {
+          const aTs = Date.parse(String(a.metadata?.expiresAt));
+          const bTs = Date.parse(String(b.metadata?.expiresAt));
+          return aTs - bTs;
+        })
+        .slice(0, limit);
+
+      for (const record of eligible) {
+        candidates.push({ id: record.id, userId: record.userId, organizationId: record.organizationId });
+      }
+    } else {
+      this.ensureDb();
+      const result = await this.db.execute(sql`
+        select
+          id,
+          user_id as "userId",
+          organization_id as "organizationId"
+        from connections
+        where is_active = true
+          and metadata->>'expiresAt' is not null
+          and coalesce(metadata->>'refreshToken', 'false') != 'false'
+          and metadata->>'expiresAt' <= ${thresholdIso}
+        order by metadata->>'expiresAt'
+        limit ${limit}
+      `);
+
+      const rows = result.rows as Array<{ id: string; userId: string; organizationId: string }>;
+      candidates.push(...rows);
+    }
+
+    let scanned = 0;
+    let refreshed = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const candidate of candidates) {
+      const connection = await this.getConnection(candidate.id, candidate.userId, candidate.organizationId);
+      if (!connection) {
+        skipped++;
+        continue;
+      }
+
+      scanned++;
+
+      if (!this.needsTokenRefresh(connection, lookaheadMs)) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        await this.refreshConnectionTokens(connection, candidate.userId, candidate.organizationId);
+        refreshed++;
+      } catch (error) {
+        errors++;
+        console.error(
+          `❌ Failed to proactively refresh connection ${connection.provider}:${connection.id}`,
+          getErrorMessage(error)
+        );
+      }
+    }
+
+    return { scanned, refreshed, skipped, errors };
   }
 
   public async markUsed(
