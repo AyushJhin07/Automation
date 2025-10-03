@@ -8,12 +8,15 @@ console.log('🔑 LLM API Keys:', {
   CLAUDE: !!process.env.CLAUDE_API_KEY 
 });
 import express, { type Request, Response, NextFunction } from "express";
+import { context as otelContext, propagation, SpanKind, SpanStatusCode, trace as otelTrace } from '@opentelemetry/api';
 import { randomUUID } from 'crypto';
 import { redactSecrets } from './utils/redact';
 import { runWithRequestContext, getRequestContext } from './utils/ExecutionContext';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runStartupChecks } from './runtime/startupChecks';
+import './observability/index.js';
+import { recordHttpRequestDuration, tracer } from './observability/index.js';
 
 const app = express();
 // Correlation ID + JSON body parsing with audit logging
@@ -28,22 +31,66 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
+  const routeSnapshot = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
+  const parentContext = propagation.extract(otelContext.active(), req.headers);
+  const span = tracer.startSpan('http.server.request', {
+    kind: SpanKind.SERVER,
+    attributes: {
+      'http.method': req.method,
+      'http.target': req.originalUrl,
+      'http.scheme': req.protocol,
+      'http.host': req.get('host') ?? undefined,
+      'http.user_agent': req.get('user-agent') ?? undefined,
+    },
+  }, parentContext);
+
+  const startTime = process.hrtime.bigint();
+  let spanEnded = false;
+
+  const endSpan = (status: { code: SpanStatusCode; message?: string }, extraAttributes?: Record<string, unknown>) => {
+    if (spanEnded) {
+      return;
+    }
+    spanEnded = true;
+    const durationNs = process.hrtime.bigint() - startTime;
+    const durationMs = Number(durationNs) / 1_000_000;
+    const matchedRoute = req.route?.path ?? routeSnapshot;
+    const requestId = res.getHeader('x-request-id');
+
+    span.setAttributes({
+      'http.route': matchedRoute,
+      'http.status_code': res.statusCode,
+      'http.request_id': typeof requestId === 'string' ? requestId : Array.isArray(requestId) ? requestId[0] : undefined,
+      ...(extraAttributes ?? {}),
+    });
+    span.setStatus(status);
+    recordHttpRequestDuration(durationMs, {
+      http_method: req.method,
+      http_route: matchedRoute,
+      http_status_code: res.statusCode,
+    });
+    span.end();
+  };
+
+  res.on('finish', () => {
+    const status: { code: SpanStatusCode; message?: string } =
+      res.statusCode >= 500
+        ? { code: SpanStatusCode.ERROR, message: `HTTP ${res.statusCode}` }
+        : { code: SpanStatusCode.OK };
+    endSpan(status);
+
+    if (routeSnapshot.startsWith('/api')) {
       const ctx = getRequestContext();
       const reqId = ctx?.requestId || 'unknown';
-      let logLine = `[${reqId}] ${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      const duration = Number(process.hrtime.bigint() - startTime) / 1_000_000;
+      let logLine = `[${reqId}] ${req.method} ${routeSnapshot} ${res.statusCode} in ${Math.round(duration)}ms`;
       if (capturedJsonResponse && process.env.NODE_ENV === 'development') {
         try { logLine += ` :: ${JSON.stringify(redactSecrets(capturedJsonResponse))}`; } catch {}
       }
@@ -56,7 +103,14 @@ app.use((req, res, next) => {
     }
   });
 
-  next();
+  res.on('close', () => {
+    if (!spanEnded) {
+      endSpan({ code: SpanStatusCode.ERROR, message: 'connection closed before response finished' });
+    }
+  });
+
+  const spanContext = otelTrace.setSpan(parentContext, span);
+  otelContext.with(spanContext, () => next());
 });
 
 (async () => {
