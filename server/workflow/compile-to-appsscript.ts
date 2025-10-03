@@ -349,6 +349,8 @@ function emitManifest(graph: WorkflowGraph): string {
   }, null, 2);
 }
 
+const esc = (s: string) => s.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+
 function emitCode(graph: WorkflowGraph): string {
   console.log(`🔧 Walking graph with ${graph.nodes.length} nodes and ${graph.edges.length} edges`);
 
@@ -7494,7 +7496,7 @@ function generateDocuSignFunction(functionName: string, node: WorkflowNode): str
   const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_envelope';
 
   return `
-function ${functionName}(inputData, params) {
+function ${esc(functionName)}(inputData, params) {
   const scriptProps = PropertiesService.getScriptProperties();
   const accessToken = params.accessToken || scriptProps.getProperty('DOCUSIGN_ACCESS_TOKEN');
   const accountId = params.accountId || scriptProps.getProperty('DOCUSIGN_ACCOUNT_ID');
@@ -7505,8 +7507,8 @@ function ${functionName}(inputData, params) {
     return { ...inputData, docusignError: 'Missing DocuSign access token or account ID' };
   }
 
-  const baseUrl = `\${baseUri}/v2.1/accounts/\${accountId}`;
-  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const baseUrl = baseUri + '/v2.1/accounts/' + accountId;
+  const operation = (params.operation || '${esc(defaultOperation)}').toLowerCase();
   const defaultHeaders = {
     'Authorization': 'Bearer ' + accessToken,
     'Content-Type': 'application/json'
@@ -7615,7 +7617,7 @@ function ${functionName}(inputData, params) {
   }
 
   const baseUrl = 'https://' + domainValue + '/api/v1';
-  const operation = (params.operation || '${defaultOperation}').toLowerCase();
+  const operation = (params.operation || '${esc(defaultOperation)}').toLowerCase();
   const headers = {
     'Authorization': 'SSWS ' + apiToken,
     'Content-Type': 'application/json'
