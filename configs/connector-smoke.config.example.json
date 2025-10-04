@@ -72,7 +72,9 @@
       "accessToken": "YOUR_WORKDAY_ACCESS_TOKEN",
       "refreshToken": "YOUR_WORKDAY_REFRESH_TOKEN",
       "clientId": "YOUR_WORKDAY_CLIENT_ID",
-      "clientSecret": "YOUR_WORKDAY_CLIENT_SECRET"
+      "clientSecret": "YOUR_WORKDAY_CLIENT_SECRET",
+      "tenant": "YOUR_WORKDAY_TENANT",
+      "host": "https://wd5.myworkday.com"
     },
     "actions": [
       {
@@ -87,10 +89,8 @@
   },
   "databricks": {
     "credentials": {
-      "accessToken": "dapiYOUR_DATABRICKS_TOKEN"
-    },
-    "additionalConfig": {
-      "workspaceUrl": "https://adb-1234567890.0.azuredatabricks.net"
+      "accessToken": "dapiYOUR_DATABRICKS_TOKEN",
+      "host": "adb-1234567890.0.azuredatabricks.net"
     },
     "actions": [
       {

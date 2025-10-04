@@ -3,7 +3,9 @@
   "type": "action",
   "defaults": {
     "credentials": {
-      "accessToken": "simulated-workday-access-token"
+      "accessToken": "simulated-workday-access-token",
+      "tenant": "simulated",
+      "host": "https://wd5-impl-services1.workday.com"
     }
   },
   "params": {
@@ -12,7 +14,7 @@
   },
   "request": {
     "method": "GET",
-    "url": "https://wd5-impl-services1.workday.com/ccx/api/v1/workers",
+    "url": "https://wd5-impl-services1.workday.com/ccx/api/v1/simulated/human_resources/workers?$search=%22Sim%22&$top=1&$skip=0",
     "headers": {
       "Authorization": "Bearer simulated-workday-access-token"
     },
@@ -24,13 +26,23 @@
       "Content-Type": "application/json"
     },
     "body": {
-      "workers": [
+      "value": [
         {
-          "id": "SIM-0001",
-          "name": "Simulated Worker",
-          "title": "QA Analyst",
-          "department": "Engineering",
-          "email": "sim.worker@example.invalid"
+          "Worker": {
+            "ID": "SIM-0001",
+            "Name": "Simulated Worker",
+            "JobProfile": {
+              "JobTitle": "QA Analyst"
+            },
+            "Organizations": [
+              {
+                "OrganizationName": "Engineering"
+              }
+            ],
+            "Contact": {
+              "Email": "sim.worker@example.invalid"
+            }
+          }
         }
       ]
     }
@@ -38,13 +50,23 @@
   "result": {
     "success": true,
     "data": {
-      "workers": [
+      "value": [
         {
-          "id": "SIM-0001",
-          "name": "Simulated Worker",
-          "title": "QA Analyst",
-          "department": "Engineering",
-          "email": "sim.worker@example.invalid"
+          "Worker": {
+            "ID": "SIM-0001",
+            "Name": "Simulated Worker",
+            "JobProfile": {
+              "JobTitle": "QA Analyst"
+            },
+            "Organizations": [
+              {
+                "OrganizationName": "Engineering"
+              }
+            ],
+            "Contact": {
+              "Email": "sim.worker@example.invalid"
+            }
+          }
         }
       ],
       "count": 1
