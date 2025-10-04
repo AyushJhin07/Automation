@@ -2297,7 +2297,7 @@ const GraphEditorContent = () => {
     setPromotionError(null);
 
     try {
-      const payload: Record<string, any> = { environment: 'prod' };
+      const payload: Record<string, any> = { environment: 'production' };
       if (promotionDiff?.hasBreakingChanges) {
         const trimmedNotes = migrationPlan.notes.trim();
         payload.metadata = {

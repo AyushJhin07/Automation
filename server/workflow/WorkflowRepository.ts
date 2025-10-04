@@ -65,6 +65,15 @@ export interface PublishWorkflowResult {
   version: WorkflowVersionRow;
 }
 
+export interface WorkflowVersionHistory {
+  versions: WorkflowVersionRow[];
+  deployments: WorkflowDeploymentRow[];
+  environments: Record<WorkflowEnvironment, {
+    activeDeployment: WorkflowDeploymentRow | null;
+    version: WorkflowVersionRow | null;
+  }>;
+}
+
 export interface WorkflowListResult {
   workflows: WorkflowRecord[];
   total: number;
@@ -368,16 +377,29 @@ export class WorkflowRepository {
 
   private static normalizeEnvironment(environment: string): WorkflowEnvironment {
     const normalized = (environment ?? '').toLowerCase();
-    if (normalized === 'dev' || normalized === 'development') {
-      return 'dev';
+    if (['draft', 'dev', 'development', 'editing'].includes(normalized)) {
+      return 'draft';
     }
-    if (normalized === 'stage' || normalized === 'staging' || normalized === 'stg') {
-      return 'stage';
+    if (['test', 'stage', 'staging', 'qa', 'stg'].includes(normalized)) {
+      return 'test';
     }
-    if (normalized === 'prod' || normalized === 'production') {
-      return 'prod';
+    if (['production', 'prod', 'live'].includes(normalized)) {
+      return 'production';
     }
     throw new Error(`Unsupported deployment environment: ${environment}`);
+  }
+
+  private static getEnvironmentAliases(environment: WorkflowEnvironment): string[] {
+    switch (environment) {
+      case 'draft':
+        return ['draft', 'dev', 'development', 'editing'];
+      case 'test':
+        return ['test', 'stage', 'staging', 'qa', 'stg'];
+      case 'production':
+        return ['production', 'prod', 'live'];
+      default:
+        return [environment];
+    }
   }
 
   private static getItemIdentifier(item: any, index: number, prefix: string): string {
@@ -760,6 +782,8 @@ export class WorkflowRepository {
       return this.getMemoryDeployment(workflowId, organizationId, environment);
     }
 
+    const aliases = this.getEnvironmentAliases(environment);
+
     const result = await db
       .select()
       .from(workflowDeployments)
@@ -767,14 +791,19 @@ export class WorkflowRepository {
         and(
           eq(workflowDeployments.workflowId, workflowId),
           eq(workflowDeployments.organizationId, organizationId),
-          eq(workflowDeployments.environment, environment),
+          inArray(workflowDeployments.environment, aliases),
           eq(workflowDeployments.isActive, true),
         ),
       )
       .orderBy(desc(workflowDeployments.deployedAt))
       .limit(1);
 
-    return result[0] ?? null;
+    const record = result[0] ?? null;
+    if (!record) {
+      return null;
+    }
+
+    return { ...record, environment } as WorkflowDeploymentRow;
   }
 
   private static async getDeploymentRecordById(
@@ -804,7 +833,15 @@ export class WorkflowRepository {
       )
       .limit(1);
 
-    return result[0] ?? null;
+    const record = result[0] ?? null;
+    if (!record) {
+      return null;
+    }
+
+    return {
+      ...record,
+      environment: this.normalizeEnvironment(record.environment),
+    } as WorkflowDeploymentRow;
   }
 
   public static async saveWorkflowGraph(input: SaveWorkflowGraphInput): Promise<WorkflowRecord> {
@@ -1131,6 +1168,9 @@ export class WorkflowRepository {
     rollbackOfDeploymentId?: string | null;
   }): Promise<PublishWorkflowResult> {
     const environment = this.normalizeEnvironment(params.environment);
+    if (environment === 'draft') {
+      throw new Error('Draft environment cannot be published');
+    }
     const userId = await this.resolveUserId(params.userId);
     const now = this.now();
 
@@ -1312,6 +1352,265 @@ export class WorkflowRepository {
     };
   }
 
+  public static async listWorkflowVersions(params: {
+    workflowId: string;
+    organizationId: string;
+    limit?: number;
+  }): Promise<WorkflowVersionHistory> {
+    const limit = params.limit ? this.sanitizeLimit(params.limit) : 50;
+
+    if (!this.isDatabaseEnabled()) {
+      const versions = [...(this.memoryWorkflowVersions.get(params.workflowId) ?? [])]
+        .filter((version) => version.organizationId === params.organizationId)
+        .sort((a, b) => b.versionNumber - a.versionNumber)
+        .slice(0, limit);
+
+      const deployments = [...(this.memoryWorkflowDeployments.get(params.workflowId) ?? [])]
+        .filter((deployment) => deployment.organizationId === params.organizationId)
+        .sort((a, b) => {
+          const aTime = a.deployedAt instanceof Date ? a.deployedAt.getTime() : 0;
+          const bTime = b.deployedAt instanceof Date ? b.deployedAt.getTime() : 0;
+          return bTime - aTime;
+        });
+
+      const activeTest = deployments.find((deployment) => this.normalizeEnvironment(deployment.environment) === 'test' && deployment.isActive) ?? null;
+      const activeProduction = deployments.find((deployment) => this.normalizeEnvironment(deployment.environment) === 'production' && deployment.isActive) ?? null;
+      const versionsById = new Map(versions.map((version) => [version.id, version]));
+
+      const ensureVersion = (versionId: string | null | undefined): MemoryWorkflowVersionRecord | null => {
+        if (!versionId) {
+          return null;
+        }
+        if (versionsById.has(versionId)) {
+          return versionsById.get(versionId)!;
+        }
+        const record = this.getMemoryVersionById(params.workflowId, versionId);
+        if (record) {
+          versions.push(record);
+          versionsById.set(record.id, record);
+          versions.sort((a, b) => b.versionNumber - a.versionNumber);
+        }
+        return record ?? null;
+      };
+
+      const draftVersion = versions[0] ?? null;
+      const testVersion = ensureVersion(activeTest?.versionId);
+      const productionVersion = ensureVersion(activeProduction?.versionId);
+
+      return {
+        versions,
+        deployments: deployments.map((deployment) => ({
+          ...deployment,
+          environment: this.normalizeEnvironment(deployment.environment),
+        })),
+        environments: {
+          draft: { activeDeployment: null, version: draftVersion ?? null },
+          test: {
+            activeDeployment: activeTest
+              ? { ...activeTest, environment: 'test' as WorkflowEnvironment }
+              : null,
+            version: testVersion ?? null,
+          },
+          production: {
+            activeDeployment: activeProduction
+              ? { ...activeProduction, environment: 'production' as WorkflowEnvironment }
+              : null,
+            version: productionVersion ?? null,
+          },
+        },
+      };
+    }
+
+    const [versions, rawDeployments] = await Promise.all([
+      db
+        .select()
+        .from(workflowVersions)
+        .where(
+          and(
+            eq(workflowVersions.workflowId, params.workflowId),
+            eq(workflowVersions.organizationId, params.organizationId),
+          ),
+        )
+        .orderBy(desc(workflowVersions.versionNumber))
+        .limit(limit),
+      db
+        .select()
+        .from(workflowDeployments)
+        .where(
+          and(
+            eq(workflowDeployments.workflowId, params.workflowId),
+            eq(workflowDeployments.organizationId, params.organizationId),
+          ),
+        )
+        .orderBy(desc(workflowDeployments.deployedAt)),
+    ]);
+
+    const deployments = rawDeployments.map((deployment) => ({
+      ...deployment,
+      environment: this.normalizeEnvironment(deployment.environment),
+    })) as WorkflowDeploymentRow[];
+
+    const activeTest = deployments.find((deployment) => deployment.environment === 'test' && deployment.isActive) ?? null;
+    const activeProduction = deployments.find((deployment) => deployment.environment === 'production' && deployment.isActive) ?? null;
+
+    const versionsById = new Map(versions.map((version) => [version.id, version]));
+
+    const ensureVersion = async (
+      versionId: string | null | undefined,
+    ): Promise<WorkflowVersionRow | null> => {
+      if (!versionId) {
+        return null;
+      }
+      if (versionsById.has(versionId)) {
+        return versionsById.get(versionId)!;
+      }
+      const record = await this.getVersionRecordById(params.workflowId, versionId, params.organizationId);
+      if (record) {
+        versions.push(record);
+        versionsById.set(record.id, record);
+      }
+      return record ?? null;
+    };
+
+    const [draftVersion, testVersion, productionVersion] = await Promise.all([
+      Promise.resolve(versions[0] ?? null),
+      ensureVersion(activeTest?.versionId),
+      ensureVersion(activeProduction?.versionId),
+    ]);
+
+    versions.sort((a, b) => b.versionNumber - a.versionNumber);
+
+    return {
+      versions,
+      deployments,
+      environments: {
+        draft: { activeDeployment: null, version: draftVersion ?? null },
+        test: { activeDeployment: activeTest, version: testVersion ?? null },
+        production: { activeDeployment: activeProduction, version: productionVersion ?? null },
+      },
+    };
+  }
+
+  public static async getVersionDiffAgainstEnvironment(params: {
+    workflowId: string;
+    organizationId: string;
+    versionId: string;
+    targetEnvironment: WorkflowEnvironment | string;
+  }): Promise<{
+    environment: WorkflowEnvironment;
+    version: WorkflowVersionRow;
+    activeDeployment: WorkflowDeploymentRow | null;
+    activeVersion: WorkflowVersionRow | null;
+    summary: WorkflowDiffSummary;
+  }> {
+    const environment = this.normalizeEnvironment(params.targetEnvironment);
+    const version = await this.getVersionRecordById(
+      params.workflowId,
+      params.versionId,
+      params.organizationId,
+    );
+
+    if (!version) {
+      throw new Error('Workflow version not found for organization');
+    }
+
+    if (environment === 'draft') {
+      return {
+        environment,
+        version,
+        activeDeployment: null,
+        activeVersion: null,
+        summary: this.computeDiffSummary(null, version.graph),
+      };
+    }
+
+    const activeDeployment = await this.getActiveDeploymentRecord(
+      params.workflowId,
+      params.organizationId,
+      environment,
+    );
+
+    let activeVersion: WorkflowVersionRow | null = null;
+    if (activeDeployment) {
+      activeVersion = await this.getVersionRecordById(
+        params.workflowId,
+        activeDeployment.versionId,
+        params.organizationId,
+      );
+    }
+
+    return {
+      environment,
+      version,
+      activeDeployment,
+      activeVersion,
+      summary: this.computeDiffSummary(activeVersion?.graph, version.graph),
+    };
+  }
+
+  public static async promoteVersionToEnvironment(params: {
+    workflowId: string;
+    organizationId: string;
+    versionId: string;
+    targetEnvironment: WorkflowEnvironment | string;
+    userId?: string;
+    metadata?: Record<string, any> | null;
+    allowBreakingChanges?: boolean;
+  }): Promise<PublishWorkflowResult> {
+    const environment = this.normalizeEnvironment(params.targetEnvironment);
+    if (environment === 'draft') {
+      throw new Error('Cannot promote a version to the draft slot');
+    }
+
+    const diff = await this.getVersionDiffAgainstEnvironment({
+      workflowId: params.workflowId,
+      organizationId: params.organizationId,
+      versionId: params.versionId,
+      targetEnvironment: environment,
+    });
+
+    if (diff.summary.hasBreakingChanges && !params.allowBreakingChanges) {
+      const details = diff.summary.breakingChanges.map((change) => change.description).join('; ');
+      throw new Error(
+        details
+          ? `Cannot promote version with breaking changes: ${details}`
+          : 'Cannot promote version with breaking changes',
+      );
+    }
+
+    if (environment === 'production') {
+      const activeTestDeployment = await this.getActiveDeploymentRecord(
+        params.workflowId,
+        params.organizationId,
+        'test',
+      );
+
+      if (activeTestDeployment && activeTestDeployment.versionId !== params.versionId) {
+        throw new Error('Version must be promoted to the test environment before production activation');
+      }
+    }
+
+    const metadata = {
+      ...(params.metadata ?? {}),
+      promotion: {
+        targetEnvironment: environment,
+        triggeredAt: this.now().toISOString(),
+        diff: diff.summary,
+        previousDeploymentId: diff.activeDeployment?.id ?? null,
+      },
+    };
+
+    return this.publishWorkflowVersion({
+      workflowId: params.workflowId,
+      organizationId: params.organizationId,
+      environment,
+      userId: params.userId,
+      versionId: diff.version.id,
+      metadata,
+      rollbackOfDeploymentId: diff.activeDeployment?.id ?? null,
+    });
+  }
+
   public static async rollbackDeployment(params: {
     workflowId: string;
     organizationId: string;
@@ -1321,6 +1620,9 @@ export class WorkflowRepository {
     metadata?: Record<string, any> | null;
   }): Promise<PublishWorkflowResult | null> {
     const environment = this.normalizeEnvironment(params.environment);
+    if (environment === 'draft') {
+      throw new Error('Cannot rollback the draft slot');
+    }
 
     const activeDeployment = await this.getActiveDeploymentRecord(
       params.workflowId,

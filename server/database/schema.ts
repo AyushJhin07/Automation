@@ -114,7 +114,7 @@ export interface BillingPlanRecord {
 }
 
 export type WorkflowVersionState = 'draft' | 'published';
-export type WorkflowEnvironment = 'dev' | 'stage' | 'prod';
+export type WorkflowEnvironment = 'draft' | 'test' | 'production';
 
 // Users table with performance indexes
 export const users = pgTable(

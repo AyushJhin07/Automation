@@ -44,7 +44,7 @@ export type WorkflowGraph = {
   meta?: Record<string, any>;
 };
 
-export type WorkflowEnvironment = 'dev' | 'stage' | 'prod';
+export type WorkflowEnvironment = 'draft' | 'test' | 'production';
 export type WorkflowVersionState = 'draft' | 'published';
 
 export interface WorkflowVersionSummary {
