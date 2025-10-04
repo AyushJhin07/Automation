@@ -29,6 +29,12 @@ interface ConnectorManifestMetadata {
   status: ConnectorStatusFlags;
   labels: string[];
   availabilityOverride?: ConnectorAvailability;
+  concurrency?: ConnectorConcurrencyMetadata;
+}
+
+interface ConnectorConcurrencyMetadata {
+  global?: number;
+  perOrganization?: number;
 }
 
 interface ConnectorManifestEntry {
@@ -114,6 +120,7 @@ interface ConnectorRegistryEntry {
   manifest?: ConnectorManifestMetadata;
   pricingTier: ConnectorPricingTier;
   status: ConnectorStatusFlags;
+  concurrency?: ConnectorConcurrencyMetadata;
 }
 
 interface ConnectorFilterOptions {
@@ -481,6 +488,7 @@ export class ConnectorRegistry {
           manifest: manifestMetadata,
           pricingTier: manifestMetadata.pricingTier,
           status,
+          concurrency: manifestMetadata.concurrency,
         };
         this.registry.set(appId, entry);
         loaded++;
@@ -570,6 +578,7 @@ export class ConnectorRegistry {
       pricingTier: 'starter',
       status: defaultStatus,
       labels: [],
+      concurrency: undefined,
     };
 
     if (!entry.manifestPath) {
@@ -592,6 +601,10 @@ export class ConnectorRegistry {
           : [],
         availabilityOverride: this.normalizeAvailabilityOverride((raw as any).availabilityOverride),
       };
+      const concurrency = this.normalizeConcurrencyMetadata((raw as any).concurrency);
+      if (concurrency) {
+        metadata.concurrency = concurrency;
+      }
       this.manifestMetadataCache.set(cacheKey, metadata);
       return metadata;
     } catch (error) {
@@ -636,6 +649,29 @@ export class ConnectorRegistry {
     setFlag('featured');
 
     return result;
+  }
+
+  private normalizeConcurrencyMetadata(value: unknown): ConnectorConcurrencyMetadata | undefined {
+    if (!value || typeof value !== 'object') {
+      return undefined;
+    }
+
+    const raw = value as Record<string, unknown>;
+    const metadata: ConnectorConcurrencyMetadata = {};
+
+    if (typeof raw.global === 'number' && Number.isFinite(raw.global) && raw.global >= 0) {
+      metadata.global = Math.floor(raw.global);
+    }
+
+    if (
+      typeof raw.perOrganization === 'number' &&
+      Number.isFinite(raw.perOrganization) &&
+      raw.perOrganization >= 0
+    ) {
+      metadata.perOrganization = Math.floor(raw.perOrganization);
+    }
+
+    return Object.keys(metadata).length > 0 ? metadata : undefined;
   }
 
   private normalizeAvailabilityOverride(value: unknown): ConnectorAvailability | undefined {

@@ -5,6 +5,10 @@ import { executionQueueService } from '../ExecutionQueueService.js';
 import { executionQuotaService, ExecutionQuotaExceededError } from '../ExecutionQuotaService.js';
 import { WorkflowRepository } from '../../workflow/WorkflowRepository.js';
 import { organizationService } from '../OrganizationService.js';
+import {
+  connectorConcurrencyService,
+  ConnectorConcurrencyExceededError,
+} from '../ConnectorConcurrencyService.js';
 
 const baseWorkflowId = 'quota-test-workflow';
 
@@ -14,10 +18,43 @@ async function drainRunningSlots(organizationId: string, count: number): Promise
   }
 }
 
+async function ensureWorkflowWithConnector(
+  workflowId: string,
+  organizationId: string,
+  connectorId = 'airtable'
+): Promise<void> {
+  await WorkflowRepository.saveWorkflowGraph({
+    id: workflowId,
+    organizationId,
+    name: 'Connector Test Workflow',
+    description: 'Used for connector concurrency tests',
+    graph: {
+      id: workflowId,
+      name: 'Connector Graph',
+      version: 1,
+      nodes: [
+        {
+          id: 'node-1',
+          type: `action.${connectorId}.noop`,
+          label: 'Connector Node',
+          params: {},
+          data: { connectorId },
+        },
+      ],
+      edges: [],
+      scopes: [],
+      secrets: [],
+    },
+    metadata: null,
+  });
+}
+
 // Concurrency saturation scenario
 {
   const organizationId = `org-quota-${randomUUID()}`;
   const workflowId = `${baseWorkflowId}-${randomUUID()}`;
+
+  await ensureWorkflowWithConnector(workflowId, organizationId);
 
   const profile = await organizationService.getExecutionQuotaProfile(organizationId);
   const limit = profile.limits.maxConcurrentExecutions;
@@ -67,6 +104,8 @@ async function drainRunningSlots(organizationId: string, count: number): Promise
   const organizationId = `org-quota-throughput-${randomUUID()}`;
   const workflowId = `${baseWorkflowId}-${randomUUID()}`;
 
+  await ensureWorkflowWithConnector(workflowId, organizationId);
+
   const profile = await organizationService.getExecutionQuotaProfile(organizationId);
   const limit = profile.limits.maxExecutionsPerMinute;
 
@@ -112,4 +151,72 @@ async function drainRunningSlots(organizationId: string, count: number): Promise
   assert(record, 'expected execution record');
   const metadata = (record?.metadata as any)?.quota;
   assert(metadata?.reason === 'throughput');
+}
+
+// Connector concurrency saturation scenario
+{
+  const organizationId = `org-connector-${randomUUID()}`;
+  const workflowId = `${baseWorkflowId}-${randomUUID()}`;
+
+  await ensureWorkflowWithConnector(workflowId, organizationId);
+
+  const existingExecutions = [`existing-${randomUUID()}`, `existing-${randomUUID()}`];
+
+  try {
+    for (const existing of existingExecutions) {
+      await connectorConcurrencyService.registerExecution({
+        executionId: existing,
+        organizationId,
+        connectors: ['airtable'],
+      });
+    }
+
+    let concurrencyError: ConnectorConcurrencyExceededError | null = null;
+    try {
+      await executionQueueService.enqueue({
+        workflowId,
+        organizationId,
+        userId: 'test-user',
+        triggerType: 'manual',
+        triggerData: null,
+      });
+    } catch (error) {
+      if (error instanceof ConnectorConcurrencyExceededError) {
+        concurrencyError = error;
+      } else {
+        throw error;
+      }
+    }
+
+    assert(concurrencyError, 'expected connector concurrency error');
+    assert.equal(concurrencyError?.connectorId, 'airtable');
+    assert.equal(concurrencyError?.scope, 'organization');
+
+    const failedExecutionId = concurrencyError?.executionId;
+    assert(failedExecutionId, 'expected execution id when connector limit is hit');
+    const failedRecord = await WorkflowRepository.getExecutionById(failedExecutionId!, organizationId);
+    assert(failedRecord, 'expected a persisted execution record for connector saturation');
+    assert.equal(failedRecord?.status, 'failed');
+    const connectorMetadata = (failedRecord?.metadata as any)?.connectorConcurrency;
+    assert.equal(connectorMetadata?.violation?.connectorId, 'airtable');
+    assert.equal(connectorMetadata?.violation?.scope, 'organization');
+  } finally {
+    for (const existing of existingExecutions) {
+      await connectorConcurrencyService.releaseExecution(existing).catch(() => {});
+    }
+  }
+
+  const enqueueResult = await executionQueueService.enqueue({
+    workflowId,
+    organizationId,
+    userId: 'test-user',
+    triggerType: 'manual',
+    triggerData: null,
+  });
+
+  assert(enqueueResult.executionId, 'expected successful enqueue after releasing connector slots');
+  const successRecord = await WorkflowRepository.getExecutionById(enqueueResult.executionId, organizationId);
+  assert(successRecord, 'expected execution record for successful enqueue');
+  const connectorsMeta = (successRecord?.metadata as any)?.connectors;
+  assert(Array.isArray(connectorsMeta) && connectorsMeta.includes('airtable'), 'metadata should include connector list');
 }

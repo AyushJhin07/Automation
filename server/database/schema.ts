@@ -34,6 +34,7 @@ export interface OrganizationLimits {
   maxStorage: number;
   maxConcurrentExecutions: number;
   maxExecutionsPerMinute: number;
+  connectorConcurrency?: Record<string, number>;
 }
 
 export interface OrganizationUsageMetrics {
