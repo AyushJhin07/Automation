@@ -503,6 +503,59 @@ assert.ok(
   );
 }
 
+{
+  const upstreamBefore: UpstreamNodeSummary = {
+    id: "spreadsheet-node",
+    data: {
+      label: "Initial Sheet",
+      metadata: {
+        columns: ["id", "name"],
+        sample: { id: "1", name: "Original" }
+      },
+      outputMetadata: {
+        schema: {
+          id: { type: "string" },
+          name: { type: "string" }
+        }
+      }
+    }
+  };
+
+  const upstreamAfter: UpstreamNodeSummary = {
+    id: "spreadsheet-node",
+    data: {
+      label: "Updated Sheet",
+      metadata: {
+        columns: ["id", "name", "status"],
+        sample: { id: "1", name: "Revised", status: "Active" }
+      },
+      outputMetadata: {
+        schema: {
+          id: { type: "string" },
+          name: { type: "string" },
+          status: { type: "string" }
+        }
+      }
+    }
+  };
+
+  const beforeSuggestions = computeMetadataSuggestions([upstreamBefore]);
+  const afterSuggestions = computeMetadataSuggestions([upstreamAfter]);
+
+  const beforePaths = beforeSuggestions.map((entry) => entry.path);
+  const afterPaths = afterSuggestions.map((entry) => entry.path);
+
+  assert.notDeepEqual(
+    beforePaths,
+    afterPaths,
+    "metadata suggestions should refresh when upstream schemas change"
+  );
+  assert.ok(
+    afterPaths.includes("status"),
+    "updated suggestions should include newly introduced fields"
+  );
+}
+
 const paramSyncBase = {
   label: "Mailer",
   params: { old: "value" },

@@ -16,7 +16,10 @@ describe('NodeSidebar lifecycle badges', () => {
         hasImplementation: true,
         availability: 'stable',
         release: { status: 'beta', semver: '1.0.0', isBeta: true },
-        lifecycle: { alpha: false, beta: true, stable: false },
+        lifecycle: {
+          status: 'beta',
+          badges: [{ id: 'beta', label: 'Beta', tone: 'warning' }],
+        },
       },
       stableApp: {
         name: 'Stable App',
@@ -28,7 +31,10 @@ describe('NodeSidebar lifecycle badges', () => {
         hasImplementation: true,
         availability: 'stable',
         release: { status: 'stable', semver: '2.0.0', isBeta: false },
-        lifecycle: { alpha: false, beta: false, stable: true },
+        lifecycle: {
+          status: 'stable',
+          badges: [],
+        },
       },
     },
   };

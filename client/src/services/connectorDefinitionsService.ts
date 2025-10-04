@@ -5,6 +5,7 @@ export interface ConnectorDefinitionSummary {
   name: string;
   description?: string;
   category?: string;
+  categories?: string[];
   icon?: string;
   color?: string;
   availability?: string;
@@ -57,6 +58,11 @@ const normalizeConnectorPayload = (raw: any): ConnectorDefinitionMap => {
       name: payload.name ?? payload.displayName ?? payload.id ?? id ?? normalizedId,
       description: payload.description ?? payload.summary,
       category: payload.category ?? payload.categoryName ?? payload.vertical,
+      categories: Array.isArray(payload.categories)
+        ? payload.categories
+            .map((entry: unknown) => (typeof entry === 'string' ? entry.trim() : ''))
+            .filter((entry): entry is string => Boolean(entry))
+        : undefined,
       icon: payload.icon ?? payload.iconName ?? payload.logo ?? payload.iconId,
       color: payload.color ?? payload.brandColor,
       availability: payload.availability ?? payload.status,
@@ -92,7 +98,7 @@ const normalizeConnectorPayload = (raw: any): ConnectorDefinitionMap => {
 };
 
 const fetchFromMetadataEndpoint = async (headers: HeadersInit): Promise<ConnectorDefinitionMap> => {
-  const response = await fetch('/api/metadata/connectors', { headers });
+  const response = await fetch('/api/metadata/v1/connectors', { headers });
   if (!response.ok) {
     throw new Error(`Failed to fetch connector metadata (${response.status})`);
   }
