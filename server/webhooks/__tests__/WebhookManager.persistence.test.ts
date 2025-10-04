@@ -297,7 +297,10 @@ WebhookManager.setQueueServiceForTests({
   enqueue: async (req: any) => {
     queueCalls.push(req);
     return { executionId: 'exec-123' };
-  }
+  },
+  enqueueResume: async () => {
+    throw new Error('resume should not be invoked in this test');
+  },
 });
 
 const handled = await managerAfterRestart.handleWebhook(webhookId, { hello: 'world' }, { 'x-test': '1' });

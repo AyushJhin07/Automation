@@ -10,6 +10,7 @@ import {
   encodeVerificationFailure,
 } from '../services/TriggerPersistenceService';
 import type { QueueRunRequest } from '../services/ExecutionQueueService';
+import type { WorkflowResumeState } from '../types/workflowTimers';
 import { dispatchOutboxRecord } from './outbox/index.js';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
@@ -27,9 +28,21 @@ import {
   recordWebhookDedupeMiss,
 } from '../observability/index.js';
 import { organizationService } from '../services/OrganizationService.js';
+import { executionResumeTokenService } from '../services/ExecutionResumeTokenService.js';
 
 type QueueService = {
   enqueue: (request: QueueRunRequest) => Promise<{ executionId: string }>;
+  enqueueResume?: (params: {
+    tokenId?: string;
+    timerId?: string;
+    executionId: string;
+    workflowId: string;
+    organizationId: string;
+    userId?: string;
+    resumeState: WorkflowResumeState;
+    initialData: any;
+    triggerType?: string;
+  }) => Promise<void>;
 };
 
 type SignatureEnforcementConfig = {
@@ -440,6 +453,48 @@ export class WebhookManager {
       }
     }
     return undefined;
+  }
+
+  private extractResumeCallback(event: TriggerEvent): { token: string; signature?: string } | null {
+    const headers = event.headers ?? {};
+    const headerToken = this.getHeaderValue(headers, 'x-resume-token');
+    const headerSignature = this.getHeaderValue(headers, 'x-resume-signature');
+
+    let payloadToken: string | undefined;
+    let payloadSignature: string | undefined;
+
+    if (event.payload && typeof event.payload === 'object') {
+      const payload = event.payload as Record<string, any>;
+      const resumePayload =
+        payload && typeof payload.resume === 'object' ? (payload.resume as Record<string, any>) : payload;
+
+      if (typeof resumePayload.resumeToken === 'string') {
+        payloadToken = resumePayload.resumeToken;
+      } else if (typeof resumePayload.resume_token === 'string') {
+        payloadToken = resumePayload.resume_token;
+      } else if (typeof resumePayload.token === 'string' && 'resume' in payload) {
+        payloadToken = resumePayload.token;
+      }
+
+      if (typeof resumePayload.resumeSignature === 'string') {
+        payloadSignature = resumePayload.resumeSignature;
+      } else if (typeof resumePayload.resume_signature === 'string') {
+        payloadSignature = resumePayload.resume_signature;
+      } else if (typeof resumePayload.signature === 'string' && 'resume' in payload) {
+        payloadSignature = resumePayload.signature;
+      }
+    }
+
+    const token = headerToken || payloadToken;
+    if (!token || typeof token !== 'string' || token.trim() === '') {
+      return null;
+    }
+
+    const signature = headerSignature || payloadSignature;
+    return {
+      token: token.trim(),
+      signature: signature ? signature.trim() : undefined,
+    };
   }
 
   private resolveVerificationProvider(webhook: WebhookTrigger, config: SignatureEnforcementConfig | null): string | null {
@@ -1305,6 +1360,55 @@ export class WebhookManager {
           region: event.region ?? this.workerRegion,
         });
         return false;
+      }
+
+      const resumeRequest = this.extractResumeCallback(event);
+      if (resumeRequest) {
+        const consumed = await executionResumeTokenService.consumeToken({
+          token: resumeRequest.token,
+          signature: resumeRequest.signature,
+          organizationId: event.organizationId,
+        });
+
+        if (!consumed) {
+          await this.persistence.markWebhookEventProcessed(logId, {
+            success: false,
+            error: 'invalid_resume_token',
+            region: event.region ?? this.workerRegion,
+          });
+          return false;
+        }
+
+        const queueService = await this.getQueueService();
+        if (typeof queueService.enqueueResume !== 'function') {
+          console.warn('⚠️ Queue service does not support resume callbacks; dropping event.');
+          await this.persistence.markWebhookEventProcessed(logId, {
+            success: false,
+            error: 'resume_not_supported',
+            region: event.region ?? this.workerRegion,
+          });
+          return false;
+        }
+
+        await queueService.enqueueResume({
+          tokenId: consumed.tokenId,
+          executionId: consumed.executionId,
+          workflowId: consumed.workflowId,
+          organizationId: consumed.organizationId,
+          userId: consumed.userId ?? undefined,
+          resumeState: consumed.resumeState,
+          initialData: consumed.initialData,
+          triggerType: consumed.triggerType ?? 'callback',
+        });
+
+        await this.persistence.markWebhookEventProcessed(logId, {
+          success: true,
+          executionId: consumed.executionId,
+          region: event.region ?? this.workerRegion,
+        });
+
+        event.processed = true;
+        return true;
       }
 
       const queueService = await this.getQueueService();

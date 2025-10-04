@@ -96,6 +96,7 @@ export interface WorkflowExecution {
     }>;
     nextResumeAt?: Date;
     waitReason?: string;
+    resumeCallbacks?: Record<string, { callbackUrl: string; expiresAt?: Date }>;
   };
 }
 
@@ -229,12 +230,14 @@ const DEFAULT_METADATA_BASE: WorkflowExecution['metadata'] = {
   cacheHitRate: 0,
   averageNodeDuration: 0,
   openCircuitBreakers: [],
+  resumeCallbacks: {},
 };
 
 function createDefaultMetadata(): WorkflowExecution['metadata'] {
   return {
     ...DEFAULT_METADATA_BASE,
     openCircuitBreakers: [],
+    resumeCallbacks: {},
   };
 }
 
@@ -1493,6 +1496,17 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
         openedAt: breaker.openedAt ? breaker.openedAt.toISOString() : undefined,
         lastFailureAt: breaker.lastFailureAt ? breaker.lastFailureAt.toISOString() : undefined,
       })),
+      resumeCallbacks: metadata.resumeCallbacks
+        ? Object.fromEntries(
+            Object.entries(metadata.resumeCallbacks).map(([nodeId, entry]) => [
+              nodeId,
+              {
+                ...entry,
+                expiresAt: entry.expiresAt ? entry.expiresAt.toISOString() : undefined,
+              },
+            ]),
+          )
+        : undefined,
     };
 
     return sanitizeLogPayload(serialized);
@@ -1505,6 +1519,24 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
 
     const nextResumeAt = metadata.nextResumeAt ? new Date(metadata.nextResumeAt as string) : undefined;
     const waitReason = metadata.waitReason as string | undefined;
+
+    const resumeCallbacksRaw =
+      metadata.resumeCallbacks && typeof metadata.resumeCallbacks === 'object'
+        ? (metadata.resumeCallbacks as Record<string, any>)
+        : {};
+    const resumeCallbacks = Object.fromEntries(
+      Object.entries(resumeCallbacksRaw).map(([nodeId, entry]) => {
+        const callbackUrl =
+          typeof entry?.callbackUrl === 'string' && entry.callbackUrl ? entry.callbackUrl : '';
+        const expiresAt =
+          entry?.expiresAt instanceof Date
+            ? entry.expiresAt
+            : typeof entry?.expiresAt === 'string' && entry.expiresAt
+            ? new Date(entry.expiresAt)
+            : undefined;
+        return [nodeId, { callbackUrl, expiresAt }];
+      }),
+    );
 
     const openCircuitBreakers = Array.isArray(metadata.openCircuitBreakers)
       ? metadata.openCircuitBreakers.map((breaker: any) => ({
@@ -1529,6 +1561,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       openCircuitBreakers,
       nextResumeAt,
       waitReason,
+      resumeCallbacks,
     };
   }
 
