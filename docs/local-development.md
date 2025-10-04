@@ -10,10 +10,12 @@ This guide covers the quickest path to booting the platform locally with Docker 
    ```bash
    cp .env.example .env.development
    ```
-2. Edit `.env.development` to match your local setup. Sensitive values must be generated per developer:
-   - `ENCRYPTION_MASTER_KEY`: generate a unique 32-byte value (`openssl rand -base64 32`).
-   - `JWT_SECRET`: use a unique, high-entropy string (32+ characters). Avoid reusing production values.
-3. Fill in any provider API keys you plan to exercise (OpenAI, Anthropic, Claude, Google, Gemini). Leave them blank to disable those integrations locally.
+2. Generate per-developer secrets before starting any local processes:
+   ```bash
+   npm run bootstrap:secrets
+   ```
+   This script backfills strong random values for `ENCRYPTION_MASTER_KEY` and `JWT_SECRET`, matching the minimum length enforced by `EncryptionService`.
+3. Edit `.env.development` to match your local setup. Fill in any provider API keys you plan to exercise (OpenAI, Anthropic, Claude, Google, Gemini). Leave them blank to disable those integrations locally.
 
 > ℹ️  When running outside of Docker Compose, either export the variables manually or copy `.env.development` to `.env` so `dotenv` can pick them up. Never commit personal secrets.
 
