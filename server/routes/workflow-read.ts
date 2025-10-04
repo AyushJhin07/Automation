@@ -7,6 +7,7 @@ import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { productionGraphCompiler } from '../core/ProductionGraphCompiler.js';
 import { productionDeployer } from '../core/ProductionDeployer.js';
 import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/WorkflowRuntimeService.js';
+import { simpleGraphValidator } from '../core/SimpleGraphValidator.js';
 import { getErrorMessage } from '../types/common.js';
 
 export const workflowReadRouter = Router();
@@ -352,6 +353,46 @@ workflowReadRouter.delete('/workflows/:id', async (req, res) => {
       success: false,
       error: 'Failed to clear workflow'
     });
+  }
+});
+
+workflowReadRouter.post('/workflows/validate', async (req, res) => {
+  try {
+    const organizationId = requireOrganizationContext(req as any, res);
+    if (!organizationId) {
+      return;
+    }
+
+    const rawGraph = req.body?.graph;
+    if (!rawGraph) {
+      return res.status(400).json({ success: false, error: 'Graph is required' });
+    }
+
+    const sanitizedGraph = sanitizeGraphForExecution(rawGraph);
+    const validation = simpleGraphValidator.validate(sanitizedGraph as any);
+
+    const errors = validation.errors ?? [];
+    const warnings = [
+      ...(validation.warnings ?? []),
+      ...(validation.securityWarnings ?? []),
+    ];
+
+    res.json({
+      success: true,
+      validation: {
+        errors,
+        warnings,
+        isValid: errors.length === 0,
+        summary: {
+          totalIssues: errors.length + warnings.length,
+          criticalErrors: errors.length,
+          warnings: warnings.length,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('❌ Graph validation failed:', error);
+    res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 

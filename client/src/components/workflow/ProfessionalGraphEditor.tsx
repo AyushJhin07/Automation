@@ -93,11 +93,14 @@ import {
   MapPin,
   Calculator,
   CheckCircle2,
-  Link
+  Link,
+  Loader2,
+  Info
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
+import type { ValidationError } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
@@ -222,6 +225,202 @@ const resolveConnectorIcon = (appId: string, iconName?: string): LucideIcon => {
   return normalizedIconMap[normalizedAppId] ?? normalizedIconMap['default'];
 };
 
+export type GraphValidationReason = 'run' | 'deploy' | 'manual';
+
+export interface GraphValidationResult {
+  errors: ValidationError[];
+  warnings: ValidationError[];
+  isValid: boolean;
+  summary?: { totalIssues?: number; criticalErrors?: number; warnings?: number } | null;
+  validatedAt: number;
+  reason: GraphValidationReason;
+}
+
+interface GraphValidationBannerProps {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  errorMessage?: string | null;
+  result: GraphValidationResult | null;
+  onFocusNode: (nodeId: string) => void;
+}
+
+export const GraphValidationBanner: React.FC<GraphValidationBannerProps> = ({
+  status,
+  errorMessage,
+  result,
+  onFocusNode,
+}) => {
+  if (status === 'loading') {
+    return (
+      <Alert className="mb-3 bg-blue-500/10 border-blue-500/30 text-blue-100">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <div>
+          <AlertTitle>Validating workflow…</AlertTitle>
+          <AlertDescription className="text-xs text-blue-100/90">
+            Checking for missing inputs, cycles, and schema mismatches.
+          </AlertDescription>
+        </div>
+      </Alert>
+    );
+  }
+
+  if (status === 'error' && errorMessage) {
+    return (
+      <Alert variant="destructive" className="mb-3">
+        <AlertTriangle className="h-4 w-4" />
+        <div>
+          <AlertTitle>Validation failed</AlertTitle>
+          <AlertDescription className="text-xs">{errorMessage}</AlertDescription>
+        </div>
+      </Alert>
+    );
+  }
+
+  if (!result || (result.errors.length === 0 && result.warnings.length === 0)) {
+    return null;
+  }
+
+  const hasErrors = result.errors.length > 0;
+  const issues = hasErrors ? result.errors : result.warnings;
+  const displayed = issues.slice(0, 3);
+  const remaining = issues.length - displayed.length;
+
+  const reasonLabels: Record<GraphValidationReason, string> = {
+    run: 'Run check',
+    deploy: 'Deploy check',
+    manual: 'Manual check',
+  };
+
+  const validatedTimestamp = new Date(result.validatedAt).toLocaleTimeString();
+
+  return (
+    <Alert
+      variant={hasErrors ? 'destructive' : 'default'}
+      className={clsx(
+        'mb-3',
+        hasErrors
+          ? 'bg-red-500/10 border-red-500/40 text-red-50'
+          : 'bg-amber-500/10 border-amber-500/40 text-amber-50'
+      )}
+    >
+      {hasErrors ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <AlertTitle>
+            {hasErrors
+              ? `Fix ${issues.length} validation ${issues.length === 1 ? 'error' : 'errors'}`
+              : `Workflow validated with ${issues.length} warning${issues.length === 1 ? '' : 's'}`}
+          </AlertTitle>
+          <Badge
+            variant="outline"
+            className={clsx(
+              'text-xs',
+              hasErrors ? 'border-red-400/60 text-red-50' : 'border-amber-400/60 text-amber-50'
+            )}
+          >
+            {reasonLabels[result.reason]}
+          </Badge>
+          <span className="text-[11px] opacity-80">Checked at {validatedTimestamp}</span>
+        </div>
+        <AlertDescription className="mt-2 space-y-2 text-xs">
+          <div className="opacity-80">
+            {hasErrors
+              ? 'Resolve these issues before running or deploying the workflow.'
+              : 'Workflow can run, but review these warnings to ensure expected behavior.'}
+          </div>
+          <ul className="space-y-1">
+            {displayed.map((issue, index) => {
+              const key = `${issue.nodeId ?? 'global'}-${index}`;
+              const message = issue.message || 'Validation issue detected';
+              if (issue.nodeId) {
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={clsx(
+                        'underline',
+                        hasErrors ? 'text-red-50 hover:text-red-100' : 'text-amber-50 hover:text-amber-100'
+                      )}
+                      onClick={() => onFocusNode(issue.nodeId!)}
+                    >
+                      {message}
+                    </button>
+                  </li>
+                );
+              }
+              return <li key={key}>{message}</li>;
+            })}
+            {remaining > 0 && (
+              <li className="opacity-70">
+                + {remaining} more {hasErrors ? 'issues' : 'warnings'}
+              </li>
+            )}
+          </ul>
+        </AlertDescription>
+      </div>
+    </Alert>
+  );
+};
+
+export type ValidationAwareNode<TData = any> = {
+  id: string | number;
+  data?: TData;
+  [key: string]: any;
+};
+
+export const mapValidationStateToNodes = <TNode extends ValidationAwareNode>(
+  nodes: TNode[],
+  result: GraphValidationResult | null,
+  executionDefaults?: (data: any) => any
+): TNode[] => {
+  const applyDefaults = executionDefaults ?? ((data: any) => (data === undefined ? {} : data));
+  const errorMap = new Map<string, ValidationError[]>();
+  const warningMap = new Map<string, ValidationError[]>();
+
+  if (result) {
+    for (const error of result.errors ?? []) {
+      const nodeId = error?.nodeId;
+      if (nodeId !== undefined && nodeId !== null) {
+        const key = String(nodeId);
+        const existing = errorMap.get(key) ?? [];
+        errorMap.set(key, [...existing, error]);
+      }
+    }
+
+    for (const warning of result.warnings ?? []) {
+      const nodeId = warning?.nodeId;
+      if (nodeId !== undefined && nodeId !== null) {
+        const key = String(nodeId);
+        const existing = warningMap.get(key) ?? [];
+        warningMap.set(key, [...existing, warning]);
+      }
+    }
+  }
+
+  return nodes.map((node) => {
+    const baseData = applyDefaults(node?.data ?? {});
+    const nextData: Record<string, any> = { ...(baseData ?? {}) };
+    const errorsForNode = errorMap.get(String(node.id)) ?? [];
+    const warningsForNode = warningMap.get(String(node.id)) ?? [];
+
+    if (errorsForNode.length > 0) {
+      nextData.validationErrors = errorsForNode;
+    } else if ('validationErrors' in nextData) {
+      delete nextData.validationErrors;
+    }
+
+    if (warningsForNode.length > 0) {
+      nextData.validationWarnings = warningsForNode;
+    } else if ('validationWarnings' in nextData) {
+      delete nextData.validationWarnings;
+    }
+
+    return {
+      ...node,
+      data: nextData,
+    } as TNode;
+  });
+};
+
 // Get app color based on category
 const getAppColor = (category: string) => {
   const colorMap: Record<string, string> = {
@@ -249,12 +448,32 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const statusLabel = STATUS_LABELS[status];
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const validationWarnings = Array.isArray(data?.validationWarnings)
+    ? (data.validationWarnings as ValidationError[])
+    : [];
+  const hasValidationError = validationErrors.length > 0;
+  const hasValidationWarning = !hasValidationError && validationWarnings.length > 0;
+  const validationMessage = hasValidationError
+    ? validationErrors[0]?.message
+    : validationWarnings[0]?.message;
+  const validationToneClass = hasValidationError
+    ? 'bg-red-500/20 border-red-400/50 text-red-50'
+    : 'bg-amber-500/20 border-amber-400/50 text-amber-50';
 
   return (
     <div
       className={clsx(
         'relative bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
-        selected ? 'border-white shadow-xl scale-105' : 'border-green-400/30',
+        selected
+          ? 'border-white shadow-xl scale-105'
+          : hasValidationError
+          ? 'border-red-400/70 ring-2 ring-red-400/40'
+          : hasValidationWarning
+          ? 'border-amber-300/60 ring-2 ring-amber-300/40'
+          : 'border-green-400/30',
         'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
         ringClass
       )}
@@ -280,7 +499,7 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
             <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </Button>
         </div>
-        
+
         {/* Content */}
         <div className="text-white">
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
@@ -303,6 +522,24 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
               {data.lastExecution.summary}
             </p>
           )}
+
+          {(hasValidationError || hasValidationWarning) && (
+            <div
+              className={clsx(
+                'mt-3 flex items-start gap-2 text-xs rounded-lg border px-2 py-1',
+                validationToneClass
+              )}
+            >
+              {hasValidationError ? (
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+              ) : (
+                <Info className="h-3 w-3 shrink-0" />
+              )}
+              <span className="leading-snug">
+                {validationMessage || (hasValidationError ? 'Validation error detected' : 'Validation warning detected')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Expanded content */}
@@ -318,7 +555,7 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
             </div>
           </div>
         )}
-        
+
         {/* ReactFlow Handles */}
         <Handle
           type="source"
@@ -336,6 +573,20 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
   const statusLabel = STATUS_LABELS[status];
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const validationWarnings = Array.isArray(data?.validationWarnings)
+    ? (data.validationWarnings as ValidationError[])
+    : [];
+  const hasValidationError = validationErrors.length > 0;
+  const hasValidationWarning = !hasValidationError && validationWarnings.length > 0;
+  const validationMessage = hasValidationError
+    ? validationErrors[0]?.message
+    : validationWarnings[0]?.message;
+  const validationToneClass = hasValidationError
+    ? 'bg-red-500/20 border-red-400/50 text-red-50'
+    : 'bg-amber-500/20 border-amber-400/50 text-amber-50';
 
   const getIcon = () => {
     if (data.app === 'Gmail') return <Mail className="w-4 h-4 text-white" />;
@@ -348,7 +599,13 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
     <div
       className={clsx(
         'relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
-        selected ? 'border-white shadow-xl scale-105' : 'border-blue-400/30',
+        selected
+          ? 'border-white shadow-xl scale-105'
+          : hasValidationError
+          ? 'border-red-400/70 ring-2 ring-red-400/40'
+          : hasValidationWarning
+          ? 'border-amber-300/60 ring-2 ring-amber-300/40'
+          : 'border-blue-400/30',
         'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
         ringClass
       )}
@@ -401,6 +658,24 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
               {data.lastExecution.summary}
             </p>
           )}
+
+          {(hasValidationError || hasValidationWarning) && (
+            <div
+              className={clsx(
+                'mt-3 flex items-start gap-2 text-xs rounded-lg border px-2 py-1',
+                validationToneClass
+              )}
+            >
+              {hasValidationError ? (
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+              ) : (
+                <Info className="h-3 w-3 shrink-0" />
+              )}
+              <span className="leading-snug">
+                {validationMessage || (hasValidationError ? 'Validation error detected' : 'Validation warning detected')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Expanded content */}
@@ -439,12 +714,32 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
   const statusLabel = STATUS_LABELS[status];
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const validationWarnings = Array.isArray(data?.validationWarnings)
+    ? (data.validationWarnings as ValidationError[])
+    : [];
+  const hasValidationError = validationErrors.length > 0;
+  const hasValidationWarning = !hasValidationError && validationWarnings.length > 0;
+  const validationMessage = hasValidationError
+    ? validationErrors[0]?.message
+    : validationWarnings[0]?.message;
+  const validationToneClass = hasValidationError
+    ? 'bg-red-500/20 border-red-400/50 text-red-50'
+    : 'bg-amber-500/20 border-amber-400/50 text-amber-50';
 
   return (
     <div
       className={clsx(
         'relative bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
-        selected ? 'border-white shadow-xl scale-105' : 'border-purple-400/30',
+        selected
+          ? 'border-white shadow-xl scale-105'
+          : hasValidationError
+          ? 'border-red-400/70 ring-2 ring-red-400/40'
+          : hasValidationWarning
+          ? 'border-amber-300/60 ring-2 ring-amber-300/40'
+          : 'border-purple-400/30',
         'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
         ringClass
       )}
@@ -492,8 +787,26 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
               {data.lastExecution.summary}
             </p>
           )}
+
+          {(hasValidationError || hasValidationWarning) && (
+            <div
+              className={clsx(
+                'mt-3 flex items-start gap-2 text-xs rounded-lg border px-2 py-1',
+                validationToneClass
+              )}
+            >
+              {hasValidationError ? (
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+              ) : (
+                <Info className="h-3 w-3 shrink-0" />
+              )}
+              <span className="leading-snug">
+                {validationMessage || (hasValidationError ? 'Validation error detected' : 'Validation warning detected')}
+              </span>
+            </div>
+          )}
         </div>
-        
+
         {/* Expanded content */}
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
@@ -1341,6 +1654,9 @@ const GraphEditorContent = () => {
     notes: '',
   });
   const [promotionError, setPromotionError] = useState<string | null>(null);
+  const [graphValidationResult, setGraphValidationResult] = useState<GraphValidationResult | null>(null);
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setLabelValue(selectedNode?.data?.label || '');
@@ -1622,6 +1938,83 @@ const GraphEditorContent = () => {
       })
     );
   }, [setNodes]);
+
+  const applyValidationToNodes = useCallback(
+    (result: GraphValidationResult | null) => {
+      setNodes((nds) => mapValidationStateToNodes(nds, result, applyExecutionStateDefaults));
+    },
+    [setNodes]
+  );
+
+  const focusValidationNode = useCallback(
+    (nodeId: string) => {
+      const targetId = String(nodeId);
+      setSelectedNodeId(targetId);
+      setNodes((nds) =>
+        nds.map((node) => ({
+          ...node,
+          selected: String(node.id) === targetId,
+        }))
+      );
+    },
+    [setNodes]
+  );
+
+  const validateGraphOnServer = useCallback(
+    async (graph: NodeGraph, reason: GraphValidationReason) => {
+      setValidationStatus('loading');
+      setValidationErrorMessage(null);
+
+      try {
+        const response = await authFetch('/api/workflows/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ graph }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data?.success === false) {
+          if (response.status === 401) {
+            await logout(true);
+          }
+          throw new Error(data?.error || 'Failed to validate workflow');
+        }
+
+        const validation = data?.validation ?? {};
+        const errors = Array.isArray(validation.errors)
+          ? (validation.errors as ValidationError[])
+          : [];
+        const warnings = Array.isArray(validation.warnings)
+          ? (validation.warnings as ValidationError[])
+          : [];
+        const securityWarnings = Array.isArray(validation.securityWarnings)
+          ? (validation.securityWarnings as ValidationError[])
+          : [];
+
+        const result: GraphValidationResult = {
+          errors,
+          warnings: [...warnings, ...securityWarnings],
+          isValid: validation.isValid !== false && errors.length === 0,
+          summary: validation.summary ?? null,
+          validatedAt: Date.now(),
+          reason,
+        };
+
+        setGraphValidationResult(result);
+        applyValidationToNodes(result);
+        setValidationStatus('success');
+        setValidationErrorMessage(null);
+        return result;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to validate workflow';
+        setValidationErrorMessage(message);
+        setValidationStatus('error');
+        return null;
+      }
+    },
+    [applyValidationToNodes, authFetch, logout]
+  );
 
   const createGraphPayload = useCallback((workflowIdentifier: string) => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? spec.metadata : undefined;
@@ -1997,6 +2390,18 @@ const GraphEditorContent = () => {
 
     const payload = createGraphPayload(workflowIdentifier);
 
+    const validation = await validateGraphOnServer(payload, 'run');
+    if (!validation) {
+      toast.error('Unable to validate workflow before running');
+      return;
+    }
+
+    if (!validation.isValid) {
+      setRunBanner({ type: 'error', message: 'Resolve validation errors before running' });
+      toast.error('Resolve validation errors before running');
+      return;
+    }
+
     setRunBanner(null);
     setIsRunning(true);
 
@@ -2150,7 +2555,17 @@ const GraphEditorContent = () => {
         resetExecutionHighlights();
       }, 1200);
     }
-  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, updateNodeExecution, resetExecutionHighlights, setNodes, setActiveWorkflowId]);
+  }, [
+    nodes,
+    ensureSupportedNodes,
+    activeWorkflowId,
+    createGraphPayload,
+    updateNodeExecution,
+    resetExecutionHighlights,
+    setNodes,
+    setActiveWorkflowId,
+    validateGraphOnServer,
+  ]);
 
   const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
     if (nodes.length === 0) {
@@ -2236,9 +2651,23 @@ const GraphEditorContent = () => {
       return;
     }
 
-    setPromotionState('checking');
     setPromotionError(null);
     setPromotionDiff(null);
+
+    const validationWorkflowId = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const validationPayload = createGraphPayload(validationWorkflowId);
+    const validation = await validateGraphOnServer(validationPayload, 'deploy');
+    if (!validation) {
+      toast.error('Unable to validate workflow before promoting');
+      return;
+    }
+
+    if (!validation.isValid) {
+      toast.error('Resolve validation errors before promoting');
+      return;
+    }
+
+    setPromotionState('checking');
 
     const savedId = await onSaveWorkflow();
     const workflowIdentifier = savedId ?? activeWorkflowId ?? fallbackWorkflowIdRef.current ?? null;
@@ -2285,7 +2714,16 @@ const GraphEditorContent = () => {
     } finally {
       setPromotionState('idle');
     }
-  }, [promotionState, nodes.length, onSaveWorkflow, activeWorkflowId, authFetch, logout]);
+  }, [
+    promotionState,
+    nodes.length,
+    onSaveWorkflow,
+    activeWorkflowId,
+    authFetch,
+    logout,
+    createGraphPayload,
+    validateGraphOnServer,
+  ]);
 
   const handleConfirmPromotion = useCallback(async () => {
     if (!promotionWorkflowId) {
@@ -2354,6 +2792,12 @@ const GraphEditorContent = () => {
         <div className="absolute top-4 left-4 right-4 z-10">
           <Card className="bg-slate-800/90 backdrop-blur-sm border-slate-700">
             <CardContent className="p-3">
+              <GraphValidationBanner
+                status={validationStatus}
+                errorMessage={validationErrorMessage}
+                result={graphValidationResult}
+                onFocusNode={focusValidationNode}
+              />
               {runBanner && (
                 <Alert
                   variant={runBanner.type === 'error' ? 'destructive' : 'default'}
@@ -2820,7 +3264,7 @@ const GraphEditorContent = () => {
             
             {/* ChatGPT Schema Fix: Smart Parameters Panel */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
-              <SmartParametersPanel />
+              <SmartParametersPanel connectorDefinitions={connectorDefinitions} />
             </div>
             
             {/* Node Actions */}

@@ -10,6 +10,7 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { buildMetadataFromNode } from "./metadata";
 import type { EvaluatedValue } from "../../../../shared/nodeGraphSchema";
+import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
 
 export type JSONSchema = {
   type?: string;
@@ -87,6 +88,152 @@ const uniqueStrings = (values: Array<string | undefined>): string[] => {
     }
   });
   return Array.from(set);
+};
+
+const canonicalizeIdentifier = (value: any): string => {
+  if (!value) return "";
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
+type OperationSchemaResolution = {
+  schema: JSONSchema;
+  defaults?: Record<string, any>;
+  operationId?: string;
+} | null;
+
+const extractSchemaFromOperation = (operation: Record<string, any> | undefined | null): OperationSchemaResolution => {
+  if (!operation || typeof operation !== "object") {
+    return null;
+  }
+
+  const candidate = (operation as any).parameters ?? (operation as any).params ?? (operation as any).schema;
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+
+  const properties = (candidate as JSONSchema)?.properties;
+  if (!properties || typeof properties !== "object" || Object.keys(properties).length === 0) {
+    return null;
+  }
+
+  const defaults =
+    (typeof (operation as any).defaults === "object" && (operation as any).defaults) ||
+    (typeof (operation as any).defaultParameters === "object" && (operation as any).defaultParameters) ||
+    undefined;
+
+  return {
+    schema: candidate as JSONSchema,
+    defaults,
+    operationId: typeof (operation as any).id === "string" ? (operation as any).id : undefined,
+  };
+};
+
+export const resolveOperationSchemaFromDefinitions = (
+  definitions: ConnectorDefinitionMap | null | undefined,
+  appCandidates: string[],
+  operationCandidates: string[],
+): OperationSchemaResolution => {
+  if (!definitions) {
+    return null;
+  }
+
+  const normalizedApps = uniqueStrings(appCandidates.map((value) => canonicalizeIdentifier(value))).filter(Boolean);
+  const normalizedOperations = uniqueStrings(operationCandidates.map((value) => canonicalizeIdentifier(value))).filter(Boolean);
+
+  if (!normalizedApps.length || !normalizedOperations.length) {
+    return null;
+  }
+
+  for (const appId of normalizedApps) {
+    const definition = definitions[appId];
+    if (!definition) {
+      continue;
+    }
+
+    const pools: Array<readonly Record<string, any>[]> = [
+      Array.isArray(definition.actions) ? definition.actions : [],
+      Array.isArray(definition.triggers) ? definition.triggers : [],
+    ];
+
+    for (const pool of pools) {
+      for (const operation of pool) {
+        const operationVariants = uniqueStrings([
+          canonicalizeIdentifier((operation as any).id),
+          canonicalizeIdentifier((operation as any).name),
+          canonicalizeIdentifier((operation as any).operation),
+          canonicalizeIdentifier((operation as any).op),
+        ]);
+
+        if (!operationVariants.length) {
+          continue;
+        }
+
+        const matches = operationVariants.some((variant) => normalizedOperations.includes(variant));
+        if (!matches) {
+          continue;
+        }
+
+        const resolved = extractSchemaFromOperation(operation);
+        if (resolved) {
+          return resolved;
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
+export const mergeMetadataRefreshResult = (
+  existingData: any,
+  params: Record<string, any>,
+  metadataFromServer?: Record<string, any> | null,
+  outputMetadataFromServer?: Record<string, any> | null,
+) => {
+  const paramsValue = params ?? {};
+  const dataWithParams = syncNodeParameters(existingData ?? {}, paramsValue);
+
+  const baseMetadata = dataWithParams?.metadata ?? {};
+  const baseOutputMetadata = dataWithParams?.outputMetadata ?? baseMetadata;
+
+  const mergedData = {
+    ...dataWithParams,
+    parameters: paramsValue,
+    params: paramsValue,
+    metadata: {
+      ...baseMetadata,
+      ...(metadataFromServer || {}),
+    },
+    outputMetadata: {
+      ...baseOutputMetadata,
+      ...(outputMetadataFromServer || {}),
+    },
+  };
+
+  const provisionalNode = {
+    id: String(existingData?.id ?? "node"),
+    data: mergedData,
+    params: paramsValue,
+    parameters: paramsValue,
+  } as any;
+
+  const derivedMetadata = buildMetadataFromNode(provisionalNode);
+
+  return {
+    ...mergedData,
+    metadata: {
+      ...mergedData.metadata,
+      ...derivedMetadata,
+    },
+    outputMetadata: {
+      ...mergedData.outputMetadata,
+      ...derivedMetadata,
+    },
+  };
 };
 
 type LLMEvaluatedValue = Extract<EvaluatedValue, { mode: "llm" }>;
@@ -549,7 +696,12 @@ export function renderStaticFieldControl(
   );
 }
 
-export function SmartParametersPanel() {
+export interface SmartParametersPanelProps {
+  connectorDefinitions?: ConnectorDefinitionMap | null;
+}
+
+export function SmartParametersPanel(props?: SmartParametersPanelProps) {
+  const { connectorDefinitions } = props ?? {};
   const rf = useReactFlow();
   const storeNodes = useStore((state) => {
     const anyState = state as any;
@@ -601,14 +753,7 @@ export function SmartParametersPanel() {
   // More robust app/op retrieval
   const rawNodeType = node?.data?.nodeType || node?.type || "";
 
-  const canonicalizeAppId = (value: any): string => {
-    if (!value) return "";
-    return String(value)
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  };
+  const canonicalizeAppId = (value: any): string => canonicalizeIdentifier(value);
 
   const inferAppId = (): string => {
     const direct = canonicalizeAppId(node?.data?.app || node?.data?.connectorId || node?.data?.provider);
@@ -908,48 +1053,19 @@ export function SmartParametersPanel() {
             if (reactNode.id !== node.id) {
               return reactNode;
             }
-            const dataWithParams = syncNodeParameters(
+
+            const mergedData = mergeMetadataRefreshResult(
               reactNode.data,
-              paramsValue
+              paramsValue,
+              metadataFromServer || undefined,
+              outputMetadataFromServer || undefined,
             );
-            const baseMetadata = dataWithParams?.metadata ?? {};
-            const baseOutputMetadata =
-              dataWithParams?.outputMetadata ?? baseMetadata;
 
-            const mergedData = {
-              ...dataWithParams,
-              metadata: {
-                ...baseMetadata,
-                ...(metadataFromServer || {}),
-              },
-              outputMetadata: {
-                ...baseOutputMetadata,
-                ...(outputMetadataFromServer || {}),
-              },
-            };
-
-            const provisionalNode = {
+            return {
               ...reactNode,
               data: mergedData,
               params: paramsValue,
               parameters: paramsValue,
-            };
-
-            const derivedMetadata = buildMetadataFromNode(provisionalNode);
-
-            return {
-              ...reactNode,
-              data: {
-                ...mergedData,
-                metadata: {
-                  ...mergedData.metadata,
-                  ...derivedMetadata,
-                },
-                outputMetadata: {
-                  ...mergedData.outputMetadata,
-                  ...derivedMetadata,
-                },
-              },
             };
           })
         );
@@ -983,18 +1099,33 @@ export function SmartParametersPanel() {
     setDefaults({});
     setParamsDraft(node?.data?.parameters ?? node?.data?.params ?? {});
 
-    const kind = node?.data?.kind || (String(rawNodeType||"").startsWith("trigger") ? "trigger" : "auto");
+    const kind = node?.data?.kind || (String(rawNodeType || "").startsWith("trigger") ? "trigger" : "auto");
 
-    const normalize = (s: any) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
     const appKey = canonicalizeAppId(app);
-    const opKey = canonicalizeAppId(opId);
+    const appCandidates = uniqueStrings([
+      appKey,
+      canonicalizeAppId(node?.data?.app),
+      canonicalizeAppId(node?.data?.application),
+      canonicalizeAppId(node?.data?.connectorId),
+      canonicalizeAppId(node?.data?.provider),
+    ]).filter(Boolean);
+    const opCandidates = uniqueStrings([
+      canonicalizeAppId(opId),
+      canonicalizeAppId(node?.data?.operation),
+      canonicalizeAppId(node?.data?.actionId),
+      canonicalizeAppId(node?.data?.triggerId),
+      canonicalizeAppId(node?.data?.eventId),
+      canonicalizeAppId(node?.data?.function),
+      canonicalizeAppId(node?.data?.label),
+      canonicalizeAppId(node?.data?.name),
+    ]).filter(Boolean);
 
-    const opSchemaUrl = opId 
+    const opSchemaUrl = opId
       ? `/api/registry/op-schema?app=${encodeURIComponent(app)}&op=${encodeURIComponent(opId)}&kind=${kind}`
       : "";
 
     const tryOpSchema = opSchemaUrl
-      ? fetch(opSchemaUrl).then(r => r.json()).catch(() => ({ success: false }))
+      ? fetch(opSchemaUrl).then((r) => r.json()).catch(() => ({ success: false }))
       : Promise.resolve({ success: false });
 
     tryOpSchema
@@ -1009,49 +1140,64 @@ export function SmartParametersPanel() {
         // Fallback: if schema has no properties, derive from connectors payload
         const empty = !nextSchema?.properties || Object.keys(nextSchema.properties).length === 0;
         if (empty) {
-          try {
-            const res = await fetch('/api/registry/catalog?implemented=true');
-            const json = await res.json();
-            const connectorsMap = json?.catalog?.connectors || {};
+          const resolvedFromDefinitions = resolveOperationSchemaFromDefinitions(
+            connectorDefinitions ?? null,
+            appCandidates,
+            opCandidates,
+          );
 
-            const list = Object.entries(connectorsMap)
-              .filter(([, def]: any) => def?.hasImplementation)
-              .map(([id, def]: any) => ({
-                id,
-                name: def?.name,
-                actions: def?.actions || [],
-                triggers: def?.triggers || []
-              }));
+          if (resolvedFromDefinitions) {
+            nextSchema = resolvedFromDefinitions.schema;
+            nextDefaults = resolvedFromDefinitions.defaults || {};
+          } else {
+            try {
+              const res = await fetch('/api/registry/catalog?implemented=true');
+              const json = await res.json();
+              const connectorsMap = json?.catalog?.connectors || {};
 
-            const match = list.find((c: any) => {
-              const title = canonicalizeAppId(c?.name);
-              const id = canonicalizeAppId(c?.id);
-              return title === appKey || id === appKey || title.includes(appKey) || appKey.includes(title);
-            });
-            if (match) {
-              const pools = [match.actions || [], match.triggers || []];
-              let found: any = null;
-              const opCandidates = [opKey, canonicalizeAppId(node?.data?.label || node?.data?.name)].filter(Boolean);
-              for (const pool of pools) {
-                found = pool.find((a: any) => {
-                  const aid = canonicalizeAppId(a?.id);
-                  const aname = canonicalizeAppId(a?.name || a?.title);
-                  const variants = [aid, aname, aid.replace(/-/g,'_'), aname.replace(/-/g,'_')];
-                  return opCandidates.some(c => variants.includes(c));
-                });
-                if (found) break;
+              const list = Object.entries(connectorsMap)
+                .filter(([, def]: any) => def?.hasImplementation)
+                .map(([id, def]: any) => ({
+                  id,
+                  name: def?.name,
+                  actions: def?.actions || [],
+                  triggers: def?.triggers || []
+                }));
+
+              const match = list.find((c: any) => {
+                const title = canonicalizeAppId(c?.name);
+                const id = canonicalizeAppId(c?.id);
+                return title === appKey || id === appKey || title.includes(appKey) || appKey.includes(title);
+              });
+              if (match) {
+                const pools = [match.actions || [], match.triggers || []];
+                let found: any = null;
+                for (const pool of pools) {
+                  found = pool.find((a: any) => {
+                    const aid = canonicalizeAppId(a?.id);
+                    const aname = canonicalizeAppId(a?.name || a?.title);
+                    const variants = [aid, aname, aid.replace(/-/g, '_'), aname.replace(/-/g, '_')];
+                    return opCandidates.some((candidate) => variants.includes(candidate));
+                  });
+                  if (found) break;
+                }
+                if (!found && (match.actions?.length || match.triggers?.length)) {
+                  const all = [...(match.actions || []), ...(match.triggers || [])];
+                  if (all.length === 1) found = all[0];
+                }
+                if (
+                  found &&
+                  found.parameters &&
+                  found.parameters.properties &&
+                  Object.keys(found.parameters.properties).length > 0
+                ) {
+                  nextSchema = found.parameters;
+                  nextDefaults = found.defaults || {};
+                }
               }
-              if (!found && (match.actions?.length || match.triggers?.length)) {
-                const all = [...(match.actions || []), ...(match.triggers || [])];
-                if (all.length === 1) found = all[0];
-              }
-              if (found && found.parameters && found.parameters.properties && Object.keys(found.parameters.properties).length > 0) {
-                nextSchema = found.parameters;
-                nextDefaults = found.defaults || {};
-              }
+            } catch (e) {
+              // ignore fallback errors
             }
-          } catch (e) {
-            // ignore fallback errors
           }
         }
 
@@ -1110,7 +1256,7 @@ export function SmartParametersPanel() {
         setSchema(fallback);
       })
       .finally(() => setLoading(false));
-  }, [app, opId, node?.id]);
+  }, [app, connectorDefinitions, node, opId]);
 
   useEffect(() => {
     const rawId = paramsDraft?.spreadsheetId;

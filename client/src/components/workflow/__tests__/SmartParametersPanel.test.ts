@@ -16,6 +16,8 @@ import {
   createDefaultLLMValue,
   mergeLLMValueWithDefaults,
   parseAIMappingCapability,
+  resolveOperationSchemaFromDefinitions,
+  mergeMetadataRefreshResult,
   type UpstreamNodeSummary,
   type JSONSchema
 } from "../SmartParametersPanel";
@@ -760,6 +762,66 @@ assert.equal(normalizedAction.data.parameters.range, "A1:C1", "action parameters
 assert.ok(
   normalizedAction.data.metadata?.sample?.sheetName === "Invoices",
   "action metadata sampling should include sheet name from config"
+);
+
+const schemaFromDefinitions = resolveOperationSchemaFromDefinitions(
+  {
+    'acme-mailer': {
+      id: 'acme-mailer',
+      name: 'Acme Mailer',
+      actions: [
+        {
+          id: 'send-email',
+          parameters: {
+            type: 'object',
+            properties: {
+              to: { type: 'string' },
+              subject: { type: 'string' },
+            },
+          },
+          defaults: { subject: 'Hello!' },
+        },
+      ],
+      triggers: [],
+    },
+  },
+  ['acme-mailer'],
+  ['send-email']
+);
+
+assert.ok(schemaFromDefinitions, 'should resolve schema from connector definitions');
+assert.deepEqual(
+  Object.keys(schemaFromDefinitions?.schema?.properties ?? {}),
+  ['to', 'subject'],
+  'schema resolution should expose connector fields'
+);
+assert.equal(
+  schemaFromDefinitions?.defaults?.subject,
+  'Hello!',
+  'defaults from connector definitions should be preserved'
+);
+
+const mergedMetadata = mergeMetadataRefreshResult(
+  { id: 'node-1', metadata: { columns: ['existing'] }, outputMetadata: { columns: ['existing'] } },
+  { connectionId: 'conn-123' },
+  { columns: ['existing', 'new'], sample: { existing: 'A', new: 'B' } },
+  { columns: ['existing', 'new'], derivedFrom: ['service'] }
+);
+
+assert.ok(
+  Array.isArray(mergedMetadata.metadata?.columns) &&
+    mergedMetadata.metadata.columns.includes('new'),
+  'metadata refresh helper should merge new columns'
+);
+assert.equal(
+  mergedMetadata.parameters?.connectionId,
+  'conn-123',
+  'metadata refresh helper should keep parameter updates'
+);
+assert.equal(
+  mergedMetadata.params?.connectionId,
+  'conn-123',
+  'metadata refresh helper should sync params field'
 );
 
 console.log("SmartParametersPanel metadata helper checks (including sheet metadata) passed.");
