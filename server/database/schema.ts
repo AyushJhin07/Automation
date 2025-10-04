@@ -435,6 +435,9 @@ export const connections = pgTable(
     encryptedCredentials: text('encrypted_credentials').notNull(),
     iv: text('iv').notNull(), // AES-256-GCM IV
     dataKeyCiphertext: text('data_key_ciphertext'),
+    dataKeyIv: text('data_key_iv'),
+    payloadCiphertext: text('payload_ciphertext'),
+    payloadIv: text('payload_iv'),
     encryptionKeyId: uuid('encryption_key_id')
       .references(() => encryptionKeys.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),

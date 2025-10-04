@@ -93,6 +93,12 @@ await EncryptionService.refreshKeyMetadata();
 const legacyResult = await EncryptionService.encryptCredentials(legacySecret);
 assert.equal(legacyResult.dataKeyCiphertext ?? null, null, 'legacy encryptions should not include data key ciphertext');
 assert.equal(legacyResult.keyId, 'legacy-record', 'legacy encryption should use legacy key record');
+assert.equal(
+  legacyResult.payloadCiphertext,
+  legacyResult.encryptedData,
+  'legacy encryptions should mirror ciphertext payload metadata'
+);
+assert.equal(legacyResult.payloadIv, legacyResult.iv, 'legacy encryptions should mirror IV payload metadata');
 
 currentRows = [
   {
@@ -126,6 +132,12 @@ assert.deepEqual(decryptedLegacy, legacySecret, 'legacy ciphertext should remain
 const rotatedResult = await EncryptionService.encryptCredentials(rotatedSecret);
 assert.equal(rotatedResult.keyId, 'kms-record', 'new encryptions should target active KMS key');
 assert.ok(rotatedResult.dataKeyCiphertext, 'new encryptions must include encrypted data key payload');
+assert.equal(
+  rotatedResult.payloadCiphertext,
+  rotatedResult.encryptedData,
+  'rotated encryptions should mirror ciphertext payload metadata'
+);
+assert.equal(rotatedResult.payloadIv, rotatedResult.iv, 'rotated encryptions should mirror IV payload metadata');
 
 const decryptedRotated = await EncryptionService.decryptCredentials(
   rotatedResult.encryptedData,
