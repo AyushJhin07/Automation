@@ -17,6 +17,14 @@ This guide covers the quickest path to booting the platform locally with Docker 
    This script backfills strong random values for `ENCRYPTION_MASTER_KEY` and `JWT_SECRET`, matching the minimum length enforced by `EncryptionService`.
 3. Edit `.env.development` to match your local setup. Fill in any provider API keys you plan to exercise (OpenAI, Anthropic, Claude, Google, Gemini). Leave them blank to disable those integrations locally.
 
+4. If your local database has not yet been migrated to the envelope-encryption schema, enable the development fallback for OAuth tokens:
+
+   ```bash
+   echo "ALLOW_PLAINTEXT_TOKENS_IN_DEV=true" >> .env.development
+   ```
+
+   The API logs a 🚨 warning whenever this bypass is active. Once the migration that adds `connections.data_key_ciphertext` and related encryption metadata lands locally, remove or set this flag to `false` so tokens resume flowing through the secure storage path.
+
 > ℹ️  When running outside of Docker Compose, either export the variables manually or copy `.env.development` to `.env` so `dotenv` can pick them up. Never commit personal secrets.
 
 ## 2. Start the Docker Compose stack
