@@ -22,6 +22,7 @@ import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
 import oauthRoutes from "./routes/oauth";
 import executionRoutes from "./routes/executions.js";
+import runExplorerRoutes from "./routes/run-explorer.js";
 import expressionRoutes from "./routes/expressions.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 import organizationRoleRoutes from "./routes/organization-roles";
@@ -144,6 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // P1-6: App parameter schema routes
   app.use('/api/app-schemas', appSchemaRoutes);
   app.use('/api/executions', executionRoutes);
+  app.use('/api/runs', runExplorerRoutes);
 
   app.use('/api/google', googleSheetsRoutes);
   app.use('/api/metadata', metadataRoutes);
