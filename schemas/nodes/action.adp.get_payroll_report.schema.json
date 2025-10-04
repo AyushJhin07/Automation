@@ -88,7 +88,7 @@
             "type": "string"
           },
           "default": [
-            "payroll_read"
+            "api://api.adp.com/payroll.payroll-processing.payroll.read"
           ]
         }
       },

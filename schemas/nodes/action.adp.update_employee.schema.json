@@ -79,7 +79,7 @@
             "type": "string"
           },
           "default": [
-            "employee_write"
+            "api://api.adp.com/hr.worker-management.worker.write"
           ]
         }
       },

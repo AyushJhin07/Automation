@@ -83,7 +83,7 @@
             "type": "string"
           },
           "default": [
-            "payroll_write"
+            "api://api.adp.com/payroll.payroll-processing.payroll.write"
           ]
         }
       },

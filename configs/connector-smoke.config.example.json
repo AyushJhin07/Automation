@@ -49,5 +49,24 @@
     ],
     "skip": true,
     "notes": "Remove skip and supply a test workspace channel to exercise the Slack action."
+  },
+  "adp": {
+    "credentials": {
+      "clientId": "YOUR_ADP_CLIENT_ID",
+      "clientSecret": "YOUR_ADP_CLIENT_SECRET"
+    },
+    "actions": [
+      {
+        "id": "run_payroll",
+        "parameters": {
+          "payrollGroupId": "TEST_GROUP",
+          "payPeriodStart": "2024-01-01",
+          "payPeriodEnd": "2024-01-15"
+        },
+        "expectSuccess": false
+      }
+    ],
+    "skip": true,
+    "notes": "Populate with ADP developer sandbox credentials and remove the skip flag to exercise the payroll run flow."
   }
 }

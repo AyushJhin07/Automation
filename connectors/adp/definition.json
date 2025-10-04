@@ -5,14 +5,20 @@
   "category": "HR",
   "icon": "adp",
   "color": "#C41E3A",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "authentication": {
     "type": "oauth2",
     "config": {
       "authUrl": "https://accounts.adp.com/auth/oauth/v2/authorize",
       "tokenUrl": "https://accounts.adp.com/auth/oauth/v2/token",
       "scopes": [
-        "api"
+        "openid",
+        "profile",
+        "offline_access",
+        "api://api.adp.com/hr.worker-management.worker.read",
+        "api://api.adp.com/hr.worker-management.worker.write",
+        "api://api.adp.com/payroll.payroll-processing.payroll.read",
+        "api://api.adp.com/payroll.payroll-processing.payroll.write"
       ]
     }
   },
@@ -21,7 +27,10 @@
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to ADP",
+      "description": "Verify API access to ADP",
+      "requiredScopes": [
+        "api://api.adp.com/hr.worker-management.worker.read"
+      ],
       "parameters": {
         "type": "object",
         "properties": {},
@@ -33,12 +42,15 @@
       "id": "get_worker",
       "name": "Get Worker",
       "description": "Retrieve worker information",
+      "requiredScopes": [
+        "api://api.adp.com/hr.worker-management.worker.read"
+      ],
       "parameters": {
         "type": "object",
         "properties": {
           "worker_id": {
             "type": "string",
-            "description": "Worker ID"
+            "description": "Worker or associate identifier"
           }
         },
         "required": [
@@ -48,93 +60,144 @@
       }
     },
     {
-      "id": "create_worker",
-      "name": "Create Worker",
-      "description": "Create a new worker record",
+      "id": "create_employee",
+      "name": "Create Employee",
+      "description": "Create a new employee record",
+      "requiredScopes": [
+        "api://api.adp.com/hr.worker-management.worker.write"
+      ],
       "parameters": {
         "type": "object",
         "properties": {
-          "associateOID": {
-            "type": "string",
-            "description": "Associate OID"
-          },
-          "workerDates": {
+          "personalInfo": {
             "type": "object",
-            "properties": {
-              "originalHireDate": {
-                "type": "string",
-                "format": "date"
-              },
-              "rehireDate": {
-                "type": "string",
-                "format": "date"
-              }
-            },
-            "description": "Worker dates"
+            "description": "Employee personal information",
+            "additionalProperties": true
           },
-          "person": {
+          "employmentInfo": {
             "type": "object",
-            "properties": {
-              "legalName": {
-                "type": "object",
-                "properties": {
-                  "givenName": {
-                    "type": "string"
-                  },
-                  "familyName1": {
-                    "type": "string"
-                  },
-                  "middleName": {
-                    "type": "string"
-                  }
-                }
-              },
-              "communication": {
-                "type": "object",
-                "properties": {
-                  "emails": {
-                    "type": "array"
-                  },
-                  "phones": {
-                    "type": "array"
-                  }
-                }
-              }
-            },
-            "description": "Person information"
+            "description": "Employment details",
+            "additionalProperties": true
           },
-          "workAssignments": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            },
-            "description": "Work assignments"
+          "compensation": {
+            "type": "object",
+            "description": "Compensation configuration",
+            "additionalProperties": true
           }
         },
         "required": [
-          "person"
+          "personalInfo",
+          "employmentInfo"
         ],
         "additionalProperties": false
       }
     },
     {
-      "id": "update_worker",
-      "name": "Update Worker",
-      "description": "Update worker information",
+      "id": "update_employee",
+      "name": "Update Employee",
+      "description": "Update employee profile information",
+      "requiredScopes": [
+        "api://api.adp.com/hr.worker-management.worker.write"
+      ],
       "parameters": {
         "type": "object",
         "properties": {
           "worker_id": {
             "type": "string",
-            "description": "Worker ID"
+            "description": "Worker or associate identifier"
           },
-          "person": {
+          "updates": {
             "type": "object",
-            "description": "Updated person information"
+            "description": "Fields to update on the worker record",
+            "additionalProperties": true
           }
         },
         "required": [
-          "worker_id"
+          "worker_id",
+          "updates"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "run_payroll",
+      "name": "Run Payroll",
+      "description": "Initiate a payroll run for a payroll group",
+      "requiredScopes": [
+        "api://api.adp.com/payroll.payroll-processing.payroll.write"
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payrollGroupId": {
+            "type": "string",
+            "description": "Payroll group identifier"
+          },
+          "payPeriodStart": {
+            "type": "string",
+            "format": "date",
+            "description": "Pay period start date"
+          },
+          "payPeriodEnd": {
+            "type": "string",
+            "format": "date",
+            "description": "Pay period end date"
+          },
+          "releaseDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Optional payroll release date"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional provider-specific configuration",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "payrollGroupId",
+          "payPeriodStart",
+          "payPeriodEnd"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "get_payroll_report",
+      "name": "Get Payroll Report",
+      "description": "Retrieve payroll output for a pay period",
+      "requiredScopes": [
+        "api://api.adp.com/payroll.payroll-processing.payroll.read"
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reportType": {
+            "type": "string",
+            "description": "Report type identifier"
+          },
+          "payPeriod": {
+            "type": "string",
+            "description": "Pay period identifier"
+          },
+          "format": {
+            "type": "string",
+            "description": "Desired response format",
+            "enum": [
+              "json",
+              "csv",
+              "pdf"
+            ],
+            "default": "json"
+          },
+          "payrollGroupId": {
+            "type": "string",
+            "description": "Optional payroll group filter"
+          }
+        },
+        "required": [
+          "reportType",
+          "payPeriod"
         ],
         "additionalProperties": false
       }
@@ -142,10 +205,13 @@
   ],
   "triggers": [
     {
-      "id": "worker_hired",
-      "name": "Worker Hired",
-      "description": "Triggered when a new worker is hired",
+      "id": "employee_added",
+      "name": "Employee Added",
+      "description": "Triggered when ADP notifies a new hire event",
       "type": "webhook",
+      "requiredScopes": [
+        "api://api.adp.com/hr.worker-management.worker.read"
+      ],
       "parameters": {
         "type": "object",
         "properties": {},
@@ -155,22 +221,50 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventType": {
+          "event": {
             "type": "string"
           },
           "worker": {
             "type": "object"
           }
-        }
+        },
+        "additionalProperties": true
+      }
+    },
+    {
+      "id": "payroll_completed",
+      "name": "Payroll Completed",
+      "description": "Triggered when a payroll run finishes processing",
+      "type": "webhook",
+      "requiredScopes": [
+        "api://api.adp.com/payroll.payroll-processing.payroll.read"
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
       }
     }
   ],
   "testConnection": {
     "method": "GET",
-    "endpoint": "/hr/v2/workers"
+    "endpoint": "/hr/v2/workers?$top=1"
   },
   "release": {
-    "semver": "1.0.0",
+    "semver": "1.1.0",
     "status": "stable",
     "isBeta": false,
     "betaStartedAt": null,
