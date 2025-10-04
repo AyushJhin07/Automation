@@ -2,6 +2,8 @@
 
 This guide describes how to run the API, background workers, and observability stack locally with Docker Compose. It also explains how to switch between the in-memory development queue and the Redis-backed BullMQ queue used in production.
 
+> 📘 **New to the runtime stack?** Review the [Workflow Runtime Interaction Guide](../architecture/workflow-runtime-interactions.md) to see how WorkflowRuntime, IntegrationManager, GenericExecutor, and RetryManager collaborate during executions.
+
 ## Prerequisites
 
 1. Install Docker and Docker Compose v2.
