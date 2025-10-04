@@ -45,8 +45,8 @@ actions/triggers that the audit located in `registerHandler(s)` calls.
 | QuickBooks | Stable connector already registered in the registry; no audit findings. | n/a (stable) | Continue functional testing as part of regression suite. |
 | Salesforce | API client promoted to stable; handler aliases now cover every catalog action. | 6/6 | Add automated smoke tests once staging credentials are provisioned. |
 | Dynamics 365 | Placeholder client that still calls `super()` with no base URL and exposes no handlers. | 0/14 | Implement real Dataverse endpoints, add handler registrations, then register the client. |
-| Xero | Placeholder client with `api.example.com` base URL and zero handlers. | 0/16 | Implement OAuth + REST calls, wire handlers, then register the client. |
-| NetSuite | Placeholder client with empty constructor and no handlers. | 0/7 | Implement SuiteQL/REST endpoints, add handlers, and register the connector. |
+| Xero | Registered OAuth2 client with full handler coverage; QA validated via finance smoke suite ([Wave A report](../operations/connector-smoke-reports/2025-09-30-wave-a.md#xero)). | 13/13 actions | Expand staging smoke data to cover report polling and triggers. |
+| NetSuite | SuiteTalk REST client registered with retries and payload sanitization; QA passed finance smoke harness ([Wave A report](../operations/connector-smoke-reports/2025-09-30-wave-a.md#netsuite)). | 6/6 actions | Wire webhook trigger simulation ahead of production credential rollout. |
 
 ### Wave B – HR & People Operations
 | Connector | Audit status | Handlers detected | Primary next step |

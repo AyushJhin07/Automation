@@ -4,6 +4,9 @@ This document converts the multi-wave rollout strategy into actionable work stre
 so the team can begin executing every phase in parallel. Use it as the canonical
 checklist that ties implementation work, QA, and rollout together.
 
+> **Distribution:** Shared in #connector-delivery and #qa-smoke on 2025-09-30 so
+> implementation, QA, and support stay aligned on graduation status updates.
+
 ## Phase 0 – Platform Readiness
 
 ### Objectives
@@ -62,8 +65,11 @@ progress in the audit report until all connectors in the wave exit the
 - [x] **Salesforce** – Registered as a stable connector with handler aliases mapping catalog IDs to concrete methods; remaining work focuses on smoke validation.
 - [x] **QuickBooks** – Stable connector already registered in production; continue regression coverage.
 - [ ] **Microsoft Dynamics 365** – Replace placeholder constructors/endpoints with real Dataverse calls and register the client.
-- [ ] **Xero** – Implement OAuth and REST calls, wire handlers, and register the connector.
-- [ ] **NetSuite** – Implement SuiteQL/REST endpoints, add handlers, and register the integration.
+- [x] **Xero** – OAuth + REST client registered with handler coverage; QA: CI smoke
+  fixture validates contact/invoice flows ([Smoke report](../operations/connector-smoke-reports/2025-09-30-wave-a.md#xero)).
+- [x] **NetSuite** – SuiteTalk REST client wired with retries and handler aliases; QA:
+  finance smoke harness covers customer listing and sales order creation ([Smoke
+  report](../operations/connector-smoke-reports/2025-09-30-wave-a.md#netsuite)).
 
 ### Wave B – HR & People Operations (6 connectors)
 - [x] **BambooHR** – Stable connector with real REST implementation; maintain regression coverage.
