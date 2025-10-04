@@ -39,7 +39,9 @@
         "required": [],
         "additionalProperties": false
       },
-      "requiredScopes": ["users:read"],
+      "requiredScopes": [
+        "users:read"
+      ],
       "rateLimits": {
         "requests": 10,
         "period": "1m",
@@ -86,14 +88,23 @@
           },
           "blocks": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Rich message blocks for formatting"
           }
         },
-        "required": ["channel", "text"],
+        "required": [
+          "channel",
+          "text"
+        ],
         "additionalProperties": false
       },
-      "responseFields": ["ts", "channel", "message"],
+      "responseFields": [
+        "ts",
+        "channel",
+        "message"
+      ],
       "errorCodes": {
         "channel_not_found": "The specified channel does not exist",
         "not_in_channel": "Bot is not a member of the channel",
@@ -119,7 +130,9 @@
             "description": "Create a private channel"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -159,7 +172,10 @@
             }
           }
         },
-        "required": ["channel", "users"],
+        "required": [
+          "channel",
+          "users"
+        ],
         "additionalProperties": false
       }
     },
@@ -197,7 +213,10 @@
             "description": "Title of the file"
           }
         },
-        "required": ["content", "filename"],
+        "required": [
+          "content",
+          "filename"
+        ],
         "additionalProperties": false
       }
     },
@@ -224,7 +243,9 @@
             }
           }
         },
-        "required": ["channel"],
+        "required": [
+          "channel"
+        ],
         "additionalProperties": false
       }
     },
@@ -266,7 +287,9 @@
             "description": "User ID to get info for"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "additionalProperties": false
       }
     },
@@ -320,7 +343,11 @@
             "description": "Emoji name (without colons)"
           }
         },
-        "required": ["channel", "timestamp", "name"],
+        "required": [
+          "channel",
+          "timestamp",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -355,11 +382,14 @@
             "description": "Unix timestamp for when to send the message"
           }
         },
-        "required": ["channel", "text", "post_at"],
+        "required": [
+          "channel",
+          "text",
+          "post_at"
+        ],
         "additionalProperties": false
       }
-    }
-    ,
+    },
     {
       "id": "list_files",
       "name": "List Files",
@@ -369,17 +399,27 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "user": {"type":"string"},
-          "channel": {"type":"string"},
-          "ts_from": {"type":"number"},
-          "ts_to": {"type":"number"},
-          "count": {"type":"number","default":100}
+          "user": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "ts_from": {
+            "type": "number"
+          },
+          "ts_to": {
+            "type": "number"
+          },
+          "count": {
+            "type": "number",
+            "default": 100
+          }
         },
         "required": [],
         "additionalProperties": false
       }
-    }
-    ,
+    },
     {
       "id": "conversations_history",
       "name": "Conversations History",
@@ -389,13 +429,26 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "channel": {"type":"string"},
-          "latest": {"type":"string"},
-          "oldest": {"type":"string"},
-          "inclusive": {"type":"boolean"},
-          "limit": {"type":"number","default":100}
+          "channel": {
+            "type": "string"
+          },
+          "latest": {
+            "type": "string"
+          },
+          "oldest": {
+            "type": "string"
+          },
+          "inclusive": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "number",
+            "default": 100
+          }
         },
-        "required": ["channel"],
+        "required": [
+          "channel"
+        ],
         "additionalProperties": false
       }
     }
@@ -445,11 +498,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
-          "text": {"type": "string"},
-          "timestamp": {"type": "string"},
-          "thread_ts": {"type": "string"}
+          "channel": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "thread_ts": {
+            "type": "string"
+          }
         }
       }
     },
@@ -493,10 +556,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
-          "reaction": {"type": "string"},
-          "timestamp": {"type": "string"}
+          "channel": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "reaction": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
         }
       }
     },
@@ -530,15 +601,23 @@
             }
           }
         },
-        "required": ["channel"],
+        "required": [
+          "channel"
+        ],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
-          "timestamp": {"type": "string"}
+          "channel": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
         }
       }
     }
@@ -551,5 +630,16 @@
     }
   },
   "documentation": "https://api.slack.com/web",
-  "supportContact": "https://slack.com/help/contact"
+  "supportContact": "https://slack.com/help/contact",
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

@@ -40,7 +40,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["incident"],
+                "enum": [
+                  "incident"
+                ],
                 "default": "incident"
               },
               "title": {
@@ -50,23 +52,43 @@
               "service": {
                 "type": "object",
                 "properties": {
-                  "id": {"type": "string"},
-                  "type": {"type": "string", "enum": ["service_reference"]}
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "service_reference"
+                    ]
+                  }
                 },
-                "required": ["id", "type"],
+                "required": [
+                  "id",
+                  "type"
+                ],
                 "additionalProperties": false
               },
               "priority": {
                 "type": "object",
                 "properties": {
-                  "id": {"type": "string"},
-                  "type": {"type": "string", "enum": ["priority_reference"]}
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "priority_reference"
+                    ]
+                  }
                 },
                 "additionalProperties": false
               },
               "urgency": {
                 "type": "string",
-                "enum": ["high", "low"],
+                "enum": [
+                  "high",
+                  "low"
+                ],
                 "description": "Incident urgency"
               },
               "incident_key": {
@@ -76,16 +98,30 @@
               "body": {
                 "type": "object",
                 "properties": {
-                  "type": {"type": "string", "enum": ["incident_body"]},
-                  "details": {"type": "string"}
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "incident_body"
+                    ]
+                  },
+                  "details": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               },
               "escalation_policy": {
                 "type": "object",
                 "properties": {
-                  "id": {"type": "string"},
-                  "type": {"type": "string", "enum": ["escalation_policy_reference"]}
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "escalation_policy_reference"
+                    ]
+                  }
                 },
                 "additionalProperties": false
               },
@@ -97,8 +133,15 @@
                     "assignee": {
                       "type": "object",
                       "properties": {
-                        "id": {"type": "string"},
-                        "type": {"type": "string", "enum": ["user_reference"]}
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "user_reference"
+                          ]
+                        }
                       },
                       "additionalProperties": false
                     }
@@ -107,11 +150,17 @@
                 }
               }
             },
-            "required": ["type", "title", "service"],
+            "required": [
+              "type",
+              "title",
+              "service"
+            ],
             "additionalProperties": false
           }
         },
-        "required": ["incident"],
+        "required": [
+          "incident"
+        ],
         "additionalProperties": false
       }
     },
@@ -128,11 +177,15 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional data to include"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -150,37 +203,80 @@
           "incident": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["incident"]},
-              "title": {"type": "string"},
-              "status": {"type": "string", "enum": ["triggered", "acknowledged", "resolved"]},
+              "type": {
+                "type": "string",
+                "enum": [
+                  "incident"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "triggered",
+                  "acknowledged",
+                  "resolved"
+                ]
+              },
               "priority": {
                 "type": "object",
                 "properties": {
-                  "id": {"type": "string"},
-                  "type": {"type": "string", "enum": ["priority_reference"]}
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "priority_reference"
+                    ]
+                  }
                 },
                 "additionalProperties": false
               },
-              "escalation_level": {"type": "number"},
+              "escalation_level": {
+                "type": "number"
+              },
               "assignments": {
                 "type": "array",
-                "items": {"type": "object"}
+                "items": {
+                  "type": "object"
+                }
               },
               "escalation_policy": {
                 "type": "object",
                 "properties": {
-                  "id": {"type": "string"},
-                  "type": {"type": "string", "enum": ["escalation_policy_reference"]}
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "escalation_policy_reference"
+                    ]
+                  }
                 },
                 "additionalProperties": false
               },
-              "urgency": {"type": "string", "enum": ["high", "low"]},
-              "resolution": {"type": "string"}
+              "urgency": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "low"
+                ]
+              },
+              "resolution": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["id", "incident"],
+        "required": [
+          "id",
+          "incident"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,7 +306,9 @@
           },
           "date_range": {
             "type": "string",
-            "enum": ["all"],
+            "enum": [
+              "all"
+            ],
             "description": "Date range filter"
           },
           "incident_key": {
@@ -219,22 +317,34 @@
           },
           "service_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by service IDs"
           },
           "team_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by team IDs"
           },
           "user_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by user IDs"
           },
           "urgencies": {
             "type": "array",
-            "items": {"type": "string", "enum": ["high", "low"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "high",
+                "low"
+              ]
+            },
             "description": "Filter by urgencies"
           },
           "time_zone": {
@@ -243,17 +353,35 @@
           },
           "statuses": {
             "type": "array",
-            "items": {"type": "string", "enum": ["triggered", "acknowledged", "resolved"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "triggered",
+                "acknowledged",
+                "resolved"
+              ]
+            },
             "description": "Filter by statuses"
           },
           "sort_by": {
             "type": "string",
-            "enum": ["incident_number:asc", "incident_number:desc", "created_at:asc", "created_at:desc", "resolved_at:asc", "resolved_at:desc", "urgency:asc", "urgency:desc"],
+            "enum": [
+              "incident_number:asc",
+              "incident_number:desc",
+              "created_at:asc",
+              "created_at:desc",
+              "resolved_at:asc",
+              "resolved_at:desc",
+              "urgency:asc",
+              "urgency:desc"
+            ],
             "description": "Sort order"
           },
           "include": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional data to include"
           }
         },
@@ -278,7 +406,10 @@
             "description": "Email of the user acknowledging"
           }
         },
-        "required": ["id", "from"],
+        "required": [
+          "id",
+          "from"
+        ],
         "additionalProperties": false
       }
     },
@@ -303,7 +434,10 @@
             "description": "Resolution notes"
           }
         },
-        "required": ["id", "from"],
+        "required": [
+          "id",
+          "from"
+        ],
         "additionalProperties": false
       }
     },
@@ -321,9 +455,13 @@
           "note": {
             "type": "object",
             "properties": {
-              "content": {"type": "string"}
+              "content": {
+                "type": "string"
+              }
             },
-            "required": ["content"],
+            "required": [
+              "content"
+            ],
             "additionalProperties": false
           },
           "from": {
@@ -332,7 +470,11 @@
             "description": "Email of the user adding note"
           }
         },
-        "required": ["id", "note", "from"],
+        "required": [
+          "id",
+          "note",
+          "from"
+        ],
         "additionalProperties": false
       }
     },
@@ -349,11 +491,15 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional data to include"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -380,14 +526,21 @@
           },
           "team_ids": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
           "time_zone": {
             "type": "string"
           },
           "sort_by": {
             "type": "string",
-            "enum": ["name:asc", "name:desc", "created_at:asc", "created_at:desc"]
+            "enum": [
+              "name:asc",
+              "name:desc",
+              "created_at:asc",
+              "created_at:desc"
+            ]
           },
           "query": {
             "type": "string",
@@ -395,7 +548,9 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [],
@@ -415,11 +570,15 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional data to include"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -450,11 +609,15 @@
           },
           "team_ids": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
           "include": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [],
@@ -473,7 +636,9 @@
         "properties": {
           "service_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by service IDs"
           }
         },
@@ -486,40 +651,102 @@
           "event": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "event_type": {"type": "string"},
-              "resource_type": {"type": "string"},
-              "occurred_at": {"type": "string"},
-              "agent": {"type": "object"},
-              "client": {"type": "object"},
+              "id": {
+                "type": "string"
+              },
+              "event_type": {
+                "type": "string"
+              },
+              "resource_type": {
+                "type": "string"
+              },
+              "occurred_at": {
+                "type": "string"
+              },
+              "agent": {
+                "type": "object"
+              },
+              "client": {
+                "type": "object"
+              },
               "data": {
                 "type": "object",
                 "properties": {
-                  "id": {"type": "string"},
-                  "type": {"type": "string"},
-                  "self": {"type": "string"},
-                  "html_url": {"type": "string"},
-                  "number": {"type": "number"},
-                  "status": {"type": "string"},
-                  "incident_key": {"type": "string"},
-                  "created_at": {"type": "string"},
-                  "updated_at": {"type": "string"},
-                  "summary": {"type": "string"},
-                  "description": {"type": "string"},
-                  "urgency": {"type": "string"},
-                  "service": {"type": "object"},
-                  "escalation_policy": {"type": "object"},
-                  "assignments": {"type": "array"},
-                  "acknowledgements": {"type": "array"},
-                  "priority": {"type": "object"},
-                  "incident_number": {"type": "number"},
-                  "title": {"type": "string"},
-                  "pending_actions": {"type": "array"},
-                  "alert_counts": {"type": "object"},
-                  "body": {"type": "object"},
-                  "is_mergeable": {"type": "boolean"},
-                  "basic_alert_grouping": {"type": "object"},
-                  "alert_grouping": {"type": "object"}
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "self": {
+                    "type": "string"
+                  },
+                  "html_url": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "incident_key": {
+                    "type": "string"
+                  },
+                  "created_at": {
+                    "type": "string"
+                  },
+                  "updated_at": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "urgency": {
+                    "type": "string"
+                  },
+                  "service": {
+                    "type": "object"
+                  },
+                  "escalation_policy": {
+                    "type": "object"
+                  },
+                  "assignments": {
+                    "type": "array"
+                  },
+                  "acknowledgements": {
+                    "type": "array"
+                  },
+                  "priority": {
+                    "type": "object"
+                  },
+                  "incident_number": {
+                    "type": "number"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "pending_actions": {
+                    "type": "array"
+                  },
+                  "alert_counts": {
+                    "type": "object"
+                  },
+                  "body": {
+                    "type": "object"
+                  },
+                  "is_mergeable": {
+                    "type": "boolean"
+                  },
+                  "basic_alert_grouping": {
+                    "type": "object"
+                  },
+                  "alert_grouping": {
+                    "type": "object"
+                  }
                 }
               }
             }
@@ -537,7 +764,9 @@
         "properties": {
           "service_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by service IDs"
           }
         },
@@ -547,7 +776,9 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "object"}
+          "event": {
+            "type": "object"
+          }
         }
       }
     },
@@ -561,7 +792,9 @@
         "properties": {
           "service_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by service IDs"
           }
         },
@@ -571,7 +804,9 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "object"}
+          "event": {
+            "type": "object"
+          }
         }
       }
     }
@@ -579,5 +814,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

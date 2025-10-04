@@ -100,6 +100,19 @@ export interface ConnectorSimulatorSmokePlan {
   notes?: string;
 }
 
+export interface ConnectorContractScenarioResult {
+  id: string;
+  type: 'action' | 'trigger';
+  passed: boolean;
+  message?: string;
+}
+
+export interface ConnectorContractTestSummary {
+  appId: string;
+  scenarios: ConnectorContractScenarioResult[];
+  passed: boolean;
+}
+
 const DEFAULT_FIXTURES_DIR = path.resolve(process.cwd(), 'server', 'testing', 'fixtures');
 
 export class ConnectorSimulator {
@@ -205,6 +218,74 @@ export class ConnectorSimulator {
       triggers: entry.triggers.length ? this.dedupeScenarios(entry.triggers) : undefined,
       notes: notes.length ? notes.join(' '): undefined
     };
+  }
+
+  public async runContractTests(appId?: string): Promise<ConnectorContractTestSummary[]> {
+    await this.ensureFixturesLoaded();
+    const entries = Array.from(this.planCache.entries()).filter(([id]) =>
+      appId ? id === appId.toLowerCase() : true
+    );
+
+    return entries.map(([id, entry]) => {
+      const scenarios = [
+        ...(entry.actions || []).map(scenario => ({ scenario, type: 'action' as const })),
+        ...(entry.triggers || []).map(scenario => ({ scenario, type: 'trigger' as const })),
+      ];
+
+      const results: ConnectorContractScenarioResult[] = scenarios.map(({ scenario, type }) => {
+        const cacheKey = this.getCacheKey(id, scenario.id);
+        const fixture = this.fixtureCache.get(cacheKey);
+
+        if (!fixture) {
+          return {
+            id: scenario.id,
+            type,
+            passed: false,
+            message: 'Missing simulator fixture',
+          };
+        }
+
+        const issues: string[] = [];
+        const declaredKind = fixture.type ?? fixture.metadata?.kind;
+        if (declaredKind && declaredKind !== type) {
+          issues.push(`Fixture kind mismatch (expected ${type}, found ${declaredKind})`);
+        }
+
+        if (type === 'action') {
+          const hasRequest = Boolean(fixture.request);
+          const hasResponse = Boolean(fixture.response) || Boolean(fixture.result);
+          if (!hasRequest) {
+            issues.push('Action fixtures should define a request shape');
+          }
+          if (!hasResponse) {
+            issues.push('Action fixtures should include an expected response or result');
+          }
+        } else {
+          const hasTriggerPayload = Boolean(fixture.triggerParams) || Boolean(fixture.result);
+          if (!hasTriggerPayload) {
+            issues.push('Trigger fixtures should include trigger parameters or expected output');
+          }
+        }
+
+        return {
+          id: scenario.id,
+          type,
+          passed: issues.length === 0,
+          message: issues.join('; ') || undefined,
+        };
+      });
+
+      return {
+        appId: id,
+        scenarios: results,
+        passed: results.every(result => result.passed),
+      };
+    });
+  }
+
+  public async runContractTestsForConnector(appId: string): Promise<ConnectorContractTestSummary | null> {
+    const [summary] = await this.runContractTests(appId);
+    return summary ?? null;
   }
 
   private dedupeScenarios(scenarios: ConnectorSimulatorScenario[]): ConnectorSimulatorScenario[] {

@@ -78,7 +78,9 @@
             "description": "Survey ID to copy from"
           }
         },
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -94,7 +96,9 @@
             "description": "Survey ID"
           }
         },
-        "required": ["survey_id"],
+        "required": [
+          "survey_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -130,7 +134,9 @@
             "description": "Folder ID to move survey to"
           }
         },
-        "required": ["survey_id"],
+        "required": [
+          "survey_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -146,7 +152,9 @@
             "description": "Survey ID"
           }
         },
-        "required": ["survey_id"],
+        "required": [
+          "survey_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -172,12 +180,19 @@
           },
           "sort_by": {
             "type": "string",
-            "enum": ["title", "date_modified", "num_responses"],
+            "enum": [
+              "title",
+              "date_modified",
+              "num_responses"
+            ],
             "description": "Sort criteria"
           },
           "sort_order": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "default": "DESC",
             "description": "Sort order"
           },
@@ -199,7 +214,15 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["response_count", "date_created", "date_modified", "language", "question_count", "analyze_url", "preview"]
+              "enum": [
+                "response_count",
+                "date_created",
+                "date_modified",
+                "language",
+                "question_count",
+                "analyze_url",
+                "preview"
+              ]
             },
             "description": "Additional fields to include"
           },
@@ -258,7 +281,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["completed", "partial", "overquota", "disqualified"],
+            "enum": [
+              "completed",
+              "partial",
+              "overquota",
+              "disqualified"
+            ],
             "description": "Filter by response status"
           },
           "email": {
@@ -291,22 +319,33 @@
           },
           "total_time_units": {
             "type": "string",
-            "enum": ["seconds", "minutes", "hours"],
+            "enum": [
+              "seconds",
+              "minutes",
+              "hours"
+            ],
             "description": "Time units for total_time filters"
           },
           "sort_order": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "default": "DESC",
             "description": "Sort order"
           },
           "sort_by": {
             "type": "string",
-            "enum": ["date_modified"],
+            "enum": [
+              "date_modified"
+            ],
             "description": "Sort criteria"
           }
         },
-        "required": ["survey_id"],
+        "required": [
+          "survey_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -326,7 +365,10 @@
             "description": "Response ID"
           }
         },
-        "required": ["survey_id", "response_id"],
+        "required": [
+          "survey_id",
+          "response_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -343,7 +385,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["weblink", "email"],
+            "enum": [
+              "weblink",
+              "email"
+            ],
             "description": "Collector type"
           },
           "name": {
@@ -377,12 +422,20 @@
           },
           "edit_response_type": {
             "type": "string",
-            "enum": ["until_complete", "never", "always"],
+            "enum": [
+              "until_complete",
+              "never",
+              "always"
+            ],
             "description": "When respondents can edit their responses"
           },
           "anonymous_type": {
             "type": "string",
-            "enum": ["not_anonymous", "partially_anonymous", "fully_anonymous"],
+            "enum": [
+              "not_anonymous",
+              "partially_anonymous",
+              "fully_anonymous"
+            ],
             "description": "Level of anonymity"
           },
           "allow_multiple_responses": {
@@ -394,7 +447,10 @@
             "description": "Whether to include survey URL in email invitations"
           }
         },
-        "required": ["survey_id", "type"],
+        "required": [
+          "survey_id",
+          "type"
+        ],
         "additionalProperties": false
       }
     },
@@ -410,7 +466,9 @@
             "description": "Collector ID"
           }
         },
-        "required": ["collector_id"],
+        "required": [
+          "collector_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -440,12 +498,18 @@
           },
           "sort_by": {
             "type": "string",
-            "enum": ["date_modified", "date_created"],
+            "enum": [
+              "date_modified",
+              "date_created"
+            ],
             "description": "Sort criteria"
           },
           "sort_order": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "default": "DESC",
             "description": "Sort order"
           },
@@ -467,12 +531,20 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["type", "status", "date_created", "date_modified", "url"]
+              "enum": [
+                "type",
+                "status",
+                "date_created",
+                "date_modified",
+                "url"
+              ]
             },
             "description": "Additional fields to include"
           }
         },
-        "required": ["survey_id"],
+        "required": [
+          "survey_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -509,7 +581,9 @@
             "description": "Custom field 3 value"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -525,7 +599,9 @@
             "description": "Contact ID"
           }
         },
-        "required": ["contact_id"],
+        "required": [
+          "contact_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -551,12 +627,21 @@
           },
           "sort_by": {
             "type": "string",
-            "enum": ["date_modified", "date_created", "email", "first_name", "last_name"],
+            "enum": [
+              "date_modified",
+              "date_created",
+              "email",
+              "first_name",
+              "last_name"
+            ],
             "description": "Sort criteria"
           },
           "sort_order": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "default": "ASC",
             "description": "Sort order"
           },
@@ -602,24 +687,60 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "survey_id": {"type": "string"},
-          "collector_id": {"type": "string"},
-          "response_id": {"type": "string"},
-          "status": {"type": "string"},
-          "date_created": {"type": "string"},
-          "date_modified": {"type": "string"},
-          "logic_path": {"type": "object"},
-          "metadata": {"type": "object"},
-          "page_path": {"type": "array"},
-          "recipient_id": {"type": "string"},
-          "collection_mode": {"type": "string"},
-          "custom_value": {"type": "string"},
-          "edit_url": {"type": "string"},
-          "analyze_url": {"type": "string"},
-          "total_time": {"type": "number"},
-          "custom_variables": {"type": "object"},
-          "ip_address": {"type": "string"},
-          "pages": {"type": "array"}
+          "survey_id": {
+            "type": "string"
+          },
+          "collector_id": {
+            "type": "string"
+          },
+          "response_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "date_modified": {
+            "type": "string"
+          },
+          "logic_path": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "page_path": {
+            "type": "array"
+          },
+          "recipient_id": {
+            "type": "string"
+          },
+          "collection_mode": {
+            "type": "string"
+          },
+          "custom_value": {
+            "type": "string"
+          },
+          "edit_url": {
+            "type": "string"
+          },
+          "analyze_url": {
+            "type": "string"
+          },
+          "total_time": {
+            "type": "number"
+          },
+          "custom_variables": {
+            "type": "object"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "array"
+          }
         }
       }
     },
@@ -637,25 +758,63 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "nickname": {"type": "string"},
-          "language": {"type": "string"},
-          "question_count": {"type": "number"},
-          "page_count": {"type": "number"},
-          "date_created": {"type": "string"},
-          "date_modified": {"type": "string"},
-          "summary": {"type": "string"},
-          "analyze_url": {"type": "string"},
-          "edit_url": {"type": "string"},
-          "collect_url": {"type": "string"},
-          "preview": {"type": "string"},
-          "category": {"type": "string"},
-          "folder_id": {"type": "string"},
-          "buttons_text": {"type": "object"},
-          "is_owner": {"type": "boolean"},
-          "footer": {"type": "boolean"},
-          "theme": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "question_count": {
+            "type": "number"
+          },
+          "page_count": {
+            "type": "number"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "date_modified": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "analyze_url": {
+            "type": "string"
+          },
+          "edit_url": {
+            "type": "string"
+          },
+          "collect_url": {
+            "type": "string"
+          },
+          "preview": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string"
+          },
+          "buttons_text": {
+            "type": "object"
+          },
+          "is_owner": {
+            "type": "boolean"
+          },
+          "footer": {
+            "type": "boolean"
+          },
+          "theme": {
+            "type": "object"
+          }
         }
       }
     },
@@ -678,26 +837,66 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "date_created": {"type": "string"},
-          "date_modified": {"type": "string"},
-          "url": {"type": "string"},
-          "open": {"type": "boolean"},
-          "type": {"type": "string"},
-          "display_survey_results": {"type": "boolean"},
-          "edit_response_type": {"type": "string"},
-          "anonymous_type": {"type": "string"},
-          "allow_multiple_responses": {"type": "boolean"},
-          "redirect_type": {"type": "string"},
-          "redirect_url": {"type": "string"},
-          "thank_you_message": {"type": "string"},
-          "disqualification_message": {"type": "string"},
-          "closed_page_message": {"type": "string"},
-          "close_date": {"type": "string"},
-          "password_enabled": {"type": "boolean"},
-          "sender_email": {"type": "string"},
-          "include_survey_url": {"type": "boolean"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "date_modified": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "display_survey_results": {
+            "type": "boolean"
+          },
+          "edit_response_type": {
+            "type": "string"
+          },
+          "anonymous_type": {
+            "type": "string"
+          },
+          "allow_multiple_responses": {
+            "type": "boolean"
+          },
+          "redirect_type": {
+            "type": "string"
+          },
+          "redirect_url": {
+            "type": "string"
+          },
+          "thank_you_message": {
+            "type": "string"
+          },
+          "disqualification_message": {
+            "type": "string"
+          },
+          "closed_page_message": {
+            "type": "string"
+          },
+          "close_date": {
+            "type": "string"
+          },
+          "password_enabled": {
+            "type": "boolean"
+          },
+          "sender_email": {
+            "type": "string"
+          },
+          "include_survey_url": {
+            "type": "boolean"
+          }
         }
       }
     }
@@ -705,5 +904,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

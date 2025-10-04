@@ -62,7 +62,9 @@
           },
           "labelIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of label IDs"
           },
           "projectId": {
@@ -83,7 +85,10 @@
             "description": "Due date"
           }
         },
-        "required": ["title", "teamId"],
+        "required": [
+          "title",
+          "teamId"
+        ],
         "additionalProperties": false
       }
     },
@@ -122,7 +127,9 @@
           },
           "labelIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of label IDs"
           },
           "projectId": {
@@ -139,7 +146,9 @@
             "description": "Due date"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -155,7 +164,9 @@
             "description": "Issue ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -205,7 +216,12 @@
           },
           "orderBy": {
             "type": "string",
-            "enum": ["createdAt", "updatedAt", "priority", "title"],
+            "enum": [
+              "createdAt",
+              "updatedAt",
+              "priority",
+              "title"
+            ],
             "description": "Sort field"
           }
         },
@@ -229,7 +245,10 @@
             "description": "Comment body"
           }
         },
-        "required": ["issueId", "body"],
+        "required": [
+          "issueId",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -293,7 +312,9 @@
           },
           "teamIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of team IDs"
           },
           "leadId": {
@@ -307,12 +328,20 @@
           },
           "state": {
             "type": "string",
-            "enum": ["planned", "started", "paused", "completed", "canceled"],
+            "enum": [
+              "planned",
+              "started",
+              "paused",
+              "completed",
+              "canceled"
+            ],
             "default": "planned",
             "description": "Project state"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -411,18 +440,42 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "description": {"type": "string"},
-          "identifier": {"type": "string"},
-          "priority": {"type": "number"},
-          "estimate": {"type": "number"},
-          "team": {"type": "object"},
-          "assignee": {"type": "object"},
-          "state": {"type": "object"},
-          "labels": {"type": "array"},
-          "createdAt": {"type": "string"},
-          "updatedAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "number"
+          },
+          "estimate": {
+            "type": "number"
+          },
+          "team": {
+            "type": "object"
+          },
+          "assignee": {
+            "type": "object"
+          },
+          "state": {
+            "type": "object"
+          },
+          "labels": {
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -445,11 +498,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "updatedAt": {"type": "string"},
-          "previousValues": {"type": "object"},
-          "changedValues": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "previousValues": {
+            "type": "object"
+          },
+          "changedValues": {
+            "type": "object"
+          }
         }
       }
     },
@@ -472,12 +535,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "identifier": {"type": "string"},
-          "completedAt": {"type": "string"},
-          "assignee": {"type": "object"},
-          "team": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "object"
+          },
+          "team": {
+            "type": "object"
+          }
         }
       }
     }
@@ -487,6 +562,16 @@
     "endpoint": "/",
     "body": {
       "query": "query { viewer { id name } }"
+    }
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
     }
   }
 }

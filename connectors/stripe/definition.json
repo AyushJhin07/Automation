@@ -60,20 +60,36 @@
           "address": {
             "type": "object",
             "properties": {
-              "line1": {"type": "string"},
-              "line2": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "postal_code": {"type": "string"},
-              "country": {"type": "string"}
+              "line1": {
+                "type": "string"
+              },
+              "line2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "postal_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Customer address"
           },
           "shipping": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "address": {"type": "object"}
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object"
+              }
             },
             "description": "Customer shipping information"
           },
@@ -91,7 +107,11 @@
           },
           "tax_exempt": {
             "type": "string",
-            "enum": ["none", "exempt", "reverse"],
+            "enum": [
+              "none",
+              "exempt",
+              "reverse"
+            ],
             "description": "Customer tax exemption status"
           }
         },
@@ -131,8 +151,12 @@
           },
           "payment_method_types": {
             "type": "array",
-            "items": {"type": "string"},
-            "default": ["card"],
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "card"
+            ],
             "description": "Allowed payment method types"
           },
           "confirm": {
@@ -147,7 +171,10 @@
           },
           "setup_future_usage": {
             "type": "string",
-            "enum": ["on_session", "off_session"],
+            "enum": [
+              "on_session",
+              "off_session"
+            ],
             "description": "Setup for future usage"
           },
           "shipping": {
@@ -163,7 +190,10 @@
             "description": "Custom metadata"
           }
         },
-        "required": ["amount", "currency"],
+        "required": [
+          "amount",
+          "currency"
+        ],
         "additionalProperties": false
       }
     },
@@ -176,11 +206,25 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "subscription": { "type": "string", "description": "Subscription ID" },
-          "cancel_at_period_end": { "type": "boolean" },
-          "proration_behavior": { "type": "string", "enum": ["create_prorations","none","always_invoice"] }
+          "subscription": {
+            "type": "string",
+            "description": "Subscription ID"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean"
+          },
+          "proration_behavior": {
+            "type": "string",
+            "enum": [
+              "create_prorations",
+              "none",
+              "always_invoice"
+            ]
+          }
         },
-        "required": ["subscription"],
+        "required": [
+          "subscription"
+        ],
         "additionalProperties": false
       }
     },
@@ -193,9 +237,15 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "charge": { "type": "string" },
-          "payment_intent": { "type": "string" },
-          "amount": { "type": "number" }
+          "charge": {
+            "type": "string"
+          },
+          "payment_intent": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
         },
         "required": [],
         "additionalProperties": false
@@ -217,8 +267,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "price": {"type": "string"},
-                "quantity": {"type": "number"}
+                "price": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                }
               }
             },
             "description": "Subscription items with prices and quantities"
@@ -233,7 +287,10 @@
           },
           "collection_method": {
             "type": "string",
-            "enum": ["charge_automatically", "send_invoice"],
+            "enum": [
+              "charge_automatically",
+              "send_invoice"
+            ],
             "default": "charge_automatically",
             "description": "Collection method"
           },
@@ -247,7 +304,11 @@
           },
           "proration_behavior": {
             "type": "string",
-            "enum": ["create_prorations", "none", "always_invoice"],
+            "enum": [
+              "create_prorations",
+              "none",
+              "always_invoice"
+            ],
             "description": "Proration behavior"
           },
           "coupon": {
@@ -255,7 +316,10 @@
             "description": "Coupon ID to apply"
           }
         },
-        "required": ["customer", "items"],
+        "required": [
+          "customer",
+          "items"
+        ],
         "additionalProperties": false
       }
     },
@@ -280,7 +344,11 @@
           },
           "reason": {
             "type": "string",
-            "enum": ["duplicate", "fraudulent", "requested_by_customer"],
+            "enum": [
+              "duplicate",
+              "fraudulent",
+              "requested_by_customer"
+            ],
             "description": "Reason for the refund"
           },
           "refund_application_fee": {
@@ -312,7 +380,9 @@
             "description": "Customer ID"
           }
         },
-        "required": ["customer_id"],
+        "required": [
+          "customer_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -364,7 +434,9 @@
           },
           "items": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Updated subscription items"
           },
           "default_payment_method": {
@@ -377,11 +449,17 @@
           },
           "proration_behavior": {
             "type": "string",
-            "enum": ["create_prorations", "none", "always_invoice"],
+            "enum": [
+              "create_prorations",
+              "none",
+              "always_invoice"
+            ],
             "description": "Proration behavior"
           }
         },
-        "required": ["subscription_id"],
+        "required": [
+          "subscription_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -418,13 +496,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "amount": {"type": "number"},
-          "currency": {"type": "string"},
-          "customer": {"type": "string"},
-          "description": {"type": "string"},
-          "status": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       }
     },
@@ -455,12 +547,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "amount": {"type": "number"},
-          "currency": {"type": "string"},
-          "customer": {"type": "string"},
-          "last_payment_error": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "last_payment_error": {
+            "type": "object"
+          }
         }
       }
     },
@@ -491,13 +595,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "customer": {"type": "string"},
-          "status": {"type": "string"},
-          "items": {"type": "object"},
-          "current_period_start": {"type": "number"},
-          "current_period_end": {"type": "number"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "items": {
+            "type": "object"
+          },
+          "current_period_start": {
+            "type": "number"
+          },
+          "current_period_end": {
+            "type": "number"
+          }
         }
       }
     },
@@ -532,12 +650,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "customer": {"type": "string"},
-          "subscription": {"type": "string"},
-          "amount_paid": {"type": "number"},
-          "currency": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "subscription": {
+            "type": "string"
+          },
+          "amount_paid": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
         }
       }
     }
@@ -545,6 +675,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/account"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }
-

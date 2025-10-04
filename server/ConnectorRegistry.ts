@@ -62,6 +62,18 @@ interface ConnectorFunction {
 }
 
 type ConnectorAvailability = 'stable' | 'experimental' | 'disabled';
+type ConnectorLifecycleStatus = 'alpha' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+
+interface ConnectorReleaseMetadata {
+  semver: string;
+  status: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  betaStartedAt?: string | null;
+  deprecationWindow?: {
+    startDate?: string | null;
+    sunsetDate?: string | null;
+  };
+}
 
 interface ConnectorDefinition {
   id: string;
@@ -71,6 +83,8 @@ interface ConnectorDefinition {
   icon?: string;
   color?: string;
   availability?: ConnectorAvailability;
+  version?: string;
+  release?: ConnectorReleaseMetadata;
   authentication: {
     type: string;
     config: any;
@@ -453,6 +467,8 @@ export class ConnectorRegistry {
           id: appId,
           availability,
           description: manifestMetadata.description ?? def.description,
+          release: this.normalizeReleaseMetadata(def),
+          version: def.version ?? def.release?.semver,
         };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
@@ -513,6 +529,21 @@ export class ConnectorRegistry {
 
     parsed.id = entry.normalizedId;
     return parsed;
+  }
+
+  private normalizeReleaseMetadata(def: ConnectorDefinition): ConnectorReleaseMetadata {
+    const semver = def.release?.semver ?? def.version ?? '1.0.0';
+    const status = def.release?.status ?? (def.release?.isBeta ? 'beta' : 'stable');
+    const isBeta = def.release?.isBeta ?? status === 'beta';
+    const deprecationWindow = def.release?.deprecationWindow ?? { startDate: null, sunsetDate: null };
+
+    return {
+      semver,
+      status,
+      isBeta,
+      betaStartedAt: def.release?.betaStartedAt ?? null,
+      deprecationWindow,
+    };
   }
 
   private loadConnectorMetadata(
@@ -935,6 +966,8 @@ export class ConnectorRegistry {
       triggers: ConnectorFunction[];
       hasImplementation: boolean;
       availability: ConnectorAvailability;
+      version?: string;
+      release?: ConnectorReleaseMetadata;
     }>;
     categories: Record<string, {
       name: string;
@@ -966,7 +999,9 @@ export class ConnectorRegistry {
         actions: def.actions || [],
         triggers: def.triggers || [],
         hasImplementation: entry.hasImplementation === true,
-        availability: entry.availability
+        availability: entry.availability,
+        version: def.version ?? def.release?.semver,
+        release: def.release,
       };
 
       const pushNode = (type: 'action' | 'trigger', fn: ConnectorFunction) => {

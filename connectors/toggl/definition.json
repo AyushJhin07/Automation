@@ -66,7 +66,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of tags"
           },
           "created_with": {
@@ -74,7 +76,9 @@
             "description": "Name of the client/application"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -90,7 +94,9 @@
             "description": "Workspace ID"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -138,7 +144,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of tags"
           },
           "created_with": {
@@ -146,7 +154,11 @@
             "description": "Name of the client/application"
           }
         },
-        "required": ["workspace_id", "start", "duration"],
+        "required": [
+          "workspace_id",
+          "start",
+          "duration"
+        ],
         "additionalProperties": false
       }
     },
@@ -197,11 +209,16 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of tags"
           }
         },
-        "required": ["workspace_id", "time_entry_id"],
+        "required": [
+          "workspace_id",
+          "time_entry_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -221,7 +238,10 @@
             "description": "Time entry ID"
           }
         },
-        "required": ["workspace_id", "time_entry_id"],
+        "required": [
+          "workspace_id",
+          "time_entry_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -241,7 +261,10 @@
             "description": "Time entry ID"
           }
         },
-        "required": ["workspace_id", "time_entry_id"],
+        "required": [
+          "workspace_id",
+          "time_entry_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -293,7 +316,9 @@
             "description": "Get entries after this date (ISO 8601)"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -369,7 +394,10 @@
             "description": "Currency code (e.g., USD, EUR)"
           }
         },
-        "required": ["workspace_id", "name"],
+        "required": [
+          "workspace_id",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -433,7 +461,10 @@
             "description": "Currency code (e.g., USD, EUR)"
           }
         },
-        "required": ["workspace_id", "project_id"],
+        "required": [
+          "workspace_id",
+          "project_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -453,7 +484,10 @@
             "description": "Project ID"
           }
         },
-        "required": ["workspace_id", "project_id"],
+        "required": [
+          "workspace_id",
+          "project_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -482,16 +516,22 @@
           },
           "user_ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "List of user IDs to filter by project membership"
           },
           "client_ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "List of client IDs to filter by"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -515,7 +555,10 @@
             "description": "Client notes"
           }
         },
-        "required": ["workspace_id", "name"],
+        "required": [
+          "workspace_id",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -535,7 +578,9 @@
             "description": "Unix timestamp to get clients modified since"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -551,7 +596,9 @@
             "description": "Workspace ID"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -600,24 +647,60 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "workspace_id": {"type": "number"},
-          "project_id": {"type": "number"},
-          "task_id": {"type": "number"},
-          "billable": {"type": "boolean"},
-          "start": {"type": "string"},
-          "stop": {"type": "string"},
-          "duration": {"type": "number"},
-          "description": {"type": "string"},
-          "tags": {"type": "array"},
-          "tag_ids": {"type": "array"},
-          "duronly": {"type": "boolean"},
-          "at": {"type": "string"},
-          "server_deleted_at": {"type": "string"},
-          "user_id": {"type": "number"},
-          "uid": {"type": "number"},
-          "wid": {"type": "number"},
-          "pid": {"type": "number"}
+          "id": {
+            "type": "number"
+          },
+          "workspace_id": {
+            "type": "number"
+          },
+          "project_id": {
+            "type": "number"
+          },
+          "task_id": {
+            "type": "number"
+          },
+          "billable": {
+            "type": "boolean"
+          },
+          "start": {
+            "type": "string"
+          },
+          "stop": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "tag_ids": {
+            "type": "array"
+          },
+          "duronly": {
+            "type": "boolean"
+          },
+          "at": {
+            "type": "string"
+          },
+          "server_deleted_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "number"
+          },
+          "uid": {
+            "type": "number"
+          },
+          "wid": {
+            "type": "number"
+          },
+          "pid": {
+            "type": "number"
+          }
         }
       }
     },
@@ -648,18 +731,42 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "workspace_id": {"type": "number"},
-          "project_id": {"type": "number"},
-          "task_id": {"type": "number"},
-          "billable": {"type": "boolean"},
-          "start": {"type": "string"},
-          "stop": {"type": "string"},
-          "duration": {"type": "number"},
-          "description": {"type": "string"},
-          "tags": {"type": "array"},
-          "at": {"type": "string"},
-          "user_id": {"type": "number"}
+          "id": {
+            "type": "number"
+          },
+          "workspace_id": {
+            "type": "number"
+          },
+          "project_id": {
+            "type": "number"
+          },
+          "task_id": {
+            "type": "number"
+          },
+          "billable": {
+            "type": "boolean"
+          },
+          "start": {
+            "type": "string"
+          },
+          "stop": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "number"
+          }
         }
       }
     },
@@ -690,10 +797,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "workspace_id": {"type": "number"},
-          "user_id": {"type": "number"},
-          "deleted_at": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "workspace_id": {
+            "type": "number"
+          },
+          "user_id": {
+            "type": "number"
+          },
+          "deleted_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -720,22 +835,54 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "workspace_id": {"type": "number"},
-          "client_id": {"type": "number"},
-          "name": {"type": "string"},
-          "is_private": {"type": "boolean"},
-          "active": {"type": "boolean"},
-          "at": {"type": "string"},
-          "created_at": {"type": "string"},
-          "server_deleted_at": {"type": "string"},
-          "color": {"type": "string"},
-          "billable": {"type": "boolean"},
-          "template": {"type": "boolean"},
-          "auto_estimates": {"type": "boolean"},
-          "estimated_hours": {"type": "number"},
-          "rate": {"type": "number"},
-          "currency": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "workspace_id": {
+            "type": "number"
+          },
+          "client_id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "is_private": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "server_deleted_at": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "billable": {
+            "type": "boolean"
+          },
+          "template": {
+            "type": "boolean"
+          },
+          "auto_estimates": {
+            "type": "boolean"
+          },
+          "estimated_hours": {
+            "type": "number"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
         }
       }
     }
@@ -743,5 +890,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

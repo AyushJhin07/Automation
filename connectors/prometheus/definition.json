@@ -56,7 +56,9 @@
             "description": "Query timeout duration"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -85,7 +87,12 @@
             "description": "Query resolution step width"
           }
         },
-        "required": ["query", "start", "end", "step"],
+        "required": [
+          "query",
+          "start",
+          "end",
+          "step"
+        ],
         "additionalProperties": false
       }
     },
@@ -99,7 +106,11 @@
         "properties": {
           "state": {
             "type": "string",
-            "enum": ["active", "dropped", "any"],
+            "enum": [
+              "active",
+              "dropped",
+              "any"
+            ],
             "default": "active",
             "description": "Target state filter"
           }
@@ -153,7 +164,11 @@
           },
           "severity": {
             "type": "string",
-            "enum": ["critical", "warning", "info"],
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ],
             "description": "Filter by alert severity"
           }
         },
@@ -182,5 +197,16 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

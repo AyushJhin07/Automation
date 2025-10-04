@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://app.asana.com/-/oauth_authorize",
       "tokenUrl": "https://app.asana.com/-/oauth_token",
-      "scopes": ["default"]
+      "scopes": [
+        "default"
+      ]
     }
   },
   "baseUrl": "https://app.asana.com/api/1.0",
@@ -45,7 +47,9 @@
           },
           "projects": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Project IDs to add the task to"
           },
           "assignee": {
@@ -68,17 +72,25 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "normal", "high"],
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
             "description": "Task priority"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tag IDs to apply to the task"
           },
           "followers": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "User IDs to follow the task"
           },
           "parent": {
@@ -86,7 +98,9 @@
             "description": "Parent task ID (for subtasks)"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -124,11 +138,17 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "normal", "high"],
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
             "description": "Task priority"
           }
         },
-        "required": ["task_gid"],
+        "required": [
+          "task_gid"
+        ],
         "additionalProperties": false
       }
     },
@@ -148,7 +168,9 @@
             "description": "Comma-separated list of fields to return"
           }
         },
-        "required": ["task_gid"],
+        "required": [
+          "task_gid"
+        ],
         "additionalProperties": false
       }
     },
@@ -217,21 +239,50 @@
           },
           "color": {
             "type": "string",
-            "enum": ["dark-pink", "dark-green", "dark-blue", "dark-red", "dark-teal", "dark-brown", "dark-orange", "dark-purple", "dark-warm-gray", "light-pink", "light-green", "light-blue", "light-red", "light-teal", "light-yellow", "light-orange", "light-purple", "light-warm-gray"],
+            "enum": [
+              "dark-pink",
+              "dark-green",
+              "dark-blue",
+              "dark-red",
+              "dark-teal",
+              "dark-brown",
+              "dark-orange",
+              "dark-purple",
+              "dark-warm-gray",
+              "light-pink",
+              "light-green",
+              "light-blue",
+              "light-red",
+              "light-teal",
+              "light-yellow",
+              "light-orange",
+              "light-purple",
+              "light-warm-gray"
+            ],
             "description": "Project color"
           },
           "layout": {
             "type": "string",
-            "enum": ["list", "board"],
+            "enum": [
+              "list",
+              "board"
+            ],
             "description": "Project layout"
           },
           "privacy_setting": {
             "type": "string",
-            "enum": ["public_to_workspace", "public_to_team", "private"],
+            "enum": [
+              "public_to_workspace",
+              "public_to_team",
+              "private"
+            ],
             "description": "Project privacy setting"
           }
         },
-        "required": ["name", "workspace"],
+        "required": [
+          "name",
+          "workspace"
+        ],
         "additionalProperties": false
       }
     },
@@ -263,7 +314,9 @@
             "description": "Archive/unarchive the project"
           }
         },
-        "required": ["project_gid"],
+        "required": [
+          "project_gid"
+        ],
         "additionalProperties": false
       }
     },
@@ -320,7 +373,10 @@
             "description": "Task ID to insert before"
           }
         },
-        "required": ["task_gid", "project"],
+        "required": [
+          "task_gid",
+          "project"
+        ],
         "additionalProperties": false
       }
     },
@@ -349,7 +405,10 @@
             "description": "Due date"
           }
         },
-        "required": ["parent", "name"],
+        "required": [
+          "parent",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -373,7 +432,10 @@
             "description": "Pin the comment"
           }
         },
-        "required": ["task_gid", "text"],
+        "required": [
+          "task_gid",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -419,12 +481,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "gid": {"type": "string"},
-          "name": {"type": "string"},
-          "assignee": {"type": "object"},
-          "projects": {"type": "array"},
-          "due_on": {"type": "string"},
-          "created_at": {"type": "string"}
+          "gid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "object"
+          },
+          "projects": {
+            "type": "array"
+          },
+          "due_on": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -447,10 +521,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "gid": {"type": "string"},
-          "name": {"type": "string"},
-          "completed_at": {"type": "string"},
-          "assignee": {"type": "object"}
+          "gid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "object"
+          }
         }
       }
     },
@@ -468,7 +550,9 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific fields to watch for changes"
           }
         },
@@ -478,10 +562,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "gid": {"type": "string"},
-          "name": {"type": "string"},
-          "modified_at": {"type": "string"},
-          "changes": {"type": "object"}
+          "gid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "object"
+          }
         }
       }
     }
@@ -489,5 +581,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

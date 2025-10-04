@@ -52,12 +52,20 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["team", "organization", "public"],
+            "enum": [
+              "team",
+              "organization",
+              "public"
+            ],
             "default": "team",
             "description": "Post visibility"
           }
         },
-        "required": ["title", "content", "topic_id"],
+        "required": [
+          "title",
+          "content",
+          "topic_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -73,7 +81,9 @@
             "description": "Post ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,11 +108,17 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["team", "organization", "public"],
+            "enum": [
+              "team",
+              "organization",
+              "public"
+            ],
             "description": "Post visibility"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -118,7 +134,9 @@
             "description": "Post ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -151,7 +169,9 @@
             "description": "Number of results to skip"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -192,7 +212,9 @@
             "description": "Topic ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     }
@@ -217,13 +239,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "content": {"type": "string"},
-          "topic_id": {"type": "string"},
-          "author": {"type": "object"},
-          "created_at": {"type": "string"},
-          "updated_at": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "topic_id": {
+            "type": "string"
+          },
+          "author": {
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -246,12 +282,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "content": {"type": "string"},
-          "topic_id": {"type": "string"},
-          "author": {"type": "object"},
-          "updated_at": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "topic_id": {
+            "type": "string"
+          },
+          "author": {
+            "type": "object"
+          },
+          "updated_at": {
+            "type": "string"
+          }
         }
       }
     }
@@ -259,5 +307,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

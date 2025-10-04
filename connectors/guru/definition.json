@@ -43,23 +43,36 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by tags"
           },
           "verificationState": {
             "type": "string",
-            "enum": ["VERIFIED", "NEEDS_VERIFICATION", "UNVERIFIED"],
+            "enum": [
+              "VERIFIED",
+              "NEEDS_VERIFICATION",
+              "UNVERIFIED"
+            ],
             "description": "Verification state filter"
           },
           "sort": {
             "type": "string",
-            "enum": ["lastModified", "verificationDate", "title"],
+            "enum": [
+              "lastModified",
+              "verificationDate",
+              "title"
+            ],
             "default": "lastModified",
             "description": "Sort field"
           },
           "sortDirection": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "default": "DESC",
             "description": "Sort direction"
           },
@@ -93,7 +106,9 @@
             "description": "Card ID"
           }
         },
-        "required": ["cardId"],
+        "required": [
+          "cardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -115,13 +130,18 @@
           "collection": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"}
+              "id": {
+                "type": "string"
+              }
             },
             "description": "Collection to add card to"
           },
           "verificationState": {
             "type": "string",
-            "enum": ["NEEDS_VERIFICATION", "VERIFIED"],
+            "enum": [
+              "NEEDS_VERIFICATION",
+              "VERIFIED"
+            ],
             "default": "NEEDS_VERIFICATION",
             "description": "Verification state"
           },
@@ -132,17 +152,26 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags to add to the card"
           },
           "shareStatus": {
             "type": "string",
-            "enum": ["TEAM", "PRIVATE"],
+            "enum": [
+              "TEAM",
+              "PRIVATE"
+            ],
             "default": "TEAM",
             "description": "Share status"
           }
         },
-        "required": ["preferredPhrase", "content", "collection"],
+        "required": [
+          "preferredPhrase",
+          "content",
+          "collection"
+        ],
         "additionalProperties": false
       }
     },
@@ -167,21 +196,31 @@
           },
           "verificationState": {
             "type": "string",
-            "enum": ["NEEDS_VERIFICATION", "VERIFIED"],
+            "enum": [
+              "NEEDS_VERIFICATION",
+              "VERIFIED"
+            ],
             "description": "Verification state"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags for the card"
           },
           "shareStatus": {
             "type": "string",
-            "enum": ["TEAM", "PRIVATE"],
+            "enum": [
+              "TEAM",
+              "PRIVATE"
+            ],
             "description": "Share status"
           }
         },
-        "required": ["cardId"],
+        "required": [
+          "cardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -197,7 +236,9 @@
             "description": "Card ID"
           }
         },
-        "required": ["cardId"],
+        "required": [
+          "cardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,13 +251,20 @@
         "properties": {
           "sort": {
             "type": "string",
-            "enum": ["name", "dateCreated", "dateModified"],
+            "enum": [
+              "name",
+              "dateCreated",
+              "dateModified"
+            ],
             "default": "name",
             "description": "Sort field"
           },
           "sortDirection": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "default": "ASC",
             "description": "Sort direction"
           }
@@ -237,7 +285,9 @@
             "description": "Collection ID"
           }
         },
-        "required": ["collectionId"],
+        "required": [
+          "collectionId"
+        ],
         "additionalProperties": false
       }
     },
@@ -258,7 +308,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by tags"
           },
           "limit": {
@@ -275,7 +327,9 @@
             "description": "Number of results to skip"
           }
         },
-        "required": ["searchTerm"],
+        "required": [
+          "searchTerm"
+        ],
         "additionalProperties": false
       }
     },
@@ -338,12 +392,18 @@
           },
           "role": {
             "type": "string",
-            "enum": ["CORE_USER", "LIGHT_USER", "ADMIN"],
+            "enum": [
+              "CORE_USER",
+              "LIGHT_USER",
+              "ADMIN"
+            ],
             "default": "CORE_USER",
             "description": "User role"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "additionalProperties": false
       }
     }
@@ -363,7 +423,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by tags"
           }
         },
@@ -373,14 +435,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "preferredPhrase": {"type": "string"},
-          "content": {"type": "string"},
-          "collection": {"type": "object"},
-          "dateCreated": {"type": "string"},
-          "owner": {"type": "object"},
-          "verificationState": {"type": "string"},
-          "tags": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "preferredPhrase": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "collection": {
+            "type": "object"
+          },
+          "dateCreated": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "object"
+          },
+          "verificationState": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          }
         }
       }
     },
@@ -403,12 +481,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "preferredPhrase": {"type": "string"},
-          "content": {"type": "string"},
-          "dateModified": {"type": "string"},
-          "lastModifiedBy": {"type": "object"},
-          "verificationState": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "preferredPhrase": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "dateModified": {
+            "type": "string"
+          },
+          "lastModifiedBy": {
+            "type": "object"
+          },
+          "verificationState": {
+            "type": "string"
+          }
         }
       }
     },
@@ -431,11 +521,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "preferredPhrase": {"type": "string"},
-          "verificationState": {"type": "string"},
-          "verificationDate": {"type": "string"},
-          "verifiedBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "preferredPhrase": {
+            "type": "string"
+          },
+          "verificationState": {
+            "type": "string"
+          },
+          "verificationDate": {
+            "type": "string"
+          },
+          "verifiedBy": {
+            "type": "object"
+          }
         }
       }
     }
@@ -443,5 +543,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/teams/whoami"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

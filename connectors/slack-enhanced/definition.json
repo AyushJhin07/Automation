@@ -94,7 +94,10 @@
           },
           "parse": {
             "type": "string",
-            "enum": ["full", "none"],
+            "enum": [
+              "full",
+              "none"
+            ],
             "description": "Change how messages are treated"
           },
           "reply_broadcast": {
@@ -125,7 +128,10 @@
             }
           }
         },
-        "required": ["channel", "text"],
+        "required": [
+          "channel",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -170,7 +176,10 @@
           },
           "parse": {
             "type": "string",
-            "enum": ["full", "none"],
+            "enum": [
+              "full",
+              "none"
+            ],
             "description": "Change how messages are treated"
           },
           "mrkdwn": {
@@ -193,7 +202,10 @@
             }
           }
         },
-        "required": ["user", "text"],
+        "required": [
+          "user",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -218,7 +230,9 @@
             "description": "Encoded team id to create the channel in"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -256,7 +270,10 @@
             }
           }
         },
-        "required": ["channel", "user"],
+        "required": [
+          "channel",
+          "user"
+        ],
         "additionalProperties": false
       }
     },
@@ -304,7 +321,9 @@
             "description": "Start of time range of messages to include in results"
           }
         },
-        "required": ["channel"],
+        "required": [
+          "channel"
+        ],
         "additionalProperties": false
       }
     },
@@ -381,7 +400,11 @@
             "description": "Timestamp of the message to add reaction to"
           }
         },
-        "required": ["channel", "name", "timestamp"],
+        "required": [
+          "channel",
+          "name",
+          "timestamp"
+        ],
         "additionalProperties": false
       }
     },
@@ -401,7 +424,9 @@
             "description": "Set this to true to receive the locale for this user"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "additionalProperties": false
       }
     },
@@ -466,7 +491,10 @@
             "description": "The new topic"
           }
         },
-        "required": ["channel", "topic"],
+        "required": [
+          "channel",
+          "topic"
+        ],
         "additionalProperties": false
       }
     },
@@ -491,7 +519,9 @@
             }
           }
         },
-        "required": ["channel"],
+        "required": [
+          "channel"
+        ],
         "additionalProperties": false
       }
     },
@@ -520,7 +550,10 @@
             "description": "Timestamp of the message to pin"
           }
         },
-        "required": ["channel", "timestamp"],
+        "required": [
+          "channel",
+          "timestamp"
+        ],
         "additionalProperties": false
       }
     },
@@ -578,7 +611,10 @@
           },
           "parse": {
             "type": "string",
-            "enum": ["full", "none"],
+            "enum": [
+              "full",
+              "none"
+            ],
             "description": "Change how messages are treated"
           },
           "thread_ts": {
@@ -604,7 +640,11 @@
             }
           }
         },
-        "required": ["channel", "text", "post_at"],
+        "required": [
+          "channel",
+          "text",
+          "post_at"
+        ],
         "additionalProperties": false
       }
     }
@@ -641,32 +681,74 @@
             "description": "Exclude messages from bots"
           }
         },
-        "required": ["channel"],
+        "required": [
+          "channel"
+        ],
         "additionalProperties": false
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "subtype": {"type": "string"},
-          "channel": {"type": "string"},
-          "user": {"type": "string"},
-          "text": {"type": "string"},
-          "ts": {"type": "string"},
-          "team": {"type": "string"},
-          "thread_ts": {"type": "string"},
-          "parent_user_id": {"type": "string"},
-          "blocks": {"type": "array"},
-          "attachments": {"type": "array"},
-          "files": {"type": "array"},
-          "upload": {"type": "boolean"},
-          "display_as_bot": {"type": "boolean"},
-          "username": {"type": "string"},
-          "bot_id": {"type": "string"},
-          "app_id": {"type": "string"},
-          "edited": {"type": "object"},
-          "client_msg_id": {"type": "string"},
-          "reactions": {"type": "array"}
+          "type": {
+            "type": "string"
+          },
+          "subtype": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "ts": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          },
+          "thread_ts": {
+            "type": "string"
+          },
+          "parent_user_id": {
+            "type": "string"
+          },
+          "blocks": {
+            "type": "array"
+          },
+          "attachments": {
+            "type": "array"
+          },
+          "files": {
+            "type": "array"
+          },
+          "upload": {
+            "type": "boolean"
+          },
+          "display_as_bot": {
+            "type": "boolean"
+          },
+          "username": {
+            "type": "string"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "edited": {
+            "type": "object"
+          },
+          "client_msg_id": {
+            "type": "string"
+          },
+          "reactions": {
+            "type": "array"
+          }
         }
       }
     },
@@ -690,39 +772,99 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
+          "type": {
+            "type": "string"
+          },
           "channel": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "name": {"type": "string"},
-              "is_channel": {"type": "boolean"},
-              "is_group": {"type": "boolean"},
-              "is_im": {"type": "boolean"},
-              "is_mpim": {"type": "boolean"},
-              "is_private": {"type": "boolean"},
-              "created": {"type": "number"},
-              "is_archived": {"type": "boolean"},
-              "is_general": {"type": "boolean"},
-              "unlinked": {"type": "number"},
-              "name_normalized": {"type": "string"},
-              "is_shared": {"type": "boolean"},
-              "is_org_shared": {"type": "boolean"},
-              "is_member": {"type": "boolean"},
-              "is_pending_ext_shared": {"type": "boolean"},
-              "pending_shared": {"type": "array"},
-              "context_team_id": {"type": "string"},
-              "updated": {"type": "number"},
-              "parent_conversation": {"type": "string"},
-              "creator": {"type": "string"},
-              "is_ext_shared": {"type": "boolean"},
-              "shared_team_ids": {"type": "array"},
-              "pending_connected_team_ids": {"type": "array"},
-              "is_pending_ext_shared_private": {"type": "boolean"},
-              "topic": {"type": "object"},
-              "purpose": {"type": "object"},
-              "previous_names": {"type": "array"},
-              "num_members": {"type": "number"}
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "is_channel": {
+                "type": "boolean"
+              },
+              "is_group": {
+                "type": "boolean"
+              },
+              "is_im": {
+                "type": "boolean"
+              },
+              "is_mpim": {
+                "type": "boolean"
+              },
+              "is_private": {
+                "type": "boolean"
+              },
+              "created": {
+                "type": "number"
+              },
+              "is_archived": {
+                "type": "boolean"
+              },
+              "is_general": {
+                "type": "boolean"
+              },
+              "unlinked": {
+                "type": "number"
+              },
+              "name_normalized": {
+                "type": "string"
+              },
+              "is_shared": {
+                "type": "boolean"
+              },
+              "is_org_shared": {
+                "type": "boolean"
+              },
+              "is_member": {
+                "type": "boolean"
+              },
+              "is_pending_ext_shared": {
+                "type": "boolean"
+              },
+              "pending_shared": {
+                "type": "array"
+              },
+              "context_team_id": {
+                "type": "string"
+              },
+              "updated": {
+                "type": "number"
+              },
+              "parent_conversation": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "is_ext_shared": {
+                "type": "boolean"
+              },
+              "shared_team_ids": {
+                "type": "array"
+              },
+              "pending_connected_team_ids": {
+                "type": "array"
+              },
+              "is_pending_ext_shared_private": {
+                "type": "boolean"
+              },
+              "topic": {
+                "type": "object"
+              },
+              "purpose": {
+                "type": "object"
+              },
+              "previous_names": {
+                "type": "array"
+              },
+              "num_members": {
+                "type": "number"
+              }
             }
           }
         }
@@ -760,44 +902,114 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "file_id": {"type": "string"},
-          "user_id": {"type": "string"},
+          "type": {
+            "type": "string"
+          },
+          "file_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
           "file": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "created": {"type": "number"},
-              "timestamp": {"type": "number"},
-              "name": {"type": "string"},
-              "title": {"type": "string"},
-              "mimetype": {"type": "string"},
-              "filetype": {"type": "string"},
-              "pretty_type": {"type": "string"},
-              "user": {"type": "string"},
-              "editable": {"type": "boolean"},
-              "size": {"type": "number"},
-              "mode": {"type": "string"},
-              "is_external": {"type": "boolean"},
-              "external_type": {"type": "string"},
-              "is_public": {"type": "boolean"},
-              "public_url_shared": {"type": "boolean"},
-              "display_as_bot": {"type": "boolean"},
-              "username": {"type": "string"},
-              "url_private": {"type": "string"},
-              "url_private_download": {"type": "string"},
-              "permalink": {"type": "string"},
-              "permalink_public": {"type": "string"},
-              "edit_link": {"type": "string"},
-              "preview": {"type": "string"},
-              "preview_highlight": {"type": "string"},
-              "lines": {"type": "number"},
-              "lines_more": {"type": "number"},
-              "preview_is_truncated": {"type": "boolean"},
-              "channels": {"type": "array"},
-              "groups": {"type": "array"},
-              "ims": {"type": "array"},
-              "has_rich_preview": {"type": "boolean"}
+              "id": {
+                "type": "string"
+              },
+              "created": {
+                "type": "number"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "mimetype": {
+                "type": "string"
+              },
+              "filetype": {
+                "type": "string"
+              },
+              "pretty_type": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              },
+              "editable": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "number"
+              },
+              "mode": {
+                "type": "string"
+              },
+              "is_external": {
+                "type": "boolean"
+              },
+              "external_type": {
+                "type": "string"
+              },
+              "is_public": {
+                "type": "boolean"
+              },
+              "public_url_shared": {
+                "type": "boolean"
+              },
+              "display_as_bot": {
+                "type": "boolean"
+              },
+              "username": {
+                "type": "string"
+              },
+              "url_private": {
+                "type": "string"
+              },
+              "url_private_download": {
+                "type": "string"
+              },
+              "permalink": {
+                "type": "string"
+              },
+              "permalink_public": {
+                "type": "string"
+              },
+              "edit_link": {
+                "type": "string"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "preview_highlight": {
+                "type": "string"
+              },
+              "lines": {
+                "type": "number"
+              },
+              "lines_more": {
+                "type": "number"
+              },
+              "preview_is_truncated": {
+                "type": "boolean"
+              },
+              "channels": {
+                "type": "array"
+              },
+              "groups": {
+                "type": "array"
+              },
+              "ims": {
+                "type": "array"
+              },
+              "has_rich_preview": {
+                "type": "boolean"
+              }
             }
           }
         }
@@ -835,19 +1047,35 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "user": {"type": "string"},
-          "reaction": {"type": "string"},
+          "type": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "reaction": {
+            "type": "string"
+          },
           "item": {
             "type": "object",
             "properties": {
-              "type": {"type": "string"},
-              "channel": {"type": "string"},
-              "ts": {"type": "string"}
+              "type": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string"
+              },
+              "ts": {
+                "type": "string"
+              }
             }
           },
-          "item_user": {"type": "string"},
-          "event_ts": {"type": "string"}
+          "item_user": {
+            "type": "string"
+          },
+          "event_ts": {
+            "type": "string"
+          }
         }
       }
     }
@@ -855,5 +1083,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/auth.test"
+  },
+  "release": {
+    "semver": "2.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

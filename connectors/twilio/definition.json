@@ -56,7 +56,10 @@
           },
           "status_callback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for status callback"
           },
@@ -90,12 +93,18 @@
           },
           "content_retention": {
             "type": "string",
-            "enum": ["retain", "discard"],
+            "enum": [
+              "retain",
+              "discard"
+            ],
             "description": "Content retention policy"
           },
           "address_retention": {
             "type": "string",
-            "enum": ["retain", "discard"],
+            "enum": [
+              "retain",
+              "discard"
+            ],
             "description": "Address retention policy"
           },
           "smart_encoded": {
@@ -104,7 +113,9 @@
           },
           "persistent_action": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Persistent action buttons"
           },
           "shorten_urls": {
@@ -113,7 +124,9 @@
           },
           "schedule_type": {
             "type": "string",
-            "enum": ["fixed"],
+            "enum": [
+              "fixed"
+            ],
             "description": "Schedule type for delayed sending"
           },
           "send_at": {
@@ -130,7 +143,10 @@
             "description": "Template variable values"
           }
         },
-        "required": ["to", "body"],
+        "required": [
+          "to",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -155,7 +171,9 @@
           },
           "media_url": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "URLs of media to include (up to 10)"
           },
           "messaging_service_sid": {
@@ -168,7 +186,10 @@
           },
           "status_callback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for status callback"
           },
@@ -188,16 +209,25 @@
           },
           "content_retention": {
             "type": "string",
-            "enum": ["retain", "discard"],
+            "enum": [
+              "retain",
+              "discard"
+            ],
             "description": "Content retention policy"
           },
           "address_retention": {
             "type": "string",
-            "enum": ["retain", "discard"],
+            "enum": [
+              "retain",
+              "discard"
+            ],
             "description": "Address retention policy"
           }
         },
-        "required": ["to", "media_url"],
+        "required": [
+          "to",
+          "media_url"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,7 +260,10 @@
           },
           "method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for URL"
           },
@@ -240,7 +273,10 @@
           },
           "fallback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for fallback URL"
           },
@@ -252,13 +288,21 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["initiated", "ringing", "answered", "completed"]
+              "enum": [
+                "initiated",
+                "ringing",
+                "answered",
+                "completed"
+              ]
             },
             "description": "Events to callback for"
           },
           "status_callback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for status callback"
           },
@@ -279,7 +323,10 @@
           },
           "recording_channels": {
             "type": "string",
-            "enum": ["mono", "dual"],
+            "enum": [
+              "mono",
+              "dual"
+            ],
             "description": "Recording channels"
           },
           "recording_status_callback": {
@@ -288,7 +335,10 @@
           },
           "recording_status_callback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for recording callback"
           },
@@ -302,7 +352,10 @@
           },
           "machine_detection": {
             "type": "string",
-            "enum": ["Enable", "DetectMessageEnd"],
+            "enum": [
+              "Enable",
+              "DetectMessageEnd"
+            ],
             "description": "Answering machine detection"
           },
           "machine_detection_timeout": {
@@ -313,12 +366,19 @@
           },
           "recording_track": {
             "type": "string",
-            "enum": ["inbound", "outbound", "both"],
+            "enum": [
+              "inbound",
+              "outbound",
+              "both"
+            ],
             "description": "Which track to record"
           },
           "trim": {
             "type": "string",
-            "enum": ["trim-silence", "do-not-trim"],
+            "enum": [
+              "trim-silence",
+              "do-not-trim"
+            ],
             "description": "Whether to trim silence from recordings"
           },
           "caller_id": {
@@ -344,7 +404,10 @@
             "description": "Silence timeout for machine detection (ms)"
           }
         },
-        "required": ["to", "from"],
+        "required": [
+          "to",
+          "from"
+        ],
         "additionalProperties": false
       }
     },
@@ -364,7 +427,9 @@
             "description": "Message SID"
           }
         },
-        "required": ["sid"],
+        "required": [
+          "sid"
+        ],
         "additionalProperties": false
       }
     },
@@ -439,7 +504,9 @@
             "description": "Call SID"
           }
         },
-        "required": ["sid"],
+        "required": [
+          "sid"
+        ],
         "additionalProperties": false
       }
     },
@@ -464,7 +531,16 @@
           },
           "status": {
             "type": "string",
-            "enum": ["queued", "ringing", "in-progress", "completed", "busy", "failed", "no-answer", "canceled"],
+            "enum": [
+              "queued",
+              "ringing",
+              "in-progress",
+              "completed",
+              "busy",
+              "failed",
+              "no-answer",
+              "canceled"
+            ],
             "description": "Filter by call status"
           },
           "start_time": {
@@ -539,13 +615,19 @@
           },
           "method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for URL"
           },
           "status": {
             "type": "string",
-            "enum": ["canceled", "completed"],
+            "enum": [
+              "canceled",
+              "completed"
+            ],
             "description": "New call status"
           },
           "fallback_url": {
@@ -554,7 +636,10 @@
           },
           "fallback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for fallback URL"
           },
@@ -564,7 +649,10 @@
           },
           "status_callback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for status callback"
           },
@@ -573,7 +661,9 @@
             "description": "TwiML instructions to execute"
           }
         },
-        "required": ["sid"],
+        "required": [
+          "sid"
+        ],
         "additionalProperties": false
       }
     },
@@ -606,7 +696,10 @@
           },
           "voice_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for voice URL"
           },
@@ -616,7 +709,10 @@
           },
           "voice_fallback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for voice fallback URL"
           },
@@ -626,7 +722,10 @@
           },
           "status_callback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for status callback"
           },
@@ -644,7 +743,10 @@
           },
           "sms_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for SMS URL"
           },
@@ -654,7 +756,10 @@
           },
           "sms_fallback_method": {
             "type": "string",
-            "enum": ["GET", "POST"],
+            "enum": [
+              "GET",
+              "POST"
+            ],
             "default": "POST",
             "description": "HTTP method for SMS fallback URL"
           },
@@ -668,7 +773,10 @@
           },
           "emergency_status": {
             "type": "string",
-            "enum": ["Active", "Inactive"],
+            "enum": [
+              "Active",
+              "Inactive"
+            ],
             "description": "Emergency calling status"
           },
           "emergency_address_sid": {
@@ -688,7 +796,9 @@
             "description": "Bundle SID for regulatory compliance"
           }
         },
-        "required": ["phone_number"],
+        "required": [
+          "phone_number"
+        ],
         "additionalProperties": false
       }
     },
@@ -765,29 +875,75 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "MessageSid": {"type": "string"},
-          "AccountSid": {"type": "string"},
-          "MessagingServiceSid": {"type": "string"},
-          "From": {"type": "string"},
-          "To": {"type": "string"},
-          "Body": {"type": "string"},
-          "NumMedia": {"type": "string"},
-          "MediaContentType0": {"type": "string"},
-          "MediaUrl0": {"type": "string"},
-          "FromCity": {"type": "string"},
-          "FromState": {"type": "string"},
-          "FromZip": {"type": "string"},
-          "FromCountry": {"type": "string"},
-          "ToCity": {"type": "string"},
-          "ToState": {"type": "string"},
-          "ToZip": {"type": "string"},
-          "ToCountry": {"type": "string"},
-          "AddOns": {"type": "string"},
-          "SmsMessageSid": {"type": "string"},
-          "NumSegments": {"type": "string"},
-          "ReferralNumMedia": {"type": "string"},
-          "SmsStatus": {"type": "string"},
-          "SmsSid": {"type": "string"}
+          "MessageSid": {
+            "type": "string"
+          },
+          "AccountSid": {
+            "type": "string"
+          },
+          "MessagingServiceSid": {
+            "type": "string"
+          },
+          "From": {
+            "type": "string"
+          },
+          "To": {
+            "type": "string"
+          },
+          "Body": {
+            "type": "string"
+          },
+          "NumMedia": {
+            "type": "string"
+          },
+          "MediaContentType0": {
+            "type": "string"
+          },
+          "MediaUrl0": {
+            "type": "string"
+          },
+          "FromCity": {
+            "type": "string"
+          },
+          "FromState": {
+            "type": "string"
+          },
+          "FromZip": {
+            "type": "string"
+          },
+          "FromCountry": {
+            "type": "string"
+          },
+          "ToCity": {
+            "type": "string"
+          },
+          "ToState": {
+            "type": "string"
+          },
+          "ToZip": {
+            "type": "string"
+          },
+          "ToCountry": {
+            "type": "string"
+          },
+          "AddOns": {
+            "type": "string"
+          },
+          "SmsMessageSid": {
+            "type": "string"
+          },
+          "NumSegments": {
+            "type": "string"
+          },
+          "ReferralNumMedia": {
+            "type": "string"
+          },
+          "SmsStatus": {
+            "type": "string"
+          },
+          "SmsSid": {
+            "type": "string"
+          }
         }
       }
     },
@@ -814,28 +970,72 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "CallSid": {"type": "string"},
-          "AccountSid": {"type": "string"},
-          "From": {"type": "string"},
-          "To": {"type": "string"},
-          "CallStatus": {"type": "string"},
-          "ApiVersion": {"type": "string"},
-          "Direction": {"type": "string"},
-          "ForwardedFrom": {"type": "string"},
-          "CallerName": {"type": "string"},
-          "FromCity": {"type": "string"},
-          "FromState": {"type": "string"},
-          "FromZip": {"type": "string"},
-          "FromCountry": {"type": "string"},
-          "ToCity": {"type": "string"},
-          "ToState": {"type": "string"},
-          "ToZip": {"type": "string"},
-          "ToCountry": {"type": "string"},
-          "ApplicationSid": {"type": "string"},
-          "Digits": {"type": "string"},
-          "FinishedOnKey": {"type": "string"},
-          "SpeechResult": {"type": "string"},
-          "Confidence": {"type": "string"}
+          "CallSid": {
+            "type": "string"
+          },
+          "AccountSid": {
+            "type": "string"
+          },
+          "From": {
+            "type": "string"
+          },
+          "To": {
+            "type": "string"
+          },
+          "CallStatus": {
+            "type": "string"
+          },
+          "ApiVersion": {
+            "type": "string"
+          },
+          "Direction": {
+            "type": "string"
+          },
+          "ForwardedFrom": {
+            "type": "string"
+          },
+          "CallerName": {
+            "type": "string"
+          },
+          "FromCity": {
+            "type": "string"
+          },
+          "FromState": {
+            "type": "string"
+          },
+          "FromZip": {
+            "type": "string"
+          },
+          "FromCountry": {
+            "type": "string"
+          },
+          "ToCity": {
+            "type": "string"
+          },
+          "ToState": {
+            "type": "string"
+          },
+          "ToZip": {
+            "type": "string"
+          },
+          "ToCountry": {
+            "type": "string"
+          },
+          "ApplicationSid": {
+            "type": "string"
+          },
+          "Digits": {
+            "type": "string"
+          },
+          "FinishedOnKey": {
+            "type": "string"
+          },
+          "SpeechResult": {
+            "type": "string"
+          },
+          "Confidence": {
+            "type": "string"
+          }
         }
       }
     },
@@ -849,7 +1049,16 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["queued", "ringing", "in-progress", "completed", "busy", "failed", "no-answer", "canceled"],
+            "enum": [
+              "queued",
+              "ringing",
+              "in-progress",
+              "completed",
+              "busy",
+              "failed",
+              "no-answer",
+              "canceled"
+            ],
             "description": "Filter by call status"
           },
           "from": {
@@ -867,25 +1076,63 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "CallSid": {"type": "string"},
-          "AccountSid": {"type": "string"},
-          "From": {"type": "string"},
-          "To": {"type": "string"},
-          "CallStatus": {"type": "string"},
-          "Duration": {"type": "string"},
-          "StartTime": {"type": "string"},
-          "EndTime": {"type": "string"},
-          "Price": {"type": "string"},
-          "PriceUnit": {"type": "string"},
-          "Direction": {"type": "string"},
-          "AnsweredBy": {"type": "string"},
-          "MachineDetectionDuration": {"type": "string"},
-          "RecordingUrl": {"type": "string"},
-          "RecordingSid": {"type": "string"},
-          "RecordingDuration": {"type": "string"},
-          "Timestamp": {"type": "string"},
-          "CallbackSource": {"type": "string"},
-          "SequenceNumber": {"type": "string"}
+          "CallSid": {
+            "type": "string"
+          },
+          "AccountSid": {
+            "type": "string"
+          },
+          "From": {
+            "type": "string"
+          },
+          "To": {
+            "type": "string"
+          },
+          "CallStatus": {
+            "type": "string"
+          },
+          "Duration": {
+            "type": "string"
+          },
+          "StartTime": {
+            "type": "string"
+          },
+          "EndTime": {
+            "type": "string"
+          },
+          "Price": {
+            "type": "string"
+          },
+          "PriceUnit": {
+            "type": "string"
+          },
+          "Direction": {
+            "type": "string"
+          },
+          "AnsweredBy": {
+            "type": "string"
+          },
+          "MachineDetectionDuration": {
+            "type": "string"
+          },
+          "RecordingUrl": {
+            "type": "string"
+          },
+          "RecordingSid": {
+            "type": "string"
+          },
+          "RecordingDuration": {
+            "type": "string"
+          },
+          "Timestamp": {
+            "type": "string"
+          },
+          "CallbackSource": {
+            "type": "string"
+          },
+          "SequenceNumber": {
+            "type": "string"
+          }
         }
       }
     },
@@ -899,7 +1146,18 @@
         "properties": {
           "message_status": {
             "type": "string",
-            "enum": ["accepted", "queued", "sending", "sent", "receiving", "received", "delivered", "undelivered", "failed", "read"],
+            "enum": [
+              "accepted",
+              "queued",
+              "sending",
+              "sent",
+              "receiving",
+              "received",
+              "delivered",
+              "undelivered",
+              "failed",
+              "read"
+            ],
             "description": "Filter by message status"
           },
           "from": {
@@ -917,25 +1175,63 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "MessageSid": {"type": "string"},
-          "AccountSid": {"type": "string"},
-          "MessagingServiceSid": {"type": "string"},
-          "From": {"type": "string"},
-          "To": {"type": "string"},
-          "MessageStatus": {"type": "string"},
-          "Body": {"type": "string"},
-          "NumSegments": {"type": "string"},
-          "NumMedia": {"type": "string"},
-          "DateCreated": {"type": "string"},
-          "DateSent": {"type": "string"},
-          "DateUpdated": {"type": "string"},
-          "Direction": {"type": "string"},
-          "Price": {"type": "string"},
-          "PriceUnit": {"type": "string"},
-          "ApiVersion": {"type": "string"},
-          "Uri": {"type": "string"},
-          "ErrorCode": {"type": "string"},
-          "ErrorMessage": {"type": "string"}
+          "MessageSid": {
+            "type": "string"
+          },
+          "AccountSid": {
+            "type": "string"
+          },
+          "MessagingServiceSid": {
+            "type": "string"
+          },
+          "From": {
+            "type": "string"
+          },
+          "To": {
+            "type": "string"
+          },
+          "MessageStatus": {
+            "type": "string"
+          },
+          "Body": {
+            "type": "string"
+          },
+          "NumSegments": {
+            "type": "string"
+          },
+          "NumMedia": {
+            "type": "string"
+          },
+          "DateCreated": {
+            "type": "string"
+          },
+          "DateSent": {
+            "type": "string"
+          },
+          "DateUpdated": {
+            "type": "string"
+          },
+          "Direction": {
+            "type": "string"
+          },
+          "Price": {
+            "type": "string"
+          },
+          "PriceUnit": {
+            "type": "string"
+          },
+          "ApiVersion": {
+            "type": "string"
+          },
+          "Uri": {
+            "type": "string"
+          },
+          "ErrorCode": {
+            "type": "string"
+          },
+          "ErrorMessage": {
+            "type": "string"
+          }
         }
       }
     }
@@ -943,5 +1239,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/Accounts.json"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

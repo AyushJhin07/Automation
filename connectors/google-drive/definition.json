@@ -70,7 +70,10 @@
             "description": "Base64-encoded file content"
           }
         },
-        "required": ["name", "mimeType"],
+        "required": [
+          "name",
+          "mimeType"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,7 +101,10 @@
             "description": "MIME type of the file"
           }
         },
-        "required": ["name", "content"],
+        "required": [
+          "name",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -120,7 +126,9 @@
             "description": "Comma-separated list of fields to return"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -139,11 +147,21 @@
           },
           "format": {
             "type": "string",
-            "enum": ["pdf", "docx", "xlsx", "pptx", "txt", "html", "odt"],
+            "enum": [
+              "pdf",
+              "docx",
+              "xlsx",
+              "pptx",
+              "txt",
+              "html",
+              "odt"
+            ],
             "description": "Export format for Google Workspace files"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -172,7 +190,18 @@
           },
           "orderBy": {
             "type": "string",
-            "enum": ["createdTime", "folder", "modifiedByMeTime", "modifiedTime", "name", "quotaBytesUsed", "recency", "sharedWithMeTime", "starred", "viewedByMeTime"],
+            "enum": [
+              "createdTime",
+              "folder",
+              "modifiedByMeTime",
+              "modifiedTime",
+              "name",
+              "quotaBytesUsed",
+              "recency",
+              "sharedWithMeTime",
+              "starred",
+              "viewedByMeTime"
+            ],
             "description": "Sort order"
           },
           "fields": {
@@ -202,7 +231,9 @@
             "description": "ID of the parent folder"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -226,7 +257,10 @@
             "description": "Comma-separated list of parent IDs to remove"
           }
         },
-        "required": ["fileId", "newParentId"],
+        "required": [
+          "fileId",
+          "newParentId"
+        ],
         "additionalProperties": false
       }
     },
@@ -250,7 +284,9 @@
             "description": "ID of the parent folder for the copy"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -268,7 +304,9 @@
             "description": "ID of the file to delete"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -292,13 +330,23 @@
           },
           "role": {
             "type": "string",
-            "enum": ["reader", "writer", "commenter", "owner"],
+            "enum": [
+              "reader",
+              "writer",
+              "commenter",
+              "owner"
+            ],
             "default": "reader",
             "description": "Permission role for the user"
           },
           "type": {
             "type": "string",
-            "enum": ["user", "group", "domain", "anyone"],
+            "enum": [
+              "user",
+              "group",
+              "domain",
+              "anyone"
+            ],
             "default": "user",
             "description": "Type of permission"
           },
@@ -308,7 +356,9 @@
             "description": "Whether to send notification email"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -324,7 +374,9 @@
             "description": "ID of the file"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -350,7 +402,9 @@
             "description": "New description for the file"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -372,7 +426,10 @@
             "description": "ID of the permission to remove"
           }
         },
-        "required": ["fileId", "permissionId"],
+        "required": [
+          "fileId",
+          "permissionId"
+        ],
         "additionalProperties": false
       }
     },
@@ -395,11 +452,20 @@
           },
           "role": {
             "type": "string",
-            "enum": ["reader", "writer", "commenter", "owner"],
+            "enum": [
+              "reader",
+              "writer",
+              "commenter",
+              "owner"
+            ],
             "description": "New role for the permission"
           }
         },
-        "required": ["fileId", "permissionId", "role"],
+        "required": [
+          "fileId",
+          "permissionId",
+          "role"
+        ],
         "additionalProperties": false
       }
     }
@@ -428,13 +494,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "fileId": {"type": "string"},
-          "name": {"type": "string"},
-          "mimeType": {"type": "string"},
-          "size": {"type": "number"},
-          "createdTime": {"type": "string"},
-          "modifiedTime": {"type": "string"},
-          "webViewLink": {"type": "string"}
+          "fileId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "createdTime": {
+            "type": "string"
+          },
+          "modifiedTime": {
+            "type": "string"
+          },
+          "webViewLink": {
+            "type": "string"
+          }
         }
       }
     },
@@ -461,10 +541,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "fileId": {"type": "string"},
-          "name": {"type": "string"},
-          "modifiedTime": {"type": "string"},
-          "lastModifyingUser": {"type": "object"}
+          "fileId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "modifiedTime": {
+            "type": "string"
+          },
+          "lastModifyingUser": {
+            "type": "object"
+          }
         }
       }
     },
@@ -487,10 +575,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "fileId": {"type": "string"},
-          "name": {"type": "string"},
-          "sharedWithUser": {"type": "string"},
-          "permissionId": {"type": "string"}
+          "fileId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sharedWithUser": {
+            "type": "string"
+          },
+          "permissionId": {
+            "type": "string"
+          }
         }
       }
     }
@@ -498,6 +594,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/about"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }
-

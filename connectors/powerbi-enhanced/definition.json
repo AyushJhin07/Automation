@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://analysis.windows.net/powerbi/api/.default"]
+      "scopes": [
+        "https://analysis.windows.net/powerbi/api/.default"
+      ]
     }
   },
   "baseUrl": "https://api.powerbi.com/v1.0/myorg",
@@ -66,7 +68,9 @@
             "description": "Workspace ID"
           }
         },
-        "required": ["groupId"],
+        "required": [
+          "groupId"
+        ],
         "additionalProperties": false
       }
     },
@@ -87,7 +91,9 @@
             "description": "Create as workspace v2"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -134,7 +140,9 @@
             "description": "Workspace ID (optional)"
           }
         },
-        "required": ["datasetId"],
+        "required": [
+          "datasetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -155,7 +163,11 @@
           },
           "notifyOption": {
             "type": "string",
-            "enum": ["MailOnCompletion", "MailOnFailure", "NoNotification"],
+            "enum": [
+              "MailOnCompletion",
+              "MailOnFailure",
+              "NoNotification"
+            ],
             "default": "NoNotification",
             "description": "Notification option"
           },
@@ -167,13 +179,24 @@
           },
           "type": {
             "type": "string",
-            "enum": ["Full", "ClearValues", "Calculate", "DataOnly", "Automatic", "Add", "Defragment"],
+            "enum": [
+              "Full",
+              "ClearValues",
+              "Calculate",
+              "DataOnly",
+              "Automatic",
+              "Add",
+              "Defragment"
+            ],
             "default": "Full",
             "description": "Refresh type"
           },
           "commitMode": {
             "type": "string",
-            "enum": ["Transactional", "PartialBatch"],
+            "enum": [
+              "Transactional",
+              "PartialBatch"
+            ],
             "description": "Commit mode"
           },
           "maxParallelism": {
@@ -186,14 +209,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "table": {"type": "string"},
-                "partition": {"type": "string"}
+                "table": {
+                  "type": "string"
+                },
+                "partition": {
+                  "type": "string"
+                }
               }
             },
             "description": "Specific objects to refresh"
           }
         },
-        "required": ["datasetId"],
+        "required": [
+          "datasetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -220,7 +249,9 @@
             "description": "Number of refresh entries to return"
           }
         },
-        "required": ["datasetId"],
+        "required": [
+          "datasetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -271,7 +302,9 @@
             "description": "Workspace ID (optional)"
           }
         },
-        "required": ["reportId"],
+        "required": [
+          "reportId"
+        ],
         "additionalProperties": false
       }
     },
@@ -303,7 +336,10 @@
             "description": "Target workspace ID"
           }
         },
-        "required": ["reportId", "name"],
+        "required": [
+          "reportId",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -324,7 +360,14 @@
           },
           "format": {
             "type": "string",
-            "enum": ["PDF", "PNG", "PPTX", "XLSX", "XML", "CSV"],
+            "enum": [
+              "PDF",
+              "PNG",
+              "PPTX",
+              "XLSX",
+              "XML",
+              "CSV"
+            ],
             "description": "Export format"
           },
           "pages": {
@@ -332,12 +375,18 @@
             "items": {
               "type": "object",
               "properties": {
-                "pageName": {"type": "string"},
+                "pageName": {
+                  "type": "string"
+                },
                 "bookmark": {
                   "type": "object",
                   "properties": {
-                    "name": {"type": "string"},
-                    "state": {"type": "string"}
+                    "name": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -350,8 +399,12 @@
               "settings": {
                 "type": "object",
                 "properties": {
-                  "includeHiddenPages": {"type": "boolean"},
-                  "locale": {"type": "string"}
+                  "includeHiddenPages": {
+                    "type": "boolean"
+                  },
+                  "locale": {
+                    "type": "string"
+                  }
                 }
               },
               "identities": {
@@ -359,9 +412,21 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "username": {"type": "string"},
-                    "datasets": {"type": "array", "items": {"type": "string"}},
-                    "roles": {"type": "array", "items": {"type": "string"}}
+                    "username": {
+                      "type": "string"
+                    },
+                    "datasets": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
                   }
                 }
               }
@@ -369,7 +434,10 @@
             "description": "Export configuration"
           }
         },
-        "required": ["reportId", "format"],
+        "required": [
+          "reportId",
+          "format"
+        ],
         "additionalProperties": false
       }
     },
@@ -416,7 +484,9 @@
             "description": "Workspace ID (optional)"
           }
         },
-        "required": ["dashboardId"],
+        "required": [
+          "dashboardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -436,7 +506,9 @@
             "description": "Workspace ID (optional)"
           }
         },
-        "required": ["dashboardId"],
+        "required": [
+          "dashboardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -456,10 +528,16 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "allowEdit": {"type": "boolean"}
+                "id": {
+                  "type": "string"
+                },
+                "allowEdit": {
+                  "type": "boolean"
+                }
               },
-              "required": ["id"]
+              "required": [
+                "id"
+              ]
             },
             "description": "Reports to include in token"
           },
@@ -468,9 +546,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"}
+                "id": {
+                  "type": "string"
+                }
               },
-              "required": ["id"]
+              "required": [
+                "id"
+              ]
             },
             "description": "Datasets to include in token"
           },
@@ -479,9 +561,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"}
+                "id": {
+                  "type": "string"
+                }
               },
-              "required": ["id"]
+              "required": [
+                "id"
+              ]
             },
             "description": "Target workspaces"
           },
@@ -490,11 +576,25 @@
             "items": {
               "type": "object",
               "properties": {
-                "username": {"type": "string"},
-                "datasets": {"type": "array", "items": {"type": "string"}},
-                "roles": {"type": "array", "items": {"type": "string"}}
+                "username": {
+                  "type": "string"
+                },
+                "datasets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "roles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               },
-              "required": ["username"]
+              "required": [
+                "username"
+              ]
             },
             "description": "Row-level security identities"
           }
@@ -525,7 +625,9 @@
           "serializerSettings": {
             "type": "object",
             "properties": {
-              "includeNulls": {"type": "boolean"}
+              "includeNulls": {
+                "type": "boolean"
+              }
             },
             "description": "Serializer settings"
           },
@@ -534,7 +636,10 @@
             "description": "Impersonated user name for RLS"
           }
         },
-        "required": ["datasetId", "query"],
+        "required": [
+          "datasetId",
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -582,12 +687,18 @@
           },
           "notifyOption": {
             "type": "string",
-            "enum": ["MailOnCompletion", "MailOnFailure", "NoNotification"],
+            "enum": [
+              "MailOnCompletion",
+              "MailOnFailure",
+              "NoNotification"
+            ],
             "default": "NoNotification",
             "description": "Notification option"
           }
         },
-        "required": ["dataflowId"],
+        "required": [
+          "dataflowId"
+        ],
         "additionalProperties": false
       }
     }
@@ -611,7 +722,11 @@
           },
           "refreshStatus": {
             "type": "string",
-            "enum": ["Completed", "Failed", "Disabled"],
+            "enum": [
+              "Completed",
+              "Failed",
+              "Disabled"
+            ],
             "description": "Filter by refresh status"
           }
         },
@@ -621,15 +736,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "datasetId": {"type": "string"},
-          "datasetName": {"type": "string"},
-          "groupId": {"type": "string"},
-          "refreshId": {"type": "string"},
-          "refreshType": {"type": "string"},
-          "status": {"type": "string"},
-          "startTime": {"type": "string"},
-          "endTime": {"type": "string"},
-          "serviceExceptionJson": {"type": "string"}
+          "datasetId": {
+            "type": "string"
+          },
+          "datasetName": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "refreshId": {
+            "type": "string"
+          },
+          "refreshType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "serviceExceptionJson": {
+            "type": "string"
+          }
         }
       }
     },
@@ -652,13 +785,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "reportId": {"type": "string"},
-          "reportName": {"type": "string"},
-          "groupId": {"type": "string"},
-          "datasetId": {"type": "string"},
-          "createdDateTime": {"type": "string"},
-          "modifiedDateTime": {"type": "string"},
-          "createdBy": {"type": "string"}
+          "reportId": {
+            "type": "string"
+          },
+          "reportName": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "datasetId": {
+            "type": "string"
+          },
+          "createdDateTime": {
+            "type": "string"
+          },
+          "modifiedDateTime": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          }
         }
       }
     },
@@ -685,13 +832,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "dataflowId": {"type": "string"},
-          "dataflowName": {"type": "string"},
-          "groupId": {"type": "string"},
-          "refreshId": {"type": "string"},
-          "status": {"type": "string"},
-          "startTime": {"type": "string"},
-          "endTime": {"type": "string"}
+          "dataflowId": {
+            "type": "string"
+          },
+          "dataflowName": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "refreshId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -699,5 +860,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/groups"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

@@ -76,7 +76,10 @@
             "description": "Enable automatic sync"
           }
         },
-        "required": ["name", "repo_url"],
+        "required": [
+          "name",
+          "repo_url"
+        ],
         "additionalProperties": false
       }
     },
@@ -107,7 +110,9 @@
             "description": "Perform a dry run"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -124,7 +129,9 @@
             "description": "Application name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -146,7 +153,9 @@
             "description": "Delete application resources"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -178,7 +187,11 @@
           },
           "sync_status": {
             "type": "string",
-            "enum": ["Synced", "OutOfSync", "Unknown"],
+            "enum": [
+              "Synced",
+              "OutOfSync",
+              "Unknown"
+            ],
             "description": "Filter by sync status"
           }
         },
@@ -200,7 +213,14 @@
           },
           "health_status": {
             "type": "string",
-            "enum": ["Healthy", "Progressing", "Degraded", "Suspended", "Missing", "Unknown"],
+            "enum": [
+              "Healthy",
+              "Progressing",
+              "Degraded",
+              "Suspended",
+              "Missing",
+              "Unknown"
+            ],
             "description": "Filter by health status"
           }
         },
@@ -208,5 +228,16 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

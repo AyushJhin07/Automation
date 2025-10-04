@@ -11,7 +11,14 @@
     "config": {
       "authUrl": "https://app.hubspot.com/oauth/authorize",
       "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
-      "scopes": ["crm.objects.contacts.read", "crm.objects.contacts.write", "crm.objects.companies.read", "crm.objects.companies.write", "crm.objects.deals.read", "crm.objects.deals.write"]
+      "scopes": [
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write"
+      ]
     }
   },
   "baseUrl": "https://api.hubapi.com",
@@ -37,22 +44,66 @@
           "properties": {
             "type": "object",
             "properties": {
-              "email": {"type": "string", "format": "email"},
-              "firstname": {"type": "string"},
-              "lastname": {"type": "string"},
-              "phone": {"type": "string"},
-              "company": {"type": "string"},
-              "jobtitle": {"type": "string"},
-              "website": {"type": "string", "format": "uri"},
-              "lifecyclestage": {"type": "string", "enum": ["subscriber", "lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer", "evangelist", "other"]},
-              "leadstatus": {"type": "string"},
-              "hs_lead_status": {"type": "string"},
-              "hubspot_owner_id": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "country": {"type": "string"},
-              "zip": {"type": "string"},
-              "address": {"type": "string"}
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "firstname": {
+                "type": "string"
+              },
+              "lastname": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "company": {
+                "type": "string"
+              },
+              "jobtitle": {
+                "type": "string"
+              },
+              "website": {
+                "type": "string",
+                "format": "uri"
+              },
+              "lifecyclestage": {
+                "type": "string",
+                "enum": [
+                  "subscriber",
+                  "lead",
+                  "marketingqualifiedlead",
+                  "salesqualifiedlead",
+                  "opportunity",
+                  "customer",
+                  "evangelist",
+                  "other"
+                ]
+              },
+              "leadstatus": {
+                "type": "string"
+              },
+              "hs_lead_status": {
+                "type": "string"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              }
             },
             "description": "Contact properties"
           },
@@ -61,8 +112,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
+                "to": {
+                  "type": "object"
+                },
+                "types": {
+                  "type": "array"
+                }
               }
             },
             "description": "Associations to other objects"
@@ -86,21 +141,45 @@
           "properties": {
             "type": "object",
             "properties": {
-              "email": {"type": "string", "format": "email"},
-              "firstname": {"type": "string"},
-              "lastname": {"type": "string"},
-              "phone": {"type": "string"},
-              "company": {"type": "string"},
-              "jobtitle": {"type": "string"},
-              "website": {"type": "string", "format": "uri"},
-              "lifecyclestage": {"type": "string"},
-              "leadstatus": {"type": "string"},
-              "hubspot_owner_id": {"type": "string"}
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "firstname": {
+                "type": "string"
+              },
+              "lastname": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "company": {
+                "type": "string"
+              },
+              "jobtitle": {
+                "type": "string"
+              },
+              "website": {
+                "type": "string",
+                "format": "uri"
+              },
+              "lifecyclestage": {
+                "type": "string"
+              },
+              "leadstatus": {
+                "type": "string"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              }
             },
             "description": "Properties to update"
           }
         },
-        "required": ["contactId"],
+        "required": [
+          "contactId"
+        ],
         "additionalProperties": false
       }
     },
@@ -117,16 +196,22 @@
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to retrieve"
           },
           "associations": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Associations to retrieve"
           }
         },
-        "required": ["contactId"],
+        "required": [
+          "contactId"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,20 +242,32 @@
             "items": {
               "type": "object",
               "properties": {
-                "propertyName": {"type": "string"},
-                "direction": {"type": "string", "enum": ["ASCENDING", "DESCENDING"]}
+                "propertyName": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "ASCENDING",
+                    "DESCENDING"
+                  ]
+                }
               }
             },
             "description": "Sort criteria"
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to retrieve"
           },
           "filterGroups": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Filter groups for advanced search"
           }
         },
@@ -188,25 +285,64 @@
           "properties": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "domain": {"type": "string"},
-              "industry": {"type": "string"},
-              "phone": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "country": {"type": "string"},
-              "zip": {"type": "string"},
-              "address": {"type": "string"},
-              "address2": {"type": "string"},
-              "description": {"type": "string"},
-              "founded_year": {"type": "string"},
-              "hubspot_owner_id": {"type": "string"},
-              "is_public": {"type": "boolean"},
-              "numberofemployees": {"type": "number"},
-              "annualrevenue": {"type": "number"},
-              "lifecyclestage": {"type": "string"},
-              "type": {"type": "string"},
-              "website": {"type": "string", "format": "uri"}
+              "name": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "industry": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "address2": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "founded_year": {
+                "type": "string"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              },
+              "is_public": {
+                "type": "boolean"
+              },
+              "numberofemployees": {
+                "type": "number"
+              },
+              "annualrevenue": {
+                "type": "number"
+              },
+              "lifecyclestage": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "website": {
+                "type": "string",
+                "format": "uri"
+              }
             },
             "description": "Company properties"
           },
@@ -215,8 +351,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
+                "to": {
+                  "type": "object"
+                },
+                "types": {
+                  "type": "array"
+                }
               }
             },
             "description": "Associations to other objects"
@@ -240,19 +380,37 @@
           "properties": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "domain": {"type": "string"},
-              "industry": {"type": "string"},
-              "phone": {"type": "string"},
-              "description": {"type": "string"},
-              "hubspot_owner_id": {"type": "string"},
-              "numberofemployees": {"type": "number"},
-              "annualrevenue": {"type": "number"}
+              "name": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "industry": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              },
+              "numberofemployees": {
+                "type": "number"
+              },
+              "annualrevenue": {
+                "type": "number"
+              }
             },
             "description": "Properties to update"
           }
         },
-        "required": ["companyId"],
+        "required": [
+          "companyId"
+        ],
         "additionalProperties": false
       }
     },
@@ -266,18 +424,49 @@
           "properties": {
             "type": "object",
             "properties": {
-              "dealname": {"type": "string"},
-              "amount": {"type": "number"},
-              "dealstage": {"type": "string"},
-              "pipeline": {"type": "string"},
-              "closedate": {"type": "string", "format": "date"},
-              "hubspot_owner_id": {"type": "string"},
-              "dealtype": {"type": "string"},
-              "description": {"type": "string"},
-              "hs_priority": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
-              "hs_forecast_amount": {"type": "number"},
-              "hs_forecast_probability": {"type": "number"},
-              "createdate": {"type": "string", "format": "date-time"}
+              "dealname": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "dealstage": {
+                "type": "string"
+              },
+              "pipeline": {
+                "type": "string"
+              },
+              "closedate": {
+                "type": "string",
+                "format": "date"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              },
+              "dealtype": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "hs_priority": {
+                "type": "string",
+                "enum": [
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW"
+                ]
+              },
+              "hs_forecast_amount": {
+                "type": "number"
+              },
+              "hs_forecast_probability": {
+                "type": "number"
+              },
+              "createdate": {
+                "type": "string",
+                "format": "date-time"
+              }
             },
             "description": "Deal properties"
           },
@@ -286,8 +475,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
+                "to": {
+                  "type": "object"
+                },
+                "types": {
+                  "type": "array"
+                }
               }
             },
             "description": "Associations to contacts and companies"
@@ -311,19 +504,43 @@
           "properties": {
             "type": "object",
             "properties": {
-              "dealname": {"type": "string"},
-              "amount": {"type": "number"},
-              "dealstage": {"type": "string"},
-              "closedate": {"type": "string", "format": "date"},
-              "hubspot_owner_id": {"type": "string"},
-              "dealtype": {"type": "string"},
-              "description": {"type": "string"},
-              "hs_priority": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]}
+              "dealname": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "dealstage": {
+                "type": "string"
+              },
+              "closedate": {
+                "type": "string",
+                "format": "date"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              },
+              "dealtype": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "hs_priority": {
+                "type": "string",
+                "enum": [
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW"
+                ]
+              }
             },
             "description": "Properties to update"
           }
         },
-        "required": ["dealId"],
+        "required": [
+          "dealId"
+        ],
         "additionalProperties": false
       }
     },
@@ -337,14 +554,50 @@
           "properties": {
             "type": "object",
             "properties": {
-              "hs_task_subject": {"type": "string"},
-              "hs_task_body": {"type": "string"},
-              "hs_task_status": {"type": "string", "enum": ["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "WAITING", "DEFERRED"]},
-              "hs_task_priority": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
-              "hs_task_type": {"type": "string", "enum": ["CALL", "EMAIL", "TODO", "MEETING", "FOLLOW_UP"]},
-              "hs_timestamp": {"type": "string", "format": "date-time"},
-              "hubspot_owner_id": {"type": "string"},
-              "hs_task_reminders": {"type": "string"}
+              "hs_task_subject": {
+                "type": "string"
+              },
+              "hs_task_body": {
+                "type": "string"
+              },
+              "hs_task_status": {
+                "type": "string",
+                "enum": [
+                  "NOT_STARTED",
+                  "IN_PROGRESS",
+                  "COMPLETED",
+                  "WAITING",
+                  "DEFERRED"
+                ]
+              },
+              "hs_task_priority": {
+                "type": "string",
+                "enum": [
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW"
+                ]
+              },
+              "hs_task_type": {
+                "type": "string",
+                "enum": [
+                  "CALL",
+                  "EMAIL",
+                  "TODO",
+                  "MEETING",
+                  "FOLLOW_UP"
+                ]
+              },
+              "hs_timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              },
+              "hs_task_reminders": {
+                "type": "string"
+              }
             },
             "description": "Task properties"
           },
@@ -353,8 +606,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
+                "to": {
+                  "type": "object"
+                },
+                "types": {
+                  "type": "array"
+                }
               }
             },
             "description": "Associations to contacts, companies, or deals"
@@ -374,9 +631,16 @@
           "properties": {
             "type": "object",
             "properties": {
-              "hs_note_body": {"type": "string"},
-              "hs_timestamp": {"type": "string", "format": "date-time"},
-              "hubspot_owner_id": {"type": "string"}
+              "hs_note_body": {
+                "type": "string"
+              },
+              "hs_timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "hubspot_owner_id": {
+                "type": "string"
+              }
             },
             "description": "Note properties"
           },
@@ -385,8 +649,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
+                "to": {
+                  "type": "object"
+                },
+                "types": {
+                  "type": "array"
+                }
               }
             },
             "description": "Associations to contacts, companies, or deals"
@@ -408,14 +676,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "properties": {"type": "object"},
-                "associations": {"type": "array"}
+                "properties": {
+                  "type": "object"
+                },
+                "associations": {
+                  "type": "array"
+                }
               }
             },
             "description": "Array of contacts to create"
           }
         },
-        "required": ["inputs"],
+        "required": [
+          "inputs"
+        ],
         "additionalProperties": false
       }
     }
@@ -441,17 +715,39 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "objectId": {"type": "number"},
-          "propertyName": {"type": "string"},
-          "propertyValue": {"type": "string"},
-          "changeSource": {"type": "string"},
-          "eventId": {"type": "number"},
-          "subscriptionId": {"type": "number"},
-          "portalId": {"type": "number"},
-          "appId": {"type": "number"},
-          "occurredAt": {"type": "number"},
-          "subscriptionType": {"type": "string"},
-          "attemptNumber": {"type": "number"}
+          "objectId": {
+            "type": "number"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "propertyValue": {
+            "type": "string"
+          },
+          "changeSource": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "number"
+          },
+          "subscriptionId": {
+            "type": "number"
+          },
+          "portalId": {
+            "type": "number"
+          },
+          "appId": {
+            "type": "number"
+          },
+          "occurredAt": {
+            "type": "number"
+          },
+          "subscriptionType": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "number"
+          }
         }
       }
     },
@@ -474,11 +770,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "objectId": {"type": "number"},
-          "propertyName": {"type": "string"},
-          "propertyValue": {"type": "string"},
-          "changeSource": {"type": "string"},
-          "eventId": {"type": "number"}
+          "objectId": {
+            "type": "number"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "propertyValue": {
+            "type": "string"
+          },
+          "changeSource": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "number"
+          }
         }
       }
     },
@@ -501,10 +807,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "objectId": {"type": "number"},
-          "propertyName": {"type": "string"},
-          "propertyValue": {"type": "string"},
-          "changeSource": {"type": "string"}
+          "objectId": {
+            "type": "number"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "propertyValue": {
+            "type": "string"
+          },
+          "changeSource": {
+            "type": "string"
+          }
         }
       }
     },
@@ -522,10 +836,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "objectId": {"type": "number"},
-          "propertyName": {"type": "string"},
-          "propertyValue": {"type": "string"},
-          "changeSource": {"type": "string"}
+          "objectId": {
+            "type": "number"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "propertyValue": {
+            "type": "string"
+          },
+          "changeSource": {
+            "type": "string"
+          }
         }
       }
     }
@@ -533,5 +855,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/crm/v3/objects/contacts?limit=1"
+  },
+  "release": {
+    "semver": "2.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

@@ -40,13 +40,23 @@
           },
           "type": {
             "type": "string",
-            "enum": ["simple", "grouped", "external", "variable"],
+            "enum": [
+              "simple",
+              "grouped",
+              "external",
+              "variable"
+            ],
             "default": "simple",
             "description": "Product type"
           },
           "status": {
             "type": "string",
-            "enum": ["draft", "pending", "private", "publish"],
+            "enum": [
+              "draft",
+              "pending",
+              "private",
+              "publish"
+            ],
             "default": "publish",
             "description": "Product status"
           },
@@ -57,7 +67,12 @@
           },
           "catalog_visibility": {
             "type": "string",
-            "enum": ["visible", "catalog", "search", "hidden"],
+            "enum": [
+              "visible",
+              "catalog",
+              "search",
+              "hidden"
+            ],
             "default": "visible",
             "description": "Catalog visibility"
           },
@@ -96,7 +111,11 @@
           },
           "stock_status": {
             "type": "string",
-            "enum": ["instock", "outofstock", "onbackorder"],
+            "enum": [
+              "instock",
+              "outofstock",
+              "onbackorder"
+            ],
             "default": "instock",
             "description": "Stock status"
           },
@@ -107,9 +126,15 @@
           "dimensions": {
             "type": "object",
             "properties": {
-              "length": {"type": "string"},
-              "width": {"type": "string"},
-              "height": {"type": "string"}
+              "length": {
+                "type": "string"
+              },
+              "width": {
+                "type": "string"
+              },
+              "height": {
+                "type": "string"
+              }
             },
             "description": "Product dimensions"
           },
@@ -118,7 +143,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "number"}
+                "id": {
+                  "type": "number"
+                }
               }
             },
             "description": "Product categories"
@@ -128,7 +155,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "number"}
+                "id": {
+                  "type": "number"
+                }
               }
             },
             "description": "Product tags"
@@ -138,14 +167,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "src": {"type": "string"},
-                "alt": {"type": "string"}
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
               }
             },
             "description": "Product images"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -161,7 +196,9 @@
             "description": "Product ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -182,7 +219,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["draft", "pending", "private", "publish"],
+            "enum": [
+              "draft",
+              "pending",
+              "private",
+              "publish"
+            ],
             "description": "Product status"
           },
           "price": {
@@ -194,7 +236,9 @@
             "description": "Stock quantity"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -207,7 +251,10 @@
         "properties": {
           "context": {
             "type": "string",
-            "enum": ["view", "edit"],
+            "enum": [
+              "view",
+              "edit"
+            ],
             "default": "view",
             "description": "Request context"
           },
@@ -240,22 +287,30 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Product IDs to include"
           },
           "exclude": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Product IDs to exclude"
           },
           "parent": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Parent product IDs"
           },
           "parent_exclude": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Parent product IDs to exclude"
           },
           "slug": {
@@ -264,13 +319,24 @@
           },
           "status": {
             "type": "string",
-            "enum": ["any", "draft", "pending", "private", "publish"],
+            "enum": [
+              "any",
+              "draft",
+              "pending",
+              "private",
+              "publish"
+            ],
             "default": "any",
             "description": "Product status"
           },
           "type": {
             "type": "string",
-            "enum": ["simple", "grouped", "external", "variable"],
+            "enum": [
+              "simple",
+              "grouped",
+              "external",
+              "variable"
+            ],
             "description": "Product type"
           },
           "sku": {
@@ -315,18 +381,35 @@
           },
           "stock_status": {
             "type": "string",
-            "enum": ["instock", "outofstock", "onbackorder"],
+            "enum": [
+              "instock",
+              "outofstock",
+              "onbackorder"
+            ],
             "description": "Stock status"
           },
           "orderby": {
             "type": "string",
-            "enum": ["date", "id", "include", "title", "slug", "price", "popularity", "rating", "menu_order"],
+            "enum": [
+              "date",
+              "id",
+              "include",
+              "title",
+              "slug",
+              "price",
+              "popularity",
+              "rating",
+              "menu_order"
+            ],
             "default": "date",
             "description": "Sort field"
           },
           "order": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "default": "desc",
             "description": "Sort order"
           }
@@ -358,32 +441,73 @@
           "billing": {
             "type": "object",
             "properties": {
-              "first_name": {"type": "string"},
-              "last_name": {"type": "string"},
-              "company": {"type": "string"},
-              "address_1": {"type": "string"},
-              "address_2": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "postcode": {"type": "string"},
-              "country": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "phone": {"type": "string"}
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              },
+              "company": {
+                "type": "string"
+              },
+              "address_1": {
+                "type": "string"
+              },
+              "address_2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "postcode": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "phone": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
           "shipping": {
             "type": "object",
             "properties": {
-              "first_name": {"type": "string"},
-              "last_name": {"type": "string"},
-              "company": {"type": "string"},
-              "address_1": {"type": "string"},
-              "address_2": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "postcode": {"type": "string"},
-              "country": {"type": "string"}
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              },
+              "company": {
+                "type": "string"
+              },
+              "address_1": {
+                "type": "string"
+              },
+              "address_2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "postcode": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Shipping address"
           },
@@ -392,14 +516,30 @@
             "items": {
               "type": "object",
               "properties": {
-                "product_id": {"type": "number"},
-                "variation_id": {"type": "number"},
-                "quantity": {"type": "number", "minimum": 1},
-                "name": {"type": "string"},
-                "sku": {"type": "string"},
-                "price": {"type": "string"}
+                "product_id": {
+                  "type": "number"
+                },
+                "variation_id": {
+                  "type": "number"
+                },
+                "quantity": {
+                  "type": "number",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string"
+                }
               },
-              "required": ["product_id", "quantity"]
+              "required": [
+                "product_id",
+                "quantity"
+              ]
             },
             "description": "Order line items"
           },
@@ -408,9 +548,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "method_id": {"type": "string"},
-                "method_title": {"type": "string"},
-                "total": {"type": "string"}
+                "method_id": {
+                  "type": "string"
+                },
+                "method_title": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "string"
+                }
               }
             },
             "description": "Shipping lines"
@@ -420,8 +566,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "total": {"type": "string"}
+                "name": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "string"
+                }
               }
             },
             "description": "Fee lines"
@@ -431,14 +581,25 @@
             "items": {
               "type": "object",
               "properties": {
-                "code": {"type": "string"}
+                "code": {
+                  "type": "string"
+                }
               }
             },
             "description": "Coupon lines"
           },
           "status": {
             "type": "string",
-            "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed", "trash"],
+            "enum": [
+              "pending",
+              "processing",
+              "on-hold",
+              "completed",
+              "cancelled",
+              "refunded",
+              "failed",
+              "trash"
+            ],
             "default": "pending",
             "description": "Order status"
           },
@@ -459,8 +620,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "key": {"type": "string"},
-                "value": {"type": "string"}
+                "key": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Meta data"
@@ -482,7 +647,9 @@
             "description": "Order ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -499,7 +666,16 @@
           },
           "status": {
             "type": "string",
-            "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed", "trash"],
+            "enum": [
+              "pending",
+              "processing",
+              "on-hold",
+              "completed",
+              "cancelled",
+              "refunded",
+              "failed",
+              "trash"
+            ],
             "description": "Order status"
           },
           "customer_note": {
@@ -507,7 +683,9 @@
             "description": "Customer note"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     }
@@ -523,7 +701,15 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed"],
+            "enum": [
+              "pending",
+              "processing",
+              "on-hold",
+              "completed",
+              "cancelled",
+              "refunded",
+              "failed"
+            ],
             "description": "Filter by order status"
           }
         },
@@ -533,40 +719,108 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "parent_id": {"type": "number"},
-          "status": {"type": "string"},
-          "currency": {"type": "string"},
-          "date_created": {"type": "string"},
-          "date_modified": {"type": "string"},
-          "discount_total": {"type": "string"},
-          "discount_tax": {"type": "string"},
-          "shipping_total": {"type": "string"},
-          "shipping_tax": {"type": "string"},
-          "cart_tax": {"type": "string"},
-          "total": {"type": "string"},
-          "total_tax": {"type": "string"},
-          "prices_include_tax": {"type": "boolean"},
-          "customer_id": {"type": "number"},
-          "customer_ip_address": {"type": "string"},
-          "customer_user_agent": {"type": "string"},
-          "customer_note": {"type": "string"},
-          "billing": {"type": "object"},
-          "shipping": {"type": "object"},
-          "payment_method": {"type": "string"},
-          "payment_method_title": {"type": "string"},
-          "transaction_id": {"type": "string"},
-          "date_paid": {"type": "string"},
-          "date_completed": {"type": "string"},
-          "cart_hash": {"type": "string"},
-          "number": {"type": "string"},
-          "meta_data": {"type": "array"},
-          "line_items": {"type": "array"},
-          "tax_lines": {"type": "array"},
-          "shipping_lines": {"type": "array"},
-          "fee_lines": {"type": "array"},
-          "coupon_lines": {"type": "array"},
-          "refunds": {"type": "array"}
+          "id": {
+            "type": "number"
+          },
+          "parent_id": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "date_modified": {
+            "type": "string"
+          },
+          "discount_total": {
+            "type": "string"
+          },
+          "discount_tax": {
+            "type": "string"
+          },
+          "shipping_total": {
+            "type": "string"
+          },
+          "shipping_tax": {
+            "type": "string"
+          },
+          "cart_tax": {
+            "type": "string"
+          },
+          "total": {
+            "type": "string"
+          },
+          "total_tax": {
+            "type": "string"
+          },
+          "prices_include_tax": {
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "number"
+          },
+          "customer_ip_address": {
+            "type": "string"
+          },
+          "customer_user_agent": {
+            "type": "string"
+          },
+          "customer_note": {
+            "type": "string"
+          },
+          "billing": {
+            "type": "object"
+          },
+          "shipping": {
+            "type": "object"
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "payment_method_title": {
+            "type": "string"
+          },
+          "transaction_id": {
+            "type": "string"
+          },
+          "date_paid": {
+            "type": "string"
+          },
+          "date_completed": {
+            "type": "string"
+          },
+          "cart_hash": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "meta_data": {
+            "type": "array"
+          },
+          "line_items": {
+            "type": "array"
+          },
+          "tax_lines": {
+            "type": "array"
+          },
+          "shipping_lines": {
+            "type": "array"
+          },
+          "fee_lines": {
+            "type": "array"
+          },
+          "coupon_lines": {
+            "type": "array"
+          },
+          "refunds": {
+            "type": "array"
+          }
         }
       }
     },
@@ -580,7 +834,12 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["simple", "grouped", "external", "variable"],
+            "enum": [
+              "simple",
+              "grouped",
+              "external",
+              "variable"
+            ],
             "description": "Filter by product type"
           }
         },
@@ -590,66 +849,186 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "name": {"type": "string"},
-          "slug": {"type": "string"},
-          "permalink": {"type": "string"},
-          "date_created": {"type": "string"},
-          "date_modified": {"type": "string"},
-          "type": {"type": "string"},
-          "status": {"type": "string"},
-          "featured": {"type": "boolean"},
-          "catalog_visibility": {"type": "string"},
-          "description": {"type": "string"},
-          "short_description": {"type": "string"},
-          "sku": {"type": "string"},
-          "price": {"type": "string"},
-          "regular_price": {"type": "string"},
-          "sale_price": {"type": "string"},
-          "date_on_sale_from": {"type": "string"},
-          "date_on_sale_to": {"type": "string"},
-          "price_html": {"type": "string"},
-          "on_sale": {"type": "boolean"},
-          "purchasable": {"type": "boolean"},
-          "total_sales": {"type": "number"},
-          "virtual": {"type": "boolean"},
-          "downloadable": {"type": "boolean"},
-          "download_limit": {"type": "number"},
-          "download_expiry": {"type": "number"},
-          "external_url": {"type": "string"},
-          "button_text": {"type": "string"},
-          "tax_status": {"type": "string"},
-          "tax_class": {"type": "string"},
-          "manage_stock": {"type": "boolean"},
-          "stock_quantity": {"type": "number"},
-          "stock_status": {"type": "string"},
-          "backorders": {"type": "string"},
-          "backorders_allowed": {"type": "boolean"},
-          "backordered": {"type": "boolean"},
-          "sold_individually": {"type": "boolean"},
-          "weight": {"type": "string"},
-          "dimensions": {"type": "object"},
-          "shipping_required": {"type": "boolean"},
-          "shipping_taxable": {"type": "boolean"},
-          "shipping_class": {"type": "string"},
-          "shipping_class_id": {"type": "number"},
-          "reviews_allowed": {"type": "boolean"},
-          "average_rating": {"type": "string"},
-          "rating_count": {"type": "number"},
-          "related_ids": {"type": "array"},
-          "upsell_ids": {"type": "array"},
-          "cross_sell_ids": {"type": "array"},
-          "parent_id": {"type": "number"},
-          "purchase_note": {"type": "string"},
-          "categories": {"type": "array"},
-          "tags": {"type": "array"},
-          "images": {"type": "array"},
-          "attributes": {"type": "array"},
-          "default_attributes": {"type": "array"},
-          "variations": {"type": "array"},
-          "grouped_products": {"type": "array"},
-          "menu_order": {"type": "number"},
-          "meta_data": {"type": "array"}
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "permalink": {
+            "type": "string"
+          },
+          "date_created": {
+            "type": "string"
+          },
+          "date_modified": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "catalog_visibility": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "short_description": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "price": {
+            "type": "string"
+          },
+          "regular_price": {
+            "type": "string"
+          },
+          "sale_price": {
+            "type": "string"
+          },
+          "date_on_sale_from": {
+            "type": "string"
+          },
+          "date_on_sale_to": {
+            "type": "string"
+          },
+          "price_html": {
+            "type": "string"
+          },
+          "on_sale": {
+            "type": "boolean"
+          },
+          "purchasable": {
+            "type": "boolean"
+          },
+          "total_sales": {
+            "type": "number"
+          },
+          "virtual": {
+            "type": "boolean"
+          },
+          "downloadable": {
+            "type": "boolean"
+          },
+          "download_limit": {
+            "type": "number"
+          },
+          "download_expiry": {
+            "type": "number"
+          },
+          "external_url": {
+            "type": "string"
+          },
+          "button_text": {
+            "type": "string"
+          },
+          "tax_status": {
+            "type": "string"
+          },
+          "tax_class": {
+            "type": "string"
+          },
+          "manage_stock": {
+            "type": "boolean"
+          },
+          "stock_quantity": {
+            "type": "number"
+          },
+          "stock_status": {
+            "type": "string"
+          },
+          "backorders": {
+            "type": "string"
+          },
+          "backorders_allowed": {
+            "type": "boolean"
+          },
+          "backordered": {
+            "type": "boolean"
+          },
+          "sold_individually": {
+            "type": "boolean"
+          },
+          "weight": {
+            "type": "string"
+          },
+          "dimensions": {
+            "type": "object"
+          },
+          "shipping_required": {
+            "type": "boolean"
+          },
+          "shipping_taxable": {
+            "type": "boolean"
+          },
+          "shipping_class": {
+            "type": "string"
+          },
+          "shipping_class_id": {
+            "type": "number"
+          },
+          "reviews_allowed": {
+            "type": "boolean"
+          },
+          "average_rating": {
+            "type": "string"
+          },
+          "rating_count": {
+            "type": "number"
+          },
+          "related_ids": {
+            "type": "array"
+          },
+          "upsell_ids": {
+            "type": "array"
+          },
+          "cross_sell_ids": {
+            "type": "array"
+          },
+          "parent_id": {
+            "type": "number"
+          },
+          "purchase_note": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "images": {
+            "type": "array"
+          },
+          "attributes": {
+            "type": "array"
+          },
+          "default_attributes": {
+            "type": "array"
+          },
+          "variations": {
+            "type": "array"
+          },
+          "grouped_products": {
+            "type": "array"
+          },
+          "menu_order": {
+            "type": "number"
+          },
+          "meta_data": {
+            "type": "array"
+          }
         }
       }
     }
@@ -657,5 +1036,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/system_status"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

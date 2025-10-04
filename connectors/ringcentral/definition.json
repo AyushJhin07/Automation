@@ -11,7 +11,18 @@
     "config": {
       "authUrl": "https://platform.ringcentral.com/restapi/oauth/authorize",
       "tokenUrl": "https://platform.ringcentral.com/restapi/oauth/token",
-      "scopes": ["ReadMessages", "SMS", "InternalMessages", "ReadAccounts", "ReadCallLog", "ReadContacts", "RingOut", "EditCallLog", "Meetings", "ReadCallRecording"]
+      "scopes": [
+        "ReadMessages",
+        "SMS",
+        "InternalMessages",
+        "ReadAccounts",
+        "ReadCallLog",
+        "ReadContacts",
+        "RingOut",
+        "EditCallLog",
+        "Meetings",
+        "ReadCallRecording"
+      ]
     }
   },
   "baseUrl": "https://platform.ringcentral.com/restapi/v1.0",
@@ -37,9 +48,13 @@
           "from": {
             "type": "object",
             "properties": {
-              "phoneNumber": {"type": "string"}
+              "phoneNumber": {
+                "type": "string"
+              }
             },
-            "required": ["phoneNumber"],
+            "required": [
+              "phoneNumber"
+            ],
             "additionalProperties": false
           },
           "to": {
@@ -47,9 +62,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "phoneNumber": {"type": "string"}
+                "phoneNumber": {
+                  "type": "string"
+                }
               },
-              "required": ["phoneNumber"],
+              "required": [
+                "phoneNumber"
+              ],
               "additionalProperties": false
             }
           },
@@ -58,7 +77,11 @@
             "description": "Message text"
           }
         },
-        "required": ["from", "to", "text"],
+        "required": [
+          "from",
+          "to",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -71,12 +94,27 @@
         "properties": {
           "messageType": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Fax", "SMS", "VoiceMail", "Pager"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Fax",
+                "SMS",
+                "VoiceMail",
+                "Pager"
+              ]
+            },
             "description": "Message types to filter"
           },
           "availability": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Alive", "Deleted", "Purged"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Alive",
+                "Deleted",
+                "Purged"
+              ]
+            },
             "description": "Message availability"
           },
           "conversationId": {
@@ -95,7 +133,13 @@
           },
           "direction": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Inbound", "Outbound"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Inbound",
+                "Outbound"
+              ]
+            },
             "description": "Message direction"
           },
           "distinctConversations": {
@@ -104,12 +148,28 @@
           },
           "messageStatus": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Queued", "Sent", "Received", "DeliveryFailed", "SendingFailed", "Delivered"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Queued",
+                "Sent",
+                "Received",
+                "DeliveryFailed",
+                "SendingFailed",
+                "Delivered"
+              ]
+            },
             "description": "Message status"
           },
           "readStatus": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Read", "Unread"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Read",
+                "Unread"
+              ]
+            },
             "description": "Read status"
           },
           "page": {
@@ -147,17 +207,32 @@
           },
           "direction": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Inbound", "Outbound"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Inbound",
+                "Outbound"
+              ]
+            },
             "description": "Call direction"
           },
           "type": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Voice", "Fax"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Voice",
+                "Fax"
+              ]
+            },
             "description": "Call type"
           },
           "view": {
             "type": "string",
-            "enum": ["Simple", "Detailed"],
+            "enum": [
+              "Simple",
+              "Detailed"
+            ],
             "default": "Simple",
             "description": "View type"
           },
@@ -167,7 +242,10 @@
           },
           "recordingType": {
             "type": "string",
-            "enum": ["Automatic", "OnDemand"],
+            "enum": [
+              "Automatic",
+              "OnDemand"
+            ],
             "description": "Recording type"
           },
           "dateFrom": {
@@ -206,23 +284,33 @@
           "from": {
             "type": "object",
             "properties": {
-              "phoneNumber": {"type": "string"},
-              "forwardingNumberId": {"type": "string"}
+              "phoneNumber": {
+                "type": "string"
+              },
+              "forwardingNumberId": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "to": {
             "type": "object",
             "properties": {
-              "phoneNumber": {"type": "string"}
+              "phoneNumber": {
+                "type": "string"
+              }
             },
-            "required": ["phoneNumber"],
+            "required": [
+              "phoneNumber"
+            ],
             "additionalProperties": false
           },
           "callerId": {
             "type": "object",
             "properties": {
-              "phoneNumber": {"type": "string"}
+              "phoneNumber": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
@@ -233,12 +321,17 @@
           "country": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"}
+              "id": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["from", "to"],
+        "required": [
+          "from",
+          "to"
+        ],
         "additionalProperties": false
       }
     },
@@ -255,16 +348,29 @@
           },
           "meetingType": {
             "type": "string",
-            "enum": ["Instant", "Scheduled", "ScheduledRecurring", "InstantRecurring"],
+            "enum": [
+              "Instant",
+              "Scheduled",
+              "ScheduledRecurring",
+              "InstantRecurring"
+            ],
             "default": "Scheduled",
             "description": "Meeting type"
           },
           "schedule": {
             "type": "object",
             "properties": {
-              "startTime": {"type": "string", "format": "date-time"},
-              "durationInMinutes": {"type": "number", "minimum": 1},
-              "timeZone": {"type": "object"}
+              "startTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "durationInMinutes": {
+                "type": "number",
+                "minimum": 1
+              },
+              "timeZone": {
+                "type": "object"
+              }
             },
             "additionalProperties": false
           },
@@ -275,7 +381,9 @@
           "host": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"}
+              "id": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
@@ -293,19 +401,28 @@
           },
           "audioOptions": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Audio options"
           },
           "recurrence": {
             "type": "object",
             "properties": {
-              "schedule": {"type": "object"},
-              "until": {"type": "string", "format": "date-time"}
+              "schedule": {
+                "type": "object"
+              },
+              "until": {
+                "type": "string",
+                "format": "date-time"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["topic"],
+        "required": [
+          "topic"
+        ],
         "additionalProperties": false
       }
     },
@@ -332,7 +449,9 @@
             "description": "Extension ID"
           }
         },
-        "required": ["extensionId"],
+        "required": [
+          "extensionId"
+        ],
         "additionalProperties": false
       }
     }
@@ -348,7 +467,11 @@
         "properties": {
           "messageType": {
             "type": "string",
-            "enum": ["SMS", "Fax", "VoiceMail"],
+            "enum": [
+              "SMS",
+              "Fax",
+              "VoiceMail"
+            ],
             "description": "Filter by message type"
           }
         },
@@ -358,17 +481,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "uuid": {"type": "string"},
-          "event": {"type": "string"},
-          "timestamp": {"type": "string"},
-          "subscriptionId": {"type": "string"},
-          "ownerId": {"type": "string"},
+          "uuid": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "subscriptionId": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
           "body": {
             "type": "object",
             "properties": {
-              "extensionId": {"type": "number"},
-              "lastUpdated": {"type": "string"},
-              "changes": {"type": "array"}
+              "extensionId": {
+                "type": "number"
+              },
+              "lastUpdated": {
+                "type": "string"
+              },
+              "changes": {
+                "type": "array"
+              }
             }
           }
         }
@@ -393,10 +532,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "uuid": {"type": "string"},
-          "event": {"type": "string"},
-          "timestamp": {"type": "string"},
-          "body": {"type": "object"}
+          "uuid": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "body": {
+            "type": "object"
+          }
         }
       }
     }
@@ -404,5 +551,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/account/~/extension/~"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

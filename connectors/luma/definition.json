@@ -60,11 +60,21 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["venue", "online", "hybrid"]
+                "enum": [
+                  "venue",
+                  "online",
+                  "hybrid"
+                ]
               },
-              "venue": {"type": "string"},
-              "address": {"type": "string"},
-              "url": {"type": "string"}
+              "venue": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
             },
             "description": "Event location details"
           },
@@ -84,17 +94,26 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["public", "private", "unlisted"],
+            "enum": [
+              "public",
+              "private",
+              "unlisted"
+            ],
             "default": "public",
             "description": "Event visibility"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Event tags"
           }
         },
-        "required": ["name", "startAt"],
+        "required": [
+          "name",
+          "startAt"
+        ],
         "additionalProperties": false
       }
     },
@@ -110,7 +129,9 @@
             "description": "Event ID"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -152,11 +173,21 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["venue", "online", "hybrid"]
+                "enum": [
+                  "venue",
+                  "online",
+                  "hybrid"
+                ]
               },
-              "venue": {"type": "string"},
-              "address": {"type": "string"},
-              "url": {"type": "string"}
+              "venue": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
             },
             "description": "Event location details"
           },
@@ -175,16 +206,24 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["public", "private", "unlisted"],
+            "enum": [
+              "public",
+              "private",
+              "unlisted"
+            ],
             "description": "Event visibility"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Event tags"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,7 +249,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["upcoming", "past", "live"],
+            "enum": [
+              "upcoming",
+              "past",
+              "live"
+            ],
             "description": "Filter by event status"
           },
           "seriesId": {
@@ -234,7 +277,9 @@
             "description": "Event ID"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -264,11 +309,17 @@
           },
           "status": {
             "type": "string",
-            "enum": ["registered", "waitlisted", "cancelled"],
+            "enum": [
+              "registered",
+              "waitlisted",
+              "cancelled"
+            ],
             "description": "Filter by registration status"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -297,7 +348,10 @@
             "description": "Additional registration information"
           }
         },
-        "required": ["eventId", "email"],
+        "required": [
+          "eventId",
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -313,7 +367,9 @@
             "description": "Registration ID"
           }
         },
-        "required": ["registrationId"],
+        "required": [
+          "registrationId"
+        ],
         "additionalProperties": false
       }
     },
@@ -338,17 +394,25 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["public", "private", "unlisted"],
+            "enum": [
+              "public",
+              "private",
+              "unlisted"
+            ],
             "default": "public",
             "description": "Series visibility"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Series tags"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -364,7 +428,9 @@
             "description": "Series ID"
           }
         },
-        "required": ["seriesId"],
+        "required": [
+          "seriesId"
+        ],
         "additionalProperties": false
       }
     },
@@ -414,12 +480,20 @@
           },
           "recipients": {
             "type": "string",
-            "enum": ["all", "registered", "waitlisted"],
+            "enum": [
+              "all",
+              "registered",
+              "waitlisted"
+            ],
             "default": "registered",
             "description": "Message recipients"
           }
         },
-        "required": ["eventId", "subject", "body"],
+        "required": [
+          "eventId",
+          "subject",
+          "body"
+        ],
         "additionalProperties": false
       }
     }
@@ -444,12 +518,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventId": {"type": "string"},
-          "name": {"type": "string"},
-          "startAt": {"type": "string"},
-          "endAt": {"type": "string"},
-          "createdAt": {"type": "string"},
-          "seriesId": {"type": "string"}
+          "eventId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "endAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "seriesId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -472,12 +558,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "registrationId": {"type": "string"},
-          "eventId": {"type": "string"},
-          "email": {"type": "string"},
-          "name": {"type": "string"},
-          "status": {"type": "string"},
-          "registeredAt": {"type": "string"}
+          "registrationId": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "registeredAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -500,11 +598,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "registrationId": {"type": "string"},
-          "eventId": {"type": "string"},
-          "email": {"type": "string"},
-          "name": {"type": "string"},
-          "cancelledAt": {"type": "string"}
+          "registrationId": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cancelledAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -527,10 +635,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventId": {"type": "string"},
-          "name": {"type": "string"},
-          "startAt": {"type": "string"},
-          "registrationCount": {"type": "number"}
+          "eventId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "registrationCount": {
+            "type": "number"
+          }
         }
       }
     }
@@ -538,5 +654,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

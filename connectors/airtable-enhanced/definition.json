@@ -44,7 +44,9 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to retrieve"
           },
           "filterByFormula": {
@@ -70,8 +72,16 @@
             "items": {
               "type": "object",
               "properties": {
-                "field": {"type": "string"},
-                "direction": {"type": "string", "enum": ["asc", "desc"]}
+                "field": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ]
+                }
               }
             },
             "description": "Sort configuration"
@@ -82,7 +92,10 @@
           },
           "cellFormat": {
             "type": "string",
-            "enum": ["json", "string"],
+            "enum": [
+              "json",
+              "string"
+            ],
             "default": "json",
             "description": "Cell format"
           },
@@ -95,7 +108,10 @@
             "description": "User locale"
           }
         },
-        "required": ["baseId", "tableId"],
+        "required": [
+          "baseId",
+          "tableId"
+        ],
         "additionalProperties": false
       }
     },
@@ -119,7 +135,11 @@
             "description": "Record ID"
           }
         },
-        "required": ["baseId", "tableId", "recordId"],
+        "required": [
+          "baseId",
+          "tableId",
+          "recordId"
+        ],
         "additionalProperties": false
       }
     },
@@ -148,7 +168,11 @@
             "description": "Automatically typecast field values"
           }
         },
-        "required": ["baseId", "tableId", "fields"],
+        "required": [
+          "baseId",
+          "tableId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -181,7 +205,12 @@
             "description": "Automatically typecast field values"
           }
         },
-        "required": ["baseId", "tableId", "recordId", "fields"],
+        "required": [
+          "baseId",
+          "tableId",
+          "recordId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -205,7 +234,11 @@
             "description": "Record ID"
           }
         },
-        "required": ["baseId", "tableId", "recordId"],
+        "required": [
+          "baseId",
+          "tableId",
+          "recordId"
+        ],
         "additionalProperties": false
       }
     },
@@ -229,7 +262,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "fields": {"type": "object"}
+                "fields": {
+                  "type": "object"
+                }
               }
             },
             "maxItems": 10,
@@ -241,7 +276,11 @@
             "description": "Automatically typecast field values"
           }
         },
-        "required": ["baseId", "tableId", "records"],
+        "required": [
+          "baseId",
+          "tableId",
+          "records"
+        ],
         "additionalProperties": false
       }
     },
@@ -265,8 +304,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "fields": {"type": "object"}
+                "id": {
+                  "type": "string"
+                },
+                "fields": {
+                  "type": "object"
+                }
               }
             },
             "maxItems": 10,
@@ -278,7 +321,11 @@
             "description": "Automatically typecast field values"
           }
         },
-        "required": ["baseId", "tableId", "records"],
+        "required": [
+          "baseId",
+          "tableId",
+          "records"
+        ],
         "additionalProperties": false
       }
     }
@@ -307,9 +354,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "fields": {"type": "object"},
-          "createdTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object"
+          },
+          "createdTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -332,9 +385,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "fields": {"type": "object"},
-          "createdTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object"
+          },
+          "createdTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -342,5 +401,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/meta/bases"
+  },
+  "release": {
+    "semver": "2.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

@@ -64,7 +64,10 @@
             "description": "Helm repository URL"
           }
         },
-        "required": ["release_name", "chart"],
+        "required": [
+          "release_name",
+          "chart"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,7 +101,10 @@
             "description": "Chart version"
           }
         },
-        "required": ["release_name", "chart"],
+        "required": [
+          "release_name",
+          "chart"
+        ],
         "additionalProperties": false
       }
     },
@@ -125,7 +131,9 @@
             "description": "Keep release history"
           }
         },
-        "required": ["release_name"],
+        "required": [
+          "release_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -148,7 +156,15 @@
           },
           "status": {
             "type": "string",
-            "enum": ["deployed", "uninstalled", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback"],
+            "enum": [
+              "deployed",
+              "uninstalled",
+              "superseded",
+              "failed",
+              "pending-install",
+              "pending-upgrade",
+              "pending-rollback"
+            ],
             "description": "Filter by release status"
           }
         },
@@ -212,5 +228,16 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

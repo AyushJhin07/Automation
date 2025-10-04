@@ -12,6 +12,16 @@ interface ConnectorJSON {
   category: string;
   description: string;
   version: string;
+  release?: {
+    semver?: string;
+    status?: 'alpha' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+    isBeta?: boolean;
+    betaStartedAt?: string | null;
+    deprecationWindow?: {
+      startDate?: string | null;
+      sunsetDate?: string | null;
+    };
+  };
   authentication: {
     type: string;
     config: Record<string, any>;
@@ -128,6 +138,13 @@ export class ConnectorSeeder {
     const slug = directoryName.toLowerCase();
 
     // Prepare connector definition for database
+    const release = connectorData.release ?? {};
+    const semver = release.semver || connectorData.version || '1.0.0';
+    const lifecycleStatus = release.status
+      || (release.isBeta ? 'beta' : (connectorData.category === 'Deprecated' ? 'deprecated' : 'stable'));
+    const isBeta = typeof release.isBeta === 'boolean' ? release.isBeta : lifecycleStatus === 'beta';
+    const deprecationWindow = release.deprecationWindow ?? {};
+
     const connectorDef = {
       slug,
       name: connectorData.name,
@@ -146,6 +163,13 @@ export class ConnectorSeeder {
           source: 'json_seed'
         }
       },
+      version: semver,
+      semanticVersion: semver,
+      lifecycleStatus,
+      isBeta,
+      betaStartDate: release.betaStartedAt ? new Date(release.betaStartedAt) : null,
+      deprecationStartDate: deprecationWindow.startDate ? new Date(deprecationWindow.startDate) : null,
+      sunsetDate: deprecationWindow.sunsetDate ? new Date(deprecationWindow.sunsetDate) : null,
       isActive: true,
       isVerified: false, // Mark as unverified until tested
       supportedRegions: ['global'],
@@ -169,6 +193,13 @@ export class ConnectorSeeder {
           category: connectorDef.category,
           description: connectorDef.description,
           config: connectorDef.config,
+          version: connectorDef.version,
+          semanticVersion: connectorDef.semanticVersion,
+          lifecycleStatus: connectorDef.lifecycleStatus,
+          isBeta: connectorDef.isBeta,
+          betaStartDate: connectorDef.betaStartDate,
+          deprecationStartDate: connectorDef.deprecationStartDate,
+          sunsetDate: connectorDef.sunsetDate,
           tags: connectorDef.tags,
           complianceFlags: connectorDef.complianceFlags,
           updatedAt: new Date()
