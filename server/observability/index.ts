@@ -120,6 +120,14 @@ const webhookDedupeCounter = meter.createCounter('webhook_dedupe_events_total', 
   description: 'Counts webhook deduplication hits and misses',
 });
 
+const schedulerLockAcquiredCounter = meter.createCounter('scheduler_lock_acquired_total', {
+  description: 'Counts scheduler cycles that successfully acquired a coordination lock',
+});
+
+const schedulerLockSkippedCounter = meter.createCounter('scheduler_lock_skipped_total', {
+  description: 'Counts scheduler cycles skipped due to coordination lock contention',
+});
+
 const queueDepthGauge = meter.createObservableGauge('workflow_queue_depth', {
   description: 'Number of jobs in workflow queues by state',
   unit: '{job}',
@@ -139,6 +147,20 @@ const connectorRateResetGauge = meter.createObservableGauge('connector_rate_budg
   unit: 's',
 });
 const latestRateBudgets = new Map<string, RateBudgetSnapshot>();
+
+type ConnectorConcurrencySnapshot = {
+  connectorId: string;
+  organizationId: string | null;
+  scope: 'global' | 'organization';
+  active: number;
+  limit?: number;
+};
+
+const connectorConcurrencyGauge = meter.createObservableGauge('connector_concurrency_active', {
+  description: 'Active connector concurrency slots in use',
+  unit: '1',
+});
+const latestConnectorConcurrency = new Map<string, ConnectorConcurrencySnapshot>();
 
 meter.addBatchObservableCallback((observableResult) => {
   for (const [queueName, counts] of latestQueueDepths.entries()) {
@@ -175,7 +197,21 @@ meter.addBatchObservableCallback((observableResult) => {
       observableResult.observe(connectorRateResetGauge, seconds, attributes);
     }
   }
-}, [queueDepthGauge, connectorRateRemainingGauge, connectorRateLimitGauge, connectorRateResetGauge]);
+  for (const snapshot of latestConnectorConcurrency.values()) {
+    const attributes = sanitizeAttributes({
+      connector_id: snapshot.connectorId,
+      organization_id: snapshot.organizationId ?? 'global',
+      scope: snapshot.scope,
+    });
+    observableResult.observe(connectorConcurrencyGauge, snapshot.active, attributes);
+  }
+}, [
+  queueDepthGauge,
+  connectorRateRemainingGauge,
+  connectorRateLimitGauge,
+  connectorRateResetGauge,
+  connectorConcurrencyGauge,
+]);
 
 function sanitizeAttributes(attributes: Record<string, unknown>): MetricAttributes {
   const sanitized: MetricAttributes = {};
@@ -204,6 +240,14 @@ export function recordWebhookDedupeHit(attributes: Record<string, unknown>): voi
 
 export function recordWebhookDedupeMiss(attributes: Record<string, unknown>): void {
   webhookDedupeCounter.add(1, sanitizeAttributes({ ...attributes, outcome: 'miss' }));
+}
+
+export function recordSchedulerLockAcquired(attributes: Record<string, unknown>): void {
+  schedulerLockAcquiredCounter.add(1, sanitizeAttributes(attributes));
+}
+
+export function recordSchedulerLockSkipped(attributes: Record<string, unknown>): void {
+  schedulerLockSkippedCounter.add(1, sanitizeAttributes(attributes));
 }
 
 export function updateQueueDepthMetric<Name extends QueueName>(
@@ -246,6 +290,33 @@ export function updateConnectorRateBudgetMetric(snapshot: RateBudgetSnapshot): v
     remaining: snapshot.remaining,
     limit: snapshot.limit,
     resetMs: snapshot.resetMs,
+  });
+}
+
+interface ConnectorConcurrencyMetricInput {
+  connectorId: string;
+  organizationId: string | null;
+  scope: 'global' | 'organization';
+  active: number;
+  limit?: number;
+}
+
+export function updateConnectorConcurrencyMetric(snapshot: ConnectorConcurrencyMetricInput): void {
+  const connectorId = snapshot.connectorId || 'unknown';
+  const organizationId = snapshot.scope === 'global' ? 'global' : snapshot.organizationId ?? 'global';
+  const key = `${connectorId}::${snapshot.scope}::${organizationId}`;
+
+  if (snapshot.active <= 0) {
+    latestConnectorConcurrency.delete(key);
+    return;
+  }
+
+  latestConnectorConcurrency.set(key, {
+    connectorId,
+    organizationId: snapshot.scope === 'global' ? null : snapshot.organizationId ?? null,
+    scope: snapshot.scope,
+    active: snapshot.active,
+    limit: snapshot.limit,
   });
 }
 

@@ -75,6 +75,23 @@
       "type": "string",
       "enum": ["stable", "experimental", "disabled"],
       "description": "Override availability from the connector definition"
+    },
+    "concurrency": {
+      "type": "object",
+      "description": "Concurrency limits for this connector",
+      "additionalProperties": false,
+      "properties": {
+        "global": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Global maximum number of concurrent executions across all organizations"
+        },
+        "perOrganization": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum concurrent executions per organization"
+        }
+      }
     }
   }
 }

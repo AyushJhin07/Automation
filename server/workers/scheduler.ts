@@ -2,25 +2,48 @@ import { env } from '../env';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
 import { triggerPersistenceService } from '../services/TriggerPersistenceService.js';
 import { WebhookManager } from '../webhooks/WebhookManager.js';
+import type { OrganizationRegion } from '../database/schema.js';
+import { getSchedulerLockService } from '../services/SchedulerLockService.js';
+import { recordSchedulerLockAcquired, recordSchedulerLockSkipped } from '../observability/index.js';
 
 const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_SIZE = 25;
 
-async function runSchedulerCycle(batchSize: number): Promise<void> {
+function resolveWorkerRegion(): OrganizationRegion {
+  const raw = (process.env.DATA_RESIDENCY_REGION ?? 'us').toLowerCase();
+  const allowed: OrganizationRegion[] = ['us', 'eu', 'apac'];
+  if ((allowed as string[]).includes(raw)) {
+    return raw as OrganizationRegion;
+  }
+  if (raw && raw !== 'us') {
+    console.warn(`⚠️ Unrecognized DATA_RESIDENCY_REGION="${raw}" for scheduler worker. Falling back to "us".`);
+  }
+  return 'us';
+}
+
+const WORKER_REGION = resolveWorkerRegion();
+
+export async function runSchedulerCycle(batchSize: number): Promise<void> {
   const now = new Date();
   const dueTriggers = await triggerPersistenceService.claimDuePollingTriggers({
     limit: batchSize,
     now,
+    region: WORKER_REGION,
   });
 
   if (dueTriggers.length === 0) {
     return;
   }
 
-  console.log(`⏱️ Scheduler claimed ${dueTriggers.length} polling trigger(s) at ${now.toISOString()}`);
+  console.log(
+    `⏱️ Scheduler claimed ${dueTriggers.length} polling trigger(s) at ${now.toISOString()} for region ${WORKER_REGION}`
+  );
 
   const manager = WebhookManager.getInstance();
   for (const trigger of dueTriggers) {
+    if (trigger.region && trigger.region !== WORKER_REGION) {
+      continue;
+    }
     try {
       await manager.runPollingTrigger(trigger);
     } catch (error) {
@@ -32,8 +55,57 @@ async function runSchedulerCycle(batchSize: number): Promise<void> {
   }
 }
 
+const LOCK_RESOURCE = `polling-scheduler:${WORKER_REGION}`;
+
+function resolveLockTtl(intervalMs: number): number {
+  const minimumTtl = 30_000;
+  const bufferMs = Math.max(5_000, intervalMs);
+  return Math.max(minimumTtl, intervalMs + bufferMs);
+}
+
+export async function runSchedulerCycleWithLock(batchSize: number, intervalMs: number): Promise<boolean> {
+  const lockService = getSchedulerLockService();
+  const preferredStrategy = lockService.getPreferredStrategy();
+  const lock = await lockService.acquireLock(LOCK_RESOURCE, { ttlMs: resolveLockTtl(intervalMs) });
+
+  if (!lock) {
+    recordSchedulerLockSkipped({
+      resource: LOCK_RESOURCE,
+      region: WORKER_REGION,
+      strategy: preferredStrategy,
+    });
+    console.warn('[Scheduler] Lock contention detected, skipping cycle', {
+      resource: LOCK_RESOURCE,
+      region: WORKER_REGION,
+      workerPid: process.pid,
+      strategy: preferredStrategy,
+    });
+    return false;
+  }
+
+  recordSchedulerLockAcquired({
+    resource: LOCK_RESOURCE,
+    region: WORKER_REGION,
+    strategy: lock.mode,
+  });
+
+  try {
+    await runSchedulerCycle(batchSize);
+    return true;
+  } finally {
+    try {
+      await lock.release();
+    } catch (error) {
+      console.error('❌ Failed to release scheduler lock', {
+        resource: LOCK_RESOURCE,
+        error,
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
-  console.log('🕒 Starting polling scheduler worker');
+  console.log(`🕒 Starting polling scheduler worker (region=${WORKER_REGION})`);
   console.log('🌍 Worker environment:', env.NODE_ENV);
 
   WebhookManager.configureQueueService(executionQueueService);
@@ -67,9 +139,11 @@ async function main(): Promise<void> {
         }
       }
 
-      runningCycle = runSchedulerCycle(batchSize).catch((error) => {
-        console.error('❌ Scheduler cycle execution error:', error);
-      });
+      runningCycle = runSchedulerCycleWithLock(batchSize, intervalMs)
+        .catch((error) => {
+          console.error('❌ Scheduler cycle execution error:', error);
+        })
+        .then(() => undefined);
 
       try {
         await runningCycle;
@@ -80,9 +154,11 @@ async function main(): Promise<void> {
     }, intervalMs);
   };
 
-  runningCycle = runSchedulerCycle(batchSize).catch((error) => {
-    console.error('❌ Initial scheduler cycle failed:', error);
-  });
+  runningCycle = runSchedulerCycleWithLock(batchSize, intervalMs)
+    .catch((error) => {
+      console.error('❌ Initial scheduler cycle failed:', error);
+    })
+    .then(() => undefined);
 
   await runningCycle;
   runningCycle = null;
@@ -130,7 +206,9 @@ async function main(): Promise<void> {
   console.log('👋 Scheduler worker has stopped.');
 }
 
-void main().catch((error) => {
-  console.error('Failed to start scheduler worker:', error);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  void main().catch((error) => {
+    console.error('Failed to start scheduler worker:', error);
+    process.exit(1);
+  });
+}

@@ -25,6 +25,7 @@ export type OrganizationPlan =
   | 'enterprise'
   | 'enterprise_plus';
 export type OrganizationStatus = 'active' | 'suspended' | 'trial' | 'churned';
+export type OrganizationRegion = 'us' | 'eu' | 'apac';
 
 export interface OrganizationLimits {
   maxWorkflows: number;
@@ -33,6 +34,7 @@ export interface OrganizationLimits {
   maxStorage: number;
   maxConcurrentExecutions: number;
   maxExecutionsPerMinute: number;
+  connectorConcurrency?: Record<string, number>;
 }
 
 export interface OrganizationUsageMetrics {
@@ -192,6 +194,7 @@ export const organizations = pgTable(
     subdomain: text('subdomain').notNull(),
     plan: text('plan').notNull().default('starter'),
     status: text('status').notNull().default('trial'),
+    region: text('region').notNull().default('us'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     trialEndsAt: timestamp('trial_ends_at'),
@@ -353,11 +356,13 @@ export const tenantIsolations = pgTable(
     cachePrefix: text('cache_prefix').notNull(),
     logPrefix: text('log_prefix').notNull(),
     metricsPrefix: text('metrics_prefix').notNull(),
+    region: text('region').notNull().default('us'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => ({
     organizationIsolationIdx: uniqueIndex('tenant_isolations_org_idx').on(table.organizationId),
+    tenantRegionIdx: index('tenant_isolations_region_idx').on(table.region),
   })
 );
 
@@ -1280,6 +1285,7 @@ export const webhookLogs = pgTable(
     dedupeToken: text('dedupe_token'),
     executionId: text('execution_id'),
     error: text('error'),
+    region: text('region'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -1291,6 +1297,7 @@ export const webhookLogs = pgTable(
     workflowIdx: index('webhook_logs_workflow_idx').on(table.workflowId),
     sourceIdx: index('webhook_logs_source_idx').on(table.source),
     dedupeIdx: index('webhook_logs_dedupe_idx').on(table.dedupeToken),
+    regionIdx: index('webhook_logs_region_idx').on(table.region),
   })
 );
 
@@ -1326,6 +1333,8 @@ export const pollingTriggers = pgTable(
     cursor: json('cursor').$type<Record<string, any> | null>(),
     backoffCount: integer('backoff_count').default(0).notNull(),
     lastStatus: text('last_status'),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+    region: text('region').notNull().default('us'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -1335,6 +1344,7 @@ export const pollingTriggers = pgTable(
     nextPollIdx: index('polling_triggers_next_poll_idx').on(table.nextPoll),
     nextPollAtIdx: index('polling_triggers_next_poll_at_idx').on(table.nextPollAt),
     activeIdx: index('polling_triggers_active_idx').on(table.isActive),
+    pollingRegionIdx: index('polling_triggers_region_idx').on(table.region),
   })
 );
 
@@ -1353,6 +1363,8 @@ export const workflowTriggers = pgTable(
     dedupeState: json('dedupe_state').$type<{ tokens?: string[]; updatedAt?: string }>(),
     isActive: boolean('is_active').default(true).notNull(),
     lastSyncedAt: timestamp('last_synced_at'),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+    region: text('region').notNull().default('us'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -1361,6 +1373,7 @@ export const workflowTriggers = pgTable(
     appTriggerIdx: index('workflow_triggers_app_trigger_idx').on(table.appId, table.triggerId),
     typeIdx: index('workflow_triggers_type_idx').on(table.type),
     activeIdx: index('workflow_triggers_active_idx').on(table.isActive),
+    workflowRegionIdx: index('workflow_triggers_region_idx').on(table.region),
   })
 );
 

@@ -3,6 +3,7 @@
 
 import { getErrorMessage } from '../types/common';
 import { createHash } from 'crypto';
+import type { OrganizationRegion } from '../database/schema.js';
 import { TriggerPersistenceService, triggerPersistenceService } from '../services/TriggerPersistenceService';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
@@ -14,6 +15,7 @@ import {
   type WebhookVerificationResult,
 } from './WebhookVerifier';
 import { recordWebhookDedupeHit, recordWebhookDedupeMiss } from '../observability/index.js';
+import { organizationService } from '../services/OrganizationService.js';
 
 type QueueService = {
   enqueue: (request: {
@@ -44,6 +46,9 @@ export class WebhookManager {
   private readonly defaultReplayToleranceMs: number;
   private connectionServicePromise?: Promise<ConnectionService | null>;
   private initializationError?: string;
+  private readonly workerRegion: OrganizationRegion;
+  private readonly regionCache = new Map<string, OrganizationRegion>();
+  private readonly supportedRegions: Set<OrganizationRegion> = new Set(['us', 'eu', 'apac']);
 
   private static readonly MAX_DEDUPE_TOKENS = TriggerPersistenceService.DEFAULT_MAX_DEDUPE_TOKENS;
   private static readonly DEFAULT_REPLAY_TOLERANCE_SECONDS = 15 * 60; // 15 minutes
@@ -81,6 +86,7 @@ export class WebhookManager {
   }
 
   private constructor() {
+    this.workerRegion = this.resolveRegionFromEnv();
     this.ready = this.initializeFromPersistence();
     this.defaultReplayToleranceMs = this.resolveReplayToleranceMs();
   }
@@ -103,14 +109,41 @@ export class WebhookManager {
         this.persistence.loadPollingTriggers(),
       ]);
 
-      webhooks.forEach((trigger) => {
-        this.activeWebhooks.set(trigger.id, trigger);
-      });
+      for (const trigger of webhooks) {
+        const region = await this.resolveTriggerRegion(trigger);
+        if (region !== this.workerRegion) {
+          continue;
+        }
 
-      polling.forEach((trigger) => {
-        const normalized = this.normalizePollingTrigger(trigger);
+        const metadata = {
+          ...(trigger.metadata ?? {}),
+          region,
+        };
+
+        this.activeWebhooks.set(trigger.id, {
+          ...trigger,
+          region,
+          metadata,
+        });
+      }
+
+      for (const trigger of polling) {
+        const region = await this.resolveTriggerRegion(trigger);
+        if (region !== this.workerRegion) {
+          continue;
+        }
+
+        const normalized = this.normalizePollingTrigger({
+          ...trigger,
+          region,
+          metadata: {
+            ...(trigger.metadata ?? {}),
+            region,
+          },
+        });
+
         this.pollingTriggers.set(trigger.id, normalized);
-      });
+      }
 
       if (webhooks.length > 0 || polling.length > 0) {
         console.log(
@@ -130,6 +163,59 @@ export class WebhookManager {
       ? parsed
       : WebhookManager.DEFAULT_REPLAY_TOLERANCE_SECONDS;
     return seconds * 1000;
+  }
+
+  private resolveRegionFromEnv(): OrganizationRegion {
+    const raw = (process.env.DATA_RESIDENCY_REGION ?? 'us').toLowerCase();
+    if (this.isSupportedRegion(raw)) {
+      return raw as OrganizationRegion;
+    }
+    if (raw && raw !== 'us') {
+      console.warn(
+        `⚠️ Unrecognized DATA_RESIDENCY_REGION="${raw}" for WebhookManager. Falling back to "us".`
+      );
+    }
+    return 'us';
+  }
+
+  private isSupportedRegion(value: unknown): value is OrganizationRegion {
+    return typeof value === 'string' && this.supportedRegions.has(value as OrganizationRegion);
+  }
+
+  private async resolveOrganizationRegion(organizationId?: string | null): Promise<OrganizationRegion> {
+    if (!organizationId) {
+      return this.workerRegion;
+    }
+
+    const cached = this.regionCache.get(organizationId);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const region = await organizationService.getOrganizationRegion(organizationId);
+      this.regionCache.set(organizationId, region);
+      return region;
+    } catch (error) {
+      console.warn(
+        `⚠️ Failed to resolve region for organization ${organizationId}: ${getErrorMessage(error)}. Falling back to worker region ${this.workerRegion}.`
+      );
+      return this.workerRegion;
+    }
+  }
+
+  private async resolveTriggerRegion(trigger: {
+    organizationId?: string;
+    region?: OrganizationRegion;
+    metadata?: Record<string, any>;
+  }): Promise<OrganizationRegion> {
+    const explicit = trigger.region ?? (trigger.metadata?.region as OrganizationRegion | undefined);
+    if (explicit && this.isSupportedRegion(explicit)) {
+      return explicit;
+    }
+
+    const organizationId = trigger.organizationId ?? (trigger.metadata?.organizationId as string | undefined) ?? null;
+    return this.resolveOrganizationRegion(organizationId);
   }
 
   private parseTimestampValue(value: unknown): Date | null {
@@ -163,7 +249,10 @@ export class WebhookManager {
       }
 
       const parsed = new Date(trimmed);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
   }
 
   private lookupSignatureEnforcement(appId: string, triggerId: string): SignatureEnforcementConfig | null {
@@ -491,12 +580,16 @@ export class WebhookManager {
         normalizedMetadata.userId = trigger.userId;
       }
 
+      const region = await this.resolveTriggerRegion(trigger);
+      normalizedMetadata.region = region;
+
       const webhookTrigger: WebhookTrigger = {
         ...trigger,
         metadata: normalizedMetadata,
         id: webhookId,
         endpoint,
-        isActive: true
+        isActive: true,
+        region,
       };
 
       this.activeWebhooks.set(webhookId, webhookTrigger);
@@ -536,6 +629,19 @@ export class WebhookManager {
         return false;
       }
 
+      const triggerRegion = await this.resolveTriggerRegion({
+        organizationId,
+        region: webhook.region,
+        metadata: webhook.metadata,
+      });
+
+      if (triggerRegion !== this.workerRegion) {
+        console.log(
+          `🌐 Skipping webhook ${webhookId} because its region ${triggerRegion} does not match worker region ${this.workerRegion}.`
+        );
+        return false;
+      }
+
       const userId =
         (webhook.metadata && (webhook.metadata as any).userId) ||
         webhook.userId;
@@ -555,6 +661,7 @@ export class WebhookManager {
         source: 'webhook',
         organizationId,
         userId,
+        region: triggerRegion,
       };
 
       const defaultSignature =
@@ -688,7 +795,15 @@ export class WebhookManager {
       await this.ready;
       const pollId = trigger.id;
 
-      const normalized = this.normalizePollingTrigger(trigger);
+      const region = await this.resolveTriggerRegion(trigger);
+      const normalized = this.normalizePollingTrigger({
+        ...trigger,
+        region,
+        metadata: {
+          ...(trigger.metadata ?? {}),
+          region,
+        },
+      });
       if (normalized.lastPoll && !(normalized.lastPoll instanceof Date)) {
         normalized.lastPoll = new Date(normalized.lastPoll);
       }
@@ -696,10 +811,16 @@ export class WebhookManager {
       normalized.nextPollAt = normalized.nextPollAt ?? normalized.nextPoll;
       normalized.nextPoll = normalized.nextPoll ?? normalized.nextPollAt;
 
-      this.pollingTriggers.set(pollId, normalized);
       await this.persistence.savePollingTrigger(normalized);
 
-      console.log(`⏰ Registered polling trigger: ${trigger.appId}.${trigger.triggerId} (every ${trigger.interval}s)`);
+      if (region === this.workerRegion) {
+        this.pollingTriggers.set(pollId, normalized);
+        console.log(`⏰ Registered polling trigger: ${trigger.appId}.${trigger.triggerId} (every ${trigger.interval}s)`);
+      } else {
+        console.log(
+          `🌐 Registered polling trigger ${trigger.appId}.${trigger.triggerId} for region ${region}; worker region is ${this.workerRegion}, skipping local scheduling.`
+        );
+      }
 
     } catch (error) {
       console.error('❌ Failed to register polling trigger:', getErrorMessage(error));
@@ -710,7 +831,19 @@ export class WebhookManager {
   public async runPollingTrigger(trigger: PollingTrigger): Promise<void> {
     await this.ready;
 
-    const normalized = this.normalizePollingTrigger(trigger);
+    const region = await this.resolveTriggerRegion(trigger);
+    if (region !== this.workerRegion) {
+      return;
+    }
+
+    const normalized = this.normalizePollingTrigger({
+      ...trigger,
+      region,
+      metadata: {
+        ...(trigger.metadata ?? {}),
+        region,
+      },
+    });
     this.pollingTriggers.set(normalized.id, normalized);
 
     await this.executePoll(normalized);
@@ -721,6 +854,10 @@ export class WebhookManager {
     const trigger = this.pollingTriggers.get(triggerId);
     if (!trigger) {
       console.warn(`⚠️ Attempted to run unknown polling trigger ${triggerId}`);
+      return;
+    }
+
+    if (trigger.region && trigger.region !== this.workerRegion) {
       return;
     }
 
@@ -750,6 +887,18 @@ export class WebhookManager {
       if (!trigger.isActive) {
         return;
       }
+
+      const metadataRegion = trigger.metadata?.region as OrganizationRegion | undefined;
+      const resolvedRegion = trigger.region ?? metadataRegion ?? (await this.resolveTriggerRegion(trigger));
+      if (resolvedRegion !== this.workerRegion) {
+        return;
+      }
+
+      trigger.region = resolvedRegion;
+      trigger.metadata = {
+        ...(trigger.metadata ?? {}),
+        region: resolvedRegion,
+      };
 
       console.log(`🔄 Polling ${trigger.appId}.${trigger.triggerId}...`);
 
@@ -796,6 +945,7 @@ export class WebhookManager {
             source: 'polling',
             organizationId,
             userId,
+            region: trigger.region ?? this.workerRegion,
           };
 
           const replayWindowSeconds = this.resolvePollingReplayWindowSeconds(trigger);
@@ -1040,6 +1190,13 @@ export class WebhookManager {
 
       if (!event.organizationId) {
         console.warn('⚠️ Trigger event missing organization context; skipping');
+        return false;
+      }
+
+      if (event.region && event.region !== this.workerRegion) {
+        const message = `event region ${event.region} does not match worker region ${this.workerRegion}`;
+        console.log(`🌐 Skipping trigger event ${event.webhookId} because ${message}`);
+        await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
         return false;
       }
 
