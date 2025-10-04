@@ -4,7 +4,11 @@ import { triggerPersistenceService } from '../services/TriggerPersistenceService
 import { WebhookManager } from '../webhooks/WebhookManager.js';
 import type { OrganizationRegion } from '../database/schema.js';
 import { getSchedulerLockService } from '../services/SchedulerLockService.js';
-import { recordSchedulerLockAcquired, recordSchedulerLockSkipped } from '../observability/index.js';
+import {
+  recordCrossRegionViolation,
+  recordSchedulerLockAcquired,
+  recordSchedulerLockSkipped,
+} from '../observability/index.js';
 
 const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_SIZE = 25;
@@ -41,10 +45,19 @@ export async function runSchedulerCycle(batchSize: number): Promise<void> {
 
   const manager = WebhookManager.getInstance();
   for (const trigger of dueTriggers) {
-    if (trigger.region && trigger.region !== WORKER_REGION) {
-      continue;
-    }
     try {
+      if (trigger.region && trigger.region !== WORKER_REGION) {
+        recordCrossRegionViolation({
+          subsystem: 'scheduler',
+          expectedRegion: WORKER_REGION,
+          actualRegion: trigger.region,
+          identifier: trigger.id,
+        });
+        throw new Error(
+          `Scheduler region mismatch for trigger ${trigger.id}: expected ${WORKER_REGION}, received ${trigger.region}`
+        );
+      }
+
       await manager.runPollingTrigger(trigger);
     } catch (error) {
       console.error(

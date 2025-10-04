@@ -18,7 +18,14 @@ import {
   registerQueueTelemetry as registerBullQueueTelemetry,
 } from './BullMQFactory.js';
 import { createInMemoryQueueDriver, InMemoryQueueDriver } from './InMemoryQueue.js';
-import type { JobPayload, QueueName, QueueTelemetryOptions } from './types.js';
+import type {
+  JobPayload,
+  QueueName,
+  QueueTelemetryOptions,
+  RegionalQueueEventsOptions,
+  RegionalQueueOptions,
+  RegionalWorkerOptions,
+} from './types.js';
 
 export type { QueueTelemetryHandlers, QueueJobCounts } from './types.js';
 export type { JobPayloads, QueueName, WorkflowExecuteJobPayload, ExecutionQueueName } from './types.js';
@@ -124,7 +131,7 @@ export function handleQueueDriverError(error: unknown): boolean {
 
 export function createQueue<Name extends QueueName, ResultType = unknown>(
   name: Name,
-  options?: QueueOptions<JobPayload<Name>, ResultType, Name>
+  options?: RegionalQueueOptions<Name, ResultType>
 ): Queue<JobPayload<Name>, ResultType, Name> {
   if (state.name === 'bullmq') {
     try {
@@ -143,7 +150,7 @@ export function createQueue<Name extends QueueName, ResultType = unknown>(
 export function createWorker<Name extends QueueName, ResultType = unknown>(
   name: Name,
   processor: Processor<JobPayload<Name>, ResultType, Name>,
-  options?: WorkerOptions<JobPayload<Name>, ResultType, Name>
+  options?: RegionalWorkerOptions<Name, ResultType>
 ): Worker<JobPayload<Name>, ResultType, Name> {
   if (state.name === 'bullmq') {
     try {
@@ -161,7 +168,7 @@ export function createWorker<Name extends QueueName, ResultType = unknown>(
 
 export function createQueueEvents<Name extends QueueName>(
   name: Name,
-  options?: QueueEventsOptions
+  options?: RegionalQueueEventsOptions
 ): QueueEvents {
   if (state.name === 'bullmq') {
     try {

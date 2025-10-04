@@ -1377,74 +1377,131 @@ export const workflowTriggers = pgTable(
   })
 );
 
+const schemaRegistry = {
+  users,
+  organizations,
+  organizationMembers,
+  organizationInvites,
+  organizationQuotas,
+  organizationExecutionCounters,
+  organizationExecutionQuotaAudit,
+  tenantIsolations,
+  connections,
+  encryptionKeys,
+  encryptionRotationJobs,
+  connectionScopedTokens,
+  workflows,
+  workflowExecutions,
+  nodeExecutionResults,
+  executionLogs,
+  executionAuditLogs,
+  nodeLogs,
+  workflowTimers,
+  usageTracking,
+  connectorDefinitions,
+  organizationConnectorEntitlements,
+  organizationConnectorEntitlementAudit,
+  sessions,
+  usersRelations,
+  organizationsRelations,
+  organizationMembersRelations,
+  organizationInvitesRelations,
+  organizationQuotasRelations,
+  organizationExecutionCountersRelations,
+  organizationExecutionQuotaAuditRelations,
+  tenantIsolationsRelations,
+  encryptionKeysRelations,
+  encryptionRotationJobsRelations,
+  connectionsRelations,
+  connectionScopedTokensRelations,
+  workflowsRelations,
+  workflowExecutionsRelations,
+  executionLogsRelations,
+  nodeLogsRelations,
+  workflowTimersRelations,
+  usageTrackingRelations,
+  organizationConnectorEntitlementsRelations,
+  organizationConnectorEntitlementAuditRelations,
+  sessionsRelations,
+  webhookLogs,
+  pollingTriggers,
+  workflowTriggers,
+} as const;
+
+export type DatabaseSchema = typeof schemaRegistry;
+
+function createDrizzleClient(connectionString: string) {
+  const sql = neon(connectionString);
+  return drizzle(sql, { schema: schemaRegistry });
+}
+
 // Database connection
-const connectionString = process.env.DATABASE_URL;
+const defaultConnectionString = process.env.DATABASE_URL;
+
+type RegionConnectionMap = Partial<Record<OrganizationRegion, string>>;
+
+const regionalConnectionStrings: RegionConnectionMap = {
+  us: process.env.DATABASE_URL_US ?? undefined,
+  eu: process.env.DATABASE_URL_EU ?? undefined,
+  apac: process.env.DATABASE_URL_APAC ?? undefined,
+};
 
 let db: any = null;
 
-if (!connectionString) {
+function resolveDefaultRegion(): OrganizationRegion {
+  const raw = (process.env.DEFAULT_ORGANIZATION_REGION ?? 'us').toLowerCase();
+  if (raw === 'us' || raw === 'eu' || raw === 'apac') {
+    return raw as OrganizationRegion;
+  }
+  console.warn(
+    `⚠️ Unrecognized DEFAULT_ORGANIZATION_REGION="${raw}". Falling back to "us".`
+  );
+  return 'us';
+}
+
+const DEFAULT_REGION = resolveDefaultRegion();
+
+function getConnectionStringForRegion(region: OrganizationRegion): string | undefined {
+  const override = regionalConnectionStrings[region];
+  if (override) {
+    return override;
+  }
+  if (region === DEFAULT_REGION && defaultConnectionString) {
+    return defaultConnectionString;
+  }
+  return defaultConnectionString ?? undefined;
+}
+
+const regionalClients = new Map<OrganizationRegion, any>();
+
+function ensureClientForRegion(region: OrganizationRegion): any {
+  const existing = regionalClients.get(region);
+  if (existing) {
+    return existing;
+  }
+
+  const connection = getConnectionStringForRegion(region);
+  if (!connection) {
+    throw new Error(`DATABASE_URL not configured for region "${region}"`);
+  }
+
+  const client = createDrizzleClient(connection);
+  regionalClients.set(region, client);
+  return client;
+}
+
+if (!defaultConnectionString && !getConnectionStringForRegion(DEFAULT_REGION)) {
   const environment = process.env.NODE_ENV ?? 'development';
-  // In development or test environments, log a warning but don't crash
   if (environment === 'development' || environment === 'test') {
-    console.warn('⚠️ DATABASE_URL not set - database features will be disabled in development/test environments');
+    console.warn(
+      '⚠️ DATABASE_URL not set - database features will be disabled in development/test environments'
+    );
     db = null;
   } else {
     throw new Error('DATABASE_URL environment variable is required');
   }
 } else {
-  const sql = neon(connectionString);
-  db = drizzle(sql, {
-    schema: {
-      users,
-      organizations,
-      organizationMembers,
-      organizationInvites,
-      organizationQuotas,
-      organizationExecutionCounters,
-      organizationExecutionQuotaAudit,
-      tenantIsolations,
-      connections,
-      encryptionKeys,
-      encryptionRotationJobs,
-      connectionScopedTokens,
-      workflows,
-      workflowExecutions,
-      nodeExecutionResults,
-      executionLogs,
-      executionAuditLogs,
-      nodeLogs,
-      workflowTimers,
-      usageTracking,
-      connectorDefinitions,
-      organizationConnectorEntitlements,
-      organizationConnectorEntitlementAudit,
-      sessions,
-      usersRelations,
-      organizationsRelations,
-      organizationMembersRelations,
-      organizationInvitesRelations,
-      organizationQuotasRelations,
-      organizationExecutionCountersRelations,
-      organizationExecutionQuotaAuditRelations,
-      tenantIsolationsRelations,
-      encryptionKeysRelations,
-      encryptionRotationJobsRelations,
-      connectionsRelations,
-      connectionScopedTokensRelations,
-      workflowsRelations,
-      workflowExecutionsRelations,
-      executionLogsRelations,
-      nodeLogsRelations,
-      workflowTimersRelations,
-      usageTrackingRelations,
-      organizationConnectorEntitlementsRelations,
-      organizationConnectorEntitlementAuditRelations,
-      sessionsRelations,
-      webhookLogs,
-      pollingTriggers,
-      workflowTriggers,
-    },
-  });
+  db = ensureClientForRegion(DEFAULT_REGION);
 }
 
 
@@ -1454,6 +1511,26 @@ export function setDatabaseClientForTests(databaseClient: any): void {
   }
 
   db = databaseClient;
+}
+
+export function getDatabaseClient(region: OrganizationRegion = DEFAULT_REGION): any {
+  return ensureClientForRegion(region);
+}
+
+export function getConfiguredDatabaseRegions(): OrganizationRegion[] {
+  const configured: OrganizationRegion[] = [];
+  (['us', 'eu', 'apac'] as OrganizationRegion[]).forEach((region) => {
+    if (region === DEFAULT_REGION) {
+      if (getConnectionStringForRegion(region)) {
+        configured.push(region);
+      }
+      return;
+    }
+    if (regionalConnectionStrings[region]) {
+      configured.push(region);
+    }
+  });
+  return configured;
 }
 
 export { db };

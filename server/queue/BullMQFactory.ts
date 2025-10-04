@@ -10,6 +10,7 @@ import {
 } from 'bullmq';
 
 import { env } from '../env';
+import type { OrganizationRegion } from '../database/schema.js';
 import type {
   JobPayload,
   JobPayloads,
@@ -17,23 +18,56 @@ import type {
   QueueName,
   QueueTelemetryOptions,
 } from './types';
+import type {
+  RegionalQueueEventsOptions,
+  RegionalQueueOptions,
+  RegionalWorkerOptions,
+} from './types';
 
 const defaultLogger: Pick<Console, 'info' | 'warn' | 'error'> = console;
 
-export function getRedisConnectionOptions(): RedisOptions {
+function resolveRegionalRedisEnv(region: OrganizationRegion | undefined, key: 'HOST' | 'PORT' | 'DB' | 'USERNAME' | 'PASSWORD' | 'TLS'): string | undefined {
+  if (!region) {
+    return undefined;
+  }
+  const suffix = region.toUpperCase();
+  const envKey = `QUEUE_REDIS_${suffix}_${key}`;
+  return process.env[envKey];
+}
+
+function resolveNumber(value: string | undefined, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export function getRedisConnectionOptions(region?: OrganizationRegion): RedisOptions {
+  const hostOverride = resolveRegionalRedisEnv(region, 'HOST');
+  const portOverride = resolveRegionalRedisEnv(region, 'PORT');
+  const dbOverride = resolveRegionalRedisEnv(region, 'DB');
+  const usernameOverride = resolveRegionalRedisEnv(region, 'USERNAME');
+  const passwordOverride = resolveRegionalRedisEnv(region, 'PASSWORD');
+  const tlsOverride = resolveRegionalRedisEnv(region, 'TLS');
+
   const baseOptions: RedisOptions = {
-    host: env.QUEUE_REDIS_HOST,
-    port: env.QUEUE_REDIS_PORT,
-    db: env.QUEUE_REDIS_DB,
+    host: hostOverride ?? env.QUEUE_REDIS_HOST,
+    port: resolveNumber(portOverride, env.QUEUE_REDIS_PORT),
+    db: resolveNumber(dbOverride, env.QUEUE_REDIS_DB),
   };
 
-  if (env.QUEUE_REDIS_USERNAME) {
-    baseOptions.username = env.QUEUE_REDIS_USERNAME;
+  const username = usernameOverride ?? env.QUEUE_REDIS_USERNAME;
+  if (username) {
+    baseOptions.username = username;
   }
-  if (env.QUEUE_REDIS_PASSWORD) {
-    baseOptions.password = env.QUEUE_REDIS_PASSWORD;
+  const password = passwordOverride ?? env.QUEUE_REDIS_PASSWORD;
+  if (password) {
+    baseOptions.password = password;
   }
-  if (env.QUEUE_REDIS_TLS) {
+
+  const tlsFlag = (tlsOverride ?? (env.QUEUE_REDIS_TLS ? 'true' : '')).toLowerCase();
+  if (tlsFlag === 'true') {
     baseOptions.tls = {};
   }
 
@@ -42,19 +76,21 @@ export function getRedisConnectionOptions(): RedisOptions {
 
 export function createQueue<Name extends QueueName, ResultType = unknown>(
   name: Name,
-  options?: QueueOptions<JobPayload<Name>, ResultType, Name>
+  options?: RegionalQueueOptions<Name, ResultType>
 ): Queue<JobPayload<Name>, ResultType, Name> {
-  const connection = { ...getRedisConnectionOptions(), ...options?.connection };
+  const region = options?.region;
+  const connection = { ...getRedisConnectionOptions(region), ...options?.connection };
   const defaultJobOptions = {
     removeOnComplete: true,
     removeOnFail: false,
     ...options?.defaultJobOptions,
   };
+  const { region: _region, ...rest } = options ?? {};
   const merged: QueueOptions<JobPayload<Name>, ResultType, Name> = {
-    ...options,
+    ...rest,
     connection,
     defaultJobOptions,
-    prefix: options?.prefix ?? `bull:${String(name)}`,
+    prefix: rest.prefix ?? `bull:${String(name)}`,
   };
 
   return new Queue<JobPayload<Name>, ResultType, Name>(name, merged);
@@ -63,12 +99,14 @@ export function createQueue<Name extends QueueName, ResultType = unknown>(
 export function createWorker<Name extends QueueName, ResultType = unknown>(
   name: Name,
   processor: Processor<JobPayload<Name>, ResultType, Name>,
-  options?: WorkerOptions<JobPayload<Name>, ResultType, Name>
+  options?: RegionalWorkerOptions<Name, ResultType>
 ): Worker<JobPayload<Name>, ResultType, Name> {
+  const region = options?.region;
+  const { region: _region, ...rest } = options ?? {};
   const merged: WorkerOptions<JobPayload<Name>, ResultType, Name> = {
-    connection: { ...getRedisConnectionOptions(), ...options?.connection },
-    autorun: options?.autorun ?? true,
-    ...options,
+    connection: { ...getRedisConnectionOptions(region), ...rest.connection },
+    autorun: rest.autorun ?? true,
+    ...rest,
   };
 
   return new Worker<JobPayload<Name>, ResultType, Name>(name, processor, merged);
@@ -76,12 +114,14 @@ export function createWorker<Name extends QueueName, ResultType = unknown>(
 
 export function createQueueEvents<Name extends QueueName>(
   name: Name,
-  options?: QueueEventsOptions
+  options?: RegionalQueueEventsOptions
 ): QueueEvents {
+  const region = options?.region;
+  const { region: _region, ...rest } = options ?? {};
   const merged: QueueEventsOptions = {
-    connection: { ...getRedisConnectionOptions(), ...options?.connection },
-    autorun: options?.autorun ?? true,
-    ...options,
+    connection: { ...getRedisConnectionOptions(region), ...rest.connection },
+    autorun: rest.autorun ?? true,
+    ...rest,
   };
 
   return new QueueEvents(name, merged);

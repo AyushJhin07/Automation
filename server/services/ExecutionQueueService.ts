@@ -17,7 +17,7 @@ import {
 } from '../queue/index.js';
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
-import { updateQueueDepthMetric } from '../observability/index.js';
+import { recordCrossRegionViolation, updateQueueDepthMetric } from '../observability/index.js';
 import { organizationService } from './OrganizationService.js';
 import {
   executionQuotaService,
@@ -498,7 +498,7 @@ class ExecutionQueueService {
 
     const queue = this.ensureQueue(this.workerQueueName);
     if (!this.queueEvents) {
-      this.queueEvents = createQueueEvents(this.workerQueueName);
+      this.queueEvents = createQueueEvents(this.workerQueueName, { region: this.workerRegion });
     }
 
     if (!this.telemetryCleanup) {
@@ -514,6 +514,7 @@ class ExecutionQueueService {
       this.workerQueueName,
       async (job) => this.process(job),
       {
+        region: this.workerRegion,
         concurrency: this.concurrency,
         tenantConcurrency: this.tenantConcurrency,
         resolveTenantId: (job) => job.data.organizationId,
@@ -664,6 +665,7 @@ class ExecutionQueueService {
     }
 
     const queue = createQueue(name, {
+      region: this.workerRegion,
       defaultJobOptions: {
         attempts: this.maxRetries + 1,
         backoff: { type: 'execution-backoff' },
@@ -716,10 +718,15 @@ class ExecutionQueueService {
     const jobRegion = (job.data.region as OrganizationRegion | undefined) ?? this.workerRegion;
 
     if (jobRegion !== this.workerRegion) {
-      console.warn(
-        `⚠️ ExecutionQueueService worker in region ${this.workerRegion} received job ${executionId} for region ${jobRegion}. Skipping processing.`
+      recordCrossRegionViolation({
+        subsystem: 'execution-worker',
+        expectedRegion: this.workerRegion,
+        actualRegion: jobRegion,
+        identifier: executionId,
+      });
+      throw new Error(
+        `Execution worker region mismatch: expected ${this.workerRegion}, received ${jobRegion} for job ${executionId}`
       );
-      return;
     }
     const resumeState = (job.data.resumeState ?? null) as WorkflowResumeState | null;
     const timerId = job.data.timerId ?? null;

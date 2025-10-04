@@ -14,7 +14,11 @@ import {
   WebhookVerificationFailureReason,
   type WebhookVerificationResult,
 } from './WebhookVerifier';
-import { recordWebhookDedupeHit, recordWebhookDedupeMiss } from '../observability/index.js';
+import {
+  recordCrossRegionViolation,
+  recordWebhookDedupeHit,
+  recordWebhookDedupeMiss,
+} from '../observability/index.js';
 import { organizationService } from '../services/OrganizationService.js';
 
 type QueueService = {
@@ -468,7 +472,11 @@ export class WebhookManager {
     if (logId) {
       event.id = logId;
     }
-    await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
+    await this.persistence.markWebhookEventProcessed(logId, {
+      success: false,
+      error: message,
+      region: event.region ?? this.workerRegion,
+    });
   }
 
   private resolveEventTimestamp(headers: Record<string, string>, payload: any): Date | null {
@@ -717,6 +725,7 @@ export class WebhookManager {
         token: eventHash,
         ttlMs: toleranceMs,
         createdAt: event.timestamp,
+        region: event.region ?? this.workerRegion,
       });
 
       if (dedupeResult === 'duplicate') {
@@ -727,6 +736,7 @@ export class WebhookManager {
           error: message,
           duplicate: true,
           dropReason: message,
+          region: event.region ?? this.workerRegion,
         });
         recordWebhookDedupeHit({
           provider_id: providerId,
@@ -908,7 +918,11 @@ export class WebhookManager {
       trigger.nextPoll = computedNext;
       trigger.nextPollAt = computedNext;
 
-      await this.persistence.updatePollingRuntimeState(trigger.id, { lastPoll: trigger.lastPoll, nextPollAt: trigger.nextPollAt });
+      await this.persistence.updatePollingRuntimeState(trigger.id, {
+        lastPoll: trigger.lastPoll,
+        nextPollAt: trigger.nextPollAt,
+        region: trigger.region,
+      });
 
       // Execute the specific polling logic based on app and trigger
       const results = await this.executeAppSpecificPoll(trigger);
@@ -1191,9 +1205,19 @@ export class WebhookManager {
       }
 
       if (event.region && event.region !== this.workerRegion) {
+        recordCrossRegionViolation({
+          subsystem: 'webhook-worker',
+          expectedRegion: this.workerRegion,
+          actualRegion: event.region,
+          identifier: event.webhookId,
+        });
         const message = `event region ${event.region} does not match worker region ${this.workerRegion}`;
         console.log(`🌐 Skipping trigger event ${event.webhookId} because ${message}`);
-        await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
+        await this.persistence.markWebhookEventProcessed(logId, {
+          success: false,
+          error: message,
+          region: event.region,
+        });
         return false;
       }
 
@@ -1201,7 +1225,11 @@ export class WebhookManager {
         const toleranceSeconds = Math.floor(options.toleranceMs / 1000);
         const message = `timestamp outside replay tolerance (${toleranceSeconds}s)`;
         console.warn(`⚠️ Trigger event rejected due to ${message}`);
-        await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
+        await this.persistence.markWebhookEventProcessed(logId, {
+          success: false,
+          error: message,
+          region: event.region ?? this.workerRegion,
+        });
         return false;
       }
 
@@ -1226,6 +1254,7 @@ export class WebhookManager {
       await this.persistence.markWebhookEventProcessed(logId, {
         success: true,
         executionId: queueResult.executionId,
+        region: event.region ?? this.workerRegion,
       });
 
       console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`);
@@ -1233,7 +1262,11 @@ export class WebhookManager {
     } catch (error) {
       const message = getErrorMessage(error);
       console.error('❌ Error processing trigger event:', message);
-      await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
+      await this.persistence.markWebhookEventProcessed(logId, {
+        success: false,
+        error: message,
+        region: event.region ?? this.workerRegion,
+      });
       return false;
     }
   }
@@ -1287,7 +1320,7 @@ export class WebhookManager {
     webhook.isActive = false;
 
     try {
-      await this.persistence.deactivateTrigger(webhookId);
+      await this.persistence.deactivateTrigger(webhookId, webhook.region);
     } catch (error) {
       console.error('❌ Failed to persist webhook deactivation:', getErrorMessage(error));
     }
@@ -1301,9 +1334,10 @@ export class WebhookManager {
    */
   async removeWebhook(webhookId: string): Promise<boolean> {
     await this.ready;
+    const webhook = this.activeWebhooks.get(webhookId);
     const removed = this.activeWebhooks.delete(webhookId);
     if (removed) {
-      await this.persistence.deactivateTrigger(webhookId);
+      await this.persistence.deactivateTrigger(webhookId, webhook?.region);
       console.log(`🗑️ Removed webhook: ${webhookId}`);
     }
     return removed;
@@ -1321,7 +1355,7 @@ export class WebhookManager {
     }
 
     this.pollingTriggers.delete(pollId);
-    await this.persistence.deactivateTrigger(pollId);
+    await this.persistence.deactivateTrigger(pollId, trigger.region);
     console.log(`⏹️ Stopped polling: ${pollId}`);
 
     return true;

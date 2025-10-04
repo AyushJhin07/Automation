@@ -2,6 +2,8 @@ import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {
   db,
+  getDatabaseClient,
+  getConfiguredDatabaseRegions,
   webhookLogs,
   webhookDedupe,
   pollingTriggers,
@@ -282,7 +284,11 @@ class InMemoryTriggerPersistenceStore {
     return result;
   }
 
-  public async persistDedupeTokens(id: string, tokens: DedupeTokenInput[]) {
+  public async persistDedupeTokens(
+    id: string,
+    tokens: DedupeTokenInput[],
+    _options: { region?: OrganizationRegion } = {}
+  ) {
     if (!Array.isArray(tokens) || tokens.length === 0) {
       return;
     }
@@ -434,6 +440,7 @@ export interface TriggerExecutionResult {
   executionId?: string;
   duplicate?: boolean;
   dropReason?: string;
+  region?: OrganizationRegion;
 }
 
 export class TriggerPersistenceService {
@@ -478,73 +485,70 @@ export class TriggerPersistenceService {
   }
 
   public async loadWebhookTriggers(): Promise<WebhookTrigger[]> {
-    const database = this.requireDatabase('loadWebhookTriggers');
+    const regions = getConfiguredDatabaseRegions();
+    const targets = regions.length > 0 ? regions : [null];
+    const all: WebhookTrigger[] = [];
 
-    if (typeof (database as any).getActiveWebhookTriggers === 'function') {
-      const rows = await (database as any).getActiveWebhookTriggers();
-      return rows.map((row: any) => this.mapWebhookTriggerRow(row));
+    for (const region of targets) {
+      try {
+        const database = this.requireDatabase('loadWebhookTriggers', region);
+
+        if (typeof (database as any).getActiveWebhookTriggers === 'function') {
+          const rows = await (database as any).getActiveWebhookTriggers();
+          all.push(...rows.map((row: any) => this.mapWebhookTriggerRow(row)));
+          continue;
+        }
+
+        const rows = await database
+          .select()
+          .from(workflowTriggers)
+          .where(and(eq(workflowTriggers.type, 'webhook'), eq(workflowTriggers.isActive, true)));
+
+        all.push(...rows.map((row) => this.mapWebhookTriggerRow(row)));
+      } catch (error) {
+        this.logPersistenceError('loadWebhookTriggers', error, { region });
+      }
     }
 
-    const rows = await database
-      .select()
-      .from(workflowTriggers)
-      .where(and(eq(workflowTriggers.type, 'webhook'), eq(workflowTriggers.isActive, true)));
-
-    return rows.map((row) => ({
-      id: row.id,
-      workflowId: row.workflowId,
-      appId: row.appId,
-      triggerId: row.triggerId,
-      endpoint: row.endpoint ?? `/api/webhooks/${row.id}`,
-      secret: row.secret ?? undefined,
-      isActive: row.isActive,
-      lastTriggered: row.metadata?.lastTriggered ? new Date(row.metadata.lastTriggered) : undefined,
-      metadata: row.metadata ?? {},
-    }));
+    return all;
   }
 
   public async loadPollingTriggers(): Promise<PollingTrigger[]> {
-    const database = this.requireDatabase('loadPollingTriggers');
+    const regions = getConfiguredDatabaseRegions();
+    const targets = regions.length > 0 ? regions : [null];
+    const all: PollingTrigger[] = [];
 
-    if (typeof (database as any).getActivePollingTriggers === 'function') {
-      const rows = await (database as any).getActivePollingTriggers();
-      return rows.map((row: any) => this.mapPollingTriggerRow(row));
+    for (const region of targets) {
+      try {
+        const database = this.requireDatabase('loadPollingTriggers', region);
+
+        if (typeof (database as any).getActivePollingTriggers === 'function') {
+          const rows = await (database as any).getActivePollingTriggers();
+          all.push(...rows.map((row: any) => this.mapPollingTriggerRow(row)));
+          continue;
+        }
+
+        const rows = await database
+          .select()
+          .from(pollingTriggers)
+          .where(eq(pollingTriggers.isActive, true));
+
+        all.push(...rows.map((row) => this.mapPollingTriggerRow(row)));
+      } catch (error) {
+        this.logPersistenceError('loadPollingTriggers', error, { region });
+      }
     }
 
-    const rows = await database
-      .select()
-      .from(pollingTriggers)
-      .where(eq(pollingTriggers.isActive, true));
-
-    return rows.map((row) => ({
-      id: row.id,
-      workflowId: row.workflowId,
-      appId: row.appId,
-      triggerId: row.triggerId,
-      interval: row.interval,
-      lastPoll: row.lastPoll ? new Date(row.lastPoll) : undefined,
-      nextPoll: row.nextPoll ? new Date(row.nextPoll) : new Date(Date.now() + row.interval * 1000),
-      nextPollAt: row.nextPollAt
-        ? new Date(row.nextPollAt)
-        : row.nextPoll
-        ? new Date(row.nextPoll)
-        : new Date(Date.now() + row.interval * 1000),
-      isActive: row.isActive,
-      dedupeKey: row.dedupeKey ?? undefined,
-      metadata: row.metadata ?? {},
-      cursor: row.cursor ?? null,
-      backoffCount: row.backoffCount ?? 0,
-      lastStatus: row.lastStatus ?? null,
-    }));
+    return all;
   }
 
   public async claimDuePollingTriggers(
     options: { limit?: number; now?: Date; region?: OrganizationRegion } = {}
   ): Promise<PollingTrigger[]> {
-    const database = this.requireDatabase('claimDuePollingTriggers');
     const now = options.now ?? new Date();
     const limit = Math.max(1, Math.min(100, options.limit ?? 25));
     const region = options.region;
+    const database = this.requireDatabase('claimDuePollingTriggers', region);
 
     if (typeof (database as any).claimDuePollingTriggers === 'function') {
       const rows = await (database as any).claimDuePollingTriggers({ now, limit, region });
@@ -626,10 +630,10 @@ export class TriggerPersistenceService {
   }
 
   public async saveWebhookTrigger(trigger: WebhookTrigger): Promise<void> {
-    const database = this.requireDatabase('saveWebhookTrigger');
     const organizationId =
       trigger.organizationId ?? (trigger.metadata?.organizationId as string | undefined) ?? null;
     const region = (trigger.region ?? (trigger.metadata?.region as OrganizationRegion | undefined)) ?? null;
+    const database = this.requireDatabase('saveWebhookTrigger', region);
     const record = {
       id: trigger.id,
       workflowId: trigger.workflowId,
@@ -680,10 +684,10 @@ export class TriggerPersistenceService {
   }
 
   public async savePollingTrigger(trigger: PollingTrigger): Promise<void> {
-    const database = this.requireDatabase('savePollingTrigger');
     const organizationId =
       trigger.organizationId ?? (trigger.metadata?.organizationId as string | undefined) ?? null;
     const region = (trigger.region ?? (trigger.metadata?.region as OrganizationRegion | undefined)) ?? null;
+    const database = this.requireDatabase('savePollingTrigger', region);
     const record = {
       id: trigger.id,
       workflowId: trigger.workflowId,
@@ -793,9 +797,11 @@ export class TriggerPersistenceService {
       cursor?: Record<string, any> | null;
       backoffCount?: number;
       lastStatus?: string | null;
+      region?: OrganizationRegion;
     }
   ): Promise<void> {
-    const database = this.requireDatabase('updatePollingRuntimeState');
+    const { region, ...rest } = updates;
+    const database = this.requireDatabase('updatePollingRuntimeState', region ?? null);
 
     if (typeof (database as any).updatePollingRuntimeState === 'function') {
       await (database as any).updatePollingRuntimeState({ id, ...updates });
@@ -804,24 +810,24 @@ export class TriggerPersistenceService {
 
     const now = new Date();
     try {
-      const nextPollValue = updates.nextPollAt ?? updates.nextPoll ?? null;
+      const nextPollValue = rest.nextPollAt ?? rest.nextPoll ?? null;
       const updateValues: Record<string, any> = {
-        lastPoll: updates.lastPoll ?? null,
+        lastPoll: rest.lastPoll ?? null,
         nextPoll: nextPollValue,
         nextPollAt: nextPollValue,
         updatedAt: now,
       };
 
-      if ('cursor' in updates) {
-        updateValues.cursor = updates.cursor ?? null;
+      if ('cursor' in rest) {
+        updateValues.cursor = rest.cursor ?? null;
       }
 
-      if (typeof updates.backoffCount === 'number') {
-        updateValues.backoffCount = updates.backoffCount;
+      if (typeof rest.backoffCount === 'number') {
+        updateValues.backoffCount = rest.backoffCount;
       }
 
-      if ('lastStatus' in updates) {
-        updateValues.lastStatus = updates.lastStatus ?? null;
+      if ('lastStatus' in rest) {
+        updateValues.lastStatus = rest.lastStatus ?? null;
       }
 
       await database
@@ -839,8 +845,8 @@ export class TriggerPersistenceService {
     }
   }
 
-  public async deactivateTrigger(id: string): Promise<void> {
-    const database = this.requireDatabase('deactivateTrigger');
+  public async deactivateTrigger(id: string, region?: OrganizationRegion): Promise<void> {
+    const database = this.requireDatabase('deactivateTrigger', region ?? null);
 
     if (typeof (database as any).deactivateTrigger === 'function') {
       await (database as any).deactivateTrigger(id);
@@ -867,7 +873,7 @@ export class TriggerPersistenceService {
   public async logWebhookEvent(event: TriggerEvent): Promise<string | null> {
     const id = event.id ?? randomUUID();
 
-    const database = this.requireDatabase('logWebhookEvent');
+    const database = this.requireDatabase('logWebhookEvent', event.region ?? null);
 
     if (typeof (database as any).logWebhookEvent === 'function') {
       await (database as any).logWebhookEvent({ ...event, id });
@@ -907,7 +913,7 @@ export class TriggerPersistenceService {
       return;
     }
 
-    const database = this.requireDatabase('markWebhookEventProcessed');
+    const database = this.requireDatabase('markWebhookEventProcessed', result.region ?? null);
 
     if (typeof (database as any).markWebhookEventProcessed === 'function') {
       await (database as any).markWebhookEventProcessed(id, result);
@@ -935,8 +941,9 @@ export class TriggerPersistenceService {
     token: string;
     ttlMs: number;
     createdAt?: Date;
+    region?: OrganizationRegion;
   }): Promise<'recorded' | 'duplicate'> {
-    const database = this.requireDatabase('recordWebhookDedupeEntry');
+    const database = this.requireDatabase('recordWebhookDedupeEntry', params.region ?? null);
 
     if (typeof (database as any).recordWebhookDedupeEntry === 'function') {
       return (database as any).recordWebhookDedupeEntry(params);
@@ -1020,8 +1027,9 @@ export class TriggerPersistenceService {
     workflowId: string;
     limit?: number;
     since?: Date;
+    region?: OrganizationRegion;
   }): Promise<Array<{ id: string; webhookId: string; timestamp: Date; error: string }>> {
-    const database = this.requireDatabase('listDuplicateWebhookEvents');
+    const database = this.requireDatabase('listDuplicateWebhookEvents', options.region ?? null);
 
     if (typeof (database as any).listDuplicateWebhookEvents === 'function') {
       return (database as any).listDuplicateWebhookEvents(options);
@@ -1060,8 +1068,8 @@ export class TriggerPersistenceService {
     }));
   }
 
-  public async loadDedupeTokens(): Promise<Record<string, string[]>> {
-    const database = this.requireDatabase('loadDedupeTokens');
+  public async loadDedupeTokens(region?: OrganizationRegion): Promise<Record<string, string[]>> {
+    const database = this.requireDatabase('loadDedupeTokens', region ?? null);
 
     if (typeof (database as any).getDedupeTokens === 'function') {
       return (database as any).getDedupeTokens();
@@ -1114,8 +1122,12 @@ export class TriggerPersistenceService {
     return result;
   }
 
-  public async persistDedupeTokens(id: string, tokens: DedupeTokenInput[]): Promise<void> {
-    const database = this.requireDatabase('persistDedupeTokens');
+  public async persistDedupeTokens(
+    id: string,
+    tokens: DedupeTokenInput[],
+    options: { region?: OrganizationRegion } = {}
+  ): Promise<void> {
+    const database = this.requireDatabase('persistDedupeTokens', options.region ?? null);
 
     if (typeof (database as any).persistDedupeTokens === 'function') {
       await (database as any).persistDedupeTokens(id, tokens);
@@ -1206,9 +1218,18 @@ export class TriggerPersistenceService {
     return this.memoryStore;
   }
 
-  private requireDatabase(operation: string): any {
-    if (isDatabaseAvailable() && db) {
-      return db;
+  private requireDatabase(operation: string, region?: OrganizationRegion | null): any {
+    if (isDatabaseAvailable()) {
+      try {
+        if (region) {
+          return getDatabaseClient(region);
+        }
+        if (db) {
+          return db;
+        }
+      } catch (error) {
+        this.logPersistenceError('resolveDatabase', error, { operation, region });
+      }
     }
 
     this.logDatabaseFallback(operation);
