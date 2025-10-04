@@ -29,7 +29,7 @@ router.post('/:workflowId/publish', async (req, res) => {
       return;
     }
 
-    const environment = typeof req.body?.environment === 'string' ? req.body.environment : 'prod';
+    const environment = typeof req.body?.environment === 'string' ? req.body.environment : 'production';
     const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId : undefined;
     const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : null;
 

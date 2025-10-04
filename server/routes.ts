@@ -17,6 +17,7 @@ import aiPlannerRoutes from "./routes/ai-planner.js";
 import aiNormalizerRoutes from "./routes/ai-normalizer.js";
 import workflowReadRoutes from "./routes/workflow-read.js";
 import workflowDeploymentRoutes from "./routes/workflow-deployments.js";
+import workflowVersionRoutes from "./routes/workflow-versions.js";
 import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
 import oauthRoutes from "./routes/oauth";
@@ -176,6 +177,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   // CRITICAL FIX: Workflow read routes for Graph Editor handoff
   app.use('/api', workflowReadRoutes);
+  app.use('/api/workflows', workflowVersionRoutes);
   app.get('/api/workflows/:workflowId/duplicate-events', authenticateToken, async (req, res) => {
     const { workflowId } = req.params;
     if (!workflowId) {

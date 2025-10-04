@@ -265,6 +265,32 @@ workflowReadRouter.get('/workflows/:id', async (req, res) => {
   }
 });
 
+workflowReadRouter.get('/workflows/:id/versions', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const organizationId = requireOrganizationContext(req as any, res);
+    if (!organizationId) {
+      return;
+    }
+
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+
+    const history = await WorkflowRepository.listWorkflowVersions({
+      workflowId: id,
+      organizationId,
+      limit,
+    });
+
+    res.json({ success: true, history });
+  } catch (error: any) {
+    console.error('❌ Failed to list workflow versions:', error);
+    res.status(400).json({
+      success: false,
+      error: error?.message ?? 'Failed to list workflow versions',
+    });
+  }
+});
+
 // List all stored workflows (for debugging)
 workflowReadRouter.get('/workflows', async (req, res) => {
   try {

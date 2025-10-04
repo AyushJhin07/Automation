@@ -397,7 +397,7 @@ async function runWorkflowBreakingChangeGuardTest(): Promise<void> {
   await WorkflowRepository.publishWorkflowVersion({
     workflowId: stored.id,
     organizationId,
-    environment: 'prod',
+    environment: 'production',
     userId,
   });
 
@@ -432,7 +432,7 @@ async function runWorkflowBreakingChangeGuardTest(): Promise<void> {
   const diff = await WorkflowRepository.getWorkflowDiff({
     workflowId: stored.id,
     organizationId,
-    environment: 'prod',
+    environment: 'production',
   });
 
   assert.equal(diff.summary.hasBreakingChanges, true, 'Diff should flag breaking changes for removed outputs');
@@ -446,7 +446,7 @@ async function runWorkflowBreakingChangeGuardTest(): Promise<void> {
     WorkflowRepository.publishWorkflowVersion({
       workflowId: stored.id,
       organizationId,
-      environment: 'prod',
+      environment: 'production',
       userId,
     }),
     /requires migration metadata/i,
@@ -465,7 +465,7 @@ async function runWorkflowBreakingChangeGuardTest(): Promise<void> {
   const publishResult = await WorkflowRepository.publishWorkflowVersion({
     workflowId: stored.id,
     organizationId,
-    environment: 'prod',
+    environment: 'production',
     userId,
     metadata,
   });
