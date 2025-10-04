@@ -1,151 +1,241 @@
-// WORKDAY API CLIENT
-// Auto-generated API client for Workday integration
-
+import type { APICredentials, APIResponse } from './BaseAPIClient';
 import { BaseAPIClient } from './BaseAPIClient';
 
-export interface WorkdayAPIClientConfig {
-  accessToken: string;
-  refreshToken?: string;
-  clientId?: string;
-  clientSecret?: string;
+interface WorkdaySearchParams {
+  searchTerm?: string;
+  location?: string;
+  department?: string;
+  jobTitle?: string;
+  manager?: string;
+  isActive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+interface WorkdayWorkerMutation {
+  workerId?: string;
+  personalData?: Record<string, any>;
+  positionData?: Record<string, any>;
+  jobData?: Record<string, any>;
+  hireDate?: string;
+  terminationDate?: string;
+  reason?: string;
+}
+
+type WorkdayTriggerParams = {
+  since?: string;
+  pageSize?: number;
+  pageToken?: string;
+};
+
+function normalizeHost(candidate?: string | null): string {
+  const raw = `${candidate ?? ''}`.trim();
+  if (!raw) {
+    throw new Error('Workday connector requires a tenant host (for example https://wd5.myworkday.com).');
+  }
+
+  const prefixed = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+  return prefixed.replace(/\/$/, '');
+}
+
+function assertTenant(tenant?: string | null): string {
+  const raw = `${tenant ?? ''}`.trim();
+  if (!raw) {
+    throw new Error('Workday connector requires a tenant identifier (for example acme).');
+  }
+  return raw;
+}
+
+function buildODataFilter(parts: Array<string | null | undefined>): string | undefined {
+  const filtered = parts.filter((part): part is string => Boolean(part && part.trim()));
+  if (!filtered.length) {
+    return undefined;
+  }
+  return filtered.join(' and ');
+}
+
+function escapeODataString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
 }
 
 export class WorkdayAPIClient extends BaseAPIClient {
-  protected baseUrl: string;
-  private config: WorkdayAPIClientConfig;
+  private readonly tenant: string;
 
-  constructor(config: WorkdayAPIClientConfig) {
-    super();
-    this.config = config;
-    this.baseUrl = 'https://wd5-impl-services1.workday.com/ccx/api/v1';
+  constructor(
+    credentials: APICredentials & { tenant?: string; tenantAlias?: string; host?: string; baseUrl?: string },
+    additionalConfig?: Record<string, any>
+  ) {
+    const tenant = assertTenant(
+      additionalConfig?.tenant ?? credentials.tenant ?? credentials.tenantAlias ?? (credentials as any).workdayTenant
+    );
+    const host = normalizeHost(
+      additionalConfig?.host ??
+        credentials.baseUrl ??
+        credentials.host ??
+        (credentials as any).tenantUrl ??
+        (credentials as any).domain
+    );
+    const baseURL = `${host.replace(/\/$/, '')}/ccx/api/v1/${encodeURIComponent(tenant)}`;
+
+    super(baseURL, credentials, { connectorId: 'workday' });
+
+    this.tenant = tenant;
+
+    this.registerHandlers({
+      test_connection: this.testConnection.bind(this) as any,
+      get_worker: this.getWorker.bind(this) as any,
+      search_workers: this.searchWorkers.bind(this) as any,
+      create_worker: this.createWorker.bind(this) as any,
+      update_worker: this.updateWorker.bind(this) as any,
+      terminate_worker: this.terminateWorker.bind(this) as any,
+      create_position: this.createPosition.bind(this) as any,
+      update_position: this.updatePosition.bind(this) as any,
+      worker_hired: this.pollWorkerHired.bind(this) as any,
+      worker_terminated: this.pollWorkerTerminated.bind(this) as any,
+      time_off_requested: this.pollTimeOffRequested.bind(this) as any,
+    });
   }
 
-  /**
-   * Get authentication headers
-   */
   protected getAuthHeaders(): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.config.accessToken}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Apps-Script-Automation/1.0'
+    if (!this.credentials.accessToken) {
+      throw new Error('Workday connector requires an OAuth access token.');
+    }
+    return { Authorization: `Bearer ${this.credentials.accessToken}` };
+  }
+
+  private buildHumanResourcesPath(path: string): string {
+    return `/human_resources${path.startsWith('/') ? path : `/${path}`}`;
+  }
+
+  public async testConnection(): Promise<APIResponse<any>> {
+    return this.get(
+      `${this.buildHumanResourcesPath('/workers')}${this.buildQueryString({ '$top': 1, '$select': 'worker_id' })}`
+    );
+  }
+
+  public async getWorker(params: { workerId: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params, ['workerId']);
+    const endpoint = this.buildHumanResourcesPath(`/workers/${encodeURIComponent(params.workerId)}`);
+    return this.get(endpoint);
+  }
+
+  public async searchWorkers(params: WorkdaySearchParams = {}): Promise<APIResponse<any>> {
+    const { searchTerm, location, department, jobTitle, manager, isActive, limit = 20, offset = 0 } = params;
+
+    const filter = buildODataFilter([
+      isActive === undefined ? undefined : `WorkerStatus/Active eq ${isActive ? 'true' : 'false'}`,
+      location ? `WorkerLocation/LocationName eq ${escapeODataString(location)}` : undefined,
+      department ? `Organizations/any(o: o/OrganizationName eq ${escapeODataString(department)})` : undefined,
+      jobTitle ? `JobProfile/JobTitle eq ${escapeODataString(jobTitle)}` : undefined,
+      manager ? `ManagementChain/any(m: m/ManagerWorker/ID eq ${escapeODataString(manager)})` : undefined,
+    ]);
+
+    const query = {
+      '$search': searchTerm ? `"${searchTerm}"` : undefined,
+      '$filter': filter,
+      '$top': limit,
+      '$skip': offset,
     };
+
+    return this.get(`${this.buildHumanResourcesPath('/workers')}${this.buildQueryString(query)}`);
   }
 
-  /**
-   * Test API connection
-   */
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.makeRequest('GET', '/');
-      return response.status === 200;
-      return true;
-    } catch (error) {
-      console.error(`❌ ${this.constructor.name} connection test failed:`, error);
-      return false;
+  public async createWorker(payload: WorkdayWorkerMutation): Promise<APIResponse<any>> {
+    this.validateRequiredParams(payload as Record<string, any>, ['personalData', 'hireDate']);
+    const position = payload.positionData ?? payload.jobData;
+    if (!position) {
+      throw new Error('Workday worker creation requires positionData or jobData details.');
     }
+
+    const body = {
+      Worker: {
+        PersonalData: payload.personalData ?? {},
+        PositionAssignments: position ? [position] : [],
+        HireDate: payload.hireDate,
+      },
+    };
+
+    return this.post(this.buildHumanResourcesPath('/workers'), body);
   }
 
+  public async updateWorker(payload: WorkdayWorkerMutation): Promise<APIResponse<any>> {
+    this.validateRequiredParams(payload as Record<string, any>, ['workerId']);
 
-  /**
-   * Create a new worker in Workday
-   */
-  async createWorker({ personalData: Record<string, any>, positionData: Record<string, any>, hireDate: string }: { personalData: Record<string, any>, positionData: Record<string, any>, hireDate: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_worker', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Worker failed: ${error}`);
+    const position = payload.positionData ?? payload.jobData;
+    if (!payload.personalData && !position) {
+      throw new Error('Provide personalData or positionData when updating a worker.');
     }
+
+    const body = {
+      Worker: {
+        PersonalData: payload.personalData,
+        PositionAssignments: position ? [position] : undefined,
+      },
+    };
+
+    return this.patch(this.buildHumanResourcesPath(`/workers/${encodeURIComponent(String(payload.workerId))}`), body);
   }
 
-  /**
-   * Update worker information
-   */
-  async updateWorker({ workerId: string, personalData?: Record<string, any>, positionData?: Record<string, any> }: { workerId: string, personalData?: Record<string, any>, positionData?: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_worker', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Worker failed: ${error}`);
-    }
+  public async terminateWorker(payload: WorkdayWorkerMutation): Promise<APIResponse<any>> {
+    this.validateRequiredParams(payload as Record<string, any>, ['workerId', 'terminationDate']);
+
+    const body = {
+      TerminationDetails: {
+        TerminationDate: payload.terminationDate,
+        Reason: payload.reason ?? 'Other',
+      },
+    };
+
+    return this.post(this.buildHumanResourcesPath(`/workers/${encodeURIComponent(String(payload.workerId))}/terminate`), body);
   }
 
-  /**
-   * Terminate a worker's employment
-   */
-  async terminateWorker({ workerId: string, terminationDate: string, reason: string }: { workerId: string, terminationDate: string, reason: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/terminate_worker', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Terminate Worker failed: ${error}`);
-    }
+  public async createPosition(params: { positionTitle: string; department: string; jobProfile: string }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['positionTitle', 'department', 'jobProfile']);
+
+    const body = {
+      Position: {
+        Title: params.positionTitle,
+        Department: params.department,
+        JobProfile: params.jobProfile,
+      },
+    };
+
+    return this.post(this.buildHumanResourcesPath('/positions'), body);
   }
 
-  /**
-   * Create a new position
-   */
-  async createPosition({ positionTitle: string, department: string, jobProfile: string }: { positionTitle: string, department: string, jobProfile: string }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/create_position', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Create Position failed: ${error}`);
-    }
+  public async updatePosition(params: { positionId: string; updates: Record<string, any> }): Promise<APIResponse<any>> {
+    this.validateRequiredParams(params as Record<string, any>, ['positionId', 'updates']);
+    const endpoint = this.buildHumanResourcesPath(`/positions/${encodeURIComponent(params.positionId)}`);
+    return this.patch(endpoint, { Position: params.updates });
   }
 
-  /**
-   * Update position details
-   */
-  async updatePosition({ positionId: string, updates: Record<string, any> }: { positionId: string, updates: Record<string, any> }): Promise<any> {
-    try {
-      const response = await this.makeRequest('POST', '/api/update_position', params);
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`Update Position failed: ${error}`);
-    }
+  public async pollWorkerHired(params: WorkdayTriggerParams = {}): Promise<APIResponse<any>> {
+    const query = {
+      '$top': params.pageSize ?? 50,
+      '$skiptoken': params.pageToken,
+      since: params.since,
+    };
+
+    return this.get(`${this.buildHumanResourcesPath('/reports/WorkerHires')}${this.buildQueryString(query)}`);
   }
 
+  public async pollWorkerTerminated(params: WorkdayTriggerParams = {}): Promise<APIResponse<any>> {
+    const query = {
+      '$top': params.pageSize ?? 50,
+      '$skiptoken': params.pageToken,
+      since: params.since,
+    };
 
-  /**
-   * Poll for Triggered when a new worker is hired
-   */
-  async pollWorkerHired(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/worker_hired', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Worker Hired failed:`, error);
-      return [];
-    }
+    return this.get(`${this.buildHumanResourcesPath('/reports/WorkerTerminations')}${this.buildQueryString(query)}`);
   }
 
-  /**
-   * Poll for Triggered when a worker is terminated
-   */
-  async pollWorkerTerminated(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/worker_terminated', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Worker Terminated failed:`, error);
-      return [];
-    }
-  }
+  public async pollTimeOffRequested(params: WorkdayTriggerParams = {}): Promise<APIResponse<any>> {
+    const query = {
+      '$top': params.pageSize ?? 50,
+      '$skiptoken': params.pageToken,
+      since: params.since,
+    };
 
-  /**
-   * Poll for Triggered when time off is requested
-   */
-  async pollTimeOffRequested(params: Record<string, any> = {}): Promise<any[]> {
-    try {
-      const response = await this.makeRequest('GET', '/api/time_off_requested', params);
-      const data = this.handleResponse(response);
-      return Array.isArray(data) ? data : [data];
-    } catch (error) {
-      console.error(`Polling Time Off Requested failed:`, error);
-      return [];
-    }
+    return this.get(`${this.buildHumanResourcesPath('/time_off_requests')}${this.buildQueryString(query)}`);
   }
 }

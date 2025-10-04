@@ -3,20 +3,22 @@
   "type": "action",
   "defaults": {
     "credentials": {
-      "accessToken": "dapi-simulated-databricks-token"
-    },
-    "additionalConfig": {
-      "workspaceUrl": "https://adb-1234567890.0.azuredatabricks.net"
+      "accessToken": "dapi-simulated-databricks-token",
+      "host": "adb-1234567890.0.azuredatabricks.net"
     }
   },
   "params": {
     "can_use_client": "NOTEBOOK"
   },
   "request": {
-    "method": "GET",
+    "method": "POST",
     "url": "https://adb-1234567890.0.azuredatabricks.net/api/2.0/clusters/list",
     "headers": {
-      "Authorization": "Bearer dapi-simulated-databricks-token"
+      "Authorization": "Bearer dapi-simulated-databricks-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "can_use_client": "NOTEBOOK"
     }
   },
   "response": {

@@ -75,12 +75,26 @@ const DEFAULT_SMOKE_PLANS: Record<string, { actions?: SmokeActionConfig[]; trigg
     ],
     notes: 'Default ADP smoke plan validates OAuth client credential flow and payroll event wiring using non-production defaults.',
   },
+  databricks: {
+    actions: [
+      { id: 'test_connection' },
+      { id: 'list_clusters', parameters: { can_use_client: 'NOTEBOOK' } },
+    ],
+    notes: 'Databricks smoke plan exercises PAT authentication and cluster listings via the REST API.',
+  },
   dynamics365: {
     actions: [
       { id: 'test_connection' },
       { id: 'list_accounts', parameters: { '$top': 1, '$select': 'accountid' } },
     ],
     notes: 'Default smoke plan exercises Dynamics 365 connection and Dataverse account listing.',
+  },
+  workday: {
+    actions: [
+      { id: 'test_connection' },
+      { id: 'search_workers', parameters: { searchTerm: 'Automation', limit: 1 } },
+    ],
+    notes: 'Workday smoke plan validates tenant-scoped OAuth tokens and worker search via the Human Resources REST API.',
   },
 };
 

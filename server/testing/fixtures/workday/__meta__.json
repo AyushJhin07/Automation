@@ -5,7 +5,9 @@
       "accessToken": "simulated-workday-access-token",
       "refreshToken": "simulated-workday-refresh-token",
       "clientId": "simulated-workday-client-id",
-      "clientSecret": "simulated-workday-client-secret"
+      "clientSecret": "simulated-workday-client-secret",
+      "tenant": "simulated",
+      "host": "https://wd5-impl-services1.workday.com"
     },
     "notes": "Workday smoke tests rely on offline fixtures in CI."
   }

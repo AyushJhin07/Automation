@@ -14,12 +14,26 @@
       "prefix": "Bearer"
     }
   },
-  "baseUrl": "https://{workspace}.cloud.databricks.com/api/2.0",
+  "baseUrl": "https://{host}/api/2.0",
+  "connection": {
+    "fields": [
+      {
+        "id": "host",
+        "label": "Workspace URL",
+        "type": "text",
+        "placeholder": "adb-1234567890.0.azuredatabricks.net",
+        "required": true,
+        "helpText": "Enter the Databricks workspace hostname without protocol."
+      }
+    ]
+  },
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Databricks",
+      "method": "POST",
+      "endpoint": "/clusters/list",
       "parameters": {
         "type": "object",
         "properties": {},
@@ -31,6 +45,8 @@
       "id": "list_clusters",
       "name": "List Clusters",
       "description": "List available clusters",
+      "method": "POST",
+      "endpoint": "/clusters/list",
       "parameters": {
         "type": "object",
         "properties": {
@@ -47,6 +63,8 @@
       "id": "get_cluster",
       "name": "Get Cluster",
       "description": "Get cluster information",
+      "method": "GET",
+      "endpoint": "/clusters/get",
       "parameters": {
         "type": "object",
         "properties": {
@@ -65,6 +83,8 @@
       "id": "start_cluster",
       "name": "Start Cluster",
       "description": "Start a cluster",
+      "method": "POST",
+      "endpoint": "/clusters/start",
       "parameters": {
         "type": "object",
         "properties": {
@@ -83,6 +103,8 @@
       "id": "stop_cluster",
       "name": "Stop Cluster",
       "description": "Stop a cluster",
+      "method": "POST",
+      "endpoint": "/clusters/delete",
       "parameters": {
         "type": "object",
         "properties": {
@@ -101,6 +123,8 @@
       "id": "submit_run",
       "name": "Submit Run",
       "description": "Submit a new job run",
+      "method": "POST",
+      "endpoint": "/jobs/runs/submit",
       "parameters": {
         "type": "object",
         "properties": {
@@ -198,6 +222,8 @@
       "id": "get_run",
       "name": "Get Run",
       "description": "Get run information",
+      "method": "GET",
+      "endpoint": "/jobs/runs/get",
       "parameters": {
         "type": "object",
         "properties": {
@@ -220,6 +246,8 @@
       "id": "cancel_run",
       "name": "Cancel Run",
       "description": "Cancel a run",
+      "method": "POST",
+      "endpoint": "/jobs/runs/cancel",
       "parameters": {
         "type": "object",
         "properties": {
@@ -238,6 +266,8 @@
       "id": "list_jobs",
       "name": "List Jobs",
       "description": "List jobs",
+      "method": "GET",
+      "endpoint": "/jobs/list",
       "parameters": {
         "type": "object",
         "properties": {
@@ -265,6 +295,8 @@
       "id": "create_job",
       "name": "Create Job",
       "description": "Create a new job",
+      "method": "POST",
+      "endpoint": "/jobs/create",
       "parameters": {
         "type": "object",
         "properties": {
