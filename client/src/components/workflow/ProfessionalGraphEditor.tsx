@@ -48,7 +48,7 @@ import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
 import { specToReactFlow } from '../../graph/transform';
 import type { WorkflowDiffSummary } from '../../../../common/workflow-types';
-import { 
+import {
   Plus,
   Play,
   Save,
@@ -92,12 +92,16 @@ import {
   MapPin,
   Calculator,
   CheckCircle2,
-  Link
+  Link,
+  type LucideIcon
 } from 'lucide-react';
+import * as LucideIconsLibrary from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
+import { useConnectorDefinitions } from '@/services/connectorDefinitions';
+import type { ConnectorDefinitionSummary } from '@/services/connectorDefinitions';
 import { useAuthStore } from '@/store/authStore';
 
 // Enhanced Node Template Interface
@@ -114,9 +118,24 @@ interface NodeTemplate {
 }
 
 // Icon mapping for different applications (deduplicated)
-const appIconsMap: Record<string, any> = {
+const fallbackConnectorIcons: Record<string, LucideIcon> = {
   // Built-in
   'built_in': AppWindow,
+  'core': AppWindow,
+  'mail': Mail,
+  'calendar': Calendar,
+  'message_square': MessageSquare,
+  'message-square': MessageSquare,
+  'sparkles': Sparkles,
+  'database': Database,
+  'sheet': Sheet,
+  'globe': Globe,
+  'code': Code,
+  'filter': Filter,
+  'shield': Shield,
+  'users': Users,
+  'dollar': DollarSign,
+  'zap': Zap,
   
   // Google Workspace
   'gmail': Mail,
@@ -273,8 +292,54 @@ const appIconsMap: Record<string, any> = {
   'navan': MapPin,
   'sap-ariba': Database,
   'zoom-enhanced': Video,
-  
+
   'default': Zap
+};
+
+const lucideIconLibrary: Record<string, LucideIcon> = LucideIconsLibrary as unknown as Record<string, LucideIcon>;
+
+const toPascalCase = (value: string): string =>
+  value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+
+const resolveConnectorIcon = (appId: string, iconKey?: string): LucideIcon => {
+  const candidates: string[] = [];
+
+  const addCandidate = (value: string | undefined) => {
+    if (!value) return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    candidates.push(trimmed);
+    const lower = trimmed.toLowerCase();
+    if (lower !== trimmed) {
+      candidates.push(lower);
+    }
+  };
+
+  addCandidate(iconKey);
+  addCandidate(appId);
+  if (appId.endsWith('-enhanced')) {
+    addCandidate(appId.replace(/-enhanced$/, ''));
+  }
+
+  for (const candidate of candidates) {
+    const lower = candidate.toLowerCase();
+    if (fallbackConnectorIcons[lower]) {
+      return fallbackConnectorIcons[lower];
+    }
+    if (fallbackConnectorIcons[candidate]) {
+      return fallbackConnectorIcons[candidate];
+    }
+    const pascal = toPascalCase(candidate);
+    if (pascal && typeof lucideIconLibrary[pascal] === 'function') {
+      return lucideIconLibrary[pascal];
+    }
+  }
+
+  return fallbackConnectorIcons.default;
 };
 
 type ExecutionStatus = 'idle' | 'running' | 'success' | 'error';
@@ -300,10 +365,6 @@ const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
   error: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.7)]'
 };
 
-
-const getAppIcon = (appName: string) => {
-  return appIconsMap[appName.toLowerCase()] || appIconsMap.default;
-};
 
 // Get app color based on category
 const getAppColor = (category: string) => {
@@ -801,8 +862,8 @@ function getGradientForApp(appId: string) {
  * 3D Gradient Glass Brand Icon Component
  * Real brand icons with 3D glass effect, gradient background, and hover zoom animation
  */
-const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<string, any> }> = ({ appId, appName, appIcons }) => {
-  const Icon = appIcons[appId] || appIcons.default;
+const BrandIcon: React.FC<{ appId: string; appName: string; icon?: LucideIcon }> = ({ appId, appName, icon }) => {
+  const Icon = icon ?? resolveConnectorIcon(appId);
 
   return (
     <div className="group relative">
@@ -833,11 +894,11 @@ const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<str
 // Sidebar Component (REPLACEMENT)
 interface NodeSidebarProps {
   onAddNode: (nodeType: string, nodeData: any) => void;
-  catalog: any | null;
+  connectors: ConnectorDefinitionSummary[];
   loading?: boolean;
 }
 
-const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSidebarProps) => {
+export const NodeSidebar = ({ onAddNode, connectors, loading }: NodeSidebarProps) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
@@ -858,7 +919,7 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
     appId: string;                         // "gmail"
     appName: string;                       // "Gmail"
     category: string;                      // "Email"
-    icon?: any;                            // lucide fallback
+    icon?: LucideIcon;                     // lucide fallback
     actions: NodeTpl[];
     triggers: NodeTpl[];
     release?: {
@@ -871,7 +932,7 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
 
   const [apps, setApps] = useState<Record<string, AppGroup>>({});
   const [categories, setCategories] = useState<string[]>([]);
-  const isLoading = Boolean(catalogLoading);
+  const isLoading = Boolean(loading);
 
   // Persist user preferences
   useEffect(() => {
@@ -891,7 +952,7 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
       appId: builtInId,
       appName: 'Built-in',
       category: 'Built-in',
-      icon: appIconsMap[builtInId],
+      icon: fallbackConnectorIcons[builtInId] ?? fallbackConnectorIcons.default,
       actions: [
         {
           id: 'action-http-request',
@@ -945,50 +1006,62 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
     };
     catSet.add('Built-in');
 
-    if (catalog?.connectors) {
-      for (const [appId, def] of Object.entries<any>(catalog.connectors)) {
-        if (!def?.hasImplementation) {
-          continue;
-        }
-        const appName = def.name || appId;
-        const category = def.category || 'Business Apps';
+    connectors
+      .filter((connector) => connector && connector.hasImplementation)
+      .forEach((connector) => {
+        const appId = connector.id;
+        const appName = connector.name || appId;
+        const category = connector.category || 'Business Apps';
         catSet.add(category);
 
-        const Icon = appIconsMap[appId] || appIconsMap.default;
+        const resolvedIcon = resolveConnectorIcon(appId, connector.icon);
 
-        const actions: NodeTpl[] = (def.actions || []).map((a: any) => ({
-          id: `action-${appId}-${a.id}`,
-          kind: 'action',
-          name: a.name,
-          description: a.description || '',
-          nodeType: `action.${appId}.${a.id}`,
-          params: a.parameters || {},
-        }));
+        const actions: NodeTpl[] = connector.actions.map((action) => {
+          const nodeType =
+            typeof action.type === 'string' && action.type.includes('.')
+              ? action.type
+              : `action.${appId}.${action.id}`;
+          const kind: NodeTpl['kind'] = action.kind === 'transform' ? 'transform' : 'action';
+          return {
+            id: `action-${appId}-${action.id}`,
+            kind,
+            name: action.name,
+            description: action.description || '',
+            nodeType,
+            params: action.parameters || {},
+          };
+        });
 
-        const triggers: NodeTpl[] = (def.triggers || []).map((t: any) => ({
-          id: `trigger-${appId}-${t.id}`,
-          kind: 'trigger',
-          name: t.name,
-          description: t.description || '',
-          nodeType: `trigger.${appId}.${t.id}`,
-          params: t.parameters || {},
-        }));
+        const triggers: NodeTpl[] = connector.triggers.map((trigger) => {
+          const nodeType =
+            typeof trigger.type === 'string' && trigger.type.includes('.')
+              ? trigger.type
+              : `trigger.${appId}.${trigger.id}`;
+          return {
+            id: `trigger-${appId}-${trigger.id}`,
+            kind: 'trigger',
+            name: trigger.name,
+            description: trigger.description || '',
+            nodeType,
+            params: trigger.parameters || {},
+          };
+        });
 
         nextApps[appId] = {
           appId,
           appName,
           category,
-          icon: Icon,
+          icon: resolvedIcon,
           actions,
           triggers,
-          release: def.release,
+          release: connector.release ?? undefined,
         };
-      }
-    }
+      });
 
+    const sortedCategories = Array.from(catSet).sort();
     setApps(nextApps);
-    setCategories(['all', ...Array.from(catSet).sort()]);
-  }, [catalog]);
+    setCategories(['all', ...sortedCategories]);
+  }, [connectors]);
 
   // -------- Filtering logic --------
   const search = searchTerm.trim().toLowerCase();
@@ -1111,7 +1184,7 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
               <AccordionItem key={app.appId} value={app.appId} className="border border-gray-200 rounded-xl bg-white shadow-sm">
                 <AccordionTrigger className="px-3 py-2 hover:no-underline">
                   <div className="flex items-center gap-3">
-                    <BrandIcon appId={app.appId} appName={app.appName} appIcons={appIconsMap} />
+                    <BrandIcon appId={app.appId} appName={app.appName} icon={app.icon} />
                     <div className="flex flex-col text-left">
                       <span className="text-gray-900 font-medium">{app.appName}</span>
                       <span className="text-xs text-gray-500">{app.category}</span>
@@ -1261,8 +1334,7 @@ const GraphEditorContent = () => {
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
   const logout = useAuthStore((state) => state.logout);
-  const [catalog, setCatalog] = useState<any | null>(null);
-  const [catalogLoading, setCatalogLoading] = useState(true);
+  const { connectors: connectorDefinitions, isLoading: connectorsLoading } = useConnectorDefinitions();
   const [supportedApps, setSupportedApps] = useState<Set<string>>(new Set(['core', 'built_in', 'time']));
   const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
   const [promotionState, setPromotionState] = useState<'idle' | 'checking' | 'publishing'>('idle');
@@ -1299,37 +1371,19 @@ const GraphEditorContent = () => {
     }
   }, [selectedNode]);
 
-  const loadCatalog = useCallback(async () => {
-    try {
-      setCatalogLoading(true);
-      const response = await fetch('/api/registry/catalog?implemented=true');
-      if (!response.ok) {
-        throw new Error(`Failed to load connector catalog (${response.status})`);
-      }
-      const json = await response.json();
-      if (!json?.success) {
-        throw new Error(json?.error || 'Failed to load connector catalog');
-      }
-
-      setCatalog(json.catalog || null);
-
-      const allowed = new Set<string>(['core', 'built_in', 'time']);
-      Object.entries<any>(json.catalog?.connectors || {}).forEach(([appId, def]) => {
-        if (def?.hasImplementation) {
-          allowed.add(appId);
-        }
-      });
-      setSupportedApps(allowed);
-    } catch (error) {
-      console.error('Failed to load connector catalog:', error);
-    } finally {
-      setCatalogLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void loadCatalog();
-  }, [loadCatalog]);
+    const allowed = new Set<string>(['core', 'built_in', 'time']);
+    connectorDefinitions.forEach((connector) => {
+      if (!connector || !connector.hasImplementation) {
+        return;
+      }
+      allowed.add(connector.id);
+      if (connector.id.endsWith('-enhanced')) {
+        allowed.add(connector.id.replace(/-enhanced$/, ''));
+      }
+    });
+    setSupportedApps(allowed);
+  }, [connectorDefinitions]);
 
   const nodeRequiresConnection = useCallback((node: any) => {
     if (!node) return false;
@@ -1400,10 +1454,10 @@ const GraphEditorContent = () => {
   }, [findUnsupportedNode, setRunBanner]);
 
   useEffect(() => {
-    if (!catalogLoading) {
+    if (!connectorsLoading) {
       ensureSupportedNodes();
     }
-  }, [catalogLoading, ensureSupportedNodes]);
+  }, [connectorsLoading, ensureSupportedNodes]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
@@ -2276,7 +2330,7 @@ const GraphEditorContent = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <NodeSidebar onAddNode={onAddNode} catalog={catalog} loading={catalogLoading} />
+      <NodeSidebar onAddNode={onAddNode} connectors={connectorDefinitions} loading={connectorsLoading} />
       
       {/* Main Graph Area */}
       <div className="flex-1 relative">
