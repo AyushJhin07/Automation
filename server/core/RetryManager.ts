@@ -266,6 +266,8 @@ export interface RetryableExecution {
   policy: RetryPolicy;
   status: 'pending' | 'retrying' | 'succeeded' | 'failed' | 'dlq';
   idempotencyKey?: string;
+  requestHash?: string;
+  lastResultHash?: string;
   lastError?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -360,6 +362,20 @@ class RetryManager {
       .digest('hex');
 
     return { normalized, hash };
+  }
+
+  registerRequestHash(executionId: string, nodeId: string, requestHash: string): void {
+    const key = `${executionId}:${nodeId}`;
+    const execution = this.executions.get(key);
+    if (!execution) {
+      return;
+    }
+    execution.requestHash = requestHash;
+  }
+
+  getRequestHash(executionId: string, nodeId: string): string | undefined {
+    const key = `${executionId}:${nodeId}`;
+    return this.executions.get(key)?.requestHash;
   }
 
   emitActionableError(event: ActionableErrorInput): void {
@@ -513,6 +529,8 @@ class RetryManager {
       retryExecution.updatedAt = new Date();
 
       const result = await executor();
+      const precomputed = this.computeResultHash(result);
+      retryExecution.lastResultHash = precomputed.hash;
 
       // Success - cache result if idempotency key provided
       retryExecution.status = 'succeeded';
@@ -524,7 +542,8 @@ class RetryManager {
           retryExecution.idempotencyKey,
           retryExecution.nodeId,
           retryExecution.executionId,
-          result
+          result,
+          precomputed
         );
       }
 
@@ -785,11 +804,17 @@ class RetryManager {
   /**
    * Cache idempotent result
    */
-  private async cacheIdempotentResult(key: string, nodeId: string, executionId: string, result: any): Promise<void> {
+  private async cacheIdempotentResult(
+    key: string,
+    nodeId: string,
+    executionId: string,
+    result: any,
+    precomputed?: { normalized: any; hash: string }
+  ): Promise<void> {
     const expiresAt = new Date(Date.now() + this.idempotencyTtlMs);
 
     try {
-      const { normalized, hash } = this.computeResultHash(result);
+      const { normalized, hash } = precomputed ?? this.computeResultHash(result);
       await this.getNodeExecutionResultStore().upsert({
         executionId,
         nodeId,
