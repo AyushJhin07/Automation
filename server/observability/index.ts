@@ -1,6 +1,8 @@
 import os from 'node:os';
+import { Buffer } from 'node:buffer';
 
 import { diag, DiagConsoleLogger, DiagLogLevel, metrics, trace } from '@opentelemetry/api';
+import { logs } from '@opentelemetry/api-logs';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
@@ -8,6 +10,10 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
+import { LoggerProvider, BatchLogRecordProcessor, ConsoleLogRecordExporter, type LogRecordExporter, type ReadableLogRecord } from '@opentelemetry/sdk-logs';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
+import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
+import { ExportResultCode, hrTimeToMilliseconds, type ExportResult } from '@opentelemetry/core';
 
 import pkg from '../../package.json' assert { type: 'json' };
 import { env } from '../env';
@@ -27,6 +33,73 @@ type RateBudgetSnapshot = {
   limit?: number;
   resetMs?: number;
 };
+
+interface OpenSearchLogExporterOptions {
+  endpoint: string;
+  index: string;
+  username?: string;
+  password?: string;
+  headers?: Record<string, string>;
+}
+
+class OpenSearchLogExporter implements LogRecordExporter {
+  constructor(private readonly options: OpenSearchLogExporterOptions) {}
+
+  async export(logsToExport: ReadableLogRecord[], resultCallback: (result: ExportResult) => void): Promise<void> {
+    try {
+      await Promise.all(logsToExport.map((record) => this.sendRecord(record)));
+      resultCallback({ code: ExportResultCode.SUCCESS });
+    } catch (error) {
+      diag.error('❌ Failed to export logs to OpenSearch', error);
+      resultCallback({ code: ExportResultCode.FAILED, error: error instanceof Error ? error : new Error(String(error)) });
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  private async sendRecord(record: ReadableLogRecord): Promise<void> {
+    const endpoint = this.options.endpoint.replace(/\/$/, '');
+    const url = `${endpoint}/${this.options.index}/_doc`;
+
+    const timestamp = record.hrTime ? new Date(hrTimeToMilliseconds(record.hrTime)) : new Date();
+    const bodyValue = typeof record.body === 'string' ? record.body : JSON.stringify(record.body);
+
+    const payload = {
+      '@timestamp': timestamp.toISOString(),
+      severityText: record.severityText,
+      severityNumber: record.severityNumber,
+      body: bodyValue,
+      attributes: record.attributes ?? {},
+      resource: record.resource?.attributes ?? {},
+      instrumentationScope: record.instrumentationScope,
+      traceId: record.traceId,
+      spanId: record.spanId,
+    } satisfies Record<string, unknown>;
+
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      ...(this.options.headers ?? {}),
+    };
+
+    if (this.options.username && this.options.password) {
+      const auth = Buffer.from(`${this.options.username}:${this.options.password}`).toString('base64');
+      headers['authorization'] = `Basic ${auth}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`OpenSearch responded with ${response.status}: ${text}`);
+    }
+  }
+}
 
 const OBSERVABILITY_ENABLED = env.OBSERVABILITY_ENABLED;
 
@@ -193,14 +266,32 @@ function createResource(): Resource {
   return new Resource(attributes);
 }
 
-function createTraceExporter(): OTLPTraceExporter | null {
-  const url = env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_ENDPOINT;
-  if (!url) {
+function createTraceExporter(): OTLPTraceExporter | JaegerExporter | null {
+  const exporterType = env.OBSERVABILITY_TRACE_EXPORTER?.toLowerCase?.() ?? 'otlp';
+
+  if (exporterType === 'none') {
+    return null;
+  }
+
+  if (exporterType === 'jaeger') {
+    if (!env.JAEGER_TRACE_ENDPOINT) {
+      console.warn('⚠️  OBSERVABILITY_TRACE_EXPORTER=jaeger but JAEGER_TRACE_ENDPOINT is not configured');
+      return null;
+    }
+    return new JaegerExporter({ endpoint: env.JAEGER_TRACE_ENDPOINT });
+  }
+
+  const endpoint =
+    exporterType === 'tempo'
+      ? env.TEMPO_TRACES_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_ENDPOINT
+      : env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_ENDPOINT;
+
+  if (!endpoint) {
     return null;
   }
 
   return new OTLPTraceExporter({
-    url,
+    url: endpoint,
     headers: env.OTEL_EXPORTER_OTLP_HEADERS,
   });
 }
@@ -226,18 +317,84 @@ function createMetricReader(): PeriodicExportingMetricReader | PrometheusExporte
   return new PeriodicExportingMetricReader({ exporter });
 }
 
+function createLogExporter(): LogRecordExporter | null {
+  const exporterType = env.OBSERVABILITY_LOG_EXPORTER?.toLowerCase?.() ?? 'otlp';
+
+  if (exporterType === 'none') {
+    return null;
+  }
+
+  if (exporterType === 'console') {
+    return new ConsoleLogRecordExporter();
+  }
+
+  if (exporterType === 'opensearch') {
+    if (!env.OPENSEARCH_LOGS_ENDPOINT) {
+      console.warn('⚠️  OBSERVABILITY_LOG_EXPORTER=opensearch but OPENSEARCH_LOGS_ENDPOINT is not configured');
+      return null;
+    }
+    return new OpenSearchLogExporter({
+      endpoint: env.OPENSEARCH_LOGS_ENDPOINT,
+      index: env.OPENSEARCH_LOGS_INDEX,
+      username: env.OPENSEARCH_USERNAME,
+      password: env.OPENSEARCH_PASSWORD,
+    });
+  }
+
+  const url = env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  if (!url) {
+    return null;
+  }
+
+  return new OTLPLogExporter({
+    url,
+    headers: env.OTEL_EXPORTER_OTLP_HEADERS,
+  });
+}
+
+function createLoggerProvider(resource: Resource): LoggerProvider | null {
+  const exporter = createLogExporter();
+  if (!exporter) {
+    return null;
+  }
+
+  const provider = new LoggerProvider({ resource });
+  provider.addLogRecordProcessor(new BatchLogRecordProcessor(exporter));
+  logs.setGlobalLoggerProvider(provider);
+  return provider;
+}
+
+function resolveDiagLevel(): DiagLogLevel {
+  const configured = env.OBSERVABILITY_LOG_LEVEL?.toLowerCase?.();
+  const mapping: Record<string, DiagLogLevel> = {
+    debug: DiagLogLevel.DEBUG,
+    verbose: DiagLogLevel.VERBOSE,
+    info: DiagLogLevel.INFO,
+    warn: DiagLogLevel.WARN,
+    error: DiagLogLevel.ERROR,
+  };
+
+  if (configured && mapping[configured] !== undefined) {
+    return mapping[configured];
+  }
+
+  return env.NODE_ENV === 'development' ? DiagLogLevel.INFO : DiagLogLevel.ERROR;
+}
+
 if (OBSERVABILITY_ENABLED) {
-  const logLevel = env.NODE_ENV === 'development' ? DiagLogLevel.INFO : DiagLogLevel.ERROR;
+  const logLevel = resolveDiagLevel();
   diag.setLogger(new DiagConsoleLogger(), logLevel);
 
   const resource = createResource();
   const traceExporter = createTraceExporter();
   const metricReader = createMetricReader();
+  const loggerProvider = createLoggerProvider(resource);
 
   const sdkConfig: {
     resource: Resource;
-    traceExporter?: OTLPTraceExporter;
+    traceExporter?: OTLPTraceExporter | JaegerExporter;
     metricReader?: PeriodicExportingMetricReader | PrometheusExporter;
+    loggerProvider?: LoggerProvider;
   } = {
     resource,
   };
@@ -247,6 +404,9 @@ if (OBSERVABILITY_ENABLED) {
   }
   if (metricReader) {
     sdkConfig.metricReader = metricReader;
+  }
+  if (loggerProvider) {
+    sdkConfig.loggerProvider = loggerProvider;
   }
 
   const sdk = new NodeSDK(sdkConfig);
@@ -263,6 +423,9 @@ if (OBSERVABILITY_ENABLED) {
   const shutdown = async (signal: NodeJS.Signals) => {
     try {
       await sdk.shutdown();
+      if (loggerProvider) {
+        await loggerProvider.shutdown();
+      }
       console.log(`📪 OpenTelemetry SDK shut down via ${signal}`);
     } catch (error) {
       console.error('❌ Error shutting down OpenTelemetry SDK', error);
@@ -278,4 +441,8 @@ if (OBSERVABILITY_ENABLED) {
 }
 
 export const observabilityEnabled = OBSERVABILITY_ENABLED;
+
+export function getLogger(name: string, version = '1.0.0') {
+  return logs.getLogger(name, version);
+}
 

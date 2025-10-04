@@ -3,7 +3,7 @@
  * Comprehensive timeline view with input/output inspection, retry tracking, and debugging tools
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -94,6 +94,7 @@ interface WorkflowExecution {
     totalTokensUsed: number;
     cacheHitRate: number;
     averageNodeDuration: number;
+    requestId?: string;
   };
 }
 
@@ -110,10 +111,23 @@ interface RunViewerProps {
   onClose?: () => void;
 }
 
-export const RunViewer: React.FC<RunViewerProps> = ({ 
-  executionId: initialExecutionId, 
+interface ExecutionAuditEvent {
+  id: number;
+  ts: string;
+  requestId: string;
+  userId?: string | null;
+  appId: string;
+  functionId: string;
+  durationMs: number;
+  success: boolean;
+  error?: string | null;
+  meta?: Record<string, any> | null;
+}
+
+export const RunViewer: React.FC<RunViewerProps> = ({
+  executionId: initialExecutionId,
   workflowId: initialWorkflowId,
-  onClose 
+  onClose
 }) => {
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
@@ -124,6 +138,8 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [showJsonView, setShowJsonView] = useState(false);
   const [duplicateEvents, setDuplicateEvents] = useState<DuplicateEventSummary[]>([]);
+  const [auditEvents, setAuditEvents] = useState<ExecutionAuditEvent[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   // Load executions
   useEffect(() => {
@@ -155,6 +171,35 @@ export const RunViewer: React.FC<RunViewerProps> = ({
 
     loadDuplicateEvents();
   }, [selectedExecution]);
+
+  const loadAuditEvents = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('limit', '100');
+      const requestId = selectedExecution?.metadata?.requestId || selectedExecution?.correlationId;
+      if (requestId) {
+        params.set('requestId', requestId);
+      }
+
+      const response = await fetch(`/api/admin/executions?${params.toString()}`);
+      const data = await response.json();
+      if (data.success && Array.isArray(data.entries)) {
+        setAuditEvents(data.entries as ExecutionAuditEvent[]);
+      } else {
+        setAuditEvents([]);
+      }
+    } catch (error) {
+      console.error('Failed to load audit events:', error);
+      setAuditEvents([]);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [selectedExecution?.metadata?.requestId, selectedExecution?.correlationId]);
+
+  useEffect(() => {
+    loadAuditEvents();
+  }, [loadAuditEvents]);
 
   const loadExecutions = async () => {
     setLoading(true);
@@ -346,7 +391,17 @@ export const RunViewer: React.FC<RunViewerProps> = ({
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
             </Button>
-            
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadAuditEvents}
+              className="text-gray-600"
+            >
+              <Database className="w-4 h-4 mr-1" />
+              Audit Log
+            </Button>
+
             {onClose && (
               <Button variant="outline" size="sm" onClick={onClose}>
                 Close
@@ -469,6 +524,60 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                     <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                       <div className="text-sm font-medium text-red-800">Error</div>
                       <div className="text-sm text-red-700 mt-1">{selectedExecution.error}</div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="w-5 h-5" />
+                    Integration Audit Trail
+                    {auditLoading && <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {auditEvents.length === 0 && !auditLoading ? (
+                    <div className="text-sm text-gray-500">
+                      {selectedExecution?.metadata?.requestId || selectedExecution?.correlationId
+                        ? 'No audit events were recorded for this request.'
+                        : 'No audit events available yet.'}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                      {auditEvents.map((event) => (
+                        <div
+                          key={`${event.id}-${event.ts}`}
+                          className="border border-slate-200 rounded-lg p-3 bg-white shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {event.appId} · {event.functionId}
+                              </div>
+                              <div className="text-xs text-gray-500 break-all">
+                                Request {event.requestId}
+                              </div>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={event.success ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}
+                            >
+                              {event.success ? 'Success' : 'Failed'}
+                            </Badge>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                            <span>{format(new Date(event.ts), 'PPpp')}</span>
+                            <span>{formatDuration(event.durationMs)}</span>
+                          </div>
+                          {event.error && (
+                            <div className="mt-2 text-xs text-red-600 break-words">
+                              {event.error}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
