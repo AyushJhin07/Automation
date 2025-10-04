@@ -156,6 +156,8 @@ Result: 0-touch onboarding, 40% faster activation
          └─────────────────────────────────────────────────┘
 ```
 
+- **[Workflow Runtime Interaction Guide](./architecture/workflow-runtime-interactions.md)** – Detailed look at how WorkflowRuntime, IntegrationManager, GenericExecutor, and RetryManager coordinate runtime execution and fallbacks.
+
 ### **🔧 Technology Stack**
 
 **Frontend:**
