@@ -78,6 +78,13 @@
       "when": 1759132950664,
       "tag": "0013_connector_release_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1759592636070,
+      "tag": "0016_connections_encryption_columns",
+      "breakpoints": true
     }
   ]
 }
