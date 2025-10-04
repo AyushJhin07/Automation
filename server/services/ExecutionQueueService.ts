@@ -35,7 +35,7 @@ import {
 } from './ConnectorConcurrencyService.js';
 import type { Job } from 'bullmq';
 
-type QueueRunRequest = {
+export type QueueRunRequest = {
   workflowId: string;
   userId?: string;
   triggerType?: string;
@@ -328,6 +328,18 @@ class ExecutionQueueService {
         region,
       },
     };
+
+    const dedupeToken = req.triggerData && typeof req.triggerData === 'object'
+      ? (req.triggerData as Record<string, any>).dedupeToken
+      : undefined;
+    if (typeof dedupeToken === 'string' && dedupeToken.trim()) {
+      baseMetadata.deterministicKeys = {
+        ...(baseMetadata.deterministicKeys ?? {}),
+        trigger: {
+          dedupeToken: dedupeToken.trim(),
+        },
+      };
+    }
 
     if (!capacityCheck.allowed) {
       const violation = capacityCheck.violation;
@@ -871,6 +883,14 @@ class ExecutionQueueService {
       region: jobRegion,
     };
 
+    if (resumeState?.idempotencyKeys || resumeState?.requestHashes) {
+      runningMetadata.deterministicKeys = {
+        ...(runningMetadata.deterministicKeys ?? {}),
+        ...(resumeState?.idempotencyKeys ? { idempotency: { ...resumeState.idempotencyKeys } } : {}),
+        ...(resumeState?.requestHashes ? { request: { ...resumeState.requestHashes } } : {}),
+      };
+    }
+
     const now = new Date();
     const lockExpiresAt = new Date(now.getTime() + this.lockDurationMs);
     const workerId = this.worker?.id ?? `execution-worker:${process.pid}`;
@@ -978,6 +998,13 @@ class ExecutionQueueService {
         resumeState,
       });
 
+      if (result.deterministicKeys) {
+        runningMetadata.deterministicKeys = {
+          ...(runningMetadata.deterministicKeys ?? {}),
+          ...result.deterministicKeys,
+        };
+      }
+
       if (timerId) {
         await this.markTimerCompleted(timerId);
       }
@@ -1051,6 +1078,12 @@ class ExecutionQueueService {
         retryCount: attemptNumber,
         lastError: errorMessage,
       } as Record<string, any>;
+      if (runningMetadata.deterministicKeys) {
+        failureMetadata.deterministicKeys = {
+          ...(failureMetadata.deterministicKeys ?? {}),
+          ...runningMetadata.deterministicKeys,
+        };
+      }
       if ('finishedAt' in failureMetadata) {
         delete failureMetadata.finishedAt;
       }

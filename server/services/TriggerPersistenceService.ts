@@ -1,15 +1,18 @@
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, lte, sql, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import {
   db,
   getDatabaseClient,
   getConfiguredDatabaseRegions,
   webhookLogs,
+  webhookInbox,
+  webhookOutbox,
   webhookDedupe,
   pollingTriggers,
   workflowTriggers,
   type OrganizationRegion,
 } from '../database/schema';
+import type { QueueRunRequest } from './ExecutionQueueService';
 import { ensureDatabaseReady, isDatabaseAvailable } from '../database/status.js';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from '../webhooks/types';
 import { getErrorMessage } from '../types/common';
@@ -26,6 +29,9 @@ interface DedupeTokenRecord {
   expiresAt?: Date;
 }
 const DEFAULT_MAX_BACKOFF_MULTIPLIER = 32;
+
+type WebhookInboxRow = typeof webhookInbox.$inferSelect;
+type WebhookOutboxRow = typeof webhookOutbox.$inferSelect;
 
 export const VERIFICATION_FAILURE_PREFIX = 'verification_failed:';
 
@@ -161,6 +167,8 @@ class InMemoryTriggerPersistenceStore {
   private pollingTriggers = new Map<string, any>();
   private webhookLogs = new Map<string, any>();
   private dedupeTokens = new Map<string, DedupeTokenRecord[]>();
+  private webhookInbox = new Map<string, any>();
+  private webhookOutbox = new Map<string, any>();
 
   private composeKey(webhookId: string, providerId?: string): string {
     return providerId ? `${webhookId}::${providerId}` : webhookId;
@@ -308,6 +316,28 @@ class InMemoryTriggerPersistenceStore {
       updatedAt: now,
       region: event.region ?? event.metadata?.region ?? null,
     });
+    const inboxEntry = {
+      id: event.id,
+      webhookId: event.webhookId,
+      workflowId: event.workflowId,
+      organizationId: event.organizationId ?? null,
+      userId: event.userId ?? null,
+      region: event.region ?? event.metadata?.region ?? 'us',
+      dedupeToken: event.dedupeToken ?? null,
+      payload: event.payload,
+      headers: event.headers,
+      status: event.processed ? 'processed' : 'received',
+      attempts: 0,
+      lastError: null,
+      availableAt: now,
+      lockedAt: null,
+      lockedBy: null,
+      processedAt: event.processed ? now : null,
+      createdAt: now,
+      updatedAt: now,
+      executionId: event.executionId ?? null,
+    };
+    this.webhookInbox.set(event.id, inboxEntry);
   }
 
   public async markWebhookEventProcessed(id: string, result: { success: boolean; error?: string; executionId?: string }) {
@@ -321,6 +351,16 @@ class InMemoryTriggerPersistenceStore {
     existing.executionId = result.executionId ?? existing.executionId ?? null;
     existing.updatedAt = new Date();
     this.webhookLogs.set(id, existing);
+
+    const inbox = this.webhookInbox.get(id);
+    if (inbox) {
+      inbox.status = result.success ? 'processed' : 'failed';
+      inbox.lastError = result.success ? null : result.error ?? null;
+      inbox.executionId = result.executionId ?? inbox.executionId ?? null;
+      inbox.processedAt = result.success ? new Date() : null;
+      inbox.updatedAt = new Date();
+      this.webhookInbox.set(id, inbox);
+    }
   }
 
   public async getDedupeTokens(): Promise<Record<string, string[]>> {
@@ -420,6 +460,148 @@ class InMemoryTriggerPersistenceStore {
       workflow.updatedAt = now;
       this.workflowTriggers.set(id, workflow);
     }
+  }
+
+  public async createWebhookOutboxRecord(params: {
+    event: any;
+    queueRequest: any;
+    logId?: string | null;
+    deterministicKeys?: Record<string, any> | null;
+  }): Promise<any> {
+    const now = new Date();
+    const id = randomUUID();
+    const inboxId = params.logId ?? params.event.id ?? id;
+    const record = {
+      id,
+      inboxId,
+      workflowId: params.event.workflowId,
+      organizationId: params.event.organizationId ?? null,
+      userId: params.event.userId ?? null,
+      triggerType: params.event.source ?? 'webhook',
+      payload: params.queueRequest,
+      deterministicKeys: params.deterministicKeys ?? null,
+      status: 'pending',
+      attempts: 0,
+      lastError: null,
+      executionId: null,
+      region: params.event.region ?? 'us',
+      availableAt: now,
+      lockedAt: null,
+      lockedBy: null,
+      metadata: {
+        webhookId: params.event.webhookId,
+        triggerId: params.event.triggerId,
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.webhookOutbox.set(id, record);
+
+    const inbox = this.webhookInbox.get(inboxId);
+    if (inbox) {
+      inbox.status = 'pending';
+      inbox.updatedAt = now;
+      this.webhookInbox.set(inboxId, inbox);
+    }
+
+    return record;
+  }
+
+  public async markWebhookOutboxDispatched(record: any, result: { executionId: string }): Promise<void> {
+    const now = new Date();
+    const existing = this.webhookOutbox.get(record.id);
+    if (existing) {
+      existing.status = 'dispatched';
+      existing.executionId = result.executionId;
+      existing.lastError = null;
+      existing.lockedAt = null;
+      existing.lockedBy = null;
+      existing.updatedAt = now;
+      existing.attempts = (existing.attempts ?? 0) + 1;
+      this.webhookOutbox.set(record.id, existing);
+    }
+
+    const inboxId = record.inboxId ?? record.id;
+    const inbox = this.webhookInbox.get(inboxId);
+    if (inbox) {
+      inbox.status = 'processed';
+      inbox.executionId = result.executionId;
+      inbox.lastError = null;
+      inbox.processedAt = now;
+      inbox.updatedAt = now;
+      this.webhookInbox.set(inboxId, inbox);
+    }
+
+    const log = this.webhookLogs.get(inboxId);
+    if (log) {
+      log.processed = true;
+      log.executionId = result.executionId;
+      log.error = null;
+      log.updatedAt = now;
+      this.webhookLogs.set(inboxId, log);
+    }
+  }
+
+  public async markWebhookOutboxFailed(
+    record: any,
+    error: string,
+    options: { retryAt?: Date } = {}
+  ): Promise<void> {
+    const now = new Date();
+    const retryAt = options.retryAt ?? new Date(now.getTime() + 60_000);
+    const existing = this.webhookOutbox.get(record.id);
+    if (existing) {
+      existing.status = 'failed';
+      existing.lastError = error;
+      existing.availableAt = retryAt;
+      existing.lockedAt = null;
+      existing.lockedBy = null;
+      existing.updatedAt = now;
+      existing.attempts = (existing.attempts ?? 0) + 1;
+      this.webhookOutbox.set(record.id, existing);
+    }
+
+    const inboxId = record.inboxId ?? record.id;
+    const inbox = this.webhookInbox.get(inboxId);
+    if (inbox) {
+      inbox.status = 'failed';
+      inbox.lastError = error;
+      inbox.updatedAt = now;
+      this.webhookInbox.set(inboxId, inbox);
+    }
+
+    const log = this.webhookLogs.get(inboxId);
+    if (log) {
+      log.processed = false;
+      log.error = error;
+      log.updatedAt = now;
+      this.webhookLogs.set(inboxId, log);
+    }
+  }
+
+  public async listPendingWebhookOutbox(params: {
+    limit: number;
+    statuses?: string[];
+    olderThan?: Date;
+  }): Promise<any[]> {
+    const statuses = params.statuses?.length ? params.statuses : ['pending', 'failed'];
+    const cutoff = params.olderThan ?? new Date();
+
+    return Array.from(this.webhookOutbox.values())
+      .filter((row) => {
+        const availableAt = row.availableAt ? new Date(row.availableAt) : new Date();
+        return statuses.includes(row.status) && availableAt.getTime() <= cutoff.getTime();
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.availableAt ?? a.createdAt).getTime();
+        const bTime = new Date(b.availableAt ?? b.createdAt).getTime();
+        return aTime - bTime;
+      })
+      .slice(0, Math.max(0, params.limit));
+  }
+
+  public async getWebhookOutboxById(id: string): Promise<any | null> {
+    return this.webhookOutbox.get(id) ?? null;
   }
 
   public async getWebhookLog(id: string) {
@@ -1066,6 +1248,268 @@ export class TriggerPersistenceService {
     }
   }
 
+  public async createWebhookOutboxRecord(params: {
+    event: TriggerEvent;
+    queueRequest: QueueRunRequest;
+    logId?: string | null;
+    deterministicKeys?: Record<string, any> | null;
+  }): Promise<WebhookOutboxRow | null> {
+    const database = this.requireDatabase('createWebhookOutboxRecord', params.event.region ?? null);
+
+    if (typeof (database as any).createWebhookOutboxRecord === 'function') {
+      return (database as any).createWebhookOutboxRecord(params);
+    }
+
+    const id = randomUUID();
+    const inboxId = params.logId ?? params.event.id ?? id;
+    const now = new Date();
+    const region = params.event.region ?? 'us';
+
+    try {
+      const inserted = await database.transaction(async (tx) => {
+        const inboxValues = {
+          id: inboxId,
+          webhookId: params.event.webhookId,
+          workflowId: params.event.workflowId,
+          organizationId: params.event.organizationId ?? null,
+          userId: params.event.userId ?? null,
+          region,
+          dedupeToken: params.event.dedupeToken ?? null,
+          payload: params.event.payload,
+          headers: params.event.headers,
+          status: 'pending',
+          attempts: 0,
+          lastError: null,
+          availableAt: now,
+          lockedAt: null,
+          lockedBy: null,
+          processedAt: params.event.processed ? now : null,
+          executionId: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await tx
+          .insert(webhookInbox)
+          .values(inboxValues)
+          .onConflictDoUpdate({
+            target: webhookInbox.id,
+            set: {
+              status: 'pending',
+              updatedAt: now,
+              dedupeToken: inboxValues.dedupeToken,
+              payload: inboxValues.payload,
+              headers: inboxValues.headers,
+              organizationId: inboxValues.organizationId,
+              userId: inboxValues.userId,
+              region: inboxValues.region,
+            },
+          });
+
+        const [outboxRow] = await tx
+          .insert(webhookOutbox)
+          .values({
+            id,
+            inboxId,
+            workflowId: params.event.workflowId,
+            organizationId: params.event.organizationId ?? null,
+            userId: params.event.userId ?? null,
+            triggerType: params.event.source ?? 'webhook',
+            payload: params.queueRequest,
+            deterministicKeys: params.deterministicKeys ?? null,
+            status: 'pending',
+            attempts: 0,
+            lastError: null,
+            executionId: null,
+            region,
+            availableAt: now,
+            lockedAt: null,
+            lockedBy: null,
+            metadata: {
+              webhookId: params.event.webhookId,
+              triggerId: params.event.triggerId,
+            },
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+
+        await tx
+          .update(webhookLogs)
+          .set({ updatedAt: now })
+          .where(eq(webhookLogs.id, inboxId));
+
+        return outboxRow;
+      });
+
+      return inserted ?? null;
+    } catch (error) {
+      this.logPersistenceError('createWebhookOutboxRecord', error, {
+        webhookId: params.event.webhookId,
+        workflowId: params.event.workflowId,
+      });
+      return null;
+    }
+  }
+
+  public async markWebhookOutboxDispatched(
+    record: WebhookOutboxRow,
+    result: { executionId: string }
+  ): Promise<void> {
+    const database = this.requireDatabase(
+      'markWebhookOutboxDispatched',
+      (record.region as OrganizationRegion | null) ?? null
+    );
+
+    if (typeof (database as any).markWebhookOutboxDispatched === 'function') {
+      await (database as any).markWebhookOutboxDispatched(record, result);
+      return;
+    }
+
+    const now = new Date();
+    const inboxId = record.inboxId ?? record.id;
+
+    await database.transaction(async (tx) => {
+      await tx
+        .update(webhookOutbox)
+        .set({
+          status: 'dispatched',
+          executionId: result.executionId,
+          attempts: sql`${webhookOutbox.attempts} + 1`,
+          lastError: null,
+          lockedAt: null,
+          lockedBy: null,
+          updatedAt: now,
+        })
+        .where(eq(webhookOutbox.id, record.id));
+
+      await tx
+        .update(webhookInbox)
+        .set({
+          status: 'processed',
+          executionId: result.executionId,
+          lastError: null,
+          processedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(webhookInbox.id, inboxId));
+
+      await tx
+        .update(webhookLogs)
+        .set({
+          processed: true,
+          executionId: result.executionId,
+          error: null,
+          updatedAt: now,
+        })
+        .where(eq(webhookLogs.id, inboxId));
+    });
+  }
+
+  public async markWebhookOutboxFailed(
+    record: WebhookOutboxRow,
+    error: string,
+    options: { retryAt?: Date } = {}
+  ): Promise<void> {
+    const database = this.requireDatabase(
+      'markWebhookOutboxFailed',
+      (record.region as OrganizationRegion | null) ?? null
+    );
+
+    if (typeof (database as any).markWebhookOutboxFailed === 'function') {
+      await (database as any).markWebhookOutboxFailed(record, error, options);
+      return;
+    }
+
+    const now = new Date();
+    const retryAt = options.retryAt ?? new Date(now.getTime() + 60_000);
+    const inboxId = record.inboxId ?? record.id;
+
+    await database.transaction(async (tx) => {
+      await tx
+        .update(webhookOutbox)
+        .set({
+          status: 'failed',
+          attempts: sql`${webhookOutbox.attempts} + 1`,
+          lastError: error,
+          availableAt: retryAt,
+          lockedAt: null,
+          lockedBy: null,
+          updatedAt: now,
+        })
+        .where(eq(webhookOutbox.id, record.id));
+
+      await tx
+        .update(webhookInbox)
+        .set({
+          status: 'failed',
+          lastError: error,
+          updatedAt: now,
+        })
+        .where(eq(webhookInbox.id, inboxId));
+
+      await tx
+        .update(webhookLogs)
+        .set({
+          processed: false,
+          error,
+          updatedAt: now,
+        })
+        .where(eq(webhookLogs.id, inboxId));
+    });
+  }
+
+  public async listPendingWebhookOutbox(params: {
+    limit: number;
+    statuses?: Array<'pending' | 'failed'>;
+    olderThan?: Date;
+    region?: OrganizationRegion;
+  }): Promise<WebhookOutboxRow[]> {
+    const database = this.requireDatabase('listPendingWebhookOutbox', params.region ?? null);
+
+    if (typeof (database as any).listPendingWebhookOutbox === 'function') {
+      return (database as any).listPendingWebhookOutbox(params);
+    }
+
+    const statuses = params.statuses?.length ? params.statuses : ['pending', 'failed'];
+    const cutoff = params.olderThan ?? new Date();
+
+    const conditions = [
+      inArray(webhookOutbox.status, statuses),
+      lte(webhookOutbox.availableAt, cutoff),
+    ];
+
+    if (params.region) {
+      conditions.push(eq(webhookOutbox.region, params.region));
+    }
+
+    return database
+      .select()
+      .from(webhookOutbox)
+      .where(and(...conditions))
+      .orderBy(asc(webhookOutbox.availableAt))
+      .limit(Math.max(1, params.limit));
+  }
+
+  public async getWebhookOutboxById(
+    id: string,
+    region?: OrganizationRegion
+  ): Promise<WebhookOutboxRow | null> {
+    const database = this.requireDatabase('getWebhookOutboxById', region ?? null);
+
+    if (typeof (database as any).getWebhookOutboxById === 'function') {
+      return (database as any).getWebhookOutboxById(id, region);
+    }
+
+    const rows = await database
+      .select()
+      .from(webhookOutbox)
+      .where(eq(webhookOutbox.id, id))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
   public async recordWebhookDedupeEntry(params: {
     webhookId: string;
     providerId?: string;
@@ -1516,3 +1960,4 @@ export class TriggerPersistenceService {
 }
 
 export const triggerPersistenceService = TriggerPersistenceService.getInstance();
+export type { WebhookOutboxRow as WebhookOutboxRecord };

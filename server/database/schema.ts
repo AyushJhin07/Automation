@@ -736,6 +736,7 @@ export const nodeExecutionResults = pgTable(
     idempotencyKey: text('idempotency_key').notNull(),
     resultHash: text('result_hash').notNull(),
     resultData: jsonb('result_data').$type<any>(),
+    requestHash: text('request_hash'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     expiresAt: timestamp('expires_at').notNull(),
   },
@@ -743,6 +744,10 @@ export const nodeExecutionResults = pgTable(
     executionLookupIdx: uniqueIndex('node_execution_results_execution_idx').on(
       table.executionId,
       table.nodeId,
+      table.idempotencyKey
+    ),
+    executionKeyIdx: index('node_execution_results_execution_key_idx').on(
+      table.executionId,
       table.idempotencyKey
     ),
     expiryIdx: index('node_execution_results_expiry_idx').on(table.expiresAt),
@@ -1302,6 +1307,67 @@ export const webhookLogs = pgTable(
   })
 );
 
+export const webhookInbox = pgTable(
+  'webhook_inbox',
+  {
+    id: text('id').primaryKey(),
+    webhookId: text('webhook_id').notNull(),
+    workflowId: text('workflow_id').notNull(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    region: text('region').notNull().default('us'),
+    dedupeToken: text('dedupe_token'),
+    payload: jsonb('payload').$type<any>(),
+    headers: jsonb('headers').$type<Record<string, string>>(),
+    status: text('status').notNull().default('received'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    availableAt: timestamp('available_at', { withTimezone: true }).defaultNow().notNull(),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    lockedBy: text('locked_by'),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowIdx: index('webhook_inbox_workflow_idx').on(table.workflowId),
+    statusIdx: index('webhook_inbox_status_idx').on(table.status, table.availableAt),
+    regionIdx: index('webhook_inbox_region_idx').on(table.region, table.status),
+    dedupeIdx: index('webhook_inbox_dedupe_idx').on(table.dedupeToken),
+  })
+);
+
+export const webhookOutbox = pgTable(
+  'webhook_outbox',
+  {
+    id: text('id').primaryKey(),
+    inboxId: text('inbox_id').references(() => webhookInbox.id, { onDelete: 'cascade' }),
+    workflowId: text('workflow_id').notNull(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    triggerType: text('trigger_type').notNull().default('webhook'),
+    payload: jsonb('payload').$type<Record<string, any>>(),
+    deterministicKeys: jsonb('deterministic_keys').$type<Record<string, any> | null>(),
+    status: text('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    executionId: text('execution_id'),
+    region: text('region').notNull().default('us'),
+    availableAt: timestamp('available_at', { withTimezone: true }).defaultNow().notNull(),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    lockedBy: text('locked_by'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowIdx: index('webhook_outbox_workflow_idx').on(table.workflowId),
+    statusIdx: index('webhook_outbox_status_idx').on(table.status, table.availableAt),
+    regionIdx: index('webhook_outbox_region_idx').on(table.region, table.status),
+    inboxIdx: index('webhook_outbox_inbox_idx').on(table.inboxId),
+  })
+);
+
 export const webhookDedupe = pgTable(
   'webhook_dedupe',
   {
@@ -1425,6 +1491,8 @@ const schemaRegistry = {
   organizationConnectorEntitlementAuditRelations,
   sessionsRelations,
   webhookLogs,
+  webhookInbox,
+  webhookOutbox,
   pollingTriggers,
   workflowTriggers,
 } as const;
