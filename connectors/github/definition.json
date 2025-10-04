@@ -713,10 +713,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "github",
-          "required": true,
-          "signatureHeader": "x-hub-signature-256"
-        }
+          "templateId": "github.sha256",
+          "required": true
+        },
+        "replayWindowSeconds": 600
       },
       "parameters": {
         "type": "object",
@@ -768,10 +768,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "github",
-          "required": true,
-          "signatureHeader": "x-hub-signature-256"
-        }
+          "templateId": "github.sha256",
+          "required": true
+        },
+        "replayWindowSeconds": 600
       },
       "parameters": {
         "type": "object",
@@ -820,10 +820,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "github",
-          "required": true,
-          "signatureHeader": "x-hub-signature-256"
-        }
+          "templateId": "github.sha256",
+          "required": true
+        },
+        "replayWindowSeconds": 600
       },
       "parameters": {
         "type": "object",
@@ -875,10 +875,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "github",
-          "required": true,
-          "signatureHeader": "x-hub-signature-256"
-        }
+          "templateId": "github.sha256",
+          "required": true
+        },
+        "replayWindowSeconds": 600
       },
       "parameters": {
         "type": "object",
@@ -917,10 +917,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "github",
-          "required": true,
-          "signatureHeader": "x-hub-signature-256"
-        }
+          "templateId": "github.sha256",
+          "required": true
+        },
+        "replayWindowSeconds": 600
       },
       "parameters": {
         "type": "object",
