@@ -1,5 +1,10 @@
-import { canonicalizeMetadataKey, type WorkflowMetadata } from '@shared/workflow/metadata';
+import {
+  canonicalizeMetadataKey,
+  mergeWorkflowMetadata,
+  type WorkflowMetadata,
+} from '@shared/workflow/metadata';
 import type { WorkflowNode } from '../../../common/workflow-types';
+import { runDefaultMetadataResolution } from './default-resolver';
 
 export type ConnectorDefinition = {
   id?: string;
@@ -33,6 +38,7 @@ export interface MetadataResolverContext {
 export interface MetadataResolverResult {
   metadata?: WorkflowMetadata;
   outputMetadata?: WorkflowMetadata;
+  connector?: ConnectorMetadataEnvelope;
 }
 
 export type MetadataResolverResponse =
@@ -41,6 +47,24 @@ export type MetadataResolverResponse =
   | null
   | undefined
   | void;
+
+export interface ConnectorLifecycleBadge {
+  id: string;
+  label: string;
+  tone: 'neutral' | 'success' | 'warning' | 'critical';
+}
+
+export interface ConnectorMetadataEnvelope {
+  inputs?: WorkflowMetadata;
+  outputs?: WorkflowMetadata;
+  samples?: WorkflowMetadata['samples'] | { data: any }[];
+  lifecycle?: {
+    status?: string;
+    badges: ConnectorLifecycleBadge[];
+    raw?: Record<string, any>;
+  };
+  [key: string]: any;
+}
 
 export type MetadataResolver = (context: MetadataResolverContext) => MetadataResolverResponse;
 
@@ -111,7 +135,7 @@ const findResolver = (
 
 const isResolverEnvelope = (value: any): value is MetadataResolverResult => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  return 'metadata' in value || 'outputMetadata' in value;
+  return 'metadata' in value || 'outputMetadata' in value || 'connector' in value;
 };
 
 const isWorkflowMetadata = (value: any): value is WorkflowMetadata => {
@@ -127,6 +151,9 @@ const normalizeResolverResult = (value: MetadataResolverResponse): MetadataResol
     }
     if (value.outputMetadata && typeof value.outputMetadata === 'object') {
       normalized.outputMetadata = value.outputMetadata;
+    }
+    if (value.connector && typeof value.connector === 'object') {
+      normalized.connector = value.connector;
     }
     return normalized;
   }
@@ -145,11 +172,43 @@ export const resolveConnectorMetadata = (
   app: string | undefined,
   context: MetadataResolverContext
 ): MetadataResolverResult => {
+  const baseline = runDefaultMetadataResolution(context);
   const resolver = findResolver(context.connector, app);
-  if (!resolver) return {};
+  if (!resolver) return baseline;
   try {
     const result = resolver(context);
-    return normalizeResolverResult(result);
+    const normalized = normalizeResolverResult(result);
+    const metadata = mergeWorkflowMetadata(
+      baseline.metadata,
+      normalized.metadata
+    );
+    const outputMetadata = mergeWorkflowMetadata(
+      baseline.outputMetadata,
+      normalized.outputMetadata
+    );
+    const connector: ConnectorMetadataEnvelope | undefined = (() => {
+      if (!baseline.connector && !normalized.connector) return undefined;
+      return {
+        ...(baseline.connector ?? {}),
+        ...(normalized.connector ?? {}),
+        inputs: mergeWorkflowMetadata(
+          baseline.connector?.inputs,
+          normalized.connector?.inputs
+        ),
+        outputs: mergeWorkflowMetadata(
+          baseline.connector?.outputs,
+          normalized.connector?.outputs
+        ),
+        samples:
+          normalized.connector?.samples ?? baseline.connector?.samples ?? undefined,
+      };
+    })();
+
+    return {
+      metadata,
+      outputMetadata,
+      connector,
+    };
   } catch (error) {
     const identifier =
       app ??
@@ -158,7 +217,7 @@ export const resolveConnectorMetadata = (
       (context.node?.app as string | undefined) ??
       'unknown-connector';
     console.warn('Failed to resolve connector metadata', identifier, error);
-    return {};
+    return baseline;
   }
 };
 

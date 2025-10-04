@@ -16,7 +16,10 @@ describe('NodeSidebar connector metadata integration', () => {
           ],
           triggers: [],
           release: { status: 'beta', semver: '0.9.0', isBeta: true },
-          lifecycle: { alpha: false, beta: true, stable: false },
+          lifecycle: {
+            status: 'beta',
+            badges: [{ id: 'beta', label: 'Beta', tone: 'warning' }],
+          },
         },
       },
     };
@@ -31,7 +34,10 @@ describe('NodeSidebar connector metadata integration', () => {
         actions: [],
         triggers: [],
         release: { status: 'beta', semver: '1.0.0', isBeta: true },
-        lifecycle: { alpha: false, beta: true, stable: false },
+        lifecycle: {
+          status: 'beta',
+          badges: [{ id: 'beta', label: 'Beta', tone: 'warning' }],
+        },
       },
     };
 

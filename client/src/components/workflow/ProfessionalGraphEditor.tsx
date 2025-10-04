@@ -121,172 +121,15 @@ interface NodeTemplate {
 
 // Icon mapping for different applications (deduplicated)
 const appIconsMap: Record<string, LucideIcon> = {
-  // Built-in defaults
-  'default': Zap,
-  'core': AppWindow,
-  'built_in': AppWindow,
+  default: Zap,
+  core: AppWindow,
+  built_in: AppWindow,
   'built-in': AppWindow,
-  'time': Clock,
+  time: Clock,
   'time-trigger': Clock,
-  'http': Globe,
+  http: Globe,
   'http-request': Globe,
-  'webhook': Link,
-  
-  // Google Workspace
-  'gmail': Mail,
-  'gmail-enhanced': Mail,
-  'google-admin': Shield,
-  'google-calendar': Calendar,
-  'google-chat': MessageSquare,
-  'google-contacts': Users,
-  'google-docs': FileText,
-  'google-drive': Folder,
-  'google-forms': FileText,
-  'google-meet': Video,
-  'google-sheets': Sheet,
-  'google-sheets-enhanced': Sheet,
-  'google-slides': FileText,
-  
-  // Microsoft
-  'excel-online': Sheet,
-  'microsoft-teams': Video,
-  'microsoft-todo': Settings,
-  'onedrive': Folder,
-  'outlook': Mail,
-  'sharepoint': Folder,
-  
-  // Communication
-  'slack': MessageSquare,
-  'slack-enhanced': MessageSquare,
-  'webex': Video,
-  'ringcentral': Phone,
-  'twilio': Phone,
-  'intercom': MessageSquare,
-  
-  // CRM & Sales
-  'salesforce': Database,
-  'salesforce-enhanced': Database,
-  'hubspot': Database,
-  'hubspot-enhanced': Database,
-  'pipedrive': Database,
-  'dynamics365': Database,
-  'zoho-crm': Database,
-  
-  // E-commerce & Payments
-  'shopify': Database,
-  'shopify-enhanced': ShoppingCart,
-  'bigcommerce': ShoppingCart,
-  'magento': ShoppingCart,
-  'woocommerce': ShoppingCart,
-  'paypal': CreditCard,
-  'square': CreditCard,
-  'stripe-enhanced': CreditCard,
-  'adyen': CreditCard,
-  'ramp': CreditCard,
-  'brex': CreditCard,
-  'razorpay': CreditCard,
-  
-  // Project Management & Productivity
-  'jira': Settings,
-  'jira-service-management': Settings,
-  'confluence': FileText,
-  'basecamp': Box,
-  'clickup': Settings,
-  'linear': Settings,
-  'monday-enhanced': Settings,
-  'notion': FileText,
-  'notion-enhanced': FileText,
-  'smartsheet': Sheet,
-  'trello-enhanced': Settings,
-  'workfront': Settings,
-  
-  // Development & DevOps
-  'github': Settings,
-  'github-enhanced': Settings,
-  'gitlab': Settings,
-  'jenkins': Settings,
-  'circleci': Settings,
-  'bitbucket': Settings,
-  
-  // Data & Analytics
-  'bigquery': Database,
-  'databricks': BarChart,
-  'snowflake': Database,
-  'tableau': BarChart,
-  'looker': BarChart,
-  'powerbi': BarChart,
-  'powerbi-enhanced': BarChart,
-  
-  // HR & Recruitment
-  'workday': Users,
-  'bamboohr': Users,
-  'greenhouse': Users,
-  'lever': Users,
-  'successfactors': Users,
-  'adp': DollarSign,
-  
-  // Finance & Accounting
-  'quickbooks': DollarSign,
-  'xero': Calculator,
-  'zoho-books': Calculator,
-  'netsuite': Database,
-  'sageintacct': Calculator,
-  'concur': DollarSign,
-  'expensify': DollarSign,
-  
-  // Marketing & Email
-  'marketo': BarChart,
-  'pardot': BarChart,
-  'iterable': Mail,
-  'braze': Mail,
-  'mailchimp': Mail,
-  'mailchimp-enhanced': Mail,
-  'klaviyo': Mail,
-  'sendgrid': Mail,
-  
-  // Monitoring & Security
-  'sentry': AlertTriangle,
-  'newrelic': Activity,
-  'datadog': Activity,
-  'okta': Shield,
-  'pagerduty': AlertTriangle,
-  'opsgenie': AlertTriangle,
-  'victorops': AlertTriangle,
-  
-  // File Storage & Docs
-  'dropbox': Folder,
-  'dropbox-enhanced': Folder,
-  'box': Folder,
-  'egnyte': Folder,
-  'coda': FileText,
-  'guru': BookOpen,
-  'slab': BookOpen,
-  
-  // E-signature
-  'docusign': FileText,
-  'adobesign': FileText,
-  'hellosign': FileText,
-  
-  // Scheduling
-  'calendly': Calendar,
-  'caldotcom': Calendar,
-  
-  // Surveys & Forms
-  'typeform': FileText,
-  'jotform': FileText,
-  'qualtrics': BarChart,
-  'surveymonkey': BarChart,
-  
-  // Enhanced & Miscellaneous
-  'airtable-enhanced': Database,
-  'asana-enhanced': Settings,
-  'servicenow': Settings,
-  'freshdesk': Users,
-  'zendesk': Users,
-  'coupa': DollarSign,
-  'navan': MapPin,
-  'sap-ariba': Database,
-  'zoom-enhanced': Video
+  webhook: Link,
 };
 
 type ExecutionStatus = 'idle' | 'running' | 'success' | 'error';
@@ -1040,9 +883,18 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
         }
         const definition = resolveDefinition(appId);
         const appName = definition?.name || def.name || appId;
-        const category = definition?.category || def.category || 'Business Apps';
-        if (category) {
-          catSet.add(category);
+        const primaryCategory =
+          (definition?.categories && definition.categories[0]) ||
+          definition?.category ||
+          def.category ||
+          'Business Apps';
+        if (primaryCategory) {
+          catSet.add(primaryCategory);
+        }
+        if (Array.isArray(definition?.categories)) {
+          definition.categories
+            .filter((cat): cat is string => typeof cat === 'string' && cat.trim().length > 0)
+            .forEach((cat) => catSet.add(cat));
         }
 
         const iconName = definition?.icon || def.icon || appId;
@@ -1068,7 +920,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
         nextApps[appId] = {
           appId,
           appName,
-          category,
+          category: primaryCategory,
           iconName,
           actions,
           triggers,
@@ -1217,6 +1069,9 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
                       {(() => {
                         const lifecycle = app.lifecycle;
                         const releaseStatus = app.release?.status;
+                        const lifecycleBadges = Array.isArray(lifecycle?.badges)
+                          ? lifecycle.badges
+                          : [];
 
                         const badgeContent = (() => {
                           if (releaseStatus === 'deprecated' || releaseStatus === 'sunset') {
@@ -1236,6 +1091,49 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
                                   {label === 'Sunset'
                                     ? 'This connector is being sunset and will be removed soon.'
                                     : 'This connector is deprecated and may be removed in the future.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          if (lifecycleBadges.length > 0) {
+                            const primary = lifecycleBadges[0];
+                            const tone = primary?.tone ?? 'neutral';
+                            const variant = tone === 'critical' ? 'destructive' : tone === 'warning' ? 'outline' : 'secondary';
+                            const tooltip = (() => {
+                              switch (primary?.id) {
+                                case 'alpha':
+                                  return 'Alpha connectors are experimental previews and may change without notice.';
+                                case 'beta':
+                                  return 'Beta connectors are near launch but may still receive minor updates or fixes.';
+                                case 'deprecated':
+                                  return 'This connector is deprecated and may be removed in the future.';
+                                case 'sunset':
+                                  return 'This connector is being sunset and will be removed soon.';
+                                default:
+                                  return undefined;
+                              }
+                            })();
+
+                            const badgeNode = (
+                              <Badge
+                                data-testid={`lifecycle-badge-${app.appId}`}
+                                className="text-[10px]"
+                                variant={variant}
+                              >
+                                {primary?.label ?? primary?.id ?? 'Status'}
+                              </Badge>
+                            );
+
+                            if (!tooltip) {
+                              return badgeNode;
+                            }
+
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>{badgeNode}</TooltipTrigger>
+                                <TooltipContent className="max-w-[220px] text-xs leading-relaxed">
+                                  {tooltip}
                                 </TooltipContent>
                               </Tooltip>
                             );
