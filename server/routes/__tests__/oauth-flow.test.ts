@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import express from 'express';
-import type { Server } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -169,7 +169,8 @@ try {
     },
   });
 
-  server = await registerRoutes(app);
+  await registerRoutes(app);
+  server = createServer(app);
 
   await new Promise<void>((resolve) => {
     server!.listen(0, () => resolve());

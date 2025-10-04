@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import express from 'express';
-import type { Server } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 const originalNodeEnv = process.env.NODE_ENV;
@@ -153,7 +153,8 @@ let server: Server | undefined;
 let exitCode = 0;
 
 try {
-  server = await registerRoutes(app);
+  await registerRoutes(app);
+  server = createServer(app);
   await new Promise<void>((resolve) => server!.listen(0, resolve));
   const address = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
