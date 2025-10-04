@@ -1,0 +1,31 @@
+{
+  "description": "Simulated Power BI dataset_refresh_completed trigger emitting the latest completed refresh.",
+  "type": "trigger",
+  "metadata": {
+    "kind": "trigger"
+  },
+  "defaults": {
+    "credentials": {
+      "tenantId": "00000000-0000-0000-0000-000000000000",
+      "clientId": "11111111-1111-1111-1111-111111111111",
+      "clientSecret": "simulated-powerbi-secret"
+    },
+    "notes": "Connector simulator fixture for Power BI dataset_refresh_completed"
+  },
+  "triggerParams": {
+    "datasetId": "dataset-123"
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "datasetId": "dataset-123",
+        "refreshId": "refresh-789",
+        "status": "Completed",
+        "refreshType": "Full",
+        "startTime": "2024-01-01T00:00:00Z",
+        "endTime": "2024-01-01T00:01:00Z"
+      }
+    ]
+  }
+}

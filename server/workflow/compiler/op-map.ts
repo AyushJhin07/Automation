@@ -23,6 +23,7 @@ import { GrafanaAPIClient } from '../../integrations/GrafanaAPIClient.js';
 import { PrometheusAPIClient } from '../../integrations/PrometheusAPIClient.js';
 import { NewrelicAPIClient } from '../../integrations/NewrelicAPIClient.js';
 import { SentryAPIClient } from '../../integrations/SentryAPIClient.js';
+import { PowerbiAPIClient } from '../../integrations/PowerbiAPIClient.js';
 import { BigCommerceAPIClient } from '../../integrations/BigCommerceAPIClient.js';
 import { MagentoAPIClient } from '../../integrations/MagentoAPIClient.js';
 import { WooCommerceAPIClient } from '../../integrations/WooCommerceAPIClient.js';
@@ -187,6 +188,31 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
     assertClientInstance(client, NewrelicAPIClient).getViolations(params),
   'action.newrelic:execute_nrql': (client, params = {}) =>
     assertClientInstance(client, NewrelicAPIClient).executeNrql(params),
+
+  'action.powerbi:test_connection': client =>
+    assertClientInstance(client, PowerbiAPIClient).testConnection(),
+  'action.powerbi:get_datasets': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).listDatasets(params),
+  'action.powerbi:list_datasets': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).listDatasets(params),
+  'action.powerbi:get_reports': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).listReports(params),
+  'action.powerbi:get_dashboards': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).listDashboards(params),
+  'action.powerbi:trigger_refresh': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).triggerDatasetRefresh(params),
+  'action.powerbi:refresh_dataset': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).triggerDatasetRefresh(params),
+  'action.powerbi:get_refreshes': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).listDatasetRefreshes(params),
+  'action.powerbi:list_refreshes': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).listDatasetRefreshes(params),
+  'action.powerbi:query_dataset': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).executeQuery(params),
+  'action.powerbi:add_rows': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).addRows(params),
+  'trigger.powerbi:dataset_refresh_completed': (client, params = {}) =>
+    assertClientInstance(client, PowerbiAPIClient).pollDatasetRefreshCompleted(params),
 
   'action.sentry:test_connection': client => assertClientInstance(client, SentryAPIClient).testConnection(),
   'action.sentry:get_organizations': (client, params = {}) =>
