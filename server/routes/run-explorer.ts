@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { and, eq, inArray, or, sql, desc, asc, type SQL } from 'drizzle-orm';
 
 import { db, executionLogs, nodeLogs, workflows } from '../database/schema.js';
+import { auditLogService } from '../services/AuditLogService.js';
 import { triggerPersistenceService } from '../services/TriggerPersistenceService.js';
 import { getErrorMessage } from '../types/common.js';
 
@@ -9,6 +10,8 @@ const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 25;
 
 const runsRouter = Router();
+
+type RunSearchMode = 'search' | 'export';
 
 function normalizeArrayParam(value: unknown): string[] | undefined {
   if (!value) return undefined;
@@ -31,13 +34,23 @@ function combineConditions(conditions: Array<SQL<unknown> | undefined>): SQL<unk
   return and(...filtered);
 }
 
-runsRouter.get('/search', async (req, res) => {
+async function handleRunSearch(req: Request, res: Response, mode: RunSearchMode) {
   if (!db) {
     return res.status(503).json({ success: false, error: 'Database not configured' });
   }
 
   try {
-    const organizationId = req.query.organizationId ? String(req.query.organizationId) : undefined;
+    const organizationId = (req as any)?.organizationId ? String((req as any).organizationId) : undefined;
+    const requestedOrganizationId = req.query.organizationId ? String(req.query.organizationId) : undefined;
+
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    if (requestedOrganizationId && requestedOrganizationId !== organizationId) {
+      return res.status(403).json({ success: false, error: 'ORGANIZATION_MISMATCH' });
+    }
+
     const workflowIds = normalizeArrayParam(req.query.workflowId ?? req.query.workflowIds);
     const statusFilters = normalizeArrayParam(req.query.status ?? req.query.statuses);
     const connectorFilters = normalizeArrayParam(req.query.connectorId ?? req.query.connectorIds)?.map((value) =>
@@ -46,14 +59,13 @@ runsRouter.get('/search', async (req, res) => {
 
     const page = req.query.page ? Math.max(1, parseInt(String(req.query.page), 10) || 1) : 1;
     const pageSizeRaw = req.query.pageSize ?? req.query.limit;
-    const pageSize = pageSizeRaw ? Math.max(1, Math.min(MAX_PAGE_SIZE, parseInt(String(pageSizeRaw), 10) || DEFAULT_PAGE_SIZE)) : DEFAULT_PAGE_SIZE;
-    const offset = (page - 1) * pageSize;
+    const defaultPageSize = mode === 'export' ? MAX_PAGE_SIZE : DEFAULT_PAGE_SIZE;
+    const pageSize = pageSizeRaw
+      ? Math.max(1, Math.min(MAX_PAGE_SIZE, parseInt(String(pageSizeRaw), 10) || defaultPageSize))
+      : defaultPageSize;
+    const offset = (mode === 'export' ? 0 : (page - 1) * pageSize);
 
-    const baseConditions: SQL<unknown>[] = [];
-
-    if (organizationId) {
-      baseConditions.push(eq(workflows.organizationId, organizationId));
-    }
+    const baseConditions: SQL<unknown>[] = [eq(workflows.organizationId, organizationId)];
 
     if (workflowIds && workflowIds.length > 0) {
       baseConditions.push(inArray(executionLogs.workflowId, workflowIds));
@@ -187,51 +199,65 @@ runsRouter.get('/search', async (req, res) => {
       };
     });
 
-    const statusFacetRows = await db
-      .select({
-        status: executionLogs.status,
-        count: sql<number>`count(*)`,
-      })
-      .from(executionLogs)
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
-      .where(facetWhereClause ?? undefined)
-      .groupBy(executionLogs.status)
-      .orderBy(asc(executionLogs.status));
+    const shouldIncludeFacets = mode === 'search';
+    const statusFacetRows = shouldIncludeFacets
+      ? await db
+          .select({
+            status: executionLogs.status,
+            count: sql<number>`count(*)`,
+          })
+          .from(executionLogs)
+          .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+          .where(facetWhereClause ?? undefined)
+          .groupBy(executionLogs.status)
+          .orderBy(asc(executionLogs.status))
+      : [];
 
-    const connectorFacetRows = await db
-      .select({
-        connector: sql<string>`LOWER(NULLIF(COALESCE(${nodeLogs.metadata} ->> 'connectorId', split_part(${nodeLogs.nodeType}, '.', 2)), ''))`,
-        count: sql<number>`COUNT(DISTINCT ${nodeLogs.executionId})`,
-      })
-      .from(nodeLogs)
-      .innerJoin(executionLogs, eq(nodeLogs.executionId, executionLogs.executionId))
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
-      .where(
-        combineConditions([
-          facetWhereClause ?? undefined,
-          sql`COALESCE(${nodeLogs.metadata} ->> 'connectorId', split_part(${nodeLogs.nodeType}, '.', 2)) IS NOT NULL`,
-        ]) ?? undefined
-      )
-      .groupBy(sql`LOWER(NULLIF(COALESCE(${nodeLogs.metadata} ->> 'connectorId', split_part(${nodeLogs.nodeType}, '.', 2)), ''))`)
-      .orderBy(desc(sql`COUNT(DISTINCT ${nodeLogs.executionId})`))
-      .limit(25);
+    const connectorFacetRows = shouldIncludeFacets
+      ? await db
+          .select({
+            connector: sql<string>`LOWER(NULLIF(COALESCE(${nodeLogs.metadata} ->> 'connectorId', split_part(${nodeLogs.nodeType}, '.', 2)), ''))`,
+            count: sql<number>`COUNT(DISTINCT ${nodeLogs.executionId})`,
+          })
+          .from(nodeLogs)
+          .innerJoin(executionLogs, eq(nodeLogs.executionId, executionLogs.executionId))
+          .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+          .where(
+            combineConditions([
+              facetWhereClause ?? undefined,
+              sql`COALESCE(${nodeLogs.metadata} ->> 'connectorId', split_part(${nodeLogs.nodeType}, '.', 2)) IS NOT NULL`,
+            ]) ?? undefined
+          )
+          .groupBy(sql`LOWER(NULLIF(COALESCE(${nodeLogs.metadata} ->> 'connectorId', split_part(${nodeLogs.nodeType}, '.', 2)), ''))`)
+          .orderBy(desc(sql`COUNT(DISTINCT ${nodeLogs.executionId})`))
+          .limit(25)
+      : [];
 
-    const facets = {
-      status: statusFacetRows
-        .map((row) => ({
-          value: row.status,
-          count: Number(row.count ?? 0),
-        }))
-        .filter((entry) => entry.value),
-      connector: connectorFacetRows
-        .map((row) => ({
-          value: row.connector ?? '',
-          count: Number(row.count ?? 0),
-        }))
-        .filter((entry) => entry.value),
-    };
+    if (mode === 'export') {
+      auditLogService.record({
+        action: 'run.export',
+        route: `${req.baseUrl}${req.path}`,
+        userId: (req as any)?.user?.id ?? null,
+        organizationId,
+        metadata: {
+          total,
+          filters: {
+            workflowIds,
+            statusFilters,
+            connectorFilters,
+          },
+        },
+      });
 
-    res.json({
+      return res.json({
+        success: true,
+        runs: items,
+        generatedAt: new Date().toISOString(),
+        total,
+      });
+    }
+
+    return res.json({
       success: true,
       runs: items,
       pagination: {
@@ -240,12 +266,33 @@ runsRouter.get('/search', async (req, res) => {
         pageSize,
         hasMore: offset + pageSize < total,
       },
-      facets,
+      facets: {
+        status: statusFacetRows
+          .map((row) => ({
+            value: row.status,
+            count: Number(row.count ?? 0),
+          }))
+          .filter((entry) => entry.value),
+        connector: connectorFacetRows
+          .map((row) => ({
+            value: row.connector ?? '',
+            count: Number(row.count ?? 0),
+          }))
+          .filter((entry) => entry.value),
+      },
     });
   } catch (error) {
     console.error('Failed to search runs', error);
     res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
+}
+
+runsRouter.get('/search', (req, res) => {
+  return handleRunSearch(req, res, 'search');
+});
+
+runsRouter.get('/export', (req, res) => {
+  return handleRunSearch(req, res, 'export');
 });
 
 export default runsRouter;

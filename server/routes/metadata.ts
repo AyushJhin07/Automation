@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { authenticateToken, requirePermission } from '../middleware/auth';
+import { authenticateToken, requirePermission, requireOrganizationContext } from '../middleware/auth';
 import { connectionService } from '../services/ConnectionService';
 import { connectorMetadataService } from '../services/metadata/ConnectorMetadataService';
+import { auditLogService } from '../services/AuditLogService';
 import { getErrorMessage } from '../types/common';
 import { ConnectorRegistry } from '../ConnectorRegistry';
 
@@ -82,7 +83,12 @@ const serializeConnector = (entry: any) => {
 
 const router = Router();
 
-router.post('/resolve', authenticateToken, requirePermission('integration:metadata:read'), async (req, res) => {
+router.post(
+  '/resolve',
+  authenticateToken,
+  requireOrganizationContext(),
+  requirePermission('integration:metadata:read'),
+  async (req, res) => {
   const userId = (req as any)?.user?.id;
   const organizationId = (req as any)?.organizationId;
   if (!userId) {
@@ -108,6 +114,13 @@ router.post('/resolve', authenticateToken, requirePermission('integration:metada
         return res.status(404).json({ success: false, error: 'CONNECTION_NOT_FOUND' });
       }
       credentials = { ...connection.credentials, ...credentials };
+      auditLogService.record({
+        action: 'connection.credentials.access',
+        route: `${req.baseUrl}${req.path}`,
+        userId,
+        organizationId,
+        metadata: { connectionId: String(connectionId) },
+      });
     }
 
     const result = await connectorMetadataService.resolve(connector, {

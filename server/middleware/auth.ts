@@ -240,6 +240,50 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+export const requireOrganizationContext = () => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const activeOrganizationId = req.user.organizationId || req.user.activeOrganization?.id;
+    const requestOrganizationId = req.organizationId || activeOrganizationId;
+
+    if (!requestOrganizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization context required'
+      });
+    }
+
+    if (req.user.organizations && req.user.organizations.length > 0) {
+      const matchedOrg = req.user.organizations.find((org) => org.id === requestOrganizationId);
+      if (!matchedOrg) {
+        return res.status(403).json({
+          success: false,
+          error: 'Organization access denied'
+        });
+      }
+
+      req.organizationRole = matchedOrg.role;
+      req.organizationPlan = matchedOrg.plan as OrganizationPlan;
+      req.organizationStatus = matchedOrg.status as OrganizationStatus;
+      req.organizationLimits = matchedOrg.limits;
+      req.organizationUsage = matchedOrg.usage;
+    }
+
+    req.organizationId = requestOrganizationId;
+    if (!req.permissions || req.permissions.length === 0) {
+      req.permissions = req.user.permissions ?? getPermissionsForRole(req.organizationRole || req.user.organizationRole);
+    }
+
+    next();
+  };
+};
+
 /**
  * Role-based authorization middleware
  */

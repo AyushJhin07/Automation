@@ -7,6 +7,11 @@ const router = Router();
 
 router.get('/', async (req, res) => {
   try {
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
     const statusParam = req.query.status;
     const status = Array.isArray(statusParam)
       ? statusParam.map((value) => String(value))
@@ -38,6 +43,7 @@ router.get('/', async (req, res) => {
       offset,
       sortBy: req.query.sortBy ? (String(req.query.sortBy) as 'startTime' | 'duration' | 'status') : undefined,
       sortOrder: req.query.sortOrder ? (String(req.query.sortOrder) as 'asc' | 'desc') : undefined,
+      organizationId,
     });
 
     res.json({
@@ -58,8 +64,13 @@ router.get('/', async (req, res) => {
 
 router.get('/stats/:timeframe', async (req, res) => {
   try {
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
     const timeframe = req.params.timeframe as 'hour' | 'day' | 'week';
-    const stats = await runExecutionManager.getExecutionStats(timeframe);
+    const stats = await runExecutionManager.getExecutionStats(timeframe, organizationId);
     res.json({ success: true, stats });
   } catch (error) {
     console.error('Failed to get execution stats', error);
@@ -69,7 +80,12 @@ router.get('/stats/:timeframe', async (req, res) => {
 
 router.get('/correlation/:correlationId', async (req, res) => {
   try {
-    const executions = await runExecutionManager.getExecutionsByCorrelation(req.params.correlationId);
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    const executions = await runExecutionManager.getExecutionsByCorrelation(req.params.correlationId, organizationId);
     res.json({ success: true, executions });
   } catch (error) {
     console.error('Failed to fetch executions by correlation', error);
@@ -79,6 +95,16 @@ router.get('/correlation/:correlationId', async (req, res) => {
 
 router.get('/:executionId/nodes', async (req, res) => {
   try {
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    const execution = await runExecutionManager.getExecution(req.params.executionId, organizationId);
+    if (!execution) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
+    }
+
     const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
     const offset = req.query.offset ? parseInt(String(req.query.offset), 10) : undefined;
     const result = await runExecutionManager.getNodeExecutions(req.params.executionId, { limit, offset });
@@ -91,7 +117,12 @@ router.get('/:executionId/nodes', async (req, res) => {
 
 router.get('/:executionId', async (req, res) => {
   try {
-    const execution = await runExecutionManager.getExecution(req.params.executionId);
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    const execution = await runExecutionManager.getExecution(req.params.executionId, organizationId);
     if (!execution) {
       return res.status(404).json({ success: false, error: 'Execution not found' });
     }
@@ -104,6 +135,15 @@ router.get('/:executionId', async (req, res) => {
 
 router.post('/:executionId/retry', async (req, res) => {
   try {
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    const execution = await runExecutionManager.getExecution(req.params.executionId, organizationId);
+    if (!execution) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
+    }
     // TODO: wire to workflow runtime when retry orchestration is implemented
     res.json({ success: true, message: 'Retry scheduled' });
   } catch (error) {
@@ -114,6 +154,16 @@ router.post('/:executionId/retry', async (req, res) => {
 
 router.post('/:executionId/nodes/:nodeId/retry', async (req, res) => {
   try {
+    const organizationId = (req as any)?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    const execution = await runExecutionManager.getExecution(req.params.executionId, organizationId);
+    if (!execution) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
+    }
+
     await retryManager.replayFromDLQ(req.params.executionId, req.params.nodeId);
     res.json({ success: true, message: 'Node retry scheduled' });
   } catch (error) {

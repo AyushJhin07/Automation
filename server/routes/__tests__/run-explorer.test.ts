@@ -4,13 +4,66 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 const originalNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = 'development';
+
+const originalEnv = {
+  DATABASE_URL: process.env.DATABASE_URL,
+  ENCRYPTION_MASTER_KEY: process.env.ENCRYPTION_MASTER_KEY,
+};
+
+process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/testdb';
+process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? '0123456789abcdef0123456789abcdef';
+
+const authModule = await import('../../services/AuthService.js');
+const billingPlanModule = await import('../../services/BillingPlanService.js');
+const { getPermissionsForRole } = await import('../../../configs/rbac.ts');
+
 process.env.NODE_ENV = 'test';
 
 const { setDatabaseClientForTests } = await import('../../database/schema.js');
 const triggerPersistenceModule = await import('../../services/TriggerPersistenceService.js');
 
+const originalVerifyToken = authModule.authService.verifyToken.bind(authModule.authService);
+(authModule.authService as any).verifyToken = async () => {
+  const limits = { maxWorkflows: 100, maxExecutions: 1000, maxUsers: 10, maxStorage: 1024 };
+  const usage = { apiCalls: 0, workflowExecutions: 0, storageUsed: 0, usersActive: 1 };
+  return {
+    id: 'test-user',
+    email: 'test@example.com',
+    name: 'Test User',
+    role: 'user',
+    planType: 'pro',
+    isActive: true,
+    emailVerified: true,
+    monthlyApiCalls: 0,
+    monthlyTokensUsed: 0,
+    quotaApiCalls: 1000,
+    quotaTokens: 100000,
+    createdAt: new Date(),
+    organizationId: 'dev-org',
+    organizationRole: 'owner',
+    organizationPlan: 'enterprise',
+    organizationStatus: 'active',
+    organizationLimits: limits,
+    organizationUsage: usage,
+    activeOrganization: {
+      id: 'dev-org',
+      name: 'Dev Org',
+      domain: null,
+      plan: 'enterprise',
+      status: 'active',
+      role: 'owner',
+      isDefault: true,
+      limits,
+      usage,
+    },
+    organizations: [],
+    permissions: getPermissionsForRole('owner'),
+  };
+};
+
 class SelectBuilder {
-  constructor(private readonly result: any, private readonly resolveOn: 'offset' | 'limit' | 'where' | 'orderBy') {}
+  constructor(private readonly result: any) {}
 
   from() {
     return this;
@@ -25,16 +78,10 @@ class SelectBuilder {
   }
 
   where() {
-    if (this.resolveOn === 'where') {
-      return Promise.resolve(this.result);
-    }
     return this;
   }
 
   orderBy() {
-    if (this.resolveOn === 'orderBy') {
-      return Promise.resolve(this.result);
-    }
     return this;
   }
 
@@ -43,21 +90,32 @@ class SelectBuilder {
   }
 
   limit() {
-    if (this.resolveOn === 'limit') {
-      return Promise.resolve(this.result);
-    }
     return this;
   }
 
   offset() {
-    if (this.resolveOn === 'offset') {
-      return Promise.resolve(this.result);
-    }
     return this;
+  }
+
+  then<TResult1 = any, TResult2 = never>(
+    onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return Promise.resolve(this.result).then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null
+  ): Promise<any | TResult> {
+    return Promise.resolve(this.result).catch(onrejected);
+  }
+
+  finally(onfinally?: (() => void) | null): Promise<any> {
+    return Promise.resolve(this.result).finally(onfinally);
   }
 }
 
-const selectQueue = [
+const selectQueueTemplate = [
   {
     result: [
       {
@@ -79,16 +137,14 @@ const selectQueue = [
         },
         workflow: {
           id: 'wf-1',
-          organizationId: 'org-1',
+          organizationId: 'dev-org',
           name: 'Critical Workflow',
         },
       },
     ],
-    resolveOn: 'offset',
   },
   {
     result: [{ value: 1 }],
-    resolveOn: 'limit',
   },
   {
     result: [
@@ -100,7 +156,6 @@ const selectQueue = [
         startTime: new Date('2024-01-01T00:00:30Z'),
       },
     ],
-    resolveOn: 'where',
   },
   {
     result: [
@@ -109,7 +164,6 @@ const selectQueue = [
         count: 1,
       },
     ],
-    resolveOn: 'orderBy',
   },
   {
     result: [
@@ -118,23 +172,28 @@ const selectQueue = [
         count: 1,
       },
     ],
-    resolveOn: 'limit',
   },
 ];
+
+let selectQueue = selectQueueTemplate.map((entry) => ({ ...entry }));
+
+function resetSelectQueue() {
+  selectQueue = selectQueueTemplate.map((entry) => ({ ...entry }));
+}
 
 const dbStub = {
   select: () => {
     const next = selectQueue.shift();
-    if (!next) {
-      throw new Error('Unexpected select invocation in test');
-    }
-    return new SelectBuilder(next.result, next.resolveOn);
+    const result = next ? next.result : [];
+    return new SelectBuilder(result);
   },
 };
 
 setDatabaseClientForTests(dbStub as any);
 
 const originalListDuplicates = triggerPersistenceModule.triggerPersistenceService.listDuplicateWebhookEvents;
+const originalListPlans = billingPlanModule.billingPlanService.listPlans.bind(billingPlanModule.billingPlanService);
+(billingPlanModule.billingPlanService as any).listPlans = async () => [];
 (triggerPersistenceModule.triggerPersistenceService as any).listDuplicateWebhookEvents = async () => [
   {
     id: 'dup-1',
@@ -159,8 +218,15 @@ try {
   const address = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
+  resetSelectQueue();
+
   const response = await fetch(
-    `${baseUrl}/api/runs/search?organizationId=org-1&connectorId=slack&status=failed&page=1&pageSize=10`
+    `${baseUrl}/api/runs/search?organizationId=dev-org&connectorId=slack&status=failed&page=1&pageSize=10`,
+    {
+      headers: {
+        Authorization: 'Bearer test-token',
+      },
+    }
   );
 
   assert.equal(response.status, 200, 'search endpoint should return 200');
@@ -202,12 +268,26 @@ try {
   }
 
   (triggerPersistenceModule.triggerPersistenceService as any).listDuplicateWebhookEvents = originalListDuplicates;
+  (billingPlanModule.billingPlanService as any).listPlans = originalListPlans;
   setDatabaseClientForTests(null as any);
+  (authModule.authService as any).verifyToken = originalVerifyToken;
 
   if (originalNodeEnv) {
     process.env.NODE_ENV = originalNodeEnv;
   } else {
     delete process.env.NODE_ENV;
+  }
+
+  if (originalEnv.DATABASE_URL) {
+    process.env.DATABASE_URL = originalEnv.DATABASE_URL;
+  } else {
+    delete process.env.DATABASE_URL;
+  }
+
+  if (originalEnv.ENCRYPTION_MASTER_KEY) {
+    process.env.ENCRYPTION_MASTER_KEY = originalEnv.ENCRYPTION_MASTER_KEY;
+  } else {
+    delete process.env.ENCRYPTION_MASTER_KEY;
   }
 
   process.exit(exitCode);

@@ -90,13 +90,15 @@ const SUPPORTED_CONNECTION_TYPES: Record<(typeof SUPPORTED_CONNECTION_PROVIDERS)
 };
 
 // Middleware
-import { 
-  authenticateToken, 
-  optionalAuth, 
-  checkQuota, 
-  rateLimit, 
-  adminOnly, 
-  proOrHigher 
+import {
+  authenticateToken,
+  optionalAuth,
+  checkQuota,
+  rateLimit,
+  adminOnly,
+  proOrHigher,
+  requireOrganizationContext,
+  requirePermission,
 } from "./middleware/auth";
 
 // Error handling utilities
@@ -145,8 +147,20 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   // P1-6: App parameter schema routes
   app.use('/api/app-schemas', appSchemaRoutes);
-  app.use('/api/executions', executionRoutes);
-  app.use('/api/runs', runExplorerRoutes);
+  app.use(
+    '/api/executions',
+    authenticateToken,
+    requireOrganizationContext(),
+    requirePermission('workflow:view'),
+    executionRoutes,
+  );
+  app.use(
+    '/api/runs',
+    authenticateToken,
+    requireOrganizationContext(),
+    requirePermission('workflow:view'),
+    runExplorerRoutes,
+  );
 
   app.use('/api/google', googleSheetsRoutes);
   app.use('/api/metadata', metadataRoutes);
