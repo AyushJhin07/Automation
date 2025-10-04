@@ -4,9 +4,11 @@
 
 The platform now supports multiple customer-managed encryption keys via the new
 `encryption_keys` catalog and the `connections.encryption_key_id` foreign key.
-`EncryptionService` automatically dual-writes key identifiers on every new
-credential encryption and can decrypt legacy rows that do not yet specify a key
-identifier. The `encryption_rotation_jobs` table and the accompanying
+Every ciphertext also stores a `connections.data_key_ciphertext` payload
+containing the KMS-wrapped data key that was used for encryption. The
+`EncryptionService` dual-writes key identifiers on each new credential
+encryption and can decrypt legacy rows that still rely on a locally derived
+key. The `encryption_rotation_jobs` table and the accompanying
 `encryption.rotate` queue orchestrate background re-encryption tasks so that
 stored secrets migrate to the latest active key without downtime.
 
@@ -29,18 +31,13 @@ crypto pipeline:
 
 ### 1.1 Prepare New Key Material
 
-1. Generate a fresh data key from AWS KMS (example using AWS CLI):
-   ```sh
-   aws kms generate-data-key \
-     --key-id arn:aws:kms:us-east-1:123456789012:key/alias/app/master \
-     --key-spec AES_256 \
-     --query Plaintext --output text | base64 --decode > new-key.bin
-   ```
-2. Store the 32-byte binary key securely. Create a base64 representation for the
-   database record:
-   ```sh
-   cat new-key.bin | base64 > new-key.b64
-   ```
+1. Provision or enable the next customer-managed key version in your KMS
+   provider (AWS KMS alias, GCP Cloud KMS CryptoKey, etc.). Ensure the
+   application principals have permissions to `GenerateDataKey`/`Decrypt` on the
+   new key.
+2. Note the canonical resource identifier (ARN for AWS, resource name for GCP).
+   This value is stored in `encryption_keys.kms_key_arn` and used at runtime to
+   derive per-secret data keys.
 
 ### 1.2 Register the Key in `encryption_keys`
 
@@ -52,15 +49,20 @@ UPDATE encryption_keys
 SET status = 'rotating', rotated_at = NOW(), updated_at = NOW()
 WHERE status = 'active';
 
-INSERT INTO encryption_keys (key_id, kms_key_arn, alias, derived_key, status)
+INSERT INTO encryption_keys (key_id, kms_key_arn, alias, status)
 VALUES (
-  '2025-03-kms-derived',
+  '2025-03-kms',
   'arn:aws:kms:us-east-1:123456789012:key/alias/app/master',
   'prod/app/2025-03',
-  '$(cat new-key.b64)',
   'active'
 );
 ```
+
+The legacy `derived_key` column remains nullable for backwards compatibility.
+New keys should omit it so that plaintext data keys are never stored in the
+database. During rotation the service will request fresh data keys from KMS,
+persist the wrapped key in `connections.data_key_ciphertext`, and update the
+referenced `encryption_key_id`.
 
 ### 1.3 Refresh In-Memory Key Cache
 
@@ -125,8 +127,9 @@ application needs updated IAM access or secret values.
    store (AWS Secrets Manager, HashiCorp Vault, etc.).
 2. Update deployment manifests (Terraform, Helm, Render dashboard) to point to
    the refreshed secret version.
-3. For local development, update `.env` with the fresh `ENCRYPTION_MASTER_KEY`
-   fallback if required.
+3. For local development, update `.env` with the fresh
+   `ENCRYPTION_MASTER_KEY`/`LOCAL_KMS_SECRET` fallback if required. This secret
+   backs the local KMS shim used in unit tests and developer sandboxes.
 
 ### 2.2 Roll Pods / Processes
 
