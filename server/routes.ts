@@ -1,5 +1,4 @@
 import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from "./storage";
@@ -101,7 +100,7 @@ import {
 // Error handling utilities
 import { getErrorMessage, formatError, APIResponse } from "./types/common";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
 
   const mapOrganization = (org: any) => ({
     id: org.id,
@@ -6795,7 +6794,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-
-  return httpServer;
 }

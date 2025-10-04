@@ -8,6 +8,7 @@ console.log('🔑 LLM API Keys:', {
   CLAUDE: !!process.env.CLAUDE_API_KEY 
 });
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import { context as otelContext, propagation, SpanKind, SpanStatusCode, trace as otelTrace } from '@opentelemetry/api';
 import { randomUUID } from 'crypto';
 import { redactSecrets } from './utils/redact';
@@ -124,7 +125,8 @@ app.use((req, res, next) => {
     console.warn('LLM features will be unavailable');
   }
 
-  const server = await registerRoutes(app);
+  await registerRoutes(app);
+  const server = createServer(app);
   try {
     const { executionQueueService } = await import('./services/ExecutionQueueService.js');
     const { WebhookManager } = await import('./webhooks/WebhookManager.js');
