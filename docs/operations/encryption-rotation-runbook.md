@@ -27,6 +27,25 @@ crypto pipeline:
 - Environment variables for the app/worker pods managed via Secrets Manager or
   the deployment orchestrator.
 
+## Baseline Setup Checklist
+
+Run these steps before attempting a rotation so every service agrees on the
+current schema and primary key metadata:
+
+1. Apply the latest migrations: `DATABASE_URL=... npx drizzle-kit migrate`.
+   This adds the `connections.data_key_ciphertext` payload column and the
+   `connections.encryption_key_id` foreign key/index required for dual writes.
+2. Ensure at least one active key record exists in `encryption_keys`. With
+   `ENCRYPTION_MASTER_KEY` exported (see `scripts/bootstrap-secrets.ts`), execute
+   `npm run seed:encryption-key`. The script derives a 256-bit key from the
+   master secret, upserts an `active` row, and logs the resulting record ID.
+   Re-run it any time you need to re-assert the primary key in lower
+   environments.
+3. If you rely on customer-managed KMS, populate
+   `DEFAULT_ENCRYPTION_KEY_ID`, `DEFAULT_ENCRYPTION_KEY_ALIAS`, and
+   `DEFAULT_ENCRYPTION_KMS_KEY_ARN` before running the seeding script so the
+   metadata accurately reflects the upstream key resource.
+
 ## 1. Rotate Data Encryption Keys
 
 ### 1.1 Prepare New Key Material
