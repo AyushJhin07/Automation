@@ -22,6 +22,12 @@ import {
 } from '../runtime/NodeSandbox';
 import { db, workflowTimers } from '../database/schema.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
+import type { APICredentials } from '../integrations/BaseAPIClient';
+import { integrationManager } from '../integrations/IntegrationManager';
+import { genericExecutor } from '../integrations/GenericExecutor';
+import { env } from '../env';
+import { connectionService } from '../services/ConnectionService';
+import { getErrorMessage } from '../types/common';
 
 const DEFAULT_NODE_TIMEOUT_MS = 30_000;
 
@@ -72,6 +78,13 @@ export interface ExecutionResult {
   nodeOutputs: Record<string, any>;
   waitUntil?: string;
   timerId?: string | null;
+}
+
+interface ConnectorCredentialResolution {
+  credentials: APICredentials;
+  connectionId?: string;
+  additionalConfig?: Record<string, any>;
+  source: 'inline' | 'connection';
 }
 
 interface DelayNodeResult {
@@ -431,15 +444,396 @@ export class WorkflowRuntime {
       
       case 'transform.text.format':
         return this.executeTextFormat(resolvedParams, context);
-      
+
       // Placeholder for other node types
       default:
+        if (this.isConnectorNode(node, resolvedParams)) {
+          return await this.executeConnectorNode(node, context, resolvedParams);
+        }
+
         console.warn(`⚠️  Node type ${node.type} not supported in server-side execution`);
         return {
           message: `Node type ${node.type} executed successfully`,
           type: node.type,
           data: resolvedParams
         };
+    }
+  }
+
+  private isConnectorNode(node: GraphNode, resolvedParams: Record<string, any>): boolean {
+    const data = (node.data ?? {}) as Record<string, any>;
+    const candidates = [
+      (node as any)?.app,
+      data.app,
+      data.connectorId,
+      data.application,
+      resolvedParams?.app,
+      resolvedParams?.connectorId,
+      resolvedParams?.application,
+    ];
+
+    if (candidates.some(value => typeof value === 'string' && value.trim().length > 0)) {
+      return true;
+    }
+
+    if (typeof node.type === 'string') {
+      const lowerType = node.type.toLowerCase();
+      if (lowerType.startsWith('action.')) {
+        if (
+          lowerType.startsWith('action.llm') ||
+          lowerType.startsWith('action.http') ||
+          lowerType.startsWith('action.transform')
+        ) {
+          return false;
+        }
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private async executeConnectorNode(
+    node: GraphNode,
+    context: ExecutionContext,
+    resolvedParams: Record<string, any>
+  ): Promise<any> {
+    const data = (node.data ?? {}) as Record<string, any>;
+    const appCandidate = this.selectString(
+      (node as any)?.app,
+      data.app,
+      data.connectorId,
+      data.application,
+      resolvedParams?.app,
+      resolvedParams?.connectorId,
+      resolvedParams?.application,
+      typeof node.type === 'string' ? node.type.split('.')?.[1] : undefined
+    );
+
+    if (!appCandidate) {
+      const label = (node as any)?.label ?? node.id;
+      throw new Error(`Unable to determine connector app for node "${label}"`);
+    }
+
+    const appId = appCandidate.trim();
+
+    const functionCandidate = this.selectString(
+      (node as any)?.function,
+      data.function,
+      data.operation,
+      (node as any)?.op,
+      resolvedParams?.function,
+      resolvedParams?.operation,
+      resolvedParams?.op,
+      typeof node.type === 'string' ? node.type.split('.').pop() : undefined
+    );
+
+    const functionId = this.normalizeFunctionId(functionCandidate);
+    if (!functionId) {
+      const label = (node as any)?.label ?? node.id;
+      throw new Error(`Unable to determine connector function for node "${label}"`);
+    }
+
+    const idempotencyKey = context.idempotencyKeys[node.id] ?? this.generateIdempotencyKey(node, context);
+    const credentialResolution = await this.resolveConnectorCredentials(node, resolvedParams, context);
+    const baseParameters = this.extractConnectorParameters(resolvedParams);
+    if (credentialResolution.connectionId && baseParameters && typeof baseParameters === 'object') {
+      if (baseParameters.connectionId == null) {
+        baseParameters.connectionId = credentialResolution.connectionId;
+      }
+    }
+
+    const metadata: NodeExecutionMetadataSnapshot = {
+      connectorId: appId,
+      appId,
+      functionId,
+      executor: 'integration',
+      credentialSource: credentialResolution.source,
+    };
+
+    if (credentialResolution.connectionId) {
+      metadata.connectionId = credentialResolution.connectionId;
+    }
+
+    const integrationParams = {
+      appName: appId,
+      functionId,
+      parameters: this.cloneValue(baseParameters),
+      credentials: credentialResolution.credentials,
+      additionalConfig: credentialResolution.additionalConfig,
+      connectionId: credentialResolution.connectionId,
+      executionId: context.executionId,
+      nodeId: String(node.id),
+      idempotencyKey,
+    };
+
+    let executor: 'integration' | 'generic' = 'integration';
+    let executionTime: number | undefined;
+    let responseData: any;
+    let fallbackError: string | undefined;
+
+    if (!env.GENERIC_EXECUTOR_ENABLED) {
+      const response = await integrationManager.executeFunction(integrationParams);
+      if (!response.success) {
+        throw new Error(response.error || `Failed to execute ${appId}.${functionId}`);
+      }
+      responseData = response.data ?? null;
+      executionTime = response.executionTime;
+    } else {
+      const response = await integrationManager.executeFunction(integrationParams);
+      if (response.success) {
+        responseData = response.data ?? null;
+        executionTime = response.executionTime;
+      } else {
+        fallbackError = response.error || undefined;
+        const genericParams = this.prepareGenericParameters(baseParameters, idempotencyKey);
+        const start = Date.now();
+        const genericResult = await genericExecutor.execute({
+          appId,
+          functionId,
+          parameters: genericParams,
+          credentials: credentialResolution.credentials,
+        });
+        executor = 'generic';
+        executionTime = Date.now() - start;
+        if (!genericResult.success) {
+          const message = genericResult.error || fallbackError || `Failed to execute ${appId}.${functionId}`;
+          throw new Error(message);
+        }
+        responseData = genericResult.data ?? null;
+      }
+    }
+
+    if (typeof executionTime === 'number' && Number.isFinite(executionTime)) {
+      metadata.executionTimeMs = executionTime;
+    }
+    metadata.executor = executor;
+    if (fallbackError && executor === 'generic') {
+      metadata.integrationFallbackReason = fallbackError;
+    }
+
+    this.setNodeMetadata(context.executionId, node.id, metadata);
+
+    return responseData;
+  }
+
+  private selectString(...values: Array<string | null | undefined>): string | undefined {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  private normalizeFunctionId(value?: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+    const raw = value.toString();
+    const withoutNamespace = raw.split(':').pop() ?? raw;
+    const segment = withoutNamespace.split('.').pop() ?? withoutNamespace;
+    return segment
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .replace(/[^a-zA-Z0-9_]+/g, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^_|_$/g, '')
+      .toLowerCase();
+  }
+
+  private extractInlineCredentials(node: GraphNode, resolvedParams: Record<string, any>): Record<string, any> | null {
+    const data = (node.data ?? {}) as Record<string, any>;
+    const candidates = [
+      resolvedParams?.credentials,
+      resolvedParams?.auth?.credentials,
+      resolvedParams?.parameters?.credentials,
+      (node as any)?.credentials,
+      data.credentials,
+      data.auth?.credentials,
+      (node as any)?.params?.credentials,
+      (node as any)?.parameters?.credentials,
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== 'object') {
+        continue;
+      }
+      const keys = Object.keys(candidate);
+      if (keys.length === 0) {
+        continue;
+      }
+      return this.cloneValue(candidate);
+    }
+
+    return null;
+  }
+
+  private extractAdditionalConfig(
+    node: GraphNode,
+    resolvedParams: Record<string, any>,
+    connectionMetadata?: Record<string, any>
+  ): Record<string, any> | undefined {
+    const merged: Record<string, any> = {};
+    const push = (source: unknown) => {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) {
+        return;
+      }
+      Object.assign(merged, source as Record<string, any>);
+    };
+
+    push(connectionMetadata?.additionalConfig);
+    push(resolvedParams?.additionalConfig);
+    push(resolvedParams?.config?.additionalConfig);
+    push(resolvedParams?.parameters?.additionalConfig);
+    push((node as any)?.additionalConfig);
+    push((node.data as any)?.additionalConfig);
+    push((node.data as any)?.config?.additionalConfig);
+
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
+
+  private async resolveConnectorCredentials(
+    node: GraphNode,
+    resolvedParams: Record<string, any>,
+    context: ExecutionContext
+  ): Promise<ConnectorCredentialResolution> {
+    const inlineCredentials = this.extractInlineCredentials(node, resolvedParams);
+    const connectionId = this.selectString(
+      resolvedParams?.auth?.connectionId,
+      resolvedParams?.connectionId,
+      resolvedParams?.parameters?.connectionId,
+      resolvedParams?.config?.connectionId,
+      (node as any)?.connectionId,
+      (node as any)?.params?.connectionId,
+      (node as any)?.parameters?.connectionId,
+      (node.data as any)?.auth?.connectionId,
+      (node.data as any)?.connectionId
+    );
+
+    if (inlineCredentials) {
+      return {
+        credentials: inlineCredentials as APICredentials,
+        connectionId: connectionId ?? undefined,
+        additionalConfig: this.extractAdditionalConfig(node, resolvedParams),
+        source: 'inline',
+      };
+    }
+
+    if (!connectionId) {
+      const label = (node as any)?.label ?? node.id;
+      throw new Error(`No connection configured for node "${label}"`);
+    }
+
+    if (!context.userId) {
+      throw new Error('User context required to resolve stored connection credentials');
+    }
+
+    if (!context.organizationId) {
+      throw new Error('Organization context required to resolve stored connection credentials');
+    }
+
+    try {
+      const prepared = await connectionService.prepareConnectionForClient({
+        connectionId,
+        userId: context.userId,
+        organizationId: context.organizationId,
+      });
+
+      if (!prepared) {
+        throw new Error(`Connection not found: ${connectionId}`);
+      }
+
+      const credentials = this.cloneValue(prepared.credentials ?? {}) as APICredentials;
+
+      if (prepared.networkPolicy) {
+        (credentials as any).__organizationNetworkPolicy = prepared.networkPolicy;
+        if (prepared.networkPolicy.allowlist) {
+          (credentials as any).__organizationNetworkAllowlist = prepared.networkPolicy.allowlist;
+        }
+      } else if (prepared.networkAllowlist) {
+        (credentials as any).__organizationNetworkAllowlist = prepared.networkAllowlist;
+      }
+
+      (credentials as any).__organizationId = prepared.connection.organizationId;
+      (credentials as any).__connectionId = prepared.connection.id;
+      if (context.userId) {
+        (credentials as any).__userId = context.userId;
+      }
+
+      const additionalConfig = this.extractAdditionalConfig(
+        node,
+        resolvedParams,
+        prepared.connection.metadata || {}
+      );
+
+      return {
+        credentials,
+        connectionId,
+        additionalConfig,
+        source: 'connection',
+      };
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
+    }
+  }
+
+  private extractConnectorParameters(resolvedParams: Record<string, any>): Record<string, any> {
+    if (!resolvedParams || typeof resolvedParams !== 'object') {
+      return {};
+    }
+
+    const parameterSources = [
+      resolvedParams.parameters,
+      resolvedParams.params,
+    ];
+
+    for (const source of parameterSources) {
+      if (source && typeof source === 'object' && !Array.isArray(source)) {
+        return this.cloneValue(source);
+      }
+    }
+
+    const clone = this.cloneValue(resolvedParams);
+    delete clone.credentials;
+    delete clone.auth;
+    delete clone.runtime;
+    delete clone.metadata;
+    return clone;
+  }
+
+  private prepareGenericParameters(
+    parameters: Record<string, any>,
+    idempotencyKey?: string
+  ): Record<string, any> {
+    const clone = this.cloneValue(parameters);
+    if (!clone || typeof clone !== 'object') {
+      return clone;
+    }
+
+    if (idempotencyKey) {
+      if (clone.idempotency_key == null) {
+        clone.idempotency_key = idempotencyKey;
+      }
+      if (clone.idempotencyKey == null) {
+        clone.idempotencyKey = idempotencyKey;
+      }
+    }
+    return clone;
+  }
+
+  private cloneValue<T>(value: T): T {
+    try {
+      if (typeof globalThis.structuredClone === 'function') {
+        return globalThis.structuredClone(value);
+      }
+    } catch (error) {
+      console.warn('structuredClone failed, falling back to JSON clone:', error);
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return value;
     }
   }
 
