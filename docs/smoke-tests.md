@@ -20,6 +20,12 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
   - POST `/api/webhooks/register/stripe` → returns providerUrl.
   - POST `/api/webhooks/subscribe` for `typeform` and `github`.
 
+## Baseline Gmail send-email pipeline
+
+- `npx tsx server/workflow/__tests__/WorkflowRuntime.gmail.integration.test.ts`
+  - Provisions a Gmail OAuth connection via the encrypted file store, executes the workflow runtime against the connector simulator, and asserts the simulated Gmail response payload.
+  - Use this as the minimum sanity check before demos—if this passes, OAuth credentials, connection storage, runtime execution, and the Gmail provider shim are wired end-to-end.
+
 ## Connector-specific smoke runner
 
 - Copy `configs/connector-smoke.config.example.json` to

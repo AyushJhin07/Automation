@@ -47,6 +47,27 @@ const normalizeLifecycleBadges = (entry: any) => {
 
 const serializeConnector = (entry: any) => {
   const lifecycle = normalizeLifecycleBadges(entry);
+  const scopes = new Set<string>();
+  const addScopes = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    value.forEach((candidate) => {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        scopes.add(candidate.trim());
+      }
+    });
+  };
+
+  addScopes(entry?.scopes);
+  addScopes(entry?.authentication?.config?.scopes);
+  addScopes(entry?.manifest?.authentication?.config?.scopes);
+
+  const authentication = entry?.authentication
+    ? {
+        type: entry.authentication.type,
+        config: entry.authentication.config,
+      }
+    : null;
+
   return {
     id: entry.id,
     name: entry.displayName ?? entry.name ?? entry.id,
@@ -77,6 +98,8 @@ const serializeConnector = (entry: any) => {
           params: trigger.params ?? trigger.parameters ?? {},
         }))
       : [],
+    authentication,
+    scopes: Array.from(scopes),
   };
 };
 
