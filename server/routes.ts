@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -958,142 +958,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Roadmap tasks (for tracking progress)
-  app.get('/api/roadmap', async (_req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
-      if (!fs.existsSync(file)) {
-        return res.json({ success: true, tasks: [], generatedAt: null, counts: { total: 0, done: 0, in_progress: 0, todo: 0 } });
-      }
-      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-      const tasks = json.tasks || [];
-      const counts = {
-        total: tasks.length,
-        done: tasks.filter((t: any) => t.status === 'done').length,
-        in_progress: tasks.filter((t: any) => t.status === 'in_progress').length,
-        todo: tasks.filter((t: any) => t.status === 'todo').length,
-      };
-      res.json({ success: true, generatedAt: json.generatedAt, tasks, counts });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
+  const ROADMAP_DEPRECATED_MESSAGE =
+    'Roadmap reporting has been migrated to the centralized analytics platform. These endpoints are no longer available.';
 
-  // Roadmap summary
-  app.get('/api/roadmap/summary', async (_req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
-      if (!fs.existsSync(file)) {
-        return res.json({ success: true, counts: { total: 0, done: 0, in_progress: 0, todo: 0 } });
-      }
-      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-      const tasks = json.tasks || [];
-      const counts = {
-        total: tasks.length,
-        done: tasks.filter((t: any) => t.status === 'done').length,
-        in_progress: tasks.filter((t: any) => t.status === 'in_progress').length,
-        todo: tasks.filter((t: any) => t.status === 'todo').length,
-      };
-      res.json({ success: true, counts });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
+  const deprecatedRoadmapHandler = (_req: Request, res: Response) => {
+    res.status(410).json({ success: false, error: ROADMAP_DEPRECATED_MESSAGE });
+  };
 
-  // Roadmap tasks filter
-  app.get('/api/roadmap/tasks', async (req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
-      const statusFilter = String(req.query.status || '').toLowerCase();
-      if (!fs.existsSync(file)) {
-        return res.json({ success: true, tasks: [] });
-      }
-      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-      let tasks = json.tasks || [];
-      if (statusFilter && ['done','in_progress','todo'].includes(statusFilter)) {
-        tasks = tasks.filter((t: any) => (t.status || '').toLowerCase() === statusFilter);
-      }
-      res.json({ success: true, tasks });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
-
-  // Update roadmap tasks (admin-only; currently gated by auth)
-  app.post('/api/roadmap/update', authenticateToken, async (req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
-      const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { tasks: [] };
-      const updates = Array.isArray(req.body?.tasks) ? req.body.tasks : [];
-      const map: Record<string, any> = {};
-      for (const t of current.tasks || []) map[t.id] = t;
-      for (const u of updates) {
-        if (!u.id) continue;
-        if (!map[u.id]) map[u.id] = u; else map[u.id] = { ...map[u.id], ...u };
-      }
-      const tasks = Object.values(map);
-      const out = { generatedAt: new Date().toISOString(), tasks };
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, JSON.stringify(out, null, 2));
-      res.json({ success: true, tasks });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
-
-  // Update single task status
-  app.post('/api/roadmap/update/status', authenticateToken, async (req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
-      const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { tasks: [] };
-      const { id, status } = req.body || {};
-      if (!id || !status) {
-        return res.status(400).json({ success: false, error: 'Missing id or status' });
-      }
-      const tasks = (current.tasks || []).map((t: any) => t.id === id ? { ...t, status } : t);
-      const out = { generatedAt: new Date().toISOString(), tasks };
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, JSON.stringify(out, null, 2));
-      res.json({ success: true, tasks });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
-
-  // Bulk update tasks statuses
-  app.post('/api/roadmap/update/bulk', authenticateToken, async (req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const file = path.resolve(process.cwd(), 'production', 'reports', 'roadmap-tasks.json');
-      const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { tasks: [] };
-      const updates: Array<{ id: string; status: string }> = Array.isArray(req.body?.updates) ? req.body.updates : [];
-      const byId: Record<string, any> = {};
-      for (const t of current.tasks || []) byId[t.id] = t;
-      for (const u of updates) {
-        if (!u.id || !u.status) continue;
-        if (byId[u.id]) byId[u.id] = { ...byId[u.id], status: u.status };
-      }
-      const tasks = Object.values(byId);
-      const out = { generatedAt: new Date().toISOString(), tasks };
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, JSON.stringify(out, null, 2));
-      logAction({ type: 'roadmap.update', userId: req.user?.id, tasks: updates });
-      res.json({ success: true, tasks });
-    } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
-  });
+  app.all('/api/roadmap', deprecatedRoadmapHandler);
+  app.all('/api/roadmap/summary', deprecatedRoadmapHandler);
+  app.all('/api/roadmap/tasks', deprecatedRoadmapHandler);
+  app.all('/api/roadmap/update', authenticateToken, deprecatedRoadmapHandler);
+  app.all('/api/roadmap/update/status', authenticateToken, deprecatedRoadmapHandler);
+  app.all('/api/roadmap/update/bulk', authenticateToken, deprecatedRoadmapHandler);
 
   // OAuth providers status
   app.get('/api/status/providers', async (_req, res) => {
