@@ -29,6 +29,8 @@ The default configuration in `.env.example` assumes PostgreSQL and Redis are run
 
 - `npm run dev:server` starts the backend in watch mode.
 - `npm run dev:client` starts the frontend dev server.
+- `npm run dev:stack` starts the API, scheduler, worker, and encryption rotation services together
+  with shared lifecycle and cleanup logic.
 - Consult `docs/operations/queue.md` if you need advanced Redis/BullMQ tuning.
 
 Shut the stack down with:
