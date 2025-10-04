@@ -964,7 +964,13 @@ export class WorkflowRuntimeService {
 
       const credentials = { ...context.credentials };
 
-      if (context.networkAllowlist) {
+      if (context.networkPolicy) {
+        (credentials as APICredentials).__organizationNetworkPolicy = context.networkPolicy;
+        if (context.networkPolicy.allowlist) {
+          (credentials as APICredentials).__organizationNetworkAllowlist =
+            context.networkPolicy.allowlist;
+        }
+      } else if (context.networkAllowlist) {
         (credentials as APICredentials).__organizationNetworkAllowlist = context.networkAllowlist;
       }
 

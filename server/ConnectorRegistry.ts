@@ -96,6 +96,12 @@ interface ConnectorDefinition {
     config: any;
   };
   baseUrl?: string;
+  network?: {
+    requiredOutbound?: {
+      domains?: string[];
+      ipRanges?: string[];
+    };
+  };
   rateLimits?: {
     requestsPerSecond?: number;
     requestsPerMinute?: number;

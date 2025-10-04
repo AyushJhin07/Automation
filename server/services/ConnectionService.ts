@@ -83,9 +83,17 @@ type DynamicOptionCacheEntry = {
   result: DynamicOptionResult;
 };
 
-export interface OrganizationNetworkAllowlist {
+export interface OrganizationNetworkList {
   domains: string[];
   ipRanges: string[];
+}
+
+export type OrganizationNetworkAllowlist = OrganizationNetworkList;
+export type OrganizationNetworkDenylist = OrganizationNetworkList;
+
+export interface OrganizationNetworkPolicy {
+  allowlist: OrganizationNetworkAllowlist;
+  denylist: OrganizationNetworkDenylist;
 }
 
 interface NetworkAccessAuditEntry {
@@ -96,7 +104,12 @@ interface NetworkAccessAuditEntry {
   attemptedHost: string;
   attemptedUrl: string;
   reason: string;
-  allowlist?: OrganizationNetworkAllowlist;
+  policy?: {
+    allowlist?: OrganizationNetworkAllowlist | null;
+    denylist?: OrganizationNetworkDenylist | null;
+    required?: OrganizationNetworkAllowlist | null;
+    source?: string;
+  } | null;
   timestamp: Date;
 }
 
@@ -127,6 +140,7 @@ export interface AutoRefreshContext {
     onTokenRefreshed?: (tokens: TokenRefreshUpdate) => void | Promise<void>;
   };
   networkAllowlist?: OrganizationNetworkAllowlist;
+  networkPolicy?: OrganizationNetworkPolicy;
 }
 
 export interface ScopedTokenIssueRequest {
@@ -191,6 +205,8 @@ export class ConnectionService {
   private readonly organizationSecurityCache = new Map<string, { settings: OrganizationSecuritySettings; expiresAt: number }>();
   private readonly networkAccessAuditLog: NetworkAccessAuditEntry[] = [];
   private readonly networkAuditLogLimit = 500;
+  private readonly platformNetworkPolicy: OrganizationNetworkPolicy;
+  private platformPolicyOverride: OrganizationNetworkPolicy | null = null;
 
   constructor() {
     this.db = db;
@@ -202,6 +218,8 @@ export class ConnectionService {
     const threshold = Number(process.env.OAUTH_REFRESH_THRESHOLD_MS);
     const defaultThreshold = 5 * 60 * 1000; // 5 minutes
     this.refreshThresholdMs = Number.isFinite(threshold) && threshold >= 0 ? threshold : defaultThreshold;
+
+    this.platformNetworkPolicy = this.computePlatformNetworkPolicy();
 
     if (!this.db) {
       if (this.allowFileStore) {
@@ -217,6 +235,97 @@ export class ConnectionService {
     }
 
     this.useFileStore = !this.db && this.allowFileStore;
+  }
+
+  private computePlatformNetworkPolicy(): OrganizationNetworkPolicy {
+    const allowlist = this.buildNetworkListFromEnv({
+      domains: process.env.PLATFORM_NETWORK_ALLOWLIST_DOMAINS,
+      ipRanges: process.env.PLATFORM_NETWORK_ALLOWLIST_IP_RANGES,
+    });
+
+    const denylist = this.buildNetworkListFromEnv({
+      domains: process.env.PLATFORM_NETWORK_DENYLIST_DOMAINS,
+      ipRanges: process.env.PLATFORM_NETWORK_DENYLIST_IP_RANGES,
+    });
+
+    return {
+      allowlist,
+      denylist,
+    };
+  }
+
+  private buildNetworkListFromEnv(env: { domains?: string; ipRanges?: string }): OrganizationNetworkList {
+    return {
+      domains: this.parseNetworkEnvValues(env.domains),
+      ipRanges: this.parseNetworkEnvValues(env.ipRanges),
+    };
+  }
+
+  private parseNetworkEnvValues(raw: string | undefined): string[] {
+    if (!raw) {
+      return [];
+    }
+
+    let values: unknown = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      values = parsed;
+    } catch {
+      const parts = raw
+        .split(/[,\n]/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      values = parts;
+    }
+
+    return this.sanitizeAllowlist(values);
+  }
+
+  private cloneNetworkList(list: OrganizationNetworkList): OrganizationNetworkList {
+    return {
+      domains: [...list.domains],
+      ipRanges: [...list.ipRanges],
+    };
+  }
+
+  private cloneNetworkPolicy(policy: OrganizationNetworkPolicy): OrganizationNetworkPolicy {
+    return {
+      allowlist: this.cloneNetworkList(policy.allowlist),
+      denylist: this.cloneNetworkList(policy.denylist),
+    };
+  }
+
+  private mergeNetworkLists(
+    ...lists: Array<OrganizationNetworkList | null | undefined>
+  ): OrganizationNetworkList {
+    const domains = new Set<string>();
+    const ipRanges = new Set<string>();
+
+    for (const list of lists) {
+      if (!list) {
+        continue;
+      }
+      for (const domain of this.sanitizeAllowlist(list.domains)) {
+        domains.add(domain);
+      }
+      for (const range of this.sanitizeAllowlist(list.ipRanges)) {
+        ipRanges.add(range);
+      }
+    }
+
+    return {
+      domains: Array.from(domains),
+      ipRanges: Array.from(ipRanges),
+    };
+  }
+
+  public setPlatformNetworkPolicyForTesting(policy: OrganizationNetworkPolicy | null): void {
+    this.platformPolicyOverride = policy ? this.cloneNetworkPolicy(policy) : null;
+  }
+
+  public getPlatformNetworkPolicy(): OrganizationNetworkPolicy {
+    const source = this.platformPolicyOverride ?? this.platformNetworkPolicy;
+    return this.cloneNetworkPolicy(source);
   }
 
   private static stableStringify(value: any): string {
@@ -473,22 +582,31 @@ export class ConnectionService {
     return { domains, ipRanges };
   }
 
-  public async getOrganizationNetworkAllowlist(
+  public async getOrganizationNetworkPolicy(
     organizationId: string | undefined
-  ): Promise<OrganizationNetworkAllowlist | null> {
+  ): Promise<OrganizationNetworkPolicy> {
+    const platform = this.getPlatformNetworkPolicy();
+
     if (!organizationId) {
-      return null;
+      return platform;
     }
 
     const allowlist = await this.resolveNetworkAllowlist(organizationId);
     if (!allowlist) {
-      return null;
+      return platform;
     }
 
     return {
-      domains: Array.isArray(allowlist.domains) ? allowlist.domains : [],
-      ipRanges: Array.isArray(allowlist.ipRanges) ? allowlist.ipRanges : [],
+      allowlist: this.mergeNetworkLists(platform.allowlist, allowlist),
+      denylist: this.cloneNetworkList(platform.denylist),
     };
+  }
+
+  public async getOrganizationNetworkAllowlist(
+    organizationId: string | undefined
+  ): Promise<OrganizationNetworkAllowlist | null> {
+    const policy = await this.getOrganizationNetworkPolicy(organizationId);
+    return this.cloneNetworkList(policy.allowlist);
   }
 
   public invalidateOrganizationSecurityCache(organizationId: string): void {
@@ -502,7 +620,12 @@ export class ConnectionService {
     attemptedHost: string;
     attemptedUrl: string;
     reason: string;
-    allowlist?: OrganizationNetworkAllowlist;
+    policy?: {
+      allowlist?: OrganizationNetworkAllowlist | null;
+      denylist?: OrganizationNetworkDenylist | null;
+      required?: OrganizationNetworkAllowlist | null;
+      source?: string;
+    } | null;
   }): void {
     if (!entry.organizationId) {
       return;
@@ -516,7 +639,7 @@ export class ConnectionService {
       attemptedHost: entry.attemptedHost,
       attemptedUrl: entry.attemptedUrl,
       reason: entry.reason,
-      allowlist: entry.allowlist,
+      policy: entry.policy ?? null,
       timestamp: new Date(),
     };
 
@@ -1115,12 +1238,13 @@ export class ConnectionService {
 
     credentials.onTokenRefreshed = onTokenRefreshed;
 
-    const networkAllowlist = await this.resolveNetworkAllowlist(organizationId);
+    const networkPolicy = await this.getOrganizationNetworkPolicy(organizationId);
 
     return factory({
       connection: currentConnection,
       credentials,
-      networkAllowlist: networkAllowlist ?? undefined,
+      networkAllowlist: networkPolicy.allowlist,
+      networkPolicy,
     });
   }
 
