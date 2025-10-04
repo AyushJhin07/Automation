@@ -153,7 +153,7 @@ export class EncryptionRotationService {
       while (true) {
         const batchResult = await db.execute(
           sql`
-            SELECT id, encrypted_credentials, iv, encryption_key_id, data_key_ciphertext
+            SELECT id, encrypted_credentials, iv, encryption_key_id, data_key_ciphertext, data_key_iv, payload_ciphertext, payload_iv
             FROM ${connections}
             WHERE ${connections.encryptionKeyId} IS DISTINCT FROM ${targetKeyId}
             ORDER BY ${connections.updatedAt}
@@ -167,6 +167,9 @@ export class EncryptionRotationService {
           iv: string;
           encryption_key_id: string | null;
           data_key_ciphertext: string | null;
+          data_key_iv: string | null;
+          payload_ciphertext: string | null;
+          payload_iv: string | null;
         }>;
 
         if (rows.length === 0) {
@@ -176,10 +179,15 @@ export class EncryptionRotationService {
         for (const row of rows) {
           try {
             const credentials = await EncryptionService.decryptCredentials(
-              row.encrypted_credentials,
-              row.iv,
+              row.payload_ciphertext ?? row.encrypted_credentials,
+              row.payload_iv ?? row.iv,
               row.encryption_key_id,
-              row.data_key_ciphertext
+              row.data_key_ciphertext,
+              {
+                dataKeyIv: row.data_key_iv,
+                payloadCiphertext: row.payload_ciphertext,
+                payloadIv: row.payload_iv,
+              }
             );
             const reEncrypted = await EncryptionService.encryptCredentials(credentials);
             await db
@@ -189,6 +197,9 @@ export class EncryptionRotationService {
                 iv: reEncrypted.iv,
                 encryptionKeyId: reEncrypted.keyId ?? null,
                 dataKeyCiphertext: reEncrypted.dataKeyCiphertext ?? null,
+                dataKeyIv: reEncrypted.dataKeyIv ?? null,
+                payloadCiphertext: reEncrypted.payloadCiphertext ?? reEncrypted.encryptedData,
+                payloadIv: reEncrypted.payloadIv ?? reEncrypted.iv,
                 updatedAt: new Date(),
               })
               .where(eq(connections.id, row.id));

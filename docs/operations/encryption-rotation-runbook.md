@@ -4,8 +4,11 @@
 
 The platform now supports multiple customer-managed encryption keys via the new
 `encryption_keys` catalog and the `connections.encryption_key_id` foreign key.
-Every ciphertext also stores a `connections.data_key_ciphertext` payload
-containing the KMS-wrapped data key that was used for encryption. The
+Every ciphertext also stores envelope metadata: the
+`connections.data_key_ciphertext` payload containing the KMS-wrapped data key,
+an optional `connections.data_key_iv` (reserved for KMS providers that return a
+nonce), and mirrored copies of the ciphertext/IV in
+`connections.payload_ciphertext` / `connections.payload_iv`. The
 `EncryptionService` dual-writes key identifiers on each new credential
 encryption and can decrypt legacy rows that still rely on a locally derived
 key. The `encryption_rotation_jobs` table and the accompanying
@@ -33,8 +36,12 @@ Run these steps before attempting a rotation so every service agrees on the
 current schema and primary key metadata:
 
 1. Apply the latest migrations: `DATABASE_URL=... npx drizzle-kit migrate`.
-   This adds the `connections.data_key_ciphertext` payload column and the
+   This now includes the payload columns (`connections.payload_ciphertext`,
+   `connections.payload_iv`) and optional `connections.data_key_iv` metadata in
+   addition to the `connections.data_key_ciphertext` payload column and the
    `connections.encryption_key_id` foreign key/index required for dual writes.
+   The migration backfills existing rows with mirrored payload data so dual
+   writes succeed immediately.
 2. Ensure at least one active key record exists in `encryption_keys`. With
    `ENCRYPTION_MASTER_KEY` exported (see `scripts/bootstrap-secrets.ts`), execute
    `npm run seed:encryption-key`. The script derives a 256-bit key from the

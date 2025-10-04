@@ -60,6 +60,9 @@ export interface DecryptedConnection {
   iv: string;
   encryptionKeyId?: string | null;
   dataKeyCiphertext?: string | null;
+  dataKeyIv?: string | null;
+  payloadCiphertext?: string | null;
+  payloadIv?: string | null;
   credentials: Record<string, any>;
   metadata?: Record<string, any>;
   isActive: boolean;
@@ -194,6 +197,9 @@ interface FileConnectionRecord {
   iv: string;
   encryptionKeyId?: string | null;
   dataKeyCiphertext?: string | null;
+  dataKeyIv?: string | null;
+  payloadCiphertext?: string | null;
+  payloadIv?: string | null;
   metadata?: Record<string, any>;
   isActive: boolean;
   lastTested?: string;
@@ -408,10 +414,15 @@ export class ConnectionService {
 
   private async toDecryptedConnection(record: FileConnectionRecord): Promise<DecryptedConnection> {
     const credentials = await EncryptionService.decryptCredentials(
-      record.encryptedCredentials,
-      record.iv,
+      record.payloadCiphertext ?? record.encryptedCredentials,
+      record.payloadIv ?? record.iv,
       record.encryptionKeyId,
-      record.dataKeyCiphertext
+      record.dataKeyCiphertext,
+      {
+        dataKeyIv: record.dataKeyIv,
+        payloadCiphertext: record.payloadCiphertext,
+        payloadIv: record.payloadIv,
+      }
     );
     return {
       id: record.id,
@@ -423,6 +434,9 @@ export class ConnectionService {
       iv: record.iv,
       encryptionKeyId: record.encryptionKeyId ?? null,
       dataKeyCiphertext: record.dataKeyCiphertext ?? null,
+      dataKeyIv: record.dataKeyIv ?? null,
+      payloadCiphertext: record.payloadCiphertext ?? null,
+      payloadIv: record.payloadIv ?? null,
       credentials,
       metadata: record.metadata,
       isActive: record.isActive,
@@ -465,10 +479,15 @@ export class ConnectionService {
     }
 
     const credentials = await EncryptionService.decryptCredentials(
-      row.encryptedCredentials,
-      row.iv,
+      row.payloadCiphertext ?? row.encryptedCredentials,
+      row.payloadIv ?? row.iv,
       row.encryptionKeyId,
-      row.dataKeyCiphertext
+      row.dataKeyCiphertext,
+      {
+        dataKeyIv: row.dataKeyIv,
+        payloadCiphertext: row.payloadCiphertext,
+        payloadIv: row.payloadIv,
+      }
     );
 
     return {
@@ -481,6 +500,9 @@ export class ConnectionService {
       iv: row.iv,
       encryptionKeyId: row.encryptionKeyId ?? null,
       dataKeyCiphertext: row.dataKeyCiphertext ?? null,
+      dataKeyIv: row.dataKeyIv ?? null,
+      payloadCiphertext: row.payloadCiphertext ?? null,
+      payloadIv: row.payloadIv ?? null,
       credentials,
       metadata: row.metadata,
       isActive: row.isActive,
@@ -992,6 +1014,10 @@ export class ConnectionService {
           iv: encrypted.iv,
           encryptionKeyId: encrypted.keyId ?? records[index].encryptionKeyId ?? null,
           dataKeyCiphertext: encrypted.dataKeyCiphertext ?? records[index].dataKeyCiphertext ?? null,
+          dataKeyIv: encrypted.dataKeyIv ?? records[index].dataKeyIv ?? null,
+          payloadCiphertext:
+            encrypted.payloadCiphertext ?? records[index].payloadCiphertext ?? encrypted.encryptedData,
+          payloadIv: encrypted.payloadIv ?? records[index].payloadIv ?? encrypted.iv,
           metadata,
           updatedAt: updatedAt.toISOString(),
         };
@@ -1006,6 +1032,10 @@ export class ConnectionService {
           iv: encrypted.iv,
           encryptionKeyId: encrypted.keyId ?? connection.encryptionKeyId ?? null,
           dataKeyCiphertext: encrypted.dataKeyCiphertext ?? connection.dataKeyCiphertext ?? null,
+          dataKeyIv: encrypted.dataKeyIv ?? connection.dataKeyIv ?? null,
+          payloadCiphertext:
+            encrypted.payloadCiphertext ?? connection.payloadCiphertext ?? encrypted.encryptedData,
+          payloadIv: encrypted.payloadIv ?? connection.payloadIv ?? encrypted.iv,
           metadata,
           updatedAt,
         })
@@ -1023,6 +1053,9 @@ export class ConnectionService {
       credentials: mergedCredentials,
       encryptionKeyId: encrypted.keyId ?? connection.encryptionKeyId ?? null,
       dataKeyCiphertext: encrypted.dataKeyCiphertext ?? connection.dataKeyCiphertext ?? null,
+      dataKeyIv: encrypted.dataKeyIv ?? connection.dataKeyIv ?? null,
+      payloadCiphertext: encrypted.payloadCiphertext ?? connection.payloadCiphertext ?? encrypted.encryptedData,
+      payloadIv: encrypted.payloadIv ?? connection.payloadIv ?? encrypted.iv,
       metadata,
       updatedAt,
     };
@@ -1065,6 +1098,9 @@ export class ConnectionService {
         iv: encrypted.iv,
         encryptionKeyId: encrypted.keyId ?? null,
         dataKeyCiphertext: encrypted.dataKeyCiphertext ?? null,
+        dataKeyIv: encrypted.dataKeyIv ?? null,
+        payloadCiphertext: encrypted.payloadCiphertext ?? encrypted.encryptedData,
+        payloadIv: encrypted.payloadIv ?? encrypted.iv,
         metadata: request.metadata || {},
         isActive: true,
         createdAt: nowIso,
@@ -1087,6 +1123,9 @@ export class ConnectionService {
       iv: encrypted.iv,
       encryptionKeyId: encrypted.keyId ?? null,
       dataKeyCiphertext: encrypted.dataKeyCiphertext ?? null,
+      dataKeyIv: encrypted.dataKeyIv ?? null,
+      payloadCiphertext: encrypted.payloadCiphertext ?? encrypted.encryptedData,
+      payloadIv: encrypted.payloadIv ?? encrypted.iv,
       metadata: request.metadata || {},
       isActive: true,
     }).returning({ id: connections.id });
@@ -1131,10 +1170,15 @@ export class ConnectionService {
     }
 
     const credentials = await EncryptionService.decryptCredentials(
-      connection.encryptedCredentials,
-      connection.iv,
+      connection.payloadCiphertext ?? connection.encryptedCredentials,
+      connection.payloadIv ?? connection.iv,
       connection.encryptionKeyId,
-      connection.dataKeyCiphertext
+      connection.dataKeyCiphertext,
+      {
+        dataKeyIv: connection.dataKeyIv,
+        payloadCiphertext: connection.payloadCiphertext,
+        payloadIv: connection.payloadIv,
+      }
     );
 
     return {
@@ -1147,6 +1191,9 @@ export class ConnectionService {
       iv: connection.iv,
       encryptionKeyId: connection.encryptionKeyId ?? null,
       dataKeyCiphertext: connection.dataKeyCiphertext ?? null,
+      dataKeyIv: connection.dataKeyIv ?? null,
+      payloadCiphertext: connection.payloadCiphertext ?? null,
+      payloadIv: connection.payloadIv ?? null,
       credentials,
       metadata: connection.metadata,
       isActive: connection.isActive,
@@ -1216,10 +1263,15 @@ export class ConnectionService {
     return Promise.all(
       userConnections.map(async (connection) => {
         const credentials = await EncryptionService.decryptCredentials(
-          connection.encryptedCredentials,
-          connection.iv,
+          connection.payloadCiphertext ?? connection.encryptedCredentials,
+          connection.payloadIv ?? connection.iv,
           connection.encryptionKeyId,
-          connection.dataKeyCiphertext
+          connection.dataKeyCiphertext,
+          {
+            dataKeyIv: connection.dataKeyIv,
+            payloadCiphertext: connection.payloadCiphertext,
+            payloadIv: connection.payloadIv,
+          }
         );
 
         return {
@@ -1231,6 +1283,10 @@ export class ConnectionService {
           type: connection.type,
           iv: connection.iv,
           encryptionKeyId: connection.encryptionKeyId ?? null,
+          dataKeyCiphertext: connection.dataKeyCiphertext ?? null,
+          dataKeyIv: connection.dataKeyIv ?? null,
+          payloadCiphertext: connection.payloadCiphertext ?? null,
+          payloadIv: connection.payloadIv ?? null,
           credentials,
           metadata: connection.metadata,
           isActive: connection.isActive,
@@ -1279,10 +1335,15 @@ export class ConnectionService {
     }
 
     const credentials = await EncryptionService.decryptCredentials(
-      connection.encryptedCredentials,
-      connection.iv,
+      connection.payloadCiphertext ?? connection.encryptedCredentials,
+      connection.payloadIv ?? connection.iv,
       connection.encryptionKeyId,
-      connection.dataKeyCiphertext
+      connection.dataKeyCiphertext,
+      {
+        dataKeyIv: connection.dataKeyIv,
+        payloadCiphertext: connection.payloadCiphertext,
+        payloadIv: connection.payloadIv,
+      }
     );
 
     return {
@@ -1294,6 +1355,10 @@ export class ConnectionService {
       type: connection.type,
       iv: connection.iv,
       encryptionKeyId: connection.encryptionKeyId ?? null,
+      dataKeyCiphertext: connection.dataKeyCiphertext ?? null,
+      dataKeyIv: connection.dataKeyIv ?? null,
+      payloadCiphertext: connection.payloadCiphertext ?? null,
+      payloadIv: connection.payloadIv ?? null,
       credentials,
       metadata: connection.metadata,
       isActive: connection.isActive,
@@ -1708,6 +1773,10 @@ export class ConnectionService {
           iv: encrypted.iv,
           encryptionKeyId: encrypted.keyId ?? existing.encryptionKeyId ?? null,
           dataKeyCiphertext: encrypted.dataKeyCiphertext ?? existing.dataKeyCiphertext ?? null,
+          dataKeyIv: encrypted.dataKeyIv ?? existing.dataKeyIv ?? null,
+          payloadCiphertext:
+            encrypted.payloadCiphertext ?? existing.payloadCiphertext ?? encrypted.encryptedData,
+          payloadIv: encrypted.payloadIv ?? existing.payloadIv ?? encrypted.iv,
           metadata,
           updatedAt: nowIso,
           isActive: true,
@@ -1730,6 +1799,9 @@ export class ConnectionService {
         iv: encrypted.iv,
         encryptionKeyId: encrypted.keyId ?? null,
         dataKeyCiphertext: encrypted.dataKeyCiphertext ?? null,
+        dataKeyIv: encrypted.dataKeyIv ?? null,
+        payloadCiphertext: encrypted.payloadCiphertext ?? encrypted.encryptedData,
+        payloadIv: encrypted.payloadIv ?? encrypted.iv,
         metadata,
         isActive: true,
         createdAt: nowIso,
@@ -1777,6 +1849,9 @@ export class ConnectionService {
         name: connectionName,
         encryptedCredentials: encrypted.encryptedData,
         iv: encrypted.iv,
+        payloadCiphertext: encrypted.payloadCiphertext ?? encrypted.encryptedData,
+        payloadIv: encrypted.payloadIv ?? encrypted.iv,
+        dataKeyIv: encrypted.dataKeyIv ?? null,
         metadata,
         updatedAt: new Date(),
         isActive: true,
@@ -1786,6 +1861,7 @@ export class ConnectionService {
       if (!bypassEnvelopeEncryption) {
         updateValues.encryptionKeyId = encrypted.keyId ?? null;
         updateValues.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+        updateValues.dataKeyIv = encrypted.dataKeyIv ?? null;
       }
 
       await this.db
@@ -1809,6 +1885,9 @@ export class ConnectionService {
       type: options.type || 'saas',
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
+      payloadCiphertext: encrypted.payloadCiphertext ?? encrypted.encryptedData,
+      payloadIv: encrypted.payloadIv ?? encrypted.iv,
+      dataKeyIv: encrypted.dataKeyIv ?? null,
       metadata,
       isActive: true,
     };
@@ -1816,6 +1895,7 @@ export class ConnectionService {
     if (!bypassEnvelopeEncryption) {
       baseValues.encryptionKeyId = encrypted.keyId ?? null;
       baseValues.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+      baseValues.dataKeyIv = encrypted.dataKeyIv ?? null;
     }
 
     const insertValues: typeof connections.$inferInsert = (requestedConnectionId
@@ -1826,6 +1906,9 @@ export class ConnectionService {
       name: connectionName,
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
+      payloadCiphertext: encrypted.payloadCiphertext ?? encrypted.encryptedData,
+      payloadIv: encrypted.payloadIv ?? encrypted.iv,
+      dataKeyIv: encrypted.dataKeyIv ?? null,
       metadata,
       updatedAt: new Date(),
       isActive: true,
@@ -1835,6 +1918,7 @@ export class ConnectionService {
     if (!bypassEnvelopeEncryption) {
       conflictUpdate.encryptionKeyId = encrypted.keyId ?? null;
       conflictUpdate.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+      conflictUpdate.dataKeyIv = encrypted.dataKeyIv ?? null;
     }
 
     const [created] = await this.db
@@ -2140,6 +2224,9 @@ export class ConnectionService {
       updateData.iv = encrypted.iv;
       updateData.encryptionKeyId = encrypted.keyId ?? null;
       updateData.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+      updateData.dataKeyIv = encrypted.dataKeyIv ?? null;
+      updateData.payloadCiphertext = encrypted.payloadCiphertext ?? encrypted.encryptedData;
+      updateData.payloadIv = encrypted.payloadIv ?? encrypted.iv;
     }
 
     if (this.useFileStore) {
@@ -2160,6 +2247,10 @@ export class ConnectionService {
           iv: updateData.iv ?? existing.iv,
           encryptionKeyId: updateData.encryptionKeyId ?? existing.encryptionKeyId ?? null,
           dataKeyCiphertext: updateData.dataKeyCiphertext ?? existing.dataKeyCiphertext ?? null,
+          dataKeyIv: updateData.dataKeyIv ?? existing.dataKeyIv ?? null,
+          payloadCiphertext:
+            updateData.payloadCiphertext ?? existing.payloadCiphertext ?? existing.encryptedCredentials,
+          payloadIv: updateData.payloadIv ?? existing.payloadIv ?? existing.iv,
           updatedAt: new Date().toISOString(),
         };
         await this.writeFileStore(records);

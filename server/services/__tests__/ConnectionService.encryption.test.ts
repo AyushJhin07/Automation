@@ -44,6 +44,21 @@ assert.equal(
   null,
   'file store connections should not persist KMS data key ciphertext by default'
 );
+assert.equal(
+  storedRecords[0].dataKeyIv ?? null,
+  null,
+  'file store connections should not persist data key IV metadata by default'
+);
+assert.equal(
+  storedRecords[0].payloadCiphertext,
+  storedRecords[0].encryptedCredentials,
+  'file store connections should dual-write payload ciphertext metadata'
+);
+assert.equal(
+  storedRecords[0].payloadIv,
+  storedRecords[0].iv,
+  'file store connections should dual-write payload IV metadata'
+);
 
 const fetched = await service.getConnection(connectionId, 'user-123', 'org-123');
 assert.ok(fetched, 'connection should be retrievable');
@@ -51,6 +66,17 @@ assert.equal(fetched?.iv, storedRecords[0].iv, 'fetched connection exposes iv');
 assert.deepEqual(fetched?.credentials, originalCredentials, 'credentials should decrypt to original payload');
 assert.equal(fetched?.encryptionKeyId ?? null, null, 'fetched connection exposes encryptionKeyId metadata');
 assert.equal(fetched?.dataKeyCiphertext ?? null, null, 'fetched connection exposes dataKeyCiphertext metadata');
+assert.equal(fetched?.dataKeyIv ?? null, null, 'fetched connection exposes dataKeyIv metadata');
+assert.equal(
+  fetched?.payloadCiphertext ?? null,
+  storedRecords[0].payloadCiphertext,
+  'fetched connection exposes payload ciphertext metadata'
+);
+assert.equal(
+  fetched?.payloadIv ?? null,
+  storedRecords[0].payloadIv,
+  'fetched connection exposes payload IV metadata'
+);
 
 const byProvider = await service.getConnectionByProvider('user-123', 'org-123', 'openai');
 assert.ok(byProvider, 'connection should be retrievable by provider');
@@ -58,6 +84,17 @@ assert.equal(byProvider?.iv, storedRecords[0].iv, 'provider lookup exposes iv');
 assert.deepEqual(byProvider?.credentials, originalCredentials, 'provider lookup decrypts credentials');
 assert.equal(byProvider?.encryptionKeyId ?? null, null, 'provider lookup exposes encryptionKeyId');
 assert.equal(byProvider?.dataKeyCiphertext ?? null, null, 'provider lookup exposes dataKeyCiphertext');
+assert.equal(byProvider?.dataKeyIv ?? null, null, 'provider lookup exposes dataKeyIv');
+assert.equal(
+  byProvider?.payloadCiphertext ?? null,
+  storedRecords[0].payloadCiphertext,
+  'provider lookup exposes payload ciphertext'
+);
+assert.equal(
+  byProvider?.payloadIv ?? null,
+  storedRecords[0].payloadIv,
+  'provider lookup exposes payload IV'
+);
 
 const allConnections = await service.getUserConnections('user-123', 'org-123', 'openai');
 assert.equal(allConnections.length, 1, 'user should have one connection after creation');
@@ -65,6 +102,17 @@ assert.equal(allConnections[0].iv, storedRecords[0].iv, 'list entries expose iv'
 assert.deepEqual(allConnections[0].credentials, originalCredentials, 'list entries decrypt credentials');
 assert.equal(allConnections[0].encryptionKeyId ?? null, null, 'list entries expose encryptionKeyId');
 assert.equal(allConnections[0].dataKeyCiphertext ?? null, null, 'list entries expose dataKeyCiphertext');
+assert.equal(allConnections[0].dataKeyIv ?? null, null, 'list entries expose dataKeyIv');
+assert.equal(
+  allConnections[0].payloadCiphertext ?? null,
+  storedRecords[0].payloadCiphertext,
+  'list entries expose payload ciphertext metadata'
+);
+assert.equal(
+  allConnections[0].payloadIv ?? null,
+  storedRecords[0].payloadIv,
+  'list entries expose payload IV metadata'
+);
 
 await rm(tempDir, { recursive: true, force: true });
 delete process.env.CONNECTION_STORE_PATH;

@@ -11,6 +11,15 @@ interface EncryptedData {
   iv: string;
   keyId?: string | null;
   dataKeyCiphertext?: string | null;
+  dataKeyIv?: string | null;
+  payloadCiphertext?: string | null;
+  payloadIv?: string | null;
+}
+
+interface DecryptionMetadata {
+  dataKeyIv?: string | null;
+  payloadCiphertext?: string | null;
+  payloadIv?: string | null;
 }
 
 interface CachedEncryptionKey {
@@ -337,11 +346,15 @@ export class EncryptionService {
     const tag = cipher.getAuthTag(); // 16 bytes
 
     const payload = Buffer.concat([encrypted, tag]).toString('hex');
+    const ivHex = iv.toString('hex');
     return {
       encryptedData: payload,
-      iv: iv.toString('hex'),
+      iv: ivHex,
       keyId: recordId,
       dataKeyCiphertext: dataKeyCiphertext ?? null,
+      dataKeyIv: null,
+      payloadCiphertext: payload,
+      payloadIv: ivHex,
     };
   }
 
@@ -349,7 +362,8 @@ export class EncryptionService {
     encryptedData: string,
     ivHex: string,
     keyRecordId?: string | null,
-    encryptedDataKey?: string | null
+    encryptedDataKey?: string | null,
+    _dataKeyIv?: string | null
   ): Promise<string> {
     const key = await this.resolveKeyForDecryption(keyRecordId, encryptedDataKey);
 
@@ -381,9 +395,18 @@ export class EncryptionService {
     encryptedData: string,
     iv: string,
     keyRecordId?: string | null,
-    encryptedDataKey?: string | null
+    encryptedDataKey?: string | null,
+    metadata?: DecryptionMetadata
   ): Promise<Record<string, any>> {
-    const decryptedJson = await this.decrypt(encryptedData, iv, keyRecordId, encryptedDataKey);
+    const payload = metadata?.payloadCiphertext ?? encryptedData;
+    const payloadIv = metadata?.payloadIv ?? iv;
+    const decryptedJson = await this.decrypt(
+      payload,
+      payloadIv,
+      keyRecordId,
+      encryptedDataKey,
+      metadata?.dataKeyIv ?? null
+    );
     return JSON.parse(decryptedJson);
   }
 
