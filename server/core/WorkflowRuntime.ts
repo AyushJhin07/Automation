@@ -16,10 +16,11 @@ import { retryManager, RetryPolicy } from './RetryManager';
 import { runExecutionManager } from './RunExecutionManager';
 import type { NodeExecution } from './RunExecutionManager';
 import {
-  nodeSandbox,
+  nodeSandboxFactory,
   collectSecretStrings,
   SandboxPolicyViolationError,
 } from '../runtime/NodeSandbox';
+import type { SandboxTenancyOverrides, SandboxResourceLimits } from '../runtime/SandboxShared';
 import { db, workflowTimers } from '../database/schema.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 import type { APICredentials } from '../integrations/BaseAPIClient';
@@ -382,6 +383,9 @@ export class WorkflowRuntime {
         nodeOutputs: context.outputs
       };
 
+      if (context.organizationId) {
+        sandboxContext.organizationId = context.organizationId;
+      }
       if (node.connectionId) {
         sandboxContext.connectionId = node.connectionId;
       }
@@ -411,15 +415,60 @@ export class WorkflowRuntime {
       const { signal: combinedSignal, cleanup } = this.createCombinedSignal(signal, timeoutController.signal);
       const guard = this.createTimeoutGuard(node, effectiveTimeout, () => timeoutController.abort());
 
+      const tenancyOverrides: SandboxTenancyOverrides = {};
+
+      if (Array.isArray(runtimeConfig.dependencyAllowlist)) {
+        tenancyOverrides.dependencyAllowlist = runtimeConfig.dependencyAllowlist
+          .map((value: any) => (typeof value === 'string' ? value.trim() : value != null ? String(value).trim() : ''))
+          .filter((value: string) => value.length > 0);
+      }
+
+      if (Array.isArray(runtimeConfig.secretScopes)) {
+        tenancyOverrides.secretScopes = runtimeConfig.secretScopes
+          .map((value: any) => (typeof value === 'string' ? value.trim() : value != null ? String(value).trim() : ''))
+          .filter((value: string) => value.length > 0);
+      }
+
+      const runtimeResourceLimits = this.normalizeRuntimeResourceLimits(runtimeConfig.resourceLimits);
+      if (runtimeResourceLimits) {
+        tenancyOverrides.resourceLimits = runtimeResourceLimits;
+      }
+
+      if (typeof runtimeConfig.policyVersion === 'string' && runtimeConfig.policyVersion.trim().length > 0) {
+        tenancyOverrides.policyVersion = runtimeConfig.policyVersion.trim();
+      }
+
+      if (!tenancyOverrides.dependencyAllowlist?.length) {
+        delete tenancyOverrides.dependencyAllowlist;
+      }
+      if (!tenancyOverrides.secretScopes?.length) {
+        delete tenancyOverrides.secretScopes;
+      }
+      if (!tenancyOverrides.resourceLimits) {
+        delete tenancyOverrides.resourceLimits;
+      }
+      if (!tenancyOverrides.policyVersion) {
+        delete tenancyOverrides.policyVersion;
+      }
+
+      const sandboxInstance = nodeSandboxFactory.provision({
+        scope: 'execution',
+        organizationId: context.organizationId,
+        executionId: context.executionId,
+        workflowId: context.workflowId,
+        nodeId: node.id,
+      });
+
       try {
-        const sandboxPromise = nodeSandbox.execute({
+        const sandboxPromise = sandboxInstance.execute({
           code: runtimeConfig.code,
           entryPoint: runtimeConfig.entryPoint ?? runtimeConfig.entry ?? 'run',
           params: sandboxParams,
           context: sandboxContext,
           timeoutMs: effectiveTimeout,
           signal: combinedSignal,
-          secrets
+          secrets,
+          tenancy: Object.keys(tenancyOverrides).length > 0 ? tenancyOverrides : undefined,
         });
 
         const sandboxOutcome = guard
@@ -1243,6 +1292,41 @@ export class WorkflowRuntime {
     }
 
     return undefined;
+  }
+
+  private normalizeRuntimeResourceLimits(input: any): SandboxResourceLimits | undefined {
+    if (!input || typeof input !== 'object') {
+      return undefined;
+    }
+
+    const limits: SandboxResourceLimits = {};
+
+    if (typeof input.maxCpuMs === 'number' || typeof input.maxCpuMs === 'string') {
+      const value = Number(input.maxCpuMs);
+      if (Number.isFinite(value) && value >= 0) {
+        limits.maxCpuMs = value;
+      }
+    }
+
+    if (typeof input.cpuQuotaMs === 'number' || typeof input.cpuQuotaMs === 'string') {
+      const value = Number(input.cpuQuotaMs);
+      if (Number.isFinite(value) && value >= 0) {
+        limits.cpuQuotaMs = value;
+      }
+    }
+
+    if (typeof input.maxMemoryBytes === 'number' || typeof input.maxMemoryBytes === 'string') {
+      const value = Number(input.maxMemoryBytes);
+      if (Number.isFinite(value) && value >= 0) {
+        limits.maxMemoryBytes = value;
+      }
+    }
+
+    if (typeof input.cgroupRoot === 'string' && input.cgroupRoot.trim().length > 0) {
+      limits.cgroupRoot = input.cgroupRoot.trim();
+    }
+
+    return Object.keys(limits).length > 0 ? limits : undefined;
   }
 
   private captureNodeUsageMetadata(
