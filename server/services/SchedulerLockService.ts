@@ -36,6 +36,21 @@ interface MemoryLockEntry {
   readonly timeout: NodeJS.Timeout;
 }
 
+export interface SchedulerLockTelemetrySnapshot {
+  preferredStrategy: SchedulerLockStrategy;
+  strategyOverride: SchedulerLockStrategy | 'auto';
+  postgresAvailable: boolean;
+  redis: {
+    status: string;
+    isConnected: boolean;
+    isConnecting: boolean;
+  };
+  memoryLocks: {
+    count: number;
+    resources: string[];
+  };
+}
+
 export class SchedulerLockService {
   private redis: IORedis | null = null;
   private redisConnecting: Promise<IORedis | null> | null = null;
@@ -67,6 +82,25 @@ export class SchedulerLockService {
       throw new Error('setStrategyOverrideForTests is only available in test environments');
     }
     this.strategyOverride = strategy;
+  }
+
+  public getTelemetrySnapshot(): SchedulerLockTelemetrySnapshot {
+    const redisStatus = this.redis?.status ?? 'disconnected';
+
+    return {
+      preferredStrategy: this.getPreferredStrategy(),
+      strategyOverride: this.strategyOverride,
+      postgresAvailable: Boolean(db),
+      redis: {
+        status: redisStatus,
+        isConnected: redisStatus === 'ready',
+        isConnecting: Boolean(this.redisConnecting),
+      },
+      memoryLocks: {
+        count: this.memoryLocks.size,
+        resources: Array.from(this.memoryLocks.keys()),
+      },
+    };
   }
 
   public async acquireLock(resource: string, options: AcquireLockOptions = {}): Promise<SchedulerLockHandle | null> {

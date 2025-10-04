@@ -7,6 +7,7 @@ import { db, workflowTimers, type OrganizationLimits, type OrganizationRegion } 
 import {
   createQueue,
   createQueueEvents,
+  getActiveQueueDriver,
   handleQueueDriverError,
   registerQueueTelemetry,
   type Queue,
@@ -17,7 +18,11 @@ import {
 } from '../queue/index.js';
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
-import { recordCrossRegionViolation, updateQueueDepthMetric } from '../observability/index.js';
+import {
+  getQueueDepthSnapshot,
+  recordCrossRegionViolation,
+  updateQueueDepthMetric,
+} from '../observability/index.js';
 import { organizationService } from './OrganizationService.js';
 import {
   executionQuotaService,
@@ -36,6 +41,40 @@ type QueueRunRequest = {
   triggerType?: string;
   triggerData?: Record<string, any> | null;
   organizationId: string;
+};
+
+type ExecutionLeaseTelemetry = {
+  executionId: string;
+  organizationId: string;
+  workerId: string | null;
+  lockedAt: string | null;
+  lockExpiresAt: string | null;
+  lastHeartbeatAt: string | null;
+  renewCount: number | null;
+};
+
+type ExecutionQueueTelemetrySnapshot = {
+  started: boolean;
+  databaseEnabled: boolean;
+  queueDriver: string;
+  worker: {
+    id: string | null;
+    region: OrganizationRegion;
+    queueName: ExecutionQueueName;
+    concurrency: number;
+    tenantConcurrency: number;
+    lockDurationMs: number;
+    lockRenewTimeMs: number;
+    heartbeatIntervalMs: number;
+    heartbeatTimeoutMs: number;
+  };
+  leases: {
+    count: number;
+    entries: ExecutionLeaseTelemetry[];
+  };
+  metrics: {
+    queueDepths: ReturnType<typeof getQueueDepthSnapshot>;
+  };
 };
 
 class ExecutionQueueService {
@@ -179,6 +218,51 @@ class ExecutionQueueService {
       const fallbackQueue = this.ensureQueue(queueName);
       return operation(fallbackQueue);
     }
+  }
+
+  public getTelemetrySnapshot(): ExecutionQueueTelemetrySnapshot {
+    const queueDepths = getQueueDepthSnapshot();
+    const leases: ExecutionLeaseTelemetry[] = Array.from(this.activeLeases.entries()).map(
+      ([executionId, entry]) => {
+        const leaseMetadata = (entry.metadata.lease ?? {}) as Record<string, any>;
+        return {
+          executionId,
+          organizationId: entry.organizationId,
+          workerId: typeof leaseMetadata.workerId === 'string' ? leaseMetadata.workerId : null,
+          lockedAt: typeof leaseMetadata.lockedAt === 'string' ? leaseMetadata.lockedAt : null,
+          lockExpiresAt:
+            typeof leaseMetadata.lockExpiresAt === 'string' ? leaseMetadata.lockExpiresAt : null,
+          lastHeartbeatAt:
+            typeof leaseMetadata.lastHeartbeatAt === 'string' ? leaseMetadata.lastHeartbeatAt : null,
+          renewCount:
+            typeof leaseMetadata.renewCount === 'number' ? leaseMetadata.renewCount : null,
+        };
+      }
+    );
+
+    return {
+      started: this.started,
+      databaseEnabled: this.isDbEnabled(),
+      queueDriver: getActiveQueueDriver(),
+      worker: {
+        id: this.worker?.id ?? null,
+        region: this.workerRegion,
+        queueName: this.workerQueueName,
+        concurrency: this.concurrency,
+        tenantConcurrency: this.tenantConcurrency,
+        lockDurationMs: this.lockDurationMs,
+        lockRenewTimeMs: this.lockRenewTimeMs,
+        heartbeatIntervalMs: this.heartbeatIntervalMs,
+        heartbeatTimeoutMs: this.heartbeatTimeoutMs,
+      },
+      leases: {
+        count: leases.length,
+        entries: leases,
+      },
+      metrics: {
+        queueDepths,
+      },
+    };
   }
 
   private async acquireRunningSlotWithBackoff(
