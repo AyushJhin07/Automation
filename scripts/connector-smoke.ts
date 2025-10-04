@@ -55,6 +55,16 @@ interface ScriptOptions {
   simulatorFixturesDir?: string;
 }
 
+const DEFAULT_SMOKE_PLANS: Record<string, { actions?: SmokeActionConfig[]; triggers?: SmokeActionConfig[]; notes?: string }> = {
+  dynamics365: {
+    actions: [
+      { id: 'test_connection' },
+      { id: 'list_accounts', parameters: { '$top': 1, '$select': 'accountid' } },
+    ],
+    notes: 'Default smoke plan exercises Dynamics 365 connection and Dataverse account listing.',
+  },
+};
+
 function parseArgs(argv: string[]): ScriptOptions {
   let configPath = DEFAULT_CONFIG_PATH;
   let only: Set<string> | undefined;
@@ -202,6 +212,20 @@ async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
         if (!connectorConfig.notes && simulatorPlan.notes) {
           connectorConfig.notes = simulatorPlan.notes;
         }
+      }
+    }
+
+    const defaultPlan = DEFAULT_SMOKE_PLANS[appId];
+    if (defaultPlan) {
+      connectorConfig = connectorConfig ?? {};
+      if ((!connectorConfig.actions || connectorConfig.actions.length === 0) && defaultPlan.actions) {
+        connectorConfig.actions = defaultPlan.actions.map(action => ({ ...action }));
+      }
+      if ((!connectorConfig.triggers || connectorConfig.triggers.length === 0) && defaultPlan.triggers) {
+        connectorConfig.triggers = defaultPlan.triggers.map(trigger => ({ ...trigger }));
+      }
+      if (!connectorConfig.notes && defaultPlan.notes) {
+        connectorConfig.notes = defaultPlan.notes;
       }
     }
 
