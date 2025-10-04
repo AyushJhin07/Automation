@@ -204,13 +204,14 @@ export class TableauAPIClient extends BaseAPIClient {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     endpoint: string,
     data?: any,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    options?: any
   ): Promise<APIResponse<T>> {
     if (!this.isAuthEndpoint(endpoint)) {
       await this.ensureAuthToken();
     }
 
-    return super.makeRequest(method, endpoint, data, headers);
+    return super.makeRequest(method, endpoint, data, headers, options);
   }
 
   private isAuthEndpoint(endpoint: string): boolean {

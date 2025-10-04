@@ -86,6 +86,18 @@ type RateLimitMetadata = {
   retryAfterMs?: number;
 };
 
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+export type HttpResponseType = 'json' | 'text' | 'arrayBuffer';
+
+interface RequestOptions<T> {
+  responseType?: HttpResponseType;
+  parser?: (raw: any, response: Response) => T;
+  retry?: {
+    maxAttempts?: number;
+  };
+}
+
 type ResponseMiddlewareContext = {
   response: Response;
   request: {
@@ -180,7 +192,6 @@ export abstract class BaseAPIClient {
   private connectorRateLimits?: RateLimitRules | null;
   private lastRateLimitWaitMs = 0;
   private lastRateLimitAttempts = 0;
-  private rateLimitBackoffLevel = 0;
   private readonly responseMiddleware: ResponseMiddleware[];
   private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
   private __dynamicOptionHandlers?: Map<string, DynamicOptionHandler>;
@@ -341,48 +352,60 @@ export abstract class BaseAPIClient {
    * Make authenticated HTTP request
    */
   protected async makeRequest<T = any>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    method: HttpMethod,
     endpoint: string,
     data?: any,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    options: RequestOptions<T> = {}
   ): Promise<APIResponse<T>> {
-    try {
-      const url = this.buildRequestUrl(endpoint);
-      await this.assertHostAllowed(url);
+    const connectorId = this.connectorId ?? this.deriveConnectorId() ?? 'unknown';
+    const connectionId = this.credentials.__connectionId ?? null;
+    const organizationId = this.credentials.__organizationId ?? null;
+    const responseType = options.responseType ?? 'json';
+    const maxAttempts = Math.max(1, options.retry?.maxAttempts ?? 3);
+    let lastFailure: APIResponse<T> | null = null;
 
-      const limiterResult = await rateLimiter.acquire({
-        connectorId: this.connectorId ?? this.deriveConnectorId() ?? 'unknown',
-        connectionId: this.credentials.__connectionId,
-        organizationId: this.credentials.__organizationId,
-        rules: this.connectorRateLimits,
-      });
-
-      this.lastRateLimitWaitMs = limiterResult.waitMs;
-      this.lastRateLimitAttempts = limiterResult.attempts;
-
-      const releaseLimiter = limiterResult.release;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let releaseLimiter: (() => void) | undefined;
+      let requestUrl = '';
+      let requestHeaders: Record<string, string> = {};
+      let requestPayload: any;
+      let metadata: RateLimitMetadata | null = null;
 
       try {
-        // Add authentication headers
+        const url = this.buildRequestUrl(endpoint);
+        await this.assertHostAllowed(url);
+
+        const limiterResult = await rateLimiter.acquire({
+          connectorId,
+          connectionId,
+          organizationId,
+          rules: this.connectorRateLimits,
+        });
+
+        this.lastRateLimitWaitMs = limiterResult.waitMs;
+        this.lastRateLimitAttempts = limiterResult.attempts;
+        releaseLimiter = limiterResult.release;
+
         const authHeaders = this.getAuthHeaders();
         const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
-        const requestHeaders: Record<string, string> = {
+        requestHeaders = {
           'User-Agent': 'ScriptSpark-Automation/1.0',
           ...authHeaders,
-          ...headers
+          ...headers,
         };
 
         if (!isFormData && !('Content-Type' in requestHeaders)) {
           requestHeaders['Content-Type'] = 'application/json';
         }
 
-        const requestPayload = this.cloneRequestPayload(data);
-        const isWriteMethod = method === 'POST' || method === 'PUT';
+        requestPayload = this.cloneRequestPayload(data);
+        const isWriteMethod = method === 'POST' || method === 'PUT' || method === 'PATCH';
         const providerId = this.connectorId ?? this.deriveConnectorId();
         const idempotencyFormat = providerId ? PROVIDER_IDEMPOTENCY_FORMATS[providerId] : undefined;
         const idempotencyKey = this.resolveIdempotencyKey();
         const context = this.getRequestContext();
-        let requestUrl = url;
+        requestUrl = url;
 
         if (isWriteMethod && idempotencyFormat && idempotencyKey) {
           if (idempotencyFormat.header) {
@@ -400,7 +423,6 @@ export abstract class BaseAPIClient {
           retryManager.registerRequestHash(context.executionId, context.nodeId, requestHash);
         }
 
-        // Check rate limits before making request
         if (this.rateLimitInfo && this.isRateLimited()) {
           const waitTime = this.rateLimitInfo.resetTime - Date.now();
           if (waitTime > 0) {
@@ -411,10 +433,11 @@ export abstract class BaseAPIClient {
         const requestOptions: RequestInit = {
           method,
           headers: requestHeaders,
-          body: this.serializeRequestBody(requestPayload)
+          body: this.serializeRequestBody(requestPayload),
         };
 
         const response = await fetch(requestUrl, requestOptions);
+        metadata = this.updateRateLimitInfo(response.headers);
 
         await this.runResponseMiddleware({
           response,
@@ -426,46 +449,120 @@ export abstract class BaseAPIClient {
             init: requestOptions,
           },
           connectorId: this.connectorId,
-          connectionId: this.credentials.__connectionId ?? null,
-          organizationId: this.credentials.__organizationId ?? null,
+          connectionId,
+          organizationId,
           rateLimits: this.connectorRateLimits ?? null,
+          rateLimitMetadata: metadata,
         });
 
-        const responseText = await response.text();
-        let responseData: T;
+        let rawBody: any = null;
+        let textBody: string | null = null;
 
-        try {
-          responseData = responseText ? JSON.parse(responseText) : null;
-        } catch (parseError) {
-          responseData = responseText as any;
+        if (responseType === 'arrayBuffer') {
+          rawBody = await response.arrayBuffer();
+        } else {
+          textBody = await response.text();
+          if (responseType === 'json') {
+            try {
+              rawBody = textBody ? JSON.parse(textBody) : null;
+            } catch {
+              rawBody = textBody;
+            }
+          } else {
+            rawBody = textBody;
+          }
         }
 
         if (!response.ok) {
-          return {
+          const failure: APIResponse<T> = {
             success: false,
-            error: `HTTP ${response.status}: ${response.statusText}`,
+            error: this.describeHttpError(response.status, response.statusText, rawBody ?? textBody),
             statusCode: response.status,
-            data: responseData
+            data: rawBody ?? undefined,
+            headers: Object.fromEntries(response.headers.entries()),
           };
+          lastFailure = failure;
+
+          const decision = retryManager.getHttpRetryDecision({
+            attempt,
+            maxAttempts,
+            statusCode: response.status,
+            retryAfterMs: this.getRetryAfterDelay(response, metadata),
+            connectorId,
+            connectionId: connectionId ?? undefined,
+            organizationId: organizationId ?? undefined,
+          });
+
+          if (decision.penaltyMs && decision.penaltyMs > 0) {
+            rateLimiter.schedulePenalty({
+              connectorId,
+              connectionId,
+              organizationId,
+              waitMs: decision.penaltyMs,
+              scope: decision.penaltyScope,
+            });
+          }
+
+          if (decision.shouldRetry && attempt < maxAttempts) {
+            await this.sleep(decision.waitMs);
+            continue;
+          }
+
+          return failure;
         }
 
+        const parsedData = options.parser ? options.parser(rawBody, response) : (rawBody as T);
         return {
           success: true,
-          data: responseData,
+          data: parsedData,
           statusCode: response.status,
-          headers: Object.fromEntries(response.headers.entries())
+          headers: Object.fromEntries(response.headers.entries()),
         };
+      } catch (error) {
+        const failure: APIResponse<T> = {
+          success: false,
+          error: getErrorMessage(error),
+          statusCode: 0,
+        };
+        lastFailure = failure;
+
+        const decision = retryManager.getHttpRetryDecision({
+          attempt,
+          maxAttempts,
+          error: error instanceof Error ? error : new Error(getErrorMessage(error)),
+          connectorId,
+          connectionId: connectionId ?? undefined,
+          organizationId: organizationId ?? undefined,
+        });
+
+        if (decision.shouldRetry && attempt < maxAttempts) {
+          if (decision.penaltyMs && decision.penaltyMs > 0) {
+            rateLimiter.schedulePenalty({
+              connectorId,
+              connectionId,
+              organizationId,
+              waitMs: decision.penaltyMs,
+              scope: decision.penaltyScope,
+            });
+          }
+
+          await this.sleep(decision.waitMs);
+          continue;
+        }
+
+        return failure;
       } finally {
         releaseLimiter?.();
       }
-
-    } catch (error) {
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        statusCode: 0
-      };
     }
+
+    return (
+      lastFailure ?? {
+        success: false,
+        error: 'Request failed without yielding a response.',
+        statusCode: 0,
+      }
+    );
   }
 
   private buildRequestUrl(endpoint: string): string {
@@ -579,6 +676,52 @@ export abstract class BaseAPIClient {
     }
 
     return JSON.stringify(payload);
+  }
+
+  private describeHttpError(status: number, statusText: string, body: any): string {
+    const prefix = `HTTP ${status}${statusText ? `: ${statusText}` : ''}`.trim();
+
+    if (typeof body === 'string' && body.trim().length > 0) {
+      const trimmed = body.trim();
+      return `${prefix} - ${trimmed.length > 512 ? `${trimmed.slice(0, 512)}…` : trimmed}`;
+    }
+
+    if (body && typeof body === 'object') {
+      const message =
+        (typeof body.error === 'string' && body.error) ||
+        (typeof body.message === 'string' && body.message) ||
+        (body.error && typeof body.error === 'object' && typeof body.error.message === 'string'
+          ? body.error.message
+          : undefined);
+      if (message) {
+        return `${prefix} - ${message}`;
+      }
+    }
+
+    return prefix;
+  }
+
+  private getRetryAfterDelay(response: Response, metadata?: RateLimitMetadata | null): number | undefined {
+    const headerValue = response.headers.get('retry-after');
+    if (headerValue) {
+      const parsed = this.parseRetryAfterHeader(headerValue);
+      if (parsed?.delayMs !== undefined) {
+        return parsed.delayMs;
+      }
+    }
+
+    if (metadata?.retryAfterMs !== undefined) {
+      return metadata.retryAfterMs;
+    }
+
+    if (metadata?.resetMs !== undefined) {
+      const delta = metadata.resetMs - Date.now();
+      if (delta > 0) {
+        return delta;
+      }
+    }
+
+    return undefined;
   }
 
   private computeRequestHash(method: string, url: string, payload: any): string {
@@ -1016,36 +1159,59 @@ export abstract class BaseAPIClient {
   /**
    * GET request
    */
-  protected async get<T = any>(endpoint: string, headers?: Record<string, string>): Promise<APIResponse<T>> {
-    return this.makeRequest<T>('GET', endpoint, undefined, headers);
+  protected async get<T = any>(
+    endpoint: string,
+    headers?: Record<string, string>,
+    options?: RequestOptions<T>
+  ): Promise<APIResponse<T>> {
+    return this.makeRequest<T>('GET', endpoint, undefined, headers, options);
   }
 
   /**
    * POST request
    */
-  protected async post<T = any>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<APIResponse<T>> {
-    return this.makeRequest<T>('POST', endpoint, data, headers);
+  protected async post<T = any>(
+    endpoint: string,
+    data?: any,
+    headers?: Record<string, string>,
+    options?: RequestOptions<T>
+  ): Promise<APIResponse<T>> {
+    return this.makeRequest<T>('POST', endpoint, data, headers, options);
   }
 
   /**
    * PUT request
    */
-  protected async put<T = any>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<APIResponse<T>> {
-    return this.makeRequest<T>('PUT', endpoint, data, headers);
+  protected async put<T = any>(
+    endpoint: string,
+    data?: any,
+    headers?: Record<string, string>,
+    options?: RequestOptions<T>
+  ): Promise<APIResponse<T>> {
+    return this.makeRequest<T>('PUT', endpoint, data, headers, options);
   }
 
   /**
    * DELETE request
    */
-  protected async delete<T = any>(endpoint: string, headers?: Record<string, string>): Promise<APIResponse<T>> {
-    return this.makeRequest<T>('DELETE', endpoint, undefined, headers);
+  protected async delete<T = any>(
+    endpoint: string,
+    headers?: Record<string, string>,
+    options?: RequestOptions<T>
+  ): Promise<APIResponse<T>> {
+    return this.makeRequest<T>('DELETE', endpoint, undefined, headers, options);
   }
 
   /**
    * PATCH request
    */
-  protected async patch<T = any>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<APIResponse<T>> {
-    return this.makeRequest<T>('PATCH', endpoint, data, headers);
+  protected async patch<T = any>(
+    endpoint: string,
+    data?: any,
+    headers?: Record<string, string>,
+    options?: RequestOptions<T>
+  ): Promise<APIResponse<T>> {
+    return this.makeRequest<T>('PATCH', endpoint, data, headers, options);
   }
 
   /**
@@ -1209,23 +1375,6 @@ export abstract class BaseAPIClient {
     return null;
   }
 
-  private computeRateLimitBackoffDelay(level = this.rateLimitBackoffLevel): number {
-    const exponent = Math.max(0, level - 1);
-    const baseDelay = 1000;
-    return Math.min(60000, Math.round(baseDelay * Math.pow(2, exponent)));
-  }
-
-  private applyJitter(waitMs: number): number {
-    if (!Number.isFinite(waitMs) || waitMs <= 0) {
-      return 0;
-    }
-
-    const jitter = 0.25;
-    const minFactor = 1 - jitter;
-    const factor = minFactor + Math.random() * (jitter * 2);
-    return Math.max(0, Math.round(waitMs * factor));
-  }
-
   private handleRateLimitEffects(response: Response, metadata: RateLimitMetadata | null): void {
     const connectorId = this.connectorId ?? this.deriveConnectorId() ?? 'unknown';
     const connectionId = this.credentials.__connectionId ?? null;
@@ -1243,40 +1392,6 @@ export abstract class BaseAPIClient {
     } else {
       updateConnectorRateBudgetMetric({ connectorId, connectionId, organizationId });
     }
-
-    const shouldPenalize =
-      response.status === 429 || Boolean(metadata?.retryAfterMs && metadata.retryAfterMs > 0);
-
-    if (!shouldPenalize) {
-      this.rateLimitBackoffLevel = 0;
-      return;
-    }
-
-    let effectiveLevel = this.rateLimitBackoffLevel;
-    if (response.status === 429) {
-      this.rateLimitBackoffLevel = Math.min(this.rateLimitBackoffLevel + 1, 6);
-      effectiveLevel = this.rateLimitBackoffLevel;
-    } else {
-      effectiveLevel = Math.max(effectiveLevel, 1);
-    }
-
-    const baseDelay =
-      metadata?.retryAfterMs && metadata.retryAfterMs > 0
-        ? metadata.retryAfterMs
-        : this.computeRateLimitBackoffDelay(effectiveLevel);
-
-    const waitMs = this.applyJitter(baseDelay);
-    if (waitMs <= 0) {
-      return;
-    }
-
-    rateLimiter.schedulePenalty({
-      connectorId,
-      connectionId,
-      organizationId,
-      waitMs,
-      scope: this.connectorRateLimits?.concurrency?.scope ?? undefined,
-    });
   }
 
   /**

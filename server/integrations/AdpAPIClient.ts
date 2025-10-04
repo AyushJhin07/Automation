@@ -173,9 +173,10 @@ export class AdpAPIClient extends BaseAPIClient {
     endpoint: string,
     data?: any,
     headers: Record<string, string> = {},
+    options?: any,
   ): Promise<APIResponse<T>> {
     await this.ensureAccessToken();
-    return super.makeRequest(method, endpoint, data, headers);
+    return super.makeRequest(method, endpoint, data, headers, options);
   }
 
   private async ensureAccessToken(): Promise<void> {

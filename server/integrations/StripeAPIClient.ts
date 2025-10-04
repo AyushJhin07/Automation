@@ -20,13 +20,7 @@ export class StripeAPIClient extends BaseAPIClient {
   }
 
   public async testConnection(): Promise<APIResponse<any>> {
-    try {
-      const resp = await fetch(`${this.baseURL}/account`, { headers: this.getAuthHeaders() });
-      const data = await resp.json().catch(() => ({}));
-      return resp.ok ? { success: true, data } : { success: false, error: data?.error?.message || `HTTP ${resp.status}` };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
+    return this.get('/account');
   }
 
   public async createPaymentIntent(params: { amount: number; currency: string; customerId?: string; description?: string; metadata?: Record<string, any> }): Promise<APIResponse<any>> {
@@ -40,7 +34,7 @@ export class StripeAPIClient extends BaseAPIClient {
         form.set(`metadata[${k}]`, String(v));
       }
     }
-    return this.formPost('/payment_intents', form);
+    return this.post('/payment_intents', form, { 'Content-Type': 'application/x-www-form-urlencoded' });
   }
 
   public async createCustomer(params: { email?: string; name?: string; phone?: string; description?: string; metadata?: Record<string, any> }): Promise<APIResponse<any>> {
@@ -54,7 +48,7 @@ export class StripeAPIClient extends BaseAPIClient {
         form.set(`metadata[${k}]`, String(v));
       }
     }
-    return this.formPost('/customers', form);
+    return this.post('/customers', form, { 'Content-Type': 'application/x-www-form-urlencoded' });
   }
 
   public async createRefund(params: { paymentIntentId: string; amount?: number; reason?: string }): Promise<APIResponse<any>> {
@@ -62,63 +56,43 @@ export class StripeAPIClient extends BaseAPIClient {
     form.set('payment_intent', params.paymentIntentId);
     if (params.amount) form.set('amount', String(params.amount));
     if (params.reason) form.set('reason', params.reason);
-    return this.formPost('/refunds', form);
+    return this.post('/refunds', form, { 'Content-Type': 'application/x-www-form-urlencoded' });
   }
 
   // Webhook management
   async registerWebhook(webhookUrl: string, events: string[], _secret?: string): Promise<APIResponse<{ webhookId: string; secret?: string }>> {
-    try {
-      const form = new URLSearchParams();
-      form.set('url', webhookUrl);
-      events.forEach(e => form.append('enabled_events[]', e));
-      const resp = await fetch(`${this.baseURL}/webhook_endpoints`, {
-        method: 'POST',
-        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: form.toString()
-      });
-      const data = await resp.json();
-      if (!resp.ok) return { success: false, error: data?.error?.message || `HTTP ${resp.status}` };
-      return { success: true, data: { webhookId: data.id, secret: data.secret } };
-    } catch (error) {
-      return { success: false, error: String(error) };
+    const form = new URLSearchParams();
+    form.set('url', webhookUrl);
+    events.forEach(e => form.append('enabled_events[]', e));
+    const response = await this.post<any>('/webhook_endpoints', form, {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    });
+
+    if (!response.success || !response.data) {
+      return response as APIResponse<{ webhookId: string; secret?: string }>;
     }
+
+    const payload = response.data as any;
+    return {
+      success: true,
+      data: { webhookId: payload.id, secret: payload.secret },
+      headers: response.headers,
+      statusCode: response.statusCode,
+    };
   }
 
   async unregisterWebhook(webhookId: string): Promise<APIResponse<void>> {
-    try {
-      const resp = await fetch(`${this.baseURL}/webhook_endpoints/${webhookId}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders()
-      });
-      if (!resp.ok) return { success: false, error: `HTTP ${resp.status}` };
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
+    const response = await this.delete(`/webhook_endpoints/${webhookId}`);
+    return response.success ? { success: true, statusCode: response.statusCode, headers: response.headers } : response;
   }
 
   async listWebhooks(): Promise<APIResponse<any[]>> {
-    try {
-      const resp = await fetch(`${this.baseURL}/webhook_endpoints`, { headers: this.getAuthHeaders() });
-      const data = await resp.json();
-      if (!resp.ok) return { success: false, error: `HTTP ${resp.status}` };
-      return { success: true, data: data?.data || [] };
-    } catch (error) {
-      return { success: false, error: String(error) };
+    const response = await this.get<any>('/webhook_endpoints');
+    if (!response.success || !response.data) {
+      return response as APIResponse<any[]>;
     }
-  }
 
-  private async formPost(path: string, form: URLSearchParams): Promise<APIResponse<any>> {
-    try {
-      const resp = await fetch(`${this.baseURL}${path}`, {
-        method: 'POST',
-        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: form.toString()
-      });
-      const data = await resp.json().catch(() => ({}));
-      return resp.ok ? { success: true, data } : { success: false, error: data?.error?.message || `HTTP ${resp.status}` };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
+    const items = Array.isArray(response.data?.data) ? response.data.data : [];
+    return { success: true, data: items, headers: response.headers, statusCode: response.statusCode };
   }
 }

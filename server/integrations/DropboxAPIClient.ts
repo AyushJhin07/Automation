@@ -18,7 +18,7 @@ export class DropboxAPIClient extends BaseAPIClient {
   }
 
   public async testConnection(): Promise<APIResponse<any>> {
-    return this.post('/users/get_current_account', {}, this.getAuthHeaders());
+    return this.post('/users/get_current_account', {});
   }
 
   public async listFiles(params: { path?: string; recursive?: boolean; limit?: number }): Promise<APIResponse<any>> {
@@ -28,26 +28,14 @@ export class DropboxAPIClient extends BaseAPIClient {
       limit: params.limit ?? 1000,
       include_mounted_folders: true
     };
-    return this.post('/files/list_folder', body, this.getAuthHeaders());
+    return this.post('/files/list_folder', body);
   }
 
   public async uploadFile(params: { path: string; content: string; mode?: 'add' | 'overwrite' | 'update' }): Promise<APIResponse<any>> {
-    const url = 'https://content.dropboxapi.com/2/files/upload';
     const arg = { path: params.path, mode: params.mode ?? 'add', mute: false, strict_conflict: false };
-    try {
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.credentials.accessToken || this.credentials.token || ''}`,
-          'Content-Type': 'application/octet-stream',
-          'Dropbox-API-Arg': JSON.stringify(arg)
-        },
-        body: params.content
-      });
-      const data = await resp.json();
-      return resp.ok ? { success: true, data } : { success: false, error: `HTTP ${resp.status}` };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
+    return this.makeRequest('POST', 'https://content.dropboxapi.com/2/files/upload', params.content, {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify(arg),
+    });
   }
 }

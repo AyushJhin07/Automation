@@ -348,8 +348,8 @@ export class UsageMeteringService {
     storage: number = 0
   ): Promise<QuotaCheck> {
     try {
-      const user = await this.getUserWithUsage(userId);
-      if (!user) {
+      const usage = await this.getUserUsage(userId);
+      if (!usage) {
         return {
           hasQuota: false,
           quotaType: 'api_calls',
@@ -360,42 +360,70 @@ export class UsageMeteringService {
         };
       }
 
-      const plan = await this.getPlanByCode(user.planType);
-      const resetDate = this.getNextBillingPeriod().startDate;
+      const quotas = usage.quotas;
+      const resetDate = usage.period.endDate ?? this.getNextBillingPeriod().startDate;
 
-      // Check API calls
-      if (user.monthlyApiCalls + apiCalls > plan.apiCalls) {
+      if (usage.apiCalls + apiCalls > quotas.apiCalls) {
         return {
           hasQuota: false,
           quotaType: 'api_calls',
-          current: user.monthlyApiCalls,
-          limit: plan.apiCalls,
-          remaining: Math.max(0, plan.apiCalls - user.monthlyApiCalls),
+          current: usage.apiCalls,
+          limit: quotas.apiCalls,
+          remaining: Math.max(0, quotas.apiCalls - usage.apiCalls),
           resetDate
         };
       }
 
-      // Check tokens
-      if (user.monthlyTokensUsed + tokens > plan.tokens) {
+      if (usage.tokensUsed + tokens > quotas.tokens) {
         return {
           hasQuota: false,
           quotaType: 'tokens',
-          current: user.monthlyTokensUsed,
-          limit: plan.tokens,
-          remaining: Math.max(0, plan.tokens - user.monthlyTokensUsed),
+          current: usage.tokensUsed,
+          limit: quotas.tokens,
+          remaining: Math.max(0, quotas.tokens - usage.tokensUsed),
           resetDate
         };
       }
 
-      // For successful quota check, return the most restrictive remaining quota
-      const apiCallsRemaining = plan.apiCalls - user.monthlyApiCalls;
-      const tokensRemaining = plan.tokens - user.monthlyTokensUsed;
+      if (usage.workflowRuns + workflowRuns > quotas.workflowRuns) {
+        return {
+          hasQuota: false,
+          quotaType: 'workflow_runs',
+          current: usage.workflowRuns,
+          limit: quotas.workflowRuns,
+          remaining: Math.max(0, quotas.workflowRuns - usage.workflowRuns),
+          resetDate
+        };
+      }
+
+      if (usage.storageUsed + storage > quotas.storage) {
+        return {
+          hasQuota: false,
+          quotaType: 'storage',
+          current: usage.storageUsed,
+          limit: quotas.storage,
+          remaining: Math.max(0, quotas.storage - usage.storageUsed),
+          resetDate
+        };
+      }
+
+      const remainingValues = [
+        quotas.apiCalls - usage.apiCalls,
+        quotas.tokens - usage.tokensUsed,
+        quotas.workflowRuns - usage.workflowRuns,
+        quotas.storage - usage.storageUsed,
+      ].filter(value => Number.isFinite(value));
+
+      const remaining = remainingValues.length
+        ? Math.max(0, Math.min(...remainingValues))
+        : 0;
 
       return {
         hasQuota: true,
-        current: user.monthlyApiCalls,
-        limit: plan.apiCalls,
-        remaining: Math.min(apiCallsRemaining, tokensRemaining),
+        quotaType: 'api_calls',
+        current: usage.apiCalls,
+        limit: quotas.apiCalls,
+        remaining,
         resetDate
       };
 
@@ -409,6 +437,52 @@ export class UsageMeteringService {
         remaining: 0,
         resetDate: this.getNextBillingPeriod().startDate
       };
+    }
+  }
+
+  public async recordQuotaBlock(params: {
+    userId: string;
+    organizationId?: string;
+    quota: QuotaCheck;
+    requested: { apiCalls?: number; workflowRuns?: number; storage?: number };
+  }): Promise<void> {
+    try {
+      const user = await this.getUserWithUsage(params.userId);
+      if (!user) {
+        return;
+      }
+
+      const plan = await this.getPlanByCode(user.planType);
+      const quotaType = params.quota.quotaType ?? 'api_calls';
+      let quantity = 1;
+
+      if (quotaType === 'api_calls') {
+        quantity = Math.max(1, params.requested.apiCalls ?? 1);
+      } else if (quotaType === 'workflow_runs') {
+        quantity = Math.max(1, params.requested.workflowRuns ?? 1);
+      } else if (quotaType === 'storage') {
+        const bytes = Math.max(0, params.requested.storage ?? 0);
+        quantity = Math.max(1, Math.ceil(bytes / (1024 * 1024))); // bill in megabyte units
+      }
+
+      await this.billingProvider.emitMeteringEvent({
+        eventId: randomUUID(),
+        userId: params.userId,
+        organizationId: params.organizationId,
+        planCode: plan.code,
+        usageType: 'overage',
+        quantity,
+        unitPriceCents: 0,
+        occurredAt: this.now(),
+        metadata: {
+          quotaType,
+          limit: params.quota.limit,
+          current: params.quota.current,
+          requested: params.requested,
+        },
+      });
+    } catch (error) {
+      console.error('❌ Failed to record quota block event:', error);
     }
   }
 

@@ -13,6 +13,37 @@ type NodeExecutionResultRow = typeof nodeExecutionResults.$inferSelect;
 
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+const DEFAULT_HTTP_BACKOFF_BASE_MS = 500;
+const DEFAULT_HTTP_BACKOFF_MAX_MS = 30_000;
+const DEFAULT_HTTP_BACKOFF_JITTER = 0.2;
+
+export type HttpRetryReason =
+  | 'rate_limit'
+  | 'server_error'
+  | 'network_error'
+  | 'retry_after'
+  | 'unknown';
+
+export interface HttpRetryDecision {
+  shouldRetry: boolean;
+  waitMs: number;
+  penaltyMs?: number;
+  penaltyScope?: 'connection' | 'connector' | 'organization';
+  reason: HttpRetryReason;
+}
+
+export interface HttpRetryContext {
+  attempt: number;
+  maxAttempts: number;
+  statusCode?: number;
+  retryAfterMs?: number;
+  error?: Error;
+  connectorId?: string;
+  connectionId?: string;
+  organizationId?: string;
+  penaltyScope?: 'connection' | 'connector' | 'organization';
+}
+
 export interface NodeExecutionResultStore {
   find(params: { executionId: string; nodeId: string; idempotencyKey: string; now: Date }): Promise<NodeExecutionResultRow | undefined>;
   upsert(record: {
@@ -820,14 +851,92 @@ class RetryManager {
   private calculateRetryDelay(attempt: number, policy: RetryPolicy): number {
     let delay = policy.initialDelayMs * Math.pow(policy.backoffMultiplier, attempt - 1);
     delay = Math.min(delay, policy.maxDelayMs);
-    
+
     if (policy.jitterEnabled) {
       // Add ±25% jitter to prevent thundering herd
       const jitter = delay * 0.25;
       delay = delay + (Math.random() * 2 - 1) * jitter;
     }
-    
+
     return Math.max(100, Math.floor(delay)); // Minimum 100ms delay
+  }
+
+  public classifyHttpStatus(statusCode?: number): 'success' | 'retryable' | 'fatal' {
+    if (statusCode === undefined || statusCode === null) {
+      return 'retryable';
+    }
+
+    if (statusCode === 429 || statusCode === 408 || statusCode === 425) {
+      return 'retryable';
+    }
+
+    if (statusCode >= 500) {
+      return 'retryable';
+    }
+
+    if (statusCode >= 400) {
+      return 'fatal';
+    }
+
+    return 'success';
+  }
+
+  public getHttpRetryDecision(context: HttpRetryContext): HttpRetryDecision {
+    const attempt = Math.max(1, context.attempt);
+    const maxAttempts = Math.max(attempt, context.maxAttempts);
+    const remainingAttempts = Math.max(0, maxAttempts - attempt);
+
+    const classification = this.classifyHttpStatus(context.statusCode);
+    let shouldRetry = false;
+    let reason: HttpRetryReason = 'unknown';
+
+    if (classification === 'retryable') {
+      shouldRetry = remainingAttempts > 0;
+      reason = context.statusCode === 429 ? 'rate_limit' : 'server_error';
+    } else if (context.error && !context.statusCode) {
+      shouldRetry = remainingAttempts > 0;
+      reason = 'network_error';
+    } else {
+      return {
+        shouldRetry: false,
+        waitMs: 0,
+        reason: 'unknown',
+      };
+    }
+
+    if (!shouldRetry) {
+      return {
+        shouldRetry: false,
+        waitMs: 0,
+        reason,
+      };
+    }
+
+    const backoffExponent = Math.max(0, attempt - 1);
+    const baseDelay = Math.min(
+      DEFAULT_HTTP_BACKOFF_MAX_MS,
+      DEFAULT_HTTP_BACKOFF_BASE_MS * Math.pow(2, backoffExponent)
+    );
+    const jitterFactor = 1 + (Math.random() * 2 - 1) * DEFAULT_HTTP_BACKOFF_JITTER;
+    let waitMs = Math.max(0, Math.round(baseDelay * jitterFactor));
+
+    if (context.retryAfterMs !== undefined) {
+      waitMs = Math.max(waitMs, Math.round(context.retryAfterMs));
+      reason = context.statusCode === 429 ? 'retry_after' : reason;
+    }
+
+    let penaltyMs: number | undefined;
+    if (context.statusCode === 429) {
+      penaltyMs = context.retryAfterMs ?? waitMs;
+    }
+
+    return {
+      shouldRetry: true,
+      waitMs,
+      penaltyMs,
+      penaltyScope: context.penaltyScope ?? (context.statusCode === 429 ? 'connection' : undefined),
+      reason,
+    };
   }
 
   /**
