@@ -375,7 +375,7 @@ export const encryptionKeys = pgTable(
     keyId: text('key_id').notNull(),
     kmsKeyArn: text('kms_key_arn'),
     alias: text('alias'),
-    derivedKey: text('derived_key').notNull(),
+    derivedKey: text('derived_key'),
     status: text('status').notNull().default('active'),
     metadata: jsonb('metadata').$type<Record<string, any> | null>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -434,6 +434,7 @@ export const connections = pgTable(
     type: text('type').default('saas').notNull(),
     encryptedCredentials: text('encrypted_credentials').notNull(),
     iv: text('iv').notNull(), // AES-256-GCM IV
+    dataKeyCiphertext: text('data_key_ciphertext'),
     encryptionKeyId: uuid('encryption_key_id')
       .references(() => encryptionKeys.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),

@@ -3,19 +3,21 @@ import jwt from 'jsonwebtoken';
 import { sql } from 'drizzle-orm';
 
 import { db, encryptionKeys, type EncryptionKeyStatus } from '../database/schema';
+import { getKmsClient } from './kms/KmsClient';
 import { JWTPayload, getErrorMessage } from '../types/common';
 
 interface EncryptedData {
   encryptedData: string;
   iv: string;
   keyId?: string | null;
+  dataKeyCiphertext?: string | null;
 }
 
 interface CachedEncryptionKey {
   recordId: string;
   keyId: string;
   status: EncryptionKeyStatus;
-  buffer: Buffer;
+  legacyDerivedKey?: Buffer;
   kmsKeyArn?: string | null;
   alias?: string | null;
 }
@@ -31,6 +33,9 @@ export class EncryptionService {
   private static keyCache: Map<string, CachedEncryptionKey> = new Map();
   private static primaryKeyRecordId: string | null = null;
   private static lastCacheRefresh = 0;
+  private static readonly DATA_KEY_CACHE_TTL_MS = 60 * 1000;
+  private static dataKeyCache: Map<string, { key: Buffer; expiresAt: number }> = new Map();
+  private static kmsClientErrorLogged = false;
   private static initPromise: Promise<void> | null = null;
 
   static async init(): Promise<void> {
@@ -112,35 +117,40 @@ export class EncryptionService {
 
     for (const row of rows) {
       const recordId = row.id as string | undefined;
-      const derivedKey = row.derived_key as string | undefined;
-      if (!recordId || !derivedKey) {
+      const keyIdentifier = row.key_id as string | undefined;
+      if (!recordId || !keyIdentifier) {
         continue;
       }
 
-      try {
-        const buffer = Buffer.from(derivedKey, 'base64');
-        if (buffer.length !== this.KEY_LENGTH) {
-          console.warn(
-            `⚠️ Ignoring encryption key ${recordId}: expected ${this.KEY_LENGTH} bytes but received ${buffer.length}.`
-          );
-          continue;
+      let legacyDerivedKey: Buffer | undefined;
+      const derivedKey = row.derived_key as string | undefined | null;
+      if (derivedKey) {
+        try {
+          const buffer = Buffer.from(derivedKey, 'base64');
+          if (buffer.length === this.KEY_LENGTH) {
+            legacyDerivedKey = buffer;
+          } else {
+            console.warn(
+              `⚠️ Ignoring stored derived key for ${recordId}: expected ${this.KEY_LENGTH} bytes but received ${buffer.length}.`
+            );
+          }
+        } catch (error) {
+          console.error(`❌ Failed to decode encryption key ${recordId}:`, getErrorMessage(error));
         }
+      }
 
-        const entry: CachedEncryptionKey = {
-          recordId,
-          keyId: row.key_id as string,
-          status: row.status as EncryptionKeyStatus,
-          buffer,
-          kmsKeyArn: row.kms_key_arn as string | null | undefined,
-          alias: row.alias as string | null | undefined,
-        };
+      const entry: CachedEncryptionKey = {
+        recordId,
+        keyId: keyIdentifier,
+        status: row.status as EncryptionKeyStatus,
+        legacyDerivedKey,
+        kmsKeyArn: row.kms_key_arn as string | null | undefined,
+        alias: row.alias as string | null | undefined,
+      };
 
-        nextCache.set(recordId, entry);
-        if (!nextPrimary && entry.status === 'active') {
-          nextPrimary = recordId;
-        }
-      } catch (error) {
-        console.error(`❌ Failed to decode encryption key ${recordId}:`, getErrorMessage(error));
+      nextCache.set(recordId, entry);
+      if (!nextPrimary && entry.status === 'active') {
+        nextPrimary = recordId;
       }
     }
 
@@ -167,51 +177,119 @@ export class EncryptionService {
     }
   }
 
-  private static getKeyForEncryption(): { key: Buffer; recordId: string | null } {
-    this.maybeRefreshKeyCache();
-
+  private static getActiveKeyEntry(): CachedEncryptionKey | null {
     if (this.primaryKeyRecordId) {
       const cached = this.keyCache.get(this.primaryKeyRecordId);
       if (cached) {
-        return { key: cached.buffer, recordId: cached.recordId };
-      }
-      void this.refreshKeyCache(true).catch((error) => {
-        console.error('❌ Unable to refresh encryption keys while selecting key for encryption:', getErrorMessage(error));
-      });
-      const refreshed = this.keyCache.get(this.primaryKeyRecordId);
-      if (refreshed) {
-        return { key: refreshed.buffer, recordId: refreshed.recordId };
+        return cached;
       }
     }
+    const fallback = this.keyCache.values().next();
+    return fallback.done ? null : fallback.value;
+  }
 
-    const firstCached = this.keyCache.values().next();
-    if (!firstCached.done) {
-      const entry = firstCached.value;
-      return { key: entry.buffer, recordId: entry.recordId };
+  private static cacheDataKey(recordId: string | null, ciphertext: string, plaintext: Buffer): void {
+    const cacheKey = `${recordId ?? 'legacy'}:${ciphertext}`;
+    this.dataKeyCache.set(cacheKey, { key: plaintext, expiresAt: Date.now() + this.DATA_KEY_CACHE_TTL_MS });
+  }
+
+  private static tryGetCachedDataKey(recordId: string | null, ciphertext: string): Buffer | null {
+    const cacheKey = `${recordId ?? 'legacy'}:${ciphertext}`;
+    const cached = this.dataKeyCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.key;
+    }
+    if (cached) {
+      this.dataKeyCache.delete(cacheKey);
+    }
+    return null;
+  }
+
+  private static async getKeyMaterialForEncryption(): Promise<{
+    key: Buffer;
+    recordId: string | null;
+    dataKeyCiphertext?: string | null;
+  }> {
+    this.maybeRefreshKeyCache();
+
+    const active = this.getActiveKeyEntry();
+    if (active) {
+      const kmsResource = active.kmsKeyArn ?? active.keyId;
+      if (kmsResource) {
+        try {
+          const kms = getKmsClient();
+          const { plaintextKey, encryptedKey } = await kms.generateDataKey(kmsResource);
+          this.cacheDataKey(active.recordId, encryptedKey, plaintextKey);
+          return { key: plaintextKey, recordId: active.recordId, dataKeyCiphertext: encryptedKey };
+        } catch (error) {
+          if (!this.kmsClientErrorLogged) {
+            this.kmsClientErrorLogged = true;
+            console.error('❌ Failed to generate data key via KMS:', getErrorMessage(error));
+          }
+        }
+      }
+
+      if (active.legacyDerivedKey) {
+        return { key: active.legacyDerivedKey, recordId: active.recordId, dataKeyCiphertext: null };
+      }
     }
 
     if (this.legacyKey) {
-      return { key: this.legacyKey, recordId: null };
+      return { key: this.legacyKey, recordId: null, dataKeyCiphertext: null };
     }
 
     throw new Error('No encryption key available for encryption operations');
   }
 
-  private static resolveKeyForDecryption(keyRecordId?: string | null): Buffer {
+  private static async resolveKeyForDecryption(
+    keyRecordId?: string | null,
+    encryptedDataKey?: string | null
+  ): Promise<Buffer> {
     this.maybeRefreshKeyCache();
+
+    if (encryptedDataKey) {
+      const cached = this.tryGetCachedDataKey(keyRecordId ?? null, encryptedDataKey);
+      if (cached) {
+        return cached;
+      }
+
+      const keyEntry = keyRecordId ? this.keyCache.get(keyRecordId) : null;
+      const kmsResource = keyEntry?.kmsKeyArn ?? keyEntry?.keyId;
+      if (!kmsResource && !keyEntry?.legacyDerivedKey) {
+        throw new Error(`KMS metadata missing for encrypted data key ${keyRecordId ?? 'unknown'}`);
+      }
+
+      if (kmsResource) {
+        try {
+          const kms = getKmsClient();
+          const plaintext = await kms.decryptDataKey(encryptedDataKey, kmsResource);
+          this.cacheDataKey(keyRecordId ?? null, encryptedDataKey, plaintext);
+          return plaintext;
+        } catch (error) {
+          console.error('❌ Failed to decrypt data key via KMS:', getErrorMessage(error));
+        }
+      }
+
+      if (keyEntry?.legacyDerivedKey) {
+        console.warn(
+          `⚠️ Falling back to legacy derived key for record ${keyRecordId} during decryption; encrypted data key unavailable.`
+        );
+        return keyEntry.legacyDerivedKey;
+      }
+    }
 
     if (keyRecordId) {
       const cached = this.keyCache.get(keyRecordId);
-      if (cached) {
-        return cached.buffer;
+      if (cached?.legacyDerivedKey) {
+        return cached.legacyDerivedKey;
       }
 
       void this.refreshKeyCache(true).catch((error) => {
         console.error('❌ Failed to refresh key cache during decryption:', getErrorMessage(error));
       });
       const refreshed = this.keyCache.get(keyRecordId);
-      if (refreshed) {
-        return refreshed.buffer;
+      if (refreshed?.legacyDerivedKey) {
+        return refreshed.legacyDerivedKey;
       }
 
       if (this.legacyKey) {
@@ -228,16 +306,9 @@ export class EncryptionService {
       return this.legacyKey;
     }
 
-    if (this.primaryKeyRecordId) {
-      const active = this.keyCache.get(this.primaryKeyRecordId);
-      if (active) {
-        return active.buffer;
-      }
-    }
-
-    const anyKey = this.keyCache.values().next();
-    if (!anyKey.done) {
-      return anyKey.value.buffer;
+    const active = this.getActiveKeyEntry();
+    if (active?.legacyDerivedKey) {
+      return active.legacyDerivedKey;
     }
 
     throw new Error('No encryption keys loaded for decryption');
@@ -255,8 +326,8 @@ export class EncryptionService {
     return this.legacyKey !== null;
   }
 
-  static encrypt(plaintext: string): EncryptedData {
-    const { key, recordId } = this.getKeyForEncryption();
+  static async encrypt(plaintext: string): Promise<EncryptedData> {
+    const { key, recordId, dataKeyCiphertext } = await this.getKeyMaterialForEncryption();
 
     const iv = crypto.randomBytes(this.IV_LENGTH);
     const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
@@ -270,11 +341,17 @@ export class EncryptionService {
       encryptedData: payload,
       iv: iv.toString('hex'),
       keyId: recordId,
+      dataKeyCiphertext: dataKeyCiphertext ?? null,
     };
   }
 
-  static decrypt(encryptedData: string, ivHex: string, keyRecordId?: string | null): string {
-    const key = this.resolveKeyForDecryption(keyRecordId);
+  static async decrypt(
+    encryptedData: string,
+    ivHex: string,
+    keyRecordId?: string | null,
+    encryptedDataKey?: string | null
+  ): Promise<string> {
+    const key = await this.resolveKeyForDecryption(keyRecordId, encryptedDataKey);
 
     const iv = Buffer.from(ivHex, 'hex');
     const buf = Buffer.from(encryptedData, 'hex');
@@ -292,7 +369,7 @@ export class EncryptionService {
   /**
    * Encrypt API credentials object
    */
-  public static encryptCredentials(credentials: Record<string, any>): EncryptedData {
+  public static async encryptCredentials(credentials: Record<string, any>): Promise<EncryptedData> {
     const jsonString = JSON.stringify(credentials);
     return this.encrypt(jsonString);
   }
@@ -300,12 +377,13 @@ export class EncryptionService {
   /**
    * Decrypt API credentials object
    */
-  public static decryptCredentials(
+  public static async decryptCredentials(
     encryptedData: string,
     iv: string,
-    keyRecordId?: string | null
-  ): Record<string, any> {
-    const decryptedJson = this.decrypt(encryptedData, iv, keyRecordId);
+    keyRecordId?: string | null,
+    encryptedDataKey?: string | null
+  ): Promise<Record<string, any>> {
+    const decryptedJson = await this.decrypt(encryptedData, iv, keyRecordId, encryptedDataKey);
     return JSON.parse(decryptedJson);
   }
 
@@ -409,12 +487,29 @@ export class EncryptionService {
     return this.generateRandomString(length);
   }
 
+  public static resetForTests(): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('EncryptionService.resetForTests is only available in test environment');
+    }
+    this.keyCache.clear();
+    this.dataKeyCache.clear();
+    this.primaryKeyRecordId = null;
+    this.lastCacheRefresh = 0;
+    this.initPromise = null;
+    this.kmsClientErrorLogged = false;
+  }
+
   // Self-test for encryption roundtrip
   static async selfTest(): Promise<boolean> {
     try {
       const testData = 'test-api-key-12345';
-      const encrypted = this.encrypt(testData);
-      const decrypted = this.decrypt(encrypted.encryptedData, encrypted.iv, encrypted.keyId);
+      const encrypted = await this.encrypt(testData);
+      const decrypted = await this.decrypt(
+        encrypted.encryptedData,
+        encrypted.iv,
+        encrypted.keyId,
+        encrypted.dataKeyCiphertext ?? null
+      );
       return decrypted === testData;
     } catch (error) {
       console.error('❌ Encryption self-test failed:', error);

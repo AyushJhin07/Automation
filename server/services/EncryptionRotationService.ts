@@ -153,7 +153,7 @@ export class EncryptionRotationService {
       while (true) {
         const batchResult = await db.execute(
           sql`
-            SELECT id, encrypted_credentials, iv, encryption_key_id
+            SELECT id, encrypted_credentials, iv, encryption_key_id, data_key_ciphertext
             FROM ${connections}
             WHERE ${connections.encryptionKeyId} IS DISTINCT FROM ${targetKeyId}
             ORDER BY ${connections.updatedAt}
@@ -166,6 +166,7 @@ export class EncryptionRotationService {
           encrypted_credentials: string;
           iv: string;
           encryption_key_id: string | null;
+          data_key_ciphertext: string | null;
         }>;
 
         if (rows.length === 0) {
@@ -174,18 +175,20 @@ export class EncryptionRotationService {
 
         for (const row of rows) {
           try {
-            const credentials = EncryptionService.decryptCredentials(
+            const credentials = await EncryptionService.decryptCredentials(
               row.encrypted_credentials,
               row.iv,
-              row.encryption_key_id
+              row.encryption_key_id,
+              row.data_key_ciphertext
             );
-            const reEncrypted = EncryptionService.encryptCredentials(credentials);
+            const reEncrypted = await EncryptionService.encryptCredentials(credentials);
             await db
               .update(connections)
               .set({
                 encryptedCredentials: reEncrypted.encryptedData,
                 iv: reEncrypted.iv,
                 encryptionKeyId: reEncrypted.keyId ?? null,
+                dataKeyCiphertext: reEncrypted.dataKeyCiphertext ?? null,
                 updatedAt: new Date(),
               })
               .where(eq(connections.id, row.id));
