@@ -69,7 +69,10 @@
             "description": "Repository name"
           }
         },
-        "required": ["namespace", "repository"],
+        "required": [
+          "namespace",
+          "repository"
+        ],
         "additionalProperties": false
       }
     },
@@ -96,7 +99,10 @@
             "description": "Number of tags per page"
           }
         },
-        "required": ["namespace", "repository"],
+        "required": [
+          "namespace",
+          "repository"
+        ],
         "additionalProperties": false
       }
     },
@@ -121,7 +127,11 @@
             "description": "Tag name"
           }
         },
-        "required": ["namespace", "repository", "tag"],
+        "required": [
+          "namespace",
+          "repository",
+          "tag"
+        ],
         "additionalProperties": false
       }
     },
@@ -181,5 +191,24 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/presentations"]
+      "scopes": [
+        "https://www.googleapis.com/auth/presentations"
+      ]
     }
   },
   "baseUrl": "https://slides.googleapis.com/v1",
@@ -55,7 +57,9 @@
             "description": "Presentation ID"
           }
         },
-        "required": ["presentationId"],
+        "required": [
+          "presentationId"
+        ],
         "additionalProperties": false
       }
     },
@@ -72,18 +76,25 @@
           },
           "requests": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of batch update requests"
           },
           "writeControl": {
             "type": "object",
             "properties": {
-              "requiredRevisionId": {"type": "string"}
+              "requiredRevisionId": {
+                "type": "string"
+              }
             },
             "description": "Write control settings"
           }
         },
-        "required": ["presentationId", "requests"],
+        "required": [
+          "presentationId",
+          "requests"
+        ],
         "additionalProperties": false
       }
     },
@@ -103,10 +114,24 @@
             "properties": {
               "predefinedLayout": {
                 "type": "string",
-                "enum": ["BLANK", "CAPTION_ONLY", "TITLE", "TITLE_AND_BODY", "TITLE_AND_TWO_COLUMNS", "TITLE_ONLY", "SECTION_HEADER", "SECTION_TITLE_AND_DESCRIPTION", "ONE_COLUMN_TEXT", "MAIN_POINT", "BIG_NUMBER"],
+                "enum": [
+                  "BLANK",
+                  "CAPTION_ONLY",
+                  "TITLE",
+                  "TITLE_AND_BODY",
+                  "TITLE_AND_TWO_COLUMNS",
+                  "TITLE_ONLY",
+                  "SECTION_HEADER",
+                  "SECTION_TITLE_AND_DESCRIPTION",
+                  "ONE_COLUMN_TEXT",
+                  "MAIN_POINT",
+                  "BIG_NUMBER"
+                ],
                 "description": "Predefined layout"
               },
-              "layoutId": {"type": "string"}
+              "layoutId": {
+                "type": "string"
+              }
             },
             "description": "Slide layout reference"
           },
@@ -120,11 +145,15 @@
           },
           "placeholderIdMappings": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Placeholder ID mappings"
           }
         },
-        "required": ["presentationId"],
+        "required": [
+          "presentationId"
+        ],
         "additionalProperties": false
       }
     },
@@ -144,7 +173,10 @@
             "description": "Object ID to delete"
           }
         },
-        "required": ["presentationId", "objectId"],
+        "required": [
+          "presentationId",
+          "objectId"
+        ],
         "additionalProperties": false
       }
     },
@@ -173,7 +205,11 @@
             "description": "Character index to insert at"
           }
         },
-        "required": ["presentationId", "objectId", "text"],
+        "required": [
+          "presentationId",
+          "objectId",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,8 +227,13 @@
           "containsText": {
             "type": "object",
             "properties": {
-              "text": {"type": "string"},
-              "matchCase": {"type": "boolean", "default": false}
+              "text": {
+                "type": "string"
+              },
+              "matchCase": {
+                "type": "boolean",
+                "default": false
+              }
             },
             "description": "Text to find and replace"
           },
@@ -202,11 +243,17 @@
           },
           "pageObjectIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Limit replacement to specific slides"
           }
         },
-        "required": ["presentationId", "containsText", "replaceText"],
+        "required": [
+          "presentationId",
+          "containsText",
+          "replaceText"
+        ],
         "additionalProperties": false
       }
     },
@@ -231,20 +278,136 @@
           },
           "shapeType": {
             "type": "string",
-            "enum": ["TEXT_BOX", "RECTANGLE", "ROUND_RECTANGLE", "ELLIPSE", "ARC", "BENT_ARROW", "BENT_UP_ARROW", "BEVEL", "BLOCK_ARC", "BRACE_PAIR", "BRACKET_PAIR", "CAN", "CHEVRON", "CHORD", "CLOUD", "CORNER", "CUBE", "CURVED_DOWN_ARROW", "CURVED_LEFT_ARROW", "CURVED_RIGHT_ARROW", "CURVED_UP_ARROW", "DECAGON", "DIAGONAL_STRIPE", "DIAMOND", "DODECAGON", "DONUT", "DOUBLE_WAVE", "DOWN_ARROW", "DOWN_ARROW_CALLOUT", "FOLDED_CORNER", "FRAME", "HALF_FRAME", "HEART", "HEPTAGON", "HEXAGON", "HOME_PLATE", "HORIZONTAL_SCROLL", "IRREGULAR_SEAL_1", "IRREGULAR_SEAL_2", "LEFT_ARROW", "LEFT_ARROW_CALLOUT", "LEFT_BRACE", "LEFT_BRACKET", "LEFT_RIGHT_ARROW", "LEFT_RIGHT_ARROW_CALLOUT", "LEFT_RIGHT_UP_ARROW", "LEFT_UP_ARROW", "LIGHTNING_BOLT", "MATH_DIVIDE", "MATH_EQUAL", "MATH_MINUS", "MATH_MULTIPLY", "MATH_NOT_EQUAL", "MATH_PLUS", "MOON", "NONE", "NO_SMOKING", "NOTCHED_RIGHT_ARROW", "OCTAGON", "PARALLELOGRAM", "PENTAGON", "PIE", "PLAQUE", "PLUS", "QUAD_ARROW", "QUAD_ARROW_CALLOUT", "RIBBON", "RIBBON_2", "RIGHT_ARROW", "RIGHT_ARROW_CALLOUT", "RIGHT_BRACE", "RIGHT_BRACKET", "RIGHT_TRIANGLE", "ROUND_1_RECTANGLE", "ROUND_2_DIAGONAL_RECTANGLE", "ROUND_2_SAME_RECTANGLE", "SMILEY_FACE", "SNIP_1_RECTANGLE", "SNIP_2_DIAGONAL_RECTANGLE", "SNIP_2_SAME_RECTANGLE", "SNIP_ROUND_RECTANGLE", "STAR_10", "STAR_12", "STAR_16", "STAR_24", "STAR_32", "STAR_4", "STAR_5", "STAR_6", "STAR_7", "STAR_8", "STRIPED_RIGHT_ARROW", "SUN", "TRAPEZOID", "TRIANGLE", "UP_ARROW", "UP_ARROW_CALLOUT", "UP_DOWN_ARROW", "UTURN_ARROW", "VERTICAL_SCROLL", "WAVE", "WEDGE_ELLIPSE_CALLOUT", "WEDGE_RECTANGLE_CALLOUT", "WEDGE_ROUND_RECTANGLE_CALLOUT"],
+            "enum": [
+              "TEXT_BOX",
+              "RECTANGLE",
+              "ROUND_RECTANGLE",
+              "ELLIPSE",
+              "ARC",
+              "BENT_ARROW",
+              "BENT_UP_ARROW",
+              "BEVEL",
+              "BLOCK_ARC",
+              "BRACE_PAIR",
+              "BRACKET_PAIR",
+              "CAN",
+              "CHEVRON",
+              "CHORD",
+              "CLOUD",
+              "CORNER",
+              "CUBE",
+              "CURVED_DOWN_ARROW",
+              "CURVED_LEFT_ARROW",
+              "CURVED_RIGHT_ARROW",
+              "CURVED_UP_ARROW",
+              "DECAGON",
+              "DIAGONAL_STRIPE",
+              "DIAMOND",
+              "DODECAGON",
+              "DONUT",
+              "DOUBLE_WAVE",
+              "DOWN_ARROW",
+              "DOWN_ARROW_CALLOUT",
+              "FOLDED_CORNER",
+              "FRAME",
+              "HALF_FRAME",
+              "HEART",
+              "HEPTAGON",
+              "HEXAGON",
+              "HOME_PLATE",
+              "HORIZONTAL_SCROLL",
+              "IRREGULAR_SEAL_1",
+              "IRREGULAR_SEAL_2",
+              "LEFT_ARROW",
+              "LEFT_ARROW_CALLOUT",
+              "LEFT_BRACE",
+              "LEFT_BRACKET",
+              "LEFT_RIGHT_ARROW",
+              "LEFT_RIGHT_ARROW_CALLOUT",
+              "LEFT_RIGHT_UP_ARROW",
+              "LEFT_UP_ARROW",
+              "LIGHTNING_BOLT",
+              "MATH_DIVIDE",
+              "MATH_EQUAL",
+              "MATH_MINUS",
+              "MATH_MULTIPLY",
+              "MATH_NOT_EQUAL",
+              "MATH_PLUS",
+              "MOON",
+              "NONE",
+              "NO_SMOKING",
+              "NOTCHED_RIGHT_ARROW",
+              "OCTAGON",
+              "PARALLELOGRAM",
+              "PENTAGON",
+              "PIE",
+              "PLAQUE",
+              "PLUS",
+              "QUAD_ARROW",
+              "QUAD_ARROW_CALLOUT",
+              "RIBBON",
+              "RIBBON_2",
+              "RIGHT_ARROW",
+              "RIGHT_ARROW_CALLOUT",
+              "RIGHT_BRACE",
+              "RIGHT_BRACKET",
+              "RIGHT_TRIANGLE",
+              "ROUND_1_RECTANGLE",
+              "ROUND_2_DIAGONAL_RECTANGLE",
+              "ROUND_2_SAME_RECTANGLE",
+              "SMILEY_FACE",
+              "SNIP_1_RECTANGLE",
+              "SNIP_2_DIAGONAL_RECTANGLE",
+              "SNIP_2_SAME_RECTANGLE",
+              "SNIP_ROUND_RECTANGLE",
+              "STAR_10",
+              "STAR_12",
+              "STAR_16",
+              "STAR_24",
+              "STAR_32",
+              "STAR_4",
+              "STAR_5",
+              "STAR_6",
+              "STAR_7",
+              "STAR_8",
+              "STRIPED_RIGHT_ARROW",
+              "SUN",
+              "TRAPEZOID",
+              "TRIANGLE",
+              "UP_ARROW",
+              "UP_ARROW_CALLOUT",
+              "UP_DOWN_ARROW",
+              "UTURN_ARROW",
+              "VERTICAL_SCROLL",
+              "WAVE",
+              "WEDGE_ELLIPSE_CALLOUT",
+              "WEDGE_RECTANGLE_CALLOUT",
+              "WEDGE_ROUND_RECTANGLE_CALLOUT"
+            ],
             "description": "Shape type"
           },
           "elementProperties": {
             "type": "object",
             "properties": {
-              "pageObjectId": {"type": "string"},
-              "size": {"type": "object"},
-              "transform": {"type": "object"}
+              "pageObjectId": {
+                "type": "string"
+              },
+              "size": {
+                "type": "object"
+              },
+              "transform": {
+                "type": "object"
+              }
             },
             "description": "Element properties"
           }
         },
-        "required": ["presentationId", "pageId", "objectId", "shapeType"],
+        "required": [
+          "presentationId",
+          "pageId",
+          "objectId",
+          "shapeType"
+        ],
         "additionalProperties": false
       }
     },
@@ -275,14 +438,25 @@
           "elementProperties": {
             "type": "object",
             "properties": {
-              "pageObjectId": {"type": "string"},
-              "size": {"type": "object"},
-              "transform": {"type": "object"}
+              "pageObjectId": {
+                "type": "string"
+              },
+              "size": {
+                "type": "object"
+              },
+              "transform": {
+                "type": "object"
+              }
             },
             "description": "Element properties"
           }
         },
-        "required": ["presentationId", "pageId", "objectId", "url"],
+        "required": [
+          "presentationId",
+          "pageId",
+          "objectId",
+          "url"
+        ],
         "additionalProperties": false
       }
     }
@@ -302,11 +476,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "presentationId": {"type": "string"},
-          "title": {"type": "string"},
-          "locale": {"type": "string"},
-          "revisionId": {"type": "string"},
-          "pageSize": {"type": "object"}
+          "presentationId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "pageSize": {
+            "type": "object"
+          }
         }
       }
     },
@@ -329,10 +513,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "presentationId": {"type": "string"},
-          "title": {"type": "string"},
-          "revisionId": {"type": "string"},
-          "slides": {"type": "array"}
+          "presentationId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "slides": {
+            "type": "array"
+          }
         }
       }
     }
@@ -340,5 +532,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/presentations/test"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

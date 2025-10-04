@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/meetings.space.created", "https://www.googleapis.com/auth/meetings.space.readonly"]
+      "scopes": [
+        "https://www.googleapis.com/auth/meetings.space.created",
+        "https://www.googleapis.com/auth/meetings.space.readonly"
+      ]
     }
   },
   "baseUrl": "https://meet.googleapis.com/v2",
@@ -39,13 +42,20 @@
             "properties": {
               "accessType": {
                 "type": "string",
-                "enum": ["OPEN", "TRUSTED", "RESTRICTED"],
+                "enum": [
+                  "OPEN",
+                  "TRUSTED",
+                  "RESTRICTED"
+                ],
                 "default": "TRUSTED",
                 "description": "Access type for the space"
               },
               "entryPointAccess": {
                 "type": "string",
-                "enum": ["ALL", "CREATOR_APP_ONLY"],
+                "enum": [
+                  "ALL",
+                  "CREATOR_APP_ONLY"
+                ],
                 "default": "ALL",
                 "description": "Entry point access"
               }
@@ -69,7 +79,9 @@
             "description": "Space name (spaces/SPACE_ID)"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -85,7 +97,9 @@
             "description": "Space name (spaces/SPACE_ID)"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -116,7 +130,9 @@
             "description": "Filter expression"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -132,7 +148,9 @@
             "description": "Conference record name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -163,7 +181,9 @@
             "description": "Filter expression"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -179,7 +199,9 @@
             "description": "Participant name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,7 +232,9 @@
             "description": "Filter expression"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -226,7 +250,9 @@
             "description": "Participant session name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     }
@@ -246,11 +272,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "meetingUri": {"type": "string"},
-          "meetingCode": {"type": "string"},
-          "config": {"type": "object"},
-          "activeConference": {"type": "object"}
+          "name": {
+            "type": "string"
+          },
+          "meetingUri": {
+            "type": "string"
+          },
+          "meetingCode": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object"
+          },
+          "activeConference": {
+            "type": "object"
+          }
         }
       }
     },
@@ -273,10 +309,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "startTime": {"type": "string"},
-          "endTime": {"type": "string"},
-          "space": {"type": "string"}
+          "name": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "space": {
+            "type": "string"
+          }
         }
       }
     },
@@ -299,12 +343,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "signedinUser": {"type": "object"},
-          "anonymousUser": {"type": "object"},
-          "phoneUser": {"type": "object"},
-          "earliestStartTime": {"type": "string"},
-          "latestEndTime": {"type": "string"}
+          "name": {
+            "type": "string"
+          },
+          "signedinUser": {
+            "type": "object"
+          },
+          "anonymousUser": {
+            "type": "object"
+          },
+          "phoneUser": {
+            "type": "object"
+          },
+          "earliestStartTime": {
+            "type": "string"
+          },
+          "latestEndTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -312,5 +368,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/spaces"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

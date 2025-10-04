@@ -82,17 +82,19 @@ const SUPPORTED_CONNECTION_TYPES: Record<(typeof SUPPORTED_CONNECTION_PROVIDERS)
 };
 
 // Middleware
-import { 
-  authenticateToken, 
-  optionalAuth, 
-  checkQuota, 
-  rateLimit, 
-  adminOnly, 
-  proOrHigher 
+import {
+  authenticateToken,
+  optionalAuth,
+  checkQuota,
+  rateLimit,
+  adminOnly,
+  proOrHigher
 } from "./middleware/auth";
 
 // Error handling utilities
 import { getErrorMessage, formatError, APIResponse } from "./types/common";
+import { db, connectorDefinitions } from './database/schema';
+import { eq } from 'drizzle-orm';
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -3770,7 +3772,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== ADMIN ENDPOINTS =====
-  
+
+  const mapConnectorRolloutRecord = (row: any) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    version: row.version,
+    semanticVersion: row.semanticVersion,
+    lifecycleStage: row.lifecycleStage,
+    isBeta: row.isBeta,
+    betaStartAt: row.betaStartAt ? new Date(row.betaStartAt).toISOString() : null,
+    betaEndAt: row.betaEndAt ? new Date(row.betaEndAt).toISOString() : null,
+    deprecationStartAt: row.deprecationStartAt ? new Date(row.deprecationStartAt).toISOString() : null,
+    sunsetAt: row.sunsetAt ? new Date(row.sunsetAt).toISOString() : null,
+    updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+  });
+
+  app.get('/api/admin/connectors/rollouts', authenticateToken, adminOnly, async (req, res) => {
+    const startTime = Date.now();
+
+    try {
+      if (!db) {
+        return res.status(503).json({ success: false, error: 'Database unavailable', responseTime: Date.now() - startTime });
+      }
+
+      const rows = await db
+        .select({
+          id: connectorDefinitions.id,
+          slug: connectorDefinitions.slug,
+          name: connectorDefinitions.name,
+          version: connectorDefinitions.version,
+          semanticVersion: connectorDefinitions.semanticVersion,
+          lifecycleStage: connectorDefinitions.lifecycleStage,
+          isBeta: connectorDefinitions.isBeta,
+          betaStartAt: connectorDefinitions.betaStartAt,
+          betaEndAt: connectorDefinitions.betaEndAt,
+          deprecationStartAt: connectorDefinitions.deprecationStartAt,
+          sunsetAt: connectorDefinitions.sunsetAt,
+          updatedAt: connectorDefinitions.updatedAt,
+        })
+        .from(connectorDefinitions)
+        .orderBy(connectorDefinitions.name);
+
+      const connectors = rows.map(mapConnectorRolloutRecord);
+
+      res.json({
+        success: true,
+        connectors,
+        total: connectors.length,
+        responseTime: Date.now() - startTime,
+      });
+    } catch (error) {
+      console.error('❌ Admin rollout list error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime,
+      });
+    }
+  });
+
+  app.patch('/api/admin/connectors/:connectorId/rollout', authenticateToken, adminOnly, async (req, res) => {
+    const startTime = Date.now();
+
+    try {
+      if (!db) {
+        return res.status(503).json({ success: false, error: 'Database unavailable', responseTime: Date.now() - startTime });
+      }
+
+      const connectorId = String(req.params.connectorId).toLowerCase();
+      const body = req.body ?? {};
+      const updates: Record<string, any> = { updatedAt: new Date() };
+
+      const parseNullableDate = (value: unknown) => {
+        if (value === undefined) {
+          return undefined;
+        }
+        if (value === null || value === '') {
+          return null;
+        }
+        const parsed = new Date(value as string);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      };
+
+      if (typeof body.version === 'string') {
+        updates.version = body.version.trim() || '1.0.0';
+      }
+      if (typeof body.semanticVersion === 'string') {
+        updates.semanticVersion = body.semanticVersion.trim() || body.version || '1.0.0';
+      }
+      if (typeof body.lifecycleStage === 'string') {
+        updates.lifecycleStage = body.lifecycleStage;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'isBeta')) {
+        updates.isBeta = Boolean(body.isBeta);
+        if (!Object.prototype.hasOwnProperty.call(body, 'lifecycleStage')) {
+          updates.lifecycleStage = updates.isBeta ? 'beta' : 'stable';
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'betaStartAt')) {
+        updates.betaStartAt = parseNullableDate(body.betaStartAt);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'betaEndAt')) {
+        updates.betaEndAt = parseNullableDate(body.betaEndAt);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'deprecationStartAt')) {
+        updates.deprecationStartAt = parseNullableDate(body.deprecationStartAt);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'sunsetAt')) {
+        updates.sunsetAt = parseNullableDate(body.sunsetAt);
+      }
+
+      const fieldsToUpdate = { ...updates };
+      delete fieldsToUpdate.updatedAt;
+      if (Object.keys(fieldsToUpdate).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'No rollout fields provided',
+          responseTime: Date.now() - startTime,
+        });
+      }
+
+      const [row] = await db
+        .update(connectorDefinitions)
+        .set(updates)
+        .where(eq(connectorDefinitions.slug, connectorId))
+        .returning({
+          id: connectorDefinitions.id,
+          slug: connectorDefinitions.slug,
+          name: connectorDefinitions.name,
+          version: connectorDefinitions.version,
+          semanticVersion: connectorDefinitions.semanticVersion,
+          lifecycleStage: connectorDefinitions.lifecycleStage,
+          isBeta: connectorDefinitions.isBeta,
+          betaStartAt: connectorDefinitions.betaStartAt,
+          betaEndAt: connectorDefinitions.betaEndAt,
+          deprecationStartAt: connectorDefinitions.deprecationStartAt,
+          sunsetAt: connectorDefinitions.sunsetAt,
+          updatedAt: connectorDefinitions.updatedAt,
+        });
+
+      if (!row) {
+        return res.status(404).json({
+          success: false,
+          error: `Connector not found: ${connectorId}`,
+          responseTime: Date.now() - startTime,
+        });
+      }
+
+      res.json({
+        success: true,
+        connector: mapConnectorRolloutRecord(row),
+        responseTime: Date.now() - startTime,
+      });
+    } catch (error) {
+      console.error(`❌ Admin rollout update error for ${req.params.connectorId}:`, getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime,
+      });
+    }
+  });
+
   // Seed connectors from JSON files to database
   app.post('/api/admin/seed-connectors', authenticateToken, async (req, res) => {
     const startTime = Date.now();

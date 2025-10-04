@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://miro.com/oauth/authorize",
       "tokenUrl": "https://api.miro.com/v1/oauth/token",
-      "scopes": ["boards:read", "boards:write"]
+      "scopes": [
+        "boards:read",
+        "boards:write"
+      ]
     }
   },
   "baseUrl": "https://api.miro.com/v2",
@@ -66,7 +69,9 @@
             "description": "Board ID"
           }
         },
-        "required": ["boardId"],
+        "required": [
+          "boardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -97,15 +102,27 @@
                 "properties": {
                   "collaborationToolsStartAccess": {
                     "type": "string",
-                    "enum": ["all_editors", "board_owners_and_coowners"]
+                    "enum": [
+                      "all_editors",
+                      "board_owners_and_coowners"
+                    ]
                   },
                   "copyAccess": {
                     "type": "string",
-                    "enum": ["anyone", "team_members", "team_editors", "board_owners_and_coowners"]
+                    "enum": [
+                      "anyone",
+                      "team_members",
+                      "team_editors",
+                      "board_owners_and_coowners"
+                    ]
                   },
                   "sharingAccess": {
                     "type": "string",
-                    "enum": ["team_members", "team_editors", "board_owners_and_coowners"]
+                    "enum": [
+                      "team_members",
+                      "team_editors",
+                      "board_owners_and_coowners"
+                    ]
                   }
                 }
               },
@@ -114,20 +131,40 @@
                 "properties": {
                   "access": {
                     "type": "string",
-                    "enum": ["private", "view", "comment", "edit"],
+                    "enum": [
+                      "private",
+                      "view",
+                      "comment",
+                      "edit"
+                    ],
                     "default": "private"
                   },
                   "inviteToAccountAndBoardLinkAccess": {
                     "type": "string",
-                    "enum": ["no_access", "view", "comment", "edit"]
+                    "enum": [
+                      "no_access",
+                      "view",
+                      "comment",
+                      "edit"
+                    ]
                   },
                   "organizationAccess": {
                     "type": "string",
-                    "enum": ["no_access", "view", "comment", "edit"]
+                    "enum": [
+                      "no_access",
+                      "view",
+                      "comment",
+                      "edit"
+                    ]
                   },
                   "teamAccess": {
                     "type": "string",
-                    "enum": ["no_access", "view", "comment", "edit"]
+                    "enum": [
+                      "no_access",
+                      "view",
+                      "comment",
+                      "edit"
+                    ]
                   }
                 }
               }
@@ -135,7 +172,9 @@
             "description": "Board policy settings"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -159,7 +198,9 @@
             "description": "Board description"
           }
         },
-        "required": ["boardId"],
+        "required": [
+          "boardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -175,7 +216,9 @@
             "description": "Board ID"
           }
         },
-        "required": ["boardId"],
+        "required": [
+          "boardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -192,7 +235,19 @@
           },
           "type": {
             "type": "string",
-            "enum": ["app_card", "card", "connector", "document", "embed", "frame", "image", "mindmap", "shape", "sticky_note", "text"],
+            "enum": [
+              "app_card",
+              "card",
+              "connector",
+              "document",
+              "embed",
+              "frame",
+              "image",
+              "mindmap",
+              "shape",
+              "sticky_note",
+              "text"
+            ],
             "description": "Filter by item type"
           },
           "cursor": {
@@ -207,7 +262,9 @@
             "description": "Number of items to return"
           }
         },
-        "required": ["boardId"],
+        "required": [
+          "boardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -231,15 +288,42 @@
             "properties": {
               "fillColor": {
                 "type": "string",
-                "enum": ["yellow", "light_yellow", "orange", "light_orange", "light_green", "green", "dark_green", "cyan", "light_pink", "pink", "violet", "red", "light_blue", "blue", "dark_blue", "gray", "light_gray", "black"]
+                "enum": [
+                  "yellow",
+                  "light_yellow",
+                  "orange",
+                  "light_orange",
+                  "light_green",
+                  "green",
+                  "dark_green",
+                  "cyan",
+                  "light_pink",
+                  "pink",
+                  "violet",
+                  "red",
+                  "light_blue",
+                  "blue",
+                  "dark_blue",
+                  "gray",
+                  "light_gray",
+                  "black"
+                ]
               },
               "textAlign": {
                 "type": "string",
-                "enum": ["left", "center", "right"]
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
               },
               "textAlignVertical": {
                 "type": "string",
-                "enum": ["top", "middle", "bottom"]
+                "enum": [
+                  "top",
+                  "middle",
+                  "bottom"
+                ]
               }
             },
             "description": "Note styling"
@@ -247,26 +331,39 @@
           "geometry": {
             "type": "object",
             "properties": {
-              "width": {"type": "number"},
-              "height": {"type": "number"}
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
             },
             "description": "Note dimensions"
           },
           "position": {
             "type": "object",
             "properties": {
-              "x": {"type": "number"},
-              "y": {"type": "number"},
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
               "origin": {
                 "type": "string",
-                "enum": ["center"],
+                "enum": [
+                  "center"
+                ],
                 "default": "center"
               }
             },
             "description": "Note position on board"
           }
         },
-        "required": ["boardId", "content"],
+        "required": [
+          "boardId",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -294,7 +391,18 @@
             "properties": {
               "cardTheme": {
                 "type": "string",
-                "enum": ["#2d7ff9", "#18a0fb", "#0ca789", "#8fd14f", "#fac710", "#f24726", "#da3782", "#9510ac", "#c1c1c1", "#767676"]
+                "enum": [
+                  "#2d7ff9",
+                  "#18a0fb",
+                  "#0ca789",
+                  "#8fd14f",
+                  "#fac710",
+                  "#f24726",
+                  "#da3782",
+                  "#9510ac",
+                  "#c1c1c1",
+                  "#767676"
+                ]
               }
             },
             "description": "Card styling"
@@ -302,26 +410,38 @@
           "geometry": {
             "type": "object",
             "properties": {
-              "width": {"type": "number"},
-              "height": {"type": "number"}
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
             },
             "description": "Card dimensions"
           },
           "position": {
             "type": "object",
             "properties": {
-              "x": {"type": "number"},
-              "y": {"type": "number"},
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
               "origin": {
                 "type": "string",
-                "enum": ["center"],
+                "enum": [
+                  "center"
+                ],
                 "default": "center"
               }
             },
             "description": "Card position on board"
           }
         },
-        "required": ["boardId"],
+        "required": [
+          "boardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -353,7 +473,12 @@
               },
               "fontFamily": {
                 "type": "string",
-                "enum": ["arial", "cursive", "impact", "times_new_roman"]
+                "enum": [
+                  "arial",
+                  "cursive",
+                  "impact",
+                  "times_new_roman"
+                ]
               },
               "fontSize": {
                 "type": "number",
@@ -362,7 +487,11 @@
               },
               "textAlign": {
                 "type": "string",
-                "enum": ["left", "center", "right"]
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
               }
             },
             "description": "Text styling"
@@ -370,26 +499,39 @@
           "geometry": {
             "type": "object",
             "properties": {
-              "width": {"type": "number"},
-              "height": {"type": "number"}
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
             },
             "description": "Text dimensions"
           },
           "position": {
             "type": "object",
             "properties": {
-              "x": {"type": "number"},
-              "y": {"type": "number"},
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
               "origin": {
                 "type": "string",
-                "enum": ["center"],
+                "enum": [
+                  "center"
+                ],
                 "default": "center"
               }
             },
             "description": "Text position on board"
           }
         },
-        "required": ["boardId", "content"],
+        "required": [
+          "boardId",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -410,32 +552,80 @@
           },
           "shape": {
             "type": "string",
-            "enum": ["rectangle", "round_rectangle", "circle", "triangle", "rhombus", "parallelogram", "trapezoid", "pentagon", "hexagon", "octagon", "wedge_round_rectangle_callout", "star", "flow_chart_predefined_process", "cloud", "cross", "can", "right_arrow", "left_arrow", "left_right_arrow", "left_right_up_arrow"],
+            "enum": [
+              "rectangle",
+              "round_rectangle",
+              "circle",
+              "triangle",
+              "rhombus",
+              "parallelogram",
+              "trapezoid",
+              "pentagon",
+              "hexagon",
+              "octagon",
+              "wedge_round_rectangle_callout",
+              "star",
+              "flow_chart_predefined_process",
+              "cloud",
+              "cross",
+              "can",
+              "right_arrow",
+              "left_arrow",
+              "left_right_arrow",
+              "left_right_up_arrow"
+            ],
             "description": "Shape type"
           },
           "style": {
             "type": "object",
             "properties": {
-              "color": {"type": "string"},
-              "fillColor": {"type": "string"},
+              "color": {
+                "type": "string"
+              },
+              "fillColor": {
+                "type": "string"
+              },
               "fontFamily": {
                 "type": "string",
-                "enum": ["arial", "cursive", "impact", "times_new_roman"]
+                "enum": [
+                  "arial",
+                  "cursive",
+                  "impact",
+                  "times_new_roman"
+                ]
               },
-              "fontSize": {"type": "number"},
+              "fontSize": {
+                "type": "number"
+              },
               "textAlign": {
                 "type": "string",
-                "enum": ["left", "center", "right"]
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
               },
               "textAlignVertical": {
                 "type": "string",
-                "enum": ["top", "middle", "bottom"]
+                "enum": [
+                  "top",
+                  "middle",
+                  "bottom"
+                ]
               },
-              "borderColor": {"type": "string"},
-              "borderWidth": {"type": "number"},
+              "borderColor": {
+                "type": "string"
+              },
+              "borderWidth": {
+                "type": "number"
+              },
               "borderStyle": {
                 "type": "string",
-                "enum": ["normal", "dotted", "dashed"]
+                "enum": [
+                  "normal",
+                  "dotted",
+                  "dashed"
+                ]
               }
             },
             "description": "Shape styling"
@@ -443,26 +633,39 @@
           "geometry": {
             "type": "object",
             "properties": {
-              "width": {"type": "number"},
-              "height": {"type": "number"}
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
             },
             "description": "Shape dimensions"
           },
           "position": {
             "type": "object",
             "properties": {
-              "x": {"type": "number"},
-              "y": {"type": "number"},
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
               "origin": {
                 "type": "string",
-                "enum": ["center"],
+                "enum": [
+                  "center"
+                ],
                 "default": "center"
               }
             },
             "description": "Shape position on board"
           }
         },
-        "required": ["boardId", "shape"],
+        "required": [
+          "boardId",
+          "shape"
+        ],
         "additionalProperties": false
       }
     },
@@ -492,21 +695,32 @@
           "geometry": {
             "type": "object",
             "properties": {
-              "width": {"type": "number"},
-              "height": {"type": "number"}
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
             },
             "description": "Updated dimensions"
           },
           "position": {
             "type": "object",
             "properties": {
-              "x": {"type": "number"},
-              "y": {"type": "number"}
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
             },
             "description": "Updated position"
           }
         },
-        "required": ["boardId", "itemId"],
+        "required": [
+          "boardId",
+          "itemId"
+        ],
         "additionalProperties": false
       }
     },
@@ -526,7 +740,10 @@
             "description": "Item ID"
           }
         },
-        "required": ["boardId", "itemId"],
+        "required": [
+          "boardId",
+          "itemId"
+        ],
         "additionalProperties": false
       }
     },
@@ -553,7 +770,9 @@
             "description": "Number of members to return"
           }
         },
-        "required": ["boardId"],
+        "required": [
+          "boardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -570,12 +789,20 @@
           },
           "emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Email addresses to share with"
           },
           "role": {
             "type": "string",
-            "enum": ["viewer", "commenter", "editor", "co_owner"],
+            "enum": [
+              "viewer",
+              "commenter",
+              "editor",
+              "co_owner"
+            ],
             "default": "editor",
             "description": "Access role"
           },
@@ -584,7 +811,10 @@
             "description": "Optional message"
           }
         },
-        "required": ["boardId", "emails"],
+        "required": [
+          "boardId",
+          "emails"
+        ],
         "additionalProperties": false
       }
     }
@@ -609,12 +839,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "teamId": {"type": "string"},
-          "createdAt": {"type": "string"},
-          "createdBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "object"
+          }
         }
       }
     },
@@ -637,11 +879,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "modifiedAt": {"type": "string"},
-          "modifiedBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "modifiedAt": {
+            "type": "string"
+          },
+          "modifiedBy": {
+            "type": "object"
+          }
         }
       }
     },
@@ -659,7 +911,12 @@
           },
           "itemType": {
             "type": "string",
-            "enum": ["sticky_note", "card", "text", "shape"],
+            "enum": [
+              "sticky_note",
+              "card",
+              "text",
+              "shape"
+            ],
             "description": "Filter by item type"
           }
         },
@@ -669,12 +926,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "type": {"type": "string"},
-          "boardId": {"type": "string"},
-          "content": {"type": "string"},
-          "createdAt": {"type": "string"},
-          "createdBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "boardId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "object"
+          }
         }
       }
     },
@@ -692,7 +961,12 @@
           },
           "itemType": {
             "type": "string",
-            "enum": ["sticky_note", "card", "text", "shape"],
+            "enum": [
+              "sticky_note",
+              "card",
+              "text",
+              "shape"
+            ],
             "description": "Filter by item type"
           }
         },
@@ -702,12 +976,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "type": {"type": "string"},
-          "boardId": {"type": "string"},
-          "content": {"type": "string"},
-          "modifiedAt": {"type": "string"},
-          "modifiedBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "boardId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "modifiedAt": {
+            "type": "string"
+          },
+          "modifiedBy": {
+            "type": "object"
+          }
         }
       }
     }
@@ -715,5 +1001,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/boards"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

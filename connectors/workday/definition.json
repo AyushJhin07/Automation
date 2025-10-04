@@ -11,7 +11,12 @@
     "config": {
       "authUrl": "https://wd5-impl-services1.workday.com/ccx/oauth2/authorize",
       "tokenUrl": "https://wd5-impl-services1.workday.com/ccx/oauth2/token",
-      "scopes": ["staffing", "compensation", "time_tracking", "benefits"]
+      "scopes": [
+        "staffing",
+        "compensation",
+        "time_tracking",
+        "benefits"
+      ]
     }
   },
   "baseUrl": "https://wd5-impl-services1.workday.com/ccx/api/v1",
@@ -39,7 +44,9 @@
             "description": "Worker ID"
           }
         },
-        "required": ["workerId"],
+        "required": [
+          "workerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -102,38 +109,108 @@
           "personalData": {
             "type": "object",
             "properties": {
-              "firstName": {"type": "string"},
-              "lastName": {"type": "string"},
-              "middleName": {"type": "string"},
-              "preferredName": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "phone": {"type": "string"},
-              "dateOfBirth": {"type": "string", "format": "date"},
-              "gender": {"type": "string", "enum": ["Male", "Female", "Other", "Prefer not to say"]},
-              "maritalStatus": {"type": "string", "enum": ["Single", "Married", "Divorced", "Widowed", "Other"]}
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
+                "type": "string"
+              },
+              "middleName": {
+                "type": "string"
+              },
+              "preferredName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "format": "date"
+              },
+              "gender": {
+                "type": "string",
+                "enum": [
+                  "Male",
+                  "Female",
+                  "Other",
+                  "Prefer not to say"
+                ]
+              },
+              "maritalStatus": {
+                "type": "string",
+                "enum": [
+                  "Single",
+                  "Married",
+                  "Divorced",
+                  "Widowed",
+                  "Other"
+                ]
+              }
             },
             "description": "Personal information"
           },
           "jobData": {
             "type": "object",
             "properties": {
-              "jobTitle": {"type": "string"},
-              "department": {"type": "string"},
-              "location": {"type": "string"},
-              "managerId": {"type": "string"},
-              "startDate": {"type": "string", "format": "date"},
-              "employmentType": {"type": "string", "enum": ["Full-time", "Part-time", "Contract", "Temporary"]},
-              "jobLevel": {"type": "string"}
+              "jobTitle": {
+                "type": "string"
+              },
+              "department": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "managerId": {
+                "type": "string"
+              },
+              "startDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "employmentType": {
+                "type": "string",
+                "enum": [
+                  "Full-time",
+                  "Part-time",
+                  "Contract",
+                  "Temporary"
+                ]
+              },
+              "jobLevel": {
+                "type": "string"
+              }
             },
             "description": "Job-related information"
           },
           "compensationData": {
             "type": "object",
             "properties": {
-              "baseSalary": {"type": "number", "minimum": 0},
-              "currency": {"type": "string", "default": "USD"},
-              "payFrequency": {"type": "string", "enum": ["Weekly", "Bi-weekly", "Monthly", "Annual"]},
-              "payGroup": {"type": "string"}
+              "baseSalary": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string",
+                "default": "USD"
+              },
+              "payFrequency": {
+                "type": "string",
+                "enum": [
+                  "Weekly",
+                  "Bi-weekly",
+                  "Monthly",
+                  "Annual"
+                ]
+              },
+              "payGroup": {
+                "type": "string"
+              }
             },
             "description": "Compensation information"
           },
@@ -142,7 +219,10 @@
             "description": "Optional worker ID (if not provided, will be auto-generated)"
           }
         },
-        "required": ["personalData", "jobData"],
+        "required": [
+          "personalData",
+          "jobData"
+        ],
         "additionalProperties": false
       }
     },
@@ -160,37 +240,103 @@
           "personalData": {
             "type": "object",
             "properties": {
-              "firstName": {"type": "string"},
-              "lastName": {"type": "string"},
-              "middleName": {"type": "string"},
-              "preferredName": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "phone": {"type": "string"},
-              "dateOfBirth": {"type": "string", "format": "date"},
-              "gender": {"type": "string", "enum": ["Male", "Female", "Other", "Prefer not to say"]},
-              "maritalStatus": {"type": "string", "enum": ["Single", "Married", "Divorced", "Widowed", "Other"]}
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
+                "type": "string"
+              },
+              "middleName": {
+                "type": "string"
+              },
+              "preferredName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "format": "date"
+              },
+              "gender": {
+                "type": "string",
+                "enum": [
+                  "Male",
+                  "Female",
+                  "Other",
+                  "Prefer not to say"
+                ]
+              },
+              "maritalStatus": {
+                "type": "string",
+                "enum": [
+                  "Single",
+                  "Married",
+                  "Divorced",
+                  "Widowed",
+                  "Other"
+                ]
+              }
             },
             "description": "Personal information to update"
           },
           "jobData": {
             "type": "object",
             "properties": {
-              "jobTitle": {"type": "string"},
-              "department": {"type": "string"},
-              "location": {"type": "string"},
-              "managerId": {"type": "string"},
-              "employmentType": {"type": "string", "enum": ["Full-time", "Part-time", "Contract", "Temporary"]},
-              "jobLevel": {"type": "string"}
+              "jobTitle": {
+                "type": "string"
+              },
+              "department": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "managerId": {
+                "type": "string"
+              },
+              "employmentType": {
+                "type": "string",
+                "enum": [
+                  "Full-time",
+                  "Part-time",
+                  "Contract",
+                  "Temporary"
+                ]
+              },
+              "jobLevel": {
+                "type": "string"
+              }
             },
             "description": "Job-related information to update"
           },
           "compensationData": {
             "type": "object",
             "properties": {
-              "baseSalary": {"type": "number", "minimum": 0},
-              "currency": {"type": "string"},
-              "payFrequency": {"type": "string", "enum": ["Weekly", "Bi-weekly", "Monthly", "Annual"]},
-              "payGroup": {"type": "string"}
+              "baseSalary": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string"
+              },
+              "payFrequency": {
+                "type": "string",
+                "enum": [
+                  "Weekly",
+                  "Bi-weekly",
+                  "Monthly",
+                  "Annual"
+                ]
+              },
+              "payGroup": {
+                "type": "string"
+              }
             },
             "description": "Compensation information to update"
           },
@@ -200,7 +346,9 @@
             "description": "Effective date for the changes"
           }
         },
-        "required": ["workerId"],
+        "required": [
+          "workerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -222,7 +370,13 @@
           },
           "terminationReason": {
             "type": "string",
-            "enum": ["Voluntary", "Involuntary", "Retirement", "End of Contract", "Other"],
+            "enum": [
+              "Voluntary",
+              "Involuntary",
+              "Retirement",
+              "End of Contract",
+              "Other"
+            ],
             "description": "Reason for termination"
           },
           "lastDayWorked": {
@@ -240,7 +394,11 @@
             "description": "Additional notes"
           }
         },
-        "required": ["workerId", "terminationDate", "terminationReason"],
+        "required": [
+          "workerId",
+          "terminationDate",
+          "terminationReason"
+        ],
         "additionalProperties": false
       }
     },
@@ -256,7 +414,9 @@
             "description": "Time off request ID"
           }
         },
-        "required": ["requestId"],
+        "required": [
+          "requestId"
+        ],
         "additionalProperties": false
       }
     },
@@ -273,7 +433,15 @@
           },
           "timeOffType": {
             "type": "string",
-            "enum": ["Vacation", "Sick", "Personal", "Bereavement", "Jury Duty", "Military", "Other"],
+            "enum": [
+              "Vacation",
+              "Sick",
+              "Personal",
+              "Bereavement",
+              "Jury Duty",
+              "Military",
+              "Other"
+            ],
             "description": "Type of time off"
           },
           "startDate": {
@@ -306,7 +474,12 @@
             "description": "Additional comments"
           }
         },
-        "required": ["workerId", "timeOffType", "startDate", "endDate"],
+        "required": [
+          "workerId",
+          "timeOffType",
+          "startDate",
+          "endDate"
+        ],
         "additionalProperties": false
       }
     },
@@ -330,7 +503,10 @@
             "description": "Approval comments"
           }
         },
-        "required": ["requestId", "approverId"],
+        "required": [
+          "requestId",
+          "approverId"
+        ],
         "additionalProperties": false
       }
     },
@@ -354,7 +530,11 @@
             "description": "Reason for denial"
           }
         },
-        "required": ["requestId", "approverId", "reason"],
+        "required": [
+          "requestId",
+          "approverId",
+          "reason"
+        ],
         "additionalProperties": false
       }
     },
@@ -401,7 +581,9 @@
             "description": "As of date for historical data"
           }
         },
-        "required": ["workerId"],
+        "required": [
+          "workerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -432,7 +614,13 @@
           },
           "reason": {
             "type": "string",
-            "enum": ["Merit Increase", "Promotion", "Market Adjustment", "Cost of Living", "Other"],
+            "enum": [
+              "Merit Increase",
+              "Promotion",
+              "Market Adjustment",
+              "Cost of Living",
+              "Other"
+            ],
             "description": "Reason for compensation change"
           },
           "notes": {
@@ -440,7 +628,12 @@
             "description": "Additional notes"
           }
         },
-        "required": ["workerId", "baseSalary", "effectiveDate", "reason"],
+        "required": [
+          "workerId",
+          "baseSalary",
+          "effectiveDate",
+          "reason"
+        ],
         "additionalProperties": false
       }
     }
@@ -469,14 +662,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "workerId": {"type": "string"},
-          "firstName": {"type": "string"},
-          "lastName": {"type": "string"},
-          "email": {"type": "string"},
-          "jobTitle": {"type": "string"},
-          "department": {"type": "string"},
-          "startDate": {"type": "string"},
-          "managerId": {"type": "string"}
+          "workerId": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "jobTitle": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "managerId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -503,13 +712,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "workerId": {"type": "string"},
-          "firstName": {"type": "string"},
-          "lastName": {"type": "string"},
-          "email": {"type": "string"},
-          "terminationDate": {"type": "string"},
-          "terminationReason": {"type": "string"},
-          "lastDayWorked": {"type": "string"}
+          "workerId": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "terminationDate": {
+            "type": "string"
+          },
+          "terminationReason": {
+            "type": "string"
+          },
+          "lastDayWorked": {
+            "type": "string"
+          }
         }
       }
     },
@@ -536,14 +759,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "requestId": {"type": "string"},
-          "workerId": {"type": "string"},
-          "workerName": {"type": "string"},
-          "timeOffType": {"type": "string"},
-          "startDate": {"type": "string"},
-          "endDate": {"type": "string"},
-          "status": {"type": "string"},
-          "requestDate": {"type": "string"}
+          "requestId": {
+            "type": "string"
+          },
+          "workerId": {
+            "type": "string"
+          },
+          "workerName": {
+            "type": "string"
+          },
+          "timeOffType": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "requestDate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -570,13 +809,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "workerId": {"type": "string"},
-          "workerName": {"type": "string"},
-          "previousSalary": {"type": "number"},
-          "newSalary": {"type": "number"},
-          "effectiveDate": {"type": "string"},
-          "reason": {"type": "string"},
-          "department": {"type": "string"}
+          "workerId": {
+            "type": "string"
+          },
+          "workerName": {
+            "type": "string"
+          },
+          "previousSalary": {
+            "type": "number"
+          },
+          "newSalary": {
+            "type": "number"
+          },
+          "effectiveDate": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          }
         }
       }
     }
@@ -584,5 +837,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/workers"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

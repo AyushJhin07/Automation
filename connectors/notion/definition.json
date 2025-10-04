@@ -12,7 +12,11 @@
     "config": {
       "authUrl": "https://api.notion.com/v1/oauth/authorize",
       "tokenUrl": "https://api.notion.com/v1/oauth/token",
-      "scopes": ["read_content", "update_content", "insert_content"]
+      "scopes": [
+        "read_content",
+        "update_content",
+        "insert_content"
+      ]
     }
   },
   "baseUrl": "https://api.notion.com/v1",
@@ -44,7 +48,11 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["database_id", "page_id", "workspace"],
+                "enum": [
+                  "database_id",
+                  "page_id",
+                  "workspace"
+                ],
                 "description": "Type of parent"
               },
               "database_id": {
@@ -64,16 +72,31 @@
           },
           "children": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of block objects for page content"
           },
           "icon": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["emoji", "external", "file"]},
-              "emoji": {"type": "string"},
-              "external": {"type": "object"},
-              "file": {"type": "object"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "emoji",
+                  "external",
+                  "file"
+                ]
+              },
+              "emoji": {
+                "type": "string"
+              },
+              "external": {
+                "type": "object"
+              },
+              "file": {
+                "type": "object"
+              }
             },
             "description": "Page icon"
           },
@@ -82,7 +105,9 @@
             "description": "Page cover image"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -114,7 +139,9 @@
             "description": "Updated page cover"
           }
         },
-        "required": ["page_id"],
+        "required": [
+          "page_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -131,11 +158,15 @@
           },
           "filter_properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific properties to retrieve"
           }
         },
-        "required": ["page_id"],
+        "required": [
+          "page_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -156,11 +187,16 @@
           },
           "children": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of block objects for entry content"
           }
         },
-        "required": ["database_id", "properties"],
+        "required": [
+          "database_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -181,7 +217,9 @@
           },
           "sorts": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Sort conditions for the query"
           },
           "start_cursor": {
@@ -196,7 +234,9 @@
             "description": "Number of results to return"
           }
         },
-        "required": ["database_id"],
+        "required": [
+          "database_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -213,11 +253,16 @@
           },
           "children": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of block objects to append"
           }
         },
-        "required": ["block_id", "children"],
+        "required": [
+          "block_id",
+          "children"
+        ],
         "additionalProperties": false
       }
     },
@@ -237,7 +282,9 @@
             "description": "Whether to archive the block"
           }
         },
-        "required": ["block_id"],
+        "required": [
+          "block_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -264,7 +311,9 @@
             "description": "Number of results to return"
           }
         },
-        "required": ["block_id"],
+        "required": [
+          "block_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -284,12 +333,17 @@
             "properties": {
               "value": {
                 "type": "string",
-                "enum": ["page", "database"],
+                "enum": [
+                  "page",
+                  "database"
+                ],
                 "description": "Filter by object type"
               },
               "property": {
                 "type": "string",
-                "enum": ["object"],
+                "enum": [
+                  "object"
+                ],
                 "description": "Property to filter on"
               }
             },
@@ -300,12 +354,17 @@
             "properties": {
               "direction": {
                 "type": "string",
-                "enum": ["ascending", "descending"],
+                "enum": [
+                  "ascending",
+                  "descending"
+                ],
                 "description": "Sort direction"
               },
               "timestamp": {
                 "type": "string",
-                "enum": ["last_edited_time"],
+                "enum": [
+                  "last_edited_time"
+                ],
                 "description": "Sort by timestamp"
               }
             },
@@ -352,12 +411,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "object": {"type": "string"},
-          "id": {"type": "string"},
-          "created_time": {"type": "string"},
-          "last_edited_time": {"type": "string"},
-          "properties": {"type": "object"},
-          "parent": {"type": "object"}
+          "object": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "created_time": {
+            "type": "string"
+          },
+          "last_edited_time": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "parent": {
+            "type": "object"
+          }
         }
       }
     },
@@ -375,7 +446,9 @@
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific properties to watch for changes"
           }
         },
@@ -385,10 +458,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "object": {"type": "string"},
-          "id": {"type": "string"},
-          "last_edited_time": {"type": "string"},
-          "properties": {"type": "object"}
+          "object": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_edited_time": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          }
         }
       }
     },
@@ -411,11 +492,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "object": {"type": "string"},
-          "id": {"type": "string"},
-          "created_time": {"type": "string"},
-          "properties": {"type": "object"},
-          "parent": {"type": "object"}
+          "object": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "created_time": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "parent": {
+            "type": "object"
+          }
         }
       }
     }
@@ -423,5 +514,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "stable",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

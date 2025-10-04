@@ -78,7 +78,9 @@
             "description": "Document ID"
           }
         },
-        "required": ["docId"],
+        "required": [
+          "docId"
+        ],
         "additionalProperties": false
       }
     },
@@ -106,16 +108,28 @@
           },
           "sortBy": {
             "type": "string",
-            "enum": ["name", "createdAt", "tableType"],
+            "enum": [
+              "name",
+              "createdAt",
+              "tableType"
+            ],
             "description": "Sort field"
           },
           "tableTypes": {
             "type": "array",
-            "items": {"type": "string", "enum": ["table", "view"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "table",
+                "view"
+              ]
+            },
             "description": "Filter by table types"
           }
         },
-        "required": ["docId"],
+        "required": [
+          "docId"
+        ],
         "additionalProperties": false
       }
     },
@@ -135,7 +149,10 @@
             "description": "Table ID or name"
           }
         },
-        "required": ["docId", "tableIdOrName"],
+        "required": [
+          "docId",
+          "tableIdOrName"
+        ],
         "additionalProperties": false
       }
     },
@@ -171,7 +188,11 @@
           },
           "sortBy": {
             "type": "string",
-            "enum": ["natural", "createdAt", "updatedAt"],
+            "enum": [
+              "natural",
+              "createdAt",
+              "updatedAt"
+            ],
             "description": "Sort field"
           },
           "useColumnNames": {
@@ -180,7 +201,11 @@
           },
           "valueFormat": {
             "type": "string",
-            "enum": ["simple", "simpleWithArrays", "rich"],
+            "enum": [
+              "simple",
+              "simpleWithArrays",
+              "rich"
+            ],
             "description": "Value format"
           },
           "visibleOnly": {
@@ -188,7 +213,10 @@
             "description": "Return only visible rows"
           }
         },
-        "required": ["docId", "tableIdOrName"],
+        "required": [
+          "docId",
+          "tableIdOrName"
+        ],
         "additionalProperties": false
       }
     },
@@ -212,14 +240,18 @@
             "properties": {
               "cells": {
                 "type": "array",
-                "items": {"type": "object"}
+                "items": {
+                  "type": "object"
+                }
               }
             },
             "description": "Row data"
           },
           "keyColumns": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Key columns for upsert"
           },
           "disableParsing": {
@@ -227,7 +259,11 @@
             "description": "Disable parsing of cell values"
           }
         },
-        "required": ["docId", "tableIdOrName", "row"],
+        "required": [
+          "docId",
+          "tableIdOrName",
+          "row"
+        ],
         "additionalProperties": false
       }
     },
@@ -255,7 +291,9 @@
             "properties": {
               "cells": {
                 "type": "array",
-                "items": {"type": "object"}
+                "items": {
+                  "type": "object"
+                }
               }
             },
             "description": "Updated row data"
@@ -265,7 +303,12 @@
             "description": "Disable parsing of cell values"
           }
         },
-        "required": ["docId", "tableIdOrName", "rowIdOrName", "row"],
+        "required": [
+          "docId",
+          "tableIdOrName",
+          "rowIdOrName",
+          "row"
+        ],
         "additionalProperties": false
       }
     },
@@ -289,7 +332,11 @@
             "description": "Row ID or name"
           }
         },
-        "required": ["docId", "tableIdOrName", "rowIdOrName"],
+        "required": [
+          "docId",
+          "tableIdOrName",
+          "rowIdOrName"
+        ],
         "additionalProperties": false
       }
     }
@@ -318,10 +365,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "type": {"type": "string"},
-          "href": {"type": "string"},
-          "values": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          },
+          "values": {
+            "type": "object"
+          }
         }
       }
     },
@@ -344,9 +399,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "type": {"type": "string"},
-          "updatedAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
         }
       }
     }
@@ -354,5 +415,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/whoami"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

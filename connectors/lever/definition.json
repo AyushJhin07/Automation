@@ -79,7 +79,10 @@
           },
           "confidentiality": {
             "type": "string",
-            "enum": ["confidential", "non-confidential"],
+            "enum": [
+              "confidential",
+              "non-confidential"
+            ],
             "description": "Filter by confidentiality"
           },
           "email": {
@@ -105,11 +108,23 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string", "enum": ["applications", "stage", "owner", "followers", "sourcedBy", "origin"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "applications",
+                "stage",
+                "owner",
+                "followers",
+                "sourcedBy",
+                "origin"
+              ]
+            },
             "description": "Additional data to include"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -139,34 +154,61 @@
           "phone": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["home", "work", "mobile", "other"]},
-              "value": {"type": "string"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "mobile",
+                  "other"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
             },
             "description": "Phone number"
           },
           "emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Email addresses"
           },
           "links": {
             "type": "array",
-            "items": {"type": "string", "format": "uri"},
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
             "description": "URLs (LinkedIn, portfolio, etc.)"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags to apply"
           },
           "sources": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Source IDs"
           },
           "origin": {
             "type": "string",
-            "enum": ["agency", "applied", "internal", "referred", "sourced", "university"],
+            "enum": [
+              "agency",
+              "applied",
+              "internal",
+              "referred",
+              "sourced",
+              "university"
+            ],
             "description": "Origin of candidate"
           },
           "owner": {
@@ -175,7 +217,9 @@
           },
           "followers": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "User IDs of followers"
           },
           "stage": {
@@ -185,18 +229,32 @@
           "archived": {
             "type": "object",
             "properties": {
-              "archivedAt": {"type": "number"},
-              "reason": {"type": "string", "enum": ["hired", "passed", "lost", "other"]}
+              "archivedAt": {
+                "type": "number"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "hired",
+                  "passed",
+                  "lost",
+                  "other"
+                ]
+              }
             },
             "description": "Archive information"
           },
           "postings": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Posting IDs to apply to"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,19 +288,34 @@
           "phone": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["home", "work", "mobile", "other"]},
-              "value": {"type": "string"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "mobile",
+                  "other"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
             },
             "description": "Phone number"
           },
           "emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Email addresses"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags to apply"
           },
           "owner": {
@@ -251,7 +324,9 @@
           },
           "followers": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "User IDs of followers"
           },
           "stage": {
@@ -259,7 +334,9 @@
             "description": "Stage ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -276,11 +353,19 @@
           },
           "reason": {
             "type": "string",
-            "enum": ["hired", "passed", "lost", "other"],
+            "enum": [
+              "hired",
+              "passed",
+              "lost",
+              "other"
+            ],
             "description": "Archive reason"
           }
         },
-        "required": ["id", "reason"],
+        "required": [
+          "id",
+          "reason"
+        ],
         "additionalProperties": false
       }
     },
@@ -341,7 +426,9 @@
             "description": "Posting ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -385,7 +472,9 @@
             "description": "User ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -406,12 +495,18 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["public", "private"],
+            "enum": [
+              "public",
+              "private"
+            ],
             "default": "public",
             "description": "Note visibility"
           }
         },
-        "required": ["opportunity_id", "value"],
+        "required": [
+          "opportunity_id",
+          "value"
+        ],
         "additionalProperties": false
       }
     },
@@ -431,7 +526,10 @@
             "description": "Target stage ID"
           }
         },
-        "required": ["id", "stage"],
+        "required": [
+          "id",
+          "stage"
+        ],
         "additionalProperties": false
       }
     }
@@ -451,15 +549,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "headline": {"type": "string"},
-          "stage": {"type": "string"},
-          "location": {"type": "string"},
-          "emails": {"type": "array"},
-          "phones": {"type": "array"},
-          "createdAt": {"type": "number"},
-          "updatedAt": {"type": "number"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "emails": {
+            "type": "array"
+          },
+          "phones": {
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          }
         }
       }
     },
@@ -482,10 +598,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "opportunityId": {"type": "string"},
-          "fromStage": {"type": "object"},
-          "toStage": {"type": "object"},
-          "changedAt": {"type": "number"}
+          "opportunityId": {
+            "type": "string"
+          },
+          "fromStage": {
+            "type": "object"
+          },
+          "toStage": {
+            "type": "object"
+          },
+          "changedAt": {
+            "type": "number"
+          }
         }
       }
     },
@@ -503,10 +627,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "archivedAt": {"type": "number"},
-          "reason": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "archivedAt": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
         }
       }
     }
@@ -514,5 +646,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

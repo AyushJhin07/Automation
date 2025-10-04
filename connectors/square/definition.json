@@ -45,10 +45,19 @@
           "amount_money": {
             "type": "object",
             "properties": {
-              "amount": {"type": "number", "description": "Amount in smallest currency unit"},
-              "currency": {"type": "string", "description": "Currency code (e.g., USD)"}
+              "amount": {
+                "type": "number",
+                "description": "Amount in smallest currency unit"
+              },
+              "currency": {
+                "type": "string",
+                "description": "Currency code (e.g., USD)"
+              }
             },
-            "required": ["amount", "currency"],
+            "required": [
+              "amount",
+              "currency"
+            ],
             "additionalProperties": false,
             "description": "Payment amount"
           },
@@ -70,7 +79,11 @@
             "description": "Whether to complete the payment automatically"
           }
         },
-        "required": ["source_id", "idempotency_key", "amount_money"],
+        "required": [
+          "source_id",
+          "idempotency_key",
+          "amount_money"
+        ],
         "additionalProperties": false
       }
     },
@@ -86,7 +99,9 @@
             "description": "Payment ID"
           }
         },
-        "required": ["payment_id"],
+        "required": [
+          "payment_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -109,7 +124,10 @@
           },
           "sort_order": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "description": "Sort order"
           },
           "cursor": {
@@ -139,10 +157,17 @@
           "amount_money": {
             "type": "object",
             "properties": {
-              "amount": {"type": "number"},
-              "currency": {"type": "string"}
+              "amount": {
+                "type": "number"
+              },
+              "currency": {
+                "type": "string"
+              }
             },
-            "required": ["amount", "currency"],
+            "required": [
+              "amount",
+              "currency"
+            ],
             "additionalProperties": false,
             "description": "Refund amount"
           },
@@ -155,7 +180,11 @@
             "description": "Reason for refund"
           }
         },
-        "required": ["idempotency_key", "amount_money", "payment_id"],
+        "required": [
+          "idempotency_key",
+          "amount_money",
+          "payment_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -212,7 +241,9 @@
             "description": "Customer ID"
           }
         },
-        "required": ["customer_id"],
+        "required": [
+          "customer_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,32 +261,49 @@
           "order": {
             "type": "object",
             "properties": {
-              "location_id": {"type": "string"},
-              "reference_id": {"type": "string"},
+              "location_id": {
+                "type": "string"
+              },
+              "reference_id": {
+                "type": "string"
+              },
               "line_items": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "name": {"type": "string"},
-                    "quantity": {"type": "string"},
+                    "name": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "string"
+                    },
                     "base_price_money": {
                       "type": "object",
                       "properties": {
-                        "amount": {"type": "number"},
-                        "currency": {"type": "string"}
+                        "amount": {
+                          "type": "number"
+                        },
+                        "currency": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
                 }
               }
             },
-            "required": ["location_id"],
+            "required": [
+              "location_id"
+            ],
             "additionalProperties": false,
             "description": "Order details"
           }
         },
-        "required": ["idempotency_key", "order"],
+        "required": [
+          "idempotency_key",
+          "order"
+        ],
         "additionalProperties": false
       }
     }
@@ -280,12 +328,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "merchant_id": {"type": "string"},
-          "location_id": {"type": "string"},
-          "type": {"type": "string"},
-          "event_id": {"type": "string"},
-          "created_at": {"type": "string"},
-          "data": {"type": "object"}
+          "merchant_id": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
         }
       }
     },
@@ -308,12 +368,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "merchant_id": {"type": "string"},
-          "location_id": {"type": "string"},
-          "type": {"type": "string"},
-          "event_id": {"type": "string"},
-          "created_at": {"type": "string"},
-          "data": {"type": "object"}
+          "merchant_id": {
+            "type": "string"
+          },
+          "location_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
         }
       }
     }
@@ -321,5 +393,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/locations"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

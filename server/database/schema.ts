@@ -862,6 +862,13 @@ export const connectorDefinitions = pgTable(
     
     // Metadata for ALL application connectors
     version: text('version').default('1.0.0').notNull(),
+    semanticVersion: text('semantic_version').default('1.0.0').notNull(),
+    lifecycleStage: text('lifecycle_stage').default('stable').notNull(),
+    isBeta: boolean('is_beta').default(false).notNull(),
+    betaStartAt: timestamp('beta_start_at'),
+    betaEndAt: timestamp('beta_end_at'),
+    deprecationStartAt: timestamp('deprecation_start_at'),
+    sunsetAt: timestamp('sunset_at'),
     isActive: boolean('is_active').default(true).notNull(),
     popularity: integer('popularity').default(0).notNull(),
     

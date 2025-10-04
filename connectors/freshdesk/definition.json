@@ -58,17 +58,35 @@
           },
           "status": {
             "type": "number",
-            "enum": [2, 3, 4, 5],
+            "enum": [
+              2,
+              3,
+              4,
+              5
+            ],
             "description": "Ticket status (2=Open, 3=Pending, 4=Resolved, 5=Closed)"
           },
           "priority": {
             "type": "number",
-            "enum": [1, 2, 3, 4],
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
             "description": "Ticket priority (1=Low, 2=Medium, 3=High, 4=Urgent)"
           },
           "source": {
             "type": "number",
-            "enum": [1, 2, 3, 7, 8, 9, 10],
+            "enum": [
+              1,
+              2,
+              3,
+              7,
+              8,
+              9,
+              10
+            ],
             "description": "Ticket source (1=Email, 2=Portal, 3=Phone, 7=Chat, 8=Mobihelp, 9=Feedback, 10=Outbound Email)"
           },
           "type": {
@@ -77,12 +95,17 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Ticket tags"
           },
           "cc_emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "CC email addresses"
           },
           "custom_fields": {
@@ -100,7 +123,10 @@
             "description": "First response due date"
           }
         },
-        "required": ["subject", "description"],
+        "required": [
+          "subject",
+          "description"
+        ],
         "additionalProperties": false
       }
     },
@@ -125,17 +151,29 @@
           },
           "status": {
             "type": "number",
-            "enum": [2, 3, 4, 5],
+            "enum": [
+              2,
+              3,
+              4,
+              5
+            ],
             "description": "Ticket status"
           },
           "priority": {
             "type": "number",
-            "enum": [1, 2, 3, 4],
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
             "description": "Ticket priority"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Ticket tags"
           },
           "custom_fields": {
@@ -143,7 +181,9 @@
             "description": "Custom field values"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -160,11 +200,20 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "string", "enum": ["requester", "company", "stats"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "requester",
+                "company",
+                "stats"
+              ]
+            },
             "description": "Additional data to include"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -177,7 +226,12 @@
         "properties": {
           "filter": {
             "type": "string",
-            "enum": ["new_and_my_open", "watching", "spam", "deleted"],
+            "enum": [
+              "new_and_my_open",
+              "watching",
+              "spam",
+              "deleted"
+            ],
             "description": "Filter preset"
           },
           "page": {
@@ -195,12 +249,20 @@
           },
           "order_by": {
             "type": "string",
-            "enum": ["created_at", "due_by", "updated_at", "status"],
+            "enum": [
+              "created_at",
+              "due_by",
+              "updated_at",
+              "status"
+            ],
             "description": "Sort field"
           },
           "order_type": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           },
           "updated_since": {
@@ -210,7 +272,14 @@
           },
           "include": {
             "type": "array",
-            "items": {"type": "string", "enum": ["requester", "company", "stats"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "requester",
+                "company",
+                "stats"
+              ]
+            },
             "description": "Additional data to include"
           }
         },
@@ -244,16 +313,25 @@
           },
           "cc_emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "CC email addresses"
           },
           "bcc_emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "BCC email addresses"
           }
         },
-        "required": ["ticket_id", "body"],
+        "required": [
+          "ticket_id",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -283,11 +361,17 @@
           },
           "notify_emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Notify these emails"
           }
         },
-        "required": ["ticket_id", "body"],
+        "required": [
+          "ticket_id",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -309,7 +393,9 @@
             "description": "Page number"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     }
@@ -334,10 +420,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "subject": {"type": "string"},
-          "status": {"type": "number"},
-          "priority": {"type": "number"}
+          "id": {
+            "type": "number"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "status": {
+            "type": "number"
+          },
+          "priority": {
+            "type": "number"
+          }
         }
       }
     },
@@ -355,9 +449,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "status": {"type": "number"},
-          "updated_at": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "status": {
+            "type": "number"
+          },
+          "updated_at": {
+            "type": "string"
+          }
         }
       }
     }
@@ -365,5 +465,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/agents/me"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

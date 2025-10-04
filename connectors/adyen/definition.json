@@ -37,8 +37,12 @@
           "amount": {
             "type": "object",
             "properties": {
-              "currency": {"type": "string"},
-              "value": {"type": "number"}
+              "currency": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              }
             },
             "description": "Payment amount"
           },
@@ -49,11 +53,21 @@
           "paymentMethod": {
             "type": "object",
             "properties": {
-              "type": {"type": "string"},
-              "encryptedCardNumber": {"type": "string"},
-              "encryptedExpiryMonth": {"type": "string"},
-              "encryptedExpiryYear": {"type": "string"},
-              "encryptedSecurityCode": {"type": "string"}
+              "type": {
+                "type": "string"
+              },
+              "encryptedCardNumber": {
+                "type": "string"
+              },
+              "encryptedExpiryMonth": {
+                "type": "string"
+              },
+              "encryptedExpiryYear": {
+                "type": "string"
+              },
+              "encryptedSecurityCode": {
+                "type": "string"
+              }
             },
             "description": "Payment method details"
           },
@@ -80,7 +94,13 @@
             "description": "Country code"
           }
         },
-        "required": ["amount", "reference", "paymentMethod", "returnUrl", "merchantAccount"],
+        "required": [
+          "amount",
+          "reference",
+          "paymentMethod",
+          "returnUrl",
+          "merchantAccount"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,8 +118,12 @@
           "amount": {
             "type": "object",
             "properties": {
-              "currency": {"type": "string"},
-              "value": {"type": "number"}
+              "currency": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              }
             },
             "description": "Amount to capture"
           },
@@ -112,7 +136,11 @@
             "description": "Capture reference"
           }
         },
-        "required": ["paymentPspReference", "amount", "merchantAccount"],
+        "required": [
+          "paymentPspReference",
+          "amount",
+          "merchantAccount"
+        ],
         "additionalProperties": false
       }
     },
@@ -130,8 +158,12 @@
           "amount": {
             "type": "object",
             "properties": {
-              "currency": {"type": "string"},
-              "value": {"type": "number"}
+              "currency": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              }
             },
             "description": "Refund amount"
           },
@@ -144,7 +176,11 @@
             "description": "Refund reference"
           }
         },
-        "required": ["paymentPspReference", "amount", "merchantAccount"],
+        "required": [
+          "paymentPspReference",
+          "amount",
+          "merchantAccount"
+        ],
         "additionalProperties": false
       }
     }
@@ -164,10 +200,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "pspReference": {"type": "string"},
-          "merchantReference": {"type": "string"},
-          "eventCode": {"type": "string"},
-          "success": {"type": "boolean"}
+          "pspReference": {
+            "type": "string"
+          },
+          "merchantReference": {
+            "type": "string"
+          },
+          "eventCode": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
         }
       }
     }
@@ -175,5 +219,23 @@
   "testConnection": {
     "method": "POST",
     "endpoint": "/payments"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "stable",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

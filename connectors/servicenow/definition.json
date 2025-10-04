@@ -55,17 +55,31 @@
           },
           "urgency": {
             "type": "string",
-            "enum": ["1", "2", "3"],
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
             "description": "Urgency level (1=High, 2=Medium, 3=Low)"
           },
           "impact": {
             "type": "string",
-            "enum": ["1", "2", "3"],
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
             "description": "Impact level (1=High, 2=Medium, 3=Low)"
           },
           "priority": {
             "type": "string",
-            "enum": ["1", "2", "3", "4", "5"],
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
             "description": "Priority level"
           },
           "assignment_group": {
@@ -85,7 +99,9 @@
             "description": "Configuration item"
           }
         },
-        "required": ["short_description"],
+        "required": [
+          "short_description"
+        ],
         "additionalProperties": false
       }
     },
@@ -119,7 +135,11 @@
           },
           "sysparm_display_value": {
             "type": "string",
-            "enum": ["true", "false", "all"],
+            "enum": [
+              "true",
+              "false",
+              "all"
+            ],
             "default": "false",
             "description": "Return display values"
           }
@@ -149,12 +169,25 @@
           },
           "state": {
             "type": "string",
-            "enum": ["1", "2", "3", "6", "7", "8"],
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "6",
+              "7",
+              "8"
+            ],
             "description": "Incident state"
           },
           "priority": {
             "type": "string",
-            "enum": ["1", "2", "3", "4", "5"],
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
             "description": "Priority level"
           },
           "assignment_group": {
@@ -178,7 +211,9 @@
             "description": "Close notes"
           }
         },
-        "required": ["sys_id"],
+        "required": [
+          "sys_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -199,22 +234,40 @@
           },
           "type": {
             "type": "string",
-            "enum": ["standard", "normal", "emergency"],
+            "enum": [
+              "standard",
+              "normal",
+              "emergency"
+            ],
             "description": "Change type"
           },
           "priority": {
             "type": "string",
-            "enum": ["1", "2", "3", "4"],
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ],
             "description": "Priority level"
           },
           "risk": {
             "type": "string",
-            "enum": ["1", "2", "3", "4"],
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ],
             "description": "Risk level"
           },
           "impact": {
             "type": "string",
-            "enum": ["1", "2", "3"],
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
             "description": "Impact level"
           },
           "requested_by": {
@@ -252,7 +305,9 @@
             "description": "Test plan"
           }
         },
-        "required": ["short_description"],
+        "required": [
+          "short_description"
+        ],
         "additionalProperties": false
       }
     },
@@ -308,17 +363,39 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "sys_id": {"type": "string"},
-          "number": {"type": "string"},
-          "short_description": {"type": "string"},
-          "state": {"type": "string"},
-          "priority": {"type": "string"},
-          "urgency": {"type": "string"},
-          "impact": {"type": "string"},
-          "caller_id": {"type": "string"},
-          "assignment_group": {"type": "string"},
-          "assigned_to": {"type": "string"},
-          "opened_at": {"type": "string"}
+          "sys_id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "short_description": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "urgency": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          },
+          "caller_id": {
+            "type": "string"
+          },
+          "assignment_group": {
+            "type": "string"
+          },
+          "assigned_to": {
+            "type": "string"
+          },
+          "opened_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -341,14 +418,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "sys_id": {"type": "string"},
-          "number": {"type": "string"},
-          "short_description": {"type": "string"},
-          "state": {"type": "string"},
-          "priority": {"type": "string"},
-          "assignment_group": {"type": "string"},
-          "assigned_to": {"type": "string"},
-          "updated_on": {"type": "string"}
+          "sys_id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "short_description": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "assignment_group": {
+            "type": "string"
+          },
+          "assigned_to": {
+            "type": "string"
+          },
+          "updated_on": {
+            "type": "string"
+          }
         }
       }
     }
@@ -356,5 +449,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/table/incident?sysparm_limit=1"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

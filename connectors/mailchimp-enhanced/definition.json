@@ -45,22 +45,33 @@
           },
           "status": {
             "type": "string",
-            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "enum": [
+              "subscribed",
+              "unsubscribed",
+              "cleaned",
+              "pending"
+            ],
             "default": "subscribed",
             "description": "Subscriber status"
           },
           "merge_fields": {
             "type": "object",
             "properties": {
-              "FNAME": {"type": "string"},
-              "LNAME": {"type": "string"}
+              "FNAME": {
+                "type": "string"
+              },
+              "LNAME": {
+                "type": "string"
+              }
             },
             "additionalProperties": true,
             "description": "Merge fields"
           },
           "interests": {
             "type": "object",
-            "additionalProperties": {"type": "boolean"},
+            "additionalProperties": {
+              "type": "boolean"
+            },
             "description": "Interest categories"
           },
           "language": {
@@ -74,8 +85,12 @@
           "location": {
             "type": "object",
             "properties": {
-              "latitude": {"type": "number"},
-              "longitude": {"type": "number"}
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              }
             },
             "additionalProperties": false
           },
@@ -84,8 +99,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "marketing_permission_id": {"type": "string"},
-                "enabled": {"type": "boolean"}
+                "marketing_permission_id": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                }
               },
               "additionalProperties": false
             }
@@ -110,11 +129,16 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags for the subscriber"
           }
         },
-        "required": ["list_id", "email_address"],
+        "required": [
+          "list_id",
+          "email_address"
+        ],
         "additionalProperties": false
       }
     },
@@ -140,7 +164,12 @@
           },
           "status_if_new": {
             "type": "string",
-            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "enum": [
+              "subscribed",
+              "unsubscribed",
+              "cleaned",
+              "pending"
+            ],
             "description": "Status if subscriber is new"
           },
           "merge_fields": {
@@ -150,7 +179,9 @@
           },
           "interests": {
             "type": "object",
-            "additionalProperties": {"type": "boolean"},
+            "additionalProperties": {
+              "type": "boolean"
+            },
             "description": "Interest categories"
           },
           "language": {
@@ -164,13 +195,20 @@
           "location": {
             "type": "object",
             "properties": {
-              "latitude": {"type": "number"},
-              "longitude": {"type": "number"}
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["list_id", "subscriber_hash"],
+        "required": [
+          "list_id",
+          "subscriber_hash"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,16 +229,23 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include"
           },
           "exclude_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to exclude"
           }
         },
-        "required": ["list_id", "subscriber_hash"],
+        "required": [
+          "list_id",
+          "subscriber_hash"
+        ],
         "additionalProperties": false
       }
     },
@@ -220,7 +265,10 @@
             "description": "MD5 hash of subscriber email"
           }
         },
-        "required": ["list_id", "subscriber_hash"],
+        "required": [
+          "list_id",
+          "subscriber_hash"
+        ],
         "additionalProperties": false
       }
     },
@@ -233,86 +281,180 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "enum": [
+              "regular",
+              "plaintext",
+              "absplit",
+              "rss",
+              "variate"
+            ],
             "default": "regular",
             "description": "Campaign type"
           },
           "recipients": {
             "type": "object",
             "properties": {
-              "list_id": {"type": "string"},
-              "segment_opts": {"type": "object"}
+              "list_id": {
+                "type": "string"
+              },
+              "segment_opts": {
+                "type": "object"
+              }
             },
-            "required": ["list_id"],
+            "required": [
+              "list_id"
+            ],
             "additionalProperties": false
           },
           "settings": {
             "type": "object",
             "properties": {
-              "subject_line": {"type": "string"},
-              "preview_text": {"type": "string"},
-              "title": {"type": "string"},
-              "from_name": {"type": "string"},
-              "reply_to": {"type": "string", "format": "email"},
-              "use_conversation": {"type": "boolean"},
-              "to_name": {"type": "string"},
-              "folder_id": {"type": "string"},
-              "authenticate": {"type": "boolean"},
-              "auto_footer": {"type": "boolean"},
-              "inline_css": {"type": "boolean"},
-              "auto_tweet": {"type": "boolean"},
-              "auto_fb_post": {"type": "array"},
-              "fb_comments": {"type": "boolean"},
-              "timewarp": {"type": "boolean"},
-              "template_id": {"type": "number"},
-              "drag_and_drop": {"type": "boolean"}
+              "subject_line": {
+                "type": "string"
+              },
+              "preview_text": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "from_name": {
+                "type": "string"
+              },
+              "reply_to": {
+                "type": "string",
+                "format": "email"
+              },
+              "use_conversation": {
+                "type": "boolean"
+              },
+              "to_name": {
+                "type": "string"
+              },
+              "folder_id": {
+                "type": "string"
+              },
+              "authenticate": {
+                "type": "boolean"
+              },
+              "auto_footer": {
+                "type": "boolean"
+              },
+              "inline_css": {
+                "type": "boolean"
+              },
+              "auto_tweet": {
+                "type": "boolean"
+              },
+              "auto_fb_post": {
+                "type": "array"
+              },
+              "fb_comments": {
+                "type": "boolean"
+              },
+              "timewarp": {
+                "type": "boolean"
+              },
+              "template_id": {
+                "type": "number"
+              },
+              "drag_and_drop": {
+                "type": "boolean"
+              }
             },
-            "required": ["subject_line", "from_name", "reply_to"],
+            "required": [
+              "subject_line",
+              "from_name",
+              "reply_to"
+            ],
             "additionalProperties": false
           },
           "variate_settings": {
             "type": "object",
             "properties": {
-              "winning_criteria": {"type": "string"},
-              "wait_time": {"type": "number"},
-              "test_size": {"type": "number"},
-              "subject_lines": {"type": "array"}
+              "winning_criteria": {
+                "type": "string"
+              },
+              "wait_time": {
+                "type": "number"
+              },
+              "test_size": {
+                "type": "number"
+              },
+              "subject_lines": {
+                "type": "array"
+              }
             },
             "additionalProperties": false
           },
           "tracking": {
             "type": "object",
             "properties": {
-              "opens": {"type": "boolean", "default": true},
-              "html_clicks": {"type": "boolean", "default": true},
-              "text_clicks": {"type": "boolean", "default": false},
-              "goal_tracking": {"type": "boolean", "default": false},
-              "ecomm360": {"type": "boolean", "default": false},
-              "google_analytics": {"type": "string"},
-              "clicktale": {"type": "string"}
+              "opens": {
+                "type": "boolean",
+                "default": true
+              },
+              "html_clicks": {
+                "type": "boolean",
+                "default": true
+              },
+              "text_clicks": {
+                "type": "boolean",
+                "default": false
+              },
+              "goal_tracking": {
+                "type": "boolean",
+                "default": false
+              },
+              "ecomm360": {
+                "type": "boolean",
+                "default": false
+              },
+              "google_analytics": {
+                "type": "string"
+              },
+              "clicktale": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "rss_opts": {
             "type": "object",
             "properties": {
-              "feed_url": {"type": "string"},
-              "frequency": {"type": "string"},
-              "schedule": {"type": "object"}
+              "feed_url": {
+                "type": "string"
+              },
+              "frequency": {
+                "type": "string"
+              },
+              "schedule": {
+                "type": "object"
+              }
             },
             "additionalProperties": false
           },
           "social_card": {
             "type": "object",
             "properties": {
-              "image_url": {"type": "string"},
-              "description": {"type": "string"},
-              "title": {"type": "string"}
+              "image_url": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["type", "recipients", "settings"],
+        "required": [
+          "type",
+          "recipients",
+          "settings"
+        ],
         "additionalProperties": false
       }
     },
@@ -328,7 +470,9 @@
             "description": "Campaign ID"
           }
         },
-        "required": ["campaign_id"],
+        "required": [
+          "campaign_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -355,13 +499,20 @@
           "batch_delivery": {
             "type": "object",
             "properties": {
-              "batch_delay": {"type": "number"},
-              "batch_count": {"type": "number"}
+              "batch_delay": {
+                "type": "number"
+              },
+              "batch_count": {
+                "type": "number"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["campaign_id", "schedule_time"],
+        "required": [
+          "campaign_id",
+          "schedule_time"
+        ],
         "additionalProperties": false
       }
     },
@@ -375,52 +526,109 @@
           "recipients": {
             "type": "object",
             "properties": {
-              "list_id": {"type": "string"},
-              "store_id": {"type": "string"}
+              "list_id": {
+                "type": "string"
+              },
+              "store_id": {
+                "type": "string"
+              }
             },
-            "required": ["list_id"],
+            "required": [
+              "list_id"
+            ],
             "additionalProperties": false
           },
           "settings": {
             "type": "object",
             "properties": {
-              "title": {"type": "string"},
-              "from_name": {"type": "string"},
-              "reply_to": {"type": "string", "format": "email"},
-              "use_conversation": {"type": "boolean"},
-              "to_name": {"type": "string"},
-              "authenticate": {"type": "boolean"},
-              "auto_footer": {"type": "boolean"},
-              "inline_css": {"type": "boolean"}
+              "title": {
+                "type": "string"
+              },
+              "from_name": {
+                "type": "string"
+              },
+              "reply_to": {
+                "type": "string",
+                "format": "email"
+              },
+              "use_conversation": {
+                "type": "boolean"
+              },
+              "to_name": {
+                "type": "string"
+              },
+              "authenticate": {
+                "type": "boolean"
+              },
+              "auto_footer": {
+                "type": "boolean"
+              },
+              "inline_css": {
+                "type": "boolean"
+              }
             },
-            "required": ["title", "from_name", "reply_to"],
+            "required": [
+              "title",
+              "from_name",
+              "reply_to"
+            ],
             "additionalProperties": false
           },
           "tracking": {
             "type": "object",
             "properties": {
-              "opens": {"type": "boolean", "default": true},
-              "html_clicks": {"type": "boolean", "default": true},
-              "text_clicks": {"type": "boolean", "default": false},
-              "goal_tracking": {"type": "boolean", "default": false},
-              "ecomm360": {"type": "boolean", "default": false},
-              "google_analytics": {"type": "string"},
-              "clicktale": {"type": "string"}
+              "opens": {
+                "type": "boolean",
+                "default": true
+              },
+              "html_clicks": {
+                "type": "boolean",
+                "default": true
+              },
+              "text_clicks": {
+                "type": "boolean",
+                "default": false
+              },
+              "goal_tracking": {
+                "type": "boolean",
+                "default": false
+              },
+              "ecomm360": {
+                "type": "boolean",
+                "default": false
+              },
+              "google_analytics": {
+                "type": "string"
+              },
+              "clicktale": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "trigger_settings": {
             "type": "object",
             "properties": {
-              "workflow_type": {"type": "string"},
-              "send_immediately": {"type": "boolean"},
-              "trigger_on_import": {"type": "boolean"},
-              "runtime": {"type": "object"}
+              "workflow_type": {
+                "type": "string"
+              },
+              "send_immediately": {
+                "type": "boolean"
+              },
+              "trigger_on_import": {
+                "type": "boolean"
+              },
+              "runtime": {
+                "type": "object"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["recipients", "settings"],
+        "required": [
+          "recipients",
+          "settings"
+        ],
         "additionalProperties": false
       }
     },
@@ -441,7 +649,10 @@
             "description": "Subscriber email address"
           }
         },
-        "required": ["workflow_id", "email_address"],
+        "required": [
+          "workflow_id",
+          "email_address"
+        ],
         "additionalProperties": false
       }
     },
@@ -458,16 +669,22 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include"
           },
           "exclude_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to exclude"
           }
         },
-        "required": ["campaign_id"],
+        "required": [
+          "campaign_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -492,30 +709,72 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "fired_at": {"type": "string"},
+          "type": {
+            "type": "string"
+          },
+          "fired_at": {
+            "type": "string"
+          },
           "data": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "email": {"type": "string"},
-              "email_type": {"type": "string"},
-              "status": {"type": "string"},
-              "merge_fields": {"type": "object"},
-              "interests": {"type": "object"},
-              "stats": {"type": "object"},
-              "ip_signup": {"type": "string"},
-              "timestamp_signup": {"type": "string"},
-              "ip_opt": {"type": "string"},
-              "timestamp_opt": {"type": "string"},
-              "member_rating": {"type": "number"},
-              "last_changed": {"type": "string"},
-              "language": {"type": "string"},
-              "vip": {"type": "boolean"},
-              "email_client": {"type": "string"},
-              "location": {"type": "object"},
-              "list_id": {"type": "string"},
-              "unique_email_id": {"type": "string"}
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "email_type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "merge_fields": {
+                "type": "object"
+              },
+              "interests": {
+                "type": "object"
+              },
+              "stats": {
+                "type": "object"
+              },
+              "ip_signup": {
+                "type": "string"
+              },
+              "timestamp_signup": {
+                "type": "string"
+              },
+              "ip_opt": {
+                "type": "string"
+              },
+              "timestamp_opt": {
+                "type": "string"
+              },
+              "member_rating": {
+                "type": "number"
+              },
+              "last_changed": {
+                "type": "string"
+              },
+              "language": {
+                "type": "string"
+              },
+              "vip": {
+                "type": "boolean"
+              },
+              "email_client": {
+                "type": "string"
+              },
+              "location": {
+                "type": "object"
+              },
+              "list_id": {
+                "type": "string"
+              },
+              "unique_email_id": {
+                "type": "string"
+              }
             }
           }
         }
@@ -540,9 +799,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "fired_at": {"type": "string"},
-          "data": {"type": "object"}
+          "type": {
+            "type": "string"
+          },
+          "fired_at": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
         }
       }
     },
@@ -565,37 +830,90 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "fired_at": {"type": "string"},
+          "type": {
+            "type": "string"
+          },
+          "fired_at": {
+            "type": "string"
+          },
           "data": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "web_id": {"type": "number"},
-              "list_id": {"type": "string"},
-              "folder_id": {"type": "string"},
-              "template_id": {"type": "number"},
-              "content_type": {"type": "string"},
-              "title": {"type": "string"},
-              "type": {"type": "string"},
-              "create_time": {"type": "string"},
-              "archive_url": {"type": "string"},
-              "long_archive_url": {"type": "string"},
-              "status": {"type": "string"},
-              "emails_sent": {"type": "number"},
-              "send_time": {"type": "string"},
-              "content_type": {"type": "string"},
-              "needs_block_refresh": {"type": "boolean"},
-              "resendable": {"type": "boolean"},
-              "recipients": {"type": "object"},
-              "settings": {"type": "object"},
-              "variate_settings": {"type": "object"},
-              "tracking": {"type": "object"},
-              "rss_opts": {"type": "object"},
-              "ab_split_opts": {"type": "object"},
-              "social_card": {"type": "object"},
-              "report_summary": {"type": "object"},
-              "delivery_status": {"type": "object"}
+              "id": {
+                "type": "string"
+              },
+              "web_id": {
+                "type": "number"
+              },
+              "list_id": {
+                "type": "string"
+              },
+              "folder_id": {
+                "type": "string"
+              },
+              "template_id": {
+                "type": "number"
+              },
+              "content_type": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "create_time": {
+                "type": "string"
+              },
+              "archive_url": {
+                "type": "string"
+              },
+              "long_archive_url": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "emails_sent": {
+                "type": "number"
+              },
+              "send_time": {
+                "type": "string"
+              },
+              "needs_block_refresh": {
+                "type": "boolean"
+              },
+              "resendable": {
+                "type": "boolean"
+              },
+              "recipients": {
+                "type": "object"
+              },
+              "settings": {
+                "type": "object"
+              },
+              "variate_settings": {
+                "type": "object"
+              },
+              "tracking": {
+                "type": "object"
+              },
+              "rss_opts": {
+                "type": "object"
+              },
+              "ab_split_opts": {
+                "type": "object"
+              },
+              "social_card": {
+                "type": "object"
+              },
+              "report_summary": {
+                "type": "object"
+              },
+              "delivery_status": {
+                "type": "object"
+              }
             }
           }
         }
@@ -605,5 +923,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/ping"
+  },
+  "versionInfo": {
+    "semantic": "2.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

@@ -43,7 +43,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Dashboard tags"
           },
           "folder_id": {
@@ -56,7 +58,9 @@
             "description": "Overwrite existing dashboard"
           }
         },
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -74,7 +78,13 @@
           },
           "type": {
             "type": "string",
-            "enum": ["prometheus", "influxdb", "elasticsearch", "mysql", "postgres"],
+            "enum": [
+              "prometheus",
+              "influxdb",
+              "elasticsearch",
+              "mysql",
+              "postgres"
+            ],
             "description": "Data source type"
           },
           "url": {
@@ -83,7 +93,10 @@
           },
           "access": {
             "type": "string",
-            "enum": ["proxy", "direct"],
+            "enum": [
+              "proxy",
+              "direct"
+            ],
             "default": "proxy",
             "description": "Access mode"
           },
@@ -93,7 +106,11 @@
             "description": "Enable basic authentication"
           }
         },
-        "required": ["name", "type", "url"],
+        "required": [
+          "name",
+          "type",
+          "url"
+        ],
         "additionalProperties": false
       }
     },
@@ -124,12 +141,19 @@
           },
           "no_data_state": {
             "type": "string",
-            "enum": ["NoData", "Alerting", "OK"],
+            "enum": [
+              "NoData",
+              "Alerting",
+              "OK"
+            ],
             "default": "NoData",
             "description": "State when no data"
           }
         },
-        "required": ["title", "condition"],
+        "required": [
+          "title",
+          "condition"
+        ],
         "additionalProperties": false
       }
     },
@@ -146,7 +170,9 @@
             "description": "Dashboard UID"
           }
         },
-        "required": ["uid"],
+        "required": [
+          "uid"
+        ],
         "additionalProperties": false
       }
     },
@@ -202,5 +228,24 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

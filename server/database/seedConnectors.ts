@@ -12,6 +12,18 @@ interface ConnectorJSON {
   category: string;
   description: string;
   version: string;
+  versionInfo?: {
+    semantic?: string;
+    releaseDate?: string | null;
+    notes?: string | null;
+  };
+  lifecycle?: {
+    status?: 'planning' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+    beta?: { enabled?: boolean; startDate?: string | null; endDate?: string | null };
+    deprecation?: { startDate?: string | null; endDate?: string | null };
+    sunsetDate?: string | null;
+  };
+  availability?: string;
   authentication: {
     type: string;
     config: Record<string, any>;
@@ -126,6 +138,8 @@ export class ConnectorSeeder {
     const normalizedPath = filename.replace(/\\/g, '/');
     const directoryName = normalizedPath.split('/')[0] ?? normalizedPath;
     const slug = directoryName.toLowerCase();
+    const lifecycle = this.normalizeLifecycle(connectorData);
+    const semanticVersion = connectorData.versionInfo?.semantic || connectorData.version || '1.0.0';
 
     // Prepare connector definition for database
     const connectorDef = {
@@ -146,6 +160,14 @@ export class ConnectorSeeder {
           source: 'json_seed'
         }
       },
+      version: connectorData.version || semanticVersion,
+      semanticVersion,
+      lifecycleStage: lifecycle.stage,
+      isBeta: lifecycle.isBeta,
+      betaStartAt: lifecycle.betaStartAt,
+      betaEndAt: lifecycle.betaEndAt,
+      deprecationStartAt: lifecycle.deprecationStartAt,
+      sunsetAt: lifecycle.sunsetAt,
       isActive: true,
       isVerified: false, // Mark as unverified until tested
       supportedRegions: ['global'],
@@ -169,6 +191,14 @@ export class ConnectorSeeder {
           category: connectorDef.category,
           description: connectorDef.description,
           config: connectorDef.config,
+          version: connectorDef.version,
+          semanticVersion: connectorDef.semanticVersion,
+          lifecycleStage: connectorDef.lifecycleStage,
+          isBeta: connectorDef.isBeta,
+          betaStartAt: connectorDef.betaStartAt,
+          betaEndAt: connectorDef.betaEndAt,
+          deprecationStartAt: connectorDef.deprecationStartAt,
+          sunsetAt: connectorDef.sunsetAt,
           tags: connectorDef.tags,
           complianceFlags: connectorDef.complianceFlags,
           updatedAt: new Date()
@@ -315,61 +345,53 @@ export class ConnectorSeeder {
 
     return stats;
   }
+
+  private normalizeLifecycle(connector: ConnectorJSON): {
+    stage: 'planning' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+    isBeta: boolean;
+    betaStartAt: Date | null;
+    betaEndAt: Date | null;
+    deprecationStartAt: Date | null;
+    sunsetAt: Date | null;
+  } {
+    const lifecycle = connector.lifecycle ?? {};
+    const availability = connector.availability;
+    const stage: 'planning' | 'beta' | 'stable' | 'deprecated' | 'sunset' = lifecycle.status
+      ?? (availability === 'stable'
+        ? 'stable'
+        : availability === 'experimental'
+          ? 'beta'
+          : availability === 'disabled'
+            ? 'sunset'
+            : 'planning');
+    const beta = lifecycle.beta ?? {};
+    const deprecation = lifecycle.deprecation ?? {};
+    const parseDate = (value: unknown): Date | null => {
+      if (!value) return null;
+      const date = new Date(String(value));
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+    const betaStartAt = parseDate(beta.startDate);
+    const betaEndAt = parseDate(beta.endDate);
+    const deprecationStartAt = parseDate(deprecation.startDate);
+    const sunsetAt = parseDate(lifecycle.sunsetDate ?? deprecation.endDate);
+
+    return {
+      stage,
+      isBeta: beta.enabled ?? stage === 'beta',
+      betaStartAt,
+      betaEndAt,
+      deprecationStartAt,
+      sunsetAt,
+    };
+  }
+
 }
 
 // Export singleton instance
 export const connectorSeeder = new ConnectorSeeder();
 
-// CLI interface for manual seeding
-if (import.meta.url === `file://${process.argv[1]}`) {
-  async function runSeeding() {
-    console.log('🚀 Running connector seeding from CLI...');
-    
-    const args = process.argv.slice(2);
-    const command = args[0];
-
-    try {
-      switch (command) {
-        case 'seed':
-          await connectorSeeder.seedAllConnectors();
-          break;
-        case 'clear':
-          await connectorSeeder.clearAllConnectors();
-          break;
-        case 'stats':
-          const stats = await connectorSeeder.getSeedingStats();
-          console.log('📊 Seeding Statistics:', JSON.stringify(stats, null, 2));
-          break;
-        case 'seed-specific':
-          const connectors = args.slice(1);
-          if (connectors.length === 0) {
-            console.error('❌ Please specify connector names: npm run seed-connectors seed-specific slack jira');
-            process.exit(1);
-          }
-          await connectorSeeder.seedSpecificConnectors(connectors);
-          break;
-        default:
-          console.log(`
-🌱 Connector Seeder CLI
-
-Commands:
-  seed           - Seed all connectors from JSON files
-  clear          - Clear all connectors from database  
-  stats          - Show seeding statistics
-  seed-specific  - Seed specific connectors by name
-
-Examples:
-  npx tsx server/database/seedConnectors.ts seed
-  npx tsx server/database/seedConnectors.ts clear
-  npx tsx server/database/seedConnectors.ts stats
-  npx tsx server/database/seedConnectors.ts seed-specific slack jira hubspot
-          `);
-      }
-    } catch (error) {
-      console.error('💥 Seeding failed:', getErrorMessage(error));
-      process.exit(1);
-    }
-  }
-
-  runSeeding();
-}
+/*
+ * CLI usage has been intentionally disabled in this build. Use the dedicated
+ * scripts/seed-all-connectors.ts entrypoint instead when running manual seed tasks.
+ */

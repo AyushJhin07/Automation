@@ -11,7 +11,11 @@
     "config": {
       "authUrl": "https://www.concursolutions.com/net2/oauth2/Login.aspx",
       "tokenUrl": "https://www.concursolutions.com/net2/oauth2/GetAccessToken.ashx",
-      "scopes": ["EXPRPT", "BANK", "TRVREQ"]
+      "scopes": [
+        "EXPRPT",
+        "BANK",
+        "TRVREQ"
+      ]
     }
   },
   "baseUrl": "https://www.concursolutions.com/api/v3.0",
@@ -51,12 +55,32 @@
           },
           "paymentStatusCode": {
             "type": "string",
-            "enum": ["NOT_PAID", "EXTRACTED", "PAID", "PAYC_SENT"],
+            "enum": [
+              "NOT_PAID",
+              "EXTRACTED",
+              "PAID",
+              "PAYC_SENT"
+            ],
             "description": "Filter by payment status"
           },
           "approvalStatusCode": {
             "type": "string",
-            "enum": ["A_AAFH", "A_ACCO", "A_APPR", "A_EXTF", "A_FILE", "A_NOTF", "A_PBDG", "A_PEND", "A_PVAL", "A_RESU", "A_RHLD", "A_SUBM", "A_TEXP", "A_TRVL"],
+            "enum": [
+              "A_AAFH",
+              "A_ACCO",
+              "A_APPR",
+              "A_EXTF",
+              "A_FILE",
+              "A_NOTF",
+              "A_PBDG",
+              "A_PEND",
+              "A_PVAL",
+              "A_RESU",
+              "A_RHLD",
+              "A_SUBM",
+              "A_TEXP",
+              "A_TRVL"
+            ],
             "description": "Filter by approval status"
           },
           "modifiedDateAfter": {
@@ -100,7 +124,9 @@
             "description": "User login ID"
           }
         },
-        "required": ["reportId"],
+        "required": [
+          "reportId"
+        ],
         "additionalProperties": false
       }
     },
@@ -141,7 +167,9 @@
             "description": "User defined date"
           }
         },
-        "required": ["Name"],
+        "required": [
+          "Name"
+        ],
         "additionalProperties": false
       }
     },
@@ -172,7 +200,9 @@
             "description": "User login ID"
           }
         },
-        "required": ["reportId"],
+        "required": [
+          "reportId"
+        ],
         "additionalProperties": false
       }
     },
@@ -221,7 +251,12 @@
             "description": "Entry comment"
           }
         },
-        "required": ["reportId", "ExpenseTypeCode", "TransactionDate", "TransactionAmount"],
+        "required": [
+          "reportId",
+          "ExpenseTypeCode",
+          "TransactionDate",
+          "TransactionAmount"
+        ],
         "additionalProperties": false
       }
     },
@@ -290,10 +325,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ID": {"type": "string"},
-          "Name": {"type": "string"},
-          "Total": {"type": "number"},
-          "ApprovalStatusCode": {"type": "string"}
+          "ID": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Total": {
+            "type": "number"
+          },
+          "ApprovalStatusCode": {
+            "type": "string"
+          }
         }
       }
     },
@@ -311,9 +354,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ID": {"type": "string"},
-          "Name": {"type": "string"},
-          "ApprovalStatusCode": {"type": "string"}
+          "ID": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "ApprovalStatusCode": {
+            "type": "string"
+          }
         }
       }
     }
@@ -321,5 +370,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/common/users"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

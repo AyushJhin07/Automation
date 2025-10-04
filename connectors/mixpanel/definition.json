@@ -63,7 +63,10 @@
             "description": "Library name"
           }
         },
-        "required": ["event", "properties"],
+        "required": [
+          "event",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -101,7 +104,10 @@
             "description": "If true, Mixpanel will not alias the distinct_id"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -129,7 +135,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,7 +166,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -185,7 +197,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -213,7 +228,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -241,7 +259,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -258,7 +279,9 @@
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of property names to remove"
           },
           "ip": {
@@ -270,7 +293,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "properties"],
+        "required": [
+          "distinct_id",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -294,7 +320,9 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id"],
+        "required": [
+          "distinct_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -322,7 +350,10 @@
             "description": "Unix timestamp"
           }
         },
-        "required": ["distinct_id", "alias"],
+        "required": [
+          "distinct_id",
+          "alias"
+        ],
         "additionalProperties": false
       }
     },
@@ -338,10 +369,17 @@
             "items": {
               "type": "object",
               "properties": {
-                "event": {"type": "string"},
-                "properties": {"type": "object"}
+                "event": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object"
+                }
               },
-              "required": ["event", "properties"]
+              "required": [
+                "event",
+                "properties"
+              ]
             },
             "description": "Array of events to import"
           },
@@ -351,7 +389,9 @@
             "description": "If true, import will fail if any event is invalid"
           }
         },
-        "required": ["events"],
+        "required": [
+          "events"
+        ],
         "additionalProperties": false
       }
     },
@@ -374,7 +414,9 @@
           },
           "event": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of event names to export"
           },
           "where": {
@@ -386,7 +428,10 @@
             "description": "Data bucket"
           }
         },
-        "required": ["from_date", "to_date"],
+        "required": [
+          "from_date",
+          "to_date"
+        ],
         "additionalProperties": false
       }
     },
@@ -399,18 +444,30 @@
         "properties": {
           "event": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of event names to query"
           },
           "type": {
             "type": "string",
-            "enum": ["general", "unique", "average"],
+            "enum": [
+              "general",
+              "unique",
+              "average"
+            ],
             "default": "general",
             "description": "Query type"
           },
           "unit": {
             "type": "string",
-            "enum": ["minute", "hour", "day", "week", "month"],
+            "enum": [
+              "minute",
+              "hour",
+              "day",
+              "week",
+              "month"
+            ],
             "default": "day",
             "description": "Time unit"
           },
@@ -446,7 +503,9 @@
             "description": "Limit number of results"
           }
         },
-        "required": ["event"],
+        "required": [
+          "event"
+        ],
         "additionalProperties": false
       }
     },
@@ -459,12 +518,20 @@
         "properties": {
           "events": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of event names for the funnel steps"
           },
           "unit": {
             "type": "string",
-            "enum": ["minute", "hour", "day", "week", "month"],
+            "enum": [
+              "minute",
+              "hour",
+              "day",
+              "week",
+              "month"
+            ],
             "default": "day",
             "description": "Time unit"
           },
@@ -500,7 +567,9 @@
             "description": "Limit number of results"
           }
         },
-        "required": ["events"],
+        "required": [
+          "events"
+        ],
         "additionalProperties": false
       }
     },
@@ -521,7 +590,11 @@
           },
           "unit": {
             "type": "string",
-            "enum": ["day", "week", "month"],
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ],
             "default": "day",
             "description": "Time unit"
           },
@@ -551,7 +624,9 @@
             "description": "Expression to filter birth events"
           }
         },
-        "required": ["born_event"],
+        "required": [
+          "born_event"
+        ],
         "additionalProperties": false
       }
     }
@@ -580,11 +655,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "distinct_id": {"type": "string"},
-          "properties": {"type": "object"},
-          "time": {"type": "number"},
-          "mp_lib": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "distinct_id": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "time": {
+            "type": "number"
+          },
+          "mp_lib": {
+            "type": "string"
+          }
         }
       }
     },
@@ -607,10 +692,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "distinct_id": {"type": "string"},
-          "operation": {"type": "string"},
-          "properties": {"type": "object"},
-          "time": {"type": "number"}
+          "distinct_id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          },
+          "time": {
+            "type": "number"
+          }
         }
       }
     },
@@ -633,11 +726,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "distinct_id": {"type": "string"},
-          "funnel_id": {"type": "string"},
-          "steps": {"type": "array"},
-          "completion_time": {"type": "number"},
-          "time_to_complete": {"type": "number"}
+          "distinct_id": {
+            "type": "string"
+          },
+          "funnel_id": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array"
+          },
+          "completion_time": {
+            "type": "number"
+          },
+          "time_to_complete": {
+            "type": "number"
+          }
         }
       }
     },
@@ -660,10 +763,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "distinct_id": {"type": "string"},
-          "cohort_id": {"type": "string"},
-          "cohort_name": {"type": "string"},
-          "entered_at": {"type": "number"}
+          "distinct_id": {
+            "type": "string"
+          },
+          "cohort_id": {
+            "type": "string"
+          },
+          "cohort_name": {
+            "type": "string"
+          },
+          "entered_at": {
+            "type": "number"
+          }
         }
       }
     }
@@ -671,5 +782,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/2.0/engage"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

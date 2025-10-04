@@ -100,6 +100,27 @@ export interface ConnectorSimulatorSmokePlan {
   notes?: string;
 }
 
+export interface ConnectorContractTestScenarioResult {
+  appId: string;
+  scenarioId: string;
+  type: 'action' | 'trigger';
+  success: boolean;
+  expectedSuccess: boolean;
+  message?: string;
+}
+
+export interface ConnectorContractSuiteSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  results: ConnectorContractTestScenarioResult[];
+}
+
+export interface ConnectorContractSuiteOptions {
+  apps?: string[];
+  failFast?: boolean;
+}
+
 const DEFAULT_FIXTURES_DIR = path.resolve(process.cwd(), 'server', 'testing', 'fixtures');
 
 export class ConnectorSimulator {
@@ -204,6 +225,82 @@ export class ConnectorSimulator {
       actions: this.dedupeScenarios(entry.actions),
       triggers: entry.triggers.length ? this.dedupeScenarios(entry.triggers) : undefined,
       notes: notes.length ? notes.join(' '): undefined
+    };
+  }
+
+  public async runContractTestSuite(options: ConnectorContractSuiteOptions = {}): Promise<ConnectorContractSuiteSummary> {
+    if (!this.enabled) {
+      throw new Error('Connector simulator is disabled. Enable it before running contract tests.');
+    }
+
+    await this.ensureFixturesLoaded();
+    const appsFilter = options.apps?.map(app => app.toLowerCase());
+    const results: ConnectorContractTestScenarioResult[] = [];
+
+    for (const appId of this.planCache.keys()) {
+      if (appsFilter && !appsFilter.includes(appId)) {
+        continue;
+      }
+
+      const plan = await this.getSmokePlan(appId);
+      if (!plan) {
+        continue;
+      }
+
+      const executeScenarios = async (
+        scenarios: ConnectorSimulatorScenario[] | undefined,
+        type: 'action' | 'trigger'
+      ) => {
+        if (!scenarios?.length) {
+          return;
+        }
+
+        for (const scenario of scenarios) {
+          const expectSuccess = scenario.expectSuccess !== false;
+          const execution = await this.executeFunction({
+            appName: appId,
+            appKey: appId,
+            functionId: scenario.id,
+            parameters: scenario.parameters ?? {},
+          });
+
+          const success = execution?.success ?? false;
+          const message = execution?.error
+            ? execution.error
+            : execution?.fixture?.description ?? undefined;
+
+          const record: ConnectorContractTestScenarioResult = {
+            appId,
+            scenarioId: scenario.id,
+            type,
+            success: expectSuccess ? success : !success,
+            expectedSuccess: expectSuccess,
+            message,
+          };
+
+          results.push(record);
+
+          if (!record.success && options.failFast) {
+            return true;
+          }
+        }
+
+        return false;
+      };
+
+      if (await executeScenarios(plan.actions, 'action')) {
+        break;
+      }
+      if (await executeScenarios(plan.triggers, 'trigger')) {
+        break;
+      }
+    }
+
+    return {
+      total: results.length,
+      passed: results.filter(result => result.success).length,
+      failed: results.filter(result => !result.success).length,
+      results,
     };
   }
 

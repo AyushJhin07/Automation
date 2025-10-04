@@ -20,7 +20,7 @@
   "actions": [
     {
       "id": "test_connection",
-      "name": "Test Connection", 
+      "name": "Test Connection",
       "description": "Test the connection to Trello",
       "parameters": {
         "type": "object",
@@ -50,19 +50,35 @@
           },
           "prefs_permissionLevel": {
             "type": "string",
-            "enum": ["private", "org", "public"],
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
             "default": "private",
             "description": "Permission level"
           },
           "prefs_voting": {
             "type": "string",
-            "enum": ["disabled", "members", "observers", "org", "public"],
+            "enum": [
+              "disabled",
+              "members",
+              "observers",
+              "org",
+              "public"
+            ],
             "default": "disabled",
             "description": "Voting permission"
           },
           "prefs_comments": {
             "type": "string",
-            "enum": ["disabled", "members", "observers", "org", "public"],
+            "enum": [
+              "disabled",
+              "members",
+              "observers",
+              "org",
+              "public"
+            ],
             "default": "members",
             "description": "Comment permission"
           },
@@ -71,7 +87,9 @@
             "description": "Background color or image"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -109,17 +127,23 @@
           },
           "idMembers": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of member IDs"
           },
           "idLabels": {
             "type": "array",
-            "items": {"type": "string"}, 
+            "items": {
+              "type": "string"
+            },
             "description": "Array of label IDs"
           },
           "idChecklists": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of checklist IDs"
           },
           "address": {
@@ -135,7 +159,10 @@
             "description": "GPS coordinates"
           }
         },
-        "required": ["name", "idList"],
+        "required": [
+          "name",
+          "idList"
+        ],
         "additionalProperties": false
       }
     },
@@ -159,7 +186,10 @@
             "description": "Position of the checklist"
           }
         },
-        "required": ["idCard", "name"],
+        "required": [
+          "idCard",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -188,7 +218,10 @@
             "description": "Whether the item is checked"
           }
         },
-        "required": ["idChecklist", "name"],
+        "required": [
+          "idChecklist",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -225,7 +258,9 @@
             "description": "Whether to set as card cover"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -237,7 +272,7 @@
         "type": "object",
         "properties": {
           "idBoard": {
-            "type": "string", 
+            "type": "string",
             "description": "Board ID"
           },
           "name": {
@@ -246,11 +281,26 @@
           },
           "color": {
             "type": "string",
-            "enum": ["yellow", "purple", "blue", "red", "green", "orange", "black", "sky", "pink", "lime"],
+            "enum": [
+              "yellow",
+              "purple",
+              "blue",
+              "red",
+              "green",
+              "orange",
+              "black",
+              "sky",
+              "pink",
+              "lime"
+            ],
             "description": "Label color"
           }
         },
-        "required": ["idBoard", "name", "color"],
+        "required": [
+          "idBoard",
+          "name",
+          "color"
+        ],
         "additionalProperties": false
       }
     },
@@ -294,7 +344,7 @@
             "description": "Limit for boards"
           },
           "card_fields": {
-            "type": "string", 
+            "type": "string",
             "description": "Card fields to include"
           },
           "cards_limit": {
@@ -357,7 +407,9 @@
             "description": "Whether to allow partial matches"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -386,7 +438,10 @@
             "description": "Whether webhook is active"
           }
         },
-        "required": ["callbackURL", "idModel"],
+        "required": [
+          "callbackURL",
+          "idModel"
+        ],
         "additionalProperties": false
       }
     }
@@ -415,8 +470,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "action": {"type": "object"},
-          "model": {"type": "object"}
+          "action": {
+            "type": "object"
+          },
+          "model": {
+            "type": "object"
+          }
         }
       }
     },
@@ -439,8 +498,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "action": {"type": "object"},
-          "model": {"type": "object"}
+          "action": {
+            "type": "object"
+          },
+          "model": {
+            "type": "object"
+          }
         }
       }
     },
@@ -463,8 +526,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "action": {"type": "object"},
-          "model": {"type": "object"}
+          "action": {
+            "type": "object"
+          },
+          "model": {
+            "type": "object"
+          }
         }
       }
     }
@@ -472,5 +539,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/members/me"
+  },
+  "versionInfo": {
+    "semantic": "2.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

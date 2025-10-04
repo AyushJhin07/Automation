@@ -71,6 +71,18 @@ interface ConnectorDefinition {
   icon?: string;
   color?: string;
   availability?: ConnectorAvailability;
+  version?: string;
+  versionInfo?: {
+    semantic: string;
+    releaseDate?: string | null;
+    notes?: string | null;
+  };
+  lifecycle?: {
+    status: 'planning' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+    beta?: { enabled: boolean; startDate?: string | null; endDate?: string | null };
+    deprecation?: { startDate?: string | null; endDate?: string | null };
+    sunsetDate?: string | null;
+  };
   authentication: {
     type: string;
     config: any;
@@ -448,11 +460,40 @@ export class ConnectorRegistry {
         );
         const hasImplementation = availability === 'stable' && hasRegisteredClient;
         const status = this.applyAvailabilityToStatus(manifestMetadata.status, availability);
+        const lifecycleFromDefinition = def.lifecycle ?? {};
+        const normalizedLifecycle = {
+          status: lifecycleFromDefinition.status
+            ?? (availability === 'disabled' ? 'sunset' : availability === 'experimental' ? 'beta' : availability),
+          beta: {
+            enabled: lifecycleFromDefinition.beta?.enabled
+              ?? (availability === 'experimental' || manifestMetadata.status.beta),
+            startDate: lifecycleFromDefinition.beta?.startDate ?? null,
+            endDate: lifecycleFromDefinition.beta?.endDate ?? null,
+          },
+          deprecation: {
+            startDate: lifecycleFromDefinition.deprecation?.startDate ?? null,
+            endDate: lifecycleFromDefinition.deprecation?.endDate ?? null,
+          },
+          sunsetDate: lifecycleFromDefinition.sunsetDate
+            ?? lifecycleFromDefinition.deprecation?.endDate
+            ?? null,
+        } as ConnectorDefinition['lifecycle'];
+        const normalizedVersionInfo = def.versionInfo ?? {
+          semantic: def.version ?? '1.0.0',
+          releaseDate: null,
+          notes: null,
+        };
         const normalizedDefinition: ConnectorDefinition = {
           ...def,
           id: appId,
           availability,
           description: manifestMetadata.description ?? def.description,
+          version: def.version ?? normalizedVersionInfo.semantic,
+          versionInfo: {
+            ...normalizedVersionInfo,
+            semantic: normalizedVersionInfo.semantic ?? def.version ?? '1.0.0',
+          },
+          lifecycle: normalizedLifecycle,
         };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,

@@ -66,7 +66,9 @@
             "description": "Query parameters for parameterized queries"
           }
         },
-        "required": ["sql"],
+        "required": [
+          "sql"
+        ],
         "additionalProperties": false
       }
     },
@@ -94,19 +96,35 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "type": {"type": "string"},
-                "nullable": {"type": "boolean", "default": true},
-                "default": {"type": "string"},
-                "comment": {"type": "string"}
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "nullable": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "default": {
+                  "type": "string"
+                },
+                "comment": {
+                  "type": "string"
+                }
               },
-              "required": ["name", "type"]
+              "required": [
+                "name",
+                "type"
+              ]
             },
             "description": "Table columns definition"
           },
           "cluster_by": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Clustering keys"
           },
           "comment": {
@@ -114,7 +132,10 @@
             "description": "Table comment"
           }
         },
-        "required": ["table_name", "columns"],
+        "required": [
+          "table_name",
+          "columns"
+        ],
         "additionalProperties": false
       }
     },
@@ -139,7 +160,9 @@
           },
           "data": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of objects representing rows to insert"
           },
           "overwrite": {
@@ -148,7 +171,10 @@
             "description": "Whether to overwrite existing data"
           }
         },
-        "required": ["table_name", "data"],
+        "required": [
+          "table_name",
+          "data"
+        ],
         "additionalProperties": false
       }
     },
@@ -188,7 +214,10 @@
             "description": "COPY command options"
           }
         },
-        "required": ["table_name", "stage_name"],
+        "required": [
+          "table_name",
+          "stage_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -213,7 +242,10 @@
           },
           "stage_type": {
             "type": "string",
-            "enum": ["internal", "external"],
+            "enum": [
+              "internal",
+              "external"
+            ],
             "default": "internal",
             "description": "Stage type"
           },
@@ -234,7 +266,9 @@
             "description": "Stage comment"
           }
         },
-        "required": ["stage_name"],
+        "required": [
+          "stage_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -270,7 +304,9 @@
             "description": "Pattern to filter schema names"
           }
         },
-        "required": ["database"],
+        "required": [
+          "database"
+        ],
         "additionalProperties": false
       }
     },
@@ -294,7 +330,10 @@
             "description": "Pattern to filter table names"
           }
         },
-        "required": ["database", "schema"],
+        "required": [
+          "database",
+          "schema"
+        ],
         "additionalProperties": false
       }
     },
@@ -318,7 +357,9 @@
             "description": "Table name"
           }
         },
-        "required": ["table_name"],
+        "required": [
+          "table_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -335,7 +376,16 @@
           },
           "warehouse_size": {
             "type": "string",
-            "enum": ["X-SMALL", "SMALL", "MEDIUM", "LARGE", "X-LARGE", "2X-LARGE", "3X-LARGE", "4X-LARGE"],
+            "enum": [
+              "X-SMALL",
+              "SMALL",
+              "MEDIUM",
+              "LARGE",
+              "X-LARGE",
+              "2X-LARGE",
+              "3X-LARGE",
+              "4X-LARGE"
+            ],
             "default": "X-SMALL",
             "description": "Warehouse size"
           },
@@ -360,7 +410,9 @@
             "description": "Warehouse comment"
           }
         },
-        "required": ["warehouse_name"],
+        "required": [
+          "warehouse_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -439,7 +491,9 @@
             "description": "User comment"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -463,7 +517,9 @@
             "description": "Role to grant role to"
           }
         },
-        "required": ["role"],
+        "required": [
+          "role"
+        ],
         "additionalProperties": false
       }
     }
@@ -496,16 +552,36 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "database": {"type": "string"},
-          "schema": {"type": "string"},
-          "table_name": {"type": "string"},
-          "rows_loaded": {"type": "number"},
-          "rows_parsed": {"type": "number"},
-          "load_time": {"type": "string"},
-          "status": {"type": "string"},
-          "error_count": {"type": "number"},
-          "first_error": {"type": "string"},
-          "file_name": {"type": "string"}
+          "database": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "table_name": {
+            "type": "string"
+          },
+          "rows_loaded": {
+            "type": "number"
+          },
+          "rows_parsed": {
+            "type": "number"
+          },
+          "load_time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "error_count": {
+            "type": "number"
+          },
+          "first_error": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
         }
       }
     },
@@ -536,44 +612,120 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "query_id": {"type": "string"},
-          "query_text": {"type": "string"},
-          "user_name": {"type": "string"},
-          "role_name": {"type": "string"},
-          "warehouse_name": {"type": "string"},
-          "database_name": {"type": "string"},
-          "schema_name": {"type": "string"},
-          "query_type": {"type": "string"},
-          "session_id": {"type": "string"},
-          "start_time": {"type": "string"},
-          "end_time": {"type": "string"},
-          "total_elapsed_time": {"type": "number"},
-          "bytes_scanned": {"type": "number"},
-          "rows_produced": {"type": "number"},
-          "compilation_time": {"type": "number"},
-          "execution_time": {"type": "number"},
-          "queued_provisioning_time": {"type": "number"},
-          "queued_repair_time": {"type": "number"},
-          "queued_overload_time": {"type": "number"},
-          "transaction_blocked_time": {"type": "number"},
-          "outbound_data_transfer_cloud": {"type": "string"},
-          "outbound_data_transfer_region": {"type": "string"},
-          "outbound_data_transfer_bytes": {"type": "number"},
-          "inbound_data_transfer_cloud": {"type": "string"},
-          "inbound_data_transfer_region": {"type": "string"},
-          "inbound_data_transfer_bytes": {"type": "number"},
-          "credits_used_cloud_services": {"type": "number"},
-          "release_version": {"type": "string"},
-          "external_function_total_invocations": {"type": "number"},
-          "external_function_total_sent_rows": {"type": "number"},
-          "external_function_total_received_rows": {"type": "number"},
-          "external_function_total_sent_bytes": {"type": "number"},
-          "external_function_total_received_bytes": {"type": "number"},
-          "query_load_percent": {"type": "number"},
-          "is_client_generated_statement": {"type": "boolean"},
-          "query_acceleration_bytes_scanned": {"type": "number"},
-          "query_acceleration_partitions_scanned": {"type": "number"},
-          "query_acceleration_upper_limit_scale_factor": {"type": "number"}
+          "query_id": {
+            "type": "string"
+          },
+          "query_text": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "role_name": {
+            "type": "string"
+          },
+          "warehouse_name": {
+            "type": "string"
+          },
+          "database_name": {
+            "type": "string"
+          },
+          "schema_name": {
+            "type": "string"
+          },
+          "query_type": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "total_elapsed_time": {
+            "type": "number"
+          },
+          "bytes_scanned": {
+            "type": "number"
+          },
+          "rows_produced": {
+            "type": "number"
+          },
+          "compilation_time": {
+            "type": "number"
+          },
+          "execution_time": {
+            "type": "number"
+          },
+          "queued_provisioning_time": {
+            "type": "number"
+          },
+          "queued_repair_time": {
+            "type": "number"
+          },
+          "queued_overload_time": {
+            "type": "number"
+          },
+          "transaction_blocked_time": {
+            "type": "number"
+          },
+          "outbound_data_transfer_cloud": {
+            "type": "string"
+          },
+          "outbound_data_transfer_region": {
+            "type": "string"
+          },
+          "outbound_data_transfer_bytes": {
+            "type": "number"
+          },
+          "inbound_data_transfer_cloud": {
+            "type": "string"
+          },
+          "inbound_data_transfer_region": {
+            "type": "string"
+          },
+          "inbound_data_transfer_bytes": {
+            "type": "number"
+          },
+          "credits_used_cloud_services": {
+            "type": "number"
+          },
+          "release_version": {
+            "type": "string"
+          },
+          "external_function_total_invocations": {
+            "type": "number"
+          },
+          "external_function_total_sent_rows": {
+            "type": "number"
+          },
+          "external_function_total_received_rows": {
+            "type": "number"
+          },
+          "external_function_total_sent_bytes": {
+            "type": "number"
+          },
+          "external_function_total_received_bytes": {
+            "type": "number"
+          },
+          "query_load_percent": {
+            "type": "number"
+          },
+          "is_client_generated_statement": {
+            "type": "boolean"
+          },
+          "query_acceleration_bytes_scanned": {
+            "type": "number"
+          },
+          "query_acceleration_partitions_scanned": {
+            "type": "number"
+          },
+          "query_acceleration_upper_limit_scale_factor": {
+            "type": "number"
+          }
         }
       }
     }
@@ -581,5 +733,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/accounts/current"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

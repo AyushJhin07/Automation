@@ -46,7 +46,14 @@
           },
           "status": {
             "type": "string",
-            "enum": ["draft", "pending_approval", "approved", "pending_receipt", "received", "closed"],
+            "enum": [
+              "draft",
+              "pending_approval",
+              "approved",
+              "pending_receipt",
+              "received",
+              "closed"
+            ],
             "description": "Filter by status"
           },
           "exported": {
@@ -94,7 +101,9 @@
             "description": "Purchase order ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -108,10 +117,18 @@
           "requisition-header": {
             "type": "object",
             "properties": {
-              "requested-by": {"type": "object"},
-              "ship-to-address": {"type": "object"},
-              "supplier": {"type": "object"},
-              "currency": {"type": "object"}
+              "requested-by": {
+                "type": "object"
+              },
+              "ship-to-address": {
+                "type": "object"
+              },
+              "supplier": {
+                "type": "object"
+              },
+              "currency": {
+                "type": "object"
+              }
             },
             "description": "Purchase order header information"
           },
@@ -120,17 +137,29 @@
             "items": {
               "type": "object",
               "properties": {
-                "description": {"type": "string"},
-                "quantity": {"type": "number"},
-                "price": {"type": "number"},
-                "total": {"type": "number"},
-                "currency": {"type": "object"}
+                "description": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "price": {
+                  "type": "number"
+                },
+                "total": {
+                  "type": "number"
+                },
+                "currency": {
+                  "type": "object"
+                }
               }
             },
             "description": "Order line items"
           }
         },
-        "required": ["requisition-header"],
+        "required": [
+          "requisition-header"
+        ],
         "additionalProperties": false
       }
     },
@@ -158,7 +187,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"],
+            "enum": [
+              "active",
+              "inactive"
+            ],
             "description": "Filter by status"
           },
           "created-at[gt]": {
@@ -188,20 +220,32 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"],
+            "enum": [
+              "active",
+              "inactive"
+            ],
             "description": "Supplier status"
           },
           "supplier-addresses": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Supplier addresses"
           },
           "primary-contact": {
             "type": "object",
             "properties": {
-              "email": {"type": "string", "format": "email"},
-              "name-given": {"type": "string"},
-              "name-family": {"type": "string"}
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name-given": {
+                "type": "string"
+              },
+              "name-family": {
+                "type": "string"
+              }
             },
             "description": "Primary contact information"
           },
@@ -210,7 +254,9 @@
             "description": "Payment terms"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -234,7 +280,13 @@
           },
           "status": {
             "type": "string",
-            "enum": ["draft", "pending_approval", "approved", "paid", "voided"],
+            "enum": [
+              "draft",
+              "pending_approval",
+              "approved",
+              "paid",
+              "voided"
+            ],
             "description": "Filter by status"
           },
           "supplier-id": {
@@ -277,7 +329,9 @@
             "description": "Approval comment"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     }
@@ -302,10 +356,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "po-number": {"type": "string"},
-          "status": {"type": "string"},
-          "total": {"type": "number"}
+          "id": {
+            "type": "number"
+          },
+          "po-number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
         }
       }
     },
@@ -323,10 +385,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "invoice-number": {"type": "string"},
-          "status": {"type": "string"},
-          "total": {"type": "number"}
+          "id": {
+            "type": "number"
+          },
+          "invoice-number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
         }
       }
     }
@@ -334,5 +404,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

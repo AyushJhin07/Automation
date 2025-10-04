@@ -7,18 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Settings, 
-  Key, 
-  Brain, 
-  Save, 
-  TestTube, 
-  CheckCircle2, 
+import {
+  Settings,
+  Key,
+  Brain,
+  Save,
+  TestTube,
+  CheckCircle2,
   AlertCircle,
   Eye,
   EyeOff
 } from 'lucide-react';
 import ConnectionManager from '@/components/connections/ConnectionManager';
+import { ConnectorRolloutManager } from '@/components/admin/ConnectorRolloutManager';
 
 export default function AdminSettings() {
   const [apiKeys, setApiKeys] = useState({
@@ -113,6 +114,8 @@ export default function AdminSettings() {
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto p-6 space-y-8">
           <ConnectionManager />
+
+          <ConnectorRolloutManager />
 
           <Separator />
 

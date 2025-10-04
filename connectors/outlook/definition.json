@@ -43,14 +43,27 @@
           "message": {
             "type": "object",
             "properties": {
-              "subject": {"type": "string"},
+              "subject": {
+                "type": "string"
+              },
               "body": {
                 "type": "object",
                 "properties": {
-                  "contentType": {"type": "string", "enum": ["Text", "HTML"], "default": "HTML"},
-                  "content": {"type": "string"}
+                  "contentType": {
+                    "type": "string",
+                    "enum": [
+                      "Text",
+                      "HTML"
+                    ],
+                    "default": "HTML"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
                 },
-                "required": ["content"],
+                "required": [
+                  "content"
+                ],
                 "additionalProperties": false
               },
               "toRecipients": {
@@ -61,14 +74,23 @@
                     "emailAddress": {
                       "type": "object",
                       "properties": {
-                        "address": {"type": "string", "format": "email"},
-                        "name": {"type": "string"}
+                        "address": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
                       },
-                      "required": ["address"],
+                      "required": [
+                        "address"
+                      ],
                       "additionalProperties": false
                     }
                   },
-                  "required": ["emailAddress"],
+                  "required": [
+                    "emailAddress"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -80,10 +102,17 @@
                     "emailAddress": {
                       "type": "object",
                       "properties": {
-                        "address": {"type": "string", "format": "email"},
-                        "name": {"type": "string"}
+                        "address": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
                       },
-                      "required": ["address"],
+                      "required": [
+                        "address"
+                      ],
                       "additionalProperties": false
                     }
                   },
@@ -98,10 +127,17 @@
                     "emailAddress": {
                       "type": "object",
                       "properties": {
-                        "address": {"type": "string", "format": "email"},
-                        "name": {"type": "string"}
+                        "address": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
                       },
-                      "required": ["address"],
+                      "required": [
+                        "address"
+                      ],
                       "additionalProperties": false
                     }
                   },
@@ -116,8 +152,13 @@
                     "emailAddress": {
                       "type": "object",
                       "properties": {
-                        "address": {"type": "string", "format": "email"},
-                        "name": {"type": "string"}
+                        "address": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
                       },
                       "additionalProperties": false
                     }
@@ -130,38 +171,65 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "@odata.type": {"type": "string"},
-                    "name": {"type": "string"},
-                    "contentBytes": {"type": "string"},
-                    "contentType": {"type": "string"},
-                    "contentId": {"type": "string"},
-                    "isInline": {"type": "boolean"}
+                    "@odata.type": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "contentBytes": {
+                      "type": "string"
+                    },
+                    "contentType": {
+                      "type": "string"
+                    },
+                    "contentId": {
+                      "type": "string"
+                    },
+                    "isInline": {
+                      "type": "boolean"
+                    }
                   },
                   "additionalProperties": false
                 }
               },
               "importance": {
                 "type": "string",
-                "enum": ["Low", "Normal", "High"],
+                "enum": [
+                  "Low",
+                  "Normal",
+                  "High"
+                ],
                 "default": "Normal"
               },
               "inferenceClassification": {
                 "type": "string",
-                "enum": ["Focused", "Other"]
+                "enum": [
+                  "Focused",
+                  "Other"
+                ]
               },
               "internetMessageHeaders": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "name": {"type": "string"},
-                    "value": {"type": "string"}
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
                   },
                   "additionalProperties": false
                 }
               }
             },
-            "required": ["subject", "body", "toRecipients"],
+            "required": [
+              "subject",
+              "body",
+              "toRecipients"
+            ],
             "additionalProperties": false
           },
           "saveToSentItems": {
@@ -169,7 +237,9 @@
             "default": true
           }
         },
-        "required": ["message"],
+        "required": [
+          "message"
+        ],
         "additionalProperties": false
       }
     },
@@ -241,7 +311,9 @@
             "description": "Expand related data"
           }
         },
-        "required": ["messageId"],
+        "required": [
+          "messageId"
+        ],
         "additionalProperties": false
       }
     },
@@ -262,18 +334,32 @@
               "body": {
                 "type": "object",
                 "properties": {
-                  "contentType": {"type": "string", "enum": ["Text", "HTML"]},
-                  "content": {"type": "string"}
+                  "contentType": {
+                    "type": "string",
+                    "enum": [
+                      "Text",
+                      "HTML"
+                    ]
+                  },
+                  "content": {
+                    "type": "string"
+                  }
                 },
-                "required": ["content"],
+                "required": [
+                  "content"
+                ],
                 "additionalProperties": false
               },
               "toRecipients": {
                 "type": "array",
-                "items": {"type": "object"}
+                "items": {
+                  "type": "object"
+                }
               }
             },
-            "required": ["body"],
+            "required": [
+              "body"
+            ],
             "additionalProperties": false
           },
           "comment": {
@@ -281,7 +367,9 @@
             "description": "Reply comment"
           }
         },
-        "required": ["messageId"],
+        "required": [
+          "messageId"
+        ],
         "additionalProperties": false
       }
     },
@@ -297,7 +385,9 @@
             "description": "Message ID"
           }
         },
-        "required": ["messageId"],
+        "required": [
+          "messageId"
+        ],
         "additionalProperties": false
       }
     },
@@ -315,35 +405,63 @@
           "body": {
             "type": "object",
             "properties": {
-              "contentType": {"type": "string", "enum": ["Text", "HTML"]},
-              "content": {"type": "string"}
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "Text",
+                  "HTML"
+                ]
+              },
+              "content": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "start": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
-            "required": ["dateTime"],
+            "required": [
+              "dateTime"
+            ],
             "additionalProperties": false
           },
           "end": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
-            "required": ["dateTime"],
+            "required": [
+              "dateTime"
+            ],
             "additionalProperties": false
           },
           "location": {
             "type": "object",
             "properties": {
-              "displayName": {"type": "string"},
-              "address": {"type": "object"},
-              "coordinates": {"type": "object"}
+              "displayName": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object"
+              },
+              "coordinates": {
+                "type": "object"
+              }
             },
             "additionalProperties": false
           },
@@ -355,15 +473,31 @@
                 "emailAddress": {
                   "type": "object",
                   "properties": {
-                    "address": {"type": "string", "format": "email"},
-                    "name": {"type": "string"}
+                    "address": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
                   },
-                  "required": ["address"],
+                  "required": [
+                    "address"
+                  ],
                   "additionalProperties": false
                 },
-                "type": {"type": "string", "enum": ["required", "optional", "resource"]}
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "optional",
+                    "resource"
+                  ]
+                }
               },
-              "required": ["emailAddress"],
+              "required": [
+                "emailAddress"
+              ],
               "additionalProperties": false
             }
           },
@@ -374,8 +508,12 @@
           "recurrence": {
             "type": "object",
             "properties": {
-              "pattern": {"type": "object"},
-              "range": {"type": "object"}
+              "pattern": {
+                "type": "object"
+              },
+              "range": {
+                "type": "object"
+              }
             },
             "additionalProperties": false
           },
@@ -385,21 +523,41 @@
           },
           "importance": {
             "type": "string",
-            "enum": ["Low", "Normal", "High"],
+            "enum": [
+              "Low",
+              "Normal",
+              "High"
+            ],
             "default": "Normal"
           },
           "sensitivity": {
             "type": "string",
-            "enum": ["Normal", "Personal", "Private", "Confidential"],
+            "enum": [
+              "Normal",
+              "Personal",
+              "Private",
+              "Confidential"
+            ],
             "default": "Normal"
           },
           "showAs": {
             "type": "string",
-            "enum": ["Free", "Tentative", "Busy", "Oof", "WorkingElsewhere", "Unknown"],
+            "enum": [
+              "Free",
+              "Tentative",
+              "Busy",
+              "Oof",
+              "WorkingElsewhere",
+              "Unknown"
+            ],
             "default": "Busy"
           }
         },
-        "required": ["subject", "start", "end"],
+        "required": [
+          "subject",
+          "start",
+          "end"
+        ],
         "additionalProperties": false
       }
     },
@@ -466,19 +624,28 @@
             "items": {
               "type": "object",
               "properties": {
-                "address": {"type": "string", "format": "email"},
-                "name": {"type": "string"}
+                "address": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                }
               },
               "additionalProperties": false
             }
           },
           "businessPhones": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
           "homePhones": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {
+              "type": "string"
+            }
           },
           "mobilePhone": {
             "type": "string"
@@ -498,22 +665,42 @@
           "homeAddress": {
             "type": "object",
             "properties": {
-              "street": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "postalCode": {"type": "string"},
-              "countryOrRegion": {"type": "string"}
+              "street": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "countryOrRegion": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "businessAddress": {
             "type": "object",
             "properties": {
-              "street": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "postalCode": {"type": "string"},
-              "countryOrRegion": {"type": "string"}
+              "street": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "countryOrRegion": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           }
@@ -548,35 +735,93 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "createdDateTime": {"type": "string"},
-                "lastModifiedDateTime": {"type": "string"},
-                "changeKey": {"type": "string"},
-                "categories": {"type": "array"},
-                "receivedDateTime": {"type": "string"},
-                "sentDateTime": {"type": "string"},
-                "hasAttachments": {"type": "boolean"},
-                "internetMessageId": {"type": "string"},
-                "subject": {"type": "string"},
-                "bodyPreview": {"type": "string"},
-                "importance": {"type": "string"},
-                "parentFolderId": {"type": "string"},
-                "conversationId": {"type": "string"},
-                "conversationIndex": {"type": "string"},
-                "isDeliveryReceiptRequested": {"type": "boolean"},
-                "isReadReceiptRequested": {"type": "boolean"},
-                "isRead": {"type": "boolean"},
-                "isDraft": {"type": "boolean"},
-                "webLink": {"type": "string"},
-                "inferenceClassification": {"type": "string"},
-                "body": {"type": "object"},
-                "sender": {"type": "object"},
-                "from": {"type": "object"},
-                "toRecipients": {"type": "array"},
-                "ccRecipients": {"type": "array"},
-                "bccRecipients": {"type": "array"},
-                "replyTo": {"type": "array"},
-                "flag": {"type": "object"}
+                "id": {
+                  "type": "string"
+                },
+                "createdDateTime": {
+                  "type": "string"
+                },
+                "lastModifiedDateTime": {
+                  "type": "string"
+                },
+                "changeKey": {
+                  "type": "string"
+                },
+                "categories": {
+                  "type": "array"
+                },
+                "receivedDateTime": {
+                  "type": "string"
+                },
+                "sentDateTime": {
+                  "type": "string"
+                },
+                "hasAttachments": {
+                  "type": "boolean"
+                },
+                "internetMessageId": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "bodyPreview": {
+                  "type": "string"
+                },
+                "importance": {
+                  "type": "string"
+                },
+                "parentFolderId": {
+                  "type": "string"
+                },
+                "conversationId": {
+                  "type": "string"
+                },
+                "conversationIndex": {
+                  "type": "string"
+                },
+                "isDeliveryReceiptRequested": {
+                  "type": "boolean"
+                },
+                "isReadReceiptRequested": {
+                  "type": "boolean"
+                },
+                "isRead": {
+                  "type": "boolean"
+                },
+                "isDraft": {
+                  "type": "boolean"
+                },
+                "webLink": {
+                  "type": "string"
+                },
+                "inferenceClassification": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "object"
+                },
+                "sender": {
+                  "type": "object"
+                },
+                "from": {
+                  "type": "object"
+                },
+                "toRecipients": {
+                  "type": "array"
+                },
+                "ccRecipients": {
+                  "type": "array"
+                },
+                "bccRecipients": {
+                  "type": "array"
+                },
+                "replyTo": {
+                  "type": "array"
+                },
+                "flag": {
+                  "type": "object"
+                }
               }
             }
           }
@@ -607,46 +852,126 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "createdDateTime": {"type": "string"},
-                "lastModifiedDateTime": {"type": "string"},
-                "changeKey": {"type": "string"},
-                "categories": {"type": "array"},
-                "originalStartTimeZone": {"type": "string"},
-                "originalEndTimeZone": {"type": "string"},
-                "iCalUId": {"type": "string"},
-                "reminderMinutesBeforeStart": {"type": "number"},
-                "isReminderOn": {"type": "boolean"},
-                "hasAttachments": {"type": "boolean"},
-                "subject": {"type": "string"},
-                "bodyPreview": {"type": "string"},
-                "importance": {"type": "string"},
-                "sensitivity": {"type": "string"},
-                "isAllDay": {"type": "boolean"},
-                "isCancelled": {"type": "boolean"},
-                "isOrganizer": {"type": "boolean"},
-                "responseRequested": {"type": "boolean"},
-                "seriesMasterId": {"type": "string"},
-                "showAs": {"type": "string"},
-                "type": {"type": "string"},
-                "webLink": {"type": "string"},
-                "onlineMeetingUrl": {"type": "string"},
-                "isOnlineMeeting": {"type": "boolean"},
-                "onlineMeetingProvider": {"type": "string"},
-                "allowNewTimeProposals": {"type": "boolean"},
-                "occurrenceId": {"type": "string"},
-                "isDraft": {"type": "boolean"},
-                "hideAttendees": {"type": "boolean"},
-                "responseStatus": {"type": "object"},
-                "body": {"type": "object"},
-                "start": {"type": "object"},
-                "end": {"type": "object"},
-                "location": {"type": "object"},
-                "locations": {"type": "array"},
-                "recurrence": {"type": "object"},
-                "attendees": {"type": "array"},
-                "organizer": {"type": "object"},
-                "onlineMeeting": {"type": "object"}
+                "id": {
+                  "type": "string"
+                },
+                "createdDateTime": {
+                  "type": "string"
+                },
+                "lastModifiedDateTime": {
+                  "type": "string"
+                },
+                "changeKey": {
+                  "type": "string"
+                },
+                "categories": {
+                  "type": "array"
+                },
+                "originalStartTimeZone": {
+                  "type": "string"
+                },
+                "originalEndTimeZone": {
+                  "type": "string"
+                },
+                "iCalUId": {
+                  "type": "string"
+                },
+                "reminderMinutesBeforeStart": {
+                  "type": "number"
+                },
+                "isReminderOn": {
+                  "type": "boolean"
+                },
+                "hasAttachments": {
+                  "type": "boolean"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "bodyPreview": {
+                  "type": "string"
+                },
+                "importance": {
+                  "type": "string"
+                },
+                "sensitivity": {
+                  "type": "string"
+                },
+                "isAllDay": {
+                  "type": "boolean"
+                },
+                "isCancelled": {
+                  "type": "boolean"
+                },
+                "isOrganizer": {
+                  "type": "boolean"
+                },
+                "responseRequested": {
+                  "type": "boolean"
+                },
+                "seriesMasterId": {
+                  "type": "string"
+                },
+                "showAs": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "webLink": {
+                  "type": "string"
+                },
+                "onlineMeetingUrl": {
+                  "type": "string"
+                },
+                "isOnlineMeeting": {
+                  "type": "boolean"
+                },
+                "onlineMeetingProvider": {
+                  "type": "string"
+                },
+                "allowNewTimeProposals": {
+                  "type": "boolean"
+                },
+                "occurrenceId": {
+                  "type": "string"
+                },
+                "isDraft": {
+                  "type": "boolean"
+                },
+                "hideAttendees": {
+                  "type": "boolean"
+                },
+                "responseStatus": {
+                  "type": "object"
+                },
+                "body": {
+                  "type": "object"
+                },
+                "start": {
+                  "type": "object"
+                },
+                "end": {
+                  "type": "object"
+                },
+                "location": {
+                  "type": "object"
+                },
+                "locations": {
+                  "type": "array"
+                },
+                "recurrence": {
+                  "type": "object"
+                },
+                "attendees": {
+                  "type": "array"
+                },
+                "organizer": {
+                  "type": "object"
+                },
+                "onlineMeeting": {
+                  "type": "object"
+                }
               }
             }
           }
@@ -657,5 +982,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

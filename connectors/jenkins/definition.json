@@ -50,7 +50,9 @@
             "description": "Build cause description"
           }
         },
-        "required": ["job_name"],
+        "required": [
+          "job_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -70,7 +72,10 @@
             "description": "Build number"
           }
         },
-        "required": ["job_name", "build_number"],
+        "required": [
+          "job_name",
+          "build_number"
+        ],
         "additionalProperties": false
       }
     },
@@ -86,7 +91,9 @@
             "description": "Job name"
           }
         },
-        "required": ["job_name"],
+        "required": [
+          "job_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -110,7 +117,10 @@
             "description": "Start position for log output"
           }
         },
-        "required": ["job_name", "build_number"],
+        "required": [
+          "job_name",
+          "build_number"
+        ],
         "additionalProperties": false
       }
     },
@@ -149,7 +159,9 @@
             "description": "Job name"
           }
         },
-        "required": ["job_name"],
+        "required": [
+          "job_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -173,7 +185,10 @@
             "description": "Folder to create job in"
           }
         },
-        "required": ["job_name", "config_xml"],
+        "required": [
+          "job_name",
+          "config_xml"
+        ],
         "additionalProperties": false
       }
     },
@@ -193,7 +208,10 @@
             "description": "Updated job configuration XML"
           }
         },
-        "required": ["job_name", "config_xml"],
+        "required": [
+          "job_name",
+          "config_xml"
+        ],
         "additionalProperties": false
       }
     },
@@ -209,7 +227,9 @@
             "description": "Job name"
           }
         },
-        "required": ["job_name"],
+        "required": [
+          "job_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -225,7 +245,9 @@
             "description": "Job name"
           }
         },
-        "required": ["job_name"],
+        "required": [
+          "job_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -241,7 +263,9 @@
             "description": "Job name"
           }
         },
-        "required": ["job_name"],
+        "required": [
+          "job_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -265,7 +289,10 @@
             "description": "Destination folder"
           }
         },
-        "required": ["from_job", "to_job"],
+        "required": [
+          "from_job",
+          "to_job"
+        ],
         "additionalProperties": false
       }
     },
@@ -285,7 +312,10 @@
             "description": "Build number"
           }
         },
-        "required": ["job_name", "build_number"],
+        "required": [
+          "job_name",
+          "build_number"
+        ],
         "additionalProperties": false
       }
     },
@@ -312,7 +342,9 @@
             "description": "Queue item ID"
           }
         },
-        "required": ["queue_id"],
+        "required": [
+          "queue_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -332,7 +364,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["SUCCESS", "FAILURE", "UNSTABLE", "ABORTED"],
+            "enum": [
+              "SUCCESS",
+              "FAILURE",
+              "UNSTABLE",
+              "ABORTED"
+            ],
             "description": "Filter by build status"
           }
         },
@@ -342,18 +379,36 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "url": {"type": "string"},
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
           "build": {
             "type": "object",
             "properties": {
-              "number": {"type": "number"},
-              "queue_id": {"type": "number"},
-              "url": {"type": "string"},
-              "phase": {"type": "string"},
-              "status": {"type": "string"},
-              "full_url": {"type": "string"},
-              "parameters": {"type": "object"}
+              "number": {
+                "type": "number"
+              },
+              "queue_id": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "full_url": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "object"
+              }
             }
           }
         }
@@ -378,15 +433,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "url": {"type": "string"},
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
           "build": {
             "type": "object",
             "properties": {
-              "number": {"type": "number"},
-              "queue_id": {"type": "number"},
-              "url": {"type": "string"},
-              "phase": {"type": "string"}
+              "number": {
+                "type": "number"
+              },
+              "queue_id": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              }
             }
           }
         }
@@ -411,14 +478,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "url": {"type": "string"},
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
           "build": {
             "type": "object",
             "properties": {
-              "number": {"type": "number"},
-              "status": {"type": "string"},
-              "url": {"type": "string"}
+              "number": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
             }
           }
         }
@@ -428,5 +505,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/api/json"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

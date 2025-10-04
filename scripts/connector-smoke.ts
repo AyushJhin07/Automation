@@ -7,7 +7,10 @@ import { IntegrationManager } from '../server/integrations/IntegrationManager';
 import { connectorRegistry } from '../server/ConnectorRegistry';
 import type { APICredentials } from '../server/integrations/BaseAPIClient';
 import { ConnectorSimulator } from '../server/testing/ConnectorSimulator';
-import type { ConnectorSimulatorSmokePlan } from '../server/testing/ConnectorSimulator';
+import type {
+  ConnectorSimulatorSmokePlan,
+  ConnectorContractSuiteSummary,
+} from '../server/testing/ConnectorSimulator';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,6 +56,7 @@ interface ScriptOptions {
   includeExperimental: boolean;
   useSimulator: boolean;
   simulatorFixturesDir?: string;
+  runContracts: boolean;
 }
 
 function parseArgs(argv: string[]): ScriptOptions {
@@ -60,6 +64,7 @@ function parseArgs(argv: string[]): ScriptOptions {
   let only: Set<string> | undefined;
   let includeExperimental = false;
   let useSimulator = process.env.CONNECTOR_SIMULATOR_ENABLED === 'true' || process.env.CI === 'true';
+  let runContracts = false;
   let simulatorFixturesDir = process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR;
 
   for (let i = 0; i < argv.length; i++) {
@@ -94,9 +99,14 @@ function parseArgs(argv: string[]): ScriptOptions {
       simulatorFixturesDir = resolve(process.cwd(), argv[++i]);
       continue;
     }
+    if (arg === '--run-contracts') {
+      runContracts = true;
+      useSimulator = true;
+      continue;
+    }
   }
 
-  return { configPath, only, includeExperimental, useSimulator, simulatorFixturesDir };
+  return { configPath, only, includeExperimental, useSimulator, simulatorFixturesDir, runContracts };
 }
 
 async function loadConfig(path: string): Promise<SmokeConfig> {
@@ -127,7 +137,12 @@ function formatHeading(title: string): void {
   console.log(`\n=== ${title} ===`);
 }
 
-async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
+interface SmokeExecutionResult {
+  results: SmokeResult[];
+  simulator?: ConnectorSimulator;
+}
+
+async function runSmokeTests(options: ScriptOptions): Promise<SmokeExecutionResult> {
   const config = await loadConfig(options.configPath);
   const simulator = options.useSimulator
     ? new ConnectorSimulator({
@@ -304,7 +319,7 @@ async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
     results.push({ appId, status, durationMs, messages });
   }
 
-  return results;
+  return { results, simulator };
 }
 
 function printResults(results: SmokeResult[]): void {
@@ -336,15 +351,62 @@ function printResults(results: SmokeResult[]): void {
   console.log(`Skipped: ${summary.skipped}`);
 }
 
+function printContractSummary(summary: ConnectorContractSuiteSummary | null): void {
+  if (!summary) {
+    return;
+  }
+
+  formatHeading('Connector Contract Test Summary');
+  console.log(`Evaluated scenarios: ${summary.total}`);
+  console.log(`Passed: ${summary.passed}`);
+  console.log(`Failed: ${summary.failed}`);
+
+  if (summary.failed > 0) {
+    console.log('Failures:');
+    for (const result of summary.results.filter(result => !result.success)) {
+      console.log(
+        `  ❌ ${result.appId}.${result.scenarioId} (${result.type}) expected ${
+          result.expectedSuccess ? 'success' : 'failure'
+        }`
+      );
+      if (result.message) {
+        console.log(`     ↳ ${result.message}`);
+      }
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   console.log('[connector-smoke] Using config:', options.configPath);
 
-  const results = await runSmokeTests(options);
+  const { results, simulator } = await runSmokeTests(options);
   printResults(results);
 
-  if (results.some(result => result.status === 'failed')) {
-    process.exitCode = 1;
+  let exitCode = results.some(result => result.status === 'failed') ? 1 : 0;
+
+  let contractSummary: ConnectorContractSuiteSummary | null = null;
+  if (options.runContracts) {
+    if (!simulator) {
+      console.warn('[connector-smoke] Contract suite requested but simulator is disabled.');
+    } else {
+      try {
+        contractSummary = await simulator.runContractTestSuite({ failFast: false });
+      } catch (error: any) {
+        console.error('[connector-smoke] Contract suite failed to execute:', error?.message || error);
+        exitCode = 1;
+      }
+    }
+  }
+
+  printContractSummary(contractSummary);
+
+  if (contractSummary && contractSummary.failed > 0) {
+    exitCode = 1;
+  }
+
+  if (exitCode > 0) {
+    process.exitCode = exitCode;
   }
 }
 

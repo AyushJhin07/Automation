@@ -62,25 +62,44 @@
           },
           "prefs_permissionLevel": {
             "type": "string",
-            "enum": ["private", "org", "public"],
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
             "default": "private",
             "description": "Permission level"
           },
           "prefs_voting": {
             "type": "string",
-            "enum": ["disabled", "members", "observers", "org", "public"],
+            "enum": [
+              "disabled",
+              "members",
+              "observers",
+              "org",
+              "public"
+            ],
             "default": "disabled",
             "description": "Voting permission"
           },
           "prefs_comments": {
             "type": "string",
-            "enum": ["disabled", "members", "observers", "org", "public"],
+            "enum": [
+              "disabled",
+              "members",
+              "observers",
+              "org",
+              "public"
+            ],
             "default": "members",
             "description": "Comment permission"
           },
           "prefs_invitations": {
             "type": "string",
-            "enum": ["members", "admins"],
+            "enum": [
+              "members",
+              "admins"
+            ],
             "default": "members",
             "description": "Invitation permission"
           },
@@ -100,12 +119,17 @@
           },
           "prefs_cardAging": {
             "type": "string",
-            "enum": ["pirate", "regular"],
+            "enum": [
+              "pirate",
+              "regular"
+            ],
             "default": "regular",
             "description": "Card aging style"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -140,7 +164,11 @@
           },
           "actions_format": {
             "type": "string",
-            "enum": ["count", "list", "minimal"],
+            "enum": [
+              "count",
+              "list",
+              "minimal"
+            ],
             "description": "Format for actions"
           },
           "actions_since": {
@@ -176,7 +204,13 @@
           },
           "cards": {
             "type": "string",
-            "enum": ["none", "visible", "open", "closed", "all"],
+            "enum": [
+              "none",
+              "visible",
+              "open",
+              "closed",
+              "all"
+            ],
             "default": "none",
             "description": "Which cards to include"
           },
@@ -206,7 +240,10 @@
           },
           "labels": {
             "type": "string",
-            "enum": ["none", "all"],
+            "enum": [
+              "none",
+              "all"
+            ],
             "default": "none",
             "description": "Which labels to include"
           },
@@ -220,7 +257,12 @@
           },
           "lists": {
             "type": "string",
-            "enum": ["none", "open", "closed", "all"],
+            "enum": [
+              "none",
+              "open",
+              "closed",
+              "all"
+            ],
             "default": "none",
             "description": "Which lists to include"
           },
@@ -230,7 +272,14 @@
           },
           "memberships": {
             "type": "string",
-            "enum": ["none", "active", "admin", "deactivated", "me", "normal"],
+            "enum": [
+              "none",
+              "active",
+              "admin",
+              "deactivated",
+              "me",
+              "normal"
+            ],
             "default": "none",
             "description": "Which memberships to include"
           },
@@ -244,7 +293,14 @@
           },
           "members": {
             "type": "string",
-            "enum": ["none", "active", "admin", "deactivated", "me", "normal"],
+            "enum": [
+              "none",
+              "active",
+              "admin",
+              "deactivated",
+              "me",
+              "normal"
+            ],
             "default": "none",
             "description": "Which members to include"
           },
@@ -254,7 +310,14 @@
           },
           "membersInvited": {
             "type": "string",
-            "enum": ["none", "active", "admin", "deactivated", "me", "normal"],
+            "enum": [
+              "none",
+              "active",
+              "admin",
+              "deactivated",
+              "me",
+              "normal"
+            ],
             "default": "none",
             "description": "Which invited members to include"
           },
@@ -264,7 +327,10 @@
           },
           "checklists": {
             "type": "string",
-            "enum": ["none", "all"],
+            "enum": [
+              "none",
+              "all"
+            ],
             "default": "none",
             "description": "Which checklists to include"
           },
@@ -293,7 +359,9 @@
             "description": "Whether to include tags"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -330,7 +398,11 @@
           },
           "prefs/permissionLevel": {
             "type": "string",
-            "enum": ["private", "org", "public"],
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
             "description": "Permission level"
           },
           "prefs/selfJoin": {
@@ -343,17 +415,32 @@
           },
           "prefs/invitations": {
             "type": "string",
-            "enum": ["members", "admins"],
+            "enum": [
+              "members",
+              "admins"
+            ],
             "description": "Invitation permission"
           },
           "prefs/voting": {
             "type": "string",
-            "enum": ["disabled", "members", "observers", "org", "public"],
+            "enum": [
+              "disabled",
+              "members",
+              "observers",
+              "org",
+              "public"
+            ],
             "description": "Voting permission"
           },
           "prefs/comments": {
             "type": "string",
-            "enum": ["disabled", "members", "observers", "org", "public"],
+            "enum": [
+              "disabled",
+              "members",
+              "observers",
+              "org",
+              "public"
+            ],
             "description": "Comment permission"
           },
           "prefs/background": {
@@ -362,7 +449,10 @@
           },
           "prefs/cardAging": {
             "type": "string",
-            "enum": ["pirate", "regular"],
+            "enum": [
+              "pirate",
+              "regular"
+            ],
             "description": "Card aging style"
           },
           "prefs/calendarFeedEnabled": {
@@ -394,7 +484,9 @@
             "description": "Blue label name"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -424,7 +516,10 @@
             "description": "Position of the list (top, bottom, or positive number)"
           }
         },
-        "required": ["name", "idBoard"],
+        "required": [
+          "name",
+          "idBoard"
+        ],
         "additionalProperties": false
       }
     },
@@ -436,8 +531,14 @@
       "method": "GET",
       "parameters": {
         "type": "object",
-        "properties": { "id": { "type": "string" } },
-        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -449,8 +550,17 @@
       "method": "PUT",
       "parameters": {
         "type": "object",
-        "properties": { "id": { "type": "string" }, "name": { "type": "string" } },
-        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -462,8 +572,21 @@
       "method": "POST",
       "parameters": {
         "type": "object",
-        "properties": { "name": {"type":"string"}, "idList": {"type":"string"}, "desc": {"type":"string"} },
-        "required": ["name","idList"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "idList": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "idList"
+        ],
         "additionalProperties": false
       }
     },
@@ -475,8 +598,14 @@
       "method": "GET",
       "parameters": {
         "type": "object",
-        "properties": { "id": { "type": "string" } },
-        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -488,12 +617,23 @@
       "method": "PUT",
       "parameters": {
         "type": "object",
-        "properties": { "id": {"type":"string"}, "name": {"type":"string"}, "desc": {"type":"string"} },
-        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
-    }
-    ,
+    },
     {
       "id": "add_comment_to_card",
       "name": "Add Comment To Card",
@@ -502,8 +642,18 @@
       "method": "POST",
       "parameters": {
         "type": "object",
-        "properties": { "id": {"type":"string"}, "text": {"type":"string"} },
-        "required": ["id","text"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -516,11 +666,20 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "callbackURL": {"type":"string"},
-          "idModel": {"type":"string"},
-          "description": {"type":"string"}
+          "callbackURL": {
+            "type": "string"
+          },
+          "idModel": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
         },
-        "required": ["callbackURL","idModel"],
+        "required": [
+          "callbackURL",
+          "idModel"
+        ],
         "additionalProperties": false
       }
     },
@@ -541,7 +700,12 @@
           },
           "cards": {
             "type": "string",
-            "enum": ["none", "open", "closed", "all"],
+            "enum": [
+              "none",
+              "open",
+              "closed",
+              "all"
+            ],
             "default": "none",
             "description": "Which cards to include"
           },
@@ -558,7 +722,9 @@
             "description": "Fields to include for board"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -594,7 +760,9 @@
             "description": "Whether the user is subscribed to the list"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -632,12 +800,16 @@
           },
           "idMembers": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of member IDs"
           },
           "idLabels": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of label IDs"
           },
           "urlSource": {
@@ -669,7 +841,10 @@
             "description": "GPS coordinates"
           }
         },
-        "required": ["name", "idList"],
+        "required": [
+          "name",
+          "idList"
+        ],
         "additionalProperties": false
       }
     },
@@ -745,7 +920,10 @@
           },
           "checklists": {
             "type": "string",
-            "enum": ["none", "all"],
+            "enum": [
+              "none",
+              "all"
+            ],
             "default": "none",
             "description": "Which checklists to include"
           },
@@ -782,7 +960,9 @@
             "description": "Whether to include custom field items"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -811,7 +991,9 @@
           },
           "idMembers": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of member IDs"
           },
           "idAttachmentCover": {
@@ -824,7 +1006,9 @@
           },
           "idLabels": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of label IDs"
           },
           "idBoard": {
@@ -865,7 +1049,9 @@
             "description": "Cover settings"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -885,7 +1071,10 @@
             "description": "Comment text"
           }
         },
-        "required": ["id", "text"],
+        "required": [
+          "id",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -913,7 +1102,10 @@
             "description": "Position of the checklist"
           }
         },
-        "required": ["idCard", "name"],
+        "required": [
+          "idCard",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -951,7 +1143,10 @@
             "description": "Member ID to assign to the item"
           }
         },
-        "required": ["idChecklist", "name"],
+        "required": [
+          "idChecklist",
+          "name"
+        ],
         "additionalProperties": false
       }
     }
@@ -980,37 +1175,99 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "badges": {"type": "object"},
-          "checkItemStates": {"type": "array"},
-          "closed": {"type": "boolean"},
-          "dueComplete": {"type": "boolean"},
-          "dateLastActivity": {"type": "string"},
-          "desc": {"type": "string"},
-          "descData": {"type": "object"},
-          "due": {"type": "string"},
-          "email": {"type": "string"},
-          "idBoard": {"type": "string"},
-          "idChecklists": {"type": "array"},
-          "idLabels": {"type": "array"},
-          "idList": {"type": "string"},
-          "idMembers": {"type": "array"},
-          "idMembersVoted": {"type": "array"},
-          "idShort": {"type": "number"},
-          "idAttachmentCover": {"type": "string"},
-          "labels": {"type": "array"},
-          "limits": {"type": "object"},
-          "locationName": {"type": "string"},
-          "manualCoverAttachment": {"type": "boolean"},
-          "name": {"type": "string"},
-          "pos": {"type": "number"},
-          "shortLink": {"type": "string"},
-          "shortUrl": {"type": "string"},
-          "subscribed": {"type": "boolean"},
-          "url": {"type": "string"},
-          "address": {"type": "string"},
-          "coordinates": {"type": "object"},
-          "cover": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "badges": {
+            "type": "object"
+          },
+          "checkItemStates": {
+            "type": "array"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "dueComplete": {
+            "type": "boolean"
+          },
+          "dateLastActivity": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          },
+          "descData": {
+            "type": "object"
+          },
+          "due": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "idBoard": {
+            "type": "string"
+          },
+          "idChecklists": {
+            "type": "array"
+          },
+          "idLabels": {
+            "type": "array"
+          },
+          "idList": {
+            "type": "string"
+          },
+          "idMembers": {
+            "type": "array"
+          },
+          "idMembersVoted": {
+            "type": "array"
+          },
+          "idShort": {
+            "type": "number"
+          },
+          "idAttachmentCover": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "array"
+          },
+          "limits": {
+            "type": "object"
+          },
+          "locationName": {
+            "type": "string"
+          },
+          "manualCoverAttachment": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pos": {
+            "type": "number"
+          },
+          "shortLink": {
+            "type": "string"
+          },
+          "shortUrl": {
+            "type": "string"
+          },
+          "subscribed": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "coordinates": {
+            "type": "object"
+          },
+          "cover": {
+            "type": "object"
+          }
         }
       }
     },
@@ -1037,18 +1294,42 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "desc": {"type": "string"},
-          "closed": {"type": "boolean"},
-          "idBoard": {"type": "string"},
-          "idList": {"type": "string"},
-          "idMembers": {"type": "array"},
-          "idLabels": {"type": "array"},
-          "due": {"type": "string"},
-          "dueComplete": {"type": "boolean"},
-          "pos": {"type": "number"},
-          "dateLastActivity": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "idBoard": {
+            "type": "string"
+          },
+          "idList": {
+            "type": "string"
+          },
+          "idMembers": {
+            "type": "array"
+          },
+          "idLabels": {
+            "type": "array"
+          },
+          "due": {
+            "type": "string"
+          },
+          "dueComplete": {
+            "type": "boolean"
+          },
+          "pos": {
+            "type": "number"
+          },
+          "dateLastActivity": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1079,10 +1360,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "card": {"type": "object"},
-          "listBefore": {"type": "object"},
-          "listAfter": {"type": "object"},
-          "board": {"type": "object"}
+          "card": {
+            "type": "object"
+          },
+          "listBefore": {
+            "type": "object"
+          },
+          "listAfter": {
+            "type": "object"
+          },
+          "board": {
+            "type": "object"
+          }
         }
       }
     },
@@ -1105,12 +1394,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "closed": {"type": "boolean"},
-          "idBoard": {"type": "string"},
-          "pos": {"type": "number"},
-          "subscribed": {"type": "boolean"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "idBoard": {
+            "type": "string"
+          },
+          "pos": {
+            "type": "number"
+          },
+          "subscribed": {
+            "type": "boolean"
+          }
         }
       }
     }
@@ -1118,6 +1419,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/members/me"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }
-

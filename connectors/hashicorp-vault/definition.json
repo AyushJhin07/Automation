@@ -52,7 +52,9 @@
             "description": "Secret version (for KV v2)"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -77,7 +79,10 @@
             "description": "Check-and-set parameter for KV v2"
           }
         },
-        "required": ["path", "data"],
+        "required": [
+          "path",
+          "data"
+        ],
         "additionalProperties": false
       }
     },
@@ -94,7 +99,9 @@
             "description": "Secret path to delete"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -115,7 +122,10 @@
             "description": "Policy rules in HCL format"
           }
         },
-        "required": ["name", "policy"],
+        "required": [
+          "name",
+          "policy"
+        ],
         "additionalProperties": false
       }
     },
@@ -167,5 +177,24 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

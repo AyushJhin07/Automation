@@ -50,7 +50,9 @@
             "description": "Site ID"
           }
         },
-        "required": ["site_id"],
+        "required": [
+          "site_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -66,7 +68,9 @@
             "description": "Site ID"
           }
         },
-        "required": ["site_id"],
+        "required": [
+          "site_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -82,7 +86,9 @@
             "description": "Collection ID"
           }
         },
-        "required": ["collection_id"],
+        "required": [
+          "collection_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -111,7 +117,9 @@
             "description": "Number of items to return"
           }
         },
-        "required": ["collection_id"],
+        "required": [
+          "collection_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -131,7 +139,10 @@
             "description": "Item ID"
           }
         },
-        "required": ["collection_id", "item_id"],
+        "required": [
+          "collection_id",
+          "item_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -156,7 +167,10 @@
             "description": "Whether to publish the item live"
           }
         },
-        "required": ["collection_id", "fields"],
+        "required": [
+          "collection_id",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -185,7 +199,11 @@
             "description": "Whether to publish the changes live"
           }
         },
-        "required": ["collection_id", "item_id", "fields"],
+        "required": [
+          "collection_id",
+          "item_id",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,7 +228,10 @@
             "description": "Whether to delete from live site"
           }
         },
-        "required": ["collection_id", "item_id"],
+        "required": [
+          "collection_id",
+          "item_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -227,11 +248,15 @@
           },
           "domains": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Domains to publish to"
           }
         },
-        "required": ["site_id"],
+        "required": [
+          "site_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -247,7 +272,9 @@
             "description": "Site ID"
           }
         },
-        "required": ["site_id"],
+        "required": [
+          "site_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -264,7 +291,18 @@
           },
           "triggerType": {
             "type": "string",
-            "enum": ["form_submission", "site_publish", "ecomm_new_order", "ecomm_order_changed", "ecomm_inventory_changed", "membership_user_account_added", "membership_user_account_updated", "collection_item_created", "collection_item_changed", "collection_item_deleted"],
+            "enum": [
+              "form_submission",
+              "site_publish",
+              "ecomm_new_order",
+              "ecomm_order_changed",
+              "ecomm_inventory_changed",
+              "membership_user_account_added",
+              "membership_user_account_updated",
+              "collection_item_created",
+              "collection_item_changed",
+              "collection_item_deleted"
+            ],
             "description": "Webhook trigger type"
           },
           "url": {
@@ -276,7 +314,11 @@
             "description": "Optional filter criteria"
           }
         },
-        "required": ["site_id", "triggerType", "url"],
+        "required": [
+          "site_id",
+          "triggerType",
+          "url"
+        ],
         "additionalProperties": false
       }
     },
@@ -296,7 +338,10 @@
             "description": "Webhook ID"
           }
         },
-        "required": ["site_id", "webhook_id"],
+        "required": [
+          "site_id",
+          "webhook_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -325,12 +370,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "_id": {"type": "string"},
-          "name": {"type": "string"},
-          "email": {"type": "string"},
-          "data": {"type": "object"},
-          "d": {"type": "string"},
-          "site": {"type": "string"}
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "d": {
+            "type": "string"
+          },
+          "site": {
+            "type": "string"
+          }
         }
       }
     },
@@ -357,15 +414,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "_cid": {"type": "string"},
-          "_id": {"type": "string"},
-          "name": {"type": "string"},
-          "slug": {"type": "string"},
-          "_archived": {"type": "boolean"},
-          "_draft": {"type": "boolean"},
-          "created-on": {"type": "string"},
-          "updated-on": {"type": "string"},
-          "published-on": {"type": "string"}
+          "_cid": {
+            "type": "string"
+          },
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "_archived": {
+            "type": "boolean"
+          },
+          "_draft": {
+            "type": "boolean"
+          },
+          "created-on": {
+            "type": "string"
+          },
+          "updated-on": {
+            "type": "string"
+          },
+          "published-on": {
+            "type": "string"
+          }
         }
       }
     },
@@ -392,15 +467,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "_cid": {"type": "string"},
-          "_id": {"type": "string"},
-          "name": {"type": "string"},
-          "slug": {"type": "string"},
-          "_archived": {"type": "boolean"},
-          "_draft": {"type": "boolean"},
-          "created-on": {"type": "string"},
-          "updated-on": {"type": "string"},
-          "published-on": {"type": "string"}
+          "_cid": {
+            "type": "string"
+          },
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "_archived": {
+            "type": "boolean"
+          },
+          "_draft": {
+            "type": "boolean"
+          },
+          "created-on": {
+            "type": "string"
+          },
+          "updated-on": {
+            "type": "string"
+          },
+          "published-on": {
+            "type": "string"
+          }
         }
       }
     },
@@ -423,9 +516,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "site": {"type": "string"},
-          "publishTime": {"type": "string"},
-          "domains": {"type": "array"}
+          "site": {
+            "type": "string"
+          },
+          "publishTime": {
+            "type": "string"
+          },
+          "domains": {
+            "type": "array"
+          }
         }
       }
     }
@@ -433,5 +532,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/sites"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

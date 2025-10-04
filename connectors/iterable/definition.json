@@ -144,7 +144,9 @@
             "description": "Event ID for deduplication"
           }
         },
-        "required": ["eventName"],
+        "required": [
+          "eventName"
+        ],
         "additionalProperties": false
       }
     },
@@ -158,9 +160,16 @@
           "user": {
             "type": "object",
             "properties": {
-              "email": {"type": "string", "format": "email"},
-              "userId": {"type": "string"},
-              "dataFields": {"type": "object"}
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "dataFields": {
+                "type": "object"
+              }
             },
             "description": "User information"
           },
@@ -169,13 +178,27 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "sku": {"type": "string"},
-                "name": {"type": "string"},
-                "categories": {"type": "array"},
-                "price": {"type": "number"},
-                "quantity": {"type": "number"},
-                "dataFields": {"type": "object"}
+                "id": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "categories": {
+                  "type": "array"
+                },
+                "price": {
+                  "type": "number"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "dataFields": {
+                  "type": "object"
+                }
               }
             },
             "description": "Purchased items"
@@ -201,7 +224,9 @@
             "description": "Additional purchase data"
           }
         },
-        "required": ["items"],
+        "required": [
+          "items"
+        ],
         "additionalProperties": false
       }
     },
@@ -244,7 +269,9 @@
             "description": "Additional metadata"
           }
         },
-        "required": ["campaignId"],
+        "required": [
+          "campaignId"
+        ],
         "additionalProperties": false
       }
     },
@@ -264,15 +291,25 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "userId": {"type": "string"},
-                "dataFields": {"type": "object"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "dataFields": {
+                  "type": "object"
+                }
               }
             },
             "description": "Users to subscribe"
           }
         },
-        "required": ["listId", "subscribers"],
+        "required": [
+          "listId",
+          "subscribers"
+        ],
         "additionalProperties": false
       }
     },
@@ -292,8 +329,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "userId": {"type": "string"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "userId": {
+                  "type": "string"
+                }
               }
             },
             "description": "Users to unsubscribe"
@@ -308,7 +350,10 @@
             "description": "Unsubscribe from entire channel"
           }
         },
-        "required": ["listId", "subscribers"],
+        "required": [
+          "listId",
+          "subscribers"
+        ],
         "additionalProperties": false
       }
     },
@@ -339,7 +384,9 @@
             "description": "List description"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -352,7 +399,11 @@
         "properties": {
           "campaignType": {
             "type": "string",
-            "enum": ["Blast", "Triggered", "Workflow"],
+            "enum": [
+              "Blast",
+              "Triggered",
+              "Workflow"
+            ],
             "description": "Filter by campaign type"
           }
         },
@@ -369,12 +420,22 @@
         "properties": {
           "templateType": {
             "type": "string",
-            "enum": ["Base", "Blast", "Triggered", "Workflow"],
+            "enum": [
+              "Base",
+              "Blast",
+              "Triggered",
+              "Workflow"
+            ],
             "description": "Filter by template type"
           },
           "messageMedium": {
             "type": "string",
-            "enum": ["Email", "Push", "InApp", "SMS"],
+            "enum": [
+              "Email",
+              "Push",
+              "InApp",
+              "SMS"
+            ],
             "description": "Filter by message medium"
           }
         },
@@ -391,12 +452,40 @@
         "properties": {
           "dataTypeName": {
             "type": "string",
-            "enum": ["user", "emailSend", "emailOpen", "emailClick", "emailBounce", "emailComplaint", "emailUnSubscribe", "emailSubscribe", "pushSend", "pushOpen", "pushUninstall", "pushBounce", "inAppSend", "inAppOpen", "inAppClick", "inAppDelete", "smsSend", "smsReceived", "smsBounce", "smsClick", "purchase", "customEvent", "hostedUnsubscribeClick"],
+            "enum": [
+              "user",
+              "emailSend",
+              "emailOpen",
+              "emailClick",
+              "emailBounce",
+              "emailComplaint",
+              "emailUnSubscribe",
+              "emailSubscribe",
+              "pushSend",
+              "pushOpen",
+              "pushUninstall",
+              "pushBounce",
+              "inAppSend",
+              "inAppOpen",
+              "inAppClick",
+              "inAppDelete",
+              "smsSend",
+              "smsReceived",
+              "smsBounce",
+              "smsClick",
+              "purchase",
+              "customEvent",
+              "hostedUnsubscribeClick"
+            ],
             "description": "Type of data to export"
           },
           "range": {
             "type": "string",
-            "enum": ["Today", "Yesterday", "BeforeToday"],
+            "enum": [
+              "Today",
+              "Yesterday",
+              "BeforeToday"
+            ],
             "description": "Date range for export"
           },
           "startDateTime": {
@@ -411,7 +500,10 @@
           },
           "format": {
             "type": "string",
-            "enum": ["csv", "json"],
+            "enum": [
+              "csv",
+              "json"
+            ],
             "default": "csv",
             "description": "Export format"
           },
@@ -422,16 +514,22 @@
           },
           "onlyFields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Only include specific fields"
           },
           "omitFields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Omit specific fields"
           }
         },
-        "required": ["dataTypeName"],
+        "required": [
+          "dataTypeName"
+        ],
         "additionalProperties": false
       }
     }
@@ -456,12 +554,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "userId": {"type": "string"},
-          "campaignId": {"type": "number"},
-          "templateId": {"type": "number"},
-          "createdAt": {"type": "string"},
-          "eventName": {"type": "string"}
+          "email": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "templateId": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "eventName": {
+            "type": "string"
+          }
         }
       }
     },
@@ -484,13 +594,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "userId": {"type": "string"},
-          "campaignId": {"type": "number"},
-          "templateId": {"type": "number"},
-          "createdAt": {"type": "string"},
-          "userAgent": {"type": "string"},
-          "ip": {"type": "string"}
+          "email": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "templateId": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          }
         }
       }
     },
@@ -513,14 +637,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "userId": {"type": "string"},
-          "campaignId": {"type": "number"},
-          "templateId": {"type": "number"},
-          "createdAt": {"type": "string"},
-          "url": {"type": "string"},
-          "userAgent": {"type": "string"},
-          "ip": {"type": "string"}
+          "email": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "templateId": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          }
         }
       }
     },
@@ -538,12 +678,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "userId": {"type": "string"},
-          "campaignId": {"type": "number"},
-          "listId": {"type": "number"},
-          "createdAt": {"type": "string"},
-          "channelUnsubscribe": {"type": "boolean"}
+          "email": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "listId": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "channelUnsubscribe": {
+            "type": "boolean"
+          }
         }
       }
     }
@@ -551,5 +703,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/lists"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

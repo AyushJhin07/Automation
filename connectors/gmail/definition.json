@@ -84,7 +84,11 @@
             "description": "Email attachments"
           }
         },
-        "required": ["to", "subject", "body"],
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -112,7 +116,9 @@
             "description": "Include emails from spam and trash"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -129,12 +135,19 @@
           },
           "format": {
             "type": "string",
-            "enum": ["minimal", "full", "raw", "metadata"],
+            "enum": [
+              "minimal",
+              "full",
+              "raw",
+              "metadata"
+            ],
             "default": "full",
             "description": "Format of the email data to return"
           }
         },
-        "required": ["messageId"],
+        "required": [
+          "messageId"
+        ],
         "additionalProperties": false
       }
     },
@@ -159,7 +172,10 @@
             "description": "Whether to reply to all recipients"
           }
         },
-        "required": ["messageId", "body"],
+        "required": [
+          "messageId",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -178,7 +194,9 @@
             "description": "Array of Gmail message IDs to mark as read"
           }
         },
-        "required": ["messageIds"],
+        "required": [
+          "messageIds"
+        ],
         "additionalProperties": false
       }
     },
@@ -204,7 +222,10 @@
             "description": "Array of label IDs to add"
           }
         },
-        "required": ["messageIds", "labelIds"],
+        "required": [
+          "messageIds",
+          "labelIds"
+        ],
         "additionalProperties": false
       }
     }
@@ -250,7 +271,9 @@
             "description": "Optional subject filter"
           }
         },
-        "required": ["fromEmail"],
+        "required": [
+          "fromEmail"
+        ],
         "additionalProperties": false
       }
     },
@@ -277,5 +300,23 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "stable",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

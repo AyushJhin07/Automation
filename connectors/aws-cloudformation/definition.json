@@ -61,8 +61,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "ParameterKey": {"type": "string"},
-                "ParameterValue": {"type": "string"}
+                "ParameterKey": {
+                  "type": "string"
+                },
+                "ParameterValue": {
+                  "type": "string"
+                }
               }
             },
             "description": "Stack parameters"
@@ -71,7 +75,11 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+              "enum": [
+                "CAPABILITY_IAM",
+                "CAPABILITY_NAMED_IAM",
+                "CAPABILITY_AUTO_EXPAND"
+              ]
             },
             "description": "Stack capabilities"
           },
@@ -80,14 +88,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "Key": {"type": "string"},
-                "Value": {"type": "string"}
+                "Key": {
+                  "type": "string"
+                },
+                "Value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Stack tags"
           }
         },
-        "required": ["stack_name"],
+        "required": [
+          "stack_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -116,14 +130,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "ParameterKey": {"type": "string"},
-                "ParameterValue": {"type": "string"}
+                "ParameterKey": {
+                  "type": "string"
+                },
+                "ParameterValue": {
+                  "type": "string"
+                }
               }
             },
             "description": "Updated stack parameters"
           }
         },
-        "required": ["stack_name"],
+        "required": [
+          "stack_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -140,7 +160,9 @@
             "description": "Stack name to delete"
           }
         },
-        "required": ["stack_name"],
+        "required": [
+          "stack_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,7 +179,9 @@
             "description": "Stack name"
           }
         },
-        "required": ["stack_name"],
+        "required": [
+          "stack_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -206,7 +230,11 @@
           },
           "operation": {
             "type": "string",
-            "enum": ["CREATE", "UPDATE", "DELETE"],
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE"
+            ],
             "description": "Filter by operation type"
           }
         },
@@ -214,5 +242,24 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

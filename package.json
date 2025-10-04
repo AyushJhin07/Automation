@@ -39,7 +39,7 @@
     "audit:bronze": "node scripts/audit-bronze.js",
     "smoke:e2e": "node scripts/e2e-smoke.js",
     "smoke:connectors": "tsx scripts/connector-smoke.ts",
-    "ci:smoke": "tsx scripts/connector-smoke.ts --use-simulator"
+    "ci:smoke": "tsx scripts/connector-smoke.ts --use-simulator --run-contracts"
   },
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.676.0",

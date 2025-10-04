@@ -13,7 +13,7 @@
       "tokenUrl": "https://webexapis.com/v1/access_token",
       "scopes": [
         "spark:people_read",
-        "spark:rooms_read", 
+        "spark:rooms_read",
         "spark:rooms_write",
         "spark:memberships_read",
         "spark:memberships_write",
@@ -54,7 +54,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["group", "direct"],
+            "enum": [
+              "group",
+              "direct"
+            ],
             "default": "group",
             "description": "Room type"
           },
@@ -74,7 +77,9 @@
             "description": "Whether room is announcement only"
           }
         },
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -90,7 +95,9 @@
             "description": "Room ID"
           }
         },
-        "required": ["roomId"],
+        "required": [
+          "roomId"
+        ],
         "additionalProperties": false
       }
     },
@@ -107,12 +114,19 @@
           },
           "type": {
             "type": "string",
-            "enum": ["group", "direct"],
+            "enum": [
+              "group",
+              "direct"
+            ],
             "description": "Filter by room type"
           },
           "sortBy": {
             "type": "string",
-            "enum": ["id", "lastactivity", "created"],
+            "enum": [
+              "id",
+              "lastactivity",
+              "created"
+            ],
             "default": "lastactivity",
             "description": "Sort criteria"
           },
@@ -157,7 +171,9 @@
           },
           "files": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "File URLs to attach"
           },
           "toPersonId": {
@@ -186,7 +202,9 @@
             "description": "Message ID"
           }
         },
-        "required": ["messageId"],
+        "required": [
+          "messageId"
+        ],
         "additionalProperties": false
       }
     },
@@ -226,7 +244,9 @@
             "description": "Maximum number of messages"
           }
         },
-        "required": ["roomId"],
+        "required": [
+          "roomId"
+        ],
         "additionalProperties": false
       }
     },
@@ -309,7 +329,11 @@
           },
           "unlockedMeetingJoinSecurity": {
             "type": "string",
-            "enum": ["allowJoin", "allowJoinWithLobby", "blockFromJoin"],
+            "enum": [
+              "allowJoin",
+              "allowJoinWithLobby",
+              "blockFromJoin"
+            ],
             "description": "Join security for unlocked meetings"
           },
           "sessionTypeId": {
@@ -326,8 +350,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "displayName": {"type": "string"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "displayName": {
+                  "type": "string"
+                }
               }
             },
             "description": "Meeting panelists"
@@ -337,15 +366,26 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "displayName": {"type": "string"},
-                "coHost": {"type": "boolean"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "coHost": {
+                  "type": "boolean"
+                }
               }
             },
             "description": "Meeting invitees"
           }
         },
-        "required": ["title", "start", "end"],
+        "required": [
+          "title",
+          "start",
+          "end"
+        ],
         "additionalProperties": false
       }
     },
@@ -370,7 +410,9 @@
             "description": "Host email filter"
           }
         },
-        "required": ["meetingId"],
+        "required": [
+          "meetingId"
+        ],
         "additionalProperties": false
       }
     },
@@ -395,17 +437,33 @@
           },
           "meetingType": {
             "type": "string",
-            "enum": ["meeting", "webinar", "personalRoomMeeting"],
+            "enum": [
+              "meeting",
+              "webinar",
+              "personalRoomMeeting"
+            ],
             "description": "Meeting type filter"
           },
           "state": {
             "type": "string",
-            "enum": ["active", "scheduled", "ready", "lobby", "inProgress", "ended", "missed"],
+            "enum": [
+              "active",
+              "scheduled",
+              "ready",
+              "lobby",
+              "inProgress",
+              "ended",
+              "missed"
+            ],
             "description": "Meeting state filter"
           },
           "scheduledType": {
             "type": "string",
-            "enum": ["meeting", "webinar", "personalRoomMeeting"],
+            "enum": [
+              "meeting",
+              "webinar",
+              "personalRoomMeeting"
+            ],
             "description": "Scheduled type filter"
           },
           "current": {
@@ -464,15 +522,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "roomId": {"type": "string"},
-          "roomType": {"type": "string"},
-          "text": {"type": "string"},
-          "personId": {"type": "string"},
-          "personEmail": {"type": "string"},
-          "created": {"type": "string"},
-          "mentionedPeople": {"type": "array"},
-          "mentionedGroups": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "roomId": {
+            "type": "string"
+          },
+          "roomType": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "personId": {
+            "type": "string"
+          },
+          "personEmail": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          },
+          "mentionedPeople": {
+            "type": "array"
+          },
+          "mentionedGroups": {
+            "type": "array"
+          }
         }
       }
     },
@@ -490,13 +566,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "type": {"type": "string"},
-          "isLocked": {"type": "boolean"},
-          "teamId": {"type": "string"},
-          "creatorId": {"type": "string"},
-          "created": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "isLocked": {
+            "type": "boolean"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "creatorId": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          }
         }
       }
     },
@@ -520,13 +610,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "meetingNumber": {"type": "string"},
-          "title": {"type": "string"},
-          "hostUserId": {"type": "string"},
-          "hostEmail": {"type": "string"},
-          "start": {"type": "string"},
-          "end": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "meetingNumber": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "hostUserId": {
+            "type": "string"
+          },
+          "hostEmail": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          }
         }
       }
     }
@@ -534,5 +638,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/people/me"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

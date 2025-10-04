@@ -11,14 +11,19 @@
     "config": {
       "authUrl": "https://github.com/login/oauth/authorize",
       "tokenUrl": "https://github.com/login/oauth/access_token",
-      "scopes": ["repo", "user", "admin:org", "admin:repo_hook"]
+      "scopes": [
+        "repo",
+        "user",
+        "admin:org",
+        "admin:repo_hook"
+      ]
     }
   },
   "baseUrl": "https://api.github.com",
   "actions": [
     {
       "id": "test_connection",
-      "name": "Test Connection", 
+      "name": "Test Connection",
       "description": "Test the connection to GitHub",
       "parameters": {
         "type": "object",
@@ -39,7 +44,7 @@
             "description": "Repository owner"
           },
           "repo": {
-            "type": "string", 
+            "type": "string",
             "description": "Repository name"
           },
           "title": {
@@ -52,7 +57,9 @@
           },
           "assignees": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Usernames to assign"
           },
           "milestone": {
@@ -61,11 +68,17 @@
           },
           "labels": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Issue labels"
           }
         },
-        "required": ["owner", "repo", "title"],
+        "required": [
+          "owner",
+          "repo",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,21 +111,32 @@
           },
           "state": {
             "type": "string",
-            "enum": ["open", "closed"],
+            "enum": [
+              "open",
+              "closed"
+            ],
             "description": "Issue state"
           },
           "assignees": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Usernames to assign"
           },
           "labels": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Issue labels"
           }
         },
-        "required": ["owner", "repo", "issue_number"],
+        "required": [
+          "owner",
+          "repo",
+          "issue_number"
+        ],
         "additionalProperties": false
       }
     },
@@ -158,7 +182,13 @@
             "description": "Allow maintainer edits"
           }
         },
-        "required": ["owner", "repo", "title", "head", "base"],
+        "required": [
+          "owner",
+          "repo",
+          "title",
+          "head",
+          "base"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,12 +221,20 @@
           },
           "merge_method": {
             "type": "string",
-            "enum": ["merge", "squash", "rebase"],
+            "enum": [
+              "merge",
+              "squash",
+              "rebase"
+            ],
             "default": "merge",
             "description": "Merge method"
           }
         },
-        "required": ["owner", "repo", "pull_number"],
+        "required": [
+          "owner",
+          "repo",
+          "pull_number"
+        ],
         "additionalProperties": false
       }
     },
@@ -283,7 +321,9 @@
             "description": "Allow rebase merging"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -310,17 +350,38 @@
           "config": {
             "type": "object",
             "properties": {
-              "url": {"type": "string", "format": "uri"},
-              "content_type": {"type": "string", "enum": ["json", "form"]},
-              "secret": {"type": "string"},
-              "insecure_ssl": {"type": "string", "enum": ["0", "1"]}
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "content_type": {
+                "type": "string",
+                "enum": [
+                  "json",
+                  "form"
+                ]
+              },
+              "secret": {
+                "type": "string"
+              },
+              "insecure_ssl": {
+                "type": "string",
+                "enum": [
+                  "0",
+                  "1"
+                ]
+              }
             },
             "description": "Webhook configuration"
           },
           "events": {
             "type": "array",
-            "items": {"type": "string"},
-            "default": ["push"],
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "push"
+            ],
             "description": "Events to trigger webhook"
           },
           "active": {
@@ -329,7 +390,11 @@
             "description": "Webhook active status"
           }
         },
-        "required": ["owner", "repo", "config"],
+        "required": [
+          "owner",
+          "repo",
+          "config"
+        ],
         "additionalProperties": false
       }
     },
@@ -346,12 +411,20 @@
           },
           "sort": {
             "type": "string",
-            "enum": ["stars", "forks", "help-wanted-issues", "updated"],
+            "enum": [
+              "stars",
+              "forks",
+              "help-wanted-issues",
+              "updated"
+            ],
             "description": "Sort field"
           },
           "order": {
             "type": "string",
-            "enum": ["desc", "asc"],
+            "enum": [
+              "desc",
+              "asc"
+            ],
             "default": "desc",
             "description": "Sort order"
           },
@@ -369,7 +442,9 @@
             "description": "Page number"
           }
         },
-        "required": ["q"],
+        "required": [
+          "q"
+        ],
         "additionalProperties": false
       }
     }
@@ -398,10 +473,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ref": {"type": "string"},
-          "repository": {"type": "object"},
-          "commits": {"type": "array"},
-          "pusher": {"type": "object"}
+          "ref": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "object"
+          },
+          "commits": {
+            "type": "array"
+          },
+          "pusher": {
+            "type": "object"
+          }
         }
       }
     },
@@ -415,7 +498,12 @@
         "properties": {
           "action": {
             "type": "string",
-            "enum": ["opened", "closed", "reopened", "synchronize"],
+            "enum": [
+              "opened",
+              "closed",
+              "reopened",
+              "synchronize"
+            ],
             "description": "Filter by action"
           }
         },
@@ -425,10 +513,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "action": {"type": "string"},
-          "number": {"type": "number"},
-          "pull_request": {"type": "object"},
-          "repository": {"type": "object"}
+          "action": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number"
+          },
+          "pull_request": {
+            "type": "object"
+          },
+          "repository": {
+            "type": "object"
+          }
         }
       }
     },
@@ -442,7 +538,13 @@
         "properties": {
           "action": {
             "type": "string",
-            "enum": ["opened", "closed", "reopened", "assigned", "unassigned"],
+            "enum": [
+              "opened",
+              "closed",
+              "reopened",
+              "assigned",
+              "unassigned"
+            ],
             "description": "Filter by action"
           }
         },
@@ -452,9 +554,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "action": {"type": "string"},
-          "issue": {"type": "object"},
-          "repository": {"type": "object"}
+          "action": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "object"
+          },
+          "repository": {
+            "type": "object"
+          }
         }
       }
     }
@@ -462,5 +570,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "versionInfo": {
+    "semantic": "2.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

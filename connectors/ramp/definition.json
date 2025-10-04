@@ -136,11 +136,20 @@
           },
           "role": {
             "type": "string",
-            "enum": ["CARDHOLDER", "ADMIN", "BOOKKEEPER"],
+            "enum": [
+              "CARDHOLDER",
+              "ADMIN",
+              "BOOKKEEPER"
+            ],
             "description": "User role"
           }
         },
-        "required": ["first_name", "last_name", "email", "role"],
+        "required": [
+          "first_name",
+          "last_name",
+          "email",
+          "role"
+        ],
         "additionalProperties": false
       }
     }
@@ -165,10 +174,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "amount": {"type": "number"},
-          "card_id": {"type": "string"},
-          "user_transaction_date": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "user_transaction_date": {
+            "type": "string"
+          }
         }
       }
     }
@@ -176,5 +193,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

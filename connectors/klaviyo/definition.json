@@ -39,36 +39,76 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["profile"],
+                "enum": [
+                  "profile"
+                ],
                 "default": "profile",
                 "description": "Resource type"
               },
               "attributes": {
                 "type": "object",
                 "properties": {
-                  "email": {"type": "string", "format": "email"},
-                  "phone_number": {"type": "string"},
-                  "external_id": {"type": "string"},
-                  "first_name": {"type": "string"},
-                  "last_name": {"type": "string"},
-                  "organization": {"type": "string"},
-                  "title": {"type": "string"},
-                  "image": {"type": "string", "format": "uri"},
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone_number": {
+                    "type": "string"
+                  },
+                  "external_id": {
+                    "type": "string"
+                  },
+                  "first_name": {
+                    "type": "string"
+                  },
+                  "last_name": {
+                    "type": "string"
+                  },
+                  "organization": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "uri"
+                  },
                   "location": {
                     "type": "object",
                     "properties": {
-                      "address1": {"type": "string"},
-                      "address2": {"type": "string"},
-                      "city": {"type": "string"},
-                      "country": {"type": "string"},
-                      "latitude": {"type": "number"},
-                      "longitude": {"type": "number"},
-                      "region": {"type": "string"},
-                      "zip": {"type": "string"},
-                      "timezone": {"type": "string"}
+                      "address1": {
+                        "type": "string"
+                      },
+                      "address2": {
+                        "type": "string"
+                      },
+                      "city": {
+                        "type": "string"
+                      },
+                      "country": {
+                        "type": "string"
+                      },
+                      "latitude": {
+                        "type": "number"
+                      },
+                      "longitude": {
+                        "type": "number"
+                      },
+                      "region": {
+                        "type": "string"
+                      },
+                      "zip": {
+                        "type": "string"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      }
                     }
                   },
-                  "properties": {"type": "object"}
+                  "properties": {
+                    "type": "object"
+                  }
                 },
                 "description": "Profile attributes"
               }
@@ -96,26 +136,47 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["profile"],
+                "enum": [
+                  "profile"
+                ],
                 "default": "profile"
               },
-              "id": {"type": "string"},
+              "id": {
+                "type": "string"
+              },
               "attributes": {
                 "type": "object",
                 "properties": {
-                  "email": {"type": "string", "format": "email"},
-                  "phone_number": {"type": "string"},
-                  "first_name": {"type": "string"},
-                  "last_name": {"type": "string"},
-                  "organization": {"type": "string"},
-                  "title": {"type": "string"},
-                  "properties": {"type": "object"}
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone_number": {
+                    "type": "string"
+                  },
+                  "first_name": {
+                    "type": "string"
+                  },
+                  "last_name": {
+                    "type": "string"
+                  },
+                  "organization": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "properties": {
+                    "type": "object"
+                  }
                 }
               }
             }
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -132,11 +193,15 @@
           },
           "additional_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional fields to include"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -168,7 +233,9 @@
           },
           "additional_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional fields to include"
           }
         },
@@ -188,7 +255,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["event"],
+                "enum": [
+                  "event"
+                ],
                 "default": "event"
               },
               "attributes": {
@@ -200,13 +269,25 @@
                       "data": {
                         "type": "object",
                         "properties": {
-                          "type": {"type": "string", "enum": ["profile"]},
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "profile"
+                            ]
+                          },
                           "attributes": {
                             "type": "object",
                             "properties": {
-                              "email": {"type": "string", "format": "email"},
-                              "phone_number": {"type": "string"},
-                              "external_id": {"type": "string"}
+                              "email": {
+                                "type": "string",
+                                "format": "email"
+                              },
+                              "phone_number": {
+                                "type": "string"
+                              },
+                              "external_id": {
+                                "type": "string"
+                              }
                             }
                           }
                         }
@@ -219,21 +300,37 @@
                       "data": {
                         "type": "object",
                         "properties": {
-                          "type": {"type": "string", "enum": ["metric"]},
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "metric"
+                            ]
+                          },
                           "attributes": {
                             "type": "object",
                             "properties": {
-                              "name": {"type": "string"}
+                              "name": {
+                                "type": "string"
+                              }
                             }
                           }
                         }
                       }
                     }
                   },
-                  "properties": {"type": "object"},
-                  "time": {"type": "string", "format": "date-time"},
-                  "value": {"type": "number"},
-                  "unique_id": {"type": "string"}
+                  "properties": {
+                    "type": "object"
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "unique_id": {
+                    "type": "string"
+                  }
                 },
                 "description": "Event attributes"
               }
@@ -279,14 +376,24 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["list"],
+                "enum": [
+                  "list"
+                ],
                 "default": "list"
               },
               "attributes": {
                 "type": "object",
                 "properties": {
-                  "name": {"type": "string"},
-                  "opt_in_process": {"type": "string", "enum": ["single_opt_in", "double_opt_in"]}
+                  "name": {
+                    "type": "string"
+                  },
+                  "opt_in_process": {
+                    "type": "string",
+                    "enum": [
+                      "single_opt_in",
+                      "double_opt_in"
+                    ]
+                  }
                 }
               }
             }
@@ -312,12 +419,22 @@
             "items": {
               "type": "object",
               "properties": {
-                "type": {"type": "string", "enum": ["profile"]},
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "profile"
+                  ]
+                },
                 "attributes": {
                   "type": "object",
                   "properties": {
-                    "email": {"type": "string", "format": "email"},
-                    "phone_number": {"type": "string"},
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "phone_number": {
+                      "type": "string"
+                    },
                     "subscriptions": {
                       "type": "object",
                       "properties": {
@@ -327,7 +444,13 @@
                             "marketing": {
                               "type": "object",
                               "properties": {
-                                "consent": {"type": "string", "enum": ["SUBSCRIBED", "UNSUBSCRIBED"]}
+                                "consent": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SUBSCRIBED",
+                                    "UNSUBSCRIBED"
+                                  ]
+                                }
                               }
                             }
                           }
@@ -338,7 +461,13 @@
                             "marketing": {
                               "type": "object",
                               "properties": {
-                                "consent": {"type": "string", "enum": ["SUBSCRIBED", "UNSUBSCRIBED"]}
+                                "consent": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SUBSCRIBED",
+                                    "UNSUBSCRIBED"
+                                  ]
+                                }
                               }
                             }
                           }
@@ -352,7 +481,9 @@
             "description": "Array of profiles to subscribe"
           }
         },
-        "required": ["list_id"],
+        "required": [
+          "list_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -372,12 +503,22 @@
             "items": {
               "type": "object",
               "properties": {
-                "type": {"type": "string", "enum": ["profile"]},
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "profile"
+                  ]
+                },
                 "attributes": {
                   "type": "object",
                   "properties": {
-                    "email": {"type": "string", "format": "email"},
-                    "phone_number": {"type": "string"}
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "phone_number": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -385,7 +526,9 @@
             "description": "Array of profiles to unsubscribe"
           }
         },
-        "required": ["list_id"],
+        "required": [
+          "list_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -467,17 +610,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "id": {"type": "string"},
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
           "attributes": {
             "type": "object",
             "properties": {
-              "email": {"type": "string"},
-              "phone_number": {"type": "string"},
-              "first_name": {"type": "string"},
-              "last_name": {"type": "string"},
-              "created": {"type": "string"},
-              "updated": {"type": "string"}
+              "email": {
+                "type": "string"
+              },
+              "phone_number": {
+                "type": "string"
+              },
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              },
+              "created": {
+                "type": "string"
+              },
+              "updated": {
+                "type": "string"
+              }
             }
           }
         }
@@ -502,9 +661,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "profile": {"type": "object"},
-          "list": {"type": "object"},
-          "datetime": {"type": "string"}
+          "profile": {
+            "type": "object"
+          },
+          "list": {
+            "type": "object"
+          },
+          "datetime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -527,9 +692,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "profile": {"type": "object"},
-          "list": {"type": "object"},
-          "datetime": {"type": "string"}
+          "profile": {
+            "type": "object"
+          },
+          "list": {
+            "type": "object"
+          },
+          "datetime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -537,5 +708,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/accounts/"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

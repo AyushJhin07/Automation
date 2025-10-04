@@ -20,6 +20,7 @@ import { WorkflowButtons } from "@/components/sections/WorkflowButtons";
 import { AIShowcase } from "@/components/sections/AIShowcase";
 import { AppIntegrations } from "@/components/sections/AppIntegrations";
 import { AIWorkflowShowcase } from "@/components/sections/AIWorkflowShowcase";
+import { ConnectorMarketplaceShowcase } from "@/components/sections/ConnectorMarketplaceShowcase";
 
 // Demo preview assets
 import imgFormsSheets from "@/assets/demos/forms-sheets-gmail.jpg";
@@ -488,6 +489,8 @@ const Index = () => {
 
       {/* App Integrations */}
       <AppIntegrations />
+
+      <ConnectorMarketplaceShowcase />
 
       {/* CTA */}
       <section className="container mx-auto py-12 md:py-16">

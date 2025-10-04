@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://{domain}.egnyte.com/puboauth/token",
       "tokenUrl": "https://{domain}.egnyte.com/puboauth/token",
-      "scopes": ["Egnyte.filesystem"]
+      "scopes": [
+        "Egnyte.filesystem"
+      ]
     }
   },
   "baseUrl": "https://{domain}.egnyte.com/pubapi/v1",
@@ -48,7 +50,10 @@
             "description": "Overwrite existing file"
           }
         },
-        "required": ["path", "content"],
+        "required": [
+          "path",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -64,7 +69,9 @@
             "description": "File path to download"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -107,7 +114,9 @@
             "description": "Folder path to create"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -123,7 +132,9 @@
             "description": "Path to delete"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -143,7 +154,10 @@
             "description": "Destination path"
           }
         },
-        "required": ["source", "destination"],
+        "required": [
+          "source",
+          "destination"
+        ],
         "additionalProperties": false
       }
     },
@@ -163,7 +177,10 @@
             "description": "Destination path"
           }
         },
-        "required": ["source", "destination"],
+        "required": [
+          "source",
+          "destination"
+        ],
         "additionalProperties": false
       }
     },
@@ -180,12 +197,20 @@
           },
           "type": {
             "type": "string",
-            "enum": ["file", "folder"],
+            "enum": [
+              "file",
+              "folder"
+            ],
             "description": "Link type"
           },
           "accessibility": {
             "type": "string",
-            "enum": ["anyone", "password", "domain", "recipients"],
+            "enum": [
+              "anyone",
+              "password",
+              "domain",
+              "recipients"
+            ],
             "default": "domain",
             "description": "Link accessibility"
           },
@@ -201,7 +226,10 @@
           },
           "recipients": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Email recipients"
           },
           "message": {
@@ -209,7 +237,10 @@
             "description": "Message to include with link"
           }
         },
-        "required": ["path", "type"],
+        "required": [
+          "path",
+          "type"
+        ],
         "additionalProperties": false
       }
     },
@@ -231,7 +262,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["file", "folder"],
+            "enum": [
+              "file",
+              "folder"
+            ],
             "description": "Search for files or folders"
           },
           "modified_after": {
@@ -252,7 +286,9 @@
             "description": "Maximum results to return"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     }
@@ -277,10 +313,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "path": {"type": "string"},
-          "name": {"type": "string"},
-          "size": {"type": "number"},
-          "modified": {"type": "string"}
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "modified": {
+            "type": "string"
+          }
         }
       }
     },
@@ -303,8 +347,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "path": {"type": "string"},
-          "name": {"type": "string"}
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
         }
       }
     }
@@ -312,5 +360,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/userinfo"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

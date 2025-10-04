@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://graph.microsoft.com/Files.ReadWrite"]
+      "scopes": [
+        "https://graph.microsoft.com/Files.ReadWrite"
+      ]
     }
   },
   "baseUrl": "https://graph.microsoft.com/v1.0",
@@ -48,7 +50,10 @@
             "description": "Workbook name"
           }
         },
-        "required": ["driveId", "name"],
+        "required": [
+          "driveId",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -68,7 +73,10 @@
             "description": "Workbook item ID"
           }
         },
-        "required": ["driveId", "itemId"],
+        "required": [
+          "driveId",
+          "itemId"
+        ],
         "additionalProperties": false
       }
     },
@@ -88,7 +96,10 @@
             "description": "Workbook item ID"
           }
         },
-        "required": ["driveId", "itemId"],
+        "required": [
+          "driveId",
+          "itemId"
+        ],
         "additionalProperties": false
       }
     },
@@ -112,7 +123,11 @@
             "description": "Worksheet name"
           }
         },
-        "required": ["driveId", "itemId", "name"],
+        "required": [
+          "driveId",
+          "itemId",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -145,7 +160,12 @@
             "description": "Return only values"
           }
         },
-        "required": ["driveId", "itemId", "worksheetId", "address"],
+        "required": [
+          "driveId",
+          "itemId",
+          "worksheetId",
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -174,16 +194,26 @@
           },
           "values": {
             "type": "array",
-            "items": {"type": "array"},
+            "items": {
+              "type": "array"
+            },
             "description": "2D array of values to set"
           },
           "numberFormat": {
             "type": "array",
-            "items": {"type": "array"},
+            "items": {
+              "type": "array"
+            },
             "description": "2D array of number formats"
           }
         },
-        "required": ["driveId", "itemId", "worksheetId", "address", "values"],
+        "required": [
+          "driveId",
+          "itemId",
+          "worksheetId",
+          "address",
+          "values"
+        ],
         "additionalProperties": false
       }
     },
@@ -212,7 +242,9 @@
           },
           "values": {
             "type": "array",
-            "items": {"type": "array"},
+            "items": {
+              "type": "array"
+            },
             "description": "Row values as 2D array"
           },
           "index": {
@@ -220,7 +252,13 @@
             "description": "Index where to insert row"
           }
         },
-        "required": ["driveId", "itemId", "worksheetId", "tableId", "values"],
+        "required": [
+          "driveId",
+          "itemId",
+          "worksheetId",
+          "tableId",
+          "values"
+        ],
         "additionalProperties": false
       }
     },
@@ -244,7 +282,11 @@
             "description": "Worksheet ID or name"
           }
         },
-        "required": ["driveId", "itemId", "worksheetId"],
+        "required": [
+          "driveId",
+          "itemId",
+          "worksheetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -277,7 +319,12 @@
             "description": "Table has headers"
           }
         },
-        "required": ["driveId", "itemId", "worksheetId", "address"],
+        "required": [
+          "driveId",
+          "itemId",
+          "worksheetId",
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -302,7 +349,14 @@
           },
           "type": {
             "type": "string",
-            "enum": ["ColumnClustered", "ColumnStacked", "Line", "Pie", "XYScatter", "Area"],
+            "enum": [
+              "ColumnClustered",
+              "ColumnStacked",
+              "Line",
+              "Pie",
+              "XYScatter",
+              "Area"
+            ],
             "description": "Chart type"
           },
           "sourceData": {
@@ -311,12 +365,22 @@
           },
           "seriesBy": {
             "type": "string",
-            "enum": ["Auto", "Columns", "Rows"],
+            "enum": [
+              "Auto",
+              "Columns",
+              "Rows"
+            ],
             "default": "Auto",
             "description": "How series are arranged"
           }
         },
-        "required": ["driveId", "itemId", "worksheetId", "type", "sourceData"],
+        "required": [
+          "driveId",
+          "itemId",
+          "worksheetId",
+          "type",
+          "sourceData"
+        ],
         "additionalProperties": false
       }
     }
@@ -341,9 +405,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "lastModifiedDateTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lastModifiedDateTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -366,9 +436,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "tableId": {"type": "string"},
-          "rowIndex": {"type": "number"},
-          "values": {"type": "array"}
+          "tableId": {
+            "type": "string"
+          },
+          "rowIndex": {
+            "type": "number"
+          },
+          "values": {
+            "type": "array"
+          }
         }
       }
     }
@@ -376,5 +452,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me/drive"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

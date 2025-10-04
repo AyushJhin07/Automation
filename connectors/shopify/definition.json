@@ -73,13 +73,37 @@
             "items": {
               "type": "object",
               "properties": {
-                "title": {"type": "string"},
-                "price": {"type": "string"},
-                "sku": {"type": "string"},
-                "inventory_quantity": {"type": "number"},
-                "weight": {"type": "number"},
-                "weight_unit": {"type": "string", "enum": ["g", "kg", "oz", "lb"]},
-                "inventory_policy": {"type": "string", "enum": ["deny", "continue"]}
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "inventory_quantity": {
+                  "type": "number"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "weight_unit": {
+                  "type": "string",
+                  "enum": [
+                    "g",
+                    "kg",
+                    "oz",
+                    "lb"
+                  ]
+                },
+                "inventory_policy": {
+                  "type": "string",
+                  "enum": [
+                    "deny",
+                    "continue"
+                  ]
+                }
               }
             },
             "description": "Product variants"
@@ -89,14 +113,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "src": {"type": "string"},
-                "alt": {"type": "string"}
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
               }
             },
             "description": "Product images"
           }
         },
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -136,7 +166,9 @@
             "description": "Whether the product is published"
           }
         },
-        "required": ["product_id"],
+        "required": [
+          "product_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -156,7 +188,9 @@
             "description": "Comma-separated list of fields to retrieve"
           }
         },
-        "required": ["product_id"],
+        "required": [
+          "product_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -175,7 +209,11 @@
           },
           "published_status": {
             "type": "string",
-            "enum": ["published", "unpublished", "any"],
+            "enum": [
+              "published",
+              "unpublished",
+              "any"
+            ],
             "default": "any",
             "description": "Filter by published status"
           },
@@ -244,22 +282,44 @@
             "items": {
               "type": "object",
               "properties": {
-                "first_name": {"type": "string"},
-                "last_name": {"type": "string"},
-                "address1": {"type": "string"},
-                "address2": {"type": "string"},
-                "city": {"type": "string"},
-                "province": {"type": "string"},
-                "country": {"type": "string"},
-                "zip": {"type": "string"},
-                "phone": {"type": "string"},
-                "default": {"type": "boolean"}
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "address1": {
+                  "type": "string"
+                },
+                "address2": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "province": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                },
+                "default": {
+                  "type": "boolean"
+                }
               }
             },
             "description": "Customer addresses"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -300,7 +360,9 @@
             "description": "Whether customer accepts marketing"
           }
         },
-        "required": ["customer_id"],
+        "required": [
+          "customer_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -320,7 +382,9 @@
             "description": "Comma-separated list of fields to retrieve"
           }
         },
-        "required": ["order_id"],
+        "required": [
+          "order_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -339,19 +403,38 @@
           },
           "status": {
             "type": "string",
-            "enum": ["open", "closed", "cancelled", "any"],
+            "enum": [
+              "open",
+              "closed",
+              "cancelled",
+              "any"
+            ],
             "default": "any",
             "description": "Filter by order status"
           },
           "financial_status": {
             "type": "string",
-            "enum": ["authorized", "pending", "paid", "partially_paid", "refunded", "voided", "partially_refunded", "any"],
+            "enum": [
+              "authorized",
+              "pending",
+              "paid",
+              "partially_paid",
+              "refunded",
+              "voided",
+              "partially_refunded",
+              "any"
+            ],
             "default": "any",
             "description": "Filter by financial status"
           },
           "fulfillment_status": {
             "type": "string",
-            "enum": ["shipped", "partial", "unshipped", "any"],
+            "enum": [
+              "shipped",
+              "partial",
+              "unshipped",
+              "any"
+            ],
             "default": "any",
             "description": "Filter by fulfillment status"
           },
@@ -382,11 +465,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "variant_id": {"type": "string"},
-                "product_id": {"type": "string"},
-                "title": {"type": "string"},
-                "quantity": {"type": "number"},
-                "price": {"type": "string"}
+                "variant_id": {
+                  "type": "string"
+                },
+                "product_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "price": {
+                  "type": "string"
+                }
               }
             },
             "description": "Order line items"
@@ -394,44 +487,89 @@
           "customer": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "first_name": {"type": "string"},
-              "last_name": {"type": "string"}
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              }
             },
             "description": "Customer information"
           },
           "billing_address": {
             "type": "object",
             "properties": {
-              "first_name": {"type": "string"},
-              "last_name": {"type": "string"},
-              "address1": {"type": "string"},
-              "city": {"type": "string"},
-              "province": {"type": "string"},
-              "country": {"type": "string"},
-              "zip": {"type": "string"},
-              "phone": {"type": "string"}
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              },
+              "address1": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "province": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
           "shipping_address": {
             "type": "object",
             "properties": {
-              "first_name": {"type": "string"},
-              "last_name": {"type": "string"},
-              "address1": {"type": "string"},
-              "city": {"type": "string"},
-              "province": {"type": "string"},
-              "country": {"type": "string"},
-              "zip": {"type": "string"},
-              "phone": {"type": "string"}
+              "first_name": {
+                "type": "string"
+              },
+              "last_name": {
+                "type": "string"
+              },
+              "address1": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "province": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
             },
             "description": "Shipping address"
           },
           "financial_status": {
             "type": "string",
-            "enum": ["pending", "authorized", "paid"],
+            "enum": [
+              "pending",
+              "authorized",
+              "paid"
+            ],
             "default": "pending",
             "description": "Financial status of the order"
           },
@@ -446,7 +584,9 @@
             "description": "Send fulfillment notification email"
           }
         },
-        "required": ["line_items"],
+        "required": [
+          "line_items"
+        ],
         "additionalProperties": false
       }
     },
@@ -475,7 +615,9 @@
             "description": "Customer email"
           }
         },
-        "required": ["order_id"],
+        "required": [
+          "order_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -516,14 +658,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "quantity": {"type": "number"}
+                "id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                }
               }
             },
             "description": "Line items to fulfill"
           }
         },
-        "required": ["order_id"],
+        "required": [
+          "order_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -547,7 +695,11 @@
             "description": "Inventory adjustment amount"
           }
         },
-        "required": ["inventory_item_id", "location_id", "available_adjustment"],
+        "required": [
+          "inventory_item_id",
+          "location_id",
+          "available_adjustment"
+        ],
         "additionalProperties": false
       }
     }
@@ -570,12 +722,22 @@
         "properties": {
           "financial_status": {
             "type": "string",
-            "enum": ["any", "authorized", "pending", "paid"],
+            "enum": [
+              "any",
+              "authorized",
+              "pending",
+              "paid"
+            ],
             "description": "Filter by financial status"
           },
           "fulfillment_status": {
-            "type": "string", 
-            "enum": ["any", "shipped", "partial", "unshipped"],
+            "type": "string",
+            "enum": [
+              "any",
+              "shipped",
+              "partial",
+              "unshipped"
+            ],
             "description": "Filter by fulfillment status"
           }
         },
@@ -585,16 +747,36 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "order_number": {"type": "number"},
-          "email": {"type": "string"},
-          "total_price": {"type": "string"},
-          "currency": {"type": "string"},
-          "financial_status": {"type": "string"},
-          "fulfillment_status": {"type": "string"},
-          "created_at": {"type": "string"},
-          "customer": {"type": "object"},
-          "line_items": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "number"
+          },
+          "email": {
+            "type": "string"
+          },
+          "total_price": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "financial_status": {
+            "type": "string"
+          },
+          "fulfillment_status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object"
+          },
+          "line_items": {
+            "type": "array"
+          }
         }
       }
     },
@@ -615,7 +797,9 @@
         "properties": {
           "watch_properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific properties to watch for changes"
           }
         },
@@ -625,11 +809,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "order_number": {"type": "number"},
-          "updated_at": {"type": "string"},
-          "financial_status": {"type": "string"},
-          "fulfillment_status": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "number"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "financial_status": {
+            "type": "string"
+          },
+          "fulfillment_status": {
+            "type": "string"
+          }
         }
       }
     },
@@ -654,11 +848,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "order_number": {"type": "number"},
-          "total_price": {"type": "string"},
-          "customer": {"type": "object"},
-          "created_at": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "number"
+          },
+          "total_price": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -692,12 +896,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "vendor": {"type": "string"},
-          "product_type": {"type": "string"},
-          "created_at": {"type": "string"},
-          "variants": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "variants": {
+            "type": "array"
+          }
         }
       }
     },
@@ -722,12 +938,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "email": {"type": "string"},
-          "first_name": {"type": "string"},
-          "last_name": {"type": "string"},
-          "created_at": {"type": "string"},
-          "tags": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "string"
+          }
         }
       }
     }
@@ -735,5 +963,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/admin/api/2023-10/shop.json"
+  },
+  "versionInfo": {
+    "semantic": "1.3.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "stable",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

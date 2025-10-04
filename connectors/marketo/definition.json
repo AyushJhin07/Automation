@@ -105,12 +105,19 @@
           },
           "action": {
             "type": "string",
-            "enum": ["createOnly", "updateOnly", "createOrUpdate", "createDuplicate"],
+            "enum": [
+              "createOnly",
+              "updateOnly",
+              "createOrUpdate",
+              "createDuplicate"
+            ],
             "default": "createOrUpdate",
             "description": "Action to take"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -127,11 +134,15 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of field names to return"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -144,17 +155,32 @@
         "properties": {
           "filterType": {
             "type": "string",
-            "enum": ["email", "cookie", "twitterId", "facebookId", "linkedInId", "sfdcAccountId", "sfdcContactId", "sfdcLeadId", "sfdcLeadOwnerId", "sfdcOpptyId"],
+            "enum": [
+              "email",
+              "cookie",
+              "twitterId",
+              "facebookId",
+              "linkedInId",
+              "sfdcAccountId",
+              "sfdcContactId",
+              "sfdcLeadId",
+              "sfdcLeadOwnerId",
+              "sfdcOpptyId"
+            ],
             "description": "Filter type"
           },
           "filterValues": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter values"
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of field names to return"
           },
           "batchSize": {
@@ -169,7 +195,10 @@
             "description": "Token for next page of results"
           }
         },
-        "required": ["filterType", "filterValues"],
+        "required": [
+          "filterType",
+          "filterValues"
+        ],
         "additionalProperties": false
       }
     },
@@ -218,7 +247,9 @@
             "description": "Lead score"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -234,7 +265,9 @@
             "description": "Lead ID to delete"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -251,11 +284,16 @@
           },
           "leadIds": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Array of lead IDs"
           }
         },
-        "required": ["listId", "leadIds"],
+        "required": [
+          "listId",
+          "leadIds"
+        ],
         "additionalProperties": false
       }
     },
@@ -272,11 +310,16 @@
           },
           "leadIds": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Array of lead IDs"
           }
         },
-        "required": ["listId", "leadIds"],
+        "required": [
+          "listId",
+          "leadIds"
+        ],
         "additionalProperties": false
       }
     },
@@ -301,7 +344,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["batch", "trigger"],
+            "enum": [
+              "batch",
+              "trigger"
+            ],
             "description": "Campaign type"
           },
           "isActive": {
@@ -310,7 +356,10 @@
             "description": "Whether campaign is active"
           }
         },
-        "required": ["name", "programId"],
+        "required": [
+          "name",
+          "programId"
+        ],
         "additionalProperties": false
       }
     },
@@ -361,7 +410,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "number"}
+                "id": {
+                  "type": "number"
+                }
               }
             },
             "description": "Array of lead objects"
@@ -371,14 +422,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "value": {"type": "string"}
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "My tokens for the campaign"
           }
         },
-        "required": ["campaignId", "leads"],
+        "required": [
+          "campaignId",
+          "leads"
+        ],
         "additionalProperties": false
       }
     },
@@ -424,7 +482,10 @@
             "description": "Reply-to email address"
           }
         },
-        "required": ["name", "folderId"],
+        "required": [
+          "name",
+          "folderId"
+        ],
         "additionalProperties": false
       }
     },
@@ -437,7 +498,11 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["draft", "approved", "unapproved"],
+            "enum": [
+              "draft",
+              "approved",
+              "unapproved"
+            ],
             "description": "Filter by status"
           },
           "folderId": {
@@ -488,7 +553,10 @@
             "description": "Lead ID to use for personalization"
           }
         },
-        "required": ["emailId", "emailAddress"],
+        "required": [
+          "emailId",
+          "emailAddress"
+        ],
         "additionalProperties": false
       }
     },
@@ -501,7 +569,11 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["completed", "on", "off"],
+            "enum": [
+              "completed",
+              "on",
+              "off"
+            ],
             "description": "Filter by status"
           },
           "maxReturn": {
@@ -539,7 +611,16 @@
           },
           "type": {
             "type": "string",
-            "enum": ["Default", "Email", "Event", "Webinar", "Nurture", "Content", "Engagement", "Social"],
+            "enum": [
+              "Default",
+              "Email",
+              "Event",
+              "Webinar",
+              "Nurture",
+              "Content",
+              "Engagement",
+              "Social"
+            ],
             "description": "Program type"
           },
           "channel": {
@@ -555,15 +636,27 @@
             "items": {
               "type": "object",
               "properties": {
-                "startDate": {"type": "string", "format": "date"},
-                "cost": {"type": "number"},
-                "note": {"type": "string"}
+                "startDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "cost": {
+                  "type": "number"
+                },
+                "note": {
+                  "type": "string"
+                }
               }
             },
             "description": "Program costs"
           }
         },
-        "required": ["name", "type", "channel", "folderId"],
+        "required": [
+          "name",
+          "type",
+          "channel",
+          "folderId"
+        ],
         "additionalProperties": false
       }
     }
@@ -588,13 +681,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "email": {"type": "string"},
-          "firstName": {"type": "string"},
-          "lastName": {"type": "string"},
-          "company": {"type": "string"},
-          "createdAt": {"type": "string"},
-          "updatedAt": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -617,12 +724,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "email": {"type": "string"},
-          "firstName": {"type": "string"},
-          "lastName": {"type": "string"},
-          "company": {"type": "string"},
-          "updatedAt": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -645,13 +764,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "leadId": {"type": "number"},
-          "activityDate": {"type": "string"},
-          "activityTypeId": {"type": "number"},
-          "campaignId": {"type": "number"},
-          "primaryAttributeValue": {"type": "string"},
-          "primaryAttributeValueId": {"type": "number"},
-          "attributes": {"type": "array"}
+          "leadId": {
+            "type": "number"
+          },
+          "activityDate": {
+            "type": "string"
+          },
+          "activityTypeId": {
+            "type": "number"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "primaryAttributeValue": {
+            "type": "string"
+          },
+          "primaryAttributeValueId": {
+            "type": "number"
+          },
+          "attributes": {
+            "type": "array"
+          }
         }
       }
     },
@@ -674,10 +807,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "leadId": {"type": "number"},
-          "emailId": {"type": "number"},
-          "campaignId": {"type": "number"},
-          "activityDate": {"type": "string"}
+          "leadId": {
+            "type": "number"
+          },
+          "emailId": {
+            "type": "number"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "activityDate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -700,14 +841,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "leadId": {"type": "number"},
-          "emailId": {"type": "number"},
-          "campaignId": {"type": "number"},
-          "activityDate": {"type": "string"},
-          "isPrimary": {"type": "boolean"},
-          "device": {"type": "string"},
-          "platform": {"type": "string"},
-          "userAgent": {"type": "string"}
+          "leadId": {
+            "type": "number"
+          },
+          "emailId": {
+            "type": "number"
+          },
+          "campaignId": {
+            "type": "number"
+          },
+          "activityDate": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "device": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          }
         }
       }
     }
@@ -715,5 +872,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/identity/oauth/token?grant_type=client_credentials&client_id={client_id}&client_secret={client_secret}"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

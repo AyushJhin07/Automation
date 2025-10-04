@@ -12,7 +12,15 @@ export interface ConnectorDefinition {
   iconUrl: string;
   websiteUrl: string;
   documentationUrl: string;
-  
+  version: string;
+  semanticVersion: string;
+  lifecycleStage: 'planning' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+  isBeta: boolean;
+  betaStartAt?: string | null;
+  betaEndAt?: string | null;
+  deprecationStartAt?: string | null;
+  sunsetAt?: string | null;
+
   // Technical configuration
   apiBaseUrl: string;
   authType: 'oauth2' | 'api_key' | 'basic' | 'bearer' | 'custom';
@@ -491,6 +499,14 @@ export class ConnectorFramework {
         triggers: definition.triggers,
         actions: definition.actions,
         rateLimits: definition.rateLimits,
+        version: definition.version,
+        semanticVersion: definition.semanticVersion,
+        lifecycleStage: definition.lifecycleStage,
+        isBeta: definition.isBeta,
+        betaStartAt: definition.betaStartAt ? new Date(definition.betaStartAt) : null,
+        betaEndAt: definition.betaEndAt ? new Date(definition.betaEndAt) : null,
+        deprecationStartAt: definition.deprecationStartAt ? new Date(definition.deprecationStartAt) : null,
+        sunsetAt: definition.sunsetAt ? new Date(definition.sunsetAt) : null,
         isActive: definition.isActive,
         isVerified: false, // New connectors need verification
         popularity: 0
@@ -537,6 +553,14 @@ export class ConnectorFramework {
       },
       concurrency: concurrencyRaw ?? undefined,
       rateLimitHeaders: headerOverrides ?? undefined,
+      version: raw.version ?? '1.0.0',
+      semanticVersion: raw.semanticVersion ?? raw.version ?? '1.0.0',
+      lifecycleStage: raw.lifecycleStage ?? (raw.isBeta ? 'beta' : raw.isActive ? 'stable' : 'deprecated'),
+      isBeta: Boolean(raw.isBeta),
+      betaStartAt: raw.betaStartAt ? new Date(raw.betaStartAt).toISOString() : null,
+      betaEndAt: raw.betaEndAt ? new Date(raw.betaEndAt).toISOString() : null,
+      deprecationStartAt: raw.deprecationStartAt ? new Date(raw.deprecationStartAt).toISOString() : null,
+      sunsetAt: raw.sunsetAt ? new Date(raw.sunsetAt).toISOString() : null,
       isActive: raw.isActive,
       isVerified: raw.isVerified,
       popularity: raw.popularity || 0,
@@ -772,7 +796,7 @@ export class ConnectorFramework {
    */
   private getBuiltInConnectors(): ConnectorDefinition[] {
     return [
-      {
+      { 
         id: 'gmail-builtin',
         name: 'Gmail',
         slug: 'gmail',
@@ -781,6 +805,14 @@ export class ConnectorFramework {
         iconUrl: 'https://developers.google.com/gmail/images/gmail-icon.png',
         websiteUrl: 'https://gmail.com',
         documentationUrl: 'https://developers.google.com/gmail/api',
+        version: '1.0.0',
+        semanticVersion: '1.0.0',
+        lifecycleStage: 'stable',
+        isBeta: false,
+        betaStartAt: null,
+        betaEndAt: null,
+        deprecationStartAt: null,
+        sunsetAt: null,
         apiBaseUrl: 'https://gmail.googleapis.com/gmail/v1',
         authType: 'oauth2',
         authConfig: {

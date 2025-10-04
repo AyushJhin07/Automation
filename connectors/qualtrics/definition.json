@@ -63,7 +63,9 @@
             "description": "Survey ID"
           }
         },
-        "required": ["surveyId"],
+        "required": [
+          "surveyId"
+        ],
         "additionalProperties": false
       }
     },
@@ -89,7 +91,9 @@
             "description": "Project category"
           }
         },
-        "required": ["SurveyName"],
+        "required": [
+          "SurveyName"
+        ],
         "additionalProperties": false
       }
     },
@@ -122,7 +126,9 @@
           },
           "includedQuestionIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Include specific question IDs"
           },
           "startDate": {
@@ -136,7 +142,9 @@
             "description": "End date filter"
           }
         },
-        "required": ["surveyId"],
+        "required": [
+          "surveyId"
+        ],
         "additionalProperties": false
       }
     },
@@ -153,7 +161,11 @@
           },
           "linkType": {
             "type": "string",
-            "enum": ["Individual", "Multiple", "Anonymous"],
+            "enum": [
+              "Individual",
+              "Multiple",
+              "Anonymous"
+            ],
             "description": "Link type"
           },
           "description": {
@@ -162,12 +174,17 @@
           },
           "action": {
             "type": "string",
-            "enum": ["CreateDistribution"],
+            "enum": [
+              "CreateDistribution"
+            ],
             "default": "CreateDistribution",
             "description": "Action type"
           }
         },
-        "required": ["surveyId", "linkType"],
+        "required": [
+          "surveyId",
+          "linkType"
+        ],
         "additionalProperties": false
       }
     },
@@ -196,7 +213,9 @@
             "description": "Number of contacts to return"
           }
         },
-        "required": ["directoryId"],
+        "required": [
+          "directoryId"
+        ],
         "additionalProperties": false
       }
     },
@@ -242,7 +261,10 @@
             "description": "Additional embedded data"
           }
         },
-        "required": ["directoryId", "email"],
+        "required": [
+          "directoryId",
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -292,7 +314,9 @@
             "description": "Embedded data"
           }
         },
-        "required": ["surveyId"],
+        "required": [
+          "surveyId"
+        ],
         "additionalProperties": false
       }
     }
@@ -317,14 +341,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "responseId": {"type": "string"},
-          "surveyId": {"type": "string"},
-          "ipAddress": {"type": "string"},
-          "progress": {"type": "number"},
-          "duration": {"type": "number"},
-          "finished": {"type": "boolean"},
-          "recordedDate": {"type": "string"},
-          "responses": {"type": "object"}
+          "responseId": {
+            "type": "string"
+          },
+          "surveyId": {
+            "type": "string"
+          },
+          "ipAddress": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "number"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "finished": {
+            "type": "boolean"
+          },
+          "recordedDate": {
+            "type": "string"
+          },
+          "responses": {
+            "type": "object"
+          }
         }
       }
     }
@@ -332,5 +372,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/whoami"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

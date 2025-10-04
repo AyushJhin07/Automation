@@ -11,7 +11,11 @@
     "config": {
       "authUrl": "https://www.dropbox.com/oauth2/authorize",
       "tokenUrl": "https://api.dropboxapi.com/oauth2/token",
-      "scopes": ["files.content.write", "files.content.read", "files.metadata.read"]
+      "scopes": [
+        "files.content.write",
+        "files.content.read",
+        "files.metadata.read"
+      ]
     }
   },
   "baseUrl": "https://api.dropboxapi.com/2",
@@ -44,7 +48,11 @@
           },
           "mode": {
             "type": "string",
-            "enum": ["add", "overwrite", "update"],
+            "enum": [
+              "add",
+              "overwrite",
+              "update"
+            ],
             "default": "add",
             "description": "Write mode"
           },
@@ -59,7 +67,10 @@
             "description": "Mute notifications"
           }
         },
-        "required": ["path", "content"],
+        "required": [
+          "path",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -75,7 +86,9 @@
             "description": "File path in Dropbox"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -139,7 +152,9 @@
             "description": "Auto-rename if folder exists"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,7 +172,9 @@
             "description": "Path to delete"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -184,7 +201,10 @@
             "description": "Auto-rename if destination exists"
           }
         },
-        "required": ["from_path", "to_path"],
+        "required": [
+          "from_path",
+          "to_path"
+        ],
         "additionalProperties": false
       }
     },
@@ -211,7 +231,10 @@
             "description": "Auto-rename if destination exists"
           }
         },
-        "required": ["from_path", "to_path"],
+        "required": [
+          "from_path",
+          "to_path"
+        ],
         "additionalProperties": false
       }
     },
@@ -239,7 +262,9 @@
             "description": "Include deleted files"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     },
@@ -270,12 +295,18 @@
           },
           "mode": {
             "type": "string",
-            "enum": ["filename", "filename_and_content", "deleted_filename"],
+            "enum": [
+              "filename",
+              "filename_and_content",
+              "deleted_filename"
+            ],
             "default": "filename",
             "description": "Search mode"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -293,7 +324,9 @@
             "description": "Path of the file or folder"
           }
         },
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false
       }
     }
@@ -318,9 +351,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "path_lower": {"type": "string"},
-          "name": {"type": "string"},
-          "size": {"type": "number"}
+          "path_lower": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
         }
       }
     },
@@ -338,8 +377,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "path_lower": {"type": "string"},
-          "name": {"type": "string"}
+          "path_lower": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
         }
       }
     }
@@ -347,6 +390,23 @@
   "testConnection": {
     "method": "POST",
     "endpoint": "/users/get_current_account"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }
-

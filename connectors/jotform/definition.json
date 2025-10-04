@@ -59,7 +59,15 @@
           },
           "orderby": {
             "type": "string",
-            "enum": ["id", "username", "title", "status", "created_at", "updated_at", "count"],
+            "enum": [
+              "id",
+              "username",
+              "title",
+              "status",
+              "created_at",
+              "updated_at",
+              "count"
+            ],
             "description": "Field to order by"
           },
           "filter": {
@@ -83,7 +91,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -99,7 +109,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -115,7 +127,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -149,11 +163,17 @@
           },
           "orderby": {
             "type": "string",
-            "enum": ["id", "created_at", "updated_at"],
+            "enum": [
+              "id",
+              "created_at",
+              "updated_at"
+            ],
             "description": "Field to order by"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -169,7 +189,9 @@
             "description": "Submission ID"
           }
         },
-        "required": ["sid"],
+        "required": [
+          "sid"
+        ],
         "additionalProperties": false
       }
     },
@@ -185,7 +207,9 @@
             "description": "Submission ID"
           }
         },
-        "required": ["sid"],
+        "required": [
+          "sid"
+        ],
         "additionalProperties": false
       }
     },
@@ -205,7 +229,10 @@
             "description": "Updated submission data"
           }
         },
-        "required": ["sid", "submission"],
+        "required": [
+          "sid",
+          "submission"
+        ],
         "additionalProperties": false
       }
     },
@@ -219,14 +246,22 @@
           "form": {
             "type": "object",
             "properties": {
-              "title": {"type": "string"},
-              "questions": {"type": "object"},
-              "properties": {"type": "object"}
+              "title": {
+                "type": "string"
+              },
+              "questions": {
+                "type": "object"
+              },
+              "properties": {
+                "type": "object"
+              }
             },
             "description": "Form configuration"
           }
         },
-        "required": ["form"],
+        "required": [
+          "form"
+        ],
         "additionalProperties": false
       }
     },
@@ -242,7 +277,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -258,7 +295,9 @@
             "description": "Form ID to clone"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -274,7 +313,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -290,7 +331,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -308,14 +351,23 @@
           "report": {
             "type": "object",
             "properties": {
-              "title": {"type": "string"},
-              "list_type": {"type": "string"},
-              "fields": {"type": "string"}
+              "title": {
+                "type": "string"
+              },
+              "list_type": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "string"
+              }
             },
             "description": "Report configuration"
           }
         },
-        "required": ["id", "report"],
+        "required": [
+          "id",
+          "report"
+        ],
         "additionalProperties": false
       }
     }
@@ -340,12 +392,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "submissionID": {"type": "string"},
-          "formID": {"type": "string"},
-          "rawRequest": {"type": "array"},
-          "prettyRequest": {"type": "object"},
-          "formTitle": {"type": "string"},
-          "submissionDate": {"type": "string"}
+          "submissionID": {
+            "type": "string"
+          },
+          "formID": {
+            "type": "string"
+          },
+          "rawRequest": {
+            "type": "array"
+          },
+          "prettyRequest": {
+            "type": "object"
+          },
+          "formTitle": {
+            "type": "string"
+          },
+          "submissionDate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -363,10 +427,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "formID": {"type": "string"},
-          "formTitle": {"type": "string"},
-          "formURL": {"type": "string"},
-          "created_at": {"type": "string"}
+          "formID": {
+            "type": "string"
+          },
+          "formTitle": {
+            "type": "string"
+          },
+          "formURL": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
         }
       }
     }
@@ -374,5 +446,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

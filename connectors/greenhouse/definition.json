@@ -84,7 +84,9 @@
             "description": "Candidate ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -116,8 +118,19 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string"},
-                "type": {"type": "string", "enum": ["home", "work", "mobile", "skype", "other"]}
+                "value": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "home",
+                    "work",
+                    "mobile",
+                    "skype",
+                    "other"
+                  ]
+                }
               }
             },
             "description": "Phone numbers"
@@ -127,8 +140,17 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string"},
-                "type": {"type": "string", "enum": ["home", "work", "other"]}
+                "value": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "home",
+                    "work",
+                    "other"
+                  ]
+                }
               }
             },
             "description": "Addresses"
@@ -138,8 +160,18 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string", "format": "email"},
-                "type": {"type": "string", "enum": ["personal", "work", "other"]}
+                "value": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "personal",
+                    "work",
+                    "other"
+                  ]
+                }
               }
             },
             "description": "Email addresses"
@@ -149,8 +181,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string", "format": "uri"},
-                "type": {"type": "string", "enum": ["personal", "company", "portfolio", "blog", "social", "other"]}
+                "value": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "personal",
+                    "company",
+                    "portfolio",
+                    "blog",
+                    "social",
+                    "other"
+                  ]
+                }
               }
             },
             "description": "Website addresses"
@@ -160,7 +205,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string"}
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Social media addresses"
@@ -168,22 +215,34 @@
           "recruiter": {
             "type": "object",
             "properties": {
-              "id": {"type": "number"},
-              "email": {"type": "string", "format": "email"}
+              "id": {
+                "type": "number"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Recruiter information"
           },
           "coordinator": {
             "type": "object",
             "properties": {
-              "id": {"type": "number"},
-              "email": {"type": "string", "format": "email"}
+              "id": {
+                "type": "number"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Coordinator information"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags"
           },
           "custom_fields": {
@@ -195,10 +254,24 @@
             "items": {
               "type": "object",
               "properties": {
-                "body": {"type": "string"},
-                "user_id": {"type": "number"},
-                "private": {"type": "boolean", "default": false},
-                "visibility": {"type": "string", "enum": ["admin_only", "private", "public"]}
+                "body": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "number"
+                },
+                "private": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "visibility": {
+                  "type": "string",
+                  "enum": [
+                    "admin_only",
+                    "private",
+                    "public"
+                  ]
+                }
               }
             },
             "description": "Activity feed notes"
@@ -238,22 +311,34 @@
           "recruiter": {
             "type": "object",
             "properties": {
-              "id": {"type": "number"},
-              "email": {"type": "string", "format": "email"}
+              "id": {
+                "type": "number"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Recruiter information"
           },
           "coordinator": {
             "type": "object",
             "properties": {
-              "id": {"type": "number"},
-              "email": {"type": "string", "format": "email"}
+              "id": {
+                "type": "number"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Coordinator information"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tags"
           },
           "custom_fields": {
@@ -261,7 +346,9 @@
             "description": "Custom field values"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -307,7 +394,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["open", "closed", "draft"],
+            "enum": [
+              "open",
+              "closed",
+              "draft"
+            ],
             "description": "Filter by job status"
           }
         },
@@ -327,7 +418,9 @@
             "description": "Job ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -368,7 +461,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "rejected", "hired"],
+            "enum": [
+              "active",
+              "rejected",
+              "hired"
+            ],
             "description": "Filter by application status"
           },
           "job_id": {
@@ -392,7 +489,9 @@
             "description": "Application ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -416,7 +515,9 @@
             "description": "Target stage ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -442,13 +543,20 @@
           "rejection_email": {
             "type": "object",
             "properties": {
-              "send_email_at": {"type": "string", "format": "date-time"},
-              "email_template_id": {"type": "number"}
+              "send_email_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "email_template_id": {
+                "type": "number"
+              }
             },
             "description": "Email to send to candidate"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -464,7 +572,9 @@
             "description": "Application ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     }
@@ -484,13 +594,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "first_name": {"type": "string"},
-          "last_name": {"type": "string"},
-          "company": {"type": "string"},
-          "title": {"type": "string"},
-          "email_addresses": {"type": "array"},
-          "phone_numbers": {"type": "array"}
+          "id": {
+            "type": "number"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "email_addresses": {
+            "type": "array"
+          },
+          "phone_numbers": {
+            "type": "array"
+          }
         }
       }
     },
@@ -513,9 +637,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "application": {"type": "object"},
-          "previous_stage": {"type": "object"},
-          "current_stage": {"type": "object"}
+          "application": {
+            "type": "object"
+          },
+          "previous_stage": {
+            "type": "object"
+          },
+          "current_stage": {
+            "type": "object"
+          }
         }
       }
     },
@@ -533,9 +663,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "application": {"type": "object"},
-          "candidate": {"type": "object"},
-          "job": {"type": "object"}
+          "application": {
+            "type": "object"
+          },
+          "candidate": {
+            "type": "object"
+          },
+          "job": {
+            "type": "object"
+          }
         }
       }
     }
@@ -543,5 +679,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

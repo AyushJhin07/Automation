@@ -79,7 +79,14 @@
           },
           "status": {
             "type": "string",
-            "enum": ["PLN", "CUR", "CPL", "DAD", "REJ", "IDA"],
+            "enum": [
+              "PLN",
+              "CUR",
+              "CPL",
+              "DAD",
+              "REJ",
+              "IDA"
+            ],
             "description": "Project status"
           },
           "portfolioID": {
@@ -101,7 +108,9 @@
             "description": "Budgeted hours"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -118,11 +127,15 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include in response"
           }
         },
-        "required": ["projectID"],
+        "required": [
+          "projectID"
+        ],
         "additionalProperties": false
       }
     },
@@ -151,7 +164,14 @@
           },
           "status": {
             "type": "string",
-            "enum": ["PLN", "CUR", "CPL", "DAD", "REJ", "IDA"],
+            "enum": [
+              "PLN",
+              "CUR",
+              "CPL",
+              "DAD",
+              "REJ",
+              "IDA"
+            ],
             "description": "Project status"
           },
           "priority": {
@@ -177,7 +197,9 @@
             "description": "Percent complete"
           }
         },
-        "required": ["projectID"],
+        "required": [
+          "projectID"
+        ],
         "additionalProperties": false
       }
     },
@@ -198,7 +220,9 @@
           },
           "status": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by status"
           },
           "groupID": {
@@ -224,7 +248,9 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include in response"
           }
         },
@@ -282,7 +308,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["NEW", "INP", "CPL"],
+            "enum": [
+              "NEW",
+              "INP",
+              "CPL"
+            ],
             "description": "Task status"
           },
           "percentComplete": {
@@ -293,11 +323,16 @@
           },
           "predecessors": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Predecessor task IDs"
           }
         },
-        "required": ["name", "projectID"],
+        "required": [
+          "name",
+          "projectID"
+        ],
         "additionalProperties": false
       }
     },
@@ -314,11 +349,15 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include in response"
           }
         },
-        "required": ["taskID"],
+        "required": [
+          "taskID"
+        ],
         "additionalProperties": false
       }
     },
@@ -347,7 +386,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["NEW", "INP", "CPL"],
+            "enum": [
+              "NEW",
+              "INP",
+              "CPL"
+            ],
             "description": "Task status"
           },
           "priority": {
@@ -383,7 +426,9 @@
             "description": "Actual completion date"
           }
         },
-        "required": ["taskID"],
+        "required": [
+          "taskID"
+        ],
         "additionalProperties": false
       }
     },
@@ -428,12 +473,22 @@
           },
           "status": {
             "type": "string",
-            "enum": ["NEW", "INP", "CLS", "REO"],
+            "enum": [
+              "NEW",
+              "INP",
+              "CLS",
+              "REO"
+            ],
             "description": "Issue status"
           },
           "resolutionType": {
             "type": "string",
-            "enum": ["FIXED", "WONTFIX", "DUPLICATE", "CANNOT_REPRODUCE"],
+            "enum": [
+              "FIXED",
+              "WONTFIX",
+              "DUPLICATE",
+              "CANNOT_REPRODUCE"
+            ],
             "description": "Resolution type"
           },
           "plannedCompletionDate": {
@@ -442,7 +497,10 @@
             "description": "Planned completion date"
           }
         },
-        "required": ["name", "projectID"],
+        "required": [
+          "name",
+          "projectID"
+        ],
         "additionalProperties": false
       }
     },
@@ -476,7 +534,11 @@
             "description": "Timesheet profile ID"
           }
         },
-        "required": ["userID", "startDate", "endDate"],
+        "required": [
+          "userID",
+          "startDate",
+          "endDate"
+        ],
         "additionalProperties": false
       }
     },
@@ -518,7 +580,10 @@
             "description": "Hour type ID"
           }
         },
-        "required": ["hours", "entryDate"],
+        "required": [
+          "hours",
+          "entryDate"
+        ],
         "additionalProperties": false
       }
     },
@@ -550,7 +615,9 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include in response"
           }
         },
@@ -575,7 +642,13 @@
           },
           "docObjCode": {
             "type": "string",
-            "enum": ["PROJ", "TASK", "OPTASK", "USER", "COMP"],
+            "enum": [
+              "PROJ",
+              "TASK",
+              "OPTASK",
+              "USER",
+              "COMP"
+            ],
             "description": "Object type to attach document to"
           },
           "objID": {
@@ -585,14 +658,24 @@
           "currentVersion": {
             "type": "object",
             "properties": {
-              "fileName": {"type": "string"},
-              "handle": {"type": "string"},
-              "version": {"type": "string"}
+              "fileName": {
+                "type": "string"
+              },
+              "handle": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
             },
             "description": "Current version details"
           }
         },
-        "required": ["name", "docObjCode", "objID"],
+        "required": [
+          "name",
+          "docObjCode",
+          "objID"
+        ],
         "additionalProperties": false
       }
     }
@@ -621,14 +704,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ID": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "ownerID": {"type": "string"},
-          "status": {"type": "string"},
-          "plannedStartDate": {"type": "string"},
-          "plannedCompletionDate": {"type": "string"},
-          "entryDate": {"type": "string"}
+          "ID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ownerID": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "plannedStartDate": {
+            "type": "string"
+          },
+          "plannedCompletionDate": {
+            "type": "string"
+          },
+          "entryDate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -655,14 +754,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ID": {"type": "string"},
-          "name": {"type": "string"},
-          "projectID": {"type": "string"},
-          "assignedToID": {"type": "string"},
-          "status": {"type": "string"},
-          "plannedStartDate": {"type": "string"},
-          "plannedCompletionDate": {"type": "string"},
-          "entryDate": {"type": "string"}
+          "ID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "assignedToID": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "plannedStartDate": {
+            "type": "string"
+          },
+          "plannedCompletionDate": {
+            "type": "string"
+          },
+          "entryDate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -689,13 +804,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ID": {"type": "string"},
-          "name": {"type": "string"},
-          "projectID": {"type": "string"},
-          "assignedToID": {"type": "string"},
-          "status": {"type": "string"},
-          "actualCompletionDate": {"type": "string"},
-          "percentComplete": {"type": "number"}
+          "ID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "assignedToID": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "actualCompletionDate": {
+            "type": "string"
+          },
+          "percentComplete": {
+            "type": "number"
+          }
         }
       }
     }
@@ -703,5 +832,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user/search"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

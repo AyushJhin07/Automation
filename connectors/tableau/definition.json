@@ -46,7 +46,10 @@
             "description": "Site name (optional)"
           }
         },
-        "required": ["username", "password"],
+        "required": [
+          "username",
+          "password"
+        ],
         "additionalProperties": false
       }
     },
@@ -112,7 +115,9 @@
             "description": "Fields to include"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -132,7 +137,10 @@
             "description": "Workbook ID"
           }
         },
-        "required": ["siteId", "workbookId"],
+        "required": [
+          "siteId",
+          "workbookId"
+        ],
         "additionalProperties": false
       }
     },
@@ -172,7 +180,10 @@
             "description": "Owner ID"
           }
         },
-        "required": ["siteId", "workbookId"],
+        "required": [
+          "siteId",
+          "workbookId"
+        ],
         "additionalProperties": false
       }
     },
@@ -209,7 +220,10 @@
             "description": "Filter expression"
           }
         },
-        "required": ["siteId", "workbookId"],
+        "required": [
+          "siteId",
+          "workbookId"
+        ],
         "additionalProperties": false
       }
     },
@@ -229,7 +243,10 @@
             "description": "View ID"
           }
         },
-        "required": ["siteId", "viewId"],
+        "required": [
+          "siteId",
+          "viewId"
+        ],
         "additionalProperties": false
       }
     },
@@ -258,7 +275,10 @@
             "description": "View parameters"
           }
         },
-        "required": ["siteId", "viewId"],
+        "required": [
+          "siteId",
+          "viewId"
+        ],
         "additionalProperties": false
       }
     },
@@ -291,7 +311,9 @@
             "description": "Filter expression"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -311,7 +333,10 @@
             "description": "Data source ID"
           }
         },
-        "required": ["siteId", "datasourceId"],
+        "required": [
+          "siteId",
+          "datasourceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -331,7 +356,10 @@
             "description": "Data source ID"
           }
         },
-        "required": ["siteId", "datasourceId"],
+        "required": [
+          "siteId",
+          "datasourceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -364,7 +392,9 @@
             "description": "Filter expression"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -393,7 +423,9 @@
             "description": "Page number"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -418,7 +450,10 @@
           },
           "contentPermissions": {
             "type": "string",
-            "enum": ["LockedToProject", "ManagedByOwner"],
+            "enum": [
+              "LockedToProject",
+              "ManagedByOwner"
+            ],
             "description": "Content permissions mode"
           },
           "parentProjectId": {
@@ -426,7 +461,10 @@
             "description": "Parent project ID"
           }
         },
-        "required": ["siteId", "name"],
+        "required": [
+          "siteId",
+          "name"
+        ],
         "additionalProperties": false
       }
     }
@@ -455,12 +493,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "datasourceId": {"type": "string"},
-          "datasourceName": {"type": "string"},
-          "siteId": {"type": "string"},
-          "refreshStatus": {"type": "string"},
-          "refreshTime": {"type": "string"},
-          "jobId": {"type": "string"}
+          "datasourceId": {
+            "type": "string"
+          },
+          "datasourceName": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "refreshStatus": {
+            "type": "string"
+          },
+          "refreshTime": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -487,12 +537,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "workbookId": {"type": "string"},
-          "workbookName": {"type": "string"},
-          "siteId": {"type": "string"},
-          "projectId": {"type": "string"},
-          "ownerId": {"type": "string"},
-          "publishTime": {"type": "string"}
+          "workbookId": {
+            "type": "string"
+          },
+          "workbookName": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "publishTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -500,5 +562,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/sites"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

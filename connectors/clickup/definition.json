@@ -47,12 +47,16 @@
           },
           "assignees": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Array of assignee user IDs"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Array of tag names"
           },
           "status": {
@@ -61,7 +65,12 @@
           },
           "priority": {
             "type": "number",
-            "enum": [1, 2, 3, 4],
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
             "description": "Task priority (1=urgent, 2=high, 3=normal, 4=low)"
           },
           "due_date": {
@@ -98,11 +107,16 @@
           },
           "custom_fields": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Custom field values"
           }
         },
-        "required": ["list_id", "name"],
+        "required": [
+          "list_id",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -131,14 +145,29 @@
           },
           "priority": {
             "type": "number",
-            "enum": [1, 2, 3, 4],
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
             "description": "Task priority"
           },
           "assignees": {
             "type": "object",
             "properties": {
-              "add": {"type": "array", "items": {"type": "number"}},
-              "rem": {"type": "array", "items": {"type": "number"}}
+              "add": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "rem": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
             },
             "description": "Assignees to add or remove"
           },
@@ -147,7 +176,9 @@
             "description": "Due date as Unix timestamp"
           }
         },
-        "required": ["task_id"],
+        "required": [
+          "task_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -175,7 +206,9 @@
             "description": "Include subtasks"
           }
         },
-        "required": ["task_id"],
+        "required": [
+          "task_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -200,7 +233,12 @@
           },
           "order_by": {
             "type": "string",
-            "enum": ["id", "created", "updated", "due_date"],
+            "enum": [
+              "id",
+              "created",
+              "updated",
+              "due_date"
+            ],
             "description": "Order by field"
           },
           "reverse": {
@@ -213,7 +251,9 @@
           },
           "statuses": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by statuses"
           },
           "include_closed": {
@@ -222,12 +262,16 @@
           },
           "assignees": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Filter by assignees"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by tags"
           },
           "due_date_gt": {
@@ -263,7 +307,9 @@
             "description": "Done date less than (Unix timestamp)"
           }
         },
-        "required": ["list_id"],
+        "required": [
+          "list_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -287,7 +333,9 @@
             "description": "Team ID (required if using custom task IDs)"
           }
         },
-        "required": ["task_id"],
+        "required": [
+          "task_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -315,7 +363,10 @@
             "description": "Notify all task members"
           }
         },
-        "required": ["task_id", "comment_text"],
+        "required": [
+          "task_id",
+          "comment_text"
+        ],
         "additionalProperties": false
       }
     },
@@ -335,7 +386,9 @@
             "description": "Include archived lists"
           }
         },
-        "required": ["folder_id"],
+        "required": [
+          "folder_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -355,7 +408,9 @@
             "description": "Include archived spaces"
           }
         },
-        "required": ["team_id"],
+        "required": [
+          "team_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -380,10 +435,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "task_id": {"type": "string"},
-          "name": {"type": "string"},
-          "status": {"type": "object"},
-          "creator": {"type": "object"}
+          "task_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "object"
+          },
+          "creator": {
+            "type": "object"
+          }
         }
       }
     },
@@ -401,9 +464,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "task_id": {"type": "string"},
-          "name": {"type": "string"},
-          "history_items": {"type": "array"}
+          "task_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "history_items": {
+            "type": "array"
+          }
         }
       }
     }
@@ -411,5 +480,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

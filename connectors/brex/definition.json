@@ -11,7 +11,11 @@
     "config": {
       "authUrl": "https://accounts.brex.com/oauth2/v1/auth",
       "tokenUrl": "https://accounts.brex.com/oauth2/v1/access_token",
-      "scopes": ["transactions:read", "cards:read", "users:read"]
+      "scopes": [
+        "transactions:read",
+        "cards:read",
+        "users:read"
+      ]
     }
   },
   "baseUrl": "https://platform.brexapis.com",
@@ -36,12 +40,16 @@
         "properties": {
           "card_id": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by card IDs"
           },
           "user_id": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by user IDs"
           },
           "posted_at_start": {
@@ -56,7 +64,14 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string", "enum": ["card", "receipt", "merchant"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "card",
+                "receipt",
+                "merchant"
+              ]
+            },
             "description": "Additional data to expand"
           },
           "limit": {
@@ -88,11 +103,20 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string", "enum": ["card", "receipt", "merchant"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "card",
+                "receipt",
+                "merchant"
+              ]
+            },
             "description": "Additional data to expand"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -105,7 +129,9 @@
         "properties": {
           "user_id": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by user IDs"
           },
           "limit": {
@@ -136,7 +162,9 @@
             "description": "Card ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -150,8 +178,15 @@
           "owner": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["USER"]},
-              "user_id": {"type": "string"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "USER"
+                ]
+              },
+              "user_id": {
+                "type": "string"
+              }
             },
             "description": "Card owner"
           },
@@ -161,19 +196,29 @@
           },
           "card_type": {
             "type": "string",
-            "enum": ["VIRTUAL", "PHYSICAL"],
+            "enum": [
+              "VIRTUAL",
+              "PHYSICAL"
+            ],
             "description": "Card type"
           },
           "limit_type": {
             "type": "string",
-            "enum": ["CARD", "MONTHLY"],
+            "enum": [
+              "CARD",
+              "MONTHLY"
+            ],
             "description": "Limit type"
           },
           "spending_controls": {
             "type": "object",
             "properties": {
-              "spend_limit": {"type": "object"},
-              "locked": {"type": "boolean"}
+              "spend_limit": {
+                "type": "object"
+              },
+              "locked": {
+                "type": "boolean"
+              }
             },
             "description": "Spending controls"
           },
@@ -182,7 +227,10 @@
             "description": "Card metadata"
           }
         },
-        "required": ["owner", "card_type"],
+        "required": [
+          "owner",
+          "card_type"
+        ],
         "additionalProperties": false
       }
     },
@@ -204,8 +252,12 @@
           "spending_controls": {
             "type": "object",
             "properties": {
-              "spend_limit": {"type": "object"},
-              "locked": {"type": "boolean"}
+              "spend_limit": {
+                "type": "object"
+              },
+              "locked": {
+                "type": "boolean"
+              }
             },
             "description": "Spending controls"
           },
@@ -214,7 +266,9 @@
             "description": "Card metadata"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -262,10 +316,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "card_id": {"type": "string"},
-          "amount": {"type": "object"},
-          "merchant": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "object"
+          },
+          "merchant": {
+            "type": "object"
+          }
         }
       }
     },
@@ -283,9 +345,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "card_name": {"type": "string"},
-          "card_type": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "card_name": {
+            "type": "string"
+          },
+          "card_type": {
+            "type": "string"
+          }
         }
       }
     }
@@ -293,5 +361,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/v2/cards"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

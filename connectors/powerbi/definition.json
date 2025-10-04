@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://analysis.windows.net/powerbi/api/.default"]
+      "scopes": [
+        "https://analysis.windows.net/powerbi/api/.default"
+      ]
     }
   },
   "baseUrl": "https://api.powerbi.com/v1.0/myorg",
@@ -59,7 +61,9 @@
             "description": "Workspace ID (optional)"
           }
         },
-        "required": ["datasetId"],
+        "required": [
+          "datasetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -116,9 +120,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "datasetId": {"type": "string"},
-          "refreshType": {"type": "string"},
-          "status": {"type": "string"}
+          "datasetId": {
+            "type": "string"
+          },
+          "refreshType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       }
     }
@@ -126,5 +136,23 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/groups"
+  },
+  "versionInfo": {
+    "semantic": "1.0.0",
+    "releaseDate": null,
+    "notes": "Initial release"
+  },
+  "lifecycle": {
+    "status": "planning",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }
