@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db, workflowTimers, type OrganizationLimits } from '../database/schema.js';
+import { db, workflowTimers, type OrganizationLimits, type OrganizationRegion } from '../database/schema.js';
 import {
   createQueue,
   createQueueEvents,
@@ -13,6 +13,7 @@ import {
   type QueueEvents,
   type Worker,
   type WorkflowExecuteJobPayload,
+  type ExecutionQueueName,
 } from '../queue/index.js';
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
@@ -47,14 +48,19 @@ class ExecutionQueueService {
   private readonly heartbeatPersistIntervalMs: number;
   private started = false;
   private shutdownPromise: Promise<void> | null = null;
-  private queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
-  private worker: Worker<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
+  private readonly queueCache = new Map<
+    ExecutionQueueName,
+    Queue<WorkflowExecuteJobPayload, unknown, ExecutionQueueName>
+  >();
+  private worker: Worker<WorkflowExecuteJobPayload, unknown, ExecutionQueueName> | null = null;
   private queueEvents: QueueEvents | null = null;
   private telemetryCleanup: (() => void) | null = null;
   private readonly activeLeases = new Map<
     string,
     { metadata: Record<string, any>; organizationId: string; lastPersistedAt: number }
   >();
+  private readonly workerRegion: OrganizationRegion;
+  private readonly workerQueueName: ExecutionQueueName;
 
   private constructor() {
     const configuredConcurrency = Number.parseInt(
@@ -112,6 +118,9 @@ class ExecutionQueueService {
         10
       )
     );
+
+    this.workerRegion = this.resolveRegionFromEnv();
+    this.workerQueueName = this.getQueueName(this.workerRegion);
   }
 
   public static getInstance(): ExecutionQueueService {
@@ -125,6 +134,24 @@ class ExecutionQueueService {
     return Boolean(db);
   }
 
+  private resolveRegionFromEnv(): OrganizationRegion {
+    const raw = (process.env.DATA_RESIDENCY_REGION ?? 'us').toLowerCase();
+    const allowed: OrganizationRegion[] = ['us', 'eu', 'apac'];
+    if ((allowed as string[]).includes(raw)) {
+      return raw as OrganizationRegion;
+    }
+    if (raw && raw !== 'us') {
+      console.warn(
+        `⚠️ Unrecognized DATA_RESIDENCY_REGION="${raw}" for ExecutionQueueService. Falling back to "us".`
+      );
+    }
+    return 'us';
+  }
+
+  private getQueueName(region: OrganizationRegion): ExecutionQueueName {
+    return `workflow.execute.${region}` as ExecutionQueueName;
+  }
+
   private computeBackoff(attempt: number): number {
     const exponent = Math.pow(2, Math.max(0, attempt - 1));
     const jitter = Math.floor(Math.random() * this.baseRetryDelayMs * 0.2);
@@ -132,11 +159,12 @@ class ExecutionQueueService {
   }
 
   private async withQueueOperation<T>(
+    queueName: ExecutionQueueName,
     operation: (
-      queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>
+      queue: Queue<WorkflowExecuteJobPayload, unknown, ExecutionQueueName>
     ) => Promise<T>
   ): Promise<T> {
-    const queue = this.ensureQueue();
+    const queue = this.ensureQueue(queueName);
     try {
       return await operation(queue);
     } catch (error) {
@@ -144,7 +172,7 @@ class ExecutionQueueService {
       if (!switched) {
         throw error;
       }
-      const fallbackQueue = this.ensureQueue();
+      const fallbackQueue = this.ensureQueue(queueName);
       return operation(fallbackQueue);
     }
   }
@@ -182,6 +210,8 @@ class ExecutionQueueService {
 
   public async enqueue(req: QueueRunRequest): Promise<{ executionId: string }> {
     const quotaProfile = await organizationService.getExecutionQuotaProfile(req.organizationId);
+    const region = await organizationService.getOrganizationRegion(req.organizationId);
+    const queueName = this.getQueueName(region);
 
     const admission = await executionQuotaService.reserveAdmission(req.organizationId, {
       maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
@@ -198,6 +228,9 @@ class ExecutionQueueService {
         windowStart: new Date(admission.state.windowStartMs).toISOString(),
         maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
         maxExecutionsPerMinute: quotaProfile.limits.maxExecutionsPerMinute,
+      },
+      residency: {
+        region,
       },
     } as Record<string, any>;
 
@@ -277,7 +310,7 @@ class ExecutionQueueService {
     }
 
     try {
-      await this.withQueueOperation((queue) =>
+      await this.withQueueOperation(queueName, (queue) =>
         queue.add(
           'workflow.execute',
           {
@@ -287,6 +320,7 @@ class ExecutionQueueService {
             userId: req.userId,
             triggerType: req.triggerType ?? 'manual',
             triggerData: req.triggerData ?? null,
+            region,
           },
           {
             jobId: execution.id,
@@ -343,9 +377,11 @@ class ExecutionQueueService {
     }
 
     const jobId = `${params.executionId}:${params.timerId ?? Date.now().toString(36)}`;
+    const region = await organizationService.getOrganizationRegion(params.organizationId);
+    const queueName = this.getQueueName(region);
 
     try {
-      await this.withQueueOperation((queue) =>
+      await this.withQueueOperation(queueName, (queue) =>
         queue.add(
           'workflow.execute',
           {
@@ -357,6 +393,7 @@ class ExecutionQueueService {
             resumeState: params.resumeState,
             initialData: params.initialData,
             timerId: params.timerId,
+            region,
           },
           {
             jobId,
@@ -387,9 +424,9 @@ class ExecutionQueueService {
       return;
     }
 
-    const queue = this.ensureQueue();
+    const queue = this.ensureQueue(this.workerQueueName);
     if (!this.queueEvents) {
-      this.queueEvents = createQueueEvents('workflow.execute');
+      this.queueEvents = createQueueEvents(this.workerQueueName);
     }
 
     if (!this.telemetryCleanup) {
@@ -402,7 +439,7 @@ class ExecutionQueueService {
     }
 
     this.worker = registerQueueWorker(
-      'workflow.execute',
+      this.workerQueueName,
       async (job) => this.process(job),
       {
         concurrency: this.concurrency,
@@ -413,8 +450,8 @@ class ExecutionQueueService {
         heartbeatIntervalMs: this.heartbeatIntervalMs,
         heartbeatTimeoutMs: this.heartbeatTimeoutMs,
         onHeartbeat: async (
-          _job: Job<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>,
-          context: QueueWorkerHeartbeatContext<'workflow.execute'>
+          _job: Job<WorkflowExecuteJobPayload, unknown, ExecutionQueueName>,
+          context: QueueWorkerHeartbeatContext<ExecutionQueueName>
         ) => {
           const payload = _job.data;
           const executionId = payload.executionId;
@@ -474,7 +511,7 @@ class ExecutionQueueService {
     this.started = true;
 
     console.log(
-      `🧵 ExecutionQueueService started (concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
+      `🧵 ExecutionQueueService started (region=${this.workerRegion}, concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
     );
   }
 
@@ -528,32 +565,48 @@ class ExecutionQueueService {
         this.telemetryCleanup = null;
       }
 
+      const workerQueue = this.queueCache.get(this.workerQueueName);
+      if (workerQueue) {
+        try {
+          await workerQueue.close();
+        } catch (error) {
+          console.error('Failed to close execution queue during shutdown:', getErrorMessage(error));
+        }
+      }
+
+      this.queueCache.clear();
+
       this.started = false;
       this.shutdownPromise = null;
-      this.queue = null;
     })();
 
     return this.shutdownPromise;
   }
 
-  private ensureQueue(): Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> {
-    if (!this.queue) {
-      this.queue = createQueue('workflow.execute', {
-        defaultJobOptions: {
-          attempts: this.maxRetries + 1,
-          backoff: { type: 'execution-backoff' },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-        settings: {
-          backoffStrategies: {
-            'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
-          },
-        },
-      });
+  private ensureQueue(
+    name: ExecutionQueueName
+  ): Queue<WorkflowExecuteJobPayload, unknown, ExecutionQueueName> {
+    const existing = this.queueCache.get(name);
+    if (existing) {
+      return existing;
     }
 
-    return this.queue;
+    const queue = createQueue(name, {
+      defaultJobOptions: {
+        attempts: this.maxRetries + 1,
+        backoff: { type: 'execution-backoff' },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+      settings: {
+        backoffStrategies: {
+          'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+        },
+      },
+    });
+
+    this.queueCache.set(name, queue);
+    return queue;
   }
 
   private async handleQueueFallback(error: unknown): Promise<boolean> {
@@ -576,7 +629,7 @@ class ExecutionQueueService {
       );
     }
 
-    this.queue = null;
+    this.queueCache.clear();
 
     if (wasStarted) {
       this.start();
@@ -588,6 +641,14 @@ class ExecutionQueueService {
   private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
     const startedAt = Date.now();
     const { executionId, workflowId, organizationId, userId } = job.data;
+    const jobRegion = (job.data.region as OrganizationRegion | undefined) ?? this.workerRegion;
+
+    if (jobRegion !== this.workerRegion) {
+      console.warn(
+        `⚠️ ExecutionQueueService worker in region ${this.workerRegion} received job ${executionId} for region ${jobRegion}. Skipping processing.`
+      );
+      return;
+    }
     const resumeState = (job.data.resumeState ?? null) as WorkflowResumeState | null;
     const timerId = job.data.timerId ?? null;
     const executionRecord = await WorkflowRepository.getExecutionById(executionId, organizationId);
@@ -611,6 +672,11 @@ class ExecutionQueueService {
     if ('lease' in runningMetadata) {
       delete runningMetadata.lease;
     }
+
+    runningMetadata.residency = {
+      ...(runningMetadata.residency ?? {}),
+      region: jobRegion,
+    };
 
     const now = new Date();
     const lockExpiresAt = new Date(now.getTime() + this.lockDurationMs);

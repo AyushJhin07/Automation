@@ -21,7 +21,7 @@ import { createInMemoryQueueDriver, InMemoryQueueDriver } from './InMemoryQueue.
 import type { JobPayload, QueueName, QueueTelemetryOptions } from './types.js';
 
 export type { QueueTelemetryHandlers, QueueJobCounts } from './types.js';
-export type { JobPayloads, QueueName, WorkflowExecuteJobPayload } from './types.js';
+export type { JobPayloads, QueueName, WorkflowExecuteJobPayload, ExecutionQueueName } from './types.js';
 export type {
   Processor,
   Queue,

@@ -1,3 +1,5 @@
+import type { OrganizationRegion } from '../database/schema.js';
+
 export interface WebhookTrigger {
   id: string;
   appId: string;
@@ -10,6 +12,7 @@ export interface WebhookTrigger {
   metadata: Record<string, any>;
   organizationId?: string;
   userId?: string;
+  region?: OrganizationRegion;
 }
 
 export interface TriggerEvent {
@@ -27,6 +30,7 @@ export interface TriggerEvent {
   dedupeToken?: string;
   organizationId: string;
   userId?: string;
+  region?: OrganizationRegion;
 }
 
 export interface PollingTrigger {
@@ -44,4 +48,7 @@ export interface PollingTrigger {
   cursor?: Record<string, any> | null;
   backoffCount?: number;
   lastStatus?: string | null;
+  organizationId?: string;
+  userId?: string;
+  region?: OrganizationRegion;
 }

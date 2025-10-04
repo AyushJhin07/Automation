@@ -16,6 +16,7 @@ import {
   OrganizationSecuritySettings,
   OrganizationBranding,
   OrganizationComplianceSettings,
+  OrganizationRegion,
   users,
 } from '../database/schema';
 import { OrgRole } from '../../configs/rbac';
@@ -27,6 +28,7 @@ export interface OrganizationSummary {
   domain: string | null;
   plan: OrganizationPlan;
   status: OrganizationStatus;
+  region: OrganizationRegion;
   role: string;
   isDefault: boolean;
   limits: OrganizationLimits;
@@ -48,6 +50,27 @@ export interface CreateOrganizationOptions {
   name?: string;
   domain?: string | null;
   plan?: OrganizationPlan;
+  region?: OrganizationRegion;
+}
+
+export interface OrganizationResidencyReport {
+  organizationId: string;
+  organizationName: string;
+  region: OrganizationRegion;
+  storage: {
+    dataNamespace: string | null;
+    storagePrefix: string | null;
+    cachePrefix: string | null;
+    logPrefix: string | null;
+    metricsPrefix: string | null;
+    region: OrganizationRegion;
+  };
+  queues: {
+    execution: string;
+    schedulerRegion: OrganizationRegion;
+    webhookRegion: OrganizationRegion;
+  };
+  compliance: OrganizationComplianceSettings;
 }
 
 export interface InviteMemberInput {
@@ -326,6 +349,7 @@ export class OrganizationService {
     await this.refreshPlanDefinitions();
 
     const plan: OrganizationPlan = options.plan ?? 'starter';
+    const region: OrganizationRegion = options.region ?? 'us';
     const limits = this.getPlanLimitSnapshot(plan);
     const features = this.PLAN_FEATURES[plan];
 
@@ -343,6 +367,7 @@ export class OrganizationService {
         subdomain: this.generateSubdomain(name),
         plan,
         status: 'trial',
+        region,
         trialEndsAt: billingPeriodEnd,
         billing: {
           customerId: '',
@@ -411,11 +436,12 @@ export class OrganizationService {
 
     await db.insert(tenantIsolations).values({
       organizationId: organization.id,
-      dataNamespace: `org_${organization.id.replace(/-/g, '')}`,
-      storagePrefix: `org_${organization.id}`,
-      cachePrefix: `org:${organization.id}`,
-      logPrefix: `org.${organization.id}`,
-      metricsPrefix: `org.${organization.id}`,
+      dataNamespace: `${region}:org_${organization.id.replace(/-/g, '')}`,
+      storagePrefix: `${region}/org_${organization.id}`,
+      cachePrefix: `${region}:org:${organization.id}`,
+      logPrefix: `${region}.org.${organization.id}`,
+      metricsPrefix: `${region}.org.${organization.id}`,
+      region,
     });
 
     await db.insert(organizationQuotas).values({
@@ -439,6 +465,7 @@ export class OrganizationService {
       domain: organization.domain,
       plan: organization.plan as OrganizationPlan,
       status: organization.status as OrganizationStatus,
+      region: organization.region as OrganizationRegion,
       role: membership.role,
       isDefault: membership.isDefault,
       limits,
@@ -824,6 +851,61 @@ export class OrganizationService {
     return this.PLAN_FEATURES[plan];
   }
 
+  public async getOrganizationRegion(organizationId: string): Promise<OrganizationRegion> {
+    if (!db) {
+      return 'us';
+    }
+
+    const [row] = await db
+      .select({ region: organizations.region })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    return (row?.region as OrganizationRegion | undefined) ?? 'us';
+  }
+
+  public async getResidencyReport(organizationId: string): Promise<OrganizationResidencyReport> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const [row] = await db
+      .select({ organization: organizations, isolation: tenantIsolations })
+      .from(organizations)
+      .leftJoin(tenantIsolations, eq(tenantIsolations.organizationId, organizations.id))
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    if (!row) {
+      throw new Error(`Organization ${organizationId} not found`);
+    }
+
+    const region = (row.organization.region as OrganizationRegion | undefined) ?? 'us';
+    const isolation = row.isolation ?? null;
+    const storageRegion = (isolation?.region as OrganizationRegion | undefined) ?? region;
+
+    return {
+      organizationId: row.organization.id,
+      organizationName: row.organization.name,
+      region,
+      storage: {
+        dataNamespace: isolation?.dataNamespace ?? null,
+        storagePrefix: isolation?.storagePrefix ?? null,
+        cachePrefix: isolation?.cachePrefix ?? null,
+        logPrefix: isolation?.logPrefix ?? null,
+        metricsPrefix: isolation?.metricsPrefix ?? null,
+        region: storageRegion,
+      },
+      queues: {
+        execution: `workflow.execute.${region}`,
+        schedulerRegion: region,
+        webhookRegion: region,
+      },
+      compliance: row.organization.compliance as OrganizationComplianceSettings,
+    };
+  }
+
   public async getExecutionQuotaProfile(
     organizationId: string
   ): Promise<{ limits: OrganizationLimits; usage: OrganizationUsageMetrics; plan: OrganizationPlan }> {
@@ -932,6 +1014,7 @@ export class OrganizationService {
       domain: organization.domain,
       plan: organization.plan as OrganizationPlan,
       status: organization.status as OrganizationStatus,
+      region: (organization.region as OrganizationRegion) ?? 'us',
       role: membership.role,
       isDefault: membership.isDefault,
       limits,

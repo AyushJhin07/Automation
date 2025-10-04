@@ -6,6 +6,7 @@ import {
   webhookDedupe,
   pollingTriggers,
   workflowTriggers,
+  type OrganizationRegion,
 } from '../database/schema';
 import { ensureDatabaseReady, isDatabaseAvailable } from '../database/status.js';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from '../webhooks/types';
@@ -177,9 +178,26 @@ class InMemoryTriggerPersistenceStore {
     }
   }
 
-  public async claimDuePollingTriggers({ now, limit }: { now: Date; limit: number }) {
+  public async claimDuePollingTriggers({
+    now,
+    limit,
+    region,
+  }: {
+    now: Date;
+    limit: number;
+    region?: OrganizationRegion;
+  }) {
     const due = Array.from(this.pollingTriggers.values())
-      .filter((row) => row.isActive !== false && row.nextPollAt && row.nextPollAt <= now)
+      .filter((row) => {
+        if (row.isActive === false || !row.nextPollAt || row.nextPollAt > now) {
+          return false;
+        }
+        if (!region) {
+          return true;
+        }
+        const triggerRegion = row.region ?? row.metadata?.region ?? null;
+        return triggerRegion === region;
+      })
       .sort((a, b) => (a.nextPollAt?.getTime() ?? 0) - (b.nextPollAt?.getTime() ?? 0))
       .slice(0, limit);
 
@@ -219,6 +237,7 @@ class InMemoryTriggerPersistenceStore {
       executionId: event.executionId ?? null,
       createdAt: now,
       updatedAt: now,
+      region: event.region ?? event.metadata?.region ?? null,
     });
   }
 
@@ -519,13 +538,16 @@ export class TriggerPersistenceService {
     }));
   }
 
-  public async claimDuePollingTriggers(options: { limit?: number; now?: Date } = {}): Promise<PollingTrigger[]> {
+  public async claimDuePollingTriggers(
+    options: { limit?: number; now?: Date; region?: OrganizationRegion } = {}
+  ): Promise<PollingTrigger[]> {
     const database = this.requireDatabase('claimDuePollingTriggers');
     const now = options.now ?? new Date();
     const limit = Math.max(1, Math.min(100, options.limit ?? 25));
+    const region = options.region;
 
     if (typeof (database as any).claimDuePollingTriggers === 'function') {
-      const rows = await (database as any).claimDuePollingTriggers({ now, limit });
+      const rows = await (database as any).claimDuePollingTriggers({ now, limit, region });
       return rows.map((row: any) => this.mapPollingTriggerRow(row));
     }
 
@@ -536,7 +558,15 @@ export class TriggerPersistenceService {
         .where(eq(pollingTriggers.isActive, true));
       const mapped = rows
         .map((row: any) => this.mapPollingTriggerRow(row))
-        .filter((row) => row.nextPollAt <= now)
+        .filter((row) => {
+          if (row.nextPollAt > now) {
+            return false;
+          }
+          if (!region) {
+            return true;
+          }
+          return row.region === region;
+        })
         .sort((a, b) => a.nextPollAt.getTime() - b.nextPollAt.getTime())
         .slice(0, limit);
       for (const trigger of mapped) {
@@ -550,8 +580,11 @@ export class TriggerPersistenceService {
     }
 
     return await database.transaction(async (tx: any) => {
+      const regionFilter = region
+        ? sql` AND (region = ${region} OR region IS NULL)`
+        : sql``;
       const result = await tx.execute(
-        sql`SELECT * FROM polling_triggers WHERE is_active = true AND COALESCE(next_poll_at, next_poll) <= ${now} ORDER BY COALESCE(next_poll_at, next_poll) ASC LIMIT ${limit} FOR UPDATE SKIP LOCKED`
+        sql`SELECT * FROM polling_triggers WHERE is_active = true AND COALESCE(next_poll_at, next_poll) <= ${now}${regionFilter} ORDER BY COALESCE(next_poll_at, next_poll) ASC LIMIT ${limit} FOR UPDATE SKIP LOCKED`
       );
       const rows: any[] = (result?.rows ?? result ?? []) as any[];
 
@@ -561,6 +594,9 @@ export class TriggerPersistenceService {
 
       const claimed: PollingTrigger[] = [];
       for (const row of rows) {
+        if (region && row.region && row.region !== region) {
+          continue;
+        }
         const intervalSeconds = Math.max(1, Number(row.interval ?? 60));
         const effectiveInterval = computeExponentialBackoffInterval(
           intervalSeconds,
@@ -591,6 +627,9 @@ export class TriggerPersistenceService {
 
   public async saveWebhookTrigger(trigger: WebhookTrigger): Promise<void> {
     const database = this.requireDatabase('saveWebhookTrigger');
+    const organizationId =
+      trigger.organizationId ?? (trigger.metadata?.organizationId as string | undefined) ?? null;
+    const region = (trigger.region ?? (trigger.metadata?.region as OrganizationRegion | undefined)) ?? null;
     const record = {
       id: trigger.id,
       workflowId: trigger.workflowId,
@@ -601,6 +640,8 @@ export class TriggerPersistenceService {
       secret: trigger.secret,
       metadata: trigger.metadata ?? {},
       isActive: trigger.isActive,
+      organizationId,
+      region,
     };
 
     if (typeof (database as any).upsertWorkflowTrigger === 'function') {
@@ -627,6 +668,8 @@ export class TriggerPersistenceService {
             secret: trigger.secret,
             metadata: trigger.metadata ?? {},
             isActive: trigger.isActive,
+            organizationId,
+            region,
             updatedAt: now,
           },
         });
@@ -638,6 +681,9 @@ export class TriggerPersistenceService {
 
   public async savePollingTrigger(trigger: PollingTrigger): Promise<void> {
     const database = this.requireDatabase('savePollingTrigger');
+    const organizationId =
+      trigger.organizationId ?? (trigger.metadata?.organizationId as string | undefined) ?? null;
+    const region = (trigger.region ?? (trigger.metadata?.region as OrganizationRegion | undefined)) ?? null;
     const record = {
       id: trigger.id,
       workflowId: trigger.workflowId,
@@ -653,6 +699,8 @@ export class TriggerPersistenceService {
       cursor: trigger.cursor ?? null,
       backoffCount: trigger.backoffCount ?? 0,
       lastStatus: trigger.lastStatus ?? null,
+      organizationId,
+      region,
     };
 
     if (typeof (database as any).upsertPollingTrigger === 'function') {
@@ -665,6 +713,8 @@ export class TriggerPersistenceService {
         triggerId: trigger.triggerId,
         metadata: trigger.metadata ?? {},
         isActive: trigger.isActive,
+        organizationId,
+        region,
       });
       return;
     }
@@ -694,6 +744,8 @@ export class TriggerPersistenceService {
             cursor: trigger.cursor ?? null,
             backoffCount: trigger.backoffCount ?? 0,
             lastStatus: trigger.lastStatus ?? null,
+            organizationId,
+            region,
             updatedAt: now,
           },
         });
@@ -708,6 +760,8 @@ export class TriggerPersistenceService {
           triggerId: trigger.triggerId,
           metadata: trigger.metadata ?? {},
           isActive: trigger.isActive,
+          organizationId,
+          region,
           updatedAt: now,
         })
         .onConflictDoUpdate({
@@ -719,6 +773,8 @@ export class TriggerPersistenceService {
             triggerId: trigger.triggerId,
             metadata: trigger.metadata ?? {},
             isActive: trigger.isActive,
+            organizationId,
+            region,
             updatedAt: now,
           },
         });
@@ -833,6 +889,7 @@ export class TriggerPersistenceService {
         source: event.source,
         dedupeToken: event.dedupeToken ?? null,
         executionId: null,
+        region: event.region ?? null,
       });
       return id;
     } catch (error) {
@@ -1169,6 +1226,12 @@ export class TriggerPersistenceService {
   }
 
   private mapWebhookTriggerRow(row: any): WebhookTrigger {
+    const region = (row.region as OrganizationRegion | undefined) ?? (row.metadata?.region as OrganizationRegion | undefined);
+    const metadata = {
+      ...(row.metadata ?? {}),
+      ...(region ? { region } : {}),
+    };
+
     return {
       id: row.id,
       workflowId: row.workflowId,
@@ -1178,11 +1241,20 @@ export class TriggerPersistenceService {
       secret: row.secret ?? undefined,
       isActive: row.isActive,
       lastTriggered: row.metadata?.lastTriggered ? new Date(row.metadata.lastTriggered) : undefined,
-      metadata: row.metadata ?? {},
+      metadata,
+      organizationId: row.organizationId ?? row.metadata?.organizationId ?? undefined,
+      userId: row.metadata?.userId ?? undefined,
+      region: region ?? undefined,
     };
   }
 
   private mapPollingTriggerRow(row: any): PollingTrigger {
+    const region = (row.region as OrganizationRegion | undefined) ?? (row.metadata?.region as OrganizationRegion | undefined);
+    const metadata = {
+      ...(row.metadata ?? {}),
+      ...(region ? { region } : {}),
+    };
+
     return {
       id: row.id,
       workflowId: row.workflowId,
@@ -1198,10 +1270,13 @@ export class TriggerPersistenceService {
         : new Date(Date.now() + row.interval * 1000),
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
-      metadata: row.metadata ?? {},
+      metadata,
       cursor: row.cursor ?? null,
       backoffCount: Number(row.backoffCount ?? row.backoff_count ?? 0),
       lastStatus: row.lastStatus ?? row.last_status ?? null,
+      organizationId: row.organizationId ?? row.metadata?.organizationId ?? undefined,
+      userId: row.metadata?.userId ?? undefined,
+      region: region ?? undefined,
     };
   }
 
