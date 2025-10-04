@@ -91,10 +91,38 @@ export interface OrganizationRoleAssignmentSummary {
 
 export class OrganizationService {
   private readonly PLAN_LIMITS: Record<OrganizationPlan, OrganizationLimits> = {
-    starter: { maxWorkflows: 25, maxExecutions: 5000, maxUsers: 5, maxStorage: 5 * 1024 },
-    professional: { maxWorkflows: 100, maxExecutions: 50000, maxUsers: 25, maxStorage: 25 * 1024 },
-    enterprise: { maxWorkflows: 500, maxExecutions: 250000, maxUsers: 250, maxStorage: 100 * 1024 },
-    enterprise_plus: { maxWorkflows: 1000, maxExecutions: 1000000, maxUsers: 1000, maxStorage: 500 * 1024 },
+    starter: {
+      maxWorkflows: 25,
+      maxExecutions: 5000,
+      maxUsers: 5,
+      maxStorage: 5 * 1024,
+      maxConcurrentExecutions: 2,
+      maxExecutionsPerMinute: 60,
+    },
+    professional: {
+      maxWorkflows: 100,
+      maxExecutions: 50000,
+      maxUsers: 25,
+      maxStorage: 25 * 1024,
+      maxConcurrentExecutions: 10,
+      maxExecutionsPerMinute: 300,
+    },
+    enterprise: {
+      maxWorkflows: 500,
+      maxExecutions: 250000,
+      maxUsers: 250,
+      maxStorage: 100 * 1024,
+      maxConcurrentExecutions: 25,
+      maxExecutionsPerMinute: 1200,
+    },
+    enterprise_plus: {
+      maxWorkflows: 1000,
+      maxExecutions: 1000000,
+      maxUsers: 1000,
+      maxStorage: 500 * 1024,
+      maxConcurrentExecutions: 50,
+      maxExecutionsPerMinute: 3000,
+    },
   };
 
   private readonly PLAN_FEATURES: Record<OrganizationPlan, OrganizationFeatureFlags> = {
@@ -321,6 +349,8 @@ export class OrganizationService {
         apiCalls: 0,
         storageUsed: 0,
         usersActive: 1,
+        concurrentExecutions: 0,
+        executionsInCurrentWindow: 0,
       },
     });
 
@@ -338,6 +368,8 @@ export class OrganizationService {
         apiCalls: 0,
         storageUsed: 0,
         usersActive: 1,
+        concurrentExecutions: 0,
+        executionsInCurrentWindow: 0,
       },
       membershipId: membership.id,
       joinedAt: membership.joinedAt,
@@ -687,8 +719,9 @@ export class OrganizationService {
       return;
     }
 
-    const currentUsage = quota.usage as OrganizationUsageMetrics;
+    const currentUsage = this.normalizeUsage(quota.usage as OrganizationUsageMetrics | null);
     const nextUsage: OrganizationUsageMetrics = {
+      ...currentUsage,
       workflowExecutions: currentUsage.workflowExecutions + (usage.workflowExecutions ?? 0),
       apiCalls: currentUsage.apiCalls + (usage.apiCalls ?? 0),
       storageUsed: currentUsage.storageUsed + (usage.storageUsed ?? 0),
@@ -711,6 +744,89 @@ export class OrganizationService {
     return this.PLAN_FEATURES[plan];
   }
 
+  public async getExecutionQuotaProfile(
+    organizationId: string
+  ): Promise<{ limits: OrganizationLimits; usage: OrganizationUsageMetrics; plan: OrganizationPlan }> {
+    if (!db) {
+      return {
+        limits: this.PLAN_LIMITS.starter,
+        usage: this.normalizeUsage(null),
+        plan: 'starter',
+      };
+    }
+
+    const [row] = await db
+      .select({ organization: organizations, quota: organizationQuotas })
+      .from(organizations)
+      .leftJoin(organizationQuotas, eq(organizationQuotas.organizationId, organizations.id))
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    if (!row) {
+      throw new Error(`Organization ${organizationId} not found`);
+    }
+
+    const plan = row.organization.plan as OrganizationPlan;
+    return {
+      plan,
+      limits: this.mergeLimitsWithDefaults(plan, row.quota?.limits as Partial<OrganizationLimits> | null),
+      usage: this.normalizeUsage(row.quota?.usage as OrganizationUsageMetrics | null),
+    };
+  }
+
+  public async updateExecutionLimits(
+    organizationId: string,
+    updates: Partial<Pick<OrganizationLimits, 'maxConcurrentExecutions' | 'maxExecutionsPerMinute' | 'maxExecutions'>>
+  ): Promise<OrganizationLimits> {
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const profile = await this.getExecutionQuotaProfile(organizationId);
+    const merged = this.mergeLimitsWithDefaults(profile.plan, {
+      ...profile.limits,
+      ...updates,
+    });
+
+    await db
+      .update(organizationQuotas)
+      .set({ limits: merged, updatedAt: new Date() })
+      .where(eq(organizationQuotas.organizationId, organizationId));
+
+    return merged;
+  }
+
+  public async updateExecutionUsageSnapshot(
+    organizationId: string,
+    snapshot: Pick<OrganizationUsageMetrics, 'concurrentExecutions' | 'executionsInCurrentWindow'>
+  ): Promise<void> {
+    if (!db) {
+      return;
+    }
+
+    const [quota] = await db
+      .select()
+      .from(organizationQuotas)
+      .where(eq(organizationQuotas.organizationId, organizationId))
+      .limit(1);
+
+    if (!quota) {
+      return;
+    }
+
+    const usage = this.normalizeUsage(quota.usage as OrganizationUsageMetrics | null);
+    const nextUsage: OrganizationUsageMetrics = {
+      ...usage,
+      concurrentExecutions: Math.max(0, snapshot.concurrentExecutions ?? 0),
+      executionsInCurrentWindow: Math.max(0, snapshot.executionsInCurrentWindow ?? 0),
+    };
+
+    await db
+      .update(organizationQuotas)
+      .set({ usage: nextUsage, updatedAt: new Date() })
+      .where(eq(organizationQuotas.id, quota.id));
+  }
+
   private generateSubdomain(name: string): string {
     const base = name
       .toLowerCase()
@@ -725,13 +841,8 @@ export class OrganizationService {
     membership: typeof organizationMembers.$inferSelect,
     quota?: typeof organizationQuotas.$inferSelect
   ): OrganizationContext {
-    const limits = quota?.limits ?? this.PLAN_LIMITS[organization.plan as OrganizationPlan];
-    const usage = quota?.usage ?? {
-      workflowExecutions: 0,
-      apiCalls: 0,
-      storageUsed: 0,
-      usersActive: 0,
-    };
+    const limits = this.mergeLimitsWithDefaults(organization.plan as OrganizationPlan, quota?.limits);
+    const usage = this.normalizeUsage(quota?.usage as OrganizationUsageMetrics | null);
 
     return {
       id: organization.id,
@@ -751,6 +862,49 @@ export class OrganizationService {
       security: this.normalizeSecuritySettings(organization.security as OrganizationSecuritySettings | null),
       branding: organization.branding as OrganizationBranding,
       compliance: organization.compliance as OrganizationComplianceSettings,
+    };
+  }
+
+  private mergeLimitsWithDefaults(
+    plan: OrganizationPlan,
+    limits?: Partial<OrganizationLimits> | null
+  ): OrganizationLimits {
+    const defaults = this.PLAN_LIMITS[plan];
+    const normalized = limits ?? {};
+    return {
+      ...defaults,
+      ...normalized,
+      maxConcurrentExecutions:
+        Math.max(1, normalized?.maxConcurrentExecutions ?? defaults.maxConcurrentExecutions),
+      maxExecutionsPerMinute:
+        Math.max(1, normalized?.maxExecutionsPerMinute ?? defaults.maxExecutionsPerMinute),
+    };
+  }
+
+  private normalizeUsage(usage?: OrganizationUsageMetrics | null): OrganizationUsageMetrics {
+    const base: OrganizationUsageMetrics = {
+      workflowExecutions: 0,
+      apiCalls: 0,
+      storageUsed: 0,
+      usersActive: 0,
+      llmTokens: 0,
+      llmCostUSD: 0,
+      concurrentExecutions: 0,
+      executionsInCurrentWindow: 0,
+    };
+
+    if (!usage) {
+      return base;
+    }
+
+    return {
+      ...base,
+      ...usage,
+      concurrentExecutions: Math.max(0, usage.concurrentExecutions ?? base.concurrentExecutions ?? 0),
+      executionsInCurrentWindow: Math.max(
+        0,
+        usage.executionsInCurrentWindow ?? base.executionsInCurrentWindow ?? 0
+      ),
     };
   }
 }

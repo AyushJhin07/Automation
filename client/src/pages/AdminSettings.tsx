@@ -7,18 +7,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Settings, 
-  Key, 
-  Brain, 
-  Save, 
-  TestTube, 
-  CheckCircle2, 
+import {
+  Settings,
+  Key,
+  Brain,
+  Save,
+  TestTube,
+  CheckCircle2,
   AlertCircle,
+  Activity,
   Eye,
   EyeOff
 } from 'lucide-react';
 import ConnectionManager from '@/components/connections/ConnectionManager';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
 
 export default function AdminSettings() {
   const [apiKeys, setApiKeys] = useState({
@@ -34,11 +37,63 @@ export default function AdminSettings() {
   const [testResults, setTestResults] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [limitsLoading, setLimitsLoading] = useState(false);
+  const [limitsSaving, setLimitsSaving] = useState(false);
+  const [executionLimits, setExecutionLimits] = useState({
+    maxConcurrentExecutions: 0,
+    maxExecutionsPerMinute: 0,
+    maxExecutions: 0
+  });
+  const [executionUsage, setExecutionUsage] = useState({
+    concurrentExecutions: 0,
+    executionsInCurrentWindow: 0
+  });
+
+  const { authFetch, activeOrganizationId } = useAuthStore((state) => ({
+    authFetch: state.authFetch,
+    activeOrganizationId: state.activeOrganizationId
+  }));
 
   // Load existing API keys on mount
   useEffect(() => {
     loadApiKeys();
   }, []);
+
+  useEffect(() => {
+    if (!activeOrganizationId) {
+      return;
+    }
+
+    const loadLimits = async () => {
+      setLimitsLoading(true);
+      try {
+        const response = await authFetch(
+          `/api/admin/organizations/${activeOrganizationId}/execution-limits`
+        );
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data?.error || 'Failed to load execution limits');
+        }
+
+        setExecutionLimits({
+          maxConcurrentExecutions: data.limits.maxConcurrentExecutions,
+          maxExecutionsPerMinute: data.limits.maxExecutionsPerMinute,
+          maxExecutions: data.limits.maxExecutions
+        });
+        setExecutionUsage({
+          concurrentExecutions: data.usage?.concurrentExecutions ?? 0,
+          executionsInCurrentWindow: data.usage?.executionsInCurrentWindow ?? 0
+        });
+      } catch (error: any) {
+        console.error('Failed to load execution limits:', error);
+        toast.error(error?.message || 'Failed to load execution limits');
+      } finally {
+        setLimitsLoading(false);
+      }
+    };
+
+    loadLimits();
+  }, [activeOrganizationId, authFetch]);
 
   const loadApiKeys = async () => {
     try {
@@ -96,6 +151,42 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveExecutionLimits = async () => {
+    if (!activeOrganizationId) {
+      toast.error('Select an organization before saving execution limits');
+      return;
+    }
+
+    setLimitsSaving(true);
+    try {
+      const response = await authFetch(
+        `/api/admin/organizations/${activeOrganizationId}/execution-limits`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(executionLimits)
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || 'Failed to update execution limits');
+      }
+
+      setExecutionLimits({
+        maxConcurrentExecutions: data.limits.maxConcurrentExecutions,
+        maxExecutionsPerMinute: data.limits.maxExecutionsPerMinute,
+        maxExecutions: data.limits.maxExecutions
+      });
+      toast.success('Execution limits updated successfully');
+    } catch (error: any) {
+      console.error('Failed to update execution limits:', error);
+      toast.error(error?.message || 'Failed to update execution limits');
+    } finally {
+      setLimitsSaving(false);
+    }
+  };
+
   const toggleKeyVisibility = (provider: keyof typeof showKeys) => {
     setShowKeys(prev => ({
       ...prev,
@@ -115,6 +206,85 @@ export default function AdminSettings() {
           <ConnectionManager />
 
           <Separator />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-slate-600" />
+                Execution Quota Controls
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="max-concurrent">Max concurrent executions</Label>
+                <Input
+                  id="max-concurrent"
+                  type="number"
+                  min={1}
+                  disabled={limitsLoading || limitsSaving}
+                  value={executionLimits.maxConcurrentExecutions}
+                  onChange={(event) =>
+                    setExecutionLimits((prev) => ({
+                      ...prev,
+                      maxConcurrentExecutions: Math.max(1, Number.parseInt(event.target.value || '0', 10))
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Currently running: {executionUsage.concurrentExecutions} / {executionLimits.maxConcurrentExecutions}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max-throughput">Throughput (executions per minute)</Label>
+                <Input
+                  id="max-throughput"
+                  type="number"
+                  min={1}
+                  disabled={limitsLoading || limitsSaving}
+                  value={executionLimits.maxExecutionsPerMinute}
+                  onChange={(event) =>
+                    setExecutionLimits((prev) => ({
+                      ...prev,
+                      maxExecutionsPerMinute: Math.max(1, Number.parseInt(event.target.value || '0', 10))
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Window usage: {executionUsage.executionsInCurrentWindow} / {executionLimits.maxExecutionsPerMinute}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max-executions">Monthly execution budget</Label>
+                <Input
+                  id="max-executions"
+                  type="number"
+                  min={1}
+                  disabled={limitsLoading || limitsSaving}
+                  value={executionLimits.maxExecutions}
+                  onChange={(event) =>
+                    setExecutionLimits((prev) => ({
+                      ...prev,
+                      maxExecutions: Math.max(1, Number.parseInt(event.target.value || '0', 10))
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Applies across the current billing period.
+                </p>
+              </div>
+
+              <div className="flex items-end justify-end gap-2">
+                <Button
+                  onClick={handleSaveExecutionLimits}
+                  disabled={limitsLoading || limitsSaving}
+                >
+                  {limitsSaving ? 'Saving...' : 'Save execution limits'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Header */}
           <div className="text-center">
