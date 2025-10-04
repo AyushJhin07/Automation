@@ -32,6 +32,8 @@ export interface SandboxExecutionResult {
 export interface SandboxResourceLimits {
   maxCpuMs?: number;
   maxMemoryBytes?: number;
+  cpuQuotaMs?: number;
+  cgroupRoot?: string;
 }
 
 export interface SandboxNetworkAllowlist {

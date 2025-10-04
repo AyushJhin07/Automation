@@ -21,6 +21,8 @@ import { connectionService } from '../services/ConnectionService.js';
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ENV_CPU_LIMIT_MS = Number(process.env.SANDBOX_MAX_CPU_MS);
 const ENV_MEMORY_LIMIT_MB = Number(process.env.SANDBOX_MAX_MEMORY_MB);
+const ENV_CPU_QUOTA_MS = Number(process.env.SANDBOX_CPU_QUOTA_MS);
+const ENV_CGROUP_ROOT = process.env.SANDBOX_CGROUP_ROOT;
 const ENV_HEARTBEAT_INTERVAL_MS = Number(process.env.SANDBOX_HEARTBEAT_INTERVAL_MS);
 const ENV_HEARTBEAT_TIMEOUT_MS = Number(process.env.SANDBOX_HEARTBEAT_TIMEOUT_MS);
 
@@ -243,11 +245,22 @@ export class NodeSandbox {
     if (!Number.isFinite(limits.maxCpuMs) && Number.isFinite(ENV_CPU_LIMIT_MS)) {
       limits.maxCpuMs = Math.max(0, Number(ENV_CPU_LIMIT_MS));
     }
+    if (!Number.isFinite(limits.cpuQuotaMs) && Number.isFinite(ENV_CPU_QUOTA_MS)) {
+      limits.cpuQuotaMs = Math.max(0, Number(ENV_CPU_QUOTA_MS));
+    }
     if (!Number.isFinite(limits.maxMemoryBytes) && Number.isFinite(ENV_MEMORY_LIMIT_MB)) {
       const bytes = Number(ENV_MEMORY_LIMIT_MB) * 1024 * 1024;
       limits.maxMemoryBytes = Math.max(0, bytes);
     }
-    if (!limits.maxCpuMs && !limits.maxMemoryBytes) {
+    if (!limits.cgroupRoot && typeof ENV_CGROUP_ROOT === 'string' && ENV_CGROUP_ROOT.trim().length > 0) {
+      limits.cgroupRoot = ENV_CGROUP_ROOT.trim();
+    }
+
+    const hasCpuLimit = Number.isFinite(limits.maxCpuMs) && (limits.maxCpuMs ?? 0) > 0;
+    const hasCpuQuota = Number.isFinite(limits.cpuQuotaMs) && (limits.cpuQuotaMs ?? 0) > 0;
+    const hasMemoryLimit = Number.isFinite(limits.maxMemoryBytes) && (limits.maxMemoryBytes ?? 0) > 0;
+
+    if (!hasCpuLimit && !hasCpuQuota && !hasMemoryLimit) {
       return undefined;
     }
     return limits;
