@@ -362,8 +362,132 @@ async function runWorkflowPersistenceIntegration(): Promise<void> {
   assert.ok(systemUser?.id, 'System user created during the test should include an id');
 }
 
+async function runWorkflowBreakingChangeGuardTest(): Promise<void> {
+  const organizationId = 'org-db-breaking';
+  const userId = 'user-breaking-guard';
+
+  const baseGraph = {
+    nodes: [
+      {
+        id: 'step-1',
+        type: 'action',
+        data: {
+          label: 'List rows',
+          outputs: ['rows', 'count'],
+          metadata: {
+            columns: ['rows', 'count'],
+            schema: {
+              rows: { type: 'array' },
+              count: { type: 'number' },
+            },
+          },
+        },
+      },
+    ],
+    edges: [],
+  } as Record<string, any>;
+
+  const stored = await WorkflowRepository.saveWorkflowGraph({
+    organizationId,
+    name: 'Breaking Change Workflow',
+    graph: baseGraph,
+    metadata: { version: '1.0.0' },
+  });
+
+  await WorkflowRepository.publishWorkflowVersion({
+    workflowId: stored.id,
+    organizationId,
+    environment: 'prod',
+    userId,
+  });
+
+  const breakingGraph = {
+    nodes: [
+      {
+        id: 'step-1',
+        type: 'action',
+        data: {
+          label: 'List rows (updated)',
+          outputs: ['rows'],
+          metadata: {
+            columns: ['rows'],
+            schema: {
+              rows: { type: 'array' },
+            },
+          },
+        },
+      },
+    ],
+    edges: [],
+  } as Record<string, any>;
+
+  await WorkflowRepository.saveWorkflowGraph({
+    id: stored.id,
+    organizationId,
+    name: 'Breaking Change Workflow',
+    graph: breakingGraph,
+    metadata: { version: '1.1.0' },
+  });
+
+  const diff = await WorkflowRepository.getWorkflowDiff({
+    workflowId: stored.id,
+    organizationId,
+    environment: 'prod',
+  });
+
+  assert.equal(diff.summary.hasBreakingChanges, true, 'Diff should flag breaking changes for removed outputs');
+  assert.equal(
+    diff.summary.breakingChanges.some((change) => change.type === 'output-removed' && change.nodeId === 'step-1'),
+    true,
+    'Diff should include an output removal entry',
+  );
+
+  await assert.rejects(
+    WorkflowRepository.publishWorkflowVersion({
+      workflowId: stored.id,
+      organizationId,
+      environment: 'prod',
+      userId,
+    }),
+    /requires migration metadata/i,
+    'Publishing without migration metadata should be rejected when breaking changes exist',
+  );
+
+  const metadata = {
+    migration: {
+      freezeActiveRuns: true,
+      scheduleRollForward: true,
+      scheduleBackfill: false,
+      notes: 'Nightly backfill planned',
+    },
+  } as Record<string, any>;
+
+  const publishResult = await WorkflowRepository.publishWorkflowVersion({
+    workflowId: stored.id,
+    organizationId,
+    environment: 'prod',
+    userId,
+    metadata,
+  });
+
+  const migrationMetadata = publishResult.deployment.metadata?.migration as Record<string, any> | undefined;
+  assert.ok(migrationMetadata, 'Deployment metadata should include migration details after approving breaking changes');
+  assert.equal(migrationMetadata?.required, true, 'Migration metadata should mark the plan as required');
+  assert.equal(migrationMetadata?.freezeActiveRuns, true, 'freezeActiveRuns decision should be persisted');
+  assert.equal(migrationMetadata?.scheduleRollForward, true, 'scheduleRollForward decision should be persisted');
+  assert.equal(migrationMetadata?.scheduleBackfill, false, 'scheduleBackfill decision should be persisted');
+  assert.equal(migrationMetadata?.notes, 'Nightly backfill planned', 'Notes should be trimmed and stored');
+  assert.ok(Array.isArray(migrationMetadata?.breakingChanges), 'Breaking change details should be preserved for auditing');
+  assert.ok(
+    (migrationMetadata?.breakingChanges as any[]).length > 0,
+    'Stored migration metadata should list the breaking changes that were approved',
+  );
+  assert.ok(typeof migrationMetadata?.assessedAt === 'string', 'Migration metadata should record when the plan was captured');
+}
+
 try {
   await runWorkflowPersistenceIntegration();
+  await runWorkflowBreakingChangeGuardTest();
   console.log('WorkflowRepository database integration test passed.');
   resetDatabaseAvailabilityOverrideForTests();
   process.exit(0);

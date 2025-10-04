@@ -29,6 +29,16 @@ import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
 import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel';
 import { buildMetadataFromNode } from './metadata';
 import { normalizeWorkflowNode } from './graphSync';
@@ -37,6 +47,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '..
 import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
 import { specToReactFlow } from '../../graph/transform';
+import type { WorkflowDiffSummary } from '../../../../common/workflow-types';
 import { 
   Plus,
   Play,
@@ -1254,6 +1265,17 @@ const GraphEditorContent = () => {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [supportedApps, setSupportedApps] = useState<Set<string>>(new Set(['core', 'built_in', 'time']));
   const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
+  const [promotionState, setPromotionState] = useState<'idle' | 'checking' | 'publishing'>('idle');
+  const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
+  const [promotionWorkflowId, setPromotionWorkflowId] = useState<string | null>(null);
+  const [promotionDiff, setPromotionDiff] = useState<WorkflowDiffSummary | null>(null);
+  const [migrationPlan, setMigrationPlan] = useState({
+    freezeActiveRuns: true,
+    scheduleRollForward: true,
+    scheduleBackfill: true,
+    notes: '',
+  });
+  const [promotionError, setPromotionError] = useState<string | null>(null);
 
   useEffect(() => {
     setLabelValue(selectedNode?.data?.label || '');
@@ -2065,14 +2087,14 @@ const GraphEditorContent = () => {
     }
   }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, updateNodeExecution, resetExecutionHighlights, setNodes, setActiveWorkflowId]);
 
-  const onSaveWorkflow = useCallback(async () => {
+  const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
     if (nodes.length === 0) {
       toast.error('Add at least one node before saving');
-      return;
+      return null;
     }
 
     if (!ensureSupportedNodes()) {
-      return;
+      return null;
     }
 
     const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
@@ -2107,12 +2129,149 @@ const GraphEditorContent = () => {
         console.warn('Unable to persist workflow id after save:', error);
       }
       toast.success('Workflow saved');
+      return savedId;
     } catch (error: any) {
       toast.error(error?.message || 'Failed to save workflow');
+      return null;
     } finally {
       setSaveState('idle');
     }
   }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, authFetch, logout, setActiveWorkflowId]);
+
+  const handlePromotionDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        if (promotionState === 'publishing') {
+          return;
+        }
+        setPromotionDialogOpen(false);
+        setPromotionError(null);
+        setPromotionWorkflowId(null);
+        setPromotionDiff(null);
+        setMigrationPlan({
+          freezeActiveRuns: true,
+          scheduleRollForward: true,
+          scheduleBackfill: true,
+          notes: '',
+        });
+        return;
+      }
+      setPromotionDialogOpen(true);
+    },
+    [promotionState],
+  );
+
+  const handleOpenPromotionDialog = useCallback(async () => {
+    if (promotionState !== 'idle') {
+      return;
+    }
+
+    if (nodes.length === 0) {
+      toast.error('Add at least one node before promoting');
+      return;
+    }
+
+    setPromotionState('checking');
+    setPromotionError(null);
+    setPromotionDiff(null);
+
+    const savedId = await onSaveWorkflow();
+    const workflowIdentifier = savedId ?? activeWorkflowId ?? fallbackWorkflowIdRef.current ?? null;
+
+    if (!workflowIdentifier) {
+      setPromotionState('idle');
+      toast.error('Unable to determine workflow id for promotion');
+      return;
+    }
+
+    try {
+      setPromotionWorkflowId(workflowIdentifier);
+      const response = await authFetch(`/api/workflows/${workflowIdentifier}/diff/prod`);
+      const data = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        diff?: { summary?: WorkflowDiffSummary };
+      };
+
+      if (!response.ok || !data?.success) {
+        if (response.status === 401) {
+          await logout(true);
+        }
+        throw new Error(data?.error || 'Failed to load workflow diff');
+      }
+
+      const summary = data?.diff?.summary as WorkflowDiffSummary | undefined;
+      if (!summary) {
+        throw new Error('Diff summary unavailable');
+      }
+
+      setPromotionDiff(summary);
+      setMigrationPlan({
+        freezeActiveRuns: true,
+        scheduleRollForward: true,
+        scheduleBackfill: true,
+        notes: '',
+      });
+      setPromotionDialogOpen(true);
+    } catch (error: any) {
+      const message = error?.message || 'Failed to load workflow diff';
+      setPromotionError(message);
+      toast.error(message);
+    } finally {
+      setPromotionState('idle');
+    }
+  }, [promotionState, nodes.length, onSaveWorkflow, activeWorkflowId, authFetch, logout]);
+
+  const handleConfirmPromotion = useCallback(async () => {
+    if (!promotionWorkflowId) {
+      toast.error('Save the workflow before promoting');
+      return;
+    }
+
+    setPromotionState('publishing');
+    setPromotionError(null);
+
+    try {
+      const payload: Record<string, any> = { environment: 'prod' };
+      if (promotionDiff?.hasBreakingChanges) {
+        const trimmedNotes = migrationPlan.notes.trim();
+        payload.metadata = {
+          migration: {
+            freezeActiveRuns: migrationPlan.freezeActiveRuns,
+            scheduleRollForward: migrationPlan.scheduleRollForward,
+            scheduleBackfill: migrationPlan.scheduleBackfill,
+            ...(trimmedNotes ? { notes: trimmedNotes } : {}),
+          },
+        };
+      }
+
+      const response = await authFetch(`/api/workflows/${promotionWorkflowId}/publish`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as { success?: boolean; error?: string };
+
+      if (!response.ok || !result?.success) {
+        if (response.status === 401) {
+          await logout(true);
+        }
+        throw new Error(result?.error || 'Failed to promote workflow');
+      }
+
+      toast.success('Workflow promoted to production');
+      setPromotionDialogOpen(false);
+      setPromotionWorkflowId(null);
+      setPromotionDiff(null);
+      setPromotionError(null);
+    } catch (error: any) {
+      const message = error?.message || 'Failed to promote workflow';
+      setPromotionError(message);
+      toast.error(message);
+    } finally {
+      setPromotionState('idle');
+    }
+  }, [promotionWorkflowId, promotionDiff, migrationPlan, authFetch, logout]);
   
   return (
     <div className="flex h-screen bg-gray-100">
@@ -2176,7 +2335,9 @@ const GraphEditorContent = () => {
                   
                   <Button
                     variant="outline"
-                    onClick={onSaveWorkflow}
+                    onClick={() => {
+                      void onSaveWorkflow();
+                    }}
                     disabled={saveState === 'saving'}
                     className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
                   >
@@ -2192,7 +2353,25 @@ const GraphEditorContent = () => {
                       </>
                     )}
                   </Button>
-                  
+
+                  <Button
+                    onClick={handleOpenPromotionDialog}
+                    disabled={promotionState !== 'idle' || nodes.length === 0}
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    {promotionState === 'idle' ? (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Promote
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        {promotionState === 'checking' ? 'Preparing…' : 'Promoting…'}
+                      </>
+                    )}
+                  </Button>
+
                   <Button variant="outline" className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
                     <Download className="w-4 h-4 mr-2" />
                     Export
@@ -2646,6 +2825,201 @@ const GraphEditorContent = () => {
           </div>
         </div>
       )}
+      <Dialog open={promotionDialogOpen} onOpenChange={handlePromotionDialogOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Promote workflow to production</DialogTitle>
+            <DialogDescription>
+              Review the pending changes before deploying to the production environment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {promotionDiff ? (
+              <>
+                {promotionDiff.hasChanges ? (
+                  <div className="grid gap-2 text-sm text-slate-700">
+                    {promotionDiff.addedNodes.length > 0 && (
+                      <div>
+                        <span className="font-semibold text-slate-900">Added nodes:</span>{' '}
+                        <span>{promotionDiff.addedNodes.join(', ')}</span>
+                      </div>
+                    )}
+                    {promotionDiff.removedNodes.length > 0 && (
+                      <div>
+                        <span className="font-semibold text-slate-900">Removed nodes:</span>{' '}
+                        <span>{promotionDiff.removedNodes.join(', ')}</span>
+                      </div>
+                    )}
+                    {promotionDiff.modifiedNodes.length > 0 && (
+                      <div>
+                        <span className="font-semibold text-slate-900">Modified nodes:</span>{' '}
+                        <span>{promotionDiff.modifiedNodes.join(', ')}</span>
+                      </div>
+                    )}
+                    {promotionDiff.addedEdges.length > 0 && (
+                      <div>
+                        <span className="font-semibold text-slate-900">Added edges:</span>{' '}
+                        <span>{promotionDiff.addedEdges.join(', ')}</span>
+                      </div>
+                    )}
+                    {promotionDiff.removedEdges.length > 0 && (
+                      <div>
+                        <span className="font-semibold text-slate-900">Removed edges:</span>{' '}
+                        <span>{promotionDiff.removedEdges.join(', ')}</span>
+                      </div>
+                    )}
+                    {promotionDiff.metadataChanged && (
+                      <div className="italic text-slate-600">Workflow metadata will be updated.</div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No structural changes detected since the last deployment.
+                  </p>
+                )}
+
+                {promotionDiff.hasBreakingChanges ? (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Breaking changes detected</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 space-y-1 text-left">
+                        {promotionDiff.breakingChanges.map((change, index) => (
+                          <li key={`${change.nodeId}-${change.type}-${index}`}>
+                            <span className="font-semibold">{change.nodeId}:</span> {change.description}
+                          </li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert className="bg-emerald-50 border-emerald-200 text-emerald-800">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <AlertTitle>No breaking changes</AlertTitle>
+                    <AlertDescription>
+                      This promotion does not remove outputs or change downstream schemas.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {promotionDiff.hasBreakingChanges && (
+                  <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+                    <h4 className="text-sm font-semibold text-slate-900">Migration plan</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <Label htmlFor="freeze-active-runs" className="text-sm font-medium text-slate-700">
+                            Freeze active runs
+                          </Label>
+                          <p className="text-xs text-slate-500">
+                            Pause in-flight executions before activating the new version.
+                          </p>
+                        </div>
+                        <Switch
+                          id="freeze-active-runs"
+                          checked={migrationPlan.freezeActiveRuns}
+                          onCheckedChange={(checked) =>
+                            setMigrationPlan((plan) => ({ ...plan, freezeActiveRuns: checked }))
+                          }
+                          disabled={promotionState === 'publishing'}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <Label htmlFor="schedule-roll-forward" className="text-sm font-medium text-slate-700">
+                            Schedule roll-forward jobs
+                          </Label>
+                          <p className="text-xs text-slate-500">
+                            Automatically queue follow-up tasks to migrate future runs.
+                          </p>
+                        </div>
+                        <Switch
+                          id="schedule-roll-forward"
+                          checked={migrationPlan.scheduleRollForward}
+                          onCheckedChange={(checked) =>
+                            setMigrationPlan((plan) => ({ ...plan, scheduleRollForward: checked }))
+                          }
+                          disabled={promotionState === 'publishing'}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <Label htmlFor="schedule-backfill" className="text-sm font-medium text-slate-700">
+                            Schedule backfill jobs
+                          </Label>
+                          <p className="text-xs text-slate-500">
+                            Ensure historical data stays consistent with the new schema.
+                          </p>
+                        </div>
+                        <Switch
+                          id="schedule-backfill"
+                          checked={migrationPlan.scheduleBackfill}
+                          onCheckedChange={(checked) =>
+                            setMigrationPlan((plan) => ({ ...plan, scheduleBackfill: checked }))
+                          }
+                          disabled={promotionState === 'publishing'}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="migration-notes" className="text-sm font-medium text-slate-700">
+                          Roll-forward and backfill notes
+                        </Label>
+                        <Textarea
+                          id="migration-notes"
+                          value={migrationPlan.notes}
+                          onChange={(event) =>
+                            setMigrationPlan((plan) => ({ ...plan, notes: event.target.value }))
+                          }
+                          placeholder="Document how you will freeze active runs, roll forward, and backfill data."
+                          disabled={promotionState === 'publishing'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Fetching latest diff…</p>
+            )}
+
+            {promotionError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{promotionError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handlePromotionDialogOpenChange(false)}
+              disabled={promotionState === 'publishing'}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmPromotion}
+              disabled={promotionState === 'publishing' || !promotionWorkflowId}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {promotionState === 'publishing' ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Promoting…
+                </>
+              ) : (
+                <>Promote to production</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Node Configuration Modal */}
       {configOpen && selectedNode && (
         <NodeConfigurationModal

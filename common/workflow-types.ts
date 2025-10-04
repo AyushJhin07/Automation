@@ -75,6 +75,21 @@ export interface WorkflowDeploymentSummary {
   rollbackOf?: string | null;
 }
 
+export type WorkflowBreakingChangeType =
+  | 'node-removed'
+  | 'output-removed'
+  | 'schema-changed';
+
+export interface WorkflowBreakingChange {
+  type: WorkflowBreakingChangeType;
+  nodeId: string;
+  description: string;
+  removedOutputs?: string[];
+  field?: string;
+  previousSchema?: Record<string, any> | null;
+  currentSchema?: Record<string, any> | null;
+}
+
 export interface WorkflowDiffSummary {
   hasChanges: boolean;
   addedNodes: string[];
@@ -83,6 +98,18 @@ export interface WorkflowDiffSummary {
   addedEdges: string[];
   removedEdges: string[];
   metadataChanged: boolean;
+  breakingChanges: WorkflowBreakingChange[];
+  hasBreakingChanges: boolean;
+}
+
+export interface WorkflowMigrationMetadata {
+  required: boolean;
+  freezeActiveRuns: boolean;
+  scheduleRollForward: boolean;
+  scheduleBackfill: boolean;
+  notes?: string | null;
+  assessedAt?: string;
+  breakingChanges?: WorkflowBreakingChange[];
 }
 
 export interface WorkflowDiffResponse {
