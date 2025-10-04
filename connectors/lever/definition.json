@@ -67,7 +67,15 @@
           },
           "stage_id": {
             "type": "string",
-            "description": "Filter by stage ID"
+            "description": "Filter by stage ID",
+            "x-dynamicOptions": {
+              "handler": "list_stages",
+              "labelField": "label",
+              "valueField": "value",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "source_id": {
             "type": "string",
@@ -224,7 +232,15 @@
           },
           "stage": {
             "type": "string",
-            "description": "Stage ID"
+            "description": "Stage ID",
+            "x-dynamicOptions": {
+              "handler": "list_stages",
+              "labelField": "label",
+              "valueField": "value",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           },
           "archived": {
             "type": "object",
@@ -331,7 +347,15 @@
           },
           "stage": {
             "type": "string",
-            "description": "Stage ID"
+            "description": "Stage ID",
+            "x-dynamicOptions": {
+              "handler": "list_stages",
+              "labelField": "label",
+              "valueField": "value",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": [
@@ -523,7 +547,15 @@
           },
           "stage": {
             "type": "string",
-            "description": "Target stage ID"
+            "description": "Target stage ID",
+            "x-dynamicOptions": {
+              "handler": "list_stages",
+              "labelField": "label",
+              "valueField": "value",
+              "cache": {
+                "ttlMs": 300000
+              }
+            }
           }
         },
         "required": [
