@@ -23,6 +23,7 @@ import {
   Flag
 } from 'lucide-react';
 import ConnectionManager from '@/components/connections/ConnectionManager';
+import WorkerStatusPanel from '@/components/automation/WorkerStatusPanel';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -405,6 +406,8 @@ export default function AdminSettings() {
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto p-6 space-y-8">
           <ConnectionManager />
+
+          <WorkerStatusPanel />
 
           <Separator />
 
