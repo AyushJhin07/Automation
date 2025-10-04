@@ -56,6 +56,7 @@ import type { OrganizationLimits } from './database/schema.js';
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
+import usageAdminRoutes from "./routes/usage";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -189,6 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/organizations', organizationRoleRoutes);
   app.use('/api/organizations', organizationSecurityRoutes);
   app.use('/api/organizations', organizationConnectorRoutes);
+  app.use('/api/usage', usageAdminRoutes);
 
   // (removed duplicate /api/ai/models in favor of aiRouter.get('/models'))
   
@@ -1347,7 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/plans', async (req, res) => {
     try {
-      const plans = usageMeteringService.getAvailablePlans();
+      const plans = await usageMeteringService.getAvailablePlans();
       res.json({ success: true, plans });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -1357,7 +1359,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/upgrade',
     authenticateToken,
     securityService.validateInput([
-      { field: 'plan', type: 'string', required: true, allowedValues: ['free', 'pro', 'enterprise'] }
+      {
+        field: 'plan',
+        type: 'string',
+        required: true,
+        allowedValues: ['free', 'starter', 'pro', 'professional', 'enterprise', 'enterprise_plus'],
+      }
     ]),
     async (req, res) => {
       try {

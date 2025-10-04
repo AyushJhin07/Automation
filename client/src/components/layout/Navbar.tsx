@@ -79,6 +79,9 @@ export const Navbar = () => {
                 <DropdownMenuItem asChild>
                   <Link to="/admin/settings">Account settings</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/usage">Usage &amp; billing</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => logout()}>Sign out</DropdownMenuItem>
               </DropdownMenuContent>
