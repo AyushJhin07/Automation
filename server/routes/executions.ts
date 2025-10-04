@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { runExecutionManager } from '../core/RunExecutionManager.js';
 import { retryManager } from '../core/RetryManager.js';
+import { executionReplayService } from '../services/ExecutionReplayService.js';
 
 const router = Router();
 
@@ -144,8 +145,18 @@ router.post('/:executionId/retry', async (req, res) => {
     if (!execution) {
       return res.status(404).json({ success: false, error: 'Execution not found' });
     }
-    // TODO: wire to workflow runtime when retry orchestration is implemented
-    res.json({ success: true, message: 'Retry scheduled' });
+
+    const reason = typeof (req.body as any)?.reason === 'string' ? String((req.body as any).reason) : undefined;
+    const userId = (req as any)?.user?.id ? String((req as any).user.id) : undefined;
+
+    const { executionId: replayExecutionId } = await executionReplayService.replayExecution({
+      executionId: req.params.executionId,
+      organizationId,
+      userId,
+      reason,
+    });
+
+    res.json({ success: true, executionId: replayExecutionId });
   } catch (error) {
     console.error('Failed to schedule execution retry', error);
     res.status(500).json({ success: false, error: 'Failed to schedule execution retry' });
@@ -164,8 +175,24 @@ router.post('/:executionId/nodes/:nodeId/retry', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Execution not found' });
     }
 
-    await retryManager.replayFromDLQ(req.params.executionId, req.params.nodeId);
-    res.json({ success: true, message: 'Node retry scheduled' });
+    const reason = typeof (req.body as any)?.reason === 'string' ? String((req.body as any).reason) : undefined;
+    const userId = (req as any)?.user?.id ? String((req as any).user.id) : undefined;
+
+    const { executionId: replayExecutionId } = await executionReplayService.replayExecution({
+      executionId: req.params.executionId,
+      organizationId,
+      nodeId: req.params.nodeId,
+      userId,
+      reason,
+    });
+
+    try {
+      await retryManager.replayFromDLQ(req.params.executionId, req.params.nodeId);
+    } catch (dlqError) {
+      console.warn('Failed to clear DLQ item after scheduling node replay', dlqError);
+    }
+
+    res.json({ success: true, executionId: replayExecutionId });
   } catch (error) {
     console.error('Failed to retry node execution', error);
     res.status(500).json({ success: false, error: 'Failed to retry node execution' });
