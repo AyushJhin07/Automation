@@ -49,5 +49,23 @@
     ],
     "skip": true,
     "notes": "Remove skip and supply a test workspace channel to exercise the Slack action."
+  },
+  "tableau": {
+    "credentials": {
+      "serverUrl": "https://your-server.tableau.com",
+      "siteId": "00000000-0000-0000-0000-000000000000",
+      "personalAccessTokenName": "YOUR_PAT_NAME",
+      "personalAccessTokenSecret": "YOUR_PAT_SECRET"
+    },
+    "actions": [
+      {
+        "id": "get_workbooks",
+        "parameters": {
+          "siteId": "00000000-0000-0000-0000-000000000000",
+          "pageSize": 1
+        }
+      }
+    ],
+    "notes": "Provide a valid Tableau PAT, site ID, and workbook visibility before running smoke tests."
   }
 }

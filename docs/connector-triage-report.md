@@ -76,7 +76,7 @@ actions/triggers that the audit located in `registerHandler(s)` calls.
 | --- | --- | --- | --- |
 | Databricks | Placeholder client with `api.example.com` base URL and no handlers. | 0/12 | Implement PAT-authenticated REST calls, add handlers, and register. |
 | Snowflake | Placeholder client lacking handlers. | 0/11 | Implement key/token auth + SQL execution endpoints, then register. |
-| Tableau | Placeholder client with `api.example.com` base URL and no handlers. | 0/16 | Implement REST extract/report endpoints, add handlers, and register. |
+| Tableau | PAT-auth connector with site-aware REST endpoints defined. | 0/16 | Implement extract/report handlers, add publish coverage, and register. |
 | Power BI | Placeholder client lacking handlers and referencing undefined `params`. | 0/19 | Implement Azure AD auth, dataset/report endpoints, and register. |
 
 ## Phase 3 readiness checklist

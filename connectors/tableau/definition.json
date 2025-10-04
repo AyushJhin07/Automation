@@ -5,15 +5,40 @@
   "category": "Analytics",
   "icon": "tableau",
   "color": "#E97627",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "authentication": {
-    "type": "basic",
-    "config": {
-      "usernameField": "username",
-      "passwordField": "password"
-    }
+    "type": "personal_access_token",
+    "fields": [
+      {
+        "key": "serverUrl",
+        "label": "Tableau Server URL",
+        "type": "text",
+        "required": true,
+        "placeholder": "https://your-server.tableau.com",
+        "description": "Base URL for your Tableau Cloud or Server instance (include https:// and no trailing slash)."
+      },
+      {
+        "key": "siteId",
+        "label": "Site ID",
+        "type": "text",
+        "required": true,
+        "description": "UUID of the Tableau site to target. Use the default site ID for the Default site."
+      },
+      {
+        "key": "personalAccessTokenName",
+        "label": "Personal Access Token Name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "personalAccessTokenSecret",
+        "label": "Personal Access Token Secret",
+        "type": "password",
+        "required": true
+      }
+    ]
   },
-  "baseUrl": "https://your-server.tableauservices.com/api/3.16",
+  "baseUrl": "{serverUrl}/api/3.22",
   "actions": [
     {
       "id": "test_connection",
@@ -21,10 +46,17 @@
       "description": "Test the connection to Tableau Server",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID (defaults to the authenticated site)"
+          }
+        },
         "required": [],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}"
     },
     {
       "id": "sign_in",
@@ -33,25 +65,28 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "username": {
+          "personalAccessTokenName": {
             "type": "string",
-            "description": "Username"
+            "description": "Personal access token name"
           },
-          "password": {
+          "personalAccessTokenSecret": {
             "type": "string",
-            "description": "Password"
+            "description": "Personal access token secret"
           },
-          "siteName": {
+          "siteContentUrl": {
             "type": "string",
-            "description": "Site name (optional)"
+            "description": "Site content URL slug (empty string for Default site)",
+            "default": ""
           }
         },
         "required": [
-          "username",
-          "password"
+          "personalAccessTokenName",
+          "personalAccessTokenSecret"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "POST",
+      "endpoint": "/auth/signin"
     },
     {
       "id": "get_sites",
@@ -76,7 +111,9 @@
         },
         "required": [],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites"
     },
     {
       "id": "get_workbooks",
@@ -119,7 +156,9 @@
           "siteId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/workbooks"
     },
     {
       "id": "get_workbook",
@@ -142,7 +181,9 @@
           "workbookId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/workbooks/{workbookId}"
     },
     {
       "id": "update_workbook",
@@ -185,7 +226,9 @@
           "workbookId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "PUT",
+      "endpoint": "/sites/{siteId}/workbooks/{workbookId}"
     },
     {
       "id": "get_views",
@@ -225,7 +268,9 @@
           "workbookId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/workbooks/{workbookId}/views"
     },
     {
       "id": "get_view",
@@ -248,7 +293,9 @@
           "viewId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/views/{viewId}"
     },
     {
       "id": "query_view_data",
@@ -280,7 +327,9 @@
           "viewId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/views/{viewId}/data"
     },
     {
       "id": "get_datasources",
@@ -315,7 +364,9 @@
           "siteId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/datasources"
     },
     {
       "id": "get_datasource",
@@ -338,7 +389,9 @@
           "datasourceId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/datasources/{datasourceId}"
     },
     {
       "id": "refresh_extract",
@@ -361,7 +414,9 @@
           "datasourceId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "POST",
+      "endpoint": "/sites/{siteId}/datasources/{datasourceId}/refresh"
     },
     {
       "id": "get_users",
@@ -396,7 +451,9 @@
           "siteId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/users"
     },
     {
       "id": "get_projects",
@@ -427,7 +484,9 @@
           "siteId"
         ],
         "additionalProperties": false
-      }
+      },
+      "method": "GET",
+      "endpoint": "/sites/{siteId}/projects"
     },
     {
       "id": "create_project",
@@ -464,6 +523,54 @@
         "required": [
           "siteId",
           "name"
+        ],
+        "additionalProperties": false
+      },
+      "method": "POST",
+      "endpoint": "/sites/{siteId}/projects"
+    },
+    {
+      "id": "publish_workbook",
+      "name": "Publish Workbook",
+      "description": "Upload a new workbook to a site",
+      "endpoint": "/sites/{siteId}/workbooks",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID that will own the workbook"
+          },
+          "workbookName": {
+            "type": "string",
+            "description": "Name to assign to the workbook"
+          },
+          "showTabs": {
+            "type": "boolean",
+            "description": "Display sheet tabs after publish"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Overwrite an existing workbook with the same name"
+          },
+          "file": {
+            "type": "string",
+            "description": "Workbook file contents (.twb/.twbx/.tdsx). Provide a file reference or base64 string."
+          },
+          "fileName": {
+            "type": "string",
+            "description": "Filename for the uploaded workbook"
+          }
+        },
+        "required": [
+          "siteId",
+          "projectId",
+          "file"
         ],
         "additionalProperties": false
       }
@@ -561,10 +668,10 @@
   ],
   "testConnection": {
     "method": "GET",
-    "endpoint": "/sites"
+    "endpoint": "/sites/{siteId}"
   },
   "release": {
-    "semver": "1.0.0",
+    "semver": "1.1.0",
     "status": "stable",
     "isBeta": false,
     "betaStartedAt": null,
