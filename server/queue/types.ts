@@ -9,7 +9,10 @@ import type {
   WorkerOptions,
 } from 'bullmq';
 
+import type { OrganizationRegion } from '../database/schema.js';
 import type { WorkflowResumeState } from '../types/workflowTimers';
+
+export type ExecutionQueueName = `workflow.execute.${OrganizationRegion}`;
 
 export type WorkflowExecuteJobPayload = {
   workflowId: string;
@@ -22,9 +25,10 @@ export type WorkflowExecuteJobPayload = {
   resumeState?: WorkflowResumeState | null;
   initialData?: any;
   timerId?: string | null;
+  region: OrganizationRegion;
 };
 
-export interface JobPayloads {
+export interface JobPayloads extends Record<ExecutionQueueName, WorkflowExecuteJobPayload> {
   'workflow.execute': WorkflowExecuteJobPayload;
   'encryption.rotate': { jobId: string };
 }

@@ -2,25 +2,46 @@ import { env } from '../env';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
 import { triggerPersistenceService } from '../services/TriggerPersistenceService.js';
 import { WebhookManager } from '../webhooks/WebhookManager.js';
+import type { OrganizationRegion } from '../database/schema.js';
 
 const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_SIZE = 25;
+
+function resolveWorkerRegion(): OrganizationRegion {
+  const raw = (process.env.DATA_RESIDENCY_REGION ?? 'us').toLowerCase();
+  const allowed: OrganizationRegion[] = ['us', 'eu', 'apac'];
+  if ((allowed as string[]).includes(raw)) {
+    return raw as OrganizationRegion;
+  }
+  if (raw && raw !== 'us') {
+    console.warn(`⚠️ Unrecognized DATA_RESIDENCY_REGION="${raw}" for scheduler worker. Falling back to "us".`);
+  }
+  return 'us';
+}
+
+const WORKER_REGION = resolveWorkerRegion();
 
 async function runSchedulerCycle(batchSize: number): Promise<void> {
   const now = new Date();
   const dueTriggers = await triggerPersistenceService.claimDuePollingTriggers({
     limit: batchSize,
     now,
+    region: WORKER_REGION,
   });
 
   if (dueTriggers.length === 0) {
     return;
   }
 
-  console.log(`⏱️ Scheduler claimed ${dueTriggers.length} polling trigger(s) at ${now.toISOString()}`);
+  console.log(
+    `⏱️ Scheduler claimed ${dueTriggers.length} polling trigger(s) at ${now.toISOString()} for region ${WORKER_REGION}`
+  );
 
   const manager = WebhookManager.getInstance();
   for (const trigger of dueTriggers) {
+    if (trigger.region && trigger.region !== WORKER_REGION) {
+      continue;
+    }
     try {
       await manager.runPollingTrigger(trigger);
     } catch (error) {
@@ -33,7 +54,7 @@ async function runSchedulerCycle(batchSize: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log('🕒 Starting polling scheduler worker');
+  console.log(`🕒 Starting polling scheduler worker (region=${WORKER_REGION})`);
   console.log('🌍 Worker environment:', env.NODE_ENV);
 
   WebhookManager.configureQueueService(executionQueueService);

@@ -572,6 +572,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/organizations/:id/residency-report', authenticateToken, async (req, res) => {
+    const startTime = Date.now();
+
+    try {
+      const organizations = await organizationService.listUserOrganizations(req.user!.id);
+      const org = organizations.find((item) => item.id === req.params.id);
+
+      if (!org) {
+        return res.status(404).json({ success: false, error: 'Organization not found' });
+      }
+
+      const report = await organizationService.getResidencyReport(req.params.id);
+      res.json({ success: true, report, responseTime: Date.now() - startTime });
+    } catch (error) {
+      console.error('❌ Residency report error:', getErrorMessage(error));
+      res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime,
+      });
+    }
+  });
+
   // ===== CONNECTION MANAGEMENT ROUTES =====
 
   app.post('/api/connections', 
@@ -2995,6 +3018,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const region = await organizationService.getOrganizationRegion(organizationId);
+
       const endpoint = await webhookManager.registerWebhook({
         id: '', // Will be generated
         appId,
@@ -3006,9 +3031,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(metadata || {}),
           organizationId,
           userId: (req as any)?.user?.id,
+          region,
         },
         organizationId,
         userId: (req as any)?.user?.id,
+        region,
       });
       
       res.json({
@@ -3048,6 +3075,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ success: false, error: 'Organization context is required' });
       }
 
+      const region = await organizationService.getOrganizationRegion(organizationId);
+
       const pollingTrigger = {
         id,
         appId,
@@ -3062,9 +3091,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(metadata || {}),
           organizationId,
           userId: (req as any)?.user?.id,
+          region,
         },
         organizationId,
         userId: (req as any)?.user?.id,
+        region,
       };
       
       await webhookManager.registerPollingTrigger(pollingTrigger);
