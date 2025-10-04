@@ -16,6 +16,10 @@ import {
   type WorkflowVersionState,
   type WorkflowEnvironment,
 } from '../database/schema.js';
+import type {
+  WorkflowBreakingChange,
+  WorkflowMigrationMetadata,
+} from '../../common/workflow-types.js';
 import { ensureDatabaseReady, isDatabaseAvailable } from '../database/status.js';
 
 void ensureDatabaseReady();
@@ -43,7 +47,11 @@ export interface WorkflowDiffSummary {
   addedEdges: string[];
   removedEdges: string[];
   metadataChanged: boolean;
+  breakingChanges: WorkflowBreakingChange[];
+  hasBreakingChanges: boolean;
 }
+
+export interface WorkflowMigrationDecision extends WorkflowMigrationMetadata {}
 
 export interface WorkflowDiffResult {
   draftVersion?: WorkflowVersionRow | null;
@@ -372,26 +380,202 @@ export class WorkflowRepository {
     throw new Error(`Unsupported deployment environment: ${environment}`);
   }
 
+  private static getItemIdentifier(item: any, index: number, prefix: string): string {
+    const candidate = item?.id ?? item?.key ?? item?.uuid ?? null;
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate;
+    }
+    return `${prefix}-${index}`;
+  }
+
+  private static mapGraphItems(graph: any, key: 'nodes' | 'edges'): Map<string, string> {
+    const items = Array.isArray(graph?.[key]) ? graph[key] : [];
+    const result = new Map<string, string>();
+    items.forEach((item: any, index: number) => {
+      const identifier = this.getItemIdentifier(item, index, key.slice(0, -1));
+      const serialized = JSON.stringify(item ?? {});
+      result.set(identifier, serialized);
+    });
+    return result;
+  }
+
+  private static mapGraphNodes(graph: any): {
+    serialized: Map<string, string>;
+    objects: Map<string, any>;
+  } {
+    const serialized = this.mapGraphItems(graph, 'nodes');
+    const objects = new Map<string, any>();
+    const nodes = Array.isArray(graph?.nodes) ? graph.nodes : [];
+    nodes.forEach((node: any, index: number) => {
+      const identifier = this.getItemIdentifier(node, index, 'node');
+      objects.set(identifier, node ?? null);
+    });
+    return { serialized, objects };
+  }
+
+  private static collectMetadataSources(node: any): Array<Record<string, any>> {
+    const sources: Array<Record<string, any>> = [];
+    const add = (value: any) => {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        sources.push(value as Record<string, any>);
+      }
+    };
+
+    if (!node || typeof node !== 'object') {
+      return sources;
+    }
+
+    add((node as any).metadata);
+    add((node as any).outputMetadata);
+
+    const data = (node as any).data;
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      add(data.metadata);
+      add(data.outputMetadata);
+    }
+
+    return sources;
+  }
+
+  private static extractNodeOutputs(node: any): string[] {
+    const outputs = new Set<string>();
+
+    const addList = (value: unknown) => {
+      if (!value) {
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (typeof entry === 'string' && entry.trim()) {
+            outputs.add(entry);
+          }
+        });
+        return;
+      }
+      if (typeof value === 'string' && value.trim()) {
+        outputs.add(value);
+      }
+    };
+
+    const addMetadataOutputs = (meta: Record<string, any>) => {
+      addList(meta.outputs);
+      addList(meta.columns);
+      if (meta.schema && typeof meta.schema === 'object' && !Array.isArray(meta.schema)) {
+        Object.keys(meta.schema as Record<string, any>).forEach((key) => {
+          if (key) {
+            outputs.add(key);
+          }
+        });
+      }
+    };
+
+    if (!node || typeof node !== 'object') {
+      return [];
+    }
+
+    addList((node as any).outputs);
+    addList((node as any)?.data?.outputs);
+    addList((node as any)?.data?.ports?.outputs);
+
+    for (const source of this.collectMetadataSources(node)) {
+      addMetadataOutputs(source);
+    }
+
+    return Array.from(outputs.values()).sort();
+  }
+
+  private static sortObjectKeys<T>(value: T): T {
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.sortObjectKeys(entry)) as unknown as T;
+    }
+
+    if (value && typeof value === 'object') {
+      const entries = Object.entries(value as Record<string, any>)
+        .sort(([a], [b]) => {
+          if (a === b) {
+            return 0;
+          }
+          return a > b ? 1 : -1;
+        })
+        .reduce<Record<string, any>>((acc, [key, val]) => {
+          acc[key] = this.sortObjectKeys(val);
+          return acc;
+        }, {});
+
+      return entries as unknown as T;
+    }
+
+    return value;
+  }
+
+  private static extractSchemaObject(node: any): Record<string, any> | null {
+    const sources = this.collectMetadataSources(node);
+    const combined: Record<string, any> = {};
+    let hasSchema = false;
+
+    for (const source of sources) {
+      const schema = source?.schema;
+      if (schema && typeof schema === 'object' && !Array.isArray(schema)) {
+        hasSchema = true;
+        for (const [key, value] of Object.entries(schema as Record<string, any>)) {
+          combined[key] = this.sortObjectKeys(value);
+        }
+      }
+    }
+
+    if (!hasSchema) {
+      return null;
+    }
+
+    return this.sortObjectKeys(combined);
+  }
+
+  private static detectRemovedOutputs(previousNode: any, nextNode: any): string[] {
+    const previous = new Set(this.extractNodeOutputs(previousNode));
+    const next = new Set(this.extractNodeOutputs(nextNode));
+    const removed: string[] = [];
+
+    previous.forEach((output) => {
+      if (!next.has(output)) {
+        removed.push(output);
+      }
+    });
+
+    return removed;
+  }
+
+  private static detectSchemaChange(
+    previousNode: any,
+    nextNode: any,
+  ): { previous: Record<string, any> | null; current: Record<string, any> | null } | null {
+    const previous = this.extractSchemaObject(previousNode);
+    const current = this.extractSchemaObject(nextNode);
+
+    if (!previous && !current) {
+      return null;
+    }
+
+    const previousSerialized = previous ? JSON.stringify(previous) : null;
+    const currentSerialized = current ? JSON.stringify(current) : null;
+
+    if (previousSerialized === currentSerialized) {
+      return null;
+    }
+
+    return {
+      previous: previous ?? null,
+      current: current ?? null,
+    };
+  }
+
   private static computeDiffSummary(
     deployedGraph: Record<string, any> | null | undefined,
     draftGraph: Record<string, any> | null | undefined,
   ): WorkflowDiffSummary {
-    const ensureMap = (graph: any, key: 'nodes' | 'edges') => {
-      if (!graph || typeof graph !== 'object') {
-        return new Map<string, string>();
-      }
-      const items = Array.isArray(graph[key]) ? graph[key] : [];
-      const pairs: Array<[string, string]> = items.map((item: any, index: number) => {
-        const identifier = String(item?.id ?? item?.key ?? `${key}-${index}`);
-        return [identifier, JSON.stringify(item ?? {})];
-      });
-      return new Map(pairs);
-    };
-
-    const deployedNodes = ensureMap(deployedGraph, 'nodes');
-    const draftNodes = ensureMap(draftGraph, 'nodes');
-    const deployedEdges = ensureMap(deployedGraph, 'edges');
-    const draftEdges = ensureMap(draftGraph, 'edges');
+    const { serialized: deployedNodes, objects: deployedNodeObjects } = this.mapGraphNodes(deployedGraph);
+    const { serialized: draftNodes, objects: draftNodeObjects } = this.mapGraphNodes(draftGraph);
+    const deployedEdges = this.mapGraphItems(deployedGraph, 'edges');
+    const draftEdges = this.mapGraphItems(draftGraph, 'edges');
 
     const addedNodes = Array.from(draftNodes.keys()).filter((id) => !deployedNodes.has(id));
     const removedNodes = Array.from(deployedNodes.keys()).filter((id) => !draftNodes.has(id));
@@ -406,6 +590,51 @@ export class WorkflowRepository {
     const removedEdges = Array.from(deployedEdges.keys()).filter((id) => !draftEdges.has(id));
 
     const metadataChanged = JSON.stringify(deployedGraph?.metadata ?? null) !== JSON.stringify(draftGraph?.metadata ?? null);
+
+    const breakingChanges: WorkflowBreakingChange[] = [];
+
+    removedNodes.forEach((nodeId) => {
+      const node = deployedNodeObjects.get(nodeId);
+      const label = node?.name ?? node?.data?.label ?? nodeId;
+      breakingChanges.push({
+        type: 'node-removed',
+        nodeId,
+        description: `Node "${label}" was removed from the workflow.`,
+      });
+    });
+
+    const sharedNodeIds = Array.from(draftNodeObjects.keys()).filter((id) => deployedNodeObjects.has(id));
+    sharedNodeIds.forEach((nodeId) => {
+      const previousNode = deployedNodeObjects.get(nodeId);
+      const nextNode = draftNodeObjects.get(nodeId);
+      if (!previousNode || !nextNode) {
+        return;
+      }
+
+      const removedOutputs = this.detectRemovedOutputs(previousNode, nextNode);
+      if (removedOutputs.length > 0) {
+        const label = nextNode?.name ?? nextNode?.data?.label ?? nodeId;
+        breakingChanges.push({
+          type: 'output-removed',
+          nodeId,
+          description: `Node "${label}" no longer exposes output(s): ${removedOutputs.join(', ')}`,
+          removedOutputs,
+        });
+      }
+
+      const schemaChange = this.detectSchemaChange(previousNode, nextNode);
+      if (schemaChange) {
+        const label = nextNode?.name ?? nextNode?.data?.label ?? nodeId;
+        breakingChanges.push({
+          type: 'schema-changed',
+          nodeId,
+          description: `Schema for node "${label}" has changed.`,
+          field: 'schema',
+          previousSchema: schemaChange.previous,
+          currentSchema: schemaChange.current,
+        });
+      }
+    });
 
     const hasChanges =
       addedNodes.length > 0 ||
@@ -423,7 +652,56 @@ export class WorkflowRepository {
       addedEdges,
       removedEdges,
       metadataChanged,
+      breakingChanges,
+      hasBreakingChanges: breakingChanges.length > 0,
     };
+  }
+
+  private static prepareDeploymentMetadata(
+    metadata: Record<string, any> | null | undefined,
+    diffSummary: WorkflowDiffSummary,
+  ): Record<string, any> | null {
+    const base =
+      metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? { ...metadata } : null;
+
+    if (!diffSummary.hasBreakingChanges) {
+      return base;
+    }
+
+    const migrationSource = (metadata as any)?.migration ?? (base as any)?.migration;
+    if (!migrationSource || typeof migrationSource !== 'object') {
+      throw new Error(
+        'Publishing workflows with breaking changes requires migration metadata including freezeActiveRuns, scheduleRollForward, and scheduleBackfill decisions.',
+      );
+    }
+
+    if (
+      typeof migrationSource.freezeActiveRuns !== 'boolean' ||
+      typeof migrationSource.scheduleRollForward !== 'boolean' ||
+      typeof migrationSource.scheduleBackfill !== 'boolean'
+    ) {
+      throw new Error(
+        'Migration metadata must include boolean freezeActiveRuns, scheduleRollForward, and scheduleBackfill fields.',
+      );
+    }
+
+    const normalized: WorkflowMigrationDecision = {
+      required: true,
+      freezeActiveRuns: migrationSource.freezeActiveRuns,
+      scheduleRollForward: migrationSource.scheduleRollForward,
+      scheduleBackfill: migrationSource.scheduleBackfill,
+      notes:
+        typeof migrationSource.notes === 'string' && migrationSource.notes.trim().length > 0
+          ? migrationSource.notes.trim()
+          : null,
+      assessedAt: new Date().toISOString(),
+      breakingChanges: diffSummary.breakingChanges,
+    };
+
+    const sanitized: Record<string, any> = base ? { ...base } : {};
+    sanitized.migration = normalized;
+
+    return sanitized;
   }
 
   private static async getLatestVersionRecord(
@@ -887,6 +1165,20 @@ export class WorkflowRepository {
       this.memoryWorkflowVersions.set(params.workflowId, versions);
 
       const deployments = this.memoryWorkflowDeployments.get(params.workflowId) ?? [];
+      const activeDeploymentRecord = deployments.find(
+        (deployment) =>
+          deployment.organizationId === params.organizationId &&
+          deployment.environment === environment &&
+          deployment.isActive,
+      );
+
+      const activeVersionGraph = activeDeploymentRecord
+        ? this.getMemoryVersionById(params.workflowId, activeDeploymentRecord.versionId)?.graph ?? null
+        : null;
+
+      const diffSummary = this.computeDiffSummary(activeVersionGraph, updatedVersion.graph);
+      const deploymentMetadata = this.prepareDeploymentMetadata(params.metadata ?? null, diffSummary);
+
       const deactivated = deployments.map((deployment) => {
         if (
           deployment.organizationId === params.organizationId &&
@@ -907,7 +1199,7 @@ export class WorkflowRepository {
         isActive: true,
         deployedAt: now,
         deployedBy: userId,
-        metadata: params.metadata ?? null,
+        metadata: deploymentMetadata ?? null,
         rollbackOf: params.rollbackOfDeploymentId ?? null,
       };
 
@@ -948,6 +1240,19 @@ export class WorkflowRepository {
       environment,
     );
 
+    let activeVersionGraph: Record<string, any> | null = null;
+    if (activeDeployment) {
+      const activeVersion = await this.getVersionRecordById(
+        params.workflowId,
+        activeDeployment.versionId,
+        params.organizationId,
+      );
+      activeVersionGraph = activeVersion?.graph ?? null;
+    }
+
+    const diffSummary = this.computeDiffSummary(activeVersionGraph, version.graph);
+    const deploymentMetadata = this.prepareDeploymentMetadata(params.metadata ?? null, diffSummary);
+
     if (activeDeployment) {
       await db
         .update(workflowDeployments)
@@ -963,7 +1268,7 @@ export class WorkflowRepository {
       isActive: true,
       deployedAt: now,
       deployedBy: userId,
-      metadata: params.metadata ?? null,
+      metadata: deploymentMetadata ?? null,
       rollbackOf: params.rollbackOfDeploymentId ?? activeDeployment?.id ?? null,
     };
 
