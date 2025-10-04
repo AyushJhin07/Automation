@@ -21,6 +21,7 @@ import Terms from "./pages/Terms";
 import PreBuiltApps from "./pages/PreBuiltApps";
 import AIBuilder from "./pages/AIBuilder";
 import AdminSettings from "./pages/AdminSettings";
+import AdminUsage from "./pages/AdminUsage";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
 import GraphEditor from "./pages/GraphEditor";
 import OAuthCallback from "./pages/OAuthCallback";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/workflow-builder" element={<WorkflowBuilder />} />
             <Route path="/graph-editor" element={<GraphEditor />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/usage" element={<AdminUsage />} />
             <Route path="/pre-built-apps" element={<PreBuiltApps />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/contact" element={<Contact />} />

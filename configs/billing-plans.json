@@ -1,0 +1,151 @@
+[
+  {
+    "code": "free",
+    "name": "Free",
+    "priceCents": 0,
+    "currency": "usd",
+    "features": [
+      "Basic workflows",
+      "Community support"
+    ],
+    "usageQuotas": {
+      "apiCalls": 1000,
+      "tokens": 100000,
+      "workflowRuns": 100,
+      "storage": 104857600
+    },
+    "organizationLimits": {
+      "maxWorkflows": 10,
+      "maxExecutions": 2000,
+      "maxUsers": 3,
+      "maxStorage": 2048,
+      "maxConcurrentExecutions": 2,
+      "maxExecutionsPerMinute": 30
+    }
+  },
+  {
+    "code": "starter",
+    "name": "Starter",
+    "priceCents": 1900,
+    "currency": "usd",
+    "features": [
+      "Workflow templates",
+      "Email support"
+    ],
+    "usageQuotas": {
+      "apiCalls": 5000,
+      "tokens": 500000,
+      "workflowRuns": 500,
+      "storage": 536870912
+    },
+    "organizationLimits": {
+      "maxWorkflows": 25,
+      "maxExecutions": 5000,
+      "maxUsers": 5,
+      "maxStorage": 5120,
+      "maxConcurrentExecutions": 2,
+      "maxExecutionsPerMinute": 60
+    }
+  },
+  {
+    "code": "pro",
+    "name": "Pro",
+    "priceCents": 2900,
+    "currency": "usd",
+    "features": [
+      "Advanced workflows",
+      "Priority support",
+      "Custom connectors"
+    ],
+    "usageQuotas": {
+      "apiCalls": 10000,
+      "tokens": 1000000,
+      "workflowRuns": 1000,
+      "storage": 1073741824
+    },
+    "organizationLimits": {
+      "maxWorkflows": 100,
+      "maxExecutions": 50000,
+      "maxUsers": 25,
+      "maxStorage": 25600,
+      "maxConcurrentExecutions": 10,
+      "maxExecutionsPerMinute": 300
+    }
+  },
+  {
+    "code": "professional",
+    "name": "Professional",
+    "priceCents": 3900,
+    "currency": "usd",
+    "features": [
+      "Automation analytics",
+      "Phone support",
+      "Shared workspaces"
+    ],
+    "usageQuotas": {
+      "apiCalls": 20000,
+      "tokens": 2000000,
+      "workflowRuns": 2000,
+      "storage": 2147483648
+    },
+    "organizationLimits": {
+      "maxWorkflows": 100,
+      "maxExecutions": 50000,
+      "maxUsers": 25,
+      "maxStorage": 25600,
+      "maxConcurrentExecutions": 10,
+      "maxExecutionsPerMinute": 300
+    }
+  },
+  {
+    "code": "enterprise",
+    "name": "Enterprise",
+    "priceCents": 9900,
+    "currency": "usd",
+    "features": [
+      "Unlimited workflows",
+      "24/7 support",
+      "Custom integrations",
+      "SLA"
+    ],
+    "usageQuotas": {
+      "apiCalls": 100000,
+      "tokens": 10000000,
+      "workflowRuns": 10000,
+      "storage": 10737418240
+    },
+    "organizationLimits": {
+      "maxWorkflows": 500,
+      "maxExecutions": 250000,
+      "maxUsers": 250,
+      "maxStorage": 102400,
+      "maxConcurrentExecutions": 25,
+      "maxExecutionsPerMinute": 1200
+    }
+  },
+  {
+    "code": "enterprise_plus",
+    "name": "Enterprise Plus",
+    "priceCents": 19900,
+    "currency": "usd",
+    "features": [
+      "Dedicated infrastructure",
+      "Compliance automation",
+      "Enterprise onboarding"
+    ],
+    "usageQuotas": {
+      "apiCalls": 250000,
+      "tokens": 25000000,
+      "workflowRuns": 25000,
+      "storage": 21474836480
+    },
+    "organizationLimits": {
+      "maxWorkflows": 1000,
+      "maxExecutions": 1000000,
+      "maxUsers": 1000,
+      "maxStorage": 512000,
+      "maxConcurrentExecutions": 50,
+      "maxExecutionsPerMinute": 2500
+    }
+  }
+]

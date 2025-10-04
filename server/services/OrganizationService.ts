@@ -19,6 +19,7 @@ import {
   users,
 } from '../database/schema';
 import { OrgRole } from '../../configs/rbac';
+import { billingPlanService } from './BillingPlanService';
 
 export interface OrganizationSummary {
   id: string;
@@ -91,6 +92,14 @@ export interface OrganizationRoleAssignmentSummary {
 
 export class OrganizationService {
   private readonly PLAN_LIMITS: Record<OrganizationPlan, OrganizationLimits> = {
+    free: {
+      maxWorkflows: 5,
+      maxExecutions: 1000,
+      maxUsers: 1,
+      maxStorage: 1024,
+      maxConcurrentExecutions: 1,
+      maxExecutionsPerMinute: 30,
+    },
     starter: {
       maxWorkflows: 25,
       maxExecutions: 5000,
@@ -98,6 +107,14 @@ export class OrganizationService {
       maxStorage: 5 * 1024,
       maxConcurrentExecutions: 2,
       maxExecutionsPerMinute: 60,
+    },
+    pro: {
+      maxWorkflows: 75,
+      maxExecutions: 25000,
+      maxUsers: 15,
+      maxStorage: 20 * 1024,
+      maxConcurrentExecutions: 6,
+      maxExecutionsPerMinute: 180,
     },
     professional: {
       maxWorkflows: 100,
@@ -126,6 +143,16 @@ export class OrganizationService {
   };
 
   private readonly PLAN_FEATURES: Record<OrganizationPlan, OrganizationFeatureFlags> = {
+    free: {
+      ssoEnabled: false,
+      auditLogging: false,
+      customBranding: false,
+      advancedAnalytics: false,
+      prioritySupport: false,
+      customIntegrations: false,
+      onPremiseDeployment: false,
+      dedicatedInfrastructure: false,
+    },
     starter: {
       ssoEnabled: false,
       auditLogging: false,
@@ -133,6 +160,16 @@ export class OrganizationService {
       advancedAnalytics: false,
       prioritySupport: false,
       customIntegrations: false,
+      onPremiseDeployment: false,
+      dedicatedInfrastructure: false,
+    },
+    pro: {
+      ssoEnabled: false,
+      auditLogging: false,
+      customBranding: true,
+      advancedAnalytics: true,
+      prioritySupport: true,
+      customIntegrations: true,
       onPremiseDeployment: false,
       dedicatedInfrastructure: false,
     },
@@ -182,6 +219,13 @@ export class OrganizationService {
     },
     apiKeyRotationDays: 90,
   };
+
+  private readonly dynamicPlanLimits = new Map<OrganizationPlan, OrganizationLimits>();
+  private planRefreshPromise: Promise<void> | null = null;
+
+  constructor() {
+    void this.refreshPlanDefinitions();
+  }
 
   private readonly DEFAULT_COMPLIANCE: OrganizationComplianceSettings = {
     gdprEnabled: true,
@@ -238,6 +282,39 @@ export class OrganizationService {
     );
   }
 
+  private async refreshPlanDefinitions(force = false): Promise<void> {
+    if (this.planRefreshPromise && !force) {
+      await this.planRefreshPromise;
+      return;
+    }
+
+    this.planRefreshPromise = (async () => {
+      try {
+        const plans = await billingPlanService.listPlans(true);
+        for (const plan of plans) {
+          const code = plan.code as OrganizationPlan;
+          if (plan.organizationLimits && Object.prototype.hasOwnProperty.call(this.PLAN_LIMITS, code)) {
+            const base = this.PLAN_LIMITS[code] ?? this.PLAN_LIMITS.starter;
+            this.dynamicPlanLimits.set(code, {
+              ...base,
+              ...plan.organizationLimits,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to refresh organization plan definitions:', error);
+      } finally {
+        this.planRefreshPromise = null;
+      }
+    })();
+
+    await this.planRefreshPromise;
+  }
+
+  private getPlanLimitSnapshot(plan: OrganizationPlan): OrganizationLimits {
+    return this.dynamicPlanLimits.get(plan) ?? this.PLAN_LIMITS[plan];
+  }
+
   public async createOrganizationForUser(
     user: { id: string; email: string; name?: string | null },
     options: CreateOrganizationOptions = {}
@@ -246,8 +323,10 @@ export class OrganizationService {
       throw new Error('Database connection not available');
     }
 
+    await this.refreshPlanDefinitions();
+
     const plan: OrganizationPlan = options.plan ?? 'starter';
-    const limits = this.PLAN_LIMITS[plan];
+    const limits = this.getPlanLimitSnapshot(plan);
     const features = this.PLAN_FEATURES[plan];
 
     const now = new Date();
@@ -737,7 +816,8 @@ export class OrganizationService {
   }
 
   public getPlanLimits(plan: OrganizationPlan): OrganizationLimits {
-    return this.PLAN_LIMITS[plan];
+    void this.refreshPlanDefinitions();
+    return this.getPlanLimitSnapshot(plan);
   }
 
   public getPlanFeatures(plan: OrganizationPlan): OrganizationFeatureFlags {
@@ -749,11 +829,13 @@ export class OrganizationService {
   ): Promise<{ limits: OrganizationLimits; usage: OrganizationUsageMetrics; plan: OrganizationPlan }> {
     if (!db) {
       return {
-        limits: this.PLAN_LIMITS.starter,
+        limits: this.getPlanLimitSnapshot('starter'),
         usage: this.normalizeUsage(null),
         plan: 'starter',
       };
     }
+
+    await this.refreshPlanDefinitions();
 
     const [row] = await db
       .select({ organization: organizations, quota: organizationQuotas })
@@ -869,7 +951,7 @@ export class OrganizationService {
     plan: OrganizationPlan,
     limits?: Partial<OrganizationLimits> | null
   ): OrganizationLimits {
-    const defaults = this.PLAN_LIMITS[plan];
+    const defaults = this.getPlanLimitSnapshot(plan);
     const normalized = limits ?? {};
     return {
       ...defaults,

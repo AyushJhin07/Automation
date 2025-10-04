@@ -17,7 +17,13 @@ import {
 import { relations } from 'drizzle-orm';
 import type { WorkflowTimerPayload } from '../types/workflowTimers';
 
-export type OrganizationPlan = 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
+export type OrganizationPlan =
+  | 'free'
+  | 'starter'
+  | 'pro'
+  | 'professional'
+  | 'enterprise'
+  | 'enterprise_plus';
 export type OrganizationStatus = 'active' | 'suspended' | 'trial' | 'churned';
 
 export interface OrganizationLimits {
@@ -82,6 +88,29 @@ export interface OrganizationComplianceSettings {
   retentionPolicyDays: number;
 }
 
+export interface BillingPlanUsageQuotas {
+  apiCalls: number;
+  tokens: number;
+  workflowRuns: number;
+  storage: number;
+}
+
+export interface BillingPlanRecord {
+  id: string;
+  code: string;
+  name: string;
+  priceCents: number;
+  currency: string;
+  features: string[];
+  usageQuotas: BillingPlanUsageQuotas;
+  organizationLimits?: OrganizationLimits | null;
+  metadata?: Record<string, unknown> | null;
+  billingProviderProductId?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export type WorkflowVersionState = 'draft' | 'published';
 export type WorkflowEnvironment = 'dev' | 'stage' | 'prod';
 
@@ -128,6 +157,29 @@ export const users = pgTable(
     emailVerifiedIdx: index('users_email_verified_idx').on(table.emailVerified, table.isActive),
     activeUsersIdx: index('users_active_idx').on(table.isActive, table.plan),
     quotaResetIdx: index('users_quota_reset_idx').on(table.quotaResetDate),
+  })
+);
+
+export const billingPlans = pgTable(
+  'billing_plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull().unique(),
+    name: text('name').notNull(),
+    priceCents: integer('price_cents').notNull(),
+    currency: text('currency').notNull().default('usd'),
+    features: jsonb('features').$type<string[]>().notNull(),
+    usageQuotas: jsonb('usage_quotas').$type<BillingPlanUsageQuotas>().notNull(),
+    organizationLimits: jsonb('organization_limits').$type<OrganizationLimits | null>(),
+    metadata: jsonb('metadata').$type<Record<string, unknown> | null>(),
+    billingProviderProductId: text('billing_provider_product_id'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    codeIdx: uniqueIndex('billing_plans_code_idx').on(table.code),
+    activeIdx: index('billing_plans_active_idx').on(table.isActive),
   })
 );
 
