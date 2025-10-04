@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict';
 
 import type { APIResponse } from '../BaseAPIClient.js';
-import { BaseAPIClient } from '../BaseAPIClient.js';
-import { rateLimiter } from '../RateLimiter.js';
-import { getConnectorRateBudgetSnapshot, updateConnectorRateBudgetMetric } from '../../observability/index.js';
+
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
+process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+
+const { BaseAPIClient } = await import('../BaseAPIClient.js');
+const { rateLimiter } = await import('../RateLimiter.js');
+const { getConnectorRateBudgetSnapshot, updateConnectorRateBudgetMetric } = await import(
+  '../../observability/index.js'
+);
 
 type TestResponse = { ok: boolean };
 

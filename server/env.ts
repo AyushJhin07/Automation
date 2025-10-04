@@ -1,9 +1,15 @@
 // Load environment variables as the very first thing
 import dotenv from 'dotenv';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { hostname } from 'node:os';
 import { resolve } from 'node:path';
 
-// Load .env file
+// Load .env and .env.local files (if present)
 dotenv.config();
+
+const envLocalPath = resolve(process.cwd(), '.env.local');
+dotenv.config({ path: envLocalPath });
 
 // Validate critical environment variables
 if (!process.env.NODE_ENV) {
@@ -13,22 +19,75 @@ if (!process.env.NODE_ENV) {
 const environment = process.env.NODE_ENV;
 console.log(`🌍 Environment: ${environment}`);
 
-const requiredInProduction = ['DATABASE_URL', 'ENCRYPTION_MASTER_KEY', 'JWT_SECRET'];
-if (environment === 'production') {
-  const missing = requiredInProduction.filter((key) => !process.env[key]);
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables for production: ${missing.join(', ')}`
-    );
+const requiredVariables = ['DATABASE_URL', 'ENCRYPTION_MASTER_KEY', 'JWT_SECRET'] as const;
+
+function isMissing(value: string | undefined): boolean {
+  return !value || value.trim().length === 0;
+}
+
+function deriveDeterministicSecret(key: string): string {
+  return createHash('sha256')
+    .update(`${key}:${process.cwd()}:${hostname()}`)
+    .digest('hex');
+}
+
+function updateEnvLocalFile(entries: Record<string, string>): void {
+  if (Object.keys(entries).length === 0) {
+    return;
   }
-} else {
-  const missing = requiredInProduction.filter((key) => !process.env[key]);
-  if (missing.length > 0) {
-    const missingList = missing.join(', ');
-    console.warn(
-      `⚠️ Missing environment variables (${missingList}). The application will run in degraded mode. Set them before production deploys.`
-    );
+
+  let existingContent = '';
+  if (existsSync(envLocalPath)) {
+    existingContent = readFileSync(envLocalPath, 'utf8');
   }
+
+  let nextContent = existingContent;
+  if (nextContent && !nextContent.endsWith('\n')) {
+    nextContent += '\n';
+  }
+
+  for (const [key, value] of Object.entries(entries)) {
+    const assignment = `${key}=${value}`;
+    const pattern = new RegExp(`^${key}=.*$`, 'm');
+    if (pattern.test(nextContent)) {
+      nextContent = nextContent.replace(pattern, assignment);
+    } else {
+      nextContent += `${assignment}\n`;
+    }
+  }
+
+  writeFileSync(envLocalPath, nextContent, 'utf8');
+  console.log(`🛡️ Generated local secrets written to ${envLocalPath}`);
+}
+
+const missingVariables = requiredVariables.filter((key) => isMissing(process.env[key]));
+
+if (environment === 'production' && missingVariables.length > 0) {
+  throw new Error(
+    `Missing required environment variables for production: ${missingVariables.join(', ')}`
+  );
+}
+
+const generatedValues: Record<string, string> = {};
+for (const key of missingVariables) {
+  if (key === 'DATABASE_URL') {
+    continue;
+  }
+  const generated = deriveDeterministicSecret(key);
+  process.env[key] = generated;
+  generatedValues[key] = generated;
+}
+
+if (Object.keys(generatedValues).length > 0) {
+  updateEnvLocalFile(generatedValues);
+}
+
+const stillMissing = requiredVariables.filter((key) => isMissing(process.env[key]));
+if (stillMissing.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${stillMissing.join(', ')}. ` +
+      `Set them in your environment or ${envLocalPath}.`
+  );
 }
 
 // Export environment variables for easy access

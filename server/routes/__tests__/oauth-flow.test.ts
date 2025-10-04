@@ -31,6 +31,7 @@ process.env.BASE_URL = 'http://localhost:5000';
 process.env.ENCRYPTION_MASTER_KEY = '12345678901234567890123456789012';
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
+process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
 process.env.GMAIL_CLIENT_ID = 'test-gmail-client-id';
 process.env.GMAIL_CLIENT_SECRET = 'test-gmail-client-secret';
 process.env.SLACK_CLIENT_ID = 'test-slack-client-id';

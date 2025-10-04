@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 
-import { IntegrationManager } from '../IntegrationManager.js';
-import { APICredentials } from '../BaseAPIClient.js';
-import { IMPLEMENTED_CONNECTOR_IDS } from '../supportedApps.js';
-import { ConnectorSimulator } from '../../testing/ConnectorSimulator.js';
+import type { APICredentials } from '../BaseAPIClient.js';
+
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
+process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+
+const { IntegrationManager } = await import('../IntegrationManager.js');
+const { IMPLEMENTED_CONNECTOR_IDS } = await import('../supportedApps.js');
+const { ConnectorSimulator } = await import('../../testing/ConnectorSimulator.js');
 
 const manager = new IntegrationManager();
 

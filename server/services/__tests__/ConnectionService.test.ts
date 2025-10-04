@@ -6,6 +6,8 @@ import path from 'node:path';
 process.env.NODE_ENV = 'development';
 process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
 process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
+process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
 
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'connection-service-'));
 const storePath = path.join(tempDir, 'connections.json');
