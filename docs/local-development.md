@@ -27,10 +27,13 @@ The default configuration in `.env.example` assumes PostgreSQL and Redis are run
 
 ## 3. Next steps
 
-- `npm run dev:server` starts the backend in watch mode.
-- `npm run dev:client` starts the frontend dev server.
-- `npm run dev:stack` starts the API, scheduler, worker, and encryption rotation services together
-  with shared lifecycle and cleanup logic.
+- `npm run dev:api` starts the API in watch mode and automatically boots the Vite-powered frontend
+  development server.
+- `npm run dev:worker` runs the execution worker that processes queued jobs.
+- `npm run dev:scheduler` runs the polling scheduler responsible for enqueuing work.
+- `npm run dev:stack` starts the API, scheduler, execution worker, and encryption rotation worker
+  together with shared lifecycle and cleanup logic. Use this script whenever you need the queue
+  processing components (scheduler + execution worker) online alongside the API.
 - Consult `docs/operations/queue.md` if you need advanced Redis/BullMQ tuning.
 
 Shut the stack down with:
