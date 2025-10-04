@@ -725,6 +725,28 @@ export const executionLogs = pgTable(
   })
 );
 
+export const executionAuditLogs = pgTable(
+  'execution_audit_logs',
+  {
+    id: serial('id').primaryKey(),
+    requestId: text('request_id').notNull(),
+    userId: text('user_id'),
+    appId: text('app_id').notNull(),
+    functionId: text('function_id').notNull(),
+    durationMs: integer('duration_ms').notNull(),
+    success: boolean('success').notNull(),
+    error: text('error'),
+    meta: jsonb('meta'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index('execution_audit_logs_created_at_idx').on(table.createdAt),
+    requestIdx: index('execution_audit_logs_request_idx').on(table.requestId),
+    appFunctionIdx: index('execution_audit_logs_app_function_idx').on(table.appId, table.functionId),
+    successIdx: index('execution_audit_logs_success_idx').on(table.success),
+  })
+);
+
 export const nodeLogs = pgTable(
   'node_logs',
   {
@@ -1316,6 +1338,7 @@ if (!connectionString) {
       workflowExecutions,
       nodeExecutionResults,
       executionLogs,
+      executionAuditLogs,
       nodeLogs,
       workflowTimers,
       usageTracking,

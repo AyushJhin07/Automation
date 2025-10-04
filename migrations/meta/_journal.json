@@ -57,6 +57,20 @@
       "when": 1759132947664,
       "tag": "0009_fix_execution_logs_pk",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1759132948664,
+      "tag": "0011_execution_audit_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1759132949664,
+      "tag": "0012_backfill_execution_audit",
+      "breakpoints": true
     }
   ]
 }

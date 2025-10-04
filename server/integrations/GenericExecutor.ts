@@ -397,8 +397,9 @@ export class GenericExecutor {
         executionMeta.totalBackoffMs = totalBackoffMs;
       }
 
-      recordExecution({
+      await recordExecution({
         requestId: ctx?.requestId || 'unknown',
+        userId: ctx?.userId ?? null,
         appId,
         functionId,
         durationMs: Date.now() - reqStart,
@@ -419,8 +420,9 @@ export class GenericExecutor {
       if (totalRateLimiterWaitMs > 0) {
         executionMeta.rateLimiterWaitMs = totalRateLimiterWaitMs;
       }
-      recordExecution({
+      await recordExecution({
         requestId: ctx?.requestId || 'unknown',
+        userId: ctx?.userId ?? null,
         appId,
         functionId,
         durationMs: Date.now() - reqStart,

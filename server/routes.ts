@@ -1176,7 +1176,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 1000));
       const { readExecutions } = await import('./services/ExecutionAuditService.js');
-      const entries = readExecutions(limit);
+      const requestId = typeof req.query.requestId === 'string' ? req.query.requestId : undefined;
+      const appId = typeof req.query.appId === 'string' ? req.query.appId : undefined;
+      const userId = typeof req.query.userId === 'string' ? req.query.userId : undefined;
+      const successParam = Array.isArray(req.query.success) ? req.query.success[0] : req.query.success;
+      let successFilter: boolean | undefined;
+      if (typeof successParam === 'string') {
+        const normalized = successParam.toLowerCase();
+        if (normalized === 'true' || normalized === '1') {
+          successFilter = true;
+        } else if (normalized === 'false' || normalized === '0') {
+          successFilter = false;
+        }
+      }
+
+      const entries = await readExecutions({
+        limit,
+        requestId,
+        appId,
+        userId,
+        success: successFilter,
+      });
       res.json({ success: true, entries });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
