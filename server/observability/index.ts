@@ -120,6 +120,14 @@ const webhookDedupeCounter = meter.createCounter('webhook_dedupe_events_total', 
   description: 'Counts webhook deduplication hits and misses',
 });
 
+const schedulerLockAcquiredCounter = meter.createCounter('scheduler_lock_acquired_total', {
+  description: 'Counts scheduler cycles that successfully acquired a coordination lock',
+});
+
+const schedulerLockSkippedCounter = meter.createCounter('scheduler_lock_skipped_total', {
+  description: 'Counts scheduler cycles skipped due to coordination lock contention',
+});
+
 const queueDepthGauge = meter.createObservableGauge('workflow_queue_depth', {
   description: 'Number of jobs in workflow queues by state',
   unit: '{job}',
@@ -204,6 +212,14 @@ export function recordWebhookDedupeHit(attributes: Record<string, unknown>): voi
 
 export function recordWebhookDedupeMiss(attributes: Record<string, unknown>): void {
   webhookDedupeCounter.add(1, sanitizeAttributes({ ...attributes, outcome: 'miss' }));
+}
+
+export function recordSchedulerLockAcquired(attributes: Record<string, unknown>): void {
+  schedulerLockAcquiredCounter.add(1, sanitizeAttributes(attributes));
+}
+
+export function recordSchedulerLockSkipped(attributes: Record<string, unknown>): void {
+  schedulerLockSkippedCounter.add(1, sanitizeAttributes(attributes));
 }
 
 export function updateQueueDepthMetric<Name extends QueueName>(
