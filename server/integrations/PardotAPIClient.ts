@@ -151,10 +151,11 @@ export class PardotAPIClient extends BaseAPIClient {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     endpoint: string,
     data?: any,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    options?: any
   ): Promise<APIResponse<T>> {
     await this.ensureAccessToken();
-    return super.makeRequest<T>(method, endpoint, data, headers);
+    return super.makeRequest<T>(method, endpoint, data, headers, options);
   }
 
   public async testConnection(): Promise<APIResponse<any>> {

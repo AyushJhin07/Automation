@@ -34,6 +34,7 @@ import {
   ConnectorConcurrencyExceededError,
 } from './ConnectorConcurrencyService.js';
 import type { Job } from 'bullmq';
+import { usageMeteringService, type QuotaCheck } from './UsageMeteringService.js';
 
 export type QueueRunRequest = {
   workflowId: string;
@@ -76,6 +77,20 @@ type ExecutionQueueTelemetrySnapshot = {
     queueDepths: ReturnType<typeof getQueueDepthSnapshot>;
   };
 };
+
+class UsageQuotaExceededError extends Error {
+  public readonly quota: QuotaCheck;
+  public readonly organizationId: string;
+  public readonly executionId: string;
+
+  constructor(params: { quota: QuotaCheck; organizationId: string; executionId: string }) {
+    const message = `Plan quota exceeded for ${params.quota.quotaType ?? 'usage'}`;
+    super(message);
+    this.quota = params.quota;
+    this.organizationId = params.organizationId;
+    this.executionId = params.executionId;
+  }
+}
 
 class ExecutionQueueService {
   private static instance: ExecutionQueueService;
@@ -310,12 +325,6 @@ class ExecutionQueueService {
       (workflowRecord.graph as any) ?? null
     );
 
-    const capacityCheck = await connectorConcurrencyService.checkCapacity({
-      organizationId: req.organizationId,
-      connectors,
-      planLimits: quotaProfile.limits,
-    });
-
     const baseMetadata: Record<string, any> = {
       queuedAt: new Date().toISOString(),
       attemptsMade: 0,
@@ -339,6 +348,105 @@ class ExecutionQueueService {
           dedupeToken: dedupeToken.trim(),
         },
       };
+    }
+
+    const estimatedApiCalls = Array.isArray(connectors) && connectors.length > 0 ? connectors.length : 1;
+    let usageQuotaCheck: QuotaCheck | null = null;
+
+    if (req.userId) {
+      try {
+        usageQuotaCheck = await usageMeteringService.checkQuota(
+          req.userId,
+          estimatedApiCalls,
+          0,
+          1,
+          0
+        );
+
+        baseMetadata.usageQuota = {
+          allowed: usageQuotaCheck.hasQuota,
+          quotaType: usageQuotaCheck.quotaType,
+          current: usageQuotaCheck.current,
+          limit: usageQuotaCheck.limit,
+          remaining: usageQuotaCheck.remaining,
+          resetDate: usageQuotaCheck.resetDate?.toISOString?.() ?? null,
+        };
+      } catch (error) {
+        console.error(
+          'Failed to evaluate usage quota before enqueue:',
+          getErrorMessage(error)
+        );
+      }
+    }
+
+    const capacityCheck = await connectorConcurrencyService.checkCapacity({
+      organizationId: req.organizationId,
+      connectors,
+      planLimits: quotaProfile.limits,
+    });
+
+    if (usageQuotaCheck && !usageQuotaCheck.hasQuota) {
+      baseMetadata.usageQuota = {
+        ...(baseMetadata.usageQuota ?? {}),
+        allowed: false,
+        quotaType: usageQuotaCheck.quotaType,
+        current: usageQuotaCheck.current,
+        limit: usageQuotaCheck.limit,
+        remaining: usageQuotaCheck.remaining,
+        resetDate: usageQuotaCheck.resetDate?.toISOString?.() ?? null,
+        blocked: true,
+      };
+
+      if (req.userId) {
+        usageMeteringService
+          .recordQuotaBlock({
+            userId: req.userId,
+            organizationId: req.organizationId,
+            quota: usageQuotaCheck,
+            requested: {
+              apiCalls: estimatedApiCalls,
+              workflowRuns: 1,
+              storage: 0,
+            },
+          })
+          .catch(error => {
+            console.error('Failed to emit usage quota block event:', getErrorMessage(error));
+          });
+      }
+
+      const execution = await WorkflowRepository.createWorkflowExecution({
+        workflowId: req.workflowId,
+        userId: req.userId,
+        organizationId: req.organizationId,
+        status: 'failed',
+        triggerType: req.triggerType ?? 'manual',
+        triggerData: req.triggerData ?? null,
+        metadata: baseMetadata,
+      });
+
+      await WorkflowRepository.updateWorkflowExecution(
+        execution.id,
+        {
+          status: 'failed',
+          completedAt: new Date(),
+          duration: 0,
+          errorDetails: {
+            error: `Usage quota exceeded for ${usageQuotaCheck.quotaType ?? 'usage'}`,
+            quotaType: usageQuotaCheck.quotaType,
+            current: usageQuotaCheck.current,
+            limit: usageQuotaCheck.limit,
+            remaining: usageQuotaCheck.remaining,
+          },
+          metadata: baseMetadata,
+        },
+        req.organizationId
+      );
+
+      throw new UsageQuotaExceededError({
+        quota: usageQuotaCheck,
+        organizationId: req.organizationId,
+        executionId: execution.id,
+      });
     }
 
     if (!capacityCheck.allowed) {

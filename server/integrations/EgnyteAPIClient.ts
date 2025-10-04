@@ -174,10 +174,11 @@ export class EgnyteAPIClient extends BaseAPIClient {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     endpoint: string,
     data?: any,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    options?: any
   ): Promise<APIResponse<T>> {
     await this.ensureAccessToken();
-    return super.makeRequest(method, endpoint, data, headers);
+    return super.makeRequest(method, endpoint, data, headers, options);
   }
 
   public async testConnection(): Promise<APIResponse<any>> {
@@ -186,48 +187,36 @@ export class EgnyteAPIClient extends BaseAPIClient {
 
   public async uploadFile(params: UploadFileParams): Promise<APIResponse<any>> {
     this.validateRequiredParams(params as Record<string, unknown>, ['path', 'content']);
-    await this.ensureAccessToken();
     const path = encodeURI(normalizePath(params.path));
     const buffer = Buffer.from(params.content, 'base64');
 
-    const response = await fetch(`${this.baseURL}/fs-content${path}`, {
-      method: params.overwrite ? 'PUT' : 'POST',
-      headers: {
-        ...this.getAuthHeaders(),
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': buffer.byteLength.toString(),
-      },
-      body: buffer,
+    return this.makeRequest(params.overwrite ? 'PUT' : 'POST', `/fs-content${path}`, buffer, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': buffer.byteLength.toString(),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return { success: false, error: errorText || `HTTP ${response.status}` };
-    }
-
-    const json = await response.json().catch(() => ({}));
-    return { success: true, data: json };
   }
 
   public async downloadFile(params: PathParams): Promise<APIResponse<{ content: string; contentType: string }>> {
     this.validateRequiredParams(params as Record<string, unknown>, ['path']);
-    await this.ensureAccessToken();
     const path = encodeURI(normalizePath(params.path));
-
-    const response = await fetch(`${this.baseURL}/fs-content${path}`, {
-      method: 'GET',
-      headers: this.getAuthHeaders(),
+    const response = await this.get<ArrayBuffer>(`/fs-content${path}`, undefined, {
+      responseType: 'arrayBuffer',
     });
 
-    const arrayBuffer = await response.arrayBuffer();
-    if (!response.ok) {
-      const errorText = Buffer.from(arrayBuffer).toString('utf8');
-      return { success: false, error: errorText || `HTTP ${response.status}` };
+    if (!response.success || !response.data) {
+      return response as APIResponse<{ content: string; contentType: string }>;
     }
 
-    const content = Buffer.from(arrayBuffer).toString('base64');
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
-    return { success: true, data: { content, contentType } };
+    const buffer = Buffer.from(new Uint8Array(response.data));
+    const content = buffer.toString('base64');
+    const contentType = response.headers?.['content-type'] || 'application/octet-stream';
+
+    return {
+      success: true,
+      data: { content, contentType },
+      headers: response.headers,
+      statusCode: response.statusCode,
+    };
   }
 
   public async listFolder(params: PathParams & { offset?: number; count?: number } = { path: '/' }): Promise<APIResponse<any>> {
