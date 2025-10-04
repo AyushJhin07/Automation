@@ -242,6 +242,21 @@ async function runSmokeTests(options: ScriptOptions): Promise<SmokeResult[]> {
     }
     const startedAt = performance.now();
     let status: SmokeStatus = 'passed';
+    let contractSummary = null;
+
+    if (options.useSimulator && simulator) {
+      contractSummary = await simulator.runContractTestsForConnector(appId);
+      if (contractSummary && !contractSummary.passed) {
+        status = 'failed';
+        contractSummary.scenarios
+          .filter(result => !result.passed)
+          .forEach(result => {
+            messages.push(
+              `Contract ${result.type} ${result.id} failed: ${result.message ?? 'Missing required contract data'}`
+            );
+          });
+      }
+    }
 
     try {
       const initResult = await manager.initializeIntegration({

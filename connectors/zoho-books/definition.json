@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://accounts.zoho.com/oauth/v2/auth",
       "tokenUrl": "https://accounts.zoho.com/oauth/v2/token",
-      "scopes": ["ZohoBooks.fullaccess.all"]
+      "scopes": [
+        "ZohoBooks.fullaccess.all"
+      ]
     }
   },
   "baseUrl": "https://books.zoho.com/api/v3",
@@ -74,22 +76,42 @@
           "billingAddress": {
             "type": "object",
             "properties": {
-              "address": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "zip": {"type": "string"},
-              "country": {"type": "string"}
+              "address": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
           "shippingAddress": {
             "type": "object",
             "properties": {
-              "address": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "zip": {"type": "string"},
-              "country": {"type": "string"}
+              "address": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Shipping address"
           },
@@ -106,7 +128,9 @@
             "description": "Notes"
           }
         },
-        "required": ["contactName"],
+        "required": [
+          "contactName"
+        ],
         "additionalProperties": false
       }
     },
@@ -122,7 +146,9 @@
             "description": "Customer ID"
           }
         },
-        "required": ["customerId"],
+        "required": [
+          "customerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -161,11 +187,21 @@
           "billingAddress": {
             "type": "object",
             "properties": {
-              "address": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "zip": {"type": "string"},
-              "country": {"type": "string"}
+              "address": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
@@ -178,7 +214,9 @@
             "description": "Notes"
           }
         },
-        "required": ["customerId"],
+        "required": [
+          "customerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -204,17 +242,30 @@
           },
           "sortColumn": {
             "type": "string",
-            "enum": ["contact_name", "company_name", "email", "outstanding_receivable_amount", "created_time"],
+            "enum": [
+              "contact_name",
+              "company_name",
+              "email",
+              "outstanding_receivable_amount",
+              "created_time"
+            ],
             "description": "Sort column"
           },
           "sortOrder": {
             "type": "string",
-            "enum": ["A", "D"],
+            "enum": [
+              "A",
+              "D"
+            ],
             "description": "Sort order (A=ascending, D=descending)"
           },
           "filterBy": {
             "type": "string",
-            "enum": ["Status.All", "Status.Active", "Status.Inactive"],
+            "enum": [
+              "Status.All",
+              "Status.Active",
+              "Status.Inactive"
+            ],
             "description": "Filter by status"
           }
         },
@@ -260,16 +311,26 @@
           },
           "productType": {
             "type": "string",
-            "enum": ["goods", "service"],
+            "enum": [
+              "goods",
+              "service"
+            ],
             "description": "Product type"
           },
           "itemType": {
             "type": "string",
-            "enum": ["sales", "purchases", "sales_and_purchases", "inventory"],
+            "enum": [
+              "sales",
+              "purchases",
+              "sales_and_purchases",
+              "inventory"
+            ],
             "description": "Item type"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -303,16 +364,39 @@
             "items": {
               "type": "object",
               "properties": {
-                "itemId": {"type": "string"},
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "rate": {"type": "number", "minimum": 0},
-                "quantity": {"type": "number", "minimum": 0},
-                "unit": {"type": "string"},
-                "discount": {"type": "number", "minimum": 0, "maximum": 100},
-                "taxId": {"type": "string"}
+                "itemId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "rate": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "quantity": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "discount": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "taxId": {
+                  "type": "string"
+                }
               },
-              "required": ["rate", "quantity"]
+              "required": [
+                "rate",
+                "quantity"
+              ]
             },
             "description": "Invoice line items"
           },
@@ -328,7 +412,10 @@
           },
           "discountType": {
             "type": "string",
-            "enum": ["entity_level", "item_level"],
+            "enum": [
+              "entity_level",
+              "item_level"
+            ],
             "description": "Discount type"
           },
           "exchangeRate": {
@@ -349,8 +436,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "customfieldId": {"type": "string"},
-                "value": {"type": "string"}
+                "customfieldId": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Custom fields"
@@ -364,7 +455,10 @@
             "description": "Terms and conditions"
           }
         },
-        "required": ["customerId", "lineItems"],
+        "required": [
+          "customerId",
+          "lineItems"
+        ],
         "additionalProperties": false
       }
     },
@@ -380,7 +474,9 @@
             "description": "Invoice ID"
           }
         },
-        "required": ["invoiceId"],
+        "required": [
+          "invoiceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -402,12 +498,18 @@
           },
           "toMailIds": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Recipient email addresses"
           },
           "ccMailIds": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "CC email addresses"
           },
           "subject": {
@@ -419,7 +521,9 @@
             "description": "Email body"
           }
         },
-        "required": ["invoiceId"],
+        "required": [
+          "invoiceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -461,10 +565,18 @@
             "items": {
               "type": "object",
               "properties": {
-                "invoiceId": {"type": "string"},
-                "amountApplied": {"type": "number", "minimum": 0}
+                "invoiceId": {
+                  "type": "string"
+                },
+                "amountApplied": {
+                  "type": "number",
+                  "minimum": 0
+                }
               },
-              "required": ["invoiceId", "amountApplied"]
+              "required": [
+                "invoiceId",
+                "amountApplied"
+              ]
             },
             "description": "Invoices to apply payment to"
           },
@@ -474,7 +586,13 @@
             "description": "Exchange rate"
           }
         },
-        "required": ["customerId", "paymentMode", "amount", "date", "invoices"],
+        "required": [
+          "customerId",
+          "paymentMode",
+          "amount",
+          "date",
+          "invoices"
+        ],
         "additionalProperties": false
       }
     },
@@ -534,7 +652,12 @@
             "description": "Reference number"
           }
         },
-        "required": ["accountId", "date", "amount", "description"],
+        "required": [
+          "accountId",
+          "date",
+          "amount",
+          "description"
+        ],
         "additionalProperties": false
       }
     },
@@ -547,7 +670,13 @@
         "properties": {
           "reportType": {
             "type": "string",
-            "enum": ["profit_and_loss", "balance_sheet", "cash_flow", "trial_balance", "general_ledger"],
+            "enum": [
+              "profit_and_loss",
+              "balance_sheet",
+              "cash_flow",
+              "trial_balance",
+              "general_ledger"
+            ],
             "description": "Type of report"
           },
           "fromDate": {
@@ -562,7 +691,10 @@
           },
           "accountingBasis": {
             "type": "string",
-            "enum": ["accrual", "cash"],
+            "enum": [
+              "accrual",
+              "cash"
+            ],
             "default": "accrual",
             "description": "Accounting basis"
           },
@@ -571,7 +703,9 @@
             "description": "Filter criteria"
           }
         },
-        "required": ["reportType"],
+        "required": [
+          "reportType"
+        ],
         "additionalProperties": false
       }
     }
@@ -596,14 +730,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "invoiceId": {"type": "string"},
-          "invoiceNumber": {"type": "string"},
-          "customerId": {"type": "string"},
-          "customerName": {"type": "string"},
-          "date": {"type": "string"},
-          "dueDate": {"type": "string"},
-          "total": {"type": "number"},
-          "status": {"type": "string"}
+          "invoiceId": {
+            "type": "string"
+          },
+          "invoiceNumber": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       }
     },
@@ -630,13 +780,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "paymentId": {"type": "string"},
-          "customerId": {"type": "string"},
-          "customerName": {"type": "string"},
-          "amount": {"type": "number"},
-          "date": {"type": "string"},
-          "paymentMode": {"type": "string"},
-          "referenceNumber": {"type": "string"}
+          "paymentId": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "paymentMode": {
+            "type": "string"
+          },
+          "referenceNumber": {
+            "type": "string"
+          }
         }
       }
     },
@@ -663,13 +827,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "expenseId": {"type": "string"},
-          "accountId": {"type": "string"},
-          "vendorId": {"type": "string"},
-          "vendorName": {"type": "string"},
-          "amount": {"type": "number"},
-          "date": {"type": "string"},
-          "description": {"type": "string"}
+          "expenseId": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "vendorId": {
+            "type": "string"
+          },
+          "vendorName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
         }
       }
     }
@@ -677,5 +855,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/organizations"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

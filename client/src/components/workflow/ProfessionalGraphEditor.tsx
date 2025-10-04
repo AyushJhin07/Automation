@@ -850,6 +850,12 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
     icon?: any;                            // lucide fallback
     actions: NodeTpl[];
     triggers: NodeTpl[];
+    release?: {
+      semver?: string;
+      status?: string;
+      isBeta?: boolean;
+      deprecationWindow?: { startDate?: string | null; sunsetDate?: string | null };
+    };
   };
 
   const [apps, setApps] = useState<Record<string, AppGroup>>({});
@@ -964,6 +970,7 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
           icon: Icon,
           actions,
           triggers,
+          release: def.release,
         };
       }
     }
@@ -1097,6 +1104,25 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
                     <div className="flex flex-col text-left">
                       <span className="text-gray-900 font-medium">{app.appName}</span>
                       <span className="text-xs text-gray-500">{app.category}</span>
+                      {app.release && (
+                        <div className="flex items-center gap-2 mt-1">
+                          {app.release.semver && (
+                            <span className="text-[10px] font-mono text-slate-500">v{app.release.semver}</span>
+                          )}
+                          <Badge
+                            className="text-[10px]"
+                            variant={
+                              app.release.status === 'deprecated' || app.release.status === 'sunset'
+                                ? 'destructive'
+                                : app.release.status === 'beta' || app.release.isBeta
+                                  ? 'outline'
+                                  : 'secondary'
+                            }
+                          >
+                            {(app.release.status ?? (app.release.isBeta ? 'beta' : 'stable')).replace(/^(.)/, (_, c) => c.toUpperCase())}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                       {app.triggers.length > 0 && (

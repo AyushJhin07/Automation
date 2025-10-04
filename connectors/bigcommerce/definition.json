@@ -39,7 +39,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["physical", "digital"],
+            "enum": [
+              "physical",
+              "digital"
+            ],
             "description": "Product type"
           },
           "sku": {
@@ -60,7 +63,9 @@
           },
           "categories": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Category IDs"
           },
           "is_visible": {
@@ -73,7 +78,11 @@
             "description": "Inventory level"
           }
         },
-        "required": ["name", "type", "price"],
+        "required": [
+          "name",
+          "type",
+          "price"
+        ],
         "additionalProperties": false
       }
     },
@@ -105,7 +114,9 @@
             "description": "Inventory level"
           }
         },
-        "required": ["product_id"],
+        "required": [
+          "product_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -121,7 +132,9 @@
             "description": "Product ID"
           }
         },
-        "required": ["product_id"],
+        "required": [
+          "product_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -153,12 +166,17 @@
           },
           "type": {
             "type": "string",
-            "enum": ["physical", "digital"],
+            "enum": [
+              "physical",
+              "digital"
+            ],
             "description": "Filter by product type"
           },
           "categories:in": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Filter by category IDs"
           }
         },
@@ -182,8 +200,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "product_id": {"type": "number"},
-                "quantity": {"type": "number"}
+                "product_id": {
+                  "type": "number"
+                },
+                "quantity": {
+                  "type": "number"
+                }
               }
             },
             "description": "Order products"
@@ -197,7 +219,9 @@
             "description": "Shipping address"
           }
         },
-        "required": ["products"],
+        "required": [
+          "products"
+        ],
         "additionalProperties": false
       }
     }
@@ -217,10 +241,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "status": {"type": "string"},
-          "total": {"type": "string"},
-          "customer_id": {"type": "number"}
+          "id": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "number"
+          }
         }
       }
     },
@@ -238,9 +270,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "name": {"type": "string"},
-          "sku": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          }
         }
       }
     }
@@ -248,5 +286,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/store"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

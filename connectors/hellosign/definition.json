@@ -62,27 +62,45 @@
             "items": {
               "type": "object",
               "properties": {
-                "email_address": {"type": "string", "format": "email"},
-                "name": {"type": "string"},
-                "order": {"type": "number", "minimum": 0}
+                "email_address": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "order": {
+                  "type": "number",
+                  "minimum": 0
+                }
               },
-              "required": ["email_address", "name"]
+              "required": [
+                "email_address",
+                "name"
+              ]
             },
             "description": "List of signers"
           },
           "cc_email_addresses": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "CC email addresses"
           },
           "files": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "File URLs or base64 encoded files"
           },
           "file_urls": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "URLs of files to be signed"
           },
           "use_text_tags": {
@@ -108,8 +126,13 @@
           "reminders": {
             "type": "object",
             "properties": {
-              "days": {"type": "number", "minimum": 1},
-              "enabled": {"type": "boolean"}
+              "days": {
+                "type": "number",
+                "minimum": 1
+              },
+              "enabled": {
+                "type": "boolean"
+              }
             },
             "description": "Reminder settings"
           },
@@ -122,23 +145,68 @@
             "items": {
               "type": "object",
               "properties": {
-                "document_index": {"type": "number", "minimum": 0},
+                "document_index": {
+                  "type": "number",
+                  "minimum": 0
+                },
                 "form_fields": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
-                      "api_id": {"type": "string"},
-                      "name": {"type": "string"},
-                      "type": {"type": "string", "enum": ["signature", "text", "date", "checkbox", "dropdown", "hyperlink", "initials", "radio"]},
-                      "x": {"type": "number", "minimum": 0},
-                      "y": {"type": "number", "minimum": 0},
-                      "width": {"type": "number", "minimum": 1},
-                      "height": {"type": "number", "minimum": 1},
-                      "required": {"type": "boolean"},
-                      "signer": {"type": "number", "minimum": 0}
+                      "api_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "signature",
+                          "text",
+                          "date",
+                          "checkbox",
+                          "dropdown",
+                          "hyperlink",
+                          "initials",
+                          "radio"
+                        ]
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "width": {
+                        "type": "number",
+                        "minimum": 1
+                      },
+                      "height": {
+                        "type": "number",
+                        "minimum": 1
+                      },
+                      "required": {
+                        "type": "boolean"
+                      },
+                      "signer": {
+                        "type": "number",
+                        "minimum": 0
+                      }
                     },
-                    "required": ["api_id", "name", "type", "x", "y", "width", "height", "signer"]
+                    "required": [
+                      "api_id",
+                      "name",
+                      "type",
+                      "x",
+                      "y",
+                      "width",
+                      "height",
+                      "signer"
+                    ]
                   }
                 }
               }
@@ -150,14 +218,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "value": {"type": "string"}
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Custom fields"
           }
         },
-        "required": ["signers"],
+        "required": [
+          "signers"
+        ],
         "additionalProperties": false
       }
     },
@@ -173,7 +247,9 @@
             "description": "Signature request ID"
           }
         },
-        "required": ["signature_request_id"],
+        "required": [
+          "signature_request_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -227,7 +303,10 @@
             "description": "Email address to remind"
           }
         },
-        "required": ["signature_request_id", "email_address"],
+        "required": [
+          "signature_request_id",
+          "email_address"
+        ],
         "additionalProperties": false
       }
     },
@@ -243,7 +322,9 @@
             "description": "Signature request ID"
           }
         },
-        "required": ["signature_request_id"],
+        "required": [
+          "signature_request_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -260,12 +341,17 @@
           },
           "file_type": {
             "type": "string",
-            "enum": ["pdf", "zip"],
+            "enum": [
+              "pdf",
+              "zip"
+            ],
             "default": "pdf",
             "description": "File type to download"
           }
         },
-        "required": ["signature_request_id"],
+        "required": [
+          "signature_request_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -289,16 +375,26 @@
             "items": {
               "type": "object",
               "properties": {
-                "email_address": {"type": "string", "format": "email"},
-                "name": {"type": "string"}
+                "email_address": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                }
               },
-              "required": ["email_address", "name"]
+              "required": [
+                "email_address",
+                "name"
+              ]
             },
             "description": "List of signers"
           },
           "files": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "File URLs or base64 encoded files"
           },
           "test_mode": {
@@ -307,7 +403,10 @@
             "description": "Test mode"
           }
         },
-        "required": ["client_id", "signers"],
+        "required": [
+          "client_id",
+          "signers"
+        ],
         "additionalProperties": false
       }
     },
@@ -323,7 +422,9 @@
             "description": "Signature ID"
           }
         },
-        "required": ["signature_id"],
+        "required": [
+          "signature_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -343,10 +444,17 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "order": {"type": "number", "minimum": 0}
+                "name": {
+                  "type": "string"
+                },
+                "order": {
+                  "type": "number",
+                  "minimum": 0
+                }
               },
-              "required": ["name"]
+              "required": [
+                "name"
+              ]
             },
             "description": "Signer roles"
           },
@@ -355,15 +463,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"}
+                "name": {
+                  "type": "string"
+                }
               },
-              "required": ["name"]
+              "required": [
+                "name"
+              ]
             },
             "description": "CC roles"
           },
           "files": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "File URLs or base64 encoded files"
           },
           "merge_fields": {
@@ -371,14 +485,25 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "type": {"type": "string", "enum": ["text", "checkbox"]}
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "checkbox"
+                  ]
+                }
               }
             },
             "description": "Merge fields"
           }
         },
-        "required": ["title", "signer_roles"],
+        "required": [
+          "title",
+          "signer_roles"
+        ],
         "additionalProperties": false
       }
     },
@@ -394,7 +519,9 @@
             "description": "Template ID"
           }
         },
-        "required": ["template_id"],
+        "required": [
+          "template_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -434,14 +561,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "value": {"type": "string"}
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Custom field values"
           }
         },
-        "required": ["template_id", "signers"],
+        "required": [
+          "template_id",
+          "signers"
+        ],
         "additionalProperties": false
       }
     }
@@ -466,14 +600,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "signature_request_id": {"type": "string"},
-          "title": {"type": "string"},
-          "subject": {"type": "string"},
-          "message": {"type": "string"},
-          "is_complete": {"type": "boolean"},
-          "has_error": {"type": "boolean"},
-          "custom_fields": {"type": "array"},
-          "response_data": {"type": "array"}
+          "signature_request_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "is_complete": {
+            "type": "boolean"
+          },
+          "has_error": {
+            "type": "boolean"
+          },
+          "custom_fields": {
+            "type": "array"
+          },
+          "response_data": {
+            "type": "array"
+          }
         }
       }
     },
@@ -496,13 +646,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "signature_request_id": {"type": "string"},
-          "title": {"type": "string"},
-          "is_complete": {"type": "boolean"},
-          "final_copy_uri": {"type": "string"},
-          "files_url": {"type": "string"},
-          "signing_url": {"type": "string"},
-          "details_url": {"type": "string"}
+          "signature_request_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "is_complete": {
+            "type": "boolean"
+          },
+          "final_copy_uri": {
+            "type": "string"
+          },
+          "files_url": {
+            "type": "string"
+          },
+          "signing_url": {
+            "type": "string"
+          },
+          "details_url": {
+            "type": "string"
+          }
         }
       }
     },
@@ -525,11 +689,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "signature_request_id": {"type": "string"},
-          "title": {"type": "string"},
-          "is_complete": {"type": "boolean"},
-          "declined_by": {"type": "string"},
-          "decline_reason": {"type": "string"}
+          "signature_request_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "is_complete": {
+            "type": "boolean"
+          },
+          "declined_by": {
+            "type": "string"
+          },
+          "decline_reason": {
+            "type": "string"
+          }
         }
       }
     }
@@ -537,5 +711,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/account"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

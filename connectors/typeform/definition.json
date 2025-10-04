@@ -15,158 +15,7 @@
     }
   },
   "baseUrl": "https://api.typeform.com",
-  "actions": [
-    {
-      "id": "test_connection",
-      "name": "Test Connection",
-      "description": "Test the connection to Typeform",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_form",
-      "name": "Create Form",
-      "description": "Create a new form",
-      "endpoint": "/forms",
-      "method": "POST",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "description": "Form title"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["form", "quiz"],
-            "default": "form",
-            "description": "Form type"
-          }
-        },
-        "required": ["title"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_form",
-      "name": "Get Form",
-      "description": "Get form details",
-      "endpoint": "/forms/{uid}",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "uid": {
-            "type": "string",
-            "description": "Form UID"
-          }
-        },
-        "required": ["uid"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "list_forms",
-      "name": "List Forms",
-      "description": "List all forms",
-      "endpoint": "/forms",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": "number",
-            "minimum": 1,
-            "default": 1,
-            "description": "Page number"
-          },
-          "page_size": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 10,
-            "description": "Number of forms per page"
-          },
-          "search": {
-            "type": "string",
-            "description": "Search query"
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "get_responses",
-      "name": "Get Responses",
-      "description": "Get responses for a form",
-      "endpoint": "/forms/{uid}/responses",
-      "method": "GET",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "uid": {
-            "type": "string",
-            "description": "Form UID"
-          },
-          "page_size": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 1000,
-            "default": 25,
-            "description": "Number of responses per page"
-          },
-          "since": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Return responses since this date (ISO 8601)"
-          },
-          "until": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Return responses until this date (ISO 8601)"
-          },
-          "completed": {
-            "type": "boolean",
-            "description": "Filter by completion status"
-          }
-        },
-        "required": ["uid"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "id": "create_webhook",
-      "name": "Create Webhook",
-      "description": "Create a webhook for a form",
-      "endpoint": "/forms/{uid}/webhooks/default",
-      "method": "PUT",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "uid": {
-            "type": "string",
-            "description": "Form UID"
-          },
-          "url": {
-            "type": "string",
-            "description": "Webhook URL"
-          },
-          "enabled": {
-            "type": "boolean",
-            "default": true,
-            "description": "Whether the webhook is enabled"
-          }
-        },
-        "required": ["uid", "url"],
-        "additionalProperties": false
-      }
-    }
-  ],
+  "actions": [],
   "triggers": [
     {
       "id": "form_response",
@@ -191,9 +40,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event_id": {"type": "string"},
-          "event_type": {"type": "string"},
-          "form_response": {"type": "object"}
+          "event_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "form_response": {
+            "type": "object"
+          }
         }
       }
     },
@@ -211,14 +66,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "last_updated_at": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "last_updated_at": {
+            "type": "string"
+          }
         }
       }
     }
-  ],
-  "actions": [
   ],
   "actions_append": [
     {
@@ -229,8 +88,18 @@
       "method": "DELETE",
       "parameters": {
         "type": "object",
-        "properties": { "uid": {"type":"string"}, "tag": {"type":"string", "default":"default"} },
-        "required": ["uid"],
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string",
+            "default": "default"
+          }
+        },
+        "required": [
+          "uid"
+        ],
         "additionalProperties": false
       }
     }
@@ -238,5 +107,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

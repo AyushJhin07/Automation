@@ -11,7 +11,11 @@
     "config": {
       "authUrl": "https://bitbucket.org/site/oauth2/authorize",
       "tokenUrl": "https://bitbucket.org/site/oauth2/access_token",
-      "scopes": ["repositories", "issues", "pullrequests"]
+      "scopes": [
+        "repositories",
+        "issues",
+        "pullrequests"
+      ]
     }
   },
   "baseUrl": "https://api.bitbucket.org/2.0",
@@ -49,30 +53,56 @@
           "content": {
             "type": "object",
             "properties": {
-              "raw": {"type": "string"},
-              "markup": {"type": "string", "enum": ["markdown", "creole", "plaintext"]}
+              "raw": {
+                "type": "string"
+              },
+              "markup": {
+                "type": "string",
+                "enum": [
+                  "markdown",
+                  "creole",
+                  "plaintext"
+                ]
+              }
             },
             "description": "Issue content"
           },
           "kind": {
             "type": "string",
-            "enum": ["bug", "enhancement", "proposal", "task"],
+            "enum": [
+              "bug",
+              "enhancement",
+              "proposal",
+              "task"
+            ],
             "description": "Issue kind"
           },
           "priority": {
             "type": "string",
-            "enum": ["trivial", "minor", "major", "critical", "blocker"],
+            "enum": [
+              "trivial",
+              "minor",
+              "major",
+              "critical",
+              "blocker"
+            ],
             "description": "Issue priority"
           },
           "assignee": {
             "type": "object",
             "properties": {
-              "account_id": {"type": "string"}
+              "account_id": {
+                "type": "string"
+              }
             },
             "description": "Issue assignee"
           }
         },
-        "required": ["workspace", "repo_slug", "title"],
+        "required": [
+          "workspace",
+          "repo_slug",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -102,14 +132,28 @@
           "source": {
             "type": "object",
             "properties": {
-              "branch": {"type": "object", "properties": {"name": {"type": "string"}}}
+              "branch": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
             },
             "description": "Source branch"
           },
           "destination": {
             "type": "object",
             "properties": {
-              "branch": {"type": "object", "properties": {"name": {"type": "string"}}}
+              "branch": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
             },
             "description": "Destination branch"
           },
@@ -118,7 +162,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "account_id": {"type": "string"}
+                "account_id": {
+                  "type": "string"
+                }
               }
             },
             "description": "Pull request reviewers"
@@ -128,7 +174,13 @@
             "description": "Close source branch after merge"
           }
         },
-        "required": ["workspace", "repo_slug", "title", "source", "destination"],
+        "required": [
+          "workspace",
+          "repo_slug",
+          "title",
+          "source",
+          "destination"
+        ],
         "additionalProperties": false
       }
     },
@@ -148,7 +200,10 @@
             "description": "Repository slug"
           }
         },
-        "required": ["workspace", "repo_slug"],
+        "required": [
+          "workspace",
+          "repo_slug"
+        ],
         "additionalProperties": false
       }
     },
@@ -165,7 +220,12 @@
           },
           "role": {
             "type": "string",
-            "enum": ["owner", "admin", "contributor", "member"],
+            "enum": [
+              "owner",
+              "admin",
+              "contributor",
+              "member"
+            ],
             "description": "Filter by role"
           },
           "q": {
@@ -174,11 +234,17 @@
           },
           "sort": {
             "type": "string",
-            "enum": ["created_on", "updated_on", "name"],
+            "enum": [
+              "created_on",
+              "updated_on",
+              "name"
+            ],
             "description": "Sort field"
           }
         },
-        "required": ["workspace"],
+        "required": [
+          "workspace"
+        ],
         "additionalProperties": false
       }
     },
@@ -213,11 +279,18 @@
           },
           "events": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Events to trigger webhook"
           }
         },
-        "required": ["workspace", "repo_slug", "url", "events"],
+        "required": [
+          "workspace",
+          "repo_slug",
+          "url",
+          "events"
+        ],
         "additionalProperties": false
       }
     }
@@ -246,9 +319,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "repository": {"type": "object"},
-          "push": {"type": "object"},
-          "actor": {"type": "object"}
+          "repository": {
+            "type": "object"
+          },
+          "push": {
+            "type": "object"
+          },
+          "actor": {
+            "type": "object"
+          }
         }
       }
     },
@@ -271,9 +350,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "pullrequest": {"type": "object"},
-          "repository": {"type": "object"},
-          "actor": {"type": "object"}
+          "pullrequest": {
+            "type": "object"
+          },
+          "repository": {
+            "type": "object"
+          },
+          "actor": {
+            "type": "object"
+          }
         }
       }
     }
@@ -281,5 +366,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

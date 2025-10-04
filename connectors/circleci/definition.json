@@ -50,7 +50,9 @@
             "description": "Pipeline parameters"
           }
         },
-        "required": ["project_slug"],
+        "required": [
+          "project_slug"
+        ],
         "additionalProperties": false
       }
     },
@@ -74,7 +76,9 @@
             "description": "Pagination token"
           }
         },
-        "required": ["project_slug"],
+        "required": [
+          "project_slug"
+        ],
         "additionalProperties": false
       }
     },
@@ -90,7 +94,9 @@
             "description": "Pipeline ID"
           }
         },
-        "required": ["pipeline_id"],
+        "required": [
+          "pipeline_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -110,7 +116,9 @@
             "description": "Pagination token"
           }
         },
-        "required": ["pipeline_id"],
+        "required": [
+          "pipeline_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -130,7 +138,9 @@
             "description": "Pagination token"
           }
         },
-        "required": ["workflow_id"],
+        "required": [
+          "workflow_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -146,7 +156,9 @@
             "description": "Workflow ID to cancel"
           }
         },
-        "required": ["workflow_id"],
+        "required": [
+          "workflow_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -174,7 +186,9 @@
             "description": "Rerun sparse tree"
           }
         },
-        "required": ["workflow_id"],
+        "required": [
+          "workflow_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -199,10 +213,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "status": {"type": "string"},
-          "project_slug": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "project_slug": {
+            "type": "string"
+          }
         }
       }
     },
@@ -220,10 +242,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "job_name": {"type": "string"},
-          "job_number": {"type": "number"},
-          "status": {"type": "string"},
-          "workflow_id": {"type": "string"}
+          "job_name": {
+            "type": "string"
+          },
+          "job_number": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "workflow_id": {
+            "type": "string"
+          }
         }
       }
     }
@@ -231,5 +261,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

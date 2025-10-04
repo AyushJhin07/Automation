@@ -64,7 +64,14 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["attachments", "discussions", "filters", "format", "objectValue", "source"]
+              "enum": [
+                "attachments",
+                "discussions",
+                "filters",
+                "format",
+                "objectValue",
+                "source"
+              ]
             },
             "description": "Additional elements to include"
           },
@@ -75,21 +82,29 @@
           },
           "rowIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific row IDs to retrieve"
           },
           "rowNumbers": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Specific row numbers to retrieve"
           },
           "columnIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific column IDs to retrieve"
           }
         },
-        "required": ["sheetId"],
+        "required": [
+          "sheetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -109,13 +124,40 @@
             "items": {
               "type": "object",
               "properties": {
-                "title": {"type": "string"},
-                "type": {"type": "string", "enum": ["TEXT_NUMBER", "DATE", "DATETIME", "CONTACT_LIST", "CHECKBOX", "PICKLIST", "DURATION", "PREDECESSOR", "ABSTRACT_DATETIME"]},
-                "primary": {"type": "boolean"},
-                "width": {"type": "number"},
-                "options": {"type": "array", "items": {"type": "string"}}
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "TEXT_NUMBER",
+                    "DATE",
+                    "DATETIME",
+                    "CONTACT_LIST",
+                    "CHECKBOX",
+                    "PICKLIST",
+                    "DURATION",
+                    "PREDECESSOR",
+                    "ABSTRACT_DATETIME"
+                  ]
+                },
+                "primary": {
+                  "type": "boolean"
+                },
+                "width": {
+                  "type": "number"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               },
-              "required": ["title", "type"]
+              "required": [
+                "title",
+                "type"
+              ]
             },
             "description": "Sheet columns"
           },
@@ -128,7 +170,10 @@
             "description": "Workspace ID to create sheet in"
           }
         },
-        "required": ["name", "columns"],
+        "required": [
+          "name",
+          "columns"
+        ],
         "additionalProperties": false
       }
     },
@@ -150,22 +195,40 @@
           "userSettings": {
             "type": "object",
             "properties": {
-              "criticalPathEnabled": {"type": "boolean"},
-              "displaySummaryTasks": {"type": "boolean"}
+              "criticalPathEnabled": {
+                "type": "boolean"
+              },
+              "displaySummaryTasks": {
+                "type": "boolean"
+              }
             },
             "description": "User settings"
           },
           "projectSettings": {
             "type": "object",
             "properties": {
-              "workingDays": {"type": "array", "items": {"type": "string"}},
-              "nonWorkingDays": {"type": "array", "items": {"type": "string"}},
-              "lengthOfDay": {"type": "number"}
+              "workingDays": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "nonWorkingDays": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lengthOfDay": {
+                "type": "number"
+              }
             },
             "description": "Project settings"
           }
         },
-        "required": ["sheetId"],
+        "required": [
+          "sheetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -185,32 +248,63 @@
             "items": {
               "type": "object",
               "properties": {
-                "toTop": {"type": "boolean"},
-                "toBottom": {"type": "boolean"},
-                "parentId": {"type": "string"},
-                "siblingId": {"type": "string"},
-                "above": {"type": "boolean"},
+                "toTop": {
+                  "type": "boolean"
+                },
+                "toBottom": {
+                  "type": "boolean"
+                },
+                "parentId": {
+                  "type": "string"
+                },
+                "siblingId": {
+                  "type": "string"
+                },
+                "above": {
+                  "type": "boolean"
+                },
                 "cells": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
-                      "columnId": {"type": "string"},
-                      "value": {"type": ["string", "number", "boolean"]},
-                      "displayValue": {"type": "string"},
-                      "formula": {"type": "string"},
-                      "strict": {"type": "boolean"}
+                      "columnId": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean"
+                        ]
+                      },
+                      "displayValue": {
+                        "type": "string"
+                      },
+                      "formula": {
+                        "type": "string"
+                      },
+                      "strict": {
+                        "type": "boolean"
+                      }
                     },
-                    "required": ["columnId"]
+                    "required": [
+                      "columnId"
+                    ]
                   }
                 }
               },
-              "required": ["cells"]
+              "required": [
+                "cells"
+              ]
             },
             "description": "Rows to add"
           }
         },
-        "required": ["sheetId", "rows"],
+        "required": [
+          "sheetId",
+          "rows"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,27 +324,49 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
+                "id": {
+                  "type": "string"
+                },
                 "cells": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
-                      "columnId": {"type": "string"},
-                      "value": {"type": ["string", "number", "boolean"]},
-                      "displayValue": {"type": "string"},
-                      "formula": {"type": "string"}
+                      "columnId": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean"
+                        ]
+                      },
+                      "displayValue": {
+                        "type": "string"
+                      },
+                      "formula": {
+                        "type": "string"
+                      }
                     },
-                    "required": ["columnId"]
+                    "required": [
+                      "columnId"
+                    ]
                   }
                 }
               },
-              "required": ["id", "cells"]
+              "required": [
+                "id",
+                "cells"
+              ]
             },
             "description": "Rows to update"
           }
         },
-        "required": ["sheetId", "rows"],
+        "required": [
+          "sheetId",
+          "rows"
+        ],
         "additionalProperties": false
       }
     },
@@ -267,7 +383,9 @@
           },
           "rowIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Row IDs to delete"
           },
           "ignoreRowsNotFound": {
@@ -276,7 +394,10 @@
             "description": "Ignore if rows are not found"
           }
         },
-        "required": ["sheetId", "rowIds"],
+        "required": [
+          "sheetId",
+          "rowIds"
+        ],
         "additionalProperties": false
       }
     },
@@ -296,29 +417,71 @@
             "items": {
               "type": "object",
               "properties": {
-                "title": {"type": "string"},
-                "type": {"type": "string", "enum": ["TEXT_NUMBER", "DATE", "DATETIME", "CONTACT_LIST", "CHECKBOX", "PICKLIST", "DURATION", "PREDECESSOR", "ABSTRACT_DATETIME"]},
-                "index": {"type": "number"},
-                "width": {"type": "number"},
-                "options": {"type": "array", "items": {"type": "string"}},
-                "symbol": {"type": "string"},
-                "systemColumnType": {"type": "string"},
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "TEXT_NUMBER",
+                    "DATE",
+                    "DATETIME",
+                    "CONTACT_LIST",
+                    "CHECKBOX",
+                    "PICKLIST",
+                    "DURATION",
+                    "PREDECESSOR",
+                    "ABSTRACT_DATETIME"
+                  ]
+                },
+                "index": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "symbol": {
+                  "type": "string"
+                },
+                "systemColumnType": {
+                  "type": "string"
+                },
                 "autoNumberFormat": {
                   "type": "object",
                   "properties": {
-                    "prefix": {"type": "string"},
-                    "suffix": {"type": "string"},
-                    "startingNumber": {"type": "number"},
-                    "fill": {"type": "string"}
+                    "prefix": {
+                      "type": "string"
+                    },
+                    "suffix": {
+                      "type": "string"
+                    },
+                    "startingNumber": {
+                      "type": "number"
+                    },
+                    "fill": {
+                      "type": "string"
+                    }
                   }
                 }
               },
-              "required": ["title", "type"]
+              "required": [
+                "title",
+                "type"
+              ]
             },
             "description": "Columns to add"
           }
         },
-        "required": ["sheetId", "columns"],
+        "required": [
+          "sheetId",
+          "columns"
+        ],
         "additionalProperties": false
       }
     },
@@ -351,7 +514,9 @@
             "description": "Workspace name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -387,7 +552,14 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["attachments", "discussions", "filters", "format", "objectValue", "source"]
+              "enum": [
+                "attachments",
+                "discussions",
+                "filters",
+                "format",
+                "objectValue",
+                "source"
+              ]
             },
             "description": "Additional elements to include"
           },
@@ -403,7 +575,9 @@
             "description": "Page number"
           }
         },
-        "required": ["reportId"],
+        "required": [
+          "reportId"
+        ],
         "additionalProperties": false
       }
     },
@@ -423,9 +597,14 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                }
               },
-              "required": ["email"]
+              "required": [
+                "email"
+              ]
             },
             "description": "Recipients"
           },
@@ -444,19 +623,45 @@
           },
           "format": {
             "type": "string",
-            "enum": ["PDF", "EXCEL", "PDF_GANTT"],
+            "enum": [
+              "PDF",
+              "EXCEL",
+              "PDF_GANTT"
+            ],
             "description": "Attachment format"
           },
           "formatDetails": {
             "type": "object",
             "properties": {
-              "paperSize": {"type": "string", "enum": ["LETTER", "LEGAL", "A4", "A3", "A2", "A1", "A0"]},
-              "orientation": {"type": "string", "enum": ["PORTRAIT", "LANDSCAPE"]}
+              "paperSize": {
+                "type": "string",
+                "enum": [
+                  "LETTER",
+                  "LEGAL",
+                  "A4",
+                  "A3",
+                  "A2",
+                  "A1",
+                  "A0"
+                ]
+              },
+              "orientation": {
+                "type": "string",
+                "enum": [
+                  "PORTRAIT",
+                  "LANDSCAPE"
+                ]
+              }
             },
             "description": "Format details"
           }
         },
-        "required": ["sheetId", "sendTo", "subject", "format"],
+        "required": [
+          "sheetId",
+          "sendTo",
+          "subject",
+          "format"
+        ],
         "additionalProperties": false
       }
     }
@@ -485,13 +690,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "sheetId": {"type": "string"},
-          "sheetName": {"type": "string"},
-          "rowId": {"type": "string"},
-          "rowNumber": {"type": "number"},
-          "userId": {"type": "string"},
-          "timestamp": {"type": "string"},
-          "cells": {"type": "array"}
+          "sheetId": {
+            "type": "string"
+          },
+          "sheetName": {
+            "type": "string"
+          },
+          "rowId": {
+            "type": "string"
+          },
+          "rowNumber": {
+            "type": "number"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "array"
+          }
         }
       }
     },
@@ -518,14 +737,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "sheetId": {"type": "string"},
-          "sheetName": {"type": "string"},
-          "rowId": {"type": "string"},
-          "rowNumber": {"type": "number"},
-          "userId": {"type": "string"},
-          "timestamp": {"type": "string"},
-          "cells": {"type": "array"},
-          "changedCells": {"type": "array"}
+          "sheetId": {
+            "type": "string"
+          },
+          "sheetName": {
+            "type": "string"
+          },
+          "rowId": {
+            "type": "string"
+          },
+          "rowNumber": {
+            "type": "number"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "array"
+          },
+          "changedCells": {
+            "type": "array"
+          }
         }
       }
     },
@@ -552,12 +787,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "sheetId": {"type": "string"},
-          "sheetName": {"type": "string"},
-          "userId": {"type": "string"},
-          "timestamp": {"type": "string"},
-          "workspaceId": {"type": "string"},
-          "folderId": {"type": "string"}
+          "sheetId": {
+            "type": "string"
+          },
+          "sheetName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "folderId": {
+            "type": "string"
+          }
         }
       }
     }
@@ -565,5 +812,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

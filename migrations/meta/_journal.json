@@ -71,6 +71,13 @@
       "when": 1759132949664,
       "tag": "0012_backfill_execution_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1759132950664,
+      "tag": "0013_connector_release_metadata",
+      "breakpoints": true
     }
   ]
 }

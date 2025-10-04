@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://graph.microsoft.com/Tasks.ReadWrite"]
+      "scopes": [
+        "https://graph.microsoft.com/Tasks.ReadWrite"
+      ]
     }
   },
   "baseUrl": "https://graph.microsoft.com/v1.0/me/todo",
@@ -70,7 +72,9 @@
             "description": "Task list name"
           }
         },
-        "required": ["displayName"],
+        "required": [
+          "displayName"
+        ],
         "additionalProperties": false
       }
     },
@@ -105,7 +109,9 @@
             "description": "OData order by expression"
           }
         },
-        "required": ["listId"],
+        "required": [
+          "listId"
+        ],
         "additionalProperties": false
       }
     },
@@ -127,40 +133,67 @@
           "body": {
             "type": "object",
             "properties": {
-              "content": {"type": "string"},
-              "contentType": {"type": "string", "enum": ["text", "html"]}
+              "content": {
+                "type": "string"
+              },
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "html"
+                ]
+              }
             },
             "description": "Task body content"
           },
           "dueDateTime": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "Due date and time"
           },
           "reminderDateTime": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "Reminder date and time"
           },
           "importance": {
             "type": "string",
-            "enum": ["low", "normal", "high"],
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
             "default": "normal",
             "description": "Task importance"
           },
           "categories": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Task categories"
           }
         },
-        "required": ["listId", "title"],
+        "required": [
+          "listId",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -186,31 +219,57 @@
           "body": {
             "type": "object",
             "properties": {
-              "content": {"type": "string"},
-              "contentType": {"type": "string", "enum": ["text", "html"]}
+              "content": {
+                "type": "string"
+              },
+              "contentType": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "html"
+                ]
+              }
             },
             "description": "Task body content"
           },
           "status": {
             "type": "string",
-            "enum": ["notStarted", "inProgress", "completed", "waitingOnOthers", "deferred"],
+            "enum": [
+              "notStarted",
+              "inProgress",
+              "completed",
+              "waitingOnOthers",
+              "deferred"
+            ],
             "description": "Task status"
           },
           "importance": {
             "type": "string",
-            "enum": ["low", "normal", "high"],
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
             "description": "Task importance"
           },
           "dueDateTime": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "Due date and time"
           }
         },
-        "required": ["listId", "taskId"],
+        "required": [
+          "listId",
+          "taskId"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,7 +289,10 @@
             "description": "Task ID"
           }
         },
-        "required": ["listId", "taskId"],
+        "required": [
+          "listId",
+          "taskId"
+        ],
         "additionalProperties": false
       }
     },
@@ -250,7 +312,10 @@
             "description": "Task ID"
           }
         },
-        "required": ["listId", "taskId"],
+        "required": [
+          "listId",
+          "taskId"
+        ],
         "additionalProperties": false
       }
     }
@@ -275,11 +340,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "status": {"type": "string"},
-          "importance": {"type": "string"},
-          "createdDateTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "importance": {
+            "type": "string"
+          },
+          "createdDateTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -302,9 +377,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "completedDateTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "completedDateTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -312,5 +393,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/lists"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

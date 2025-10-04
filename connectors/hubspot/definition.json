@@ -46,7 +46,24 @@
       "description": "Get a deal by ID",
       "endpoint": "/crm/v3/objects/deals/{dealId}",
       "method": "GET",
-      "parameters": { "type":"object", "properties": { "dealId": {"type":"string"}, "properties": {"type":"array", "items": {"type":"string"} } }, "required": ["dealId"], "additionalProperties": false }
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dealId": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "dealId"
+        ],
+        "additionalProperties": false
+      }
     },
     {
       "id": "search_deals",
@@ -54,7 +71,23 @@
       "description": "Search deals using filters",
       "endpoint": "/crm/v3/objects/deals/search",
       "method": "POST",
-      "parameters": { "type":"object", "properties": { "query": {"type":"string"}, "filters": {"type":"object"}, "limit": {"type":"number","default":10} }, "required": [], "additionalProperties": false }
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "filters": {
+            "type": "object"
+          },
+          "limit": {
+            "type": "number",
+            "default": 10
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
     },
     {
       "id": "list_deals",
@@ -65,9 +98,20 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "limit": { "type": "number", "default": 50, "maximum": 100 },
-          "after": { "type": "string" },
-          "properties": { "type": "array", "items": { "type": "string" } }
+          "limit": {
+            "type": "number",
+            "default": 50,
+            "maximum": 100
+          },
+          "after": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
         "required": [],
         "additionalProperties": false
@@ -82,10 +126,17 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "dealId": { "type": "string" },
-          "properties": { "type": "object" }
+          "dealId": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          }
         },
-        "required": ["dealId", "properties"],
+        "required": [
+          "dealId",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -125,16 +176,36 @@
           },
           "lifecyclestage": {
             "type": "string",
-            "enum": ["subscriber", "lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer", "evangelist", "other"],
+            "enum": [
+              "subscriber",
+              "lead",
+              "marketingqualifiedlead",
+              "salesqualifiedlead",
+              "opportunity",
+              "customer",
+              "evangelist",
+              "other"
+            ],
             "description": "Contact's lifecycle stage"
           },
           "hs_lead_status": {
             "type": "string",
-            "enum": ["NEW", "OPEN", "IN_PROGRESS", "OPEN_DEAL", "UNQUALIFIED", "ATTEMPTED_TO_CONTACT", "CONNECTED", "BAD_TIMING"],
+            "enum": [
+              "NEW",
+              "OPEN",
+              "IN_PROGRESS",
+              "OPEN_DEAL",
+              "UNQUALIFIED",
+              "ATTEMPTED_TO_CONTACT",
+              "CONNECTED",
+              "BAD_TIMING"
+            ],
             "description": "Lead status"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -174,11 +245,22 @@
           },
           "lifecyclestage": {
             "type": "string",
-            "enum": ["subscriber", "lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer", "evangelist", "other"],
+            "enum": [
+              "subscriber",
+              "lead",
+              "marketingqualifiedlead",
+              "salesqualifiedlead",
+              "opportunity",
+              "customer",
+              "evangelist",
+              "other"
+            ],
             "description": "Contact's lifecycle stage"
           }
         },
-        "required": ["contactId"],
+        "required": [
+          "contactId"
+        ],
         "additionalProperties": false
       }
     },
@@ -202,7 +284,9 @@
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of properties to retrieve"
           }
         },
@@ -225,7 +309,9 @@
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to return"
           },
           "limit": {
@@ -279,11 +365,17 @@
           },
           "dealtype": {
             "type": "string",
-            "enum": ["newbusiness", "existingbusiness", "renewal"],
+            "enum": [
+              "newbusiness",
+              "existingbusiness",
+              "renewal"
+            ],
             "description": "Type of deal"
           }
         },
-        "required": ["dealname"],
+        "required": [
+          "dealname"
+        ],
         "additionalProperties": false
       }
     },
@@ -318,7 +410,9 @@
             "description": "Expected close date (YYYY-MM-DD)"
           }
         },
-        "required": ["dealId"],
+        "required": [
+          "dealId"
+        ],
         "additionalProperties": false
       }
     },
@@ -368,7 +462,9 @@
             "description": "Annual revenue"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -399,7 +495,11 @@
           },
           "hs_ticket_priority": {
             "type": "string",
-            "enum": ["LOW", "MEDIUM", "HIGH"],
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
             "description": "Ticket priority"
           },
           "hubspot_owner_id": {
@@ -407,7 +507,9 @@
             "description": "Owner ID for the ticket"
           }
         },
-        "required": ["subject"],
+        "required": [
+          "subject"
+        ],
         "additionalProperties": false
       }
     },
@@ -438,14 +540,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "to": {"type": "object"},
-                "types": {"type": "array"}
+                "to": {
+                  "type": "object"
+                },
+                "types": {
+                  "type": "array"
+                }
               }
             },
             "description": "Objects to associate the note with"
           }
         },
-        "required": ["hs_note_body"],
+        "required": [
+          "hs_note_body"
+        ],
         "additionalProperties": false
       }
     },
@@ -476,7 +584,10 @@
             "description": "Custom properties for personalization"
           }
         },
-        "required": ["emailId", "to"],
+        "required": [
+          "emailId",
+          "to"
+        ],
         "additionalProperties": false
       }
     }
@@ -492,7 +603,9 @@
         "properties": {
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Contact properties to include in webhook"
           }
         },
@@ -502,11 +615,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "contactId": {"type": "string"},
-          "email": {"type": "string"},
-          "firstname": {"type": "string"},
-          "lastname": {"type": "string"},
-          "createdate": {"type": "string"}
+          "contactId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstname": {
+            "type": "string"
+          },
+          "lastname": {
+            "type": "string"
+          },
+          "createdate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -520,7 +643,9 @@
         "properties": {
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to monitor for changes"
           }
         },
@@ -530,10 +655,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "contactId": {"type": "string"},
-          "email": {"type": "string"},
-          "changedProperties": {"type": "array", "items": {"type": "string"}},
-          "modifieddate": {"type": "string"}
+          "contactId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "changedProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "modifieddate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -556,11 +692,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "dealId": {"type": "string"},
-          "dealname": {"type": "string"},
-          "amount": {"type": "number"},
-          "dealstage": {"type": "string"},
-          "createdate": {"type": "string"}
+          "dealId": {
+            "type": "string"
+          },
+          "dealname": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "dealstage": {
+            "type": "string"
+          },
+          "createdate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -587,11 +733,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "dealId": {"type": "string"},
-          "dealname": {"type": "string"},
-          "oldStage": {"type": "string"},
-          "newStage": {"type": "string"},
-          "modifieddate": {"type": "string"}
+          "dealId": {
+            "type": "string"
+          },
+          "dealname": {
+            "type": "string"
+          },
+          "oldStage": {
+            "type": "string"
+          },
+          "newStage": {
+            "type": "string"
+          },
+          "modifieddate": {
+            "type": "string"
+          }
         }
       }
     }
@@ -599,5 +755,16 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/account-info/v3/api-usage"
+  },
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

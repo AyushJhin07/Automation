@@ -76,7 +76,9 @@
             "description": "Customer ID"
           }
         },
-        "required": ["customerId"],
+        "required": [
+          "customerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -113,7 +115,9 @@
             "description": "Custom attributes"
           }
         },
-        "required": ["customerId"],
+        "required": [
+          "customerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -176,24 +180,43 @@
           },
           "channel": {
             "type": "string",
-            "enum": ["email", "chat", "phone", "social", "api"],
+            "enum": [
+              "email",
+              "chat",
+              "phone",
+              "social",
+              "api"
+            ],
             "description": "Conversation channel"
           },
           "priority": {
             "type": "string",
-            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "enum": [
+              "lowest",
+              "low",
+              "normal",
+              "high",
+              "highest"
+            ],
             "default": "normal",
             "description": "Conversation priority"
           },
           "status": {
             "type": "string",
-            "enum": ["open", "snoozed", "closed"],
+            "enum": [
+              "open",
+              "snoozed",
+              "closed"
+            ],
             "default": "open",
             "description": "Conversation status"
           },
           "direction": {
             "type": "string",
-            "enum": ["in", "out"],
+            "enum": [
+              "in",
+              "out"
+            ],
             "default": "in",
             "description": "Conversation direction"
           },
@@ -202,7 +225,9 @@
             "description": "Custom attributes"
           }
         },
-        "required": ["customerId"],
+        "required": [
+          "customerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -218,7 +243,9 @@
             "description": "Conversation ID"
           }
         },
-        "required": ["conversationId"],
+        "required": [
+          "conversationId"
+        ],
         "additionalProperties": false
       }
     },
@@ -239,12 +266,22 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "enum": [
+              "lowest",
+              "low",
+              "normal",
+              "high",
+              "highest"
+            ],
             "description": "Conversation priority"
           },
           "status": {
             "type": "string",
-            "enum": ["open", "snoozed", "closed"],
+            "enum": [
+              "open",
+              "snoozed",
+              "closed"
+            ],
             "description": "Conversation status"
           },
           "assignedTeamId": {
@@ -260,7 +297,9 @@
             "description": "Custom attributes"
           }
         },
-        "required": ["conversationId"],
+        "required": [
+          "conversationId"
+        ],
         "additionalProperties": false
       }
     },
@@ -281,13 +320,22 @@
           },
           "direction": {
             "type": "string",
-            "enum": ["in", "out"],
+            "enum": [
+              "in",
+              "out"
+            ],
             "default": "out",
             "description": "Message direction"
           },
           "channel": {
             "type": "string",
-            "enum": ["email", "chat", "phone", "social", "api"],
+            "enum": [
+              "email",
+              "chat",
+              "phone",
+              "social",
+              "api"
+            ],
             "description": "Message channel"
           },
           "attachments": {
@@ -295,15 +343,24 @@
             "items": {
               "type": "object",
               "properties": {
-                "url": {"type": "string"},
-                "name": {"type": "string"},
-                "contentType": {"type": "string"}
+                "url": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "contentType": {
+                  "type": "string"
+                }
               }
             },
             "description": "Message attachments"
           }
         },
-        "required": ["conversationId", "body"],
+        "required": [
+          "conversationId",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -332,7 +389,9 @@
             "description": "Number of results per page"
           }
         },
-        "required": ["conversationId"],
+        "required": [
+          "conversationId"
+        ],
         "additionalProperties": false
       }
     },
@@ -349,12 +408,22 @@
           },
           "status": {
             "type": "string",
-            "enum": ["open", "snoozed", "closed"],
+            "enum": [
+              "open",
+              "snoozed",
+              "closed"
+            ],
             "description": "Filter by status"
           },
           "priority": {
             "type": "string",
-            "enum": ["lowest", "low", "normal", "high", "highest"],
+            "enum": [
+              "lowest",
+              "low",
+              "normal",
+              "high",
+              "highest"
+            ],
             "description": "Filter by priority"
           },
           "assignedUserId": {
@@ -367,7 +436,13 @@
           },
           "channel": {
             "type": "string",
-            "enum": ["email", "chat", "phone", "social", "api"],
+            "enum": [
+              "email",
+              "chat",
+              "phone",
+              "social",
+              "api"
+            ],
             "description": "Filter by channel"
           },
           "createdAfter": {
@@ -414,7 +489,10 @@
             "description": "Note content"
           }
         },
-        "required": ["customerId", "body"],
+        "required": [
+          "customerId",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -493,13 +571,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "customerId": {"type": "string"},
-          "title": {"type": "string"},
-          "status": {"type": "string"},
-          "priority": {"type": "string"},
-          "channel": {"type": "string"},
-          "createdAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -526,12 +618,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "customerId": {"type": "string"},
-          "title": {"type": "string"},
-          "status": {"type": "string"},
-          "priority": {"type": "string"},
-          "updatedAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -545,12 +649,21 @@
         "properties": {
           "direction": {
             "type": "string",
-            "enum": ["in", "out"],
+            "enum": [
+              "in",
+              "out"
+            ],
             "description": "Filter by message direction"
           },
           "channel": {
             "type": "string",
-            "enum": ["email", "chat", "phone", "social", "api"],
+            "enum": [
+              "email",
+              "chat",
+              "phone",
+              "social",
+              "api"
+            ],
             "description": "Filter by channel"
           }
         },
@@ -560,13 +673,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "conversationId": {"type": "string"},
-          "customerId": {"type": "string"},
-          "body": {"type": "string"},
-          "direction": {"type": "string"},
-          "channel": {"type": "string"},
-          "createdAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -584,12 +711,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "email": {"type": "string"},
-          "phone": {"type": "string"},
-          "company": {"type": "string"},
-          "createdAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
         }
       }
     }
@@ -597,5 +736,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/customers?page[size]=1"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

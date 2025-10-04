@@ -45,7 +45,12 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["Bug", "Task", "User Story", "Feature"],
+            "enum": [
+              "Bug",
+              "Task",
+              "User Story",
+              "Feature"
+            ],
             "description": "Work item type"
           },
           "title": {
@@ -75,7 +80,10 @@
             "description": "Priority level"
           }
         },
-        "required": ["type", "title"],
+        "required": [
+          "type",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -101,7 +109,9 @@
             "description": "Build parameters"
           }
         },
-        "required": ["definition_id"],
+        "required": [
+          "definition_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -126,14 +136,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "alias": {"type": "string"},
-                "instanceReference": {"type": "object"}
+                "alias": {
+                  "type": "string"
+                },
+                "instanceReference": {
+                  "type": "object"
+                }
               }
             },
             "description": "Release artifacts"
           }
         },
-        "required": ["definition_id"],
+        "required": [
+          "definition_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -150,7 +166,9 @@
             "description": "Build ID"
           }
         },
-        "required": ["build_id"],
+        "required": [
+          "build_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -182,7 +200,11 @@
           },
           "result": {
             "type": "string",
-            "enum": ["succeeded", "failed", "canceled"],
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
             "description": "Filter by build result"
           }
         },
@@ -200,7 +222,12 @@
         "properties": {
           "work_item_type": {
             "type": "string",
-            "enum": ["Bug", "Task", "User Story", "Feature"],
+            "enum": [
+              "Bug",
+              "Task",
+              "User Story",
+              "Feature"
+            ],
             "description": "Filter by work item type"
           },
           "area_path": {
@@ -212,5 +239,16 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

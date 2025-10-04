@@ -48,7 +48,13 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "enum": [
+              "P1",
+              "P2",
+              "P3",
+              "P4",
+              "P5"
+            ],
             "default": "P3",
             "description": "Alert priority"
           },
@@ -58,7 +64,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Alert tags"
           },
           "details": {
@@ -78,7 +86,9 @@
             "description": "Additional note"
           }
         },
-        "required": ["message"],
+        "required": [
+          "message"
+        ],
         "additionalProperties": false
       }
     },
@@ -95,12 +105,18 @@
           },
           "identifierType": {
             "type": "string",
-            "enum": ["id", "tiny", "alias"],
+            "enum": [
+              "id",
+              "tiny",
+              "alias"
+            ],
             "default": "id",
             "description": "Identifier type"
           }
         },
-        "required": ["identifier"],
+        "required": [
+          "identifier"
+        ],
         "additionalProperties": false
       }
     },
@@ -117,7 +133,11 @@
           },
           "identifierType": {
             "type": "string",
-            "enum": ["id", "tiny", "alias"],
+            "enum": [
+              "id",
+              "tiny",
+              "alias"
+            ],
             "default": "id",
             "description": "Identifier type"
           },
@@ -134,7 +154,9 @@
             "description": "Source of the close action"
           }
         },
-        "required": ["identifier"],
+        "required": [
+          "identifier"
+        ],
         "additionalProperties": false
       }
     },
@@ -151,7 +173,11 @@
           },
           "identifierType": {
             "type": "string",
-            "enum": ["id", "tiny", "alias"],
+            "enum": [
+              "id",
+              "tiny",
+              "alias"
+            ],
             "default": "id",
             "description": "Identifier type"
           },
@@ -168,7 +194,9 @@
             "description": "Source of the acknowledge action"
           }
         },
-        "required": ["identifier"],
+        "required": [
+          "identifier"
+        ],
         "additionalProperties": false
       }
     },
@@ -189,7 +217,11 @@
           },
           "searchIdentifierType": {
             "type": "string",
-            "enum": ["id", "tiny", "alias"],
+            "enum": [
+              "id",
+              "tiny",
+              "alias"
+            ],
             "description": "Search identifier type"
           },
           "offset": {
@@ -207,13 +239,26 @@
           },
           "sort": {
             "type": "string",
-            "enum": ["createdAt", "updatedAt", "tinyId", "alias", "message", "status", "acknowledged", "isSeen", "snoozed"],
+            "enum": [
+              "createdAt",
+              "updatedAt",
+              "tinyId",
+              "alias",
+              "message",
+              "status",
+              "acknowledged",
+              "isSeen",
+              "snoozed"
+            ],
             "default": "createdAt",
             "description": "Sort field"
           },
           "order": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "default": "desc",
             "description": "Sort order"
           }
@@ -235,7 +280,11 @@
           },
           "identifierType": {
             "type": "string",
-            "enum": ["id", "tiny", "alias"],
+            "enum": [
+              "id",
+              "tiny",
+              "alias"
+            ],
             "default": "id",
             "description": "Identifier type"
           },
@@ -252,7 +301,10 @@
             "description": "Source of the note"
           }
         },
-        "required": ["identifier", "note"],
+        "required": [
+          "identifier",
+          "note"
+        ],
         "additionalProperties": false
       }
     },
@@ -269,15 +321,23 @@
           },
           "identifierType": {
             "type": "string",
-            "enum": ["id", "tiny", "alias"],
+            "enum": [
+              "id",
+              "tiny",
+              "alias"
+            ],
             "default": "id",
             "description": "Identifier type"
           },
           "owner": {
             "type": "object",
             "properties": {
-              "username": {"type": "string"},
-              "id": {"type": "string"}
+              "username": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
             },
             "description": "Owner to assign alert to"
           },
@@ -294,7 +354,10 @@
             "description": "Source of the assignment"
           }
         },
-        "required": ["identifier", "owner"],
+        "required": [
+          "identifier",
+          "owner"
+        ],
         "additionalProperties": false
       }
     },
@@ -361,7 +424,10 @@
           },
           "scheduleIdentifierType": {
             "type": "string",
-            "enum": ["id", "name"],
+            "enum": [
+              "id",
+              "name"
+            ],
             "default": "id",
             "description": "Schedule identifier type"
           },
@@ -392,12 +458,20 @@
         "properties": {
           "priority": {
             "type": "string",
-            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "enum": [
+              "P1",
+              "P2",
+              "P3",
+              "P4",
+              "P5"
+            ],
             "description": "Filter by priority"
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by tags"
           }
         },
@@ -407,22 +481,54 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "tinyId": {"type": "string"},
-          "alias": {"type": "string"},
-          "message": {"type": "string"},
-          "status": {"type": "string"},
-          "acknowledged": {"type": "boolean"},
-          "isSeen": {"type": "boolean"},
-          "tags": {"type": "array"},
-          "snoozed": {"type": "boolean"},
-          "count": {"type": "number"},
-          "lastOccurredAt": {"type": "string"},
-          "createdAt": {"type": "string"},
-          "updatedAt": {"type": "string"},
-          "source": {"type": "string"},
-          "owner": {"type": "string"},
-          "priority": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "tinyId": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "acknowledged": {
+            "type": "boolean"
+          },
+          "isSeen": {
+            "type": "boolean"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "snoozed": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "number"
+          },
+          "lastOccurredAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          }
         }
       }
     },
@@ -436,7 +542,13 @@
         "properties": {
           "priority": {
             "type": "string",
-            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "enum": [
+              "P1",
+              "P2",
+              "P3",
+              "P4",
+              "P5"
+            ],
             "description": "Filter by priority"
           }
         },
@@ -446,12 +558,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "tinyId": {"type": "string"},
-          "alias": {"type": "string"},
-          "message": {"type": "string"},
-          "acknowledgedBy": {"type": "string"},
-          "acknowledgedAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "tinyId": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "acknowledgedBy": {
+            "type": "string"
+          },
+          "acknowledgedAt": {
+            "type": "string"
+          }
         }
       }
     },
@@ -465,7 +589,13 @@
         "properties": {
           "priority": {
             "type": "string",
-            "enum": ["P1", "P2", "P3", "P4", "P5"],
+            "enum": [
+              "P1",
+              "P2",
+              "P3",
+              "P4",
+              "P5"
+            ],
             "description": "Filter by priority"
           }
         },
@@ -475,12 +605,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "tinyId": {"type": "string"},
-          "alias": {"type": "string"},
-          "message": {"type": "string"},
-          "closedBy": {"type": "string"},
-          "closedAt": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "tinyId": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "closedBy": {
+            "type": "string"
+          },
+          "closedAt": {
+            "type": "string"
+          }
         }
       }
     }
@@ -488,5 +630,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/account"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

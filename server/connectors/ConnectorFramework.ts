@@ -3,6 +3,20 @@ import { connectorDefinitions, db } from '../database/schema';
 import type { BaseAPIClient } from '../integrations/BaseAPIClient';
 import type { RateLimitRules } from '../integrations/RateLimiter';
 
+export type ConnectorLifecycleStatus = 'alpha' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+
+export interface ConnectorDeprecationWindow {
+  startDate?: string | null;
+  sunsetDate?: string | null;
+}
+
+export interface ConnectorLifecycleMetadata {
+  status: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  betaStartedAt?: string | null;
+  deprecationWindow: ConnectorDeprecationWindow;
+}
+
 export interface ConnectorDefinition {
   id: string;
   name: string;
@@ -12,6 +26,9 @@ export interface ConnectorDefinition {
   iconUrl: string;
   websiteUrl: string;
   documentationUrl: string;
+  version: string;
+  semanticVersion: string;
+  lifecycle: ConnectorLifecycleMetadata;
   
   // Technical configuration
   apiBaseUrl: string;
@@ -491,6 +508,17 @@ export class ConnectorFramework {
         triggers: definition.triggers,
         actions: definition.actions,
         rateLimits: definition.rateLimits,
+        version: definition.version ?? '1.0.0',
+        semanticVersion: definition.semanticVersion ?? definition.version ?? '1.0.0',
+        lifecycleStatus: definition.lifecycle?.status ?? (definition.lifecycle?.isBeta ? 'beta' : 'stable'),
+        isBeta: definition.lifecycle?.isBeta ?? false,
+        betaStartDate: definition.lifecycle?.betaStartedAt ? new Date(definition.lifecycle.betaStartedAt) : null,
+        deprecationStartDate: definition.lifecycle?.deprecationWindow?.startDate
+          ? new Date(definition.lifecycle.deprecationWindow.startDate)
+          : null,
+        sunsetDate: definition.lifecycle?.deprecationWindow?.sunsetDate
+          ? new Date(definition.lifecycle.deprecationWindow.sunsetDate)
+          : null,
         isActive: definition.isActive,
         isVerified: false, // New connectors need verification
         popularity: 0
@@ -537,6 +565,17 @@ export class ConnectorFramework {
       },
       concurrency: concurrencyRaw ?? undefined,
       rateLimitHeaders: headerOverrides ?? undefined,
+      version: raw.version ?? '1.0.0',
+      semanticVersion: raw.semanticVersion ?? raw.version ?? '1.0.0',
+      lifecycle: {
+        status: (raw.lifecycleStatus ?? (raw.isBeta ? 'beta' : 'stable')) as ConnectorLifecycleStatus,
+        isBeta: Boolean(raw.isBeta),
+        betaStartedAt: raw.betaStartDate ? new Date(raw.betaStartDate).toISOString() : undefined,
+        deprecationWindow: {
+          startDate: raw.deprecationStartDate ? new Date(raw.deprecationStartDate).toISOString() : undefined,
+          sunsetDate: raw.sunsetDate ? new Date(raw.sunsetDate).toISOString() : undefined,
+        },
+      },
       isActive: raw.isActive,
       isVerified: raw.isVerified,
       popularity: raw.popularity || 0,
@@ -781,6 +820,14 @@ export class ConnectorFramework {
         iconUrl: 'https://developers.google.com/gmail/images/gmail-icon.png',
         websiteUrl: 'https://gmail.com',
         documentationUrl: 'https://developers.google.com/gmail/api',
+        version: '1.0.0',
+        semanticVersion: '1.0.0',
+        lifecycle: {
+          status: 'stable',
+          isBeta: false,
+          betaStartedAt: null,
+          deprecationWindow: { startDate: null, sunsetDate: null },
+        },
         apiBaseUrl: 'https://gmail.googleapis.com/gmail/v1',
         authType: 'oauth2',
         authConfig: {

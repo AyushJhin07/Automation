@@ -59,7 +59,9 @@
             "description": "Organization slug"
           }
         },
-        "required": ["organizationSlug"],
+        "required": [
+          "organizationSlug"
+        ],
         "additionalProperties": false
       }
     },
@@ -79,7 +81,9 @@
             "description": "Pagination cursor"
           }
         },
-        "required": ["organizationSlug"],
+        "required": [
+          "organizationSlug"
+        ],
         "additionalProperties": false
       }
     },
@@ -99,7 +103,10 @@
             "description": "Project slug"
           }
         },
-        "required": ["organizationSlug", "projectSlug"],
+        "required": [
+          "organizationSlug",
+          "projectSlug"
+        ],
         "additionalProperties": false
       }
     },
@@ -132,7 +139,10 @@
             "description": "Create default alert rules"
           }
         },
-        "required": ["organizationSlug", "name"],
+        "required": [
+          "organizationSlug",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -176,7 +186,10 @@
             "description": "Maximum delay for digest notifications"
           }
         },
-        "required": ["organizationSlug", "projectSlug"],
+        "required": [
+          "organizationSlug",
+          "projectSlug"
+        ],
         "additionalProperties": false
       }
     },
@@ -197,7 +210,10 @@
           },
           "statsPeriod": {
             "type": "string",
-            "enum": ["14d", "24h"],
+            "enum": [
+              "14d",
+              "24h"
+            ],
             "description": "Statistics period"
           },
           "shortIdLookup": {
@@ -210,7 +226,13 @@
           },
           "sort": {
             "type": "string",
-            "enum": ["date", "new", "priority", "freq", "user"],
+            "enum": [
+              "date",
+              "new",
+              "priority",
+              "freq",
+              "user"
+            ],
             "description": "Sort order"
           },
           "cursor": {
@@ -218,7 +240,10 @@
             "description": "Pagination cursor"
           }
         },
-        "required": ["organizationSlug", "projectSlug"],
+        "required": [
+          "organizationSlug",
+          "projectSlug"
+        ],
         "additionalProperties": false
       }
     },
@@ -234,7 +259,9 @@
             "description": "Issue ID"
           }
         },
-        "required": ["issueId"],
+        "required": [
+          "issueId"
+        ],
         "additionalProperties": false
       }
     },
@@ -251,15 +278,25 @@
           },
           "status": {
             "type": "string",
-            "enum": ["resolved", "unresolved", "ignored"],
+            "enum": [
+              "resolved",
+              "unresolved",
+              "ignored"
+            ],
             "description": "Issue status"
           },
           "statusDetails": {
             "type": "object",
             "properties": {
-              "inRelease": {"type": "string"},
-              "inNextRelease": {"type": "boolean"},
-              "inCommit": {"type": "string"}
+              "inRelease": {
+                "type": "string"
+              },
+              "inNextRelease": {
+                "type": "boolean"
+              },
+              "inCommit": {
+                "type": "string"
+              }
             },
             "description": "Status details"
           },
@@ -284,7 +321,9 @@
             "description": "Whether issue is public"
           }
         },
-        "required": ["issueId"],
+        "required": [
+          "issueId"
+        ],
         "additionalProperties": false
       }
     },
@@ -300,7 +339,9 @@
             "description": "Issue ID"
           }
         },
-        "required": ["issueId"],
+        "required": [
+          "issueId"
+        ],
         "additionalProperties": false
       }
     },
@@ -325,7 +366,9 @@
             "description": "Pagination cursor"
           }
         },
-        "required": ["issueId"],
+        "required": [
+          "issueId"
+        ],
         "additionalProperties": false
       }
     },
@@ -349,7 +392,11 @@
             "description": "Event ID"
           }
         },
-        "required": ["organizationSlug", "projectSlug", "eventId"],
+        "required": [
+          "organizationSlug",
+          "projectSlug",
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -378,7 +425,9 @@
           },
           "projects": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Project slugs"
           },
           "dateReleased": {
@@ -391,12 +440,24 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"},
-                "repository": {"type": "string"},
-                "author_name": {"type": "string"},
-                "author_email": {"type": "string"},
-                "message": {"type": "string"},
-                "timestamp": {"type": "string"}
+                "id": {
+                  "type": "string"
+                },
+                "repository": {
+                  "type": "string"
+                },
+                "author_name": {
+                  "type": "string"
+                },
+                "author_email": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "string"
+                }
               }
             },
             "description": "Release commits"
@@ -406,15 +467,25 @@
             "items": {
               "type": "object",
               "properties": {
-                "repository": {"type": "string"},
-                "commit": {"type": "string"},
-                "previousCommit": {"type": "string"}
+                "repository": {
+                  "type": "string"
+                },
+                "commit": {
+                  "type": "string"
+                },
+                "previousCommit": {
+                  "type": "string"
+                }
               }
             },
             "description": "Repository references"
           }
         },
-        "required": ["organizationSlug", "version", "projects"],
+        "required": [
+          "organizationSlug",
+          "version",
+          "projects"
+        ],
         "additionalProperties": false
       }
     },
@@ -435,7 +506,11 @@
           },
           "sort": {
             "type": "string",
-            "enum": ["date", "date_added", "sessions"],
+            "enum": [
+              "date",
+              "date_added",
+              "sessions"
+            ],
             "description": "Sort order"
           },
           "cursor": {
@@ -443,7 +518,9 @@
             "description": "Pagination cursor"
           }
         },
-        "required": ["organizationSlug"],
+        "required": [
+          "organizationSlug"
+        ],
         "additionalProperties": false
       }
     },
@@ -468,7 +545,10 @@
             "description": "Release date"
           }
         },
-        "required": ["organizationSlug", "version"],
+        "required": [
+          "organizationSlug",
+          "version"
+        ],
         "additionalProperties": false
       }
     },
@@ -488,7 +568,9 @@
             "description": "Pagination cursor"
           }
         },
-        "required": ["organizationSlug"],
+        "required": [
+          "organizationSlug"
+        ],
         "additionalProperties": false
       }
     }
@@ -512,7 +594,12 @@
           },
           "level": {
             "type": "string",
-            "enum": ["error", "warning", "info", "debug"],
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "debug"
+            ],
             "description": "Filter by issue level"
           }
         },
@@ -522,19 +609,45 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "culprit": {"type": "string"},
-          "level": {"type": "string"},
-          "status": {"type": "string"},
-          "statusDetails": {"type": "object"},
-          "isPublic": {"type": "boolean"},
-          "platform": {"type": "string"},
-          "project": {"type": "object"},
-          "count": {"type": "string"},
-          "userCount": {"type": "number"},
-          "firstSeen": {"type": "string"},
-          "lastSeen": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "culprit": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "statusDetails": {
+            "type": "object"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "project": {
+            "type": "object"
+          },
+          "count": {
+            "type": "string"
+          },
+          "userCount": {
+            "type": "number"
+          },
+          "firstSeen": {
+            "type": "string"
+          },
+          "lastSeen": {
+            "type": "string"
+          }
         }
       }
     },
@@ -561,13 +674,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "status": {"type": "string"},
-          "statusDetails": {"type": "object"},
-          "resolution": {"type": "string"},
-          "resolvedAt": {"type": "string"},
-          "project": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "statusDetails": {
+            "type": "object"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "string"
+          },
+          "project": {
+            "type": "object"
+          }
         }
       }
     },
@@ -589,7 +716,12 @@
           },
           "level": {
             "type": "string",
-            "enum": ["error", "warning", "info", "debug"],
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "debug"
+            ],
             "description": "Filter by event level"
           }
         },
@@ -599,15 +731,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventID": {"type": "string"},
-          "issue": {"type": "object"},
-          "level": {"type": "string"},
-          "message": {"type": "string"},
-          "platform": {"type": "string"},
-          "project": {"type": "object"},
-          "timestamp": {"type": "string"},
-          "user": {"type": "object"},
-          "exception": {"type": "object"}
+          "eventID": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "object"
+          },
+          "level": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "project": {
+            "type": "object"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "user": {
+            "type": "object"
+          },
+          "exception": {
+            "type": "object"
+          }
         }
       }
     },
@@ -634,14 +784,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "version": {"type": "string"},
-          "ref": {"type": "string"},
-          "url": {"type": "string"},
-          "dateCreated": {"type": "string"},
-          "dateReleased": {"type": "string"},
-          "projects": {"type": "array"},
-          "commitCount": {"type": "number"},
-          "deployCount": {"type": "number"}
+          "version": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "dateCreated": {
+            "type": "string"
+          },
+          "dateReleased": {
+            "type": "string"
+          },
+          "projects": {
+            "type": "array"
+          },
+          "commitCount": {
+            "type": "number"
+          },
+          "deployCount": {
+            "type": "number"
+          }
         }
       }
     }
@@ -649,5 +815,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/organizations/"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

@@ -53,7 +53,13 @@
           },
           "status": {
             "type": "string",
-            "enum": ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "PAID"],
+            "enum": [
+              "DRAFT",
+              "SUBMITTED",
+              "APPROVED",
+              "REJECTED",
+              "PAID"
+            ],
             "description": "Filter by expense status"
           },
           "start_date": {
@@ -113,7 +119,13 @@
             "description": "Receipt image URL"
           }
         },
-        "required": ["user_id", "amount", "currency", "merchant", "category"],
+        "required": [
+          "user_id",
+          "amount",
+          "currency",
+          "merchant",
+          "category"
+        ],
         "additionalProperties": false
       }
     },
@@ -143,7 +155,13 @@
           },
           "status": {
             "type": "string",
-            "enum": ["REQUESTED", "APPROVED", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+            "enum": [
+              "REQUESTED",
+              "APPROVED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ],
             "description": "Filter by trip status"
           }
         },
@@ -185,7 +203,12 @@
             "description": "Trip destination"
           }
         },
-        "required": ["user_id", "title", "start_date", "end_date"],
+        "required": [
+          "user_id",
+          "title",
+          "start_date",
+          "end_date"
+        ],
         "additionalProperties": false
       }
     },
@@ -235,11 +258,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "user_id": {"type": "string"},
-          "amount": {"type": "number"},
-          "currency": {"type": "string"},
-          "status": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       }
     }
@@ -247,5 +280,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

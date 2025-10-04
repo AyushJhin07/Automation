@@ -56,7 +56,10 @@
             "description": "Create labels if they don't exist"
           }
         },
-        "required": ["board_id", "item_name"],
+        "required": [
+          "board_id",
+          "item_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -81,7 +84,9 @@
             "description": "Create labels if they don't exist"
           }
         },
-        "required": ["item_id"],
+        "required": [
+          "item_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -120,7 +125,9 @@
             "description": "Exclude non-active items"
           }
         },
-        "required": ["board_id"],
+        "required": [
+          "board_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -137,7 +144,11 @@
           },
           "board_kind": {
             "type": "string",
-            "enum": ["public", "private", "share"],
+            "enum": [
+              "public",
+              "private",
+              "share"
+            ],
             "default": "public",
             "description": "Board visibility"
           },
@@ -158,7 +169,9 @@
             "description": "Board description"
           }
         },
-        "required": ["board_name"],
+        "required": [
+          "board_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -171,7 +184,9 @@
         "properties": {
           "workspace_ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Workspace IDs to filter by"
           },
           "limit": {
@@ -189,7 +204,10 @@
           },
           "order_by": {
             "type": "string",
-            "enum": ["created_at", "used_at"],
+            "enum": [
+              "created_at",
+              "used_at"
+            ],
             "description": "Order by field"
           }
         },
@@ -214,7 +232,27 @@
           },
           "group_color": {
             "type": "string",
-            "enum": ["#037f4c", "#00c875", "#9cd326", "#cab641", "#ffcb00", "#784bd1", "#a25ddc", "#0086c0", "#579bfc", "#66ccff", "#bb3354", "#e2445c", "#ff158a", "#ff5ac4", "#ff642e", "#fdab3d", "#7f5347", "#c4c4c4", "#808080"],
+            "enum": [
+              "#037f4c",
+              "#00c875",
+              "#9cd326",
+              "#cab641",
+              "#ffcb00",
+              "#784bd1",
+              "#a25ddc",
+              "#0086c0",
+              "#579bfc",
+              "#66ccff",
+              "#bb3354",
+              "#e2445c",
+              "#ff158a",
+              "#ff5ac4",
+              "#ff642e",
+              "#fdab3d",
+              "#7f5347",
+              "#c4c4c4",
+              "#808080"
+            ],
             "description": "Group color"
           },
           "relative_position_after": {
@@ -222,7 +260,10 @@
             "description": "Position after this group ID"
           }
         },
-        "required": ["board_id", "group_name"],
+        "required": [
+          "board_id",
+          "group_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -243,7 +284,35 @@
           },
           "column_type": {
             "type": "string",
-            "enum": ["text", "long_text", "numbers", "rating", "status", "dropdown", "people", "timeline", "date", "checkbox", "email", "phone", "link", "file", "tags", "hour", "week", "location", "creation_log", "country", "auto_number", "last_updated", "formula", "dependency", "progress", "mirror", "button"],
+            "enum": [
+              "text",
+              "long_text",
+              "numbers",
+              "rating",
+              "status",
+              "dropdown",
+              "people",
+              "timeline",
+              "date",
+              "checkbox",
+              "email",
+              "phone",
+              "link",
+              "file",
+              "tags",
+              "hour",
+              "week",
+              "location",
+              "creation_log",
+              "country",
+              "auto_number",
+              "last_updated",
+              "formula",
+              "dependency",
+              "progress",
+              "mirror",
+              "button"
+            ],
             "description": "Column type"
           },
           "description": {
@@ -255,7 +324,11 @@
             "description": "Default column settings"
           }
         },
-        "required": ["board_id", "title", "column_type"],
+        "required": [
+          "board_id",
+          "title",
+          "column_type"
+        ],
         "additionalProperties": false
       }
     },
@@ -279,7 +352,10 @@
             "description": "Parent update ID for replies"
           }
         },
-        "required": ["item_id", "body"],
+        "required": [
+          "item_id",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -340,7 +416,9 @@
           },
           "order_by": {
             "type": "string",
-            "enum": ["created_at"],
+            "enum": [
+              "created_at"
+            ],
             "description": "Order by field"
           }
         },
@@ -369,7 +447,10 @@
             "description": "Include updates in duplication"
           }
         },
-        "required": ["board_id", "item_id"],
+        "required": [
+          "board_id",
+          "item_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -385,7 +466,9 @@
             "description": "Item ID"
           }
         },
-        "required": ["item_id"],
+        "required": [
+          "item_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -401,7 +484,9 @@
             "description": "Item ID"
           }
         },
-        "required": ["item_id"],
+        "required": [
+          "item_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -426,13 +511,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "item_id": {"type": "number"},
-          "item_name": {"type": "string"},
-          "board_id": {"type": "number"},
-          "group_id": {"type": "string"},
-          "column_values": {"type": "array"},
-          "created_at": {"type": "string"},
-          "creator_id": {"type": "number"}
+          "item_id": {
+            "type": "number"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "board_id": {
+            "type": "number"
+          },
+          "group_id": {
+            "type": "string"
+          },
+          "column_values": {
+            "type": "array"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "creator_id": {
+            "type": "number"
+          }
         }
       }
     },
@@ -459,12 +558,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "item_id": {"type": "number"},
-          "board_id": {"type": "number"},
-          "column_id": {"type": "string"},
-          "previous_value": {"type": "object"},
-          "value": {"type": "object"},
-          "changed_at": {"type": "string"}
+          "item_id": {
+            "type": "number"
+          },
+          "board_id": {
+            "type": "number"
+          },
+          "column_id": {
+            "type": "string"
+          },
+          "previous_value": {
+            "type": "object"
+          },
+          "value": {
+            "type": "object"
+          },
+          "changed_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -487,10 +598,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "item_id": {"type": "number"},
-          "board_id": {"type": "number"},
-          "item_name": {"type": "string"},
-          "deleted_at": {"type": "string"}
+          "item_id": {
+            "type": "number"
+          },
+          "board_id": {
+            "type": "number"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "deleted_at": {
+            "type": "string"
+          }
         }
       }
     },
@@ -517,12 +636,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "item_id": {"type": "number"},
-          "board_id": {"type": "number"},
-          "column_id": {"type": "string"},
-          "column_type": {"type": "string"},
-          "previous_value": {"type": "object"},
-          "value": {"type": "object"}
+          "item_id": {
+            "type": "number"
+          },
+          "board_id": {
+            "type": "number"
+          },
+          "column_id": {
+            "type": "string"
+          },
+          "column_type": {
+            "type": "string"
+          },
+          "previous_value": {
+            "type": "object"
+          },
+          "value": {
+            "type": "object"
+          }
         }
       }
     }
@@ -532,6 +663,16 @@
     "endpoint": "/",
     "body": {
       "query": "query { me { id name } }"
+    }
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
     }
   }
 }

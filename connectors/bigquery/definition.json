@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/bigquery"]
+      "scopes": [
+        "https://www.googleapis.com/auth/bigquery"
+      ]
     }
   },
   "baseUrl": "https://bigquery.googleapis.com/bigquery/v2",
@@ -62,11 +64,16 @@
           },
           "parameters": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Query parameters"
           }
         },
-        "required": ["projectId", "query"],
+        "required": [
+          "projectId",
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,7 +105,10 @@
             "description": "Default table expiration time"
           }
         },
-        "required": ["projectId", "datasetId"],
+        "required": [
+          "projectId",
+          "datasetId"
+        ],
         "additionalProperties": false
       }
     },
@@ -126,7 +136,9 @@
             "properties": {
               "fields": {
                 "type": "array",
-                "items": {"type": "object"}
+                "items": {
+                  "type": "object"
+                }
               }
             },
             "description": "Table schema"
@@ -136,7 +148,12 @@
             "description": "Table description"
           }
         },
-        "required": ["projectId", "datasetId", "tableId", "schema"],
+        "required": [
+          "projectId",
+          "datasetId",
+          "tableId",
+          "schema"
+        ],
         "additionalProperties": false
       }
     },
@@ -161,7 +178,9 @@
           },
           "rows": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Rows to insert"
           },
           "ignoreUnknownValues": {
@@ -175,7 +194,12 @@
             "description": "Skip invalid rows"
           }
         },
-        "required": ["projectId", "datasetId", "tableId", "rows"],
+        "required": [
+          "projectId",
+          "datasetId",
+          "tableId",
+          "rows"
+        ],
         "additionalProperties": false
       }
     },
@@ -199,7 +223,9 @@
             "description": "Include hidden datasets"
           }
         },
-        "required": ["projectId"],
+        "required": [
+          "projectId"
+        ],
         "additionalProperties": false
       }
     },
@@ -223,7 +249,10 @@
             "description": "Maximum number of results"
           }
         },
-        "required": ["projectId", "datasetId"],
+        "required": [
+          "projectId",
+          "datasetId"
+        ],
         "additionalProperties": false
       }
     }
@@ -248,9 +277,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "jobId": {"type": "string"},
-          "status": {"type": "string"},
-          "projectId": {"type": "string"}
+          "jobId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
         }
       }
     }
@@ -258,5 +293,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/projects"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

@@ -48,7 +48,10 @@
             "description": "Comma-separated list of fields"
           }
         },
-        "required": ["companyDomain", "employeeId"],
+        "required": [
+          "companyDomain",
+          "employeeId"
+        ],
         "additionalProperties": false
       }
     },
@@ -94,7 +97,11 @@
             "description": "Supervisor ID"
           }
         },
-        "required": ["companyDomain", "firstName", "lastName"],
+        "required": [
+          "companyDomain",
+          "firstName",
+          "lastName"
+        ],
         "additionalProperties": false
       }
     },
@@ -118,7 +125,11 @@
             "description": "Fields to update"
           }
         },
-        "required": ["companyDomain", "employeeId", "fields"],
+        "required": [
+          "companyDomain",
+          "employeeId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -148,7 +159,9 @@
             "description": "Employee ID filter"
           }
         },
-        "required": ["companyDomain"],
+        "required": [
+          "companyDomain"
+        ],
         "additionalProperties": false
       }
     }
@@ -168,10 +181,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "firstName": {"type": "string"},
-          "lastName": {"type": "string"},
-          "workEmail": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "workEmail": {
+            "type": "string"
+          }
         }
       }
     },
@@ -189,8 +210,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "changes": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "object"
+          }
         }
       }
     }
@@ -198,5 +223,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/{companyDomain}/v1/employees/directory"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

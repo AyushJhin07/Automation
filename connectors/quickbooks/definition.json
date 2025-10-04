@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://appcenter.intuit.com/connect/oauth2",
       "tokenUrl": "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
-      "scopes": ["com.intuit.quickbooks.accounting"]
+      "scopes": [
+        "com.intuit.quickbooks.accounting"
+      ]
     }
   },
   "baseUrl": "https://sandbox-quickbooks.api.intuit.com/v3/company",
@@ -39,7 +41,9 @@
             "description": "Company ID"
           }
         },
-        "required": ["companyId"],
+        "required": [
+          "companyId"
+        ],
         "additionalProperties": false
       }
     },
@@ -65,38 +69,67 @@
           "primaryEmailAddr": {
             "type": "object",
             "properties": {
-              "address": {"type": "string", "format": "email"}
+              "address": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Primary email address"
           },
           "primaryPhone": {
             "type": "object",
             "properties": {
-              "freeFormNumber": {"type": "string"}
+              "freeFormNumber": {
+                "type": "string"
+              }
             },
             "description": "Primary phone number"
           },
           "billAddr": {
             "type": "object",
             "properties": {
-              "line1": {"type": "string"},
-              "line2": {"type": "string"},
-              "city": {"type": "string"},
-              "countrySubDivisionCode": {"type": "string"},
-              "postalCode": {"type": "string"},
-              "country": {"type": "string"}
+              "line1": {
+                "type": "string"
+              },
+              "line2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "countrySubDivisionCode": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
           "shipAddr": {
             "type": "object",
             "properties": {
-              "line1": {"type": "string"},
-              "line2": {"type": "string"},
-              "city": {"type": "string"},
-              "countrySubDivisionCode": {"type": "string"},
-              "postalCode": {"type": "string"},
-              "country": {"type": "string"}
+              "line1": {
+                "type": "string"
+              },
+              "line2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "countrySubDivisionCode": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              }
             },
             "description": "Shipping address"
           },
@@ -112,29 +145,44 @@
           "currencyRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Currency reference"
           },
           "paymentMethodRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Payment method reference"
           },
           "salesTermRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Sales terms reference"
           }
         },
-        "required": ["companyId", "name"],
+        "required": [
+          "companyId",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -154,7 +202,10 @@
             "description": "Customer ID"
           }
         },
-        "required": ["companyId", "customerId"],
+        "required": [
+          "companyId",
+          "customerId"
+        ],
         "additionalProperties": false
       }
     },
@@ -188,17 +239,28 @@
           "primaryEmailAddr": {
             "type": "object",
             "properties": {
-              "address": {"type": "string", "format": "email"}
+              "address": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Primary email address"
           },
           "billAddr": {
             "type": "object",
             "properties": {
-              "line1": {"type": "string"},
-              "city": {"type": "string"},
-              "countrySubDivisionCode": {"type": "string"},
-              "postalCode": {"type": "string"}
+              "line1": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "countrySubDivisionCode": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
@@ -207,7 +269,11 @@
             "description": "Customer notes"
           }
         },
-        "required": ["companyId", "customerId", "syncToken"],
+        "required": [
+          "companyId",
+          "customerId",
+          "syncToken"
+        ],
         "additionalProperties": false
       }
     },
@@ -240,7 +306,9 @@
             "description": "Start position for pagination"
           }
         },
-        "required": ["companyId"],
+        "required": [
+          "companyId"
+        ],
         "additionalProperties": false
       }
     },
@@ -265,7 +333,11 @@
           },
           "type": {
             "type": "string",
-            "enum": ["Inventory", "NonInventory", "Service"],
+            "enum": [
+              "Inventory",
+              "NonInventory",
+              "Service"
+            ],
             "description": "Item type"
           },
           "trackQtyOnHand": {
@@ -280,24 +352,36 @@
           "incomeAccountRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Income account reference"
           },
           "expenseAccountRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Expense account reference"
           },
           "assetAccountRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Asset account reference"
           },
@@ -309,21 +393,33 @@
           "salesTaxCodeRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Sales tax code reference"
           },
           "purchaseTaxCodeRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Purchase tax code reference"
           }
         },
-        "required": ["companyId", "name", "type"],
+        "required": [
+          "companyId",
+          "name",
+          "type"
+        ],
         "additionalProperties": false
       }
     },
@@ -341,8 +437,12 @@
           "customerRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Customer reference"
           },
@@ -361,76 +461,126 @@
             "items": {
               "type": "object",
               "properties": {
-                "amount": {"type": "number", "minimum": 0},
-                "detailType": {"type": "string", "enum": ["SalesItemLineDetail"]},
+                "amount": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "detailType": {
+                  "type": "string",
+                  "enum": [
+                    "SalesItemLineDetail"
+                  ]
+                },
                 "salesItemLineDetail": {
                   "type": "object",
                   "properties": {
                     "itemRef": {
                       "type": "object",
                       "properties": {
-                        "value": {"type": "string"},
-                        "name": {"type": "string"}
+                        "value": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
                       }
                     },
-                    "qty": {"type": "number", "minimum": 0},
-                    "unitPrice": {"type": "number", "minimum": 0},
+                    "qty": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "unitPrice": {
+                      "type": "number",
+                      "minimum": 0
+                    },
                     "taxCodeRef": {
                       "type": "object",
                       "properties": {
-                        "value": {"type": "string"}
+                        "value": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
                 }
               },
-              "required": ["amount", "detailType"]
+              "required": [
+                "amount",
+                "detailType"
+              ]
             },
             "description": "Invoice line items"
           },
           "billAddr": {
             "type": "object",
             "properties": {
-              "line1": {"type": "string"},
-              "city": {"type": "string"},
-              "countrySubDivisionCode": {"type": "string"},
-              "postalCode": {"type": "string"}
+              "line1": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "countrySubDivisionCode": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              }
             },
             "description": "Billing address"
           },
           "shipAddr": {
             "type": "object",
             "properties": {
-              "line1": {"type": "string"},
-              "city": {"type": "string"},
-              "countrySubDivisionCode": {"type": "string"},
-              "postalCode": {"type": "string"}
+              "line1": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "countrySubDivisionCode": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              }
             },
             "description": "Shipping address"
           },
           "emailStatus": {
             "type": "string",
-            "enum": ["NotSet", "NeedToSend", "EmailSent"],
+            "enum": [
+              "NotSet",
+              "NeedToSend",
+              "EmailSent"
+            ],
             "description": "Email status"
           },
           "billEmail": {
             "type": "object",
             "properties": {
-              "address": {"type": "string", "format": "email"}
+              "address": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Bill email address"
           },
           "salesTermRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"}
+              "value": {
+                "type": "string"
+              }
             },
             "description": "Sales terms reference"
           },
           "customerMemo": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"}
+              "value": {
+                "type": "string"
+              }
             },
             "description": "Customer memo"
           },
@@ -439,7 +589,11 @@
             "description": "Private note"
           }
         },
-        "required": ["companyId", "customerRef", "line"],
+        "required": [
+          "companyId",
+          "customerRef",
+          "line"
+        ],
         "additionalProperties": false
       }
     },
@@ -459,7 +613,10 @@
             "description": "Invoice ID"
           }
         },
-        "required": ["companyId", "invoiceId"],
+        "required": [
+          "companyId",
+          "invoiceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -483,7 +640,10 @@
             "description": "Request ID for tracking"
           }
         },
-        "required": ["companyId", "invoiceId"],
+        "required": [
+          "companyId",
+          "invoiceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -501,8 +661,12 @@
           "customerRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Customer reference"
           },
@@ -519,16 +683,24 @@
           "paymentMethodRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Payment method reference"
           },
           "depositToAccountRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Deposit to account reference"
           },
@@ -537,14 +709,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "amount": {"type": "number", "minimum": 0},
+                "amount": {
+                  "type": "number",
+                  "minimum": 0
+                },
                 "linkedTxn": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
-                      "txnId": {"type": "string"},
-                      "txnType": {"type": "string"}
+                      "txnId": {
+                        "type": "string"
+                      },
+                      "txnType": {
+                        "type": "string"
+                      }
                     }
                   }
                 }
@@ -557,7 +736,11 @@
             "description": "Private note"
           }
         },
-        "required": ["companyId", "customerRef", "totalAmt"],
+        "required": [
+          "companyId",
+          "customerRef",
+          "totalAmt"
+        ],
         "additionalProperties": false
       }
     },
@@ -584,7 +767,9 @@
             "description": "Maximum number of results"
           }
         },
-        "required": ["companyId"],
+        "required": [
+          "companyId"
+        ],
         "additionalProperties": false
       }
     },
@@ -602,14 +787,22 @@
           "accountRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Expense account reference"
           },
           "paymentType": {
             "type": "string",
-            "enum": ["Cash", "Check", "CreditCard"],
+            "enum": [
+              "Cash",
+              "Check",
+              "CreditCard"
+            ],
             "description": "Payment type"
           },
           "totalAmt": {
@@ -625,9 +818,15 @@
           "entityRef": {
             "type": "object",
             "properties": {
-              "value": {"type": "string"},
-              "name": {"type": "string"},
-              "type": {"type": "string"}
+              "value": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
             },
             "description": "Vendor or employee reference"
           },
@@ -636,28 +835,41 @@
             "items": {
               "type": "object",
               "properties": {
-                "amount": {"type": "number", "minimum": 0},
-                "detailType": {"type": "string"},
+                "amount": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "detailType": {
+                  "type": "string"
+                },
                 "accountBasedExpenseLineDetail": {
                   "type": "object",
                   "properties": {
                     "accountRef": {
                       "type": "object",
                       "properties": {
-                        "value": {"type": "string"}
+                        "value": {
+                          "type": "string"
+                        }
                       }
                     },
                     "customerRef": {
                       "type": "object",
                       "properties": {
-                        "value": {"type": "string"}
+                        "value": {
+                          "type": "string"
+                        }
                       }
                     },
-                    "billableStatus": {"type": "string"},
+                    "billableStatus": {
+                      "type": "string"
+                    },
                     "taxCodeRef": {
                       "type": "object",
                       "properties": {
-                        "value": {"type": "string"}
+                        "value": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
@@ -671,7 +883,12 @@
             "description": "Private note"
           }
         },
-        "required": ["companyId", "accountRef", "paymentType", "totalAmt"],
+        "required": [
+          "companyId",
+          "accountRef",
+          "paymentType",
+          "totalAmt"
+        ],
         "additionalProperties": false
       }
     },
@@ -688,7 +905,15 @@
           },
           "reportType": {
             "type": "string",
-            "enum": ["ProfitAndLoss", "BalanceSheet", "CashFlow", "TrialBalance", "GeneralLedger", "CustomerSales", "VendorExpenses"],
+            "enum": [
+              "ProfitAndLoss",
+              "BalanceSheet",
+              "CashFlow",
+              "TrialBalance",
+              "GeneralLedger",
+              "CustomerSales",
+              "VendorExpenses"
+            ],
             "description": "Report type"
           },
           "start_date": {
@@ -703,16 +928,26 @@
           },
           "accounting_method": {
             "type": "string",
-            "enum": ["Cash", "Accrual"],
+            "enum": [
+              "Cash",
+              "Accrual"
+            ],
             "description": "Accounting method"
           },
           "summarize_column_by": {
             "type": "string",
-            "enum": ["Month", "Quarter", "Year"],
+            "enum": [
+              "Month",
+              "Quarter",
+              "Year"
+            ],
             "description": "Summarize columns by period"
           }
         },
-        "required": ["companyId", "reportType"],
+        "required": [
+          "companyId",
+          "reportType"
+        ],
         "additionalProperties": false
       }
     }
@@ -741,15 +976,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "docNumber": {"type": "string"},
-          "customerId": {"type": "string"},
-          "customerName": {"type": "string"},
-          "txnDate": {"type": "string"},
-          "dueDate": {"type": "string"},
-          "totalAmt": {"type": "number"},
-          "balance": {"type": "number"},
-          "emailStatus": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "docNumber": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "txnDate": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "totalAmt": {
+            "type": "number"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "emailStatus": {
+            "type": "string"
+          }
         }
       }
     },
@@ -780,13 +1033,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "customerId": {"type": "string"},
-          "customerName": {"type": "string"},
-          "totalAmt": {"type": "number"},
-          "txnDate": {"type": "string"},
-          "paymentMethodName": {"type": "string"},
-          "privateNote": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "totalAmt": {
+            "type": "number"
+          },
+          "txnDate": {
+            "type": "string"
+          },
+          "paymentMethodName": {
+            "type": "string"
+          },
+          "privateNote": {
+            "type": "string"
+          }
         }
       }
     },
@@ -809,13 +1076,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "companyName": {"type": "string"},
-          "emailAddress": {"type": "string"},
-          "phone": {"type": "string"},
-          "createTime": {"type": "string"},
-          "balance": {"type": "number"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "emailAddress": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "createTime": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          }
         }
       }
     }
@@ -823,5 +1104,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/{companyId}/companyinfo/{companyId}"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

@@ -37,9 +37,19 @@
           "parent": {
             "type": "object",
             "properties": {
-              "database_id": {"type": "string"},
-              "page_id": {"type": "string"},
-              "type": {"type": "string", "enum": ["database_id", "page_id"]}
+              "database_id": {
+                "type": "string"
+              },
+              "page_id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "database_id",
+                  "page_id"
+                ]
+              }
             },
             "description": "Parent database or page"
           },
@@ -54,24 +64,49 @@
           "icon": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["emoji", "external", "file"]},
-              "emoji": {"type": "string"},
-              "external": {"type": "object"},
-              "file": {"type": "object"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "emoji",
+                  "external",
+                  "file"
+                ]
+              },
+              "emoji": {
+                "type": "string"
+              },
+              "external": {
+                "type": "object"
+              },
+              "file": {
+                "type": "object"
+              }
             },
             "description": "Page icon"
           },
           "cover": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["external", "file"]},
-              "external": {"type": "object"},
-              "file": {"type": "object"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "external",
+                  "file"
+                ]
+              },
+              "external": {
+                "type": "object"
+              },
+              "file": {
+                "type": "object"
+              }
             },
             "description": "Page cover"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -103,7 +138,9 @@
             "description": "Update page cover"
           }
         },
-        "required": ["page_id"],
+        "required": [
+          "page_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -120,11 +157,15 @@
           },
           "filter_properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific properties to retrieve"
           }
         },
-        "required": ["page_id"],
+        "required": [
+          "page_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -159,7 +200,9 @@
             "description": "Number of results per page"
           }
         },
-        "required": ["database_id"],
+        "required": [
+          "database_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -175,7 +218,9 @@
             "description": "Database ID"
           }
         },
-        "required": ["database_id"],
+        "required": [
+          "database_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -207,7 +252,9 @@
             "description": "Whether database is inline"
           }
         },
-        "required": ["database_id"],
+        "required": [
+          "database_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -221,8 +268,15 @@
           "parent": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["page_id"]},
-              "page_id": {"type": "string"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "page_id"
+                ]
+              },
+              "page_id": {
+                "type": "string"
+              }
             },
             "description": "Parent page"
           },
@@ -244,7 +298,11 @@
             "description": "Whether database is inline"
           }
         },
-        "required": ["parent", "title", "properties"],
+        "required": [
+          "parent",
+          "title",
+          "properties"
+        ],
         "additionalProperties": false
       }
     },
@@ -271,7 +329,9 @@
             "description": "Number of blocks per page"
           }
         },
-        "required": ["block_id"],
+        "required": [
+          "block_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -295,7 +355,10 @@
             "description": "Block ID to insert after"
           }
         },
-        "required": ["block_id", "children"],
+        "required": [
+          "block_id",
+          "children"
+        ],
         "additionalProperties": false
       }
     },
@@ -319,7 +382,9 @@
             "description": "Block content to update"
           }
         },
-        "required": ["block_id"],
+        "required": [
+          "block_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -335,7 +400,9 @@
             "description": "Block ID to delete"
           }
         },
-        "required": ["block_id"],
+        "required": [
+          "block_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -353,16 +420,38 @@
           "filter": {
             "type": "object",
             "properties": {
-              "value": {"type": "string", "enum": ["page", "database"]},
-              "property": {"type": "string", "enum": ["object"]}
+              "value": {
+                "type": "string",
+                "enum": [
+                  "page",
+                  "database"
+                ]
+              },
+              "property": {
+                "type": "string",
+                "enum": [
+                  "object"
+                ]
+              }
             },
             "description": "Filter by object type"
           },
           "sort": {
             "type": "object",
             "properties": {
-              "direction": {"type": "string", "enum": ["ascending", "descending"]},
-              "timestamp": {"type": "string", "enum": ["last_edited_time"]}
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "ascending",
+                  "descending"
+                ]
+              },
+              "timestamp": {
+                "type": "string",
+                "enum": [
+                  "last_edited_time"
+                ]
+              }
             },
             "description": "Sort options"
           },
@@ -417,7 +506,9 @@
             "description": "User ID"
           }
         },
-        "required": ["user_id"],
+        "required": [
+          "user_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -444,7 +535,9 @@
             "description": "Number of comments per page"
           }
         },
-        "required": ["block_id"],
+        "required": [
+          "block_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -458,8 +551,12 @@
           "parent": {
             "type": "object",
             "properties": {
-              "page_id": {"type": "string"},
-              "block_id": {"type": "string"}
+              "page_id": {
+                "type": "string"
+              },
+              "block_id": {
+                "type": "string"
+              }
             },
             "description": "Parent page or block"
           },
@@ -472,7 +569,10 @@
             "description": "Discussion thread ID"
           }
         },
-        "required": ["parent", "rich_text"],
+        "required": [
+          "parent",
+          "rich_text"
+        ],
         "additionalProperties": false
       }
     }
@@ -501,12 +601,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "created_time": {"type": "string"},
-          "last_edited_time": {"type": "string"},
-          "parent": {"type": "object"},
-          "properties": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "created_time": {
+            "type": "string"
+          },
+          "last_edited_time": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "object"
+          },
+          "properties": {
+            "type": "object"
+          }
         }
       }
     },
@@ -533,11 +645,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "last_edited_time": {"type": "string"},
-          "parent": {"type": "object"},
-          "properties": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "last_edited_time": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "object"
+          },
+          "properties": {
+            "type": "object"
+          }
         }
       }
     },
@@ -560,11 +682,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "created_time": {"type": "string"},
-          "title": {"type": "array"},
-          "properties": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "created_time": {
+            "type": "string"
+          },
+          "title": {
+            "type": "array"
+          },
+          "properties": {
+            "type": "object"
+          }
         }
       }
     },
@@ -587,11 +719,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "object": {"type": "string"},
-          "last_edited_time": {"type": "string"},
-          "title": {"type": "array"},
-          "properties": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "last_edited_time": {
+            "type": "string"
+          },
+          "title": {
+            "type": "array"
+          },
+          "properties": {
+            "type": "object"
+          }
         }
       }
     }
@@ -599,5 +741,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "2.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

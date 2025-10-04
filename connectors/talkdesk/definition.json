@@ -53,7 +53,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Contact tags"
           },
           "custom_fields": {
@@ -61,7 +63,9 @@
             "description": "Custom field values"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -95,7 +99,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Contact tags"
           },
           "custom_fields": {
@@ -103,7 +109,9 @@
             "description": "Custom field values"
           }
         },
-        "required": ["contact_id"],
+        "required": [
+          "contact_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -119,7 +127,9 @@
             "description": "Contact ID"
           }
         },
-        "required": ["contact_id"],
+        "required": [
+          "contact_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -184,7 +194,10 @@
             "description": "Custom field values for the call"
           }
         },
-        "required": ["to", "agent_id"],
+        "required": [
+          "to",
+          "agent_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -200,7 +213,9 @@
             "description": "Call ID"
           }
         },
-        "required": ["call_id"],
+        "required": [
+          "call_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -244,12 +259,20 @@
           },
           "direction": {
             "type": "string",
-            "enum": ["inbound", "outbound"],
+            "enum": [
+              "inbound",
+              "outbound"
+            ],
             "description": "Call direction filter"
           },
           "status": {
             "type": "string",
-            "enum": ["completed", "missed", "abandoned", "failed"],
+            "enum": [
+              "completed",
+              "missed",
+              "abandoned",
+              "failed"
+            ],
             "description": "Call status filter"
           }
         },
@@ -274,13 +297,23 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high", "urgent"],
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
             "default": "medium",
             "description": "Ticket priority"
           },
           "status": {
             "type": "string",
-            "enum": ["open", "pending", "resolved", "closed"],
+            "enum": [
+              "open",
+              "pending",
+              "resolved",
+              "closed"
+            ],
             "default": "open",
             "description": "Ticket status"
           },
@@ -294,7 +327,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Ticket tags"
           },
           "custom_fields": {
@@ -302,7 +337,10 @@
             "description": "Custom field values"
           }
         },
-        "required": ["subject", "description"],
+        "required": [
+          "subject",
+          "description"
+        ],
         "additionalProperties": false
       }
     },
@@ -327,12 +365,22 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high", "urgent"],
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
             "description": "Ticket priority"
           },
           "status": {
             "type": "string",
-            "enum": ["open", "pending", "resolved", "closed"],
+            "enum": [
+              "open",
+              "pending",
+              "resolved",
+              "closed"
+            ],
             "description": "Ticket status"
           },
           "assignee_id": {
@@ -341,7 +389,9 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Ticket tags"
           },
           "custom_fields": {
@@ -349,7 +399,9 @@
             "description": "Custom field values"
           }
         },
-        "required": ["ticket_id"],
+        "required": [
+          "ticket_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -365,7 +417,9 @@
             "description": "Ticket ID"
           }
         },
-        "required": ["ticket_id"],
+        "required": [
+          "ticket_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -391,12 +445,22 @@
           },
           "status": {
             "type": "string",
-            "enum": ["open", "pending", "resolved", "closed"],
+            "enum": [
+              "open",
+              "pending",
+              "resolved",
+              "closed"
+            ],
             "description": "Filter by status"
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high", "urgent"],
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
             "description": "Filter by priority"
           },
           "assignee_id": {
@@ -438,7 +502,9 @@
             "description": "Agent ID"
           }
         },
-        "required": ["agent_id"],
+        "required": [
+          "agent_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -464,7 +530,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"],
+            "enum": [
+              "active",
+              "inactive"
+            ],
             "description": "Filter by agent status"
           },
           "role": {
@@ -492,7 +561,10 @@
           },
           "direction": {
             "type": "string",
-            "enum": ["inbound", "outbound"],
+            "enum": [
+              "inbound",
+              "outbound"
+            ],
             "description": "Filter by call direction"
           }
         },
@@ -502,19 +574,45 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "call_id": {"type": "string"},
-          "direction": {"type": "string"},
-          "from": {"type": "string"},
-          "to": {"type": "string"},
-          "agent_id": {"type": "string"},
-          "contact_id": {"type": "string"},
-          "duration": {"type": "number"},
-          "status": {"type": "string"},
-          "start_time": {"type": "string"},
-          "end_time": {"type": "string"},
-          "disposition": {"type": "string"},
-          "recording_url": {"type": "string"},
-          "custom_fields": {"type": "object"}
+          "call_id": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "disposition": {
+            "type": "string"
+          },
+          "recording_url": {
+            "type": "string"
+          },
+          "custom_fields": {
+            "type": "object"
+          }
         }
       }
     },
@@ -532,7 +630,12 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high", "urgent"],
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
             "description": "Filter by priority"
           }
         },
@@ -542,17 +645,39 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ticket_id": {"type": "string"},
-          "subject": {"type": "string"},
-          "description": {"type": "string"},
-          "priority": {"type": "string"},
-          "status": {"type": "string"},
-          "assignee_id": {"type": "string"},
-          "contact_id": {"type": "string"},
-          "created_at": {"type": "string"},
-          "updated_at": {"type": "string"},
-          "tags": {"type": "array"},
-          "custom_fields": {"type": "object"}
+          "ticket_id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assignee_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "custom_fields": {
+            "type": "object"
+          }
         }
       }
     },
@@ -566,12 +691,22 @@
         "properties": {
           "from_status": {
             "type": "string",
-            "enum": ["open", "pending", "resolved", "closed"],
+            "enum": [
+              "open",
+              "pending",
+              "resolved",
+              "closed"
+            ],
             "description": "Filter by previous status"
           },
           "to_status": {
             "type": "string",
-            "enum": ["open", "pending", "resolved", "closed"],
+            "enum": [
+              "open",
+              "pending",
+              "resolved",
+              "closed"
+            ],
             "description": "Filter by new status"
           },
           "assignee_id": {
@@ -585,15 +720,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "ticket_id": {"type": "string"},
-          "subject": {"type": "string"},
-          "previous_status": {"type": "string"},
-          "new_status": {"type": "string"},
-          "priority": {"type": "string"},
-          "assignee_id": {"type": "string"},
-          "contact_id": {"type": "string"},
-          "updated_at": {"type": "string"},
-          "updated_by": {"type": "string"}
+          "ticket_id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "previous_status": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "assignee_id": {
+            "type": "string"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
         }
       }
     }
@@ -601,5 +754,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/api/v1/agents/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

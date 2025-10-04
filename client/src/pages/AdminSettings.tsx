@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from "react-helmet-async";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   Settings,
   Key,
@@ -17,11 +19,67 @@ import {
   AlertCircle,
   Activity,
   Eye,
-  EyeOff
+  EyeOff,
+  Flag
 } from 'lucide-react';
 import ConnectionManager from '@/components/connections/ConnectionManager';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+
+type ConnectorLifecycleStatus = 'alpha' | 'beta' | 'stable' | 'deprecated' | 'sunset';
+
+type ConnectorRolloutSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  version: string;
+  semanticVersion: string;
+  lifecycleStatus: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  betaStartDate?: string | null;
+  deprecationStartDate?: string | null;
+  sunsetDate?: string | null;
+  updatedAt?: string | null;
+};
+
+type RolloutFormState = {
+  version: string;
+  semanticVersion: string;
+  lifecycleStatus: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  betaStartedAt: string;
+  deprecationStartDate: string;
+  sunsetDate: string;
+};
+
+const toDateInput = (value?: string | null): string => {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toISOString().slice(0, 10);
+};
+
+const toISOStringFromInput = (value: string): string | null => {
+  if (!value) {
+    return null;
+  }
+  const iso = new Date(`${value}T00:00:00.000Z`).toISOString();
+  return iso;
+};
+
+const buildFormState = (connector?: ConnectorRolloutSummary | null): RolloutFormState => ({
+  version: connector?.version ?? '',
+  semanticVersion: connector?.semanticVersion ?? connector?.version ?? '',
+  lifecycleStatus: connector?.lifecycleStatus ?? 'stable',
+  isBeta: connector?.isBeta ?? false,
+  betaStartedAt: toDateInput(connector?.betaStartDate),
+  deprecationStartDate: toDateInput(connector?.deprecationStartDate),
+  sunsetDate: toDateInput(connector?.sunsetDate),
+});
 
 export default function AdminSettings() {
   const [apiKeys, setApiKeys] = useState({
@@ -48,6 +106,11 @@ export default function AdminSettings() {
     concurrentExecutions: 0,
     executionsInCurrentWindow: 0
   });
+  const [connectorRollouts, setConnectorRollouts] = useState<ConnectorRolloutSummary[]>([]);
+  const [rolloutsLoading, setRolloutsLoading] = useState(false);
+  const [selectedConnectorSlug, setSelectedConnectorSlug] = useState<string>('');
+  const [rolloutForm, setRolloutForm] = useState<RolloutFormState>(buildFormState());
+  const [savingRollout, setSavingRollout] = useState(false);
 
   const { authFetch, activeOrganizationId } = useAuthStore((state) => ({
     authFetch: state.authFetch,
@@ -95,6 +158,10 @@ export default function AdminSettings() {
     loadLimits();
   }, [activeOrganizationId, authFetch]);
 
+  useEffect(() => {
+    void loadConnectorRollouts();
+  }, [loadConnectorRollouts]);
+
   const loadApiKeys = async () => {
     try {
       // TODO: Replace with actual API call to get user's API keys
@@ -107,9 +174,57 @@ export default function AdminSettings() {
     }
   };
 
+  const loadConnectorRollouts = useCallback(async (preferredSlug?: string) => {
+    setRolloutsLoading(true);
+    try {
+      const response = await authFetch('/api/admin/connectors');
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || 'Failed to load connector rollouts');
+      }
+
+      const connectors: ConnectorRolloutSummary[] = Array.isArray(data.connectors)
+        ? data.connectors.map((item: any) => ({
+            id: String(item.id ?? ''),
+            slug: String(item.slug ?? ''),
+            name: String(item.name ?? item.slug ?? 'Unknown connector'),
+            version: String(item.version ?? ''),
+            semanticVersion: String(item.semanticVersion ?? item.version ?? ''),
+            lifecycleStatus: (item.lifecycleStatus ?? 'stable') as ConnectorLifecycleStatus,
+            isBeta: Boolean(item.isBeta),
+            betaStartDate: item.betaStartDate ?? null,
+            deprecationStartDate: item.deprecationStartDate ?? null,
+            sunsetDate: item.sunsetDate ?? null,
+            updatedAt: item.updatedAt ?? null,
+          }))
+        : [];
+
+      connectors.sort((a, b) => a.name.localeCompare(b.name));
+      setConnectorRollouts(connectors);
+
+      if (connectors.length === 0) {
+        setSelectedConnectorSlug('');
+        setRolloutForm(buildFormState());
+        return;
+      }
+
+      const effectiveSlug = preferredSlug && connectors.some(connector => connector.slug === preferredSlug)
+        ? preferredSlug
+        : connectors[0].slug;
+      setSelectedConnectorSlug(effectiveSlug);
+      const match = connectors.find(connector => connector.slug === effectiveSlug) ?? null;
+      setRolloutForm(buildFormState(match));
+    } catch (error: any) {
+      console.error('Failed to load connector rollouts:', error);
+      toast.error(error?.message || 'Failed to load connector rollouts');
+    } finally {
+      setRolloutsLoading(false);
+    }
+  }, [authFetch]);
+
   const handleSaveKeys = async () => {
     setSaveStatus('saving');
-    
+
     try {
       // TODO: Replace with actual API call to save keys securely
       localStorage.setItem('ai-api-keys', JSON.stringify(apiKeys));
@@ -122,6 +237,92 @@ export default function AdminSettings() {
     } catch (error) {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
+
+  const selectedConnector = useMemo(() => {
+    if (!selectedConnectorSlug) {
+      return null;
+    }
+    return connectorRollouts.find(connector => connector.slug === selectedConnectorSlug) ?? null;
+  }, [connectorRollouts, selectedConnectorSlug]);
+
+  const handleConnectorSelection = (slug: string) => {
+    setSelectedConnectorSlug(slug);
+    const match = connectorRollouts.find(connector => connector.slug === slug) ?? null;
+    setRolloutForm(buildFormState(match));
+  };
+
+  function handleRolloutFieldChange<K extends keyof RolloutFormState>(field: K, value: RolloutFormState[K]) {
+    setRolloutForm(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  }
+
+  const handleRolloutSave = async () => {
+    if (!selectedConnectorSlug) {
+      toast.error('Select a connector to update');
+      return;
+    }
+
+    const current = selectedConnector;
+    const payload: Record<string, any> = {};
+
+    if (rolloutForm.version && rolloutForm.version !== (current?.version ?? '')) {
+      payload.version = rolloutForm.version;
+    }
+
+    if (rolloutForm.semanticVersion && rolloutForm.semanticVersion !== (current?.semanticVersion ?? current?.version ?? '')) {
+      payload.semanticVersion = rolloutForm.semanticVersion;
+    }
+
+    if (rolloutForm.lifecycleStatus !== (current?.lifecycleStatus ?? 'stable')) {
+      payload.lifecycleStatus = rolloutForm.lifecycleStatus;
+    }
+
+    if (rolloutForm.isBeta !== (current?.isBeta ?? false)) {
+      payload.isBeta = rolloutForm.isBeta;
+    }
+
+    const betaIso = toISOStringFromInput(rolloutForm.betaStartedAt);
+    if (betaIso !== (current?.betaStartDate ?? null)) {
+      payload.betaStartedAt = betaIso;
+    }
+
+    const deprecationIso = toISOStringFromInput(rolloutForm.deprecationStartDate);
+    if (deprecationIso !== (current?.deprecationStartDate ?? null)) {
+      payload.deprecationStartDate = deprecationIso;
+    }
+
+    const sunsetIso = toISOStringFromInput(rolloutForm.sunsetDate);
+    if (sunsetIso !== (current?.sunsetDate ?? null)) {
+      payload.sunsetDate = sunsetIso;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      toast.info('No rollout changes to save');
+      return;
+    }
+
+    setSavingRollout(true);
+    try {
+      const response = await authFetch(`/api/admin/connectors/${encodeURIComponent(selectedConnectorSlug)}/rollout`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || 'Failed to update connector rollout');
+      }
+      toast.success('Connector rollout updated');
+      await loadConnectorRollouts(selectedConnectorSlug);
+    } catch (error: any) {
+      console.error('Failed to update connector rollout:', error);
+      toast.error(error?.message || 'Failed to update connector rollout');
+    } finally {
+      setSavingRollout(false);
     }
   };
 
@@ -502,6 +703,178 @@ export default function AdminSettings() {
                   💰 <strong>Cost Savings</strong>: Using Gemini Pro saves ~95% vs GPT-4 while maintaining quality
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Flag className="w-5 h-5 text-orange-500" />
+                Connector Rollouts
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Manage lifecycle status, beta visibility, and sunset schedules for every connector.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {rolloutsLoading ? (
+                <div className="text-sm text-muted-foreground">Loading connector metadata…</div>
+              ) : connectorRollouts.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No connector definitions found in the catalog.</div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="connector-rollout-select">Connector</Label>
+                      <Select
+                        value={selectedConnectorSlug}
+                        onValueChange={handleConnectorSelection}
+                        disabled={rolloutsLoading}
+                      >
+                        <SelectTrigger id="connector-rollout-select">
+                          <SelectValue placeholder="Select a connector" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {connectorRollouts.map((connector) => (
+                            <SelectItem key={connector.slug} value={connector.slug}>
+                              {connector.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedConnector && (
+                      <div className="space-y-2">
+                        <Label>Status overview</Label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant={
+                              selectedConnector.lifecycleStatus === 'deprecated' || selectedConnector.lifecycleStatus === 'sunset'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                          >
+                            {selectedConnector.lifecycleStatus.charAt(0).toUpperCase() + selectedConnector.lifecycleStatus.slice(1)}
+                          </Badge>
+                          {selectedConnector.isBeta && <Badge variant="outline">Beta</Badge>}
+                          {selectedConnector.version && (
+                            <Badge variant="outline">v{selectedConnector.version}</Badge>
+                          )}
+                          {selectedConnector.updatedAt && (
+                            <span className="text-xs text-muted-foreground">
+                              Updated {new Date(selectedConnector.updatedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="rollout-version">Release version</Label>
+                      <Input
+                        id="rollout-version"
+                        placeholder="1.0.0"
+                        value={rolloutForm.version}
+                        onChange={(event) => handleRolloutFieldChange('version', event.target.value)}
+                        disabled={rolloutsLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rollout-semver">Semantic version</Label>
+                      <Input
+                        id="rollout-semver"
+                        placeholder="1.0.0"
+                        value={rolloutForm.semanticVersion}
+                        onChange={(event) => handleRolloutFieldChange('semanticVersion', event.target.value)}
+                        disabled={rolloutsLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rollout-status">Lifecycle stage</Label>
+                      <Select
+                        value={rolloutForm.lifecycleStatus}
+                        onValueChange={(value) => handleRolloutFieldChange('lifecycleStatus', value as ConnectorLifecycleStatus)}
+                        disabled={rolloutsLoading}
+                      >
+                        <SelectTrigger id="rollout-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="alpha">Alpha</SelectItem>
+                          <SelectItem value="beta">Beta</SelectItem>
+                          <SelectItem value="stable">Stable</SelectItem>
+                          <SelectItem value="deprecated">Deprecated</SelectItem>
+                          <SelectItem value="sunset">Sunset</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-md border border-dashed border-slate-200 p-3">
+                    <Switch
+                      id="rollout-beta"
+                      checked={rolloutForm.isBeta}
+                      onCheckedChange={(checked) => handleRolloutFieldChange('isBeta', checked)}
+                      disabled={rolloutsLoading}
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="rollout-beta" className="text-sm font-medium">Beta rollout</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Controls whether the connector is highlighted as beta in marketplace listings.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="beta-start">Beta start</Label>
+                      <Input
+                        id="beta-start"
+                        type="date"
+                        value={rolloutForm.betaStartedAt}
+                        onChange={(event) => handleRolloutFieldChange('betaStartedAt', event.target.value)}
+                        disabled={rolloutsLoading}
+                      />
+                      <p className="text-xs text-muted-foreground">Optional date when beta access began.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="deprecation-start">Deprecation notice</Label>
+                      <Input
+                        id="deprecation-start"
+                        type="date"
+                        value={rolloutForm.deprecationStartDate}
+                        onChange={(event) => handleRolloutFieldChange('deprecationStartDate', event.target.value)}
+                        disabled={rolloutsLoading}
+                      />
+                      <p className="text-xs text-muted-foreground">Announce when users should begin migrating.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sunset-date">Sunset date</Label>
+                      <Input
+                        id="sunset-date"
+                        type="date"
+                        value={rolloutForm.sunsetDate}
+                        onChange={(event) => handleRolloutFieldChange('sunsetDate', event.target.value)}
+                        disabled={rolloutsLoading}
+                      />
+                      <p className="text-xs text-muted-foreground">Final day of availability for the connector.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleRolloutSave}
+                      disabled={savingRollout || rolloutsLoading || !selectedConnectorSlug}
+                    >
+                      {savingRollout ? 'Saving…' : 'Save rollout'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -68,7 +68,10 @@
             "description": "Container port"
           }
         },
-        "required": ["name", "image"],
+        "required": [
+          "name",
+          "image"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,21 +101,39 @@
             "items": {
               "type": "object",
               "properties": {
-                "port": {"type": "number"},
-                "targetPort": {"type": "number"},
-                "protocol": {"type": "string", "enum": ["TCP", "UDP"]}
+                "port": {
+                  "type": "number"
+                },
+                "targetPort": {
+                  "type": "number"
+                },
+                "protocol": {
+                  "type": "string",
+                  "enum": [
+                    "TCP",
+                    "UDP"
+                  ]
+                }
               }
             },
             "description": "Service ports"
           },
           "type": {
             "type": "string",
-            "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+            "enum": [
+              "ClusterIP",
+              "NodePort",
+              "LoadBalancer"
+            ],
             "default": "ClusterIP",
             "description": "Service type"
           }
         },
-        "required": ["name", "selector", "ports"],
+        "required": [
+          "name",
+          "selector",
+          "ports"
+        ],
         "additionalProperties": false
       }
     },
@@ -139,7 +160,10 @@
             "description": "Target replica count"
           }
         },
-        "required": ["name", "replicas"],
+        "required": [
+          "name",
+          "replicas"
+        ],
         "additionalProperties": false
       }
     },
@@ -170,7 +194,9 @@
             "description": "Number of lines to tail"
           }
         },
-        "required": ["pod_name"],
+        "required": [
+          "pod_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,5 +256,16 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

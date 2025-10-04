@@ -47,12 +47,18 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["private", "public"],
+            "enum": [
+              "private",
+              "public"
+            ],
             "default": "private",
             "description": "Project visibility"
           }
         },
-        "required": ["project_key", "name"],
+        "required": [
+          "project_key",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -69,7 +75,9 @@
             "description": "Project key"
           }
         },
-        "required": ["project_key"],
+        "required": [
+          "project_key"
+        ],
         "additionalProperties": false
       }
     },
@@ -89,7 +97,13 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"]
+              "enum": [
+                "BLOCKER",
+                "CRITICAL",
+                "MAJOR",
+                "MINOR",
+                "INFO"
+              ]
             },
             "description": "Filter by issue severities"
           },
@@ -97,7 +111,12 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["BUG", "VULNERABILITY", "CODE_SMELL", "SECURITY_HOTSPOT"]
+              "enum": [
+                "BUG",
+                "VULNERABILITY",
+                "CODE_SMELL",
+                "SECURITY_HOTSPOT"
+              ]
             },
             "description": "Filter by issue types"
           },
@@ -105,12 +124,20 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["OPEN", "CONFIRMED", "REOPENED", "RESOLVED", "CLOSED"]
+              "enum": [
+                "OPEN",
+                "CONFIRMED",
+                "REOPENED",
+                "RESOLVED",
+                "CLOSED"
+              ]
             },
             "description": "Filter by issue statuses"
           }
         },
-        "required": ["project_key"],
+        "required": [
+          "project_key"
+        ],
         "additionalProperties": false
       }
     },
@@ -128,11 +155,15 @@
           },
           "metric_keys": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Metric keys to retrieve"
           }
         },
-        "required": ["project_key"],
+        "required": [
+          "project_key"
+        ],
         "additionalProperties": false
       }
     },
@@ -164,7 +195,11 @@
           },
           "quality_gate_status": {
             "type": "string",
-            "enum": ["OK", "WARN", "ERROR"],
+            "enum": [
+              "OK",
+              "WARN",
+              "ERROR"
+            ],
             "description": "Filter by quality gate status"
           }
         },
@@ -189,5 +224,16 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
+  }
 }

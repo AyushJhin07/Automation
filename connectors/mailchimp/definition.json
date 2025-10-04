@@ -74,7 +74,9 @@
             "description": "The unique ID for the list"
           }
         },
-        "required": ["listId"],
+        "required": [
+          "listId"
+        ],
         "additionalProperties": false
       }
     },
@@ -92,14 +94,30 @@
           "contact": {
             "type": "object",
             "properties": {
-              "company": {"type": "string"},
-              "address1": {"type": "string"},
-              "address2": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "zip": {"type": "string"},
-              "country": {"type": "string"},
-              "phone": {"type": "string"}
+              "company": {
+                "type": "string"
+              },
+              "address1": {
+                "type": "string"
+              },
+              "address2": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "zip": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
             },
             "description": "Contact information for the list"
           },
@@ -110,10 +128,19 @@
           "campaignDefaults": {
             "type": "object",
             "properties": {
-              "fromName": {"type": "string"},
-              "fromEmail": {"type": "string", "format": "email"},
-              "subject": {"type": "string"},
-              "language": {"type": "string"}
+              "fromName": {
+                "type": "string"
+              },
+              "fromEmail": {
+                "type": "string",
+                "format": "email"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "language": {
+                "type": "string"
+              }
             },
             "description": "Default values for campaigns"
           },
@@ -132,11 +159,16 @@
             "description": "Email to notify when someone subscribes"
           },
           "notifyOnUnsubscribe": {
-            "type": "string", 
+            "type": "string",
             "description": "Email to notify when someone unsubscribes"
           }
         },
-        "required": ["name", "contact", "permissionReminder", "campaignDefaults"],
+        "required": [
+          "name",
+          "contact",
+          "permissionReminder",
+          "campaignDefaults"
+        ],
         "additionalProperties": false
       }
     },
@@ -158,7 +190,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "enum": [
+              "subscribed",
+              "unsubscribed",
+              "cleaned",
+              "pending"
+            ],
             "description": "Subscriber's current status"
           },
           "mergeFields": {
@@ -180,8 +217,12 @@
           "location": {
             "type": "object",
             "properties": {
-              "latitude": {"type": "number"},
-              "longitude": {"type": "number"}
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              }
             },
             "description": "Subscriber location information"
           },
@@ -204,7 +245,11 @@
             "description": "The date and time the subscriber confirmed"
           }
         },
-        "required": ["listId", "emailAddress", "status"],
+        "required": [
+          "listId",
+          "emailAddress",
+          "status"
+        ],
         "additionalProperties": false
       }
     },
@@ -224,7 +269,10 @@
             "description": "The MD5 hash of the lowercase version of the list member's email address"
           }
         },
-        "required": ["listId", "subscriberHash"],
+        "required": [
+          "listId",
+          "subscriberHash"
+        ],
         "additionalProperties": false
       }
     },
@@ -250,7 +298,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "enum": [
+              "subscribed",
+              "unsubscribed",
+              "cleaned",
+              "pending"
+            ],
             "description": "Subscriber's current status"
           },
           "mergeFields": {
@@ -272,13 +325,20 @@
           "location": {
             "type": "object",
             "properties": {
-              "latitude": {"type": "number"},
-              "longitude": {"type": "number"}
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              }
             },
             "description": "Subscriber location information"
           }
         },
-        "required": ["listId", "subscriberHash"],
+        "required": [
+          "listId",
+          "subscriberHash"
+        ],
         "additionalProperties": false
       }
     },
@@ -298,7 +358,10 @@
             "description": "The MD5 hash of the lowercase version of the list member's email address"
           }
         },
-        "required": ["listId", "subscriberHash"],
+        "required": [
+          "listId",
+          "subscriberHash"
+        ],
         "additionalProperties": false
       }
     },
@@ -328,7 +391,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["subscribed", "unsubscribed", "cleaned", "pending"],
+            "enum": [
+              "subscribed",
+              "unsubscribed",
+              "cleaned",
+              "pending"
+            ],
             "description": "Filter by subscriber status"
           },
           "sinceLastChanged": {
@@ -352,7 +420,9 @@
             "description": "Filter by opt-in time"
           }
         },
-        "required": ["listId"],
+        "required": [
+          "listId"
+        ],
         "additionalProperties": false
       }
     },
@@ -365,49 +435,106 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "enum": [
+              "regular",
+              "plaintext",
+              "absplit",
+              "rss",
+              "variate"
+            ],
             "description": "The campaign type"
           },
           "recipients": {
             "type": "object",
             "properties": {
-              "listId": {"type": "string"},
-              "segmentOpts": {"type": "object"}
+              "listId": {
+                "type": "string"
+              },
+              "segmentOpts": {
+                "type": "object"
+              }
             },
             "description": "List settings for the campaign"
           },
           "settings": {
             "type": "object",
             "properties": {
-              "subjectLine": {"type": "string"},
-              "previewText": {"type": "string"},
-              "title": {"type": "string"},
-              "fromName": {"type": "string"},
-              "replyTo": {"type": "string", "format": "email"},
-              "useConversation": {"type": "boolean"},
-              "toName": {"type": "string"},
-              "folderId": {"type": "string"},
-              "authenticate": {"type": "boolean"},
-              "autoFooter": {"type": "boolean"},
-              "inlineCss": {"type": "boolean"},
-              "autoTweet": {"type": "boolean"},
-              "fbComments": {"type": "boolean"},
-              "timewarp": {"type": "boolean"},
-              "templateId": {"type": "number"},
-              "dragAndDrop": {"type": "boolean"}
+              "subjectLine": {
+                "type": "string"
+              },
+              "previewText": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "fromName": {
+                "type": "string"
+              },
+              "replyTo": {
+                "type": "string",
+                "format": "email"
+              },
+              "useConversation": {
+                "type": "boolean"
+              },
+              "toName": {
+                "type": "string"
+              },
+              "folderId": {
+                "type": "string"
+              },
+              "authenticate": {
+                "type": "boolean"
+              },
+              "autoFooter": {
+                "type": "boolean"
+              },
+              "inlineCss": {
+                "type": "boolean"
+              },
+              "autoTweet": {
+                "type": "boolean"
+              },
+              "fbComments": {
+                "type": "boolean"
+              },
+              "timewarp": {
+                "type": "boolean"
+              },
+              "templateId": {
+                "type": "number"
+              },
+              "dragAndDrop": {
+                "type": "boolean"
+              }
             },
             "description": "The settings for your campaign"
           },
           "tracking": {
             "type": "object",
             "properties": {
-              "opens": {"type": "boolean"},
-              "htmlClicks": {"type": "boolean"},
-              "textClicks": {"type": "boolean"},
-              "goalTracking": {"type": "boolean"},
-              "ecomm360": {"type": "boolean"},
-              "googleAnalytics": {"type": "string"},
-              "clicktale": {"type": "string"}
+              "opens": {
+                "type": "boolean"
+              },
+              "htmlClicks": {
+                "type": "boolean"
+              },
+              "textClicks": {
+                "type": "boolean"
+              },
+              "goalTracking": {
+                "type": "boolean"
+              },
+              "ecomm360": {
+                "type": "boolean"
+              },
+              "googleAnalytics": {
+                "type": "string"
+              },
+              "clicktale": {
+                "type": "string"
+              }
             },
             "description": "The tracking options for a campaign"
           },
@@ -420,7 +547,9 @@
             "description": "The preview for the campaign in social networks"
           }
         },
-        "required": ["type"],
+        "required": [
+          "type"
+        ],
         "additionalProperties": false
       }
     },
@@ -446,12 +575,24 @@
           },
           "type": {
             "type": "string",
-            "enum": ["regular", "plaintext", "absplit", "rss", "variate"],
+            "enum": [
+              "regular",
+              "plaintext",
+              "absplit",
+              "rss",
+              "variate"
+            ],
             "description": "Filter by campaign type"
           },
           "status": {
             "type": "string",
-            "enum": ["save", "paused", "schedule", "sending", "sent"],
+            "enum": [
+              "save",
+              "paused",
+              "schedule",
+              "sending",
+              "sent"
+            ],
             "description": "Filter by campaign status"
           },
           "beforeSendTime": {
@@ -484,12 +625,18 @@
           },
           "sortField": {
             "type": "string",
-            "enum": ["create_time", "send_time"],
+            "enum": [
+              "create_time",
+              "send_time"
+            ],
             "description": "Field to sort by"
           },
           "sortDir": {
             "type": "string",
-            "enum": ["ASC", "DESC"],
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
             "description": "Sort direction"
           }
         },
@@ -509,7 +656,9 @@
             "description": "The unique ID for the campaign"
           }
         },
-        "required": ["campaignId"],
+        "required": [
+          "campaignId"
+        ],
         "additionalProperties": false
       }
     },
@@ -525,7 +674,9 @@
             "description": "The unique ID for the campaign"
           }
         },
-        "required": ["campaignId"],
+        "required": [
+          "campaignId"
+        ],
         "additionalProperties": false
       }
     },
@@ -551,8 +702,12 @@
           "template": {
             "type": "object",
             "properties": {
-              "id": {"type": "number"},
-              "sections": {"type": "object"}
+              "id": {
+                "type": "number"
+              },
+              "sections": {
+                "type": "object"
+              }
             },
             "description": "Content for the campaign using a template"
           },
@@ -565,7 +720,9 @@
             "description": "A URL to import content from"
           }
         },
-        "required": ["campaignId"],
+        "required": [
+          "campaignId"
+        ],
         "additionalProperties": false
       }
     }
@@ -590,12 +747,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "emailAddress": {"type": "string"},
-          "status": {"type": "string"},
-          "mergeFields": {"type": "object"},
-          "listId": {"type": "string"},
-          "timestampSignup": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "emailAddress": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "mergeFields": {
+            "type": "object"
+          },
+          "listId": {
+            "type": "string"
+          },
+          "timestampSignup": {
+            "type": "string"
+          }
         }
       }
     },
@@ -618,12 +787,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "emailAddress": {"type": "string"},
-          "status": {"type": "string"},
-          "mergeFields": {"type": "object"},
-          "listId": {"type": "string"},
-          "lastChanged": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "emailAddress": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "mergeFields": {
+            "type": "object"
+          },
+          "listId": {
+            "type": "string"
+          },
+          "lastChanged": {
+            "type": "string"
+          }
         }
       }
     },
@@ -646,11 +827,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "emailAddress": {"type": "string"},
-          "listId": {"type": "string"},
-          "reason": {"type": "string"},
-          "campaignId": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "emailAddress": {
+            "type": "string"
+          },
+          "listId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -673,14 +864,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "webId": {"type": "number"},
-          "type": {"type": "string"},
-          "createTime": {"type": "string"},
-          "archiveUrl": {"type": "string"},
-          "status": {"type": "string"},
-          "emailsSent": {"type": "number"},
-          "sendTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "webId": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "createTime": {
+            "type": "string"
+          },
+          "archiveUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "emailsSent": {
+            "type": "number"
+          },
+          "sendTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -688,5 +895,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/ping"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

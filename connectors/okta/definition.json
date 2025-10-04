@@ -37,39 +37,108 @@
           "profile": {
             "type": "object",
             "properties": {
-              "firstName": {"type": "string"},
-              "lastName": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "login": {"type": "string"},
-              "mobilePhone": {"type": "string"},
-              "secondEmail": {"type": "string", "format": "email"},
-              "middleName": {"type": "string"},
-              "honorificPrefix": {"type": "string"},
-              "honorificSuffix": {"type": "string"},
-              "title": {"type": "string"},
-              "displayName": {"type": "string"},
-              "nickName": {"type": "string"},
-              "profileUrl": {"type": "string"},
-              "primaryPhone": {"type": "string"},
-              "streetAddress": {"type": "string"},
-              "city": {"type": "string"},
-              "state": {"type": "string"},
-              "zipCode": {"type": "string"},
-              "countryCode": {"type": "string"},
-              "postalAddress": {"type": "string"},
-              "preferredLanguage": {"type": "string"},
-              "locale": {"type": "string"},
-              "timezone": {"type": "string"},
-              "userType": {"type": "string"},
-              "employeeNumber": {"type": "string"},
-              "costCenter": {"type": "string"},
-              "organization": {"type": "string"},
-              "division": {"type": "string"},
-              "department": {"type": "string"},
-              "managerId": {"type": "string"},
-              "manager": {"type": "string"}
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "login": {
+                "type": "string"
+              },
+              "mobilePhone": {
+                "type": "string"
+              },
+              "secondEmail": {
+                "type": "string",
+                "format": "email"
+              },
+              "middleName": {
+                "type": "string"
+              },
+              "honorificPrefix": {
+                "type": "string"
+              },
+              "honorificSuffix": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "nickName": {
+                "type": "string"
+              },
+              "profileUrl": {
+                "type": "string"
+              },
+              "primaryPhone": {
+                "type": "string"
+              },
+              "streetAddress": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "zipCode": {
+                "type": "string"
+              },
+              "countryCode": {
+                "type": "string"
+              },
+              "postalAddress": {
+                "type": "string"
+              },
+              "preferredLanguage": {
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "userType": {
+                "type": "string"
+              },
+              "employeeNumber": {
+                "type": "string"
+              },
+              "costCenter": {
+                "type": "string"
+              },
+              "organization": {
+                "type": "string"
+              },
+              "division": {
+                "type": "string"
+              },
+              "department": {
+                "type": "string"
+              },
+              "managerId": {
+                "type": "string"
+              },
+              "manager": {
+                "type": "string"
+              }
             },
-            "required": ["firstName", "lastName", "email", "login"],
+            "required": [
+              "firstName",
+              "lastName",
+              "email",
+              "login"
+            ],
             "additionalProperties": false
           },
           "credentials": {
@@ -78,23 +147,40 @@
               "password": {
                 "type": "object",
                 "properties": {
-                  "value": {"type": "string"}
+                  "value": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               },
               "recovery_question": {
                 "type": "object",
                 "properties": {
-                  "question": {"type": "string"},
-                  "answer": {"type": "string"}
+                  "question": {
+                    "type": "string"
+                  },
+                  "answer": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               },
               "provider": {
                 "type": "object",
                 "properties": {
-                  "type": {"type": "string", "enum": ["OKTA", "ACTIVE_DIRECTORY", "LDAP", "FEDERATION", "SOCIAL"]},
-                  "name": {"type": "string"}
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "OKTA",
+                      "ACTIVE_DIRECTORY",
+                      "LDAP",
+                      "FEDERATION",
+                      "SOCIAL"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               }
@@ -103,7 +189,9 @@
           },
           "groupIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Group IDs to assign user to"
           },
           "activate": {
@@ -117,11 +205,15 @@
           },
           "nextLogin": {
             "type": "string",
-            "enum": ["changePassword"],
+            "enum": [
+              "changePassword"
+            ],
             "description": "Action to take on next login"
           }
         },
-        "required": ["profile"],
+        "required": [
+          "profile"
+        ],
         "additionalProperties": false
       }
     },
@@ -137,7 +229,9 @@
             "description": "User ID or login"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -155,27 +249,50 @@
           "profile": {
             "type": "object",
             "properties": {
-              "firstName": {"type": "string"},
-              "lastName": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "login": {"type": "string"},
-              "mobilePhone": {"type": "string"},
-              "title": {"type": "string"},
-              "department": {"type": "string"},
-              "manager": {"type": "string"}
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "login": {
+                "type": "string"
+              },
+              "mobilePhone": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "department": {
+                "type": "string"
+              },
+              "manager": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "credentials": {
             "type": "object",
             "properties": {
-              "password": {"type": "object"},
-              "recovery_question": {"type": "object"}
+              "password": {
+                "type": "object"
+              },
+              "recovery_question": {
+                "type": "object"
+              }
             },
             "additionalProperties": false
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -196,7 +313,9 @@
             "description": "Whether to send deactivation email"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -217,7 +336,9 @@
             "description": "Whether to send activation email"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -233,7 +354,9 @@
             "description": "User ID"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -249,7 +372,9 @@
             "description": "User ID"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -289,7 +414,10 @@
           },
           "sortOrder": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           }
         },
@@ -313,7 +441,10 @@
             "description": "User ID"
           }
         },
-        "required": ["groupId", "userId"],
+        "required": [
+          "groupId",
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -333,7 +464,10 @@
             "description": "User ID"
           }
         },
-        "required": ["groupId", "userId"],
+        "required": [
+          "groupId",
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -347,14 +481,22 @@
           "profile": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "description": {"type": "string"}
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
             },
-            "required": ["name"],
+            "required": [
+              "name"
+            ],
             "additionalProperties": false
           }
         },
-        "required": ["profile"],
+        "required": [
+          "profile"
+        ],
         "additionalProperties": false
       }
     },
@@ -394,7 +536,10 @@
           },
           "sortOrder": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           },
           "expand": {
@@ -423,7 +568,9 @@
             "description": "Whether to send reset email"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -443,7 +590,9 @@
             "description": "Whether to generate temporary password"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     }
@@ -468,11 +617,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventType": {"type": "string"},
-          "version": {"type": "string"},
-          "source": {"type": "string"},
-          "eventId": {"type": "string"},
-          "published": {"type": "string"},
+          "eventType": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
           "data": {
             "type": "object",
             "properties": {
@@ -481,22 +640,54 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "uuid": {"type": "string"},
-                    "published": {"type": "string"},
-                    "eventType": {"type": "string"},
-                    "version": {"type": "string"},
-                    "displayMessage": {"type": "string"},
-                    "severity": {"type": "string"},
-                    "client": {"type": "object"},
-                    "actor": {"type": "object"},
-                    "outcome": {"type": "object"},
-                    "target": {"type": "array"},
-                    "transaction": {"type": "object"},
-                    "debugContext": {"type": "object"},
-                    "legacyEventType": {"type": "string"},
-                    "authenticationContext": {"type": "object"},
-                    "securityContext": {"type": "object"},
-                    "insertionTimestamp": {"type": "string"}
+                    "uuid": {
+                      "type": "string"
+                    },
+                    "published": {
+                      "type": "string"
+                    },
+                    "eventType": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "displayMessage": {
+                      "type": "string"
+                    },
+                    "severity": {
+                      "type": "string"
+                    },
+                    "client": {
+                      "type": "object"
+                    },
+                    "actor": {
+                      "type": "object"
+                    },
+                    "outcome": {
+                      "type": "object"
+                    },
+                    "target": {
+                      "type": "array"
+                    },
+                    "transaction": {
+                      "type": "object"
+                    },
+                    "debugContext": {
+                      "type": "object"
+                    },
+                    "legacyEventType": {
+                      "type": "string"
+                    },
+                    "authenticationContext": {
+                      "type": "object"
+                    },
+                    "securityContext": {
+                      "type": "object"
+                    },
+                    "insertionTimestamp": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -519,8 +710,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventType": {"type": "string"},
-          "data": {"type": "object"}
+          "eventType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
         }
       }
     },
@@ -538,8 +733,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventType": {"type": "string"},
-          "data": {"type": "object"}
+          "eventType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
         }
       }
     }
@@ -547,5 +746,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }

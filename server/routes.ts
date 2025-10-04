@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 // import { registerAIWorkflowRoutes } from "./aiModels"; // REMOVED: Conflicts with new AI routes
@@ -53,6 +55,7 @@ import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
 import type { OrganizationLimits } from './database/schema.js';
+import { connectorDefinitions, db } from './database/schema.js';
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
@@ -109,6 +112,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isDefault: org.isDefault,
     limits: org.limits,
     usage: org.usage,
+  });
+
+  const semverRegex = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+  const semverString = z.string().trim().regex(semverRegex, 'Invalid semantic version');
+  const isoString = z.string().trim().min(1);
+  const connectorRolloutUpdateSchema = z.object({
+    version: semverString.optional(),
+    semanticVersion: semverString.optional(),
+    lifecycleStatus: z.enum(['alpha', 'beta', 'stable', 'deprecated', 'sunset']).optional(),
+    isBeta: z.boolean().optional(),
+    betaStartedAt: z.union([isoString, z.null()]).optional(),
+    deprecationStartDate: z.union([isoString, z.null()]).optional(),
+    sunsetDate: z.union([isoString, z.null()]).optional(),
   });
 
   // Apply global security middleware
@@ -2205,7 +2221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/connector-stats', authenticateToken, adminOnly, async (req, res) => {
     try {
       const stats = await connectorSeeder.getSeedingStats();
-      
+
       res.json({
         success: true,
         data: stats
@@ -2215,6 +2231,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: getErrorMessage(error)
       });
+    }
+  });
+
+  app.get('/api/admin/connectors', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const connectors = await db
+        .select({
+          id: connectorDefinitions.id,
+          slug: connectorDefinitions.slug,
+          name: connectorDefinitions.name,
+          version: connectorDefinitions.version,
+          semanticVersion: connectorDefinitions.semanticVersion,
+          lifecycleStatus: connectorDefinitions.lifecycleStatus,
+          isBeta: connectorDefinitions.isBeta,
+          betaStartDate: connectorDefinitions.betaStartDate,
+          deprecationStartDate: connectorDefinitions.deprecationStartDate,
+          sunsetDate: connectorDefinitions.sunsetDate,
+          updatedAt: connectorDefinitions.updatedAt,
+        })
+        .from(connectorDefinitions)
+        .orderBy(connectorDefinitions.slug);
+
+      res.json({ success: true, connectors });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.patch('/api/admin/connectors/:slug/rollout', authenticateToken, adminOnly, async (req, res) => {
+    try {
+      const slug = String(req.params.slug || '').toLowerCase();
+      if (!slug) {
+        return res.status(400).json({ success: false, error: 'Connector slug is required' });
+      }
+
+      const parseResult = connectorRolloutUpdateSchema.safeParse(req.body ?? {});
+      if (!parseResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid rollout payload',
+          issues: parseResult.error.flatten(),
+        });
+      }
+
+      const payload = parseResult.data;
+      const [existing] = await db
+        .select({
+          id: connectorDefinitions.id,
+          lifecycleStatus: connectorDefinitions.lifecycleStatus,
+          isBeta: connectorDefinitions.isBeta,
+        })
+        .from(connectorDefinitions)
+        .where(eq(connectorDefinitions.slug, slug))
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({ success: false, error: `Connector not found: ${slug}` });
+      }
+
+      const parseDate = (value?: string | null) => {
+        if (value === undefined) {
+          return undefined;
+        }
+        if (value === null) {
+          return null;
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return null;
+        }
+        const timestamp = Date.parse(trimmed);
+        if (Number.isNaN(timestamp)) {
+          throw new Error(`Invalid ISO 8601 date: ${value}`);
+        }
+        return new Date(trimmed);
+      };
+
+      const updateValues: Record<string, any> = { updatedAt: new Date() };
+
+      if (payload.version) {
+        updateValues.version = payload.version;
+      }
+
+      if (payload.semanticVersion || payload.version) {
+        updateValues.semanticVersion = payload.semanticVersion ?? payload.version;
+      }
+
+      if (payload.lifecycleStatus) {
+        updateValues.lifecycleStatus = payload.lifecycleStatus;
+      }
+
+      if (payload.isBeta !== undefined) {
+        updateValues.isBeta = payload.isBeta;
+        if (!payload.lifecycleStatus) {
+          updateValues.lifecycleStatus = payload.isBeta
+            ? 'beta'
+            : existing.lifecycleStatus === 'beta'
+              ? 'stable'
+              : existing.lifecycleStatus;
+        }
+      }
+
+      const betaStartedAt = parseDate(payload.betaStartedAt ?? undefined);
+      if (betaStartedAt !== undefined) {
+        updateValues.betaStartDate = betaStartedAt;
+      }
+
+      const deprecationStart = parseDate(payload.deprecationStartDate ?? undefined);
+      if (deprecationStart !== undefined) {
+        updateValues.deprecationStartDate = deprecationStart;
+      }
+
+      const sunsetDate = parseDate(payload.sunsetDate ?? undefined);
+      if (sunsetDate !== undefined) {
+        updateValues.sunsetDate = sunsetDate;
+      }
+
+      if (Object.keys(updateValues).length === 1) {
+        return res.status(400).json({ success: false, error: 'No rollout fields provided' });
+      }
+
+      await db
+        .update(connectorDefinitions)
+        .set(updateValues)
+        .where(eq(connectorDefinitions.slug, slug));
+
+      const [updated] = await db
+        .select({
+          id: connectorDefinitions.id,
+          slug: connectorDefinitions.slug,
+          name: connectorDefinitions.name,
+          version: connectorDefinitions.version,
+          semanticVersion: connectorDefinitions.semanticVersion,
+          lifecycleStatus: connectorDefinitions.lifecycleStatus,
+          isBeta: connectorDefinitions.isBeta,
+          betaStartDate: connectorDefinitions.betaStartDate,
+          deprecationStartDate: connectorDefinitions.deprecationStartDate,
+          sunsetDate: connectorDefinitions.sunsetDate,
+          updatedAt: connectorDefinitions.updatedAt,
+        })
+        .from(connectorDefinitions)
+        .where(eq(connectorDefinitions.slug, slug))
+        .limit(1);
+
+      res.json({ success: true, connector: updated });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Invalid ISO 8601 date')) {
+        return res.status(400).json({ success: false, error: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: 'Invalid rollout payload', issues: error.flatten() });
+      }
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 

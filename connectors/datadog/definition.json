@@ -38,20 +38,50 @@
             "items": {
               "type": "object",
               "properties": {
-                "metric": {"type": "string"},
-                "points": {"type": "array", "items": {"type": "array"}},
-                "type": {"type": "string", "enum": ["gauge", "rate", "count"]},
-                "interval": {"type": "number"},
-                "host": {"type": "string"},
-                "tags": {"type": "array", "items": {"type": "string"}},
-                "unit": {"type": "string"}
+                "metric": {
+                  "type": "string"
+                },
+                "points": {
+                  "type": "array",
+                  "items": {
+                    "type": "array"
+                  }
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "gauge",
+                    "rate",
+                    "count"
+                  ]
+                },
+                "interval": {
+                  "type": "number"
+                },
+                "host": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "unit": {
+                  "type": "string"
+                }
               },
-              "required": ["metric", "points"]
+              "required": [
+                "metric",
+                "points"
+              ]
             },
             "description": "Metrics data series"
           }
         },
-        "required": ["series"],
+        "required": [
+          "series"
+        ],
         "additionalProperties": false
       }
     },
@@ -75,7 +105,11 @@
             "description": "End timestamp (Unix epoch)"
           }
         },
-        "required": ["query", "from", "to"],
+        "required": [
+          "query",
+          "from",
+          "to"
+        ],
         "additionalProperties": false
       }
     },
@@ -100,7 +134,10 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["normal", "low"],
+            "enum": [
+              "normal",
+              "low"
+            ],
             "description": "Event priority"
           },
           "host": {
@@ -109,12 +146,19 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Event tags"
           },
           "alert_type": {
             "type": "string",
-            "enum": ["error", "warning", "info", "success"],
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "success"
+            ],
             "description": "Alert type"
           },
           "aggregation_key": {
@@ -126,7 +170,10 @@
             "description": "Source type"
           }
         },
-        "required": ["title", "text"],
+        "required": [
+          "title",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -147,7 +194,10 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["normal", "low"],
+            "enum": [
+              "normal",
+              "low"
+            ],
             "description": "Filter by priority"
           },
           "sources": {
@@ -163,7 +213,10 @@
             "description": "Return unaggregated events"
           }
         },
-        "required": ["start", "end"],
+        "required": [
+          "start",
+          "end"
+        ],
         "additionalProperties": false
       }
     },
@@ -176,7 +229,16 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["metric alert", "service check", "event alert", "process alert", "log alert", "anomaly", "outlier", "forecast"],
+            "enum": [
+              "metric alert",
+              "service check",
+              "event alert",
+              "process alert",
+              "log alert",
+              "anomaly",
+              "outlier",
+              "forecast"
+            ],
             "description": "Monitor type"
           },
           "query": {
@@ -193,16 +255,26 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Monitor tags"
           },
           "options": {
             "type": "object",
             "properties": {
-              "thresholds": {"type": "object"},
-              "notify_audit": {"type": "boolean"},
-              "timeout_h": {"type": "number"},
-              "evaluation_delay": {"type": "number"}
+              "thresholds": {
+                "type": "object"
+              },
+              "notify_audit": {
+                "type": "boolean"
+              },
+              "timeout_h": {
+                "type": "number"
+              },
+              "evaluation_delay": {
+                "type": "number"
+              }
             },
             "description": "Monitor options"
           },
@@ -212,11 +284,17 @@
           },
           "restricted_roles": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Restricted roles"
           }
         },
-        "required": ["type", "query", "name"],
+        "required": [
+          "type",
+          "query",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -229,7 +307,18 @@
         "properties": {
           "group_states": {
             "type": "array",
-            "items": {"type": "string", "enum": ["Alert", "Ignored", "No Data", "OK", "Skipped", "Unknown", "Warn"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "Alert",
+                "Ignored",
+                "No Data",
+                "OK",
+                "Skipped",
+                "Unknown",
+                "Warn"
+              ]
+            },
             "description": "Filter by group states"
           },
           "name": {
@@ -238,12 +327,16 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by tags"
           },
           "monitor_tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by monitor tags"
           },
           "with_downtimes": {
@@ -291,10 +384,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "name": {"type": "string"},
-          "query": {"type": "string"},
-          "state": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
         }
       }
     },
@@ -312,9 +413,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "metric": {"type": "string"},
-          "value": {"type": "number"},
-          "threshold": {"type": "number"}
+          "metric": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "threshold": {
+            "type": "number"
+          }
         }
       }
     }
@@ -322,5 +429,15 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/validate"
+  },
+  "release": {
+    "semver": "1.0.0",
+    "status": "stable",
+    "isBeta": false,
+    "betaStartedAt": null,
+    "deprecationWindow": {
+      "startDate": null,
+      "sunsetDate": null
+    }
   }
 }
