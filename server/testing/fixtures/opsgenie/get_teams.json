@@ -1,0 +1,83 @@
+{
+  "description": "Simulated Opsgenie get_teams action returning a couple of sample teams.",
+  "defaults": {
+    "credentials": {
+      "apiKey": "simulated-opsgenie-api-key"
+    }
+  },
+  "params": {
+    "limit": 2
+  },
+  "request": {
+    "method": "GET",
+    "url": "https://api.opsgenie.com/v2/teams?limit=2",
+    "headers": {
+      "authorization": "GenieKey simulated-opsgenie-api-key"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "data": [
+        {
+          "id": "a1b2c3d4-sim-team",
+          "name": "Platform On-Call",
+          "description": "Simulated primary on-call team",
+          "memberCount": 6,
+          "links": {
+            "web": "https://app.opsgenie.com/teams/details/a1b2c3d4-sim-team"
+          }
+        },
+        {
+          "id": "e5f6g7h8-sim-team",
+          "name": "Incident Commanders",
+          "description": "Simulated incident commander rotation",
+          "memberCount": 4,
+          "links": {
+            "web": "https://app.opsgenie.com/teams/details/e5f6g7h8-sim-team"
+          }
+        }
+      ],
+      "paging": {
+        "next": null,
+        "prev": null
+      },
+      "took": 0.05,
+      "requestId": "sim-request-get-teams"
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "a1b2c3d4-sim-team",
+          "name": "Platform On-Call",
+          "description": "Simulated primary on-call team",
+          "memberCount": 6,
+          "links": {
+            "web": "https://app.opsgenie.com/teams/details/a1b2c3d4-sim-team"
+          }
+        },
+        {
+          "id": "e5f6g7h8-sim-team",
+          "name": "Incident Commanders",
+          "description": "Simulated incident commander rotation",
+          "memberCount": 4,
+          "links": {
+            "web": "https://app.opsgenie.com/teams/details/e5f6g7h8-sim-team"
+          }
+        }
+      ],
+      "paging": {
+        "next": null,
+        "prev": null
+      },
+      "took": 0.05,
+      "requestId": "sim-request-get-teams"
+    }
+  }
+}
